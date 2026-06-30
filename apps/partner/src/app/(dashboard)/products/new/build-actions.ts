@@ -262,6 +262,12 @@ export interface InitialDraft {
   subcategoryId: string
   packingProfileId: string | null
   maxFlavorsPerPack: number | null
+  // Variety-pack model (docs/VARIETY_PACK_MODEL.md §4-5) — restored on resume.
+  minFlavorsPerPack: number | null
+  flavorFillRule: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED' | null
+  pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
+  /** Offered pack sizes — the typed-`unitsPerPack` sibling variants (§4.2). */
+  packSizes: Array<{ id: string; label: string; unitsPerPack: number; moqPacks: number | null; pricePerPackCents: number | null }>
   nicheIds: string[]
   lifestyleTagIds: string[]
   // §7 marketplace filter attributes (format / process / allergen-free / markets).
@@ -269,7 +275,7 @@ export interface InitialDraft {
   manufacturingProcesses: string[]
   allergenFreeClaims: string[]
   marketCodes: string[]
-  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[] }>
+  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[]; unitPriceCents: number | null }>
   axes: InitialDraftAxis[]
   // Recipe entry method — restores the chosen mode (Search / AI / Declare) when
   // resuming a draft so the builder reopens on the right surface.
@@ -333,15 +339,18 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       id: string; status: string; name: string; familyCode: string | null; description: string | null
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
       packingProfileId: string | null; maxFlavorsPerPack: number | null; recipeEntryMode: string | null; labelingType: string; intendedAgeGroup: string | null
+      minFlavorsPerPack: number | null; flavorFillRule: string | null; pricingBasis: string | null
       manufacturingFormat: string | null; manufacturingProcesses: string[]; allergenFreeClaims: string[]; marketCodes: string[]
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null; countryOfOrigin: string | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
-      flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown }>
+      flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown; unitPriceCents: number | null }>
       ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null; allergenFlags: string[] } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
-      variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean; innerPacksPerOuter: number; outerPacksPerCase: number; customerPicksCount: number | null; subscriptionInterval: string | null; packingConfig: unknown; sku: string | null; netContentValue: unknown; netContentUnit: string | null }>
+      variants: Array<{ fulfillmentMode: string | null; moqMin: number; orderIncrement: number; monthlyCapacity: number | null; shelfLifeDays: number | null; lotTracking: boolean; innerPacksPerOuter: number; outerPacksPerCase: number; customerPicksCount: number | null; subscriptionInterval: string | null; packingConfig: unknown; sku: string | null; netContentValue: unknown; netContentUnit: string | null; unitsPerPack: number | null }>
+      // Offered pack sizes — every sibling variant carrying a typed unitsPerPack.
+      sizeVariants: Array<{ id: string; containerFormat: string; unitsPerPack: number | null; moqMin: number; pricePerPackCents: number | null }>
       fees: Array<{ label: string; basis: 'PER_UNIT' | 'PER_SKU_ONE_TIME' | 'PER_ORDER'; amountCents: number; waivedAboveQty: number | null; sortOrder: number }>
       changeApprovalRules: Array<{ changeType: string; requiredApprover: string; sortOrder: number }>
       optionRules: Array<{ kind: 'EXCLUDE' | 'REQUIRE'; whenValueId: string; targetValueId: string; message: string | null }>
@@ -360,15 +369,20 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         id: true, status: true, name: true, familyCode: true, description: true, longDescription: true,
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
         recipeEntryMode: true, labelingType: true, intendedAgeGroup: true,
+        minFlavorsPerPack: true, flavorFillRule: true, pricingBasis: true,
         manufacturingFormat: true, manufacturingProcesses: true, allergenFreeClaims: true, marketCodes: true,
         storageClass: true, storageTempMinF: true, storageTempMaxF: true, countryOfOrigin: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
-        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true } },
+        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true, unitPriceCents: true } },
         ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
-        variants: { take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, packingConfig: true, sku: true, netContentValue: true, netContentUnit: true } },
+        // Production spec lives on the legacy DEFAULT variant (no typed unitsPerPack).
+        // Filter to it so adding offered-size variants never hijacks the prod read.
+        variants: { where: { unitsPerPack: null }, take: 1, orderBy: { createdAt: 'asc' }, select: { fulfillmentMode: true, moqMin: true, orderIncrement: true, monthlyCapacity: true, shelfLifeDays: true, lotTracking: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, packingConfig: true, sku: true, netContentValue: true, netContentUnit: true, unitsPerPack: true } },
+        // Offered pack sizes — typed-unitsPerPack siblings (§4.2).
+        sizeVariants: { where: { unitsPerPack: { not: null } }, orderBy: { unitsPerPack: 'asc' }, select: { id: true, containerFormat: true, unitsPerPack: true, moqMin: true, pricePerPackCents: true } },
         fees: { orderBy: { sortOrder: 'asc' }, select: { label: true, basis: true, amountCents: true, waivedAboveQty: true, sortOrder: true } },
         changeApprovalRules: { orderBy: { sortOrder: 'asc' }, select: { changeType: true, requiredApprover: true, sortOrder: true } },
         optionRules: { orderBy: { createdAt: 'asc' }, select: { kind: true, whenValueId: true, targetValueId: true, message: true } },
@@ -412,6 +426,18 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       subcategoryId: tpl.subcategoryId,
       packingProfileId: tpl.packingProfileId,
       maxFlavorsPerPack: tpl.maxFlavorsPerPack,
+      minFlavorsPerPack: tpl.minFlavorsPerPack ?? null,
+      flavorFillRule: (tpl.flavorFillRule as InitialDraft['flavorFillRule']) ?? null,
+      pricingBasis: (tpl.pricingBasis as InitialDraft['pricingBasis']) ?? null,
+      packSizes: (tpl.sizeVariants ?? [])
+        .filter((v) => v.unitsPerPack != null)
+        .map((v) => ({
+          id: v.id,
+          label: v.containerFormat || `${v.unitsPerPack}-pack`,
+          unitsPerPack: Number(v.unitsPerPack),
+          moqPacks: v.moqMin ?? null,
+          pricePerPackCents: v.pricePerPackCents ?? null,
+        })),
       recipeEntryMode: (tpl.recipeEntryMode as InitialDraft['recipeEntryMode']) ?? null,
       labelingType: String(tpl.labelingType ?? 'FOOD'),
       intendedAgeGroup: String(tpl.intendedAgeGroup ?? 'GENERAL'),
@@ -426,6 +452,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       flavors: tpl.flavorPresets.map((f) => ({
         name: f.name,
         soi: f.statementOfIdentity ?? '',
+        unitPriceCents: f.unitPriceCents ?? null,
         lines: Array.isArray(f.extras)
           ? (f.extras as Array<Record<string, unknown>>)
               .filter((e) => e && e.ingredientId)
@@ -968,6 +995,172 @@ export async function savePacking(productTemplateId: string, input: PackingInput
   }
 }
 
+// ─── Variety-pack model (docs/VARIETY_PACK_MODEL.md §4-5) ─────────────────────
+// The manufacturer authors the pack matrix: pack rules (min flavors + fill rule),
+// a pricing basis, and the offered pack SIZES (each a typed-`unitsPerPack`
+// ProductTemplateVariant). All Prisma writes touch columns added in step 1 that
+// post-date the generated client, so every access is cast-guarded.
+
+export type FlavorFillRuleInput = 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED'
+export type PricingBasisInput = 'PER_FLAVOR' | 'PER_PACK'
+
+export interface FlavorRulesInput {
+  /** Distinct-flavor FLOOR a creator must pick (>= 1). null clears. */
+  minFlavorsPerPack?: number | null
+  /** Distinct-flavor CAP (mirrors the existing maxFlavorsPerPack write). undefined = leave. */
+  maxFlavorsPerPack?: number | null
+  /** How a pack's units fill when units > distinct flavors. null clears. */
+  flavorFillRule?: FlavorFillRuleInput | null
+  /** Per-flavor-summed vs flat per-pack pricing. null clears. */
+  pricingBasis?: PricingBasisInput | null
+}
+
+/** Persist the pack RULES onto the ProductTemplate (min flavors / fill rule /
+ *  pricing basis, plus the existing max-flavors cap). Cast-guarded — these
+ *  columns post-date the generated client. Best-effort audit. */
+export async function saveFlavorRules(productTemplateId: string, input: FlavorRulesInput): Promise<Result> {
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const data: Record<string, unknown> = {}
+    if (input.minFlavorsPerPack !== undefined) {
+      data.minFlavorsPerPack = input.minFlavorsPerPack == null ? null : Math.max(1, Math.floor(input.minFlavorsPerPack))
+    }
+    if (input.maxFlavorsPerPack !== undefined) {
+      data.maxFlavorsPerPack = input.maxFlavorsPerPack == null ? null : Math.max(1, Math.floor(input.maxFlavorsPerPack))
+    }
+    if (input.flavorFillRule !== undefined) data.flavorFillRule = input.flavorFillRule
+    if (input.pricingBasis !== undefined) data.pricingBasis = input.pricingBasis
+    if (Object.keys(data).length === 0) return { ok: true }
+
+    await (prisma as unknown as { productTemplate: { update: (a: unknown) => Promise<unknown> } })
+      .productTemplate.update({ where: { id: productTemplateId }, data })
+
+    try {
+      await logAuditAs(user, {
+        entityType: 'ProductTemplate',
+        entityId: productTemplateId,
+        action: 'PRODUCT_TEMPLATE_PACK_RULES_UPDATE',
+        payload: { ...data },
+      })
+    } catch (auditErr) {
+      console.error('[saveFlavorRules] audit log failed (non-fatal):', auditErr)
+    }
+    return { ok: true }
+  } catch (err) {
+    console.error('[saveFlavorRules] failed:', err)
+    return { ok: false, error: `Could not save pack rules: ${(err as Error).message}` }
+  }
+}
+
+export interface PackSizeInput {
+  /** Existing size-variant id to update; omit / '' to create a new size row. */
+  id?: string | null
+  /** Display label, e.g. "24-pack". Blank → derived "{units}-pack". */
+  label?: string | null
+  /** Units one pack of this size holds (required, >= 1). */
+  unitsPerPack: number
+  /** Minimum order in PACKS (reuses ProductTemplateVariant.moqMin). null = default. */
+  moqPacks?: number | null
+  /** Flat per-pack price (cents) — only meaningful when pricingBasis = PER_PACK. null clears. */
+  pricePerPackCents?: number | null
+}
+
+/** Upsert the offered pack SIZES for a template (spec §4.2). Each row is a real
+ *  ProductTemplateVariant carrying a typed `unitsPerPack` — these typed-unitsPerPack
+ *  variants ARE the offered sizes. Rows the client no longer sends are deleted;
+ *  any NON-size variant (the legacy default with unitsPerPack = null, which holds
+ *  the production spec) is left intact. Cast-guarded; best-effort audit. */
+export async function savePackSizes(productTemplateId: string, rows: PackSizeInput[]): Promise<Result> {
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const pv = prisma as unknown as {
+      productTemplateVariant: {
+        findMany: (a: unknown) => Promise<Array<{ id: string; unitsPerPack: number | null }>>
+        update: (a: unknown) => Promise<unknown>
+        create: (a: unknown) => Promise<{ id: string }>
+        deleteMany: (a: unknown) => Promise<unknown>
+      }
+    }
+
+    // Existing SIZE variants = those carrying a typed unitsPerPack. Legacy default
+    // (unitsPerPack === null) stays out of this set entirely.
+    const existing = await pv.productTemplateVariant.findMany({
+      where: { productTemplateId },
+      select: { id: true, unitsPerPack: true },
+    })
+    const sizeVariantIds = new Set(existing.filter((v) => v.unitsPerPack != null).map((v) => v.id))
+
+    const clean = rows
+      .map((r) => ({
+        id: r.id?.trim() || null,
+        unitsPerPack: Math.max(1, Math.floor(r.unitsPerPack || 1)),
+        label: r.label?.trim() || null,
+        moqPacks: r.moqPacks == null ? null : Math.max(1, Math.floor(r.moqPacks)),
+        pricePerPackCents: r.pricePerPackCents == null ? null : Math.max(0, Math.floor(r.pricePerPackCents)),
+      }))
+      .filter((r) => r.unitsPerPack >= 1)
+
+    const keptIds = new Set<string>()
+    for (const r of clean) {
+      const containerFormat = r.label ?? `${r.unitsPerPack}-pack`
+      const data: Record<string, unknown> = {
+        unitsPerPack: r.unitsPerPack,
+        containerFormat,
+        // Mirror the offered-size units into the inner-pack count so downstream
+        // packing topology (manifest, case math) stays coherent.
+        innerPacksPerOuter: r.unitsPerPack,
+        pricePerPackCents: r.pricePerPackCents,
+      }
+      if (r.moqPacks != null) data.moqMin = r.moqPacks
+
+      if (r.id && sizeVariantIds.has(r.id)) {
+        await pv.productTemplateVariant.update({ where: { id: r.id }, data })
+        keptIds.add(r.id)
+      } else {
+        const created = await pv.productTemplateVariant.create({
+          data: { productTemplateId, servingsPerContainer: 1, servingSizeG: 1, ...data },
+        })
+        keptIds.add(created.id)
+      }
+    }
+
+    // Delete size variants the client dropped (never touch the legacy default).
+    const toDelete = [...sizeVariantIds].filter((id) => !keptIds.has(id))
+    if (toDelete.length) {
+      await pv.productTemplateVariant.deleteMany({ where: { id: { in: toDelete }, productTemplateId } })
+    }
+
+    try {
+      await logAuditAs(user, {
+        entityType: 'ProductTemplate',
+        entityId: productTemplateId,
+        action: 'PRODUCT_TEMPLATE_PACK_SIZES_UPDATE',
+        payload: { sizes: clean.length, deleted: toDelete.length },
+      })
+    } catch (auditErr) {
+      console.error('[savePackSizes] audit log failed (non-fatal):', auditErr)
+    }
+    return { ok: true }
+  } catch (err) {
+    console.error('[savePackSizes] failed:', err)
+    return { ok: false, error: `Could not save pack sizes: ${(err as Error).message}` }
+  }
+}
+
 export interface ChangeApprovalRuleInput {
   changeType: 'LABEL_COPY' | 'FLAVOR_ADD' | 'RECIPE_CHANGE' | 'PACKAGING_CHANGE' | 'PRICE_CHANGE'
   requiredApprover: 'BRAND_OPS' | 'MANUFACTURER_QA' | 'LEGAL' | 'PRODUCTION_SCHEDULING'
@@ -1146,7 +1339,12 @@ export async function saveSampleOptions(productTemplateId: string, options: Samp
 /** A flavor-specific overlay ingredient line (FlavorPreset.extras), persisted so
  *  each flavor's Nutrition Facts recompute correctly on resume. */
 export interface FlavorExtraLine { ingredientId: string; name: string; qty: number; unit: string }
-export interface FlavorInput { name: string; statementOfIdentity?: string | null; sortOrder: number; extras?: FlavorExtraLine[] }
+export interface FlavorInput {
+  name: string; statementOfIdentity?: string | null; sortOrder: number; extras?: FlavorExtraLine[]
+  /** Absolute per-unit price (cents) — only meaningful when pricingBasis = PER_FLAVOR
+   *  (docs/VARIETY_PACK_MODEL.md §5.1). undefined leaves it untouched; null clears. */
+  unitPriceCents?: number | null
+}
 
 /** Replace the draft's flavor presets (the variety pool). Only named flavors
  *  persist; each becomes a FlavorPreset whose `extras` hold the flavor-only
@@ -1172,27 +1370,38 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
         name: f.name.trim(),
         soi: f.statementOfIdentity?.trim() || null,
         sortOrder: f.sortOrder ?? i,
+        // Per-flavor price (PER_FLAVOR basis). undefined → omit (null in DB);
+        // explicit null clears; otherwise floor to non-negative cents.
+        unitPriceCents: f.unitPriceCents == null ? null : Math.max(0, Math.floor(f.unitPriceCents)),
         extras: (f.extras ?? [])
           .filter((l) => l.ingredientId && l.qty > 0)
           .map((l) => ({ ingredientId: l.ingredientId, name: l.name, qty: l.qty, unit: l.unit })),
       }))
       .filter((f) => f.name.length > 0)
 
+    // unitPriceCents post-dates the generated client → cast-guard the create.
+    const fp = prisma as unknown as {
+      flavorPreset: {
+        deleteMany: (a: unknown) => unknown
+        create: (a: unknown) => unknown
+      }
+    }
     await prisma.$transaction([
-      prisma.flavorPreset.deleteMany({ where: { productTemplateId } }),
+      fp.flavorPreset.deleteMany({ where: { productTemplateId } }),
       ...clean.map((f) =>
-        prisma.flavorPreset.create({
+        fp.flavorPreset.create({
           data: {
             productTemplateId,
             name: f.name,
             statementOfIdentity: f.soi,
             sortOrder: f.sortOrder,
+            unitPriceCents: f.unitPriceCents, // per-flavor price (PER_FLAVOR basis)
             slotResolution: [], // legacy slot overlay — unused by the live model
             extras: f.extras, // flavor-only overlay lines (ingredient + amount)
           },
         }),
       ),
-    ])
+    ] as never)
     return { ok: true }
   } catch (err) {
     console.error('[saveFlavors] failed:', err)

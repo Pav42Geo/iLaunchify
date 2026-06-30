@@ -181,7 +181,7 @@ export function GuidedBuilder({
   // each flavor becomes its own recipe column. One source of truth.
   const [flavors, setFlavors] = useState<Flavor[]>(
     initial?.flavors.map((f) => ({
-      name: f.name, ingId: 'cane', soi: f.soi,
+      name: f.name, ingId: 'cane', soi: f.soi, priceCents: f.unitPriceCents ?? null,
       lines: (f.lines ?? []).map((l) => ({ ingId: l.ingredientId, name: l.name, qty: l.qty, unit: l.unit })),
     })) ?? [],
   )
