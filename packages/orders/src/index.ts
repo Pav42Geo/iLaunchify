@@ -38,8 +38,6 @@ export type {
 } from './dispatch-planner'
 export type { RoutingResult, RoutingFailure } from './routing'
 export { previewManufacturerMatches } from './routing'
-// D5 — multi-flavor lead time (sequential vs parallel).
-export { resolveMultiFlavorLeadDays } from './multi-flavor-lead'
 // Per-flavor recipe lead (LOCKED 2026-06-30 — global floor + changeover). Feeds the order manifest.
 export { effectiveFlavorLeadDays, resolveOrderLeadDays } from './multi-flavor-lead'
 export type { RoutingPreviewResult, RoutingPreviewCandidate } from './routing'
