@@ -784,6 +784,17 @@ export function CanvasLayoutShell({
     toast.success('Draft saved')
   }, [autosave, productId, grabThumb, loadHistory])
 
+  // Top-bar "Save now" (clickable status icon) — flush the autosave, then pin a
+  // MANUAL checkpoint so the click appears in History. Returns false if the
+  // flush failed, so the indicator shows the not-saved flash.
+  const handleSaveNow = React.useCallback(async (): Promise<boolean> => {
+    await autosave.saveNow()
+    if (autosave.status === 'error') return false
+    await snapshotDesign(productId, 'MANUAL', `Saved ${new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`, grabThumb())
+    void loadHistory()
+    return true
+  }, [autosave, productId, grabThumb, loadHistory])
+
   // "Save as template" (☰ menu) — persist the current design to the ACTIVE brand
   // kit as a reusable BrandTemplate. The per-tier cap is enforced server-side; we
   // just surface the result. Fabric v6: toObject(props), not toJSON.
@@ -941,7 +952,7 @@ export function CanvasLayoutShell({
         onRedo={history.redo}
         saveStatus={autosave.status}
         lastSavedAt={autosave.lastSavedAt}
-        onSaveNow={autosave.saveNow}
+        onSaveNow={handleSaveNow}
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
         onSaveDraft={handleSaveDraft}
         onSaveAsTemplate={onSaveTemplateClick}
@@ -1336,8 +1347,9 @@ function TopBar({
   onRedo: () => void
   saveStatus: SaveStatus
   lastSavedAt: Date | null
-  /** Top-bar "Save now" — flush the debounced autosave on demand. */
-  onSaveNow: () => void | Promise<void>
+  /** Top-bar "Save now" — flush the debounced autosave on demand. Returns false
+   *  when nothing was saved so the indicator can show the not-saved flash. */
+  onSaveNow: () => void | boolean | Promise<void | boolean>
   onOpenHistory: () => void
   complianceOpen: boolean
   onToggleCompliance: () => void

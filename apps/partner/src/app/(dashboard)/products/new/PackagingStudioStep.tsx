@@ -67,7 +67,7 @@ import {
 } from '@ilaunchify/ui'
 import { PACKAGING_DEFS, createPackagingScene, CAMERA_PRESETS, type CameraPreset, type TopologyKey, type PackagingSceneHandle, type StudioSurfaceDef } from './packaging-3d'
 import { loadPackagingStudio, loadPackagingCatalog, attachCatalogType, submitPackagingForReview, createCustomPackaging, loadPackagingFiles, addPackagingFilesToSystem, removePackagingFile, loadCustomDieline, saveCustomDieline, type PackagingStudioData, type StudioPackaging, type CatalogItem, type StudioFile } from './packaging-studio-actions'
-import { listDraftSnapshots } from './snapshot-actions'
+import { listDraftSnapshots, snapshotDraft } from './snapshot-actions'
 import { getDraftFinishesEditorData, saveDraftFinishes, type FinishOption, type SaveFinishRow } from './packaging-finishes-actions'
 import { loadPackaging } from './build-actions'
 import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
@@ -433,24 +433,34 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
 
   // Force-flush the pending autosave immediately — wired to the top-bar
   // SavedIndicator so the user can save on demand instead of waiting on debounce.
-  const saveNow = useCallback(async () => {
-    if (!resolvedDielineId && !(customMode && activeSystemId)) return
+  const saveNow = useCallback(async (): Promise<boolean> => {
+    if (!resolvedDielineId && !(customMode && activeSystemId)) return false
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
     setSaveStatus('saving')
+    let ok = false
     if (resolvedDielineId) {
       const [a, b] = await Promise.all([
         saveDielineFrames(resolvedDielineId, layout),
         saveDielineGeometry(resolvedDielineId, { trimBox: trim, safeAreaBox: safe }),
       ])
-      setSaveStatus(a.ok && b.ok ? 'saved' : 'idle')
-      if (a.ok && b.ok) { setLastSavedAt(new Date()); toast.success('Saved') }
-      else if (!a.ok) toast.error(a.error)
+      ok = a.ok && b.ok
+      setSaveStatus(ok ? 'saved' : 'idle')
+      if (!a.ok) toast.error(a.error)
     } else if (activeSystemId) {
       const r = await saveCustomDieline(activeSystemId, { layout, trim, safe })
-      setSaveStatus(r.ok ? 'saved' : 'idle')
-      if (r.ok) { setLastSavedAt(new Date()); toast.success('Saved') }
+      ok = r.ok
+      setSaveStatus(ok ? 'saved' : 'idle')
     }
-  }, [resolvedDielineId, customMode, activeSystemId, layout, trim, safe])
+    if (ok) {
+      setLastSavedAt(new Date())
+      // Pin a restorable MANUAL checkpoint so the save shows up in History.
+      if (draftId) {
+        await snapshotDraft(draftId, 'MANUAL', `Saved ${new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`)
+        void loadHistory()
+      }
+    }
+    return ok
+  }, [resolvedDielineId, customMode, activeSystemId, layout, trim, safe, draftId, loadHistory])
 
   const undo = useCallback(() => {
     setPast((p) => {

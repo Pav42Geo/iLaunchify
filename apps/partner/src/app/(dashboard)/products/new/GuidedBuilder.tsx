@@ -347,7 +347,10 @@ export function GuidedBuilder({
     setManualSaving(true)
     try {
       await Promise.allSettled([...flushers.current].map((f) => f()))
+      // Pin a restorable MANUAL checkpoint so the click shows up in History.
+      await snapshotDraft(id, 'MANUAL', `Saved ${new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`)
       setLastSavedAt(new Date())
+      void loadHistory()
       return true
     } catch {
       toast.error('Could not save — try again.')
