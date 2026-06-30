@@ -51,7 +51,11 @@ export interface FlavorLine {
 }
 // `ingId` is the legacy single-overlay field (kept for back-compat); the live
 // model is `lines` — a child mini-recipe of flavor-only additions.
-export interface Flavor { name: string; ingId: string; soi: string; lines?: FlavorLine[]; priceCents?: number | null; thumbnailUrl?: string | null }
+export interface Flavor { name: string; ingId: string; soi: string; lines?: FlavorLine[]; priceCents?: number | null; thumbnailUrl?: string | null;
+  /** Stable FlavorPreset id, populated by ensureFlavorPresets when the per-flavor
+   *  recipe tab opens (docs/PER_FLAVOR_RECIPES.md §5). Per-flavor recipes attach to
+   *  this durable id so a subsequent name/price save can't orphan them. */
+  presetId?: string | null }
 
 export interface PackSplit { flavors: number; perFlavor: number; even: boolean; distribution: string }
 

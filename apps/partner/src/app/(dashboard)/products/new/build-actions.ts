@@ -1468,34 +1468,340 @@ export async function saveFlavors(productTemplateId: string, flavors: FlavorInpu
           .map((l) => ({ ingredientId: l.ingredientId, name: l.name, qty: l.qty, unit: l.unit })),
       }))
       .filter((f) => f.name.length > 0)
+      // Re-index sortOrder densely (0..n-1) so positional upsert is stable even
+      // if the caller passed sparse/duplicate orders.
+      .map((f, i) => ({ ...f, sortOrder: i }))
 
-    // unitPriceCents post-dates the generated client → cast-guard the create.
+    // STABLE-ID upsert by (template, sortOrder) — NOT delete-recreate. Per-flavor
+    // recipes (FlavorRecipeSlot) cascade off FlavorPreset.id, so wiping presets on
+    // every save would orphan them (docs/PER_FLAVOR_RECIPES.md §5, slice 2). We
+    // update the existing preset in each position in place, create only the new
+    // tail positions, and delete only the surplus — keeping each flavor's id (and
+    // its attached recipe) durable across saves. unitPriceCents post-dates some
+    // generated clients → cast-guard the whole access.
     const fp = prisma as unknown as {
       flavorPreset: {
-        deleteMany: (a: unknown) => unknown
+        findMany: (a: unknown) => Promise<Array<{ id: string; sortOrder: number }>>
+        update: (a: unknown) => unknown
         create: (a: unknown) => unknown
+        deleteMany: (a: unknown) => unknown
       }
     }
-    await prisma.$transaction([
-      fp.flavorPreset.deleteMany({ where: { productTemplateId } }),
-      ...clean.map((f) =>
-        fp.flavorPreset.create({
-          data: {
-            productTemplateId,
-            name: f.name,
-            statementOfIdentity: f.soi,
-            sortOrder: f.sortOrder,
-            unitPriceCents: f.unitPriceCents, // per-flavor price (PER_FLAVOR basis)
-            slotResolution: [], // legacy slot overlay — unused by the live model
-            extras: f.extras, // flavor-only overlay lines (ingredient + amount)
-          },
+    const existing = await fp.flavorPreset.findMany({
+      where: { productTemplateId },
+      select: { id: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' },
+    })
+    const ops: unknown[] = clean.map((f, i) => {
+      const prior = existing[i]
+      const data = {
+        productTemplateId,
+        name: f.name,
+        statementOfIdentity: f.soi,
+        sortOrder: f.sortOrder,
+        unitPriceCents: f.unitPriceCents, // per-flavor price (PER_FLAVOR basis)
+        slotResolution: [], // legacy slot overlay — unused by the live model
+        extras: f.extras, // flavor-only overlay lines (ingredient + amount)
+      }
+      return prior
+        ? fp.flavorPreset.update({ where: { id: prior.id }, data })
+        : fp.flavorPreset.create({ data })
+    })
+    // Surplus presets (positions beyond the new flavor count) are removed — their
+    // recipes cascade away with them, which is correct: that flavor is gone.
+    if (existing.length > clean.length) {
+      ops.push(
+        fp.flavorPreset.deleteMany({
+          where: { id: { in: existing.slice(clean.length).map((e) => e.id) } },
         }),
-      ),
-    ] as never)
+      )
+    }
+    await prisma.$transaction(ops as never)
     return { ok: true }
   } catch (err) {
     console.error('[saveFlavors] failed:', err)
     return { ok: false, error: `Could not save flavors: ${(err as Error).message}` }
+  }
+}
+
+/** Ensure the draft's flavor presets exist with STABLE ids and return them in
+ *  sortOrder, so the Recipe step can attach per-flavor recipes (FlavorRecipeSlot)
+ *  to durable rows. Upserts by (template, sortOrder) — never delete-recreates —
+ *  mirroring saveFlavors. The Recipe step calls this when the flavor tab opens so
+ *  loadFlavorRecipe/saveFlavorRecipe operate against ids that won't move under a
+ *  subsequent name/price autosave. Returns presetId per position (0-indexed).
+ *  Cast-guarded (FlavorRecipeSlot etc. land on the client only after db:push). */
+export async function ensureFlavorPresets(
+  productTemplateId: string,
+  flavors: Array<{ name: string; statementOfIdentity?: string | null }>,
+): Promise<Result<Array<{ sortOrder: number; presetId: string; name: string }>>> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const named = flavors.map((f) => ({ name: f.name.trim(), soi: f.statementOfIdentity?.trim() || null })).filter((f) => f.name.length > 0)
+
+    const fp = prisma as unknown as {
+      flavorPreset: {
+        findMany: (a: unknown) => Promise<Array<{ id: string; sortOrder: number; name: string }>>
+        update: (a: unknown) => Promise<{ id: string }>
+        create: (a: unknown) => Promise<{ id: string }>
+      }
+    }
+    const existing = await fp.flavorPreset.findMany({
+      where: { productTemplateId },
+      select: { id: true, sortOrder: true, name: true },
+      orderBy: { sortOrder: 'asc' },
+    })
+
+    const out: Array<{ sortOrder: number; presetId: string; name: string }> = []
+    for (let i = 0; i < named.length; i++) {
+      const f = named[i]!
+      const prior = existing[i]
+      if (prior) {
+        // Keep the id; refresh name/soi to match the current flavor list.
+        await fp.flavorPreset.update({ where: { id: prior.id }, data: { name: f.name, statementOfIdentity: f.soi, sortOrder: i } })
+        out.push({ sortOrder: i, presetId: prior.id, name: f.name })
+      } else {
+        const created = await fp.flavorPreset.create({
+          data: { productTemplateId, name: f.name, statementOfIdentity: f.soi, sortOrder: i, slotResolution: [], extras: [] },
+        })
+        out.push({ sortOrder: i, presetId: created.id, name: f.name })
+      }
+    }
+    return { ok: true, data: out }
+  } catch (err) {
+    console.error('[ensureFlavorPresets] failed:', err)
+    return { ok: false, error: `Could not prepare flavors: ${(err as Error).message}` }
+  }
+}
+
+/** One per-flavor recipe row, shaped like the base recipe rows the Recipe step
+ *  already uses (RecipeBuilderStep `Row`). `replacements` are the slot's swap
+ *  options; `optionals` are this flavor's optional ingredients. */
+export interface FlavorRecipeRowData {
+  ingId: string
+  name: string
+  per100g: Record<string, number>
+  densityGPerMl: number | null
+  weightG: number
+  allergens: string[]
+  costPerKgCents: number | null
+}
+export interface LoadedFlavorRecipe {
+  slots: FlavorRecipeRowData[]
+  optionals: FlavorRecipeRowData[]
+}
+
+/** Resolve nutrient/display data for a set of ingredient ids in one query. */
+async function resolveIngredientRows(ids: string[]): Promise<Map<string, { name: string; per100g: Record<string, number>; densityGPerMl: number | null; allergens: string[] }>> {
+  const map = new Map<string, { name: string; per100g: Record<string, number>; densityGPerMl: number | null; allergens: string[] }>()
+  const uniq = [...new Set(ids)].filter(Boolean)
+  if (uniq.length === 0) return map
+  const rows = await prisma.ingredient.findMany({
+    where: { id: { in: uniq } },
+    select: { id: true, internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true },
+  })
+  for (const r of rows) {
+    map.set(r.id, {
+      name: r.internalName ?? r.name,
+      per100g: plainNutrition(r.nutritionPer100g),
+      densityGPerMl: r.densityGPerML != null ? Number(r.densityGPerML) : null,
+      allergens: r.allergenFlags ?? [],
+    })
+  }
+  return map
+}
+
+/** Load ONE flavor's independent recipe (FlavorRecipeSlot[] + optionals),
+ *  shaped like the base recipe rows the Recipe step consumes. Cast-guarded —
+ *  the new models land on the client only after db:push. Empty on any miss. */
+export async function loadFlavorRecipe(flavorPresetId: string): Promise<LoadedFlavorRecipe> {
+  const empty: LoadedFlavorRecipe = { slots: [], optionals: [] }
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return empty
+    const ownIds = partner.services.map((s) => s.id)
+
+    const fp = prisma as unknown as {
+      flavorPreset: {
+        findUnique: (a: unknown) => Promise<{
+          productTemplate: { manufacturerServiceId: string | null } | null
+          recipeSlots: Array<{ id: string; baseIngredientId: string; weightG: unknown; costPerKgCents: number | null; displayOrder: number }>
+          recipeOptionals: Array<{ id: string; ingredientId: string; weightG: unknown; displayOrder: number }>
+        } | null>
+      }
+    }
+    const preset = await fp.flavorPreset.findUnique({
+      where: { id: flavorPresetId },
+      select: {
+        productTemplate: { select: { manufacturerServiceId: true } },
+        recipeSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, costPerKgCents: true, displayOrder: true } },
+        recipeOptionals: { orderBy: { displayOrder: 'asc' }, select: { id: true, ingredientId: true, weightG: true, displayOrder: true } },
+      },
+    }).catch(() => null)
+    if (!preset) return empty
+    const msId = preset.productTemplate?.manufacturerServiceId ?? null
+    if (msId && !ownIds.includes(msId)) return empty
+
+    const data = await resolveIngredientRows([
+      ...preset.recipeSlots.map((s) => s.baseIngredientId),
+      ...preset.recipeOptionals.map((o) => o.ingredientId),
+    ])
+    const shape = (ingId: string, weightG: unknown, costPerKgCents: number | null): FlavorRecipeRowData => {
+      const d = data.get(ingId)
+      return {
+        ingId,
+        name: d?.name ?? '',
+        per100g: d?.per100g ?? {},
+        densityGPerMl: d?.densityGPerMl ?? null,
+        weightG: Number(weightG ?? 0),
+        allergens: d?.allergens ?? [],
+        costPerKgCents: costPerKgCents ?? null,
+      }
+    }
+    return {
+      slots: preset.recipeSlots.map((s) => shape(s.baseIngredientId, s.weightG, s.costPerKgCents)),
+      optionals: preset.recipeOptionals.map((o) => shape(o.ingredientId, o.weightG, null)),
+    }
+  } catch (err) {
+    console.error('[loadFlavorRecipe] failed:', err)
+    return empty
+  }
+}
+
+export interface FlavorSlotInput { ingredientId: string; weightG: number; displayOrder: number; costPerKgCents?: number | null }
+export interface FlavorOptionalInput { ingredientId: string; weightG: number; displayOrder: number }
+
+/** Full-replace ONE flavor's FlavorRecipeSlot[] (+ optionals) in a transaction,
+ *  mirroring saveRecipeSlots' shape. Cast-guarded (new models). AuditLog. */
+export async function saveFlavorRecipe(
+  flavorPresetId: string,
+  slots: FlavorSlotInput[],
+  optionals: FlavorOptionalInput[] = [],
+): Promise<Result> {
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+
+    const fp = prisma as unknown as {
+      flavorPreset: { findUnique: (a: unknown) => Promise<{ id: string; productTemplateId: string; productTemplate: { manufacturerServiceId: string | null } | null } | null> }
+      flavorRecipeSlot: { deleteMany: (a: unknown) => unknown; create: (a: unknown) => unknown }
+      flavorRecipeOptional: { deleteMany: (a: unknown) => unknown; create: (a: unknown) => unknown }
+    }
+    const preset = await fp.flavorPreset.findUnique({
+      where: { id: flavorPresetId },
+      select: { id: true, productTemplateId: true, productTemplate: { select: { manufacturerServiceId: true } } },
+    }).catch(() => null)
+    if (!preset) return { ok: false, error: 'Flavor not found.' }
+    const msId = preset.productTemplate?.manufacturerServiceId ?? null
+    if (msId && !ownIds.includes(msId)) return { ok: false, error: 'Not your product.' }
+
+    // Validate ingredient visibility (same guard as saveRecipeSlots).
+    const ids = [...new Set([...slots.map((s) => s.ingredientId), ...optionals.map((o) => o.ingredientId)])]
+    const visible = ids.length
+      ? await prisma.ingredient.findMany({
+          where: {
+            id: { in: ids }, isDeclaredPanelSynthetic: false,
+            OR: [{ source: 'USDA' }, { source: 'LIBRARY' }, { source: 'PARTNER_PRIVATE', ownerPartnerId: partner.id }],
+          },
+          select: { id: true },
+        })
+      : []
+    const okIds = new Set(visible.map((v) => v.id))
+    const validSlots = slots.filter((s) => okIds.has(s.ingredientId) && s.weightG > 0)
+    const validOpts = optionals.filter((o) => okIds.has(o.ingredientId) && o.weightG > 0)
+
+    await prisma.$transaction([
+      fp.flavorRecipeOptional.deleteMany({ where: { flavorPresetId } }),
+      fp.flavorRecipeSlot.deleteMany({ where: { flavorPresetId } }),
+      ...validSlots.map((s) =>
+        fp.flavorRecipeSlot.create({
+          data: {
+            flavorPresetId,
+            baseIngredientId: s.ingredientId,
+            weightG: s.weightG,
+            displayOrder: s.displayOrder,
+            costPerKgCents: s.costPerKgCents == null ? null : Math.max(0, Math.round(s.costPerKgCents)),
+          },
+        }),
+      ),
+      ...validOpts.map((o) =>
+        fp.flavorRecipeOptional.create({
+          data: { flavorPresetId, ingredientId: o.ingredientId, weightG: o.weightG, displayOrder: o.displayOrder },
+        }),
+      ),
+    ] as never)
+
+    await logAuditAs(user, { entityType: 'ProductTemplate', entityId: preset.productTemplateId, action: 'PRODUCT_TEMPLATE_UPDATE', payload: { flavorRecipe: flavorPresetId, slots: validSlots.length, optionals: validOpts.length } }).catch(() => {})
+    return { ok: true }
+  } catch (err) {
+    console.error('[saveFlavorRecipe] failed:', err)
+    return { ok: false, error: `Could not save flavor recipe: ${(err as Error).message}` }
+  }
+}
+
+/** Copy a source recipe (the template BASE recipe, or another flavor's recipe)
+ *  into each target flavor — OVERWRITING the target's slots/optionals. Source
+ *  `'BASE'` reads TemplateIngredientSlot; otherwise a flavor's FlavorRecipeSlot[].
+ *  Cast-guarded; AuditLog. The Duplicate-to / Apply-Base-to-all control. */
+export async function duplicateFlavorRecipe(
+  productTemplateId: string,
+  fromFlavorPresetId: string | 'BASE',
+  toFlavorPresetIds: string[],
+): Promise<Result<{ copied: number }>> {
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+
+    const tpl = await prisma.productTemplate.findUnique({ where: { id: productTemplateId }, select: { manufacturerServiceId: true } })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    // Resolve the SOURCE slot set → [{ ingredientId, weightG, costPerKgCents, displayOrder }] + optionals.
+    let srcSlots: Array<{ ingredientId: string; weightG: number; costPerKgCents: number | null; displayOrder: number }> = []
+    let srcOpts: Array<{ ingredientId: string; weightG: number; displayOrder: number }> = []
+    if (fromFlavorPresetId === 'BASE') {
+      const baseSlots = await prisma.templateIngredientSlot.findMany({
+        where: { productTemplateId },
+        orderBy: { displayOrder: 'asc' },
+        select: { baseIngredientId: true, weightG: true, displayOrder: true },
+      })
+      // costPerKgCents is migration-gated on TemplateIngredientSlot — best-effort.
+      let costByIng: Record<string, number> = {}
+      try { costByIng = await loadSlotCosts(productTemplateId) } catch { costByIng = {} }
+      srcSlots = baseSlots.map((s, i) => ({ ingredientId: s.baseIngredientId, weightG: Number(s.weightG ?? 0), costPerKgCents: costByIng[s.baseIngredientId] ?? null, displayOrder: s.displayOrder ?? i }))
+    } else {
+      const loaded = await loadFlavorRecipe(fromFlavorPresetId)
+      srcSlots = loaded.slots.map((s, i) => ({ ingredientId: s.ingId, weightG: s.weightG, costPerKgCents: s.costPerKgCents, displayOrder: i }))
+      srcOpts = loaded.optionals.map((o, i) => ({ ingredientId: o.ingId, weightG: o.weightG, displayOrder: i }))
+    }
+
+    let copied = 0
+    for (const toId of toFlavorPresetIds) {
+      if (toId === fromFlavorPresetId) continue // no self-copy
+      const res = await saveFlavorRecipe(
+        toId,
+        srcSlots.map((s) => ({ ingredientId: s.ingredientId, weightG: s.weightG, displayOrder: s.displayOrder, costPerKgCents: s.costPerKgCents })),
+        srcOpts.map((o) => ({ ingredientId: o.ingredientId, weightG: o.weightG, displayOrder: o.displayOrder })),
+      )
+      if (res.ok) copied++
+    }
+
+    await logAuditAs(user, { entityType: 'ProductTemplate', entityId: productTemplateId, action: 'PRODUCT_TEMPLATE_UPDATE', payload: { duplicateFlavorRecipe: { from: fromFlavorPresetId, to: toFlavorPresetIds, copied } } }).catch(() => {})
+    return { ok: true, data: { copied } }
+  } catch (err) {
+    console.error('[duplicateFlavorRecipe] failed:', err)
+    return { ok: false, error: `Could not duplicate recipe: ${(err as Error).message}` }
   }
 }
 

@@ -5,33 +5,35 @@
 // `applyFlavorChangeover` convention (sibling pack-composition.ts): the extra
 // for N distinct flavors is `(N-1) * changeoverDays`.
 //
-// Locked decisions:
-//   - Per flavor wins: effective lead = flavor.leadTimeDays ?? standardLead.
-//   - Effective product lead = max(effective lead over involved flavors)
-//     + (distinctCount - 1) * changeover.
-//   - The standard lead is the floor for any un-overridden flavor and the
-//     fallback when nothing is overridden. A flavor override may be LOWER than
-//     the standard.
-//   - Soft, NON-blocking warning when EVERY flavor is overridden AND the
-//     standard exceeds the max override (the product will quote the lower max).
+// Locked decisions (Pavel 2026-06-30 — GLOBAL lead is authoritative):
+//   - The product STANDARD (global) lead is the FLOOR. It captures everything
+//     around the product that applies regardless of flavor — printing,
+//     packaging, boxing, QA, etc.
+//   - A per-flavor lead can only EXTEND the global, never shorten it: effective
+//     flavor lead = max(standard, flavor.leadTimeDays). A flavor value below the
+//     standard has no effect (the global wins).
+//   - Effective product lead = max(standard, max flavor lead) + (N-1)*changeover.
+//   - Soft, NON-blocking note when a flavor override is set BELOW the standard
+//     (it won't apply — the global floor governs).
 
 import { applyFlavorChangeover } from './pack-composition'
 
-/** Effective lead for ONE flavor: its override if set, else the product
- *  standard. A flavor override may be lower than the standard. */
+/** Effective lead for ONE flavor: the GLOBAL standard is the floor, a flavor
+ *  override can only raise it. Null override → the standard. */
 export function effectiveFlavorLead(
   flavorLeadDays: number | null | undefined,
   standardLeadDays: number,
 ): number {
-  return flavorLeadDays ?? standardLeadDays
+  if (flavorLeadDays == null) return standardLeadDays
+  return Math.max(standardLeadDays, flavorLeadDays)
 }
 
 /**
  * Effective product / order lead across the involved flavors:
- * `max(effectiveFlavorLead over flavors) + (N-1) * changeover` where N is the
- * number of distinct involved flavors. With no flavors (or all null) it falls
- * back to the standard lead; a single flavor adds no changeover (per
- * `applyFlavorChangeover`). `changeoverDays` is clamped at 0.
+ * `max(standard, max flavor lead) + (N-1) * changeover` where N is the number of
+ * distinct involved flavors. The global standard is always the floor; with no
+ * flavors (or all null) it IS the standard. A single flavor adds no changeover
+ * (per `applyFlavorChangeover`). `changeoverDays` is clamped at 0.
  */
 export function effectiveProductLead(
   standardLeadDays: number,
@@ -40,6 +42,7 @@ export function effectiveProductLead(
 ): number {
   if (flavorLeads.length === 0) return standardLeadDays
   const maxLead = Math.max(
+    standardLeadDays,
     ...flavorLeads.map((f) => effectiveFlavorLead(f, standardLeadDays)),
   )
   // Reuse the changeover convention: extra = (N-1) * changeover.
@@ -47,21 +50,16 @@ export function effectiveProductLead(
 }
 
 /**
- * Soft, non-blocking builder warning. Returns a message ONLY when every flavor
- * has an explicit override AND the product standard exceeds the max override
- * (so the product will quote the lower max). Returns null otherwise — including
- * when any flavor is un-overridden (the standard is still its floor).
+ * Soft, non-blocking builder note. Because the GLOBAL standard is the floor, a
+ * flavor override set BELOW it has no effect — return a message naming how many
+ * flavors are below the standard so the manufacturer knows those values are
+ * ignored. Returns null when no override is below the standard.
  */
 export function leadConflictWarning(
   standardLeadDays: number,
   flavorLeads: (number | null | undefined)[],
 ): string | null {
-  if (flavorLeads.length === 0) return null
-  const allOverridden = flavorLeads.every((f) => f != null)
-  if (!allOverridden) return null
-  const maxOverride = Math.max(...(flavorLeads as number[]))
-  if (standardLeadDays > maxOverride) {
-    return `Standard lead (${standardLeadDays}d) exceeds every flavor (max ${maxOverride}d) — the product will quote ${maxOverride}d.`
-  }
-  return null
+  const below = flavorLeads.filter((f) => f != null && (f as number) < standardLeadDays).length
+  if (below === 0) return null
+  return `${below} flavor${below === 1 ? '' : 's'} below the standard lead (${standardLeadDays}d) — the standard governs, so ${below === 1 ? 'that value' : 'those values'} won't shorten production.`
 }

@@ -17,9 +17,13 @@ Supersedes the per-flavor "extras overlay" UX with full independent per-flavor r
    recipes (incl. the current product's flavors, to copy across flavors), and
    **Recipe templates** = a GLOBAL/platform recipe library. Both can **Apply to**
    the active flavor / base / all flavors.
-4. **Per-flavor lead time** (optional override). Per-flavor wins; the product
-   quotes the **max** effective lead across involved flavors; soft non-blocking
-   warning when the product standard exceeds every flavor's lead.
+4. **Per-flavor lead time** (optional override). The product **standard (global)
+   lead is the FLOOR** — it captures everything around the product regardless of
+   flavor (printing, packaging, boxing, QA). A per-flavor lead can only **extend**
+   it (a flavor that needs more time), never shorten it. Effective product lead =
+   `max(standard, max flavor lead) + changeover`. Soft non-blocking note when a
+   flavor override is set BELOW the standard (it won't apply). (Pavel 2026-06-30 —
+   changed from "per-flavor wins" to "global floor".)
 5. **Marketplace** shows + navigates each flavor's recipe (flavor tabs on the PDP
    recipe studio; Facts swap per flavor).
 
@@ -79,19 +83,24 @@ leadTimeDays Int?   // optional override of the product standard lead (null = us
 Plus a clearer label for the existing product-level field: "Repeat lead time" →
 surfaced as **"Standard lead time"** (still `ProductTemplate.leadTimeRepeatDays`).
 
-## 4. Lead-time resolution (§1.4)
+## 4. Lead-time resolution (§1.4) — GLOBAL FLOOR
 
-- **Per flavor**, effective lead = `flavor.leadTimeDays ?? standardLead`.
-- **Effective product / order lead** = `max(effective lead over the involved
-  flavors)` + the existing flavor-changeover (`applyFlavorChangeover`). For a whole
-  product (no specific selection) the headline = max across ALL flavors.
-- **No-disable**: the standard lead stays (fallback + single-flavor + the floor for
-  any un-overridden flavor). A flavor override can be LOWER than the standard.
-- **Soft warning** (builder, non-blocking) when `standardLead > max(flavor
-  overrides that are set)` and every flavor is overridden: "Standard lead (21d)
-  exceeds every flavor (max 19d) — the product will quote 19d."
-- **Display**: card = worst-case/range; PDP = live for the chosen flavors; **flavor
-  card on the PDP gets its lead under the price**.
+- The product **standard (global) lead is authoritative** — it accounts for all the
+  product-wide production/prep around the flavor (printing, packaging, boxing, QA),
+  so it is the FLOOR for every flavor.
+- **Per flavor**, effective lead = `max(standardLead, flavor.leadTimeDays ??
+  standardLead)` — a flavor override can only EXTEND, never shorten. A value below
+  the standard is ignored (the global floor governs).
+- **Effective product / order lead** = `max(standardLead, max flavor lead)` + the
+  existing flavor-changeover (`applyFlavorChangeover`).
+- **Soft note** (builder, non-blocking) when a flavor override is set BELOW the
+  standard: "N flavors below the standard lead (21d) — the standard governs, so
+  those values won't shorten production."
+- **Display**: card = the global standard (worst case rises only when a flavor
+  extends it); PDP = live for the chosen flavors; **flavor card on the PDP gets its
+  effective lead under the price** (≥ the global).
+- Helpers: `effectiveFlavorLead` / `effectiveProductLead` / `leadConflictWarning`
+  (`packages/ui/src/lib/lead.ts`).
 
 ## 5. Recipe-step refactor (§1.2-1.3)
 

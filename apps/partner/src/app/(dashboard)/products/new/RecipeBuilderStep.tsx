@@ -8,7 +8,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type ComponentType } from 'react'
 import { ChefHat, List, ShieldAlert, DollarSign, Tag, FolderOpen, LayoutGrid, Utensils, Sparkles, Scale, ListPlus, ListChecks, FlaskConical, Table, ArrowLeftRight } from 'lucide-react'
 import { toast } from 'sonner'
-import { calculateLabel, toPanelData, perContainerPanel, assessSimplified, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
+import { calculateLabel, toPanelData, perContainerPanel, assessSimplified, publicSelection, previewSelection, resolveConfiguredSelection, formatNetWeight, toGrams, flavorRecipeRows, type RecipeRow, type Nutrients, type OptionOverlay, type NutritionAudience } from '@ilaunchify/nutrition'
 import { NutritionFactsSvg, InfoTip, type VarietyColumn } from '@ilaunchify/ui'
 import { getDomain, legacyLabelingType, type DomainKey } from './product-domains'
 import { IngredientPicker } from '../[id]/edit/cards/IngredientPicker'
@@ -16,7 +16,7 @@ import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import { type Flavor, type FlavorLine } from './VariantsPacksStep'
 import { LabelViewerModal } from './LabelViewerModal'
 import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
-import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, setIntendedAgeGroup, saveFlavors, type MyRecipe } from './build-actions'
+import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, setIntendedAgeGroup, saveFlavors, ensureFlavorPresets, loadFlavorRecipe, saveFlavorRecipe, duplicateFlavorRecipe, type MyRecipe } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
 import { DeclaredPanelPanel } from './DeclaredPanelPanel'
@@ -282,9 +282,32 @@ export function RecipeBuilderStep({
   // ingredients (the partner adds real ones via the picker). The old demo seed
   // rows (water/yuzu/monk) were prototype scaffolding and couldn't persist
   // (not real Ingredient rows), so they're gone.
-  const [rows, setRows] = useState<Row[]>(() =>
+  // The TEMPLATE (Base) recipe — the single-flavor recipe + the duplicate source.
+  const [baseRows, setBaseRows] = useState<Row[]>(() =>
     (initialRows ?? []).map((s) => ({ uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g' as const, waste: 0, category: 'base' as const, selected: true, name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined, allergens: s.allergens ?? [] })),
   )
+  // PER-FLAVOR recipes (docs/PER_FLAVOR_RECIPES.md §5, slice 2). Each flavor owns
+  // its own FULL recipe, keyed by the durable FlavorPreset id. The active recipe
+  // tab ('BASE' or a flavorPresetId) drives which row set the builder edits.
+  const [activeRecipeTab, setActiveRecipeTab] = useState<'BASE' | string>('BASE')
+  const [flavorRowsByPreset, setFlavorRowsByPreset] = useState<Record<string, Row[]>>({})
+  // Which flavor presetIds have been loaded from the server (lazy, on tab open).
+  const flavorLoaded = useRef<Set<string>>(new Set())
+  // Confirm-before-overwrite duplicate menu (null = closed).
+  const [dupOpen, setDupOpen] = useState(false)
+
+  // The active tab's rows + setter — the builder JSX operates on these unchanged.
+  // BASE → the template recipe; a presetId → that flavor's recipe.
+  const rows = activeRecipeTab === 'BASE' ? baseRows : (flavorRowsByPreset[activeRecipeTab] ?? [])
+  const setRows = (updater: Row[] | ((rs: Row[]) => Row[])) => {
+    if (activeRecipeTab === 'BASE') { setBaseRows(updater as never); return }
+    const key = activeRecipeTab
+    setFlavorRowsByPreset((m) => {
+      const cur = m[key] ?? []
+      const next = typeof updater === 'function' ? (updater as (rs: Row[]) => Row[])(cur) : updater
+      return { ...m, [key]: next }
+    })
+  }
   const [search, setSearch] = useState('')
   const [addCat, setAddCat] = useState<'base' | 'optional'>('base')
   const [lmode, setLmode] = useState<'package' | 'serving'>('serving')
@@ -431,10 +454,37 @@ export function RecipeBuilderStep({
     setActiveSwap((m) => { const n = { ...m }; if (isActive) delete n[baseIngId]; else n[baseIngId] = swapIngId; return n })
     if (!isActive) setMode('preview')
   }
-  // Flavors come from the Variants & packs step (shared). Each = a name + its
-  // own distinct flavor ingredient overlaid on the shared base, so each Facts
-  // column shows DIFFERENT numbers.
+  // Flavors come from the Variants & packs step (shared). Each owns its OWN full
+  // recipe (per-flavor tabs); name/SoI/price/image still come from Variants.
   const setFlavors = (f: Flavor[]) => onFlavors?.(f)
+  // Index of the active flavor tab (when not on Base) — derived from the active
+  // presetId so the rest of the step (which keys by index) stays in sync.
+  const activeFlavorIdx = activeRecipeTab === 'BASE' ? -1 : flavors.findIndex((f) => f.presetId === activeRecipeTab)
+  // Switch to a flavor's recipe tab — requires its durable presetId.
+  const openFlavorTab = (f: Flavor) => { if (f.presetId) { setActiveRecipeTab(f.presetId); setActiveFlavor(Math.max(0, flavors.indexOf(f))) } }
+  // Duplicate the active recipe (Base or a flavor) into chosen target flavors —
+  // overwrites their slots (confirm in the menu). After copy, drop the targets'
+  // cached rows so reopening reloads the copied recipe.
+  function runDuplicate(toPresetIds: string[]) {
+    if (!draftId || toPresetIds.length === 0) return
+    const from: string | 'BASE' = activeRecipeTab
+    startPick(async () => {
+      const res = await duplicateFlavorRecipe(draftId, from, toPresetIds)
+      if (!res.ok) { toast.error(res.error); return }
+      // Invalidate cached rows for the targets so the next open reloads them.
+      flavorLoaded.current = new Set([...flavorLoaded.current].filter((id) => !toPresetIds.includes(id)))
+      setFlavorRowsByPreset((m) => { const n = { ...m }; for (const id of toPresetIds) delete n[id]; return n })
+      setDupOpen(false)
+      toast.success(`Recipe copied to ${res.data.copied} flavor${res.data.copied === 1 ? '' : 's'}.`)
+    })
+  }
+  // Where a library "Apply" lands: the active recipe tab. For single-flavor
+  // products that's just the (only) recipe.
+  const applyTargetLabel = flavorMode !== 'MULTI'
+    ? 'this recipe'
+    : activeRecipeTab === 'BASE'
+      ? 'the Base recipe'
+      : `“${flavors[activeFlavorIdx]?.name || 'this flavor'}”`
 
   const ing = (id: string) => LIBRARY.find((l) => l.id === id)
   const [, startPick] = useTransition()
@@ -594,8 +644,9 @@ export function RecipeBuilderStep({
   const base = rows.filter((r) => r.category === 'base')
   const optional = rows.filter((r) => r.category === 'optional')
 
-  // Autosave real-picked base slots to the draft (debounced). Demo rows (no
-  // inline per100g, not a real Ingredient FK) are skipped.
+  // Autosave the TEMPLATE (Base) recipe slots to the draft (debounced). Keyed on
+  // baseRows so a flavor-tab edit never overwrites the base. Demo rows (no inline
+  // per100g, not a real Ingredient FK) are skipped.
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!draftId) return
@@ -604,14 +655,85 @@ export function RecipeBuilderStep({
     if (entryMode === 'DECLARED_PANEL') return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      const slots = rows
+      const slots = baseRows
         .filter((r) => r.category === 'base' && r.per100g !== undefined && r.qty > 0)
         .map((r, i) => ({ ingredientId: r.ingId, weightG: rawGrams(r), displayOrder: i, costPerKgCents: r.costPerKgCents ?? null }))
       void saveRecipeSlots(draftId, slots)
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, draftId])
+  }, [baseRows, draftId])
+
+  // PER-FLAVOR recipe autosave (debounced) — saves the ACTIVE flavor tab's rows
+  // to its FlavorRecipeSlot[] (+ optionals). Keyed on the active flavor's rows so
+  // each tab persists independently; no-op on the Base tab. The slice's
+  // saveFlavorRecipe full-replaces that one flavor in a transaction. Stable id:
+  // the tab key IS the durable FlavorPreset id (ensureFlavorPresets).
+  const flavorRecipeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const activeFlavorRows = activeRecipeTab === 'BASE' ? null : (flavorRowsByPreset[activeRecipeTab] ?? [])
+  useEffect(() => {
+    if (!draftId || activeRecipeTab === 'BASE' || activeFlavorRows == null) return
+    // Don't autosave a freshly-opened tab before its server load resolves —
+    // flavorLoaded marks a preset once load() has run (even to empty).
+    if (!flavorLoaded.current.has(activeRecipeTab)) return
+    const presetId = activeRecipeTab
+    if (flavorRecipeSaveTimer.current) clearTimeout(flavorRecipeSaveTimer.current)
+    flavorRecipeSaveTimer.current = setTimeout(() => {
+      const slots = activeFlavorRows
+        .filter((r) => r.category === 'base' && r.per100g !== undefined && r.qty > 0)
+        .map((r, i) => ({ ingredientId: r.ingId, weightG: rawGrams(r), displayOrder: i, costPerKgCents: r.costPerKgCents ?? null }))
+      const opts = activeFlavorRows
+        .filter((r) => r.category === 'optional' && r.per100g !== undefined && r.qty > 0)
+        .map((r, i) => ({ ingredientId: r.ingId, weightG: rawGrams(r), displayOrder: i }))
+      void saveFlavorRecipe(presetId, slots, opts)
+    }, 1000)
+    return () => { if (flavorRecipeSaveTimer.current) clearTimeout(flavorRecipeSaveTimer.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFlavorRows, activeRecipeTab, draftId])
+
+  // Ensure stable FlavorPreset ids when MULTI: ask the server to upsert presets
+  // by sortOrder and stamp the returned id back onto each flavor (presetId), so
+  // per-flavor recipes attach to durable rows even though saveFlavors / the
+  // Variants step recreate flavor metadata. Runs when the flavor set changes.
+  const ensuredKey = useRef<string>('')
+  useEffect(() => {
+    if (!draftId || flavorMode !== 'MULTI') return
+    const named = flavors.filter((f) => f.name.trim().length > 0)
+    if (named.length === 0) return
+    // Cheap guard: only re-ensure when names/order actually change.
+    const key = named.map((f) => f.name.trim()).join('|')
+    if (ensuredKey.current === key && named.every((f) => f.presetId)) return
+    ensuredKey.current = key
+    void ensureFlavorPresets(draftId, flavors.map((f) => ({ name: f.name, statementOfIdentity: f.soi }))).then((res) => {
+      if (!res.ok) return
+      // Stamp presetId by sortOrder onto the matching (named) flavor positions.
+      let cursor = 0
+      const byOrder = new Map(res.data.map((d) => [d.sortOrder, d.presetId]))
+      onFlavors?.(flavors.map((f) => {
+        if (f.name.trim().length === 0) return f
+        const pid = byOrder.get(cursor) ?? f.presetId ?? null
+        cursor++
+        return f.presetId === pid ? f : { ...f, presetId: pid }
+      }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flavors, draftId, flavorMode])
+
+  // Lazy-load a flavor's recipe from the server the first time its tab opens.
+  useEffect(() => {
+    if (activeRecipeTab === 'BASE') return
+    const presetId = activeRecipeTab
+    if (flavorLoaded.current.has(presetId)) return
+    flavorLoaded.current.add(presetId)
+    void loadFlavorRecipe(presetId).then((loaded) => {
+      const toRow = (s: { ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number; allergens: string[]; costPerKgCents: number | null }, category: 'base' | 'optional'): Row => ({
+        uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g', waste: 0, category, selected: category === 'base',
+        name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined, allergens: s.allergens ?? [], costPerKgCents: s.costPerKgCents ?? undefined,
+      })
+      setFlavorRowsByPreset((m) => ({ ...m, [presetId]: [...loaded.slots.map((s) => toRow(s, 'base')), ...loaded.optionals.map((o) => toRow(o, 'optional'))] }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRecipeTab])
 
   // Autosave flavor overlays (name + soi + extras lines) while editing in the
   // Recipe step — the Variants step (the other writer) isn't mounted here, so
@@ -636,8 +758,9 @@ export function RecipeBuilderStep({
     if (!draftId) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     if (flavorSaveTimer.current) clearTimeout(flavorSaveTimer.current)
+    if (flavorRecipeSaveTimer.current) clearTimeout(flavorRecipeSaveTimer.current)
     if (entryMode !== 'DECLARED_PANEL') {
-      const slots = rows
+      const slots = baseRows
         .filter((r) => r.category === 'base' && r.per100g !== undefined && r.qty > 0)
         .map((r, i) => ({ ingredientId: r.ingId, weightG: rawGrams(r), displayOrder: i, costPerKgCents: r.costPerKgCents ?? null }))
       await saveRecipeSlots(draftId, slots)
@@ -647,6 +770,16 @@ export function RecipeBuilderStep({
         name: f.name, statementOfIdentity: f.soi, sortOrder: i,
         extras: (f.lines ?? []).map((l) => ({ ingredientId: l.ingId, name: l.name, qty: l.qty, unit: l.unit })),
       })))
+      // Flush the currently-open flavor recipe tab (others persisted on tab blur
+      // via their own autosave). Only when its id is durable + the load resolved.
+      if (activeRecipeTab !== 'BASE' && flavorLoaded.current.has(activeRecipeTab)) {
+        const fr = flavorRowsByPreset[activeRecipeTab] ?? []
+        const fslots = fr.filter((r) => r.category === 'base' && r.per100g !== undefined && r.qty > 0)
+          .map((r, i) => ({ ingredientId: r.ingId, weightG: rawGrams(r), displayOrder: i, costPerKgCents: r.costPerKgCents ?? null }))
+        const fopts = fr.filter((r) => r.category === 'optional' && r.per100g !== undefined && r.qty > 0)
+          .map((r, i) => ({ ingredientId: r.ingId, weightG: rawGrams(r), displayOrder: i }))
+        await saveFlavorRecipe(activeRecipeTab, fslots, fopts)
+      }
     }
   }
   useEffect(() => {
@@ -893,6 +1026,63 @@ export function RecipeBuilderStep({
 
       {activeTab === 'build' && (
        <>
+      {/* FLAVOR RECIPE TABS — each flavor owns its OWN full recipe (§5). Base =
+          the template recipe (single-flavor products use it as their only one).
+          Single-flavor products show no tab bar. */}
+      {flavorMode === 'MULTI' && (
+        <div className="recipe-flavtabs" role="tablist" aria-label="Recipe by flavor">
+          <button
+            type="button" role="tab" aria-selected={activeRecipeTab === 'BASE'}
+            className={`recipe-flavtab${activeRecipeTab === 'BASE' ? ' on' : ''}`}
+            onClick={() => setActiveRecipeTab('BASE')}
+            title="The base recipe — author once, then duplicate to flavors."
+          >Base</button>
+          {flavors.map((f, i) => (
+            <button
+              key={f.presetId ?? `idx-${i}`} type="button" role="tab"
+              aria-selected={activeRecipeTab === f.presetId}
+              className={`recipe-flavtab${activeRecipeTab === f.presetId ? ' on' : ''}`}
+              disabled={!f.presetId}
+              title={f.presetId ? `Edit ${f.name || `Flavor ${i + 1}`}'s recipe` : 'Preparing this flavor…'}
+              onClick={() => openFlavorTab(f)}
+            >{f.name || `Flavor ${i + 1}`}</button>
+          ))}
+          <button
+            type="button" className="recipe-flavtab add" aria-label="Add flavor"
+            disabled={flavors.length >= maxColumns}
+            title={flavors.length >= maxColumns ? `Up to ${maxColumns} flavors` : 'Add a flavor'}
+            onClick={() => { setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }]) }}
+          >+ Flavor</button>
+          {/* Duplicate-to control — copy the active recipe into chosen flavors. */}
+          {flavors.some((f) => f.presetId) && (
+            <div className="recipe-dup">
+              <button type="button" className="btn sm" onClick={() => setDupOpen((o) => !o)} aria-haspopup="menu" aria-expanded={dupOpen}>
+                {activeRecipeTab === 'BASE' ? 'Apply Base to…' : 'Duplicate to…'}
+              </button>
+              {dupOpen && (
+                <div className="recipe-dup-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { if (confirm('Overwrite EVERY flavor’s recipe with this one?')) runDuplicate(flavors.map((f) => f.presetId).filter((id): id is string => !!id && id !== activeRecipeTab)) }}>
+                    {activeRecipeTab === 'BASE' ? 'Apply Base to all flavors' : 'Copy to all other flavors'}
+                  </button>
+                  <div className="recipe-dup-sep" />
+                  {flavors.filter((f) => f.presetId && f.presetId !== activeRecipeTab).map((f) => (
+                    <button key={f.presetId} type="button" role="menuitem" onClick={() => { if (confirm(`Overwrite ${f.name}'s recipe with this one?`)) runDuplicate([f.presetId!]) }}>
+                      Copy to {f.name || 'flavor'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {flavorMode === 'MULTI' && (
+        <p className="tiny muted" style={{ margin: '0 0 12px' }}>
+          {activeRecipeTab === 'BASE'
+            ? 'Editing the Base recipe — the starting point you can duplicate to each flavor.'
+            : <>Editing <b style={{ color: 'var(--ink-900)' }}>{flavors[activeFlavorIdx]?.name || 'this flavor'}</b>’s own recipe. The Facts label on the right is this flavor’s.</>}
+        </p>
+      )}
       {domain === 'FOOD' && (
         <div className="agebar">
           <div className="agebar-l">
@@ -1103,70 +1293,9 @@ export function RecipeBuilderStep({
             </div>
           )}
 
-          {/* Flavor variants — tabs per flavor; each flavor's own flavored
-              ingredients overlay the shared base recipe. Drives the per-flavor
-              label shown in the live preview on the right. */}
-          {flavorMode === 'MULTI' && (
-            <div className="card">
-              <div className="section-title"><span className="ic"><Sparkles size={16} strokeWidth={2} /></span> Flavor variants ({flavors.length})</div>
-              <div className="flavtabs" role="tablist" aria-label="Flavors">
-                {flavors.map((f, i) => (
-                  <button key={i} type="button" role="tab" aria-selected={activeFlavor === i} className={`flavtab${activeFlavor === i ? ' on' : ''}`} onClick={() => setActiveFlavor(i)}>
-                    {f.name || `Flavor ${i + 1}`}
-                  </button>
-                ))}
-                {flavors.length < maxColumns && (
-                  <button type="button" className="flavtab add" aria-label="Add flavor" onClick={() => { setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }]); setActiveFlavor(flavors.length) }}>+ Flavor</button>
-                )}
-              </div>
-              {flavors.length === 0 ? (
-                <p className="muted tiny" style={{ marginTop: 8 }}>Add a flavor to start.</p>
-              ) : (() => {
-                const idx = Math.min(activeFlavor, flavors.length - 1)
-                const f = flavors[idx]!
-                const lines = f.lines ?? []
-                const overlayG = flavorOverlayGrams(f)
-                return (
-                  <>
-                    <div className="flavedit" style={{ marginTop: 10 }}>
-                      <input className="flavname" value={f.name} onChange={(e) => setFlavors(flavors.map((x, j) => (j === idx ? { ...x, name: e.target.value } : x)))} placeholder={`Flavor ${idx + 1}`} aria-label="Flavor name" />
-                      {flavors.length > 1 && <button type="button" className="btn sm" onClick={() => { setFlavors(flavors.filter((_, j) => j !== idx)); setActiveFlavor(Math.max(0, idx - 1)) }} aria-label="Remove this flavor">Remove flavor</button>}
-                    </div>
-                    {lines.length > 0 ? (
-                      <table style={{ marginTop: 10 }}>
-                        <thead><tr><th style={{ width: '99%' }}>Flavor ingredient</th><th className="r">Qty</th><th className="r">Unit</th><th className="r">Grams</th><th /></tr></thead>
-                        <tbody>
-                          {lines.map((l, li) => {
-                            const showVol = l.densityGPerMl != null || VOLUME_UNITS.has(l.unit)
-                            const grams = toGrams(l.qty, l.unit, { densityGPerMl: l.densityGPerMl ?? undefined })
-                            return (
-                              <tr key={li}>
-                                <td>{l.name}{l.per100g && Object.keys(l.per100g).length === 0 && <span className="tiny" style={{ color: 'var(--warn,#b45309)' }}> · no nutrient data</span>}</td>
-                                <td className="r"><input className="num" type="number" min={0} value={l.qty || ''} onChange={(e) => patchFlavorLine(idx, li, { qty: Math.max(0, parseFloat(e.target.value) || 0) })} aria-label={`${l.name} amount`} /></td>
-                                <td className="r">
-                                  <select className="num" value={l.unit} onChange={(e) => patchFlavorLine(idx, li, { unit: e.target.value })} aria-label={`${l.name} unit`}>
-                                    {SELECTABLE_UNITS.filter((u) => showVol || !VOLUME_UNITS.has(u)).map((u) => <option key={u} value={u}>{UNIT_LABELS[u] ?? u}</option>)}
-                                  </select>
-                                </td>
-                                <td className="r">{grams ? grams.toFixed(1) : '—'}</td>
-                                <td className="r"><button type="button" className="del" onClick={() => removeFlavorLine(idx, li)} aria-label="Remove ingredient">🗑</button></td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <p className="tiny muted" style={{ margin: '10px 0 6px' }}>No flavor ingredients yet — add the flavor system, color, sweetener, etc.</p>
-                    )}
-                    <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <div style={{ flex: '1 1 240px' }}><IngredientPicker onPick={(p) => addFlavorLine(idx, p)} placeholder={`Add an ingredient for “${f.name || 'this flavor'}”…`} /></div>
-                      {overlayG > 0 && <span className="tiny muted">This flavor adds {Math.round(overlayG * 10) / 10} g on top of the base.</span>}
-                    </div>
-                  </>
-                )
-              })()}
-            </div>
-          )}
+          {/* The old per-flavor "extras overlay" card is gone (§5/§6): each flavor
+              now owns a FULL recipe, edited under its own tab in this same builder
+              (the flavor tab bar at the top of the recipe area). */}
 
 
           {/* Packaging & Serving — appears only once the first ingredient is added. */}
@@ -1260,9 +1389,11 @@ export function RecipeBuilderStep({
               <button type="button" className="btn sm" onClick={() => setLabelViewerOpen(true)}>View all labels ↗</button>
             )}
           </div>
-          {flavorMode === 'MULTI' && flavors.length > 0 && (
+          {flavorMode === 'MULTI' && (
             <div className="tiny muted" style={{ marginBottom: 8 }}>
-              Previewing <b style={{ color: 'var(--ink-900)' }}>{flavors[Math.min(activeFlavor, flavors.length - 1)]?.name || `Flavor ${Math.min(activeFlavor, flavors.length - 1) + 1}`}</b> · switch flavors in the <b>Flavor variants</b> card on the left
+              {activeRecipeTab === 'BASE'
+                ? <>This is the <b style={{ color: 'var(--ink-900)' }}>Base</b> recipe&apos;s Facts. Open a flavor tab to design + preview that flavor.</>
+                : <>Live Facts for <b style={{ color: 'var(--ink-900)' }}>{flavors[activeFlavorIdx]?.name || 'this flavor'}</b> — this flavor&apos;s own recipe. Switch flavors in the tab bar above.</>}
             </div>
           )}
           {noFactsPanel ? (
@@ -1270,37 +1401,18 @@ export function RecipeBuilderStep({
               <b style={{ color: 'var(--ink-900)' }}>No Nutrition / Supplement Facts panel.</b> {noPanelMsg} {!dom.labelBuilt && <span className="tiny">This domain&apos;s label renderer ships in a later phase.</span>} <span className="tiny">(Auto-selected from this product&apos;s category.)</span>
             </div>
           ) : ps && result ? (
-            flavorMode === 'MULTI' && flavors.length > 0 ? (() => {
-              const idx = Math.min(activeFlavor, flavors.length - 1)
-              const f = flavors[idx]!
-              const fr = flavorResult(f)
-              const overlayG = flavorOverlayGrams(f)
-              return (
-                <>
-                  {fr && overlayG > 0 ? (
-                    <FactsPanel result={fr} ps={fr.perServing} title={f.name || `Flavor ${idx + 1}`} format={panelFormat} contains={flavorContains(f)} />
-                  ) : (
-                    <div className="card" style={{ textAlign: 'center', color: 'var(--ink-500)', padding: 20 }}>
-                      <div className="flavhdr" style={{ margin: '0 0 8px' }}>{f.name || `Flavor ${idx + 1}`}</div>
-                      <p className="tiny" style={{ margin: 0 }}>Add at least one flavor ingredient with an amount to generate this flavor&apos;s Facts label.</p>
-                    </div>
-                  )}
-                  <div className="netwt">{netContentsLabel}</div>
-                  <p className="makes">{flavors.length} flavors · one Facts label each.{varietyCols.length >= 2 ? ' Use “View all labels” to compare + see the pack aggregate.' : ''}</p>
-                </>
-              )
-            })() : (
-              <>
-                {simpEligible && (
-                  <label className="muted tiny" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={simplifiedOn} onChange={(e) => setSimplifiedOn(e.target.checked)} style={{ marginTop: 1 }} />
-                    <span>Use the <b>simplified format</b> (qualifies) — hides zero rows, adds “Not a significant source of…” (21 CFR 101.9(f)). <InfoTip text="Offered only when most nutrients are insignificant. Drops the zero rows and prints the “Not a significant source of…” statement per 21 CFR 101.9(f)." /></span>
-                  </label>
-                )}
-                <FactsPanel result={result} ps={ps} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} contains={containsStatement} />
-                <div className="netwt">{netContentsLabel}</div>
-              </>
-            )
+            // The Facts panel ALWAYS reflects the active recipe tab's rows (§3):
+            // Base → the template recipe; a flavor tab → that flavor's recipe.
+            <>
+              {simpEligible && (
+                <label className="muted tiny" style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={simplifiedOn} onChange={(e) => setSimplifiedOn(e.target.checked)} style={{ marginTop: 1 }} />
+                  <span>Use the <b>simplified format</b> (qualifies) — hides zero rows, adds “Not a significant source of…” (21 CFR 101.9(f)). <InfoTip text="Offered only when most nutrients are insignificant. Drops the zero rows and prints the “Not a significant source of…” statement per 21 CFR 101.9(f)." /></span>
+                </label>
+              )}
+              <FactsPanel result={result} ps={ps} title={flavorMode === 'MULTI' && activeRecipeTab !== 'BASE' ? (flavors[activeFlavorIdx]?.name || undefined) : undefined} serving={suggestedServing} format={panelFormat} simplified={simplifiedOn} ingredientStatement={ingredientStatement} contains={containsStatement} />
+              <div className="netwt">{netContentsLabel}</div>
+            </>
           ) : (
             <div className="card" style={{ textAlign: 'center', color: 'var(--ink-500)' }}>Add ingredients + a serving size to see the label.</div>
           )}
@@ -1468,7 +1580,7 @@ export function RecipeBuilderStep({
       {activeTab === 'recipes' && (
         <div className="card">
           <div className="section-title"><span className="ic"><FolderOpen size={16} strokeWidth={2} /></span> My recipes</div>
-          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Reuse a formulation from another product — applies its base ingredients here to tweak.</p>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Reuse a formulation from another of your products. <b>Apply</b> copies its base ingredients into {applyTargetLabel}{flavorMode === 'MULTI' ? ' — switch tabs to target a different flavor or Base' : ''}.</p>
           {myRecipes === null ? (
             <p className="muted">Loading your recipes…</p>
           ) : myRecipes.length === 0 ? (
@@ -1492,8 +1604,8 @@ export function RecipeBuilderStep({
       )}
       {activeTab === 'templates' && (
         <div className="card">
-          <div className="section-title"><span className="ic"><LayoutGrid size={16} strokeWidth={2} /></span> Recipe templates</div>
-          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Start from a curated formulation — ingredients are matched to your catalog to refine.</p>
+          <div className="section-title"><span className="ic"><LayoutGrid size={16} strokeWidth={2} /></span> Recipe library</div>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Start from a platform formulation — ingredients are matched to your catalog. <b>Start from this</b> applies into {applyTargetLabel}{flavorMode === 'MULTI' ? ' — switch tabs to target a different flavor or Base' : ''}.</p>
           <div style={{ display: 'grid', gap: 8 }}>
             {RECIPE_TEMPLATES.map((t) => (
               <div key={t.id} className="lo-axis" style={{ marginTop: 0 }}>
@@ -1883,6 +1995,18 @@ const CSS = `
 .rb .flavtab:hover{color:var(--ink-900);background:var(--pink-50)}
 .rb .flavtab.on{color:var(--ink-900);background:#fff;border-color:var(--ink-200);border-bottom:1px solid #fff;font-weight:700}
 .rb .flavtab.add{color:var(--pink-700);font-weight:600;border-style:dashed;border-color:var(--pink-100);border-bottom-color:var(--pink-100);border-radius:8px;margin-bottom:0}
+/* Per-flavor RECIPE tab bar (each flavor owns its own full recipe). */
+.rb .recipe-flavtabs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--ink-200);padding-bottom:0}
+.rb .recipe-flavtab{border:1px solid transparent;border-bottom:0;background:transparent;color:var(--pink-700);cursor:pointer;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px 8px 0 0;margin-bottom:-1px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb .recipe-flavtab:hover:not(:disabled){color:var(--ink-900);background:var(--pink-50)}
+.rb .recipe-flavtab.on{color:var(--ink-900);background:#fff;border-color:var(--ink-200);border-bottom:1px solid #fff;font-weight:700}
+.rb .recipe-flavtab:disabled{opacity:.5;cursor:default}
+.rb .recipe-flavtab.add{color:var(--pink-700);font-weight:600;border-style:dashed;border-color:var(--pink-100);border-radius:8px;margin-bottom:0}
+.rb .recipe-dup{position:relative;margin-left:auto}
+.rb .recipe-dup-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;background:#fff;border:1px solid var(--ink-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;min-width:200px;display:flex;flex-direction:column;gap:2px}
+.rb .recipe-dup-menu button{text-align:left;border:0;background:transparent;font:inherit;font-size:12px;color:var(--ink-900);padding:7px 10px;border-radius:7px;cursor:pointer}
+.rb .recipe-dup-menu button:hover{background:var(--pink-50);color:var(--pink-700)}
+.rb .recipe-dup-sep{height:1px;background:var(--ink-200);margin:3px 2px}
 .rb .flavedit{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
 .rb .flavname{flex:1 1 120px;min-width:100px;border:1px solid var(--ink-200);border-radius:8px;padding:6px 9px;font:inherit;font-weight:600;color:var(--ink-900)}
 .rb .flavbuilder{border:1px solid var(--ink-200);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--pink-50)}
