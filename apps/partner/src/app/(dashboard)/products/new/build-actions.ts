@@ -281,7 +281,7 @@ export interface InitialDraft {
   manufacturingProcesses: string[]
   allergenFreeClaims: string[]
   marketCodes: string[]
-  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[]; unitPriceCents: number | null; leadTimeDays: number | null; thumbnailUrl?: string | null }>
+  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[]; unitPriceCents: number | null; leadTimeDays: number | null; thumbnailUrl?: string | null; presetId?: string | null }>
   axes: InitialDraftAxis[]
   // Recipe entry method — restores the chosen mode (Search / AI / Declare) when
   // resuming a draft so the builder reopens on the right surface.
@@ -365,7 +365,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null; countryOfOrigin: string | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
-      flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown; unitPriceCents: number | null; leadTimeDays: number | null; swatchImageFileId: string | null }>
+      flavorPresets: Array<{ id: string; name: string; statementOfIdentity: string | null; extras: unknown; unitPriceCents: number | null; leadTimeDays: number | null; swatchImageFileId: string | null }>
       ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null; allergenFlags: string[] } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
@@ -399,7 +399,9 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         // cast-guarded already; selecting it is safe (it's a real column post-push).
         // leadTimeDays (per-flavor lead override) post-dates some generated clients
         // but is a real column post-push — the whole load is cast-guarded already.
-        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true, unitPriceCents: true, leadTimeDays: true, swatchImageFileId: true } },
+        // id is the durable FlavorPreset id → returned as presetId so the Recipe
+        // step's per-flavor tabs stay active across a reload (don't re-ensure).
+        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, statementOfIdentity: true, extras: true, unitPriceCents: true, leadTimeDays: true, swatchImageFileId: true } },
         ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
@@ -494,6 +496,9 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       flavors: tpl.flavorPresets.map((f) => ({
         name: f.name,
         soi: f.statementOfIdentity ?? '',
+        // Durable FlavorPreset id — carried so reloading a draft keeps the
+        // recipe-step flavor tabs active (per-flavor recipes attach to it).
+        presetId: f.id ?? null,
         unitPriceCents: f.unitPriceCents ?? null,
         // Per-flavor lead override (days) — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md §4).
         leadTimeDays: f.leadTimeDays ?? null,
@@ -756,6 +761,103 @@ export async function listMyRecipes(excludeTemplateId?: string): Promise<MyRecip
     }))
   } catch (err) {
     console.error('[listMyRecipes] failed:', err)
+    return []
+  }
+}
+
+/** One copy-source from THIS product (docs/PER_FLAVOR_RECIPES.md §5): the Base
+ *  recipe (TemplateIngredientSlot[]) or one flavor's recipe (FlavorRecipeSlot[]).
+ *  `source` discriminates so the client's "Apply" can copy via the right path. */
+export interface ThisDraftRecipe {
+  /** 'BASE' or the flavor's durable presetId — also the duplicateFlavorRecipe source. */
+  source: 'BASE' | string
+  /** Display label — "Base recipe" or the flavor name. */
+  label: string
+  ingredientCount: number
+  /** The recipe rows, so a single-flavor / Base apply can seed client rows directly. */
+  slots: Array<{ ingId: string; name: string; per100g: Record<string, number>; densityGPerMl: number | null; weightG: number; allergens: string[]; costPerKgCents: number | null }>
+}
+
+/** List THIS draft's own recipes (Base + each flavor) as copy sources for the
+ *  "My recipes" tab (docs/PER_FLAVOR_RECIPES.md §5). The Base reads the template
+ *  slots; each flavor reads its FlavorRecipeSlot[]. Cast-guarded — new models land
+ *  on the client only after db:push; an empty flavor list degrades to Base-only. */
+export async function listThisDraftRecipes(productTemplateId: string): Promise<ThisDraftRecipe[]> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error || !partner) return []
+    const ownIds = partner.services.map((s) => s.id)
+
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: {
+        manufacturerServiceId: true,
+        ingredientSlots: {
+          orderBy: { displayOrder: 'asc' },
+          select: { baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } } },
+        },
+      },
+    })
+    if (!tpl) return []
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return []
+
+    // Best-effort per-slot Base costs (migration-gated) so an Apply carries cost.
+    let baseCosts: Record<string, number> = {}
+    try { baseCosts = await loadSlotCosts(productTemplateId) } catch { baseCosts = {} }
+
+    const out: ThisDraftRecipe[] = [{
+      source: 'BASE',
+      label: 'Base recipe',
+      ingredientCount: tpl.ingredientSlots.length,
+      slots: tpl.ingredientSlots.map((s) => ({
+        ingId: s.baseIngredientId,
+        name: s.baseIngredient?.internalName ?? s.baseIngredient?.name ?? '',
+        per100g: plainNutrition(s.baseIngredient?.nutritionPer100g),
+        densityGPerMl: s.baseIngredient?.densityGPerML != null ? Number(s.baseIngredient.densityGPerML) : null,
+        allergens: s.baseIngredient?.allergenFlags ?? [],
+        weightG: Number(s.weightG ?? 0),
+        costPerKgCents: baseCosts[s.baseIngredientId] ?? null,
+      })),
+    }]
+
+    // Each flavor's own recipe — cast-guarded read of FlavorPreset.recipeSlots.
+    try {
+      const fp = prisma as unknown as {
+        flavorPreset: { findMany: (a: unknown) => Promise<Array<{ id: string; name: string; recipeSlots: Array<{ baseIngredientId: string; weightG: unknown; costPerKgCents: number | null; displayOrder: number }> }>> }
+      }
+      const presets = await fp.flavorPreset.findMany({
+        where: { productTemplateId },
+        orderBy: { sortOrder: 'asc' },
+        select: { id: true, name: true, recipeSlots: { orderBy: { displayOrder: 'asc' }, select: { baseIngredientId: true, weightG: true, costPerKgCents: true, displayOrder: true } } },
+      })
+      const allIngIds = presets.flatMap((p) => p.recipeSlots.map((s) => s.baseIngredientId))
+      const data = await resolveIngredientRows(allIngIds)
+      for (const p of presets) {
+        out.push({
+          source: p.id,
+          label: p.name || 'Flavor',
+          ingredientCount: p.recipeSlots.length,
+          slots: p.recipeSlots.map((s) => {
+            const d = data.get(s.baseIngredientId)
+            return {
+              ingId: s.baseIngredientId,
+              name: d?.name ?? '',
+              per100g: d?.per100g ?? {},
+              densityGPerMl: d?.densityGPerMl ?? null,
+              allergens: d?.allergens ?? [],
+              weightG: Number(s.weightG ?? 0),
+              costPerKgCents: s.costPerKgCents ?? null,
+            }
+          }),
+        })
+      }
+    } catch {
+      // FlavorRecipe* not migrated yet — Base-only is a safe degrade.
+    }
+
+    return out
+  } catch (err) {
+    console.error('[listThisDraftRecipes] failed:', err)
     return []
   }
 }

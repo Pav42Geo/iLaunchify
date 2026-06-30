@@ -16,7 +16,7 @@ import { type OptionAxisUI, type OptionValueUI } from './OptionAxesCard'
 import { type Flavor, type FlavorLine } from './VariantsPacksStep'
 import { LabelViewerModal } from './LabelViewerModal'
 import { searchIngredients, type IngredientResult } from '../[id]/edit/ingredient-actions'
-import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, loadSlotCosts, setIntendedAgeGroup, saveFlavors, ensureFlavorPresets, loadFlavorRecipe, saveFlavorRecipe, duplicateFlavorRecipe, type MyRecipe } from './build-actions'
+import { getIngredientNutrition, saveRecipeSlots, listMyRecipes, listThisDraftRecipes, loadSlotCosts, setIntendedAgeGroup, saveFlavors, ensureFlavorPresets, loadFlavorRecipe, saveFlavorRecipe, duplicateFlavorRecipe, type MyRecipe, type ThisDraftRecipe } from './build-actions'
 import { ModeChooser, type Mode } from './ModeChooser'
 import { AiParserPanel, type CommittedParseLine } from './AiParserPanel'
 import { DeclaredPanelPanel } from './DeclaredPanelPanel'
@@ -210,7 +210,7 @@ const TABS: Array<{ key: TabKey; label: string; icon: ComponentType<{ className?
   { key: 'cost', label: 'COST', icon: DollarSign },
   { key: 'label', label: 'LABEL', icon: Tag },
   { key: 'recipes', label: 'MY RECIPES', icon: FolderOpen },
-  { key: 'templates', label: 'RECIPE TEMPLATES', icon: LayoutGrid },
+  { key: 'templates', label: 'RECIPE LIBRARY', icon: LayoutGrid },
 ]
 
 // Curated starter formulations (V1, code-defined — a content set admin can move
@@ -295,6 +295,11 @@ export function RecipeBuilderStep({
   const flavorLoaded = useRef<Set<string>>(new Set())
   // Confirm-before-overwrite duplicate menu (null = closed).
   const [dupOpen, setDupOpen] = useState(false)
+  // A flavor tab whose presetId is being resolved on click (eager-ensure failed
+  // or hasn't round-tripped yet) — shows an inline "preparing…" state. Keyed by
+  // the flavor's array index so we can mark the exact tab even before it has a
+  // durable id. null = nothing resolving.
+  const [resolvingFlavorIdx, setResolvingFlavorIdx] = useState<number | null>(null)
 
   // The active tab's rows + setter — the builder JSX operates on these unchanged.
   // BASE → the template recipe; a presetId → that flavor's recipe.
@@ -363,12 +368,25 @@ export function RecipeBuilderStep({
   // base ingId → active alternative's ingredient id. Absent = the base itself is
   // active. Activating a swap previews it on the Facts label (prototype model).
   const [activeSwap, setActiveSwap] = useState<Record<string, string>>({})
-  // "My recipes" reuse list — lazily loaded the first time that tab opens.
+  // "Recipe library" (templates tab) — this partner's OTHER products, lazily
+  // loaded the first time that tab opens. (The cross-product list — moved here
+  // from "My recipes" per docs/PER_FLAVOR_RECIPES.md §5.)
   const [myRecipes, setMyRecipes] = useState<MyRecipe[] | null>(null)
   useEffect(() => {
-    if (activeTab !== 'recipes' || myRecipes !== null) return
+    if (activeTab !== 'templates' || myRecipes !== null) return
     void listMyRecipes(draftId ?? undefined).then(setMyRecipes)
   }, [activeTab, myRecipes, draftId])
+  // "My recipes" (recipes tab) — THIS product's own recipes (Base + each flavor)
+  // as copy sources. Reloaded whenever the recipes tab is (re)opened so a fresh
+  // duplicate/edit is reflected. (docs/PER_FLAVOR_RECIPES.md §5.)
+  const [thisRecipes, setThisRecipes] = useState<ThisDraftRecipe[] | null>(null)
+  const [thisRecipesNonce, setThisRecipesNonce] = useState(0)
+  useEffect(() => {
+    if (activeTab !== 'recipes' || !draftId) return
+    setThisRecipes(null)
+    void listThisDraftRecipes(draftId).then(setThisRecipes)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, draftId, thisRecipesNonce])
   // Restore saved per-ingredient costs once (best-effort; no-ops until migrated).
   const costsLoaded = useRef(false)
   useEffect(() => {
@@ -387,6 +405,20 @@ export function RecipeBuilderStep({
     ])
     setActiveTab('build')
     toast.success('Recipe applied — review the ingredients.')
+  }
+  // Apply ONE of THIS product's recipes (Base or another flavor) INTO the active
+  // tab. Seeds the active tab's base rows from the source slots (keeps the active
+  // tab's optionals); the active tab's autosave then persists it. Works uniformly
+  // for a Base or flavor target — no separate server round-trip needed.
+  function applyThisRecipe(src: ThisDraftRecipe) {
+    if (src.source === activeRecipeTab) { toast('That is the recipe you are editing.'); return }
+    if (src.slots.length === 0) { toast.error('That recipe has no ingredients yet.'); return }
+    setRows((rs) => [
+      ...src.slots.map((s) => ({ uid: uid(), ingId: s.ingId, qty: s.weightG, unit: 'g' as const, waste: 0, category: 'base' as const, selected: true, name: s.name, per100g: s.per100g, densityGPerMl: s.densityGPerMl ?? undefined, allergens: s.allergens ?? [], costPerKgCents: s.costPerKgCents ?? undefined })),
+      ...rs.filter((r) => r.category === 'optional'),
+    ])
+    setActiveTab('build')
+    toast.success(`Applied “${src.label}” to ${applyTargetLabel}.`)
   }
   // Start from a curated template: resolve each item against the catalog, seed
   // what matches, and flag anything not found so the partner can add it.
@@ -460,8 +492,38 @@ export function RecipeBuilderStep({
   // Index of the active flavor tab (when not on Base) — derived from the active
   // presetId so the rest of the step (which keys by index) stays in sync.
   const activeFlavorIdx = activeRecipeTab === 'BASE' ? -1 : flavors.findIndex((f) => f.presetId === activeRecipeTab)
-  // Switch to a flavor's recipe tab — requires its durable presetId.
-  const openFlavorTab = (f: Flavor) => { if (f.presetId) { setActiveRecipeTab(f.presetId); setActiveFlavor(Math.max(0, flavors.indexOf(f))) } }
+  // Switch to a flavor's recipe tab. ROBUST: never disabled — if the flavor has
+  // no durable presetId yet (eager ensureFlavorPresets failed or hasn't
+  // round-tripped), resolve it ON CLICK: ensure the presets, read this flavor's
+  // id by sortOrder, stamp it back (onFlavors), then open its tab. The click is
+  // the guarantee — no tab is ever permanently stuck. (docs/PER_FLAVOR_RECIPES.md §5.)
+  const openFlavorTab = (f: Flavor) => {
+    const idx = flavors.indexOf(f)
+    setActiveFlavor(Math.max(0, idx))
+    if (f.presetId) { setActiveRecipeTab(f.presetId); return }
+    if (!draftId) { toast.error('Save your draft first to edit a flavor recipe.'); return }
+    setResolvingFlavorIdx(idx)
+    startPick(async () => {
+      const res = await ensureFlavorPresets(draftId, flavors.map((g) => ({ name: g.name, statementOfIdentity: g.soi })))
+      setResolvingFlavorIdx(null)
+      if (!res.ok) { toast.error(res.error); return }
+      // Map presetId by sortOrder onto the named-flavor positions (same packing
+      // as the eager effect), then stamp + open THIS flavor's id.
+      const byOrder = new Map(res.data.map((d) => [d.sortOrder, d.presetId]))
+      let cursor = 0
+      let resolvedId: string | null = null
+      const stamped = flavors.map((g, j) => {
+        if (g.name.trim().length === 0) return g
+        const pid = byOrder.get(cursor) ?? g.presetId ?? null
+        if (j === idx) resolvedId = pid
+        cursor++
+        return g.presetId === pid ? g : { ...g, presetId: pid }
+      })
+      onFlavors?.(stamped)
+      if (resolvedId) setActiveRecipeTab(resolvedId)
+      else toast.error('Could not prepare this flavor — give it a name first.')
+    })
+  }
   // Duplicate the active recipe (Base or a flavor) into chosen target flavors —
   // overwrites their slots (confirm in the menu). After copy, drop the targets'
   // cached rows so reopening reloads the copied recipe.
@@ -475,7 +537,23 @@ export function RecipeBuilderStep({
       flavorLoaded.current = new Set([...flavorLoaded.current].filter((id) => !toPresetIds.includes(id)))
       setFlavorRowsByPreset((m) => { const n = { ...m }; for (const id of toPresetIds) delete n[id]; return n })
       setDupOpen(false)
+      setThisRecipes(null) // stale — the "My recipes" list refetches on next open
       toast.success(`Recipe copied to ${res.data.copied} flavor${res.data.copied === 1 ? '' : 's'}.`)
+    })
+  }
+  // Copy a SPECIFIC source recipe ('BASE' or a presetId) INTO a SPECIFIC target
+  // flavor presetId — used by the empty-flavor "Copy from Base / another flavor"
+  // actions (target is always the active flavor). Invalidates the target's cache
+  // so the open tab reloads the copied recipe, then refreshes "My recipes".
+  function runDuplicateFromInto(from: 'BASE' | string, toPresetId: string) {
+    if (!draftId || from === toPresetId) return
+    startPick(async () => {
+      const res = await duplicateFlavorRecipe(draftId, from, [toPresetId])
+      if (!res.ok) { toast.error(res.error); return }
+      flavorLoaded.current = new Set([...flavorLoaded.current].filter((id) => id !== toPresetId))
+      setFlavorRowsByPreset((m) => { const n = { ...m }; delete n[toPresetId]; return n })
+      setThisRecipes(null)
+      toast.success('Recipe copied — review the ingredients.')
     })
   }
   // Where a library "Apply" lands: the active recipe tab. For single-flavor
@@ -1013,6 +1091,64 @@ export function RecipeBuilderStep({
 
       {entryMode === 'SEARCH_BUILD' && (
        <>
+      {/* FLAVOR RECIPE TABS — the TOP axis of the whole recipe step (§5). Each
+          flavor owns its OWN full recipe; the active flavor drives `rows`, so
+          EVERY sub-tab (Build / Ingredients / Allergens / Cost / Label) + the
+          Facts panel reflect it. Visible on ALL sub-tabs (MULTI only). Base =
+          the template recipe (single-flavor products use it as their only one —
+          they show no flavor bar). Tabs are NEVER disabled: a flavor without a
+          durable presetId resolves it on click (ensure-on-click). */}
+      {flavorMode === 'MULTI' && (
+        <div className="recipe-flavtabs" role="tablist" aria-label="Recipe by flavor">
+          <button
+            type="button" role="tab" aria-selected={activeRecipeTab === 'BASE'}
+            className={`recipe-flavtab${activeRecipeTab === 'BASE' ? ' on' : ''}`}
+            onClick={() => setActiveRecipeTab('BASE')}
+            title="The base recipe — author once, then duplicate to flavors."
+          >Base</button>
+          {flavors.map((f, i) => {
+            const isResolving = resolvingFlavorIdx === i
+            const selected = !!f.presetId && activeRecipeTab === f.presetId
+            return (
+              <button
+                key={f.presetId ?? `idx-${i}`} type="button" role="tab"
+                aria-selected={selected}
+                className={`recipe-flavtab${selected ? ' on' : ''}`}
+                title={`Edit ${f.name || `Flavor ${i + 1}`}'s recipe`}
+                onClick={() => openFlavorTab(f)}
+              >{f.name || `Flavor ${i + 1}`}{isResolving && <span className="recipe-flavtab-prep"> · preparing…</span>}</button>
+            )
+          })}
+          <button
+            type="button" className="recipe-flavtab add" aria-label="Add flavor"
+            disabled={flavors.length >= maxColumns}
+            title={flavors.length >= maxColumns ? `Up to ${maxColumns} flavors` : 'Add a flavor'}
+            onClick={() => { setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }]) }}
+          >+ Flavor</button>
+          {/* Duplicate-to control — copy the active recipe into chosen flavors. */}
+          {flavors.some((f) => f.presetId) && (
+            <div className="recipe-dup">
+              <button type="button" className="btn sm" onClick={() => setDupOpen((o) => !o)} aria-haspopup="menu" aria-expanded={dupOpen}>
+                {activeRecipeTab === 'BASE' ? 'Apply Base to…' : 'Copy this recipe to…'}
+              </button>
+              {dupOpen && (
+                <div className="recipe-dup-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { if (confirm('Overwrite EVERY flavor’s recipe with this one?')) runDuplicate(flavors.map((f) => f.presetId).filter((id): id is string => !!id && id !== activeRecipeTab)) }}>
+                    {activeRecipeTab === 'BASE' ? 'Apply Base to all flavors' : 'All other flavors'}
+                  </button>
+                  <div className="recipe-dup-sep" />
+                  {flavors.filter((f) => f.presetId && f.presetId !== activeRecipeTab).map((f) => (
+                    <button key={f.presetId} type="button" role="menuitem" onClick={() => { if (confirm(`Overwrite ${f.name}'s recipe with this one?`)) runDuplicate([f.presetId!]) }}>
+                      {f.name || 'flavor'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="rb-tabs" role="tablist">
         {TABS.map((t) => (
           <div
@@ -1034,62 +1170,44 @@ export function RecipeBuilderStep({
 
       {activeTab === 'build' && (
        <>
-      {/* FLAVOR RECIPE TABS — each flavor owns its OWN full recipe (§5). Base =
-          the template recipe (single-flavor products use it as their only one).
-          Single-flavor products show no tab bar. */}
-      {flavorMode === 'MULTI' && (
-        <div className="recipe-flavtabs" role="tablist" aria-label="Recipe by flavor">
-          <button
-            type="button" role="tab" aria-selected={activeRecipeTab === 'BASE'}
-            className={`recipe-flavtab${activeRecipeTab === 'BASE' ? ' on' : ''}`}
-            onClick={() => setActiveRecipeTab('BASE')}
-            title="The base recipe — author once, then duplicate to flavors."
-          >Base</button>
-          {flavors.map((f, i) => (
-            <button
-              key={f.presetId ?? `idx-${i}`} type="button" role="tab"
-              aria-selected={activeRecipeTab === f.presetId}
-              className={`recipe-flavtab${activeRecipeTab === f.presetId ? ' on' : ''}`}
-              disabled={!f.presetId}
-              title={f.presetId ? `Edit ${f.name || `Flavor ${i + 1}`}'s recipe` : 'Preparing this flavor…'}
-              onClick={() => openFlavorTab(f)}
-            >{f.name || `Flavor ${i + 1}`}</button>
-          ))}
-          <button
-            type="button" className="recipe-flavtab add" aria-label="Add flavor"
-            disabled={flavors.length >= maxColumns}
-            title={flavors.length >= maxColumns ? `Up to ${maxColumns} flavors` : 'Add a flavor'}
-            onClick={() => { setFlavors([...flavors, { name: `Flavor ${flavors.length + 1}`, ingId: '', soi: '' }]) }}
-          >+ Flavor</button>
-          {/* Duplicate-to control — copy the active recipe into chosen flavors. */}
-          {flavors.some((f) => f.presetId) && (
-            <div className="recipe-dup">
-              <button type="button" className="btn sm" onClick={() => setDupOpen((o) => !o)} aria-haspopup="menu" aria-expanded={dupOpen}>
-                {activeRecipeTab === 'BASE' ? 'Apply Base to…' : 'Duplicate to…'}
-              </button>
-              {dupOpen && (
-                <div className="recipe-dup-menu" role="menu">
-                  <button type="button" role="menuitem" onClick={() => { if (confirm('Overwrite EVERY flavor’s recipe with this one?')) runDuplicate(flavors.map((f) => f.presetId).filter((id): id is string => !!id && id !== activeRecipeTab)) }}>
-                    {activeRecipeTab === 'BASE' ? 'Apply Base to all flavors' : 'Copy to all other flavors'}
-                  </button>
-                  <div className="recipe-dup-sep" />
-                  {flavors.filter((f) => f.presetId && f.presetId !== activeRecipeTab).map((f) => (
-                    <button key={f.presetId} type="button" role="menuitem" onClick={() => { if (confirm(`Overwrite ${f.name}'s recipe with this one?`)) runDuplicate([f.presetId!]) }}>
-                      Copy to {f.name || 'flavor'}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Helper line — names the active flavor + makes it obvious THIS builder
+          edits that flavor's own recipe (the flavor tab bar above is the axis). */}
       {flavorMode === 'MULTI' && (
         <p className="tiny muted" style={{ margin: '0 0 12px' }}>
           {activeRecipeTab === 'BASE'
             ? 'Editing the Base recipe — the starting point you can duplicate to each flavor.'
-            : <>Editing <b style={{ color: 'var(--ink-900)' }}>{flavors[activeFlavorIdx]?.name || 'this flavor'}</b>’s own recipe. The Facts label on the right is this flavor’s.</>}
+            : <>Editing <b style={{ color: 'var(--ink-900)' }}>{flavors[activeFlavorIdx]?.name || 'this flavor'}</b>’s recipe — add or adjust ingredients below. The Facts label on the right is this flavor’s.</>}
         </p>
+      )}
+      {/* Empty-flavor state — a flavor tab with no recipe yet gets friendly,
+          explicit copy actions instead of a blank table. (docs/PER_FLAVOR_RECIPES.md §5.) */}
+      {flavorMode === 'MULTI' && activeRecipeTab !== 'BASE' && base.length === 0 && (
+        <div className="card recipe-empty">
+          <div className="section-title"><span className="ic"><FlaskConical size={16} strokeWidth={2} /></span> {flavors[activeFlavorIdx]?.name || 'This flavor'} has no recipe yet</div>
+          <p className="muted tiny" style={{ margin: '0 0 10px' }}>Start it from another recipe, or add ingredients below.</p>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button" className="btn sm"
+              disabled={baseRows.length === 0}
+              title={baseRows.length === 0 ? 'The Base recipe is empty — author it first, or copy from a flavor.' : 'Copy the Base recipe into this flavor'}
+              onClick={() => { if (activeRecipeTab !== 'BASE') runDuplicateFromInto('BASE', activeRecipeTab) }}
+            >Copy from Base</button>
+            {flavors.filter((f) => f.presetId && f.presetId !== activeRecipeTab).length > 0 && (
+              <div className="recipe-dup">
+                <button type="button" className="btn sm" onClick={() => setDupOpen((o) => !o)} aria-haspopup="menu" aria-expanded={dupOpen}>Copy from another flavor…</button>
+                {dupOpen && (
+                  <div className="recipe-dup-menu" role="menu">
+                    {flavors.filter((f) => f.presetId && f.presetId !== activeRecipeTab).map((f) => (
+                      <button key={f.presetId} type="button" role="menuitem" onClick={() => { runDuplicateFromInto(f.presetId!, activeRecipeTab); setDupOpen(false) }}>
+                        {f.name || 'flavor'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       )}
       {domain === 'FOOD' && (
         <div className="agebar">
@@ -1558,7 +1676,7 @@ export function RecipeBuilderStep({
       {/* 🏷 LABEL — full live label preview (Public / Internal). */}
       {activeTab === 'label' && (
         <div className="card">
-          <div className="section-title"><span className="ic"><Tag size={16} strokeWidth={2} /></span> Label preview</div>
+          <div className="section-title"><span className="ic"><Tag size={16} strokeWidth={2} /></span> Label preview{flavorMode === 'MULTI' && <span className="muted" style={{ fontWeight: 600, fontSize: 12, marginLeft: 6 }}>· {activeRecipeTab === 'BASE' ? 'Base' : (flavors[activeFlavorIdx]?.name || 'this flavor')}</span>}</div>
           <div className="seg" style={{ marginBottom: 10 }}>
             <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
             <button className={mode === 'preview' ? 'on' : ''} onClick={() => setMode('preview')}>Internal preview</button>
@@ -1583,16 +1701,63 @@ export function RecipeBuilderStep({
         </div>
       )}
 
-      {/* 🗂 MY RECIPES / ▦ RECIPE TEMPLATES — reuse surfaces. My recipes copies a
-          past product's base slots; templates resolve curated items to the catalog. */}
+      {/* 🗂 MY RECIPES — THIS product's own recipes (Base + each flavor) as copy
+          sources (docs/PER_FLAVOR_RECIPES.md §5). Apply lands in the ACTIVE flavor
+          (or Base). The cross-product / curated lists live under Recipe library. */}
       {activeTab === 'recipes' && (
         <div className="card">
           <div className="section-title"><span className="ic"><FolderOpen size={16} strokeWidth={2} /></span> My recipes</div>
-          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Reuse a formulation from another of your products. <b>Apply</b> copies its base ingredients into {applyTargetLabel}{flavorMode === 'MULTI' ? ' — switch tabs to target a different flavor or Base' : ''}.</p>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>This product&apos;s recipes — the Base{flavorMode === 'MULTI' ? ' and each flavor' : ''}. <b>Apply to {applyTargetLabel}</b> copies that recipe into the recipe you&apos;re editing{flavorMode === 'MULTI' ? ' (switch the flavor tab above to retarget)' : ''}.</p>
+          {thisRecipes === null ? (
+            <p className="muted">Loading this product&apos;s recipes…</p>
+          ) : (
+            <table>
+              <thead><tr><th>Recipe</th><th className="r">Ingredients</th><th /></tr></thead>
+              <tbody>
+                {thisRecipes.map((r) => {
+                  const isActive = r.source === activeRecipeTab
+                  return (
+                    <tr key={r.source}>
+                      <td>{r.label}{isActive && <span className="muted tiny" style={{ marginLeft: 6 }}>· editing now</span>}</td>
+                      <td className="r">{r.ingredientCount}</td>
+                      <td className="r"><button type="button" className="btn sm" onClick={() => applyThisRecipe(r)} disabled={isActive || r.ingredientCount === 0} title={isActive ? 'This is the recipe you are editing.' : r.ingredientCount === 0 ? 'This recipe has no ingredients yet.' : `Apply to ${applyTargetLabel}`}>Apply to {applyTargetLabel}</button></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+          {flavorMode === 'MULTI' && (
+            <p className="muted tiny" style={{ marginTop: 8 }}>Tip: to copy the recipe you&apos;re editing OUT to other flavors, use <b>Copy this recipe to…</b> in the flavor tab bar.</p>
+          )}
+        </div>
+      )}
+      {/* ▦ RECIPE LIBRARY — the GLOBAL/cross-product sources: curated platform
+          formulations + this partner's OTHER products. Both apply into the ACTIVE
+          flavor (or Base). (docs/PER_FLAVOR_RECIPES.md §5.) */}
+      {activeTab === 'templates' && (
+        <div className="card">
+          <div className="section-title"><span className="ic"><LayoutGrid size={16} strokeWidth={2} /></span> Recipe library</div>
+          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Platform formulations + your other products. <b>Apply</b> lands in {applyTargetLabel}{flavorMode === 'MULTI' ? ' — switch the flavor tab above to retarget' : ''}.</p>
+          <div style={{ fontWeight: 700, fontSize: 12, margin: '4px 0 6px', color: 'var(--ink-700)' }}>Platform formulations</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {RECIPE_TEMPLATES.map((t) => (
+              <div key={t.id} className="lo-axis" style={{ marginTop: 0 }}>
+                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <b>{t.name}</b>
+                    <p className="muted tiny" style={{ margin: '2px 0 0' }}>{t.desc} · {t.items.length} ingredients</p>
+                  </div>
+                  <button type="button" className="btn sm" onClick={() => applyTemplate(t)}>Apply to {applyTargetLabel}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontWeight: 700, fontSize: 12, margin: '14px 0 6px', color: 'var(--ink-700)' }}>Your other products</div>
           {myRecipes === null ? (
-            <p className="muted">Loading your recipes…</p>
+            <p className="muted tiny">Loading your products…</p>
           ) : myRecipes.length === 0 ? (
-            <p className="muted">No other recipes yet — built products show here to reuse.</p>
+            <p className="muted tiny">No other products yet — built products show here to reuse.</p>
           ) : (
             <table>
               <thead><tr><th>Product</th><th className="r">Ingredients</th><th>Status</th><th /></tr></thead>
@@ -1602,31 +1767,12 @@ export function RecipeBuilderStep({
                     <td>{r.name || 'Untitled product'}</td>
                     <td className="r">{r.slots.length}</td>
                     <td><span className="muted tiny">{r.status.replace(/_/g, ' ').toLowerCase()}</span></td>
-                    <td className="r"><button type="button" className="btn sm" onClick={() => applyRecipe(r.slots)} disabled={r.slots.length === 0}>Apply</button></td>
+                    <td className="r"><button type="button" className="btn sm" onClick={() => applyRecipe(r.slots)} disabled={r.slots.length === 0}>Apply to {applyTargetLabel}</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-        </div>
-      )}
-      {activeTab === 'templates' && (
-        <div className="card">
-          <div className="section-title"><span className="ic"><LayoutGrid size={16} strokeWidth={2} /></span> Recipe library</div>
-          <p className="muted tiny" style={{ margin: '0 0 8px' }}>Start from a platform formulation — ingredients are matched to your catalog. <b>Start from this</b> applies into {applyTargetLabel}{flavorMode === 'MULTI' ? ' — switch tabs to target a different flavor or Base' : ''}.</p>
-          <div style={{ display: 'grid', gap: 8 }}>
-            {RECIPE_TEMPLATES.map((t) => (
-              <div key={t.id} className="lo-axis" style={{ marginTop: 0 }}>
-                <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <b>{t.name}</b>
-                    <p className="muted tiny" style={{ margin: '2px 0 0' }}>{t.desc} · {t.items.length} ingredients</p>
-                  </div>
-                  <button type="button" className="btn sm" onClick={() => applyTemplate(t)}>Start from this</button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
        </>
@@ -2009,6 +2155,8 @@ const CSS = `
 .rb .recipe-flavtab:hover:not(:disabled){color:var(--ink-900);background:var(--pink-50)}
 .rb .recipe-flavtab.on{color:var(--ink-900);background:#fff;border-color:var(--ink-200);border-bottom:1px solid #fff;font-weight:700}
 .rb .recipe-flavtab:disabled{opacity:.5;cursor:default}
+.rb .recipe-flavtab-prep{font-size:10px;font-weight:600;color:var(--pink-700);opacity:.85}
+.rb .recipe-empty{border-style:dashed;border-color:var(--pink-100);background:var(--pink-50)}
 .rb .recipe-flavtab.add{color:var(--pink-700);font-weight:600;border-style:dashed;border-color:var(--pink-100);border-radius:8px;margin-bottom:0}
 .rb .recipe-dup{position:relative;margin-left:auto}
 .rb .recipe-dup-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;background:#fff;border:1px solid var(--ink-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;min-width:200px;display:flex;flex-direction:column;gap:2px}
