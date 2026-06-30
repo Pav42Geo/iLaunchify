@@ -34,6 +34,16 @@ import type { PanelData } from '@ilaunchify/types'
 import { composeContainsAllergens } from '@ilaunchify/nutrition'
 import { recomputeMarketplacePanel } from '@/lib/recipe-recompute-actions'
 
+/** A flavor's recipe view for the per-flavor tabs (Slice 4). */
+export interface FlavorView {
+  id: string
+  name: string
+  swatchHex?: string | null
+  ingredients: IngredientRow[]
+  addOns?: IngredientAddOn[]
+  nutrition?: PanelData | null
+}
+
 export interface RecipeNutritionStudioProps {
   /** Template slug — used to recompute the Nutrition panel server-side on swap. */
   slug?: string
@@ -46,17 +56,29 @@ export interface RecipeNutritionStudioProps {
   servings?: string
   /** Intro copy shown above the studio. */
   about?: string
+  /** Per-flavor recipe tabs. When present (multi-flavor product), a tab bar lets
+   *  buyers switch flavors; the recipe + Nutrition Facts swap to that flavor and
+   *  live recompute routes to its FlavorPreset. Empty/absent = single-recipe. */
+  flavors?: FlavorView[]
 }
 
 export function RecipeNutritionStudio({
   slug,
-  ingredients,
-  ingredientAddOns = [],
-  nutrition,
+  ingredients: baseIngredients,
+  ingredientAddOns: baseAddOns = [],
+  nutrition: baseNutrition,
   netWeight,
   servings,
   about,
+  flavors,
 }: RecipeNutritionStudioProps) {
+  // Per-flavor tabs (Slice 4). null = the shared base recipe (current behavior).
+  const [activeFlavorId, setActiveFlavorId] = React.useState<string | null>(null)
+  const activeFlavor = flavors?.find((f) => f.id === activeFlavorId) ?? null
+  // The working recipe/panel/add-ons follow the active flavor (or the base).
+  const ingredients = activeFlavor?.ingredients ?? baseIngredients
+  const ingredientAddOns = activeFlavor?.addOns ?? baseAddOns
+  const nutrition = activeFlavor?.nutrition ?? baseNutrition
   // ---- live state (lifted verbatim from CustomizeRail) ----------------------
   // Per-ingredient swap state. Key = base ingredient id, value = picked option
   // id ('__default' means on the default).
@@ -142,7 +164,7 @@ export function RecipeNutritionStudio({
     setRecomputing(true)
     const picks = Object.fromEntries(activeSwaps)
     const t = setTimeout(() => {
-      recomputeMarketplacePanel(slug, { replacements: picks, addOnIds: sortedAddOnIds })
+      recomputeMarketplacePanel(slug, { replacements: picks, addOnIds: sortedAddOnIds, flavorPresetId: activeFlavorId ?? undefined })
         .then((panel) => {
           if (!cancelled) setLivePanel(panel)
         })
@@ -157,9 +179,20 @@ export function RecipeNutritionStudio({
       cancelled = true
       clearTimeout(t)
     }
-    // selectionKey captures swaps + add-ons; slug is stable per page.
+    // selectionKey captures swaps + add-ons; slug is stable per page; activeFlavorId
+    // re-routes the recompute to the selected flavor's recipe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectionKey, slug])
+  }, [selectionKey, slug, activeFlavorId])
+
+  // Switch flavor tab — reset the customization so the panel shows that flavor's
+  // base recipe; the buyer can then swap/toggle within it.
+  function selectFlavor(id: string | null) {
+    setActiveFlavorId(id)
+    setReplacements({})
+    setAddOnIds([])
+    setOpenRowId(null)
+    setLivePanel(null)
+  }
 
   const shownPanel = livePanel ?? nutrition
 
@@ -210,9 +243,45 @@ export function RecipeNutritionStudio({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(300px,380px)_minmax(300px,360px)] lg:items-start">
         {/* ===== LEFT RAIL — Recipe ====================================== */}
         <div className={cardCx}>
+          {/* Per-flavor tabs (Slice 4) — each flavor carries its own recipe + Facts. */}
+          {flavors && flavors.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-1.5" role="tablist" aria-label="Flavor recipe">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeFlavorId === null}
+                onClick={() => selectFlavor(null)}
+                className={
+                  'rounded-full border px-3 py-1 text-[12.5px] font-semibold transition-colors ' +
+                  (activeFlavorId === null ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 bg-white text-ink-700 hover:border-ink-500')
+                }
+              >
+                Base
+              </button>
+              {flavors.map((f) => {
+                const on = activeFlavorId === f.id
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => selectFlavor(f.id)}
+                    className={
+                      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] font-semibold transition-colors ' +
+                      (on ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300 bg-white text-ink-700 hover:border-ink-500')
+                    }
+                  >
+                    {f.swatchHex && <span className="h-2.5 w-2.5 rounded-full border border-white/40" style={{ backgroundColor: f.swatchHex }} />}
+                    {f.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <header className="mb-3">
             <h3 className="font-display text-[18px] font-semibold leading-tight tracking-[-0.01em] text-ink-900">
-              {isPrivateLabel ? 'Build Your Recipe' : 'Recipe'}
+              {activeFlavor ? `${activeFlavor.name} recipe` : isPrivateLabel ? 'Build Your Recipe' : 'Recipe'}
             </h3>
           </header>
 

@@ -18,6 +18,7 @@ import { ProductCarousel } from '@/components/ProductCarousel'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
 import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
+import { getTemplateFlavorRecipes } from '@/lib/flavor-recipe-detail'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
@@ -96,6 +97,8 @@ export default async function ProductDetailPage({
   // fixture when the template carries recipe data; otherwise leaves the fixture
   // (fixture-only demos + non-food domains render unchanged).
   const recipeDetail = await getTemplateRecipeDetail(template.slug)
+  // Slice 4 — per-flavor recipes for the Recipe-tab flavor tabs (multi-flavor only).
+  const flavorRecipes = await getTemplateFlavorRecipes(template.slug)
   // Real product images (hero first) for the gallery; [] → emoji+gradient fallback.
   const galleryImages = await getTemplateGalleryImages(template.slug)
   // A product is "recipe-backed" if the DB gave us real ingredients, a computed/
@@ -352,6 +355,7 @@ export default async function ProductDetailPage({
               domain={recipeDetail.domain}
               recipeDetail={recipeDetail}
               hasRealRecipe={hasRealRecipe}
+              flavors={flavorRecipes}
             />
           }
           packaging={<PackingTab detail={detail} />}
@@ -595,6 +599,7 @@ function RecipeTab({
   domain,
   recipeDetail,
   hasRealRecipe,
+  flavors,
 }: {
   template: SampleTemplate
   detail: ReturnType<typeof findTemplateDetail>
@@ -602,6 +607,7 @@ function RecipeTab({
   domain?: DomainFacts
   recipeDetail: Awaited<ReturnType<typeof getTemplateRecipeDetail>>
   hasRealRecipe: boolean
+  flavors: Awaited<ReturnType<typeof getTemplateFlavorRecipes>>
 }) {
   // Cosmetic / pet declaration (or a DB product with no swappable food slots) —
   // there's nothing to customize, so show the declaration block only.
@@ -626,6 +632,7 @@ function RecipeTab({
       nutrition={detail.nutrition}
       netWeight={detail.netWeight}
       servings={detail.sizeChart[0]?.servings}
+      flavors={flavors}
     />
   )
 }

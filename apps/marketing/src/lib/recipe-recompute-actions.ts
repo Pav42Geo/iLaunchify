@@ -21,14 +21,28 @@ import {
   composeMarketplaceRows,
   type RecomposeSlot,
   type RecomposeOptional,
+  type NutritionAudience,
 } from '@ilaunchify/nutrition'
 import type { PanelData } from '@ilaunchify/types'
 
 export interface RecomputeSelection {
-  /** Key `slot-${index}` → TemplateIngredientReplacement.id ('__default'/absent = base). */
+  /** Key `slot-${index}` → replacement id ('__default'/absent = base). */
   replacements?: Record<string, string>
-  /** Selected TemplateOptionalIngredient ids. */
+  /** Selected optional-ingredient ids. */
   addOnIds?: string[]
+  /** When set, recompute from this flavor's per-flavor recipe (FlavorRecipeSlot)
+   *  instead of the template's base recipe. Slice 4. */
+  flavorPresetId?: string
+}
+
+const INGREDIENT_SELECT = { name: true, internalName: true, nutritionPer100g: true, densityGPerML: true } as const
+
+function toIng(i: { name: string; internalName: string | null; nutritionPer100g: unknown; densityGPerML: number | null }) {
+  return {
+    name: i.internalName ?? i.name,
+    per100g: (i.nutritionPer100g ?? {}) as Record<string, number>,
+    densityGPerMl: i.densityGPerML ?? undefined,
+  }
 }
 
 /**
@@ -41,6 +55,45 @@ export async function recomputeMarketplacePanel(
   selection: RecomputeSelection,
 ): Promise<PanelData | null> {
   try {
+    // Slice 4 — per-flavor recompute: read the flavor's own FlavorRecipeSlot[]
+    // (+ replacements / optionals) and its parent template's serving geometry.
+    // FlavorRecipe* are cast-guarded (post-date the generated client until db:push).
+    if (selection.flavorPresetId) {
+      const fp = await (prisma as unknown as {
+        flavorPreset: { findUnique: (a: unknown) => Promise<{
+          recipeSlots: { weightG: unknown; baseIngredient: { name: string; internalName: string | null; nutritionPer100g: unknown; densityGPerML: number | null }; replacements: { id: string; weightGOverride: unknown; ingredient: { name: string; internalName: string | null; nutritionPer100g: unknown; densityGPerML: number | null } }[] }[]
+          recipeOptionals: { id: string; weightG: unknown; ingredient: { name: string; internalName: string | null; nutritionPer100g: unknown; densityGPerML: number | null } }[]
+          productTemplate: { labelingType: string; nutrientSource: string; intendedAgeGroup: string | null; variants: { servingSizeG: unknown; servingsPerContainer: unknown; servingSizeDesc: string | null }[] }
+        } | null> }
+      }).flavorPreset.findUnique({
+        where: { id: selection.flavorPresetId },
+        select: {
+          recipeSlots: {
+            orderBy: { displayOrder: 'asc' },
+            select: { weightG: true, baseIngredient: { select: INGREDIENT_SELECT }, replacements: { orderBy: { displayOrder: 'asc' }, select: { id: true, weightGOverride: true, ingredient: { select: INGREDIENT_SELECT } } } },
+          },
+          recipeOptionals: { orderBy: { displayOrder: 'asc' }, select: { id: true, weightG: true, ingredient: { select: INGREDIENT_SELECT } } },
+          productTemplate: { select: { labelingType: true, nutrientSource: true, intendedAgeGroup: true, variants: { where: { isActive: true }, orderBy: { createdAt: 'asc' }, take: 1, select: { servingSizeG: true, servingsPerContainer: true, servingSizeDesc: true } } } },
+        },
+      })
+      if (!fp || fp.recipeSlots.length === 0) return null
+      const t = fp.productTemplate
+      if (t.nutrientSource === 'DECLARED' || t.labelingType !== 'FOOD') return null
+      const variant = t.variants[0]
+      const servingSizeG = Number(variant?.servingSizeG) || 0
+      const servingsPerPackage = Number(variant?.servingsPerContainer) || 1
+      if (servingSizeG <= 0) return null
+      const composeSlots: RecomposeSlot[] = fp.recipeSlots.map((s) => ({
+        weightG: Number(s.weightG) || 0,
+        base: toIng(s.baseIngredient),
+        replacements: s.replacements.map((r) => ({ id: r.id, weightGOverride: r.weightGOverride != null ? Number(r.weightGOverride) : null, ingredient: toIng(r.ingredient) })),
+      }))
+      const composeOptionals: RecomposeOptional[] = fp.recipeOptionals.map((o) => ({ id: o.id, weightG: Number(o.weightG) || 0, ingredient: toIng(o.ingredient) }))
+      const rows = composeMarketplaceRows(composeSlots, composeOptionals, { replacements: selection.replacements ?? {}, addOnIds: selection.addOnIds ?? [] })
+      const result = calculateLabel(rows, { basis: 'serving', servingSizeG, servingsPerPackage }, { audience: (t.intendedAgeGroup ?? 'GENERAL') as NutritionAudience })
+      return toPanelData(result, { suggestedServing: variant?.servingSizeDesc ?? undefined, showVoluntaryFats: true })
+    }
+
     const tmpl = await prisma.productTemplate.findUnique({
       where: { slug },
       select: {
@@ -96,13 +149,7 @@ export async function recomputeMarketplacePanel(
     const servingsPerPackage = Number(variant?.servingsPerContainer) || 1
     if (servingSizeG <= 0) return null
 
-    // Map the DB rows into the pure composer's shape.
-    const toIng = (i: { name: string; internalName: string | null; nutritionPer100g: unknown; densityGPerML: number | null }) => ({
-      name: i.internalName ?? i.name,
-      per100g: (i.nutritionPer100g ?? {}) as Record<string, number>,
-      densityGPerMl: i.densityGPerML ?? undefined,
-    })
-
+    // Map the DB rows into the pure composer's shape (toIng is module-level).
     const composeSlots: RecomposeSlot[] = slots.map((s) => ({
       weightG: Number(s.weightG) || 0,
       base: toIng(s.baseIngredient),
