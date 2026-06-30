@@ -4555,7 +4555,8 @@ enum PackagingTopology {
 }
 
 // Slice C7.c — explicit container category for a PackagingType, used to derive the
-// implied multi-component slots (CONTAINER / CLOSURE / SEAL).
+// implied multi-component slots (CONTAINER / CLOSURE / SEAL). Expanded 2026-06-30
+// to cover the full package-form catalog (additive — original values kept).
 enum ContainerCategory {
   BOTTLE
   JAR
@@ -4567,6 +4568,27 @@ enum ContainerCategory {
   BOX
   CARTON
   CASE
+  // — expanded base containers —
+  BAG
+  TUB
+  CUP
+  TIN
+  DRUM
+  JUG
+  TANK
+  PAIL
+  BOWL
+  POD
+  BASKET
+  CANISTER
+  PACKET
+  ENVELOPE
+  STICK
+  WRAP
+  TRAY
+  SLEEVE
+  ROLLSTOCK
+  PEGGED
   OTHER
 }
 
@@ -4671,6 +4693,10 @@ model PackagingType {
   // which component slots CONTAINER/CLOSURE/SEAL a product implies). Nullable: admins
   // set it during curation; no existing PackagingType rows to backfill.
   containerCategory  ContainerCategory?
+  // Product domains this package form applies to (LabelingType keys: FOOD /
+  // DIETARY_SUPPLEMENT / PET_PRODUCT / OTC / COSMETIC). Empty = all domains.
+  // Scopes the marketplace packaging filter + the partner picker. Admin-managed.
+  applicableLabelingTypes String[]
   defaultDimensions  Json? // { lengthMm, widthMm, heightMm }
   defaultSurfaces    Json? // [{ name, defaultBleedMm }]
   status             PackagingTypeStatus        @default(ACTIVE)

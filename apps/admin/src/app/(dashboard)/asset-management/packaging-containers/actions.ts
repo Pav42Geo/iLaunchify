@@ -31,3 +31,29 @@ export async function setContainerDieCut(
     return { ok: false, error: `Could not save: ${(err as Error).message}` }
   }
 }
+
+/** Product domains (LabelingType keys) a packaging type applies to. Empty = all.
+ *  Scopes the marketplace packaging filter + the partner picker. Cast-guarded —
+ *  applicableLabelingTypes lands with the 2026-06-30 migration. */
+export async function setContainerDomains(
+  packagingTypeId: string,
+  domains: string[],
+): Promise<Result> {
+  try {
+    const user = await requireUser()
+    if (user.role !== 'ADMIN') return { ok: false, error: 'Admin only.' }
+    const allowed = new Set(['FOOD', 'DIETARY_SUPPLEMENT', 'PET_PRODUCT', 'OTC', 'COSMETIC'])
+    const clean = [...new Set(domains)].filter((d) => allowed.has(d))
+    await (prisma as unknown as {
+      packagingType: { update: (a: unknown) => Promise<unknown> }
+    }).packagingType.update({
+      where: { id: packagingTypeId },
+      data: { applicableLabelingTypes: clean },
+    })
+    revalidatePath('/asset-management/packaging-containers')
+    return { ok: true }
+  } catch (err) {
+    console.error('[setContainerDomains] failed:', err)
+    return { ok: false, error: `Could not save: ${(err as Error).message}` }
+  }
+}

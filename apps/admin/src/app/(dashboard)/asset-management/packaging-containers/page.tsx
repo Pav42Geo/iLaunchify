@@ -6,6 +6,7 @@
 import { prisma } from '@ilaunchify/db'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { DieCutPicker, type DieCutOption } from './DieCutPicker'
+import { DomainPicker } from './DomainPicker'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Container Die-lines — Admin' }
@@ -17,10 +18,12 @@ interface ContainerRow {
   containerCategory: string | null
   status: string
   defaultDieCutTemplateId: string | null
+  applicableLabelingTypes: string[]
 }
 
 export default async function PackagingContainersPage() {
-  // Cast-guarded: defaultDieCutTemplateId lands with the #135 migration.
+  // Cast-guarded: defaultDieCutTemplateId + applicableLabelingTypes land with
+  // their migrations (run `pnpm db:push` + `db:generate`).
   const containers = await (prisma as unknown as {
     packagingType: { findMany: (a: unknown) => Promise<ContainerRow[]> }
   }).packagingType
@@ -33,6 +36,7 @@ export default async function PackagingContainersPage() {
         containerCategory: true,
         status: true,
         defaultDieCutTemplateId: true,
+        applicableLabelingTypes: true,
       },
     })
     .catch(() => [] as ContainerRow[])
@@ -85,6 +89,7 @@ export default async function PackagingContainersPage() {
               <tr className="border-b border-ink-200 bg-ink-50 text-left text-[12px] font-bold uppercase tracking-wide text-ink-700">
                 <th className="px-4 py-2.5">Container</th>
                 <th className="px-3 py-2.5">Category</th>
+                <th className="px-3 py-2.5">Domains</th>
                 <th className="px-3 py-2.5">Status</th>
                 <th className="px-3 py-2.5">Default die-line</th>
               </tr>
@@ -97,6 +102,9 @@ export default async function PackagingContainersPage() {
                     <div className="mt-0.5 text-[11px] text-ink-500">{c.slug}</div>
                   </td>
                   <td className="px-3 py-3 text-ink-700">{c.containerCategory ?? '—'}</td>
+                  <td className="px-3 py-3">
+                    <DomainPicker packagingTypeId={c.id} value={c.applicableLabelingTypes ?? []} />
+                  </td>
                   <td className="px-3 py-3">
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${

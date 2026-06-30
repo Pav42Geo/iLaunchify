@@ -16,18 +16,37 @@ export interface CertOption {
   name: string
 }
 
+/** Map a product domain (LabelingType) to the cert catalog's applicableLabelingTypes
+ *  vocab (FOOD / BEVERAGE / SUPPLEMENT / COSMETIC / PET_PRODUCT / …). */
+function certDomainSlugs(domain: string): string[] {
+  switch (domain) {
+    case 'DIETARY_SUPPLEMENT': return ['SUPPLEMENT']
+    case 'FOOD': return ['FOOD', 'BEVERAGE']
+    case 'COSMETIC': return ['COSMETIC']
+    case 'PET_PRODUCT': return ['PET_PRODUCT']
+    default: return [] // OTC / unknown → only universal certs
+  }
+}
+
 /**
  * Certification options for the More-filters group. Active CertificateTypes,
- * scoped to the selected market when one is given (applicableMarketSlugs holds
- * the market code or '*' for all-markets). Falls back to [] on error.
+ * scoped to the selected market (applicableMarketSlugs) and — when the page is
+ * scoped to a domain — to certs that apply to that domain (or to all domains,
+ * i.e. empty applicableLabelingTypes). Falls back to [] on error.
  */
-export async function getCertificationOptions(marketCode?: string): Promise<CertOption[]> {
+export async function getCertificationOptions(marketCode?: string, domain?: string | null): Promise<CertOption[]> {
   try {
     const rows = await prisma.certificateType.findMany({
       where: {
         status: 'ACTIVE',
         ...(marketCode
           ? { applicableMarketSlugs: { hasSome: [marketCode, '*'] } }
+          : {}),
+        ...(domain
+          ? { OR: [
+              { applicableLabelingTypes: { isEmpty: true } },
+              { applicableLabelingTypes: { hasSome: certDomainSlugs(domain) } },
+            ] }
           : {}),
       },
       orderBy: { name: 'asc' },
@@ -52,10 +71,22 @@ export interface PackagingFilterGroup {
  * ContainerCategory parent. Parent selects all children; children narrow.
  * Falls back to [] on error.
  */
-export async function getPackagingFilterGroups(): Promise<PackagingFilterGroup[]> {
+export async function getPackagingFilterGroups(domain?: string | null): Promise<PackagingFilterGroup[]> {
   try {
-    const rows = await prisma.packagingType.findMany({
-      where: { status: 'ACTIVE' },
+    // applicableLabelingTypes is a pending-migration column — cast-guarded so the
+    // build stays green before db:push. Empty applicableLabelingTypes = all domains.
+    const rows = await (prisma as unknown as {
+      packagingType: { findMany: (a: unknown) => Promise<Array<{ slug: string; displayName: string; containerCategory: string | null }>> }
+    }).packagingType.findMany({
+      where: {
+        status: 'ACTIVE',
+        ...(domain
+          ? { OR: [
+              { applicableLabelingTypes: { isEmpty: true } },
+              { applicableLabelingTypes: { hasSome: [domain] } },
+            ] }
+          : {}),
+      },
       orderBy: { displayName: 'asc' },
       select: { slug: true, displayName: true, containerCategory: true },
     })

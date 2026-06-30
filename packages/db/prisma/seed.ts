@@ -33,6 +33,7 @@ import { seedTemplateLibrary } from './seed-template-library'
 import { seedFinishTypes } from './seed-finish-types'
 import { seedProductionOptions } from './seed-production-options'
 import { seedPackagingTypes } from './seed-packaging-types'
+import { seedPackagingForms } from './seed-packaging-forms'
 import { seedNiches } from './seed-niches'
 import { seedTicketCategories } from './seed-ticket-categories'
 // 2026-06-02 V1.1 marketplace taxonomy — locked 4-layer model.
@@ -127,6 +128,7 @@ async function main() {
   // so the partner packaging picker is populated and multi-component slot
   // derivation has real data.
   await seedPackagingTypes(prisma)
+  await seedPackagingForms(prisma) // 60 industry package forms (Bag, Bag In Box, …) + domains
   await seedPackingTypes(prisma) // 14-group product packing taxonomy (turnkey builder)
 
   // --- Marketplace taxonomy (V1.1 — 2026-06-02 locked 4-layer model) ---

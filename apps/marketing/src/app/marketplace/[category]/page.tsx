@@ -110,8 +110,8 @@ export default async function CategoryPage({
     }),
     getCategoryTemplateCount(category),
     loadLifestyleTagGroups(),
-    getCertificationOptions(marketCode),
-    getPackagingFilterGroups(),
+    getCertificationOptions(marketCode, categoryInfo.domain),
+    getPackagingFilterGroups(categoryInfo.domain),
     getMarketOptions(),
   ])
 
