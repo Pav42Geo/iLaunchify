@@ -49,6 +49,19 @@ export interface ProductDetailHeroProps {
     string,
     { priceDeltaCents: number; saleDeltaCents: number | null }
   >
+  // Variety-pack model (docs/VARIETY_PACK_MODEL.md) — passed straight through to
+  // the configurator's multi-flavor pack flow.
+  packSizes?: {
+    variantId: string
+    unitsPerPack: number
+    label: string
+    pricePerPackCents: number | null
+    moqPacks: number | null
+  }[]
+  minFlavors?: number | null
+  fillRule?: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED' | null
+  pricingBasis?: 'PER_FLAVOR' | 'PER_PACK' | null
+  flavorUnitPriceCents?: Record<string, number | null>
 
   // ----- sample drawer props (null sample → no sample button) -----
   sample?: {
@@ -74,8 +87,16 @@ export function ProductDetailHero({
   flavorPool,
   changeoverDays,
   flavorPricing,
+  packSizes,
+  minFlavors,
+  fillRule,
+  pricingBasis,
+  flavorUnitPriceCents,
   sample,
 }: ProductDetailHeroProps) {
+  // Bundle the variety-pack model props once — passed through to both
+  // configurator call sites (sample-wrapped + bare).
+  const packProps = { packSizes, minFlavors, fillRule, pricingBasis, flavorUnitPriceCents }
   // Selected packaging — drives the per-package hero image when one exists.
   const [selectedPackagingId, setSelectedPackagingId] = React.useState<string>(
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
@@ -119,6 +140,7 @@ export function ProductDetailHero({
                 flavorPool={flavorPool}
                 changeoverDays={changeoverDays}
                 flavorPricing={flavorPricing}
+                {...packProps}
                 onPackagingChange={setSelectedPackagingId}
                 onOpenSample={open}
               />
@@ -137,6 +159,7 @@ export function ProductDetailHero({
             flavorPool={flavorPool}
             changeoverDays={changeoverDays}
             flavorPricing={flavorPricing}
+            {...packProps}
             onPackagingChange={setSelectedPackagingId}
           />
         )}

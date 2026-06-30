@@ -302,6 +302,11 @@ export default async function ProductDetailPage({
             flavorPool={packData.pool}
             changeoverDays={packData.changeoverDays}
             flavorPricing={packData.flavorPricing}
+            packSizes={packData.packSizes}
+            minFlavors={packData.minFlavors}
+            fillRule={packData.fillRule}
+            pricingBasis={packData.pricingBasis}
+            flavorUnitPriceCents={packData.flavorUnitPriceCents}
             sample={
               sampleData.options.length > 0
                 ? {

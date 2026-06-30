@@ -39,6 +39,15 @@ interface ProductSpec {
   packingType: string
   flavorArrangement: 'SINGLE' | 'MIXED' | 'SEPARATED'
   maxFlavorsPerPack?: number
+  // Variety-pack model (docs/VARIETY_PACK_MODEL.md §4-6). Optional — only the
+  // pick-N demo authors these; cast-written so a stale client still seeds.
+  minFlavorsPerPack?: number
+  flavorFillRule?: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED'
+  pricingBasis?: 'PER_FLAVOR' | 'PER_PACK'
+  /** Offered pack sizes (one ProductTemplateVariant per size). */
+  packSizes?: { unitsPerPack: number; moqPacks: number; pricePerPackCents?: number | null }[]
+  /** PER_FLAVOR absolute per-unit price (cents) for each flavor, by index. */
+  flavorUnitPriceCents?: number[]
   container: string
   servingSizeG: number
   servingsPerContainer: number
@@ -317,7 +326,20 @@ const SPECS: ProductSpec[] = [
     packingProfileSlug: 'customizable-pick-n',
     packingType: 'CUSTOMIZABLE_PICK_N',
     flavorArrangement: 'MIXED',
-    maxFlavorsPerPack: 6,
+    // Variety-pack model: distinct-flavor cap 3, floor 2; creator fills the
+    // remaining pack units; per-flavor pricing. Offered pack sizes 6 / 12 / 24
+    // (units-per-pack = the size). docs/VARIETY_PACK_MODEL.md §4-6.
+    maxFlavorsPerPack: 3,
+    minFlavorsPerPack: 2,
+    flavorFillRule: 'CREATOR_CHOOSES',
+    pricingBasis: 'PER_FLAVOR',
+    packSizes: [
+      { unitsPerPack: 6, moqPacks: 100 },
+      { unitsPerPack: 12, moqPacks: 60 },
+      { unitsPerPack: 24, moqPacks: 40 },
+    ],
+    // PER_FLAVOR absolute per-unit prices (cents), aligned to the flavor list.
+    flavorUnitPriceCents: [250, 270, 280, 260, 255],
     container: 'Build-your-own 6-box',
     servingSizeG: 45,
     servingsPerContainer: 6,
@@ -424,6 +446,13 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
     const ratingAvg = (spec as { ratingAvg?: number }).ratingAvg ?? null
     const ratingCount = (spec as { ratingCount?: number }).ratingCount ?? 0
     const manufacturingProcesses = (spec as { manufacturingProcesses?: string[] }).manufacturingProcesses ?? []
+    // Variety-pack model columns (additive; cast-written so a stale client still
+    // seeds — the marketplace loader reads them cast-guarded too).
+    const packModelData = {
+      ...(spec.minFlavorsPerPack != null ? { minFlavorsPerPack: spec.minFlavorsPerPack } : {}),
+      ...(spec.flavorFillRule ? { flavorFillRule: spec.flavorFillRule } : {}),
+      ...(spec.pricingBasis ? { pricingBasis: spec.pricingBasis } : {}),
+    } as Record<string, unknown>
     const tpl = await prisma.productTemplate.upsert({
       where: { slug: spec.slug },
       update: {
@@ -432,8 +461,9 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
         longDescription: spec.about, marketingDetail: marketingDetail as object,
         packingProfileId: profile?.id ?? null, maxFlavorsPerPack: spec.maxFlavorsPerPack ?? null,
         ratingAvg, ratingCount, manufacturingProcesses,
+        ...packModelData,
         ...(spec.formulationData ? { formulationData: spec.formulationData as object } : {}),
-      },
+      } as never,
       create: {
         slug: spec.slug, name: spec.name, description: spec.description, subcategoryId: sub.id,
         manufacturerServiceId: manuf?.id ?? null, status: 'PUBLISHED', labelingType: spec.domain,
@@ -441,8 +471,9 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
         longDescription: spec.about, marketingDetail: marketingDetail as object,
         packingProfileId: profile?.id ?? null, maxFlavorsPerPack: spec.maxFlavorsPerPack ?? null,
         ratingAvg, ratingCount, manufacturingProcesses,
+        ...packModelData,
         ...(spec.formulationData ? { formulationData: spec.formulationData as object } : {}),
-      },
+      } as never,
       select: { id: true },
     })
 
@@ -477,29 +508,59 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
       }
     }
 
-    // Variant.
-    const existingVariant = await prisma.productTemplateVariant.findFirst({ where: { productTemplateId: tpl.id }, select: { id: true } })
-    const variantData = {
+    // Variant(s). For pack-based products (spec.packSizes) we author ONE
+    // ProductTemplateVariant PER OFFERED SIZE (the pack matrix — VARIETY_PACK_MODEL
+    // §4.2), each carrying a typed unitsPerPack + pack-MOQ; otherwise a single
+    // variant as before. unitsPerPack/pricePerPackCents are cast-written.
+    const baseVariantData = {
       flavor: spec.flavorArrangement === 'SINGLE' ? (spec.flavors?.[0]?.name ?? null) : null,
       containerFormat: spec.container, containerSizeG: spec.net.unit === 'g' ? spec.net.value : null,
       servingsPerContainer: spec.servingsPerContainer, servingSizeG: spec.servingSizeG,
       servingSizeDesc: `${spec.servingSizeG} ${spec.net.unit === 'mL' ? 'mL' : 'g'}`,
       netContentValue: spec.net.value, netContentUnit: spec.net.unit, netContentDisplay: spec.net.display,
       packingType: spec.packingType as never, flavorArrangement: spec.flavorArrangement as never,
-      sku: `DEMO-${spec.slug.toUpperCase().replace(/[^A-Z0-9]+/g, '-')}`,
-      moqMin: spec.tiers[0]?.minQty ?? 500, moqMax: 20000, leadTimeDays: 28,
+      moqMax: 20000, leadTimeDays: 28,
       dieCutTemplateId: dieCut?.id ?? null,
     }
-    if (existingVariant) await prisma.productTemplateVariant.update({ where: { id: existingVariant.id }, data: variantData })
-    else await prisma.productTemplateVariant.create({ data: { productTemplateId: tpl.id, ...variantData } })
+    if (spec.packSizes && spec.packSizes.length > 0) {
+      // Replace all variants with one per offered pack size (idempotent).
+      await prisma.productTemplateVariant.deleteMany({ where: { productTemplateId: tpl.id } }).catch(() => {})
+      for (const ps of spec.packSizes) {
+        await prisma.productTemplateVariant.create({
+          data: {
+            productTemplateId: tpl.id,
+            ...baseVariantData,
+            sku: `DEMO-${spec.slug.toUpperCase().replace(/[^A-Z0-9]+/g, '-')}-${ps.unitsPerPack}PK`,
+            moqMin: ps.moqPacks,
+            unitsPerPack: ps.unitsPerPack,
+            pricePerPackCents: ps.pricePerPackCents ?? null,
+          } as never,
+        })
+      }
+    } else {
+      const existingVariant = await prisma.productTemplateVariant.findFirst({ where: { productTemplateId: tpl.id }, select: { id: true } })
+      const variantData = {
+        ...baseVariantData,
+        sku: `DEMO-${spec.slug.toUpperCase().replace(/[^A-Z0-9]+/g, '-')}`,
+        moqMin: spec.tiers[0]?.minQty ?? 500,
+      }
+      if (existingVariant) await prisma.productTemplateVariant.update({ where: { id: existingVariant.id }, data: variantData })
+      else await prisma.productTemplateVariant.create({ data: { productTemplateId: tpl.id, ...variantData } })
+    }
 
-    // Flavor presets (idempotent replace).
+    // Flavor presets (idempotent replace). PER_FLAVOR products carry a per-unit
+    // price on each preset (unitPriceCents — additive, cast-written).
     await prisma.flavorPreset.deleteMany({ where: { productTemplateId: tpl.id } })
     if (spec.flavors && spec.flavors.length > 0) {
       let fo = 0
       for (const f of spec.flavors) {
+        const unitPriceCents = spec.flavorUnitPriceCents?.[fo] ?? null
         await prisma.flavorPreset.create({
-          data: { productTemplateId: tpl.id, name: f.name, swatchHex: f.color, statementOfIdentity: f.soi ?? null, slotResolution: {} as object, sortOrder: fo++ },
+          data: {
+            productTemplateId: tpl.id, name: f.name, swatchHex: f.color,
+            statementOfIdentity: f.soi ?? null, slotResolution: {} as object, sortOrder: fo++,
+            ...(unitPriceCents != null ? { unitPriceCents } : {}),
+          } as never,
         })
       }
     }

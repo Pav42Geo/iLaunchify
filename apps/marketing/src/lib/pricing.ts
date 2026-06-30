@@ -12,6 +12,18 @@ export { applyFlavorChangeover } from '@ilaunchify/ui'
  * PackBuilder only when `flavorMode === 'MULTI'`; otherwise it keeps the single
  * FlavorSwatch. `changeoverDays` (OrderSettings) drives the live D5 lead-time.
  */
+/** One offered pack size for the PDP variety flow (maps to a
+ *  ProductTemplateVariant). Drives the VarietyPackBuilder size chooser. */
+export interface PackSizeOption {
+  variantId: string
+  unitsPerPack: number
+  label: string
+  /** Flat price per pack (cents) — only meaningful when basis = PER_PACK. */
+  pricePerPackCents: number | null
+  /** MOQ in PACKS for this size (variant.moqMin reinterpreted for pack-based). */
+  moqPacks: number | null
+}
+
 export interface PackBuilderData {
   flavorMode: 'SINGLE' | 'MULTI'
   maxFlavorsPerPack: number | null
@@ -24,6 +36,21 @@ export interface PackBuilderData {
     string,
     { priceDeltaCents: number; saleDeltaCents: number | null }
   >
+
+  /* ── Variety-pack model (docs/VARIETY_PACK_MODEL.md §4-6) ─────────────────
+     Cast-guarded reads of the additive pack columns. Empty / null when the
+     migration hasn't run or the manufacturer didn't author a pack matrix —
+     the PDP synthesizes a single fallback size in that case. */
+  /** Offered pack sizes (variants that carry a typed `unitsPerPack`). */
+  packSizes: PackSizeOption[]
+  /** Distinct-flavor floor. null → default 1 (or 2 once authored). */
+  minFlavors: number | null
+  /** Remainder distribution rule. null → CREATOR_CHOOSES default. */
+  fillRule: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED' | null
+  /** Pricing basis. null → PER_FLAVOR default. */
+  pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
+  /** Per-flavor absolute unit price (cents), keyed by flavor id. PER_FLAVOR. */
+  flavorUnitPriceCents: Record<string, number | null>
 }
 
 export async function getPackBuilderData(slug: string): Promise<PackBuilderData> {
@@ -49,6 +76,11 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
       pool: [],
       changeoverDays: settings.changeoverDays,
       flavorPricing: {},
+      packSizes: [],
+      minFlavors: null,
+      fillRule: null,
+      pricingBasis: null,
+      flavorUnitPriceCents: {},
     }
   }
   // Per-flavor price deltas for the PDP flavor cards. saleDeltaCents stays null
@@ -58,6 +90,14 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
   for (const f of template.flavorPresets) {
     flavorPricing[f.id] = { priceDeltaCents: f.priceDeltaCents, saleDeltaCents: null }
   }
+
+  // Variety-pack model — read the additive columns through a cast guard so this
+  // compiles against the (possibly stale) generated client that doesn't type
+  // them yet (mirrors getTemplateDetailOverrides in lib/templates.ts). Reads are
+  // wrapped in try/catch: a P2022 "column does not exist" pre-push must not crash
+  // the PDP — the configurator's pre-migration fallback covers an empty result.
+  const pack = await readPackModel(slug)
+
   return {
     flavorMode: template.packingProfile?.flavorMode === 'MULTI' ? 'MULTI' : 'SINGLE',
     maxFlavorsPerPack: template.maxFlavorsPerPack,
@@ -69,6 +109,101 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
     })),
     changeoverDays: settings.changeoverDays,
     flavorPricing,
+    ...pack,
+  }
+}
+
+/**
+ * Cast-guarded read of the additive variety-pack columns
+ * (`ProductTemplate.minFlavorsPerPack/flavorFillRule/pricingBasis`,
+ * `ProductTemplateVariant.unitsPerPack/pricePerPackCents`,
+ * `FlavorPreset.unitPriceCents`). Returns empty defaults on any failure so the
+ * PDP renders the new flow via its synthesized-fallback path pre-migration.
+ */
+async function readPackModel(slug: string): Promise<{
+  packSizes: PackSizeOption[]
+  minFlavors: number | null
+  fillRule: PackBuilderData['fillRule']
+  pricingBasis: PackBuilderData['pricingBasis']
+  flavorUnitPriceCents: Record<string, number | null>
+}> {
+  const empty = {
+    packSizes: [] as PackSizeOption[],
+    minFlavors: null,
+    fillRule: null as PackBuilderData['fillRule'],
+    pricingBasis: null as PackBuilderData['pricingBasis'],
+    flavorUnitPriceCents: {} as Record<string, number | null>,
+  }
+  try {
+    const t = await (prisma as unknown as {
+      productTemplate: {
+        findUnique: (a: unknown) => Promise<{
+          minFlavorsPerPack: number | null
+          flavorFillRule: PackBuilderData['fillRule']
+          pricingBasis: PackBuilderData['pricingBasis']
+          variants: Array<{
+            id: string
+            isActive: boolean
+            unitsPerPack: number | null
+            pricePerPackCents: number | null
+            moqMin: number | null
+            containerFormat: string | null
+            netContentDisplay: string | null
+          }>
+          flavorPresets: Array<{ id: string; unitPriceCents: number | null }>
+        } | null>
+      }
+    }).productTemplate.findUnique({
+      where: { slug },
+      select: {
+        minFlavorsPerPack: true,
+        flavorFillRule: true,
+        pricingBasis: true,
+        variants: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            isActive: true,
+            unitsPerPack: true,
+            pricePerPackCents: true,
+            moqMin: true,
+            containerFormat: true,
+            netContentDisplay: true,
+          },
+        },
+        flavorPresets: {
+          where: { status: 'ACTIVE' },
+          select: { id: true, unitPriceCents: true },
+        },
+      },
+    })
+    if (!t) return empty
+
+    // Offered pack sizes = variants that carry a typed unitsPerPack (the pack
+    // matrix the builder authors). Variants without one aren't pack sizes.
+    const packSizes: PackSizeOption[] = (t.variants ?? [])
+      .filter((v) => typeof v.unitsPerPack === 'number' && (v.unitsPerPack ?? 0) > 0)
+      .map((v) => ({
+        variantId: v.id,
+        unitsPerPack: v.unitsPerPack as number,
+        label: `${v.unitsPerPack}-pack`,
+        pricePerPackCents: v.pricePerPackCents ?? null,
+        moqPacks: v.moqMin ?? null,
+      }))
+      .sort((a, b) => a.unitsPerPack - b.unitsPerPack)
+
+    const flavorUnitPriceCents: Record<string, number | null> = {}
+    for (const f of t.flavorPresets ?? []) flavorUnitPriceCents[f.id] = f.unitPriceCents ?? null
+
+    return {
+      packSizes,
+      minFlavors: t.minFlavorsPerPack ?? null,
+      fillRule: t.flavorFillRule ?? null,
+      pricingBasis: t.pricingBasis ?? null,
+      flavorUnitPriceCents,
+    }
+  } catch {
+    return empty
   }
 }
 

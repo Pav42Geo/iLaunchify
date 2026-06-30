@@ -6,14 +6,23 @@ import { getTierByRunCount } from '@ilaunchify/plans'
 import {
   Button,
   PackagingPicker,
-  PackBuilder,
+  VarietyPackBuilder,
   EarningsCalculator,
   PricingTierModal,
   applyFlavorChangeover,
-  distinctFlavorCount,
+  composePack,
+  packPriceCents,
+  orderTotalCents,
+  orderTotalUnits,
+  packSummary,
   type PricingTierRow,
   type PackBuilderFlavor,
-  type FlavorPick,
+  type PackSize,
+  type PoolFlavor,
+  type FlavorChoice,
+  type PricingBasis,
+  type ComposedPack,
+  type VarietyPackValue,
 } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
@@ -63,6 +72,20 @@ export interface ProductDetailConfiguratorProps {
   flavorPool?: PackBuilderFlavor[]
   changeoverDays?: number
   minPerFlavor?: number
+  /* ── Variety-pack model (docs/VARIETY_PACK_MODEL.md §4-6) — drive the NEW
+       pack-based multi-flavor flow. All optional + cast-guarded upstream; when
+       absent the configurator synthesizes a single fallback pack size. */
+  packSizes?: {
+    variantId: string
+    unitsPerPack: number
+    label: string
+    pricePerPackCents: number | null
+    moqPacks: number | null
+  }[]
+  minFlavors?: number | null
+  fillRule?: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED' | null
+  pricingBasis?: 'PER_FLAVOR' | 'PER_PACK' | null
+  flavorUnitPriceCents?: Record<string, number | null>
   /** Per-flavor price deltas (cents) keyed by flavor id — drives the flavor
    *  cards' per-flavor unit price + optional strike-through. */
   flavorPricing?: Record<
@@ -91,6 +114,11 @@ export function ProductDetailConfigurator({
   changeoverDays = 0,
   minPerFlavor = 1,
   flavorPricing = {},
+  packSizes = [],
+  minFlavors = null,
+  fillRule = null,
+  pricingBasis = null,
+  flavorUnitPriceCents = {},
   onPackagingChange,
   onOpenSample,
 }: ProductDetailConfiguratorProps) {
@@ -102,8 +130,70 @@ export function ProductDetailConfigurator({
     detail.flavors[0]?.id ?? '',
   )
   const isMultiFlavor = flavorMode === 'MULTI' && flavorPool.length > 0
-  const [packPicks, setPackPicks] = React.useState<FlavorPick[]>([])
-  const flavorCount = isMultiFlavor ? Math.max(1, distinctFlavorCount(packPicks)) : 1
+
+  // ── Variety-pack model (docs/VARIETY_PACK_MODEL.md §4-6) ─────────────────────
+  // Resolve the pack matrix, with a graceful pre-migration fallback: when the
+  // loader supplies no typed pack sizes / basis (DB lacks the new columns), we
+  // synthesize ONE pack size + sane defaults so the NEW flow renders without
+  // crashing. unitsPerPack falls back to maxFlavorsPerPack, else 6.
+  const effPricingBasis: PricingBasis = pricingBasis ?? 'PER_FLAVOR'
+  const effFillRule = fillRule ?? 'CREATOR_CHOOSES'
+  const effMinFlavors = Math.max(1, minFlavors ?? 1)
+
+  const resolvedPackSizes: PackSize[] = React.useMemo(() => {
+    if (packSizes.length > 0) {
+      return packSizes.map((s) => ({
+        id: s.variantId,
+        unitsPerPack: s.unitsPerPack,
+        label: s.label,
+        pricePerPackCents: s.pricePerPackCents,
+        moqPacks: s.moqPacks,
+      }))
+    }
+    // Fallback single size — derive units/pack from the flavor cap, default 6.
+    const units = Math.max(1, maxFlavorsPerPack ?? 6)
+    return [{ id: 'fallback', unitsPerPack: units, label: `${units}-pack`, pricePerPackCents: null, moqPacks: null }]
+  }, [packSizes, maxFlavorsPerPack])
+
+  const packPool: PoolFlavor[] = React.useMemo(
+    () =>
+      flavorPool.map((f) => ({
+        flavorPresetId: f.id,
+        name: f.name,
+        unitPriceCents: flavorUnitPriceCents[f.id] ?? null,
+      })),
+    [flavorPool, flavorUnitPriceCents],
+  )
+
+  const packRules: { minFlavors: number; maxFlavors: number | null; fillRule: typeof effFillRule } = {
+    minFlavors: effMinFlavors,
+    maxFlavors: maxFlavorsPerPack ?? null,
+    fillRule: effFillRule,
+  }
+
+  // Controlled pack selection — initial size = first offered, no flavors yet.
+  const [packValue, setPackValue] = React.useState<VarietyPackValue>(() => ({
+    sizeId: resolvedPackSizes[0]?.id ?? '',
+    choices: [] as FlavorChoice[],
+  }))
+  // Live composition for the selected size (drives price + summary + lead time).
+  const selectedPackSize = resolvedPackSizes.find((s) => s.id === packValue.sizeId) ?? resolvedPackSizes[0] ?? null
+  const packUnitsPerPack = selectedPackSize?.unitsPerPack ?? 0
+  const composedPack: ComposedPack = React.useMemo(
+    () =>
+      composePack(
+        { unitsPerPack: packUnitsPerPack },
+        packValue.choices,
+        { minFlavorsPerPack: effMinFlavors, maxFlavorsPerPack: maxFlavorsPerPack ?? null, fillRule: effFillRule },
+      ),
+    [packUnitsPerPack, packValue.choices, effMinFlavors, maxFlavorsPerPack, effFillRule],
+  )
+
+  // The order quantity field MEANS "number of packs" in multi-flavor mode and
+  // "units" otherwise (single-flavor / non-pack). Distinct flavor count for the
+  // lead-time changeover comes from the composed pack in multi mode.
+  const flavorCount = isMultiFlavor ? Math.max(1, composedPack.distinctCount) : 1
+
   const [packagingId, setPackagingId] = React.useState<string>(
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
   )
@@ -137,8 +227,10 @@ export function ProductDetailConfigurator({
   // Bulk vs On-demand — only when the manufacturer offers both. Bulk prices by
   // MOQ band (headline = order total); On-demand is per-unit, no MOQ (headline
   // = the single on-demand unit price). Display/preview toggle for now — the
-  // chosen mode isn't yet threaded into the launch/checkout order type.
-  const hasOnDemand = !!onDemandRows && onDemandRows.length > 0
+  // chosen mode isn't yet threaded into the launch/checkout order type. The
+  // per-unit/on-demand path is incoherent for pack products (the unit is the
+  // PACK, priced by basis), so it's hidden in multi-flavor pack mode.
+  const hasOnDemand = !isMultiFlavor && !!onDemandRows && onDemandRows.length > 0
   const [priceMode, setPriceMode] = React.useState<'BULK' | 'ON_DEMAND'>('BULK')
   const effectiveMode: 'BULK' | 'ON_DEMAND' = hasOnDemand ? priceMode : 'BULK'
 
@@ -185,6 +277,34 @@ export function ProductDetailConfigurator({
   const totalOrderCost = +(previewUnitCost * quantity).toFixed(2)
   const totalWithoutSub = +(landedCost * quantity).toFixed(2)
 
+  // ── Pack-based pricing (multi-flavor) — quantity = number of PACKS ──────────
+  // Pack price by basis (PER_FLAVOR sums slot unit prices; PER_PACK = the size's
+  // flat price). For PER_FLAVOR with a pre-migration / unpriced pool the slot
+  // prices are 0; we fall back to the per-unit band cost so the headline is
+  // never $0. The bulk band still tracks (its qty band reads packs here).
+  const packCount = Math.max(0, Math.floor(quantity))
+  const rawPackPriceCents = packPriceCents(
+    effPricingBasis,
+    { pricePerPackCents: selectedPackSize?.pricePerPackCents ?? null },
+    composedPack.slots,
+    packPool,
+  )
+  // Fallback: when the basis yields 0 (no authored prices yet), price the pack at
+  // the band per-unit cost × units in the pack so the demo still shows a price.
+  const packPriceCentsEff =
+    rawPackPriceCents > 0
+      ? rawPackPriceCents
+      : Math.round(landedCost * 100 * packUnitsPerPack)
+  // Subscribe discount applies to the pack price (open-ended ladder tier).
+  const packPriceWithSub = subscribe
+    ? Math.round((packPriceCentsEff * (10_000 - subDiscountBp)) / 10_000)
+    : packPriceCentsEff
+  const packOrderTotalCents = orderTotalCents(packPriceWithSub, packCount)
+  const packOrderTotalCentsNoSub = orderTotalCents(packPriceCentsEff, packCount)
+  const packTotalUnits = orderTotalUnits(packUnitsPerPack, packCount)
+  // Effective per-unit cost for the earnings panel = pack price / units-per-pack.
+  const packPerUnit = packUnitsPerPack > 0 ? +(packPriceWithSub / 100 / packUnitsPerPack).toFixed(2) : 0
+
   // On-demand per-unit price — matched the same way as bulk (band by quantity),
   // with the same size/packaging/flavor deltas. This is a single-unit price
   // (no MOQ), so in On-demand mode it becomes the headline figure.
@@ -197,9 +317,13 @@ export function ProductDetailConfigurator({
     onDemandRow != null
       ? +(((onDemandRow.perUnitCents / 100) * sizeMultiplier + packagingDelta + flavorDelta).toFixed(2))
       : null
-  // The per-unit figure that downstream panels (earnings) should reflect.
-  const activeUnitCost =
-    effectiveMode === 'ON_DEMAND' && onDemandUnitCost != null ? onDemandUnitCost : previewUnitCost
+  // The per-unit figure that downstream panels (earnings) should reflect. In
+  // multi-flavor pack mode this is the effective per-unit (pack price / units).
+  const activeUnitCost = isMultiFlavor
+    ? packPerUnit
+    : effectiveMode === 'ON_DEMAND' && onDemandUnitCost != null
+      ? onDemandUnitCost
+      : previewUnitCost
 
   const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
@@ -251,15 +375,21 @@ export function ProductDetailConfigurator({
         </Button>
       </div>
 
-      {/* 2) Flavor — cards with per-flavor price (single mode) / PackBuilder (multi). */}
+      {/* 2) Flavor — cards with per-flavor price (single mode) /
+          VarietyPackBuilder (multi: pack-size → flavors → fill, NEW model). */}
       {isMultiFlavor ? (
-        <PackBuilder
-          pool={flavorPool}
-          maxFlavors={maxFlavorsPerPack}
-          capacity={quantity}
-          minPerFlavor={minPerFlavor}
-          value={packPicks}
-          onChange={setPackPicks}
+        <VarietyPackBuilder
+          packSizes={resolvedPackSizes}
+          pool={flavorPool.map((f) => ({
+            flavorPresetId: f.id,
+            name: f.name,
+            swatchHex: f.swatchHex,
+            unitPriceCents: flavorUnitPriceCents[f.id] ?? null,
+          }))}
+          rules={packRules}
+          pricingBasis={effPricingBasis}
+          value={packValue}
+          onChange={setPackValue}
         />
       ) : (
         detail.flavors.length > 0 && (
@@ -346,22 +476,25 @@ export function ProductDetailConfigurator({
         </div>
       )}
 
-      {/* 5) Quantity */}
+      {/* 5) Quantity — in multi-flavor pack mode this is the number of PACKS
+          (step 1, MOQ in packs); otherwise units (step 50). */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-[12px] font-semibold text-ink-700">Quantity</label>
+        <label className="text-[12px] font-semibold text-ink-700">
+          {isMultiFlavor ? 'Packs' : 'Quantity'}
+        </label>
         <div className="flex w-fit items-center overflow-hidden rounded-[9px] border border-ink-200">
           <button
             type="button"
-            aria-label="Decrease quantity"
-            onClick={() => setQuantity((q) => Math.max(0, q - 50))}
+            aria-label={isMultiFlavor ? 'Decrease packs' : 'Decrease quantity'}
+            onClick={() => setQuantity((q) => Math.max(0, q - (isMultiFlavor ? 1 : 50)))}
             className="h-9 w-9 text-[18px] text-ink-700 transition-colors hover:bg-ink-50"
           >
             −
           </button>
           <input
             type="number"
-            min={template.minUnits}
-            step={50}
+            min={isMultiFlavor ? (selectedPackSize?.moqPacks ?? 1) : template.minUnits}
+            step={isMultiFlavor ? 1 : 50}
             value={quantity}
             onChange={(e) => {
               const v = parseInt(e.target.value, 10)
@@ -371,16 +504,23 @@ export function ProductDetailConfigurator({
           />
           <button
             type="button"
-            aria-label="Increase quantity"
-            onClick={() => setQuantity((q) => q + 50)}
+            aria-label={isMultiFlavor ? 'Increase packs' : 'Increase quantity'}
+            onClick={() => setQuantity((q) => q + (isMultiFlavor ? 1 : 50))}
             className="h-9 w-9 text-[18px] text-ink-700 transition-colors hover:bg-ink-50"
           >
             +
           </button>
         </div>
-        <div className="text-[11px] text-ink-500 tabular-nums">
-          min {template.minUnits} units · {matchedRow.band}
-        </div>
+        {isMultiFlavor ? (
+          <div className="text-[11px] text-ink-500 tabular-nums">
+            {packSummary(composedPack.distinctCount, packUnitsPerPack, packCount, selectedPackSize?.label)}
+            {selectedPackSize?.moqPacks ? ` · min ${selectedPackSize.moqPacks} pack${selectedPackSize.moqPacks === 1 ? '' : 's'}` : ''}
+          </div>
+        ) : (
+          <div className="text-[11px] text-ink-500 tabular-nums">
+            min {template.minUnits} units · {matchedRow.band}
+          </div>
+        )}
       </div>
 
       {/* Price block — Bulk vs On-demand toggle (when both offered), the
@@ -407,7 +547,21 @@ export function ProductDetailConfigurator({
           </div>
         )}
 
-        {effectiveMode === 'ON_DEMAND' && onDemandUnitCost != null ? (
+        {isMultiFlavor ? (
+          /* Multi-flavor pack mode — headline = order TOTAL (packs × pack price),
+             secondary = per-pack price. Strike-through shows the no-sub total. */
+          <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
+            ${(packOrderTotalCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="ml-1.5 text-[15px] font-semibold text-ink-500">
+              (${(packPriceWithSub / 100).toFixed(2)} / pack)
+            </span>
+            {subscribe && packOrderTotalCentsNoSub !== packOrderTotalCents && (
+              <span className="ml-1.5 text-[13px] font-medium text-ink-400 line-through">
+                ${(packOrderTotalCentsNoSub / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            )}
+          </div>
+        ) : effectiveMode === 'ON_DEMAND' && onDemandUnitCost != null ? (
           <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
             ${onDemandUnitCost.toFixed(2)}
             <span className="ml-1.5 text-[15px] font-semibold text-ink-500">/ unit</span>
@@ -424,6 +578,11 @@ export function ProductDetailConfigurator({
                 ${totalWithoutSub.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             )}
+          </div>
+        )}
+        {isMultiFlavor && (
+          <div className="mt-1 text-[12px] text-ink-500 tabular-nums">
+            {packTotalUnits.toLocaleString()} units total
           </div>
         )}
 
