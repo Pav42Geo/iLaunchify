@@ -8,6 +8,8 @@ import {
   ALLERGEN_FREE_OPTIONS,
   LEAD_BUCKET_OPTIONS,
   MOQ_PRESET_OPTIONS,
+  PRICE_PRESET_OPTIONS,
+  NET_CONTENT_OPTIONS,
   formatOptionsForDomain,
   processOptionsForDomain,
   type Option,
@@ -35,6 +37,7 @@ import type { CertOption, PackagingFilterGroup, MarketOption } from '@/lib/filte
 const FILTER_PARAMS = [
   'format', 'diet', 'audience', 'trend', 'moq', 'lead', 'market',
   'cert', 'free', 'process', 'pkg', 'pkgc', 'tag', 'q', 'niche',
+  'price', 'nc', 'custom', 'variety', 'sample',
 ]
 
 const INITIAL_VISIBLE = 6
@@ -58,6 +61,11 @@ export function MarketplaceFilters({
   // Domain-scoped option sets (Format + Process). null/undefined → all options.
   const formatOptions = formatOptionsForDomain(domain)
   const processOptions = processOptionsForDomain(domain)
+
+  // Whole-group domain reactivity. Diet + Allergen-free are ingestible concepts
+  // (keto/vegan, gluten-free/nut-free) — hidden for Cosmetic / OTC. No domain →
+  // show everything (the unscoped root marketplace).
+  const ingestible = !domain || ['FOOD', 'DIETARY_SUPPLEMENT', 'PET_PRODUCT'].includes(domain)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -92,6 +100,11 @@ export function MarketplaceFilters({
       if (value === undefined) p.delete(param)
       else p.set(param, value)
     })
+  }
+  // Boolean toggle params (present='1' = on).
+  const flag = (param: string) => searchParams.get(param) === '1'
+  function toggleFlag(param: string) {
+    push((p) => { if (p.get(param) === '1') p.delete(param); else p.set(param, '1') })
   }
 
   const anyActive = FILTER_PARAMS.some((p) => searchParams.has(p))
@@ -128,13 +141,30 @@ export function MarketplaceFilters({
         onSelect={(v) => setSingle('format', v)}
         firstBorderless
       />
-      <MultiGroup
-        title="Diet"
-        options={diet}
-        active={csv('diet')}
-        onToggle={(v) => toggleCsv('diet', v)}
-        emptyHint="No diet tags yet"
+      {/* Quick toggles — boolean commerce facets. */}
+      <GroupShell title="Quick filters">
+        <div className="flex flex-col gap-2.5">
+          <Checkbox checked={flag('custom')} onChange={() => toggleFlag('custom')} label="Customizable / build-your-own" className={'gap-2.5 text-[13px] ' + (flag('custom') ? 'text-ink-900' : 'text-ink-600')} />
+          <Checkbox checked={flag('variety')} onChange={() => toggleFlag('variety')} label="Multi-flavor / variety packs" className={'gap-2.5 text-[13px] ' + (flag('variety') ? 'text-ink-900' : 'text-ink-600')} />
+          <Checkbox checked={flag('sample')} onChange={() => toggleFlag('sample')} label="Sample available" className={'gap-2.5 text-[13px] ' + (flag('sample') ? 'text-ink-900' : 'text-ink-600')} />
+        </div>
+      </GroupShell>
+      <SingleGroup
+        title="Max price (per unit)"
+        options={PRICE_PRESET_OPTIONS}
+        value={single('price')}
+        onSelect={(v) => setSingle('price', v)}
+        pill
       />
+      {ingestible && (
+        <MultiGroup
+          title="Diet"
+          options={diet}
+          active={csv('diet')}
+          onToggle={(v) => toggleCsv('diet', v)}
+          emptyHint="No diet tags yet"
+        />
+      )}
       <MultiGroup
         title="Audience"
         options={audience}
@@ -147,6 +177,13 @@ export function MarketplaceFilters({
         options={MOQ_PRESET_OPTIONS}
         value={single('moq')}
         onSelect={(v) => setSingle('moq', v)}
+        pill
+      />
+      <SingleGroup
+        title="Net content (max)"
+        options={NET_CONTENT_OPTIONS}
+        value={single('nc')}
+        onSelect={(v) => setSingle('nc', v)}
         pill
       />
       <SingleGroup
@@ -174,12 +211,14 @@ export function MarketplaceFilters({
         onToggle={(v) => toggleCsv('cert', v)}
         emptyHint="No certifications available"
       />
-      <MultiGroup
-        title="Allergen-free"
-        options={ALLERGEN_FREE_OPTIONS}
-        active={csv('free')}
-        onToggle={(v) => toggleCsv('free', v)}
-      />
+      {ingestible && (
+        <MultiGroup
+          title="Allergen-free"
+          options={ALLERGEN_FREE_OPTIONS}
+          active={csv('free')}
+          onToggle={(v) => toggleCsv('free', v)}
+        />
+      )}
       <MultiGroup
         title="Manufacturing process"
         options={processOptions}

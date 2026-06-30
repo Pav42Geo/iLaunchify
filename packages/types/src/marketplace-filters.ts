@@ -251,6 +251,22 @@ export const MOQ_PRESET_OPTIONS: FilterOption[] = [
   { value: '5000', label: '≤ 5,000' },
 ]
 
+/** Max per-unit price presets (single-select; value in whole dollars). */
+export const PRICE_PRESET_OPTIONS: FilterOption[] = [
+  { value: '2', label: '≤ $2' },
+  { value: '5', label: '≤ $5' },
+  { value: '10', label: '≤ $10' },
+  { value: '25', label: '≤ $25' },
+]
+
+/** Max net-content presets (single-select; unit-agnostic numeric value, e.g. g / mL). */
+export const NET_CONTENT_OPTIONS: FilterOption[] = [
+  { value: '50', label: '≤ 50' },
+  { value: '250', label: '≤ 250' },
+  { value: '500', label: '≤ 500' },
+  { value: '1000', label: '≤ 1,000' },
+]
+
 /** ContainerCategory enum → display label (packaging parent groups). */
 export const CONTAINER_CATEGORY_LABELS: Record<string, string> = {
   POUCH: 'Pouches',

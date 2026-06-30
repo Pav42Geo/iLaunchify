@@ -67,6 +67,18 @@ export interface MarketplaceFilters {
   packagingParents?: string[]
   /** Packaging child types — PackagingType.slug. */
   packagingChildren?: string[]
+
+  /* ===== Commerce filters (2026-06-30) ===== */
+  /** Max per-unit price in CENTS (ProductTemplate.priceFloorCents ≤ this). */
+  maxPriceCents?: number
+  /** Max net content (numeric, unit-agnostic) — variant.netContentValue ≤ this. */
+  maxNetContent?: number
+  /** Build-your-own / pick-N only (packingProfile.isCustomizable). */
+  customizableOnly?: boolean
+  /** Multi-flavor / variety packs only (MULTI packing or maxFlavorsPerPack > 1). */
+  varietyOnly?: boolean
+  /** Has at least one enabled sample option. */
+  sampleOnly?: boolean
 }
 
 /** Sort keys supported by the marketplace controls bar. */
@@ -398,6 +410,7 @@ function buildWhere(args: GetTemplatesArgs): Prisma.ProductTemplateWhereInput {
     q, categorySlugs, subcategorySlugs, moqMax, niche, lifestyleTagSlugs,
     format, dietSlugs, audienceSlugs, trendSlugs, leadBucket, marketCode,
     certSlugs, allergenFreeSlugs, processSlugs, packagingParents, packagingChildren,
+    maxPriceCents, maxNetContent, customizableOnly, varietyOnly, sampleOnly,
   } = args
 
   // §7 semantics: OR within a group, AND across groups. Each clause that must
@@ -442,6 +455,15 @@ function buildWhere(args: GetTemplatesArgs): Prisma.ProductTemplateWhereInput {
     and.push({ variants: { some: { packagingType: { slug: { in: packagingChildren } } } } })
   }
 
+  // Commerce filters (2026-06-30).
+  if (typeof maxNetContent === 'number') {
+    and.push({ variants: { some: { netContentValue: { lte: maxNetContent } } } })
+  }
+  // Multi-flavor / variety: MULTI packing profile OR a variety pack (max flavors > 1).
+  if (varietyOnly) {
+    and.push({ OR: [{ packingProfile: { flavorMode: 'MULTI' } }, { maxFlavorsPerPack: { gt: 1 } }] })
+  }
+
   const where: Record<string, unknown> = {
     status: 'PUBLISHED',
     ...(q && {
@@ -461,6 +483,10 @@ function buildWhere(args: GetTemplatesArgs): Prisma.ProductTemplateWhereInput {
     ...(marketCode && { marketCodes: { has: marketCode } }),
     ...(allergenFreeSlugs?.length && { allergenFreeClaims: { hasSome: allergenFreeSlugs } }),
     ...(processSlugs?.length && { manufacturingProcesses: { hasSome: processSlugs } }),
+    // Commerce filters that map to a single top-level field/relation.
+    ...(typeof maxPriceCents === 'number' && { priceFloorCents: { lte: maxPriceCents } }),
+    ...(customizableOnly && { packingProfile: { isCustomizable: true } }),
+    ...(sampleOnly && { sampleOptions: { some: { enabled: true } } }),
     ...(and.length ? { AND: and } : {}),
   }
   return where as unknown as Prisma.ProductTemplateWhereInput

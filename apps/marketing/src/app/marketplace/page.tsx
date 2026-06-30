@@ -83,6 +83,12 @@ export default async function MarketplacePage({
     process?: string
     pkg?: string
     pkgc?: string
+    // Commerce filters
+    price?: string
+    nc?: string
+    custom?: string
+    variety?: string
+    sample?: string
     /** Legacy lifestyle chip rail param — still honored (AND per tag). */
     tag?: string | string[]
   }>
@@ -112,6 +118,12 @@ export default async function MarketplacePage({
     return cleaned.length > 0 ? cleaned : undefined
   })()
   const moqMax = moq && Number.isFinite(Number(moq)) ? Number(moq) : undefined
+  // Commerce filters
+  const maxPriceCents = sp.price && Number.isFinite(Number(sp.price)) ? Math.round(Number(sp.price) * 100) : undefined
+  const maxNetContent = sp.nc && Number.isFinite(Number(sp.nc)) ? Number(sp.nc) : undefined
+  const customizableOnly = sp.custom === '1'
+  const varietyOnly = sp.variety === '1'
+  const sampleOnly = sp.sample === '1'
 
   const hasActiveFilters = Boolean(
     moqMax !== undefined || q || niche ||
@@ -119,7 +131,9 @@ export default async function MarketplacePage({
       dietSlugs?.length || audienceSlugs?.length || trendSlugs?.length ||
       certSlugs?.length || allergenFreeSlugs?.length || processSlugs?.length ||
       packagingParents?.length || packagingChildren?.length ||
-      lifestyleTagSlugs?.length,
+      lifestyleTagSlugs?.length ||
+      maxPriceCents !== undefined || maxNetContent !== undefined ||
+      customizableOnly || varietyOnly || sampleOnly,
   )
   const session = await getMarketingSession()
   const { user, brands, activeBrandId } = headerPropsFromSession(session)
@@ -157,6 +171,11 @@ export default async function MarketplacePage({
       // Children narrow within a parent — when present they supersede the
       // parent-level selection to avoid over-constraining the query.
       ...(packagingChildren ? { packagingChildren } : { packagingParents }),
+      maxPriceCents,
+      maxNetContent,
+      customizableOnly,
+      varietyOnly,
+      sampleOnly,
       take: 60,
     }),
     getTrendingTemplates(4),

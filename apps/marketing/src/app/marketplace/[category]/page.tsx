@@ -67,6 +67,11 @@ export default async function CategoryPage({
     process?: string
     pkg?: string
     pkgc?: string
+    price?: string
+    nc?: string
+    custom?: string
+    variety?: string
+    sample?: string
   }>
 }) {
   const { category } = await params
@@ -106,6 +111,11 @@ export default async function CategoryPage({
       allergenFreeSlugs: csv(sp.free),
       processSlugs: csv(sp.process),
       ...(packagingChildren ? { packagingChildren } : { packagingParents }),
+      maxPriceCents: sp.price && Number.isFinite(Number(sp.price)) ? Math.round(Number(sp.price) * 100) : undefined,
+      maxNetContent: sp.nc && Number.isFinite(Number(sp.nc)) ? Number(sp.nc) : undefined,
+      customizableOnly: sp.custom === '1',
+      varietyOnly: sp.variety === '1',
+      sampleOnly: sp.sample === '1',
       take: 60,
     }),
     getCategoryTemplateCount(category),

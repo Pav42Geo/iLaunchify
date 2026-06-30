@@ -27,10 +27,17 @@ const CSV_PARAMS: { key: string; prefix: string }[] = [
   { key: 'pkg', prefix: 'Pack' },
   { key: 'pkgc', prefix: 'Pack' },
 ]
-const SINGLE_PARAMS = ['format', 'moq', 'lead', 'market', 'q', 'niche'] as const
+const SINGLE_PARAMS = ['format', 'moq', 'lead', 'market', 'price', 'nc', 'q', 'niche'] as const
+/** Boolean toggle params (present='1') → one chip each. */
+const FLAG_PARAMS: { key: string; label: string }[] = [
+  { key: 'custom', label: 'Customizable' },
+  { key: 'variety', label: 'Variety packs' },
+  { key: 'sample', label: 'Sample available' },
+]
 const ALL_FILTER_PARAMS = [
   ...CSV_PARAMS.map((c) => c.key),
   ...SINGLE_PARAMS,
+  ...FLAG_PARAMS.map((f) => f.key),
   'tag',
 ]
 
@@ -82,6 +89,8 @@ export function ActiveFilterChips() {
       if (param === 'format') label = formatLabel(v)
       else if (param === 'lead') label = leadLabel(v)
       else if (param === 'moq') label = `MOQ ≤${Number(v).toLocaleString()}`
+      else if (param === 'price') label = `≤ $${Number(v).toLocaleString()}`
+      else if (param === 'nc') label = `Net ≤ ${Number(v).toLocaleString()}`
       else if (param === 'market') label = `Market · ${v}`
       else if (param === 'q') label = `“${v}”`
       else if (param === 'niche') {
@@ -102,6 +111,13 @@ export function ActiveFilterChips() {
           remove: () => removeCsvValue(key, val),
         })
       })
+    }
+
+    // Boolean toggle flags
+    for (const { key, label } of FLAG_PARAMS) {
+      if (searchParams.get(key) === '1') {
+        list.push({ key, label, remove: () => removeSingle(key) })
+      }
     }
 
     // Legacy repeated ?tag=
