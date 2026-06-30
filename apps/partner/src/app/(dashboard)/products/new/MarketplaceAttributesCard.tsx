@@ -77,25 +77,19 @@ export function MarketplaceAttributesCard({
     persist({ [key]: next })
   }
 
-  // Only formats relevant to the chosen product domain (Supplement forms for a
-  // supplement, beverage/food forms for a food, etc.) — not every domain's forms.
+  // Only formats relevant to the chosen product domain — rendered FLAT (no domain
+  // group headers). The group labels (e.g. "Cosmetic") read like categories and are
+  // misleading once the list is already scoped to one domain, so a form shared by
+  // several domains just appears in each, with no "main category" implied.
   const domainFormats = formatOptionsForDomain(domain)
-  const formatGroups = [...new Set(domainFormats.filter((o) => o.group).map((o) => o.group))]
 
   return (
     <div className="grid" style={{ gap: 16 }}>
       <Field label="Format">
         <select className="sel" value={format ?? ''} disabled={preview} onChange={(e) => pickFormat(e.target.value)}>
           <option value="">Select…</option>
-          {domainFormats.filter((o) => !o.group).map((o) => (
+          {domainFormats.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-          {formatGroups.map((g) => (
-            <optgroup key={g} label={g!}>
-              {domainFormats.filter((o) => o.group === g).map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </optgroup>
           ))}
         </select>
       </Field>
