@@ -184,12 +184,6 @@ export function BasicsScreen({
     return registerFlush(() => flushRef.current())
   }, [registerFlush])
 
-  function toggleChip(list: string[], set: (v: string[]) => void, id: string, max?: number) {
-    if (list.includes(id)) set(list.filter((x) => x !== id))
-    else if (!max || list.length < max) set([...list, id])
-    else toast.error(`Up to ${max}.`)
-  }
-
   return (
     <div>
       {ready && (
@@ -232,9 +226,6 @@ export function BasicsScreen({
                   {COUNTRY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </Field>
-              <Field full label="Niches">
-                <ChipSelect options={niches} selected={selNiches} onToggle={(id) => toggleChip(selNiches, setSelNiches, id, 3)} placeholder="Add a niche…" />
-              </Field>
             </div>
           </Section>
 
@@ -248,6 +239,11 @@ export function BasicsScreen({
                 processes: initial?.manufacturingProcesses ?? [],
                 allergenFree: initial?.allergenFreeClaims ?? [],
                 markets: initial?.marketCodes ?? [],
+              }}
+              niches={{
+                options: niches.map((n) => ({ value: n.id, label: n.label })),
+                selected: selNiches,
+                onChange: (next) => { if (next.length <= 3) setSelNiches(next); else toast.error('Up to 3 niches.') },
               }}
               lifestyle={{
                 diet: lifestyleTags.filter((t) => t.group === 'LIFESTYLE').map((t) => ({ value: t.id, label: t.label })),
@@ -311,26 +307,5 @@ export function BasicsScreen({
   )
 }
 
-// --- helpers ---------------------------------------------------------------
-
-function ChipSelect({ options, selected, onToggle, placeholder }: { options: Opt[]; selected: string[]; onToggle: (id: string) => void; placeholder: string }) {
-  const remaining = options.filter((o) => !selected.includes(o.id))
-  return (
-    <div>
-      {selected.length > 0 && (
-        <div className="row" style={{ gap: 7, marginBottom: 8 }}>
-          {selected.map((id) => {
-            const o = options.find((x) => x.id === id)
-            return <span key={id} className="chip on" onClick={() => onToggle(id)}>{o?.label} ✕</span>
-          })}
-        </div>
-      )}
-      <select className="sel" value="" onChange={(e) => { if (e.target.value) onToggle(e.target.value) }}>
-        <option value="">{placeholder}</option>
-        {remaining.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-      </select>
-    </div>
-  )
-}
-
 // Field, Section + smart inputs now live in ./_ui (shared builder chrome).
+// Niches + Lifestyle tags moved into MarketplaceAttributesCard (filter card).

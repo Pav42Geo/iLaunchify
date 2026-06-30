@@ -24,6 +24,7 @@ export function MarketplaceAttributesCard({
   initial,
   domain,
   marketOptions = [{ value: 'US', label: 'United States' }],
+  niches,
   lifestyle,
   preview = false,
 }: {
@@ -38,6 +39,13 @@ export function MarketplaceAttributesCard({
   domain?: string | null
   /** ACTIVE markets from admin Markets & Regions (default US-only). */
   marketOptions?: SelectOption[]
+  /** Creator niches (Layer 1). `onChange` caps at 3 (1 primary + ≤2 secondary)
+   *  upstream; first selected = primary. */
+  niches?: {
+    options: SelectOption[]
+    selected: string[]
+    onChange: (next: string[]) => void
+  }
   /** Lifestyle-tag filter groups (Diet / Audience / Trend). All three pickers share
    *  one `selected` id list (the LifestyleTag join); `onChange` persists upstream. */
   lifestyle?: {
@@ -95,6 +103,18 @@ export function MarketplaceAttributesCard({
 
   return (
     <div className="grid" style={{ gap: 16, gridTemplateColumns: '1fr 1fr' }}>
+      {niches && (
+        <Field label="Niches">
+          <MultiSelect
+            options={niches.options}
+            selected={niches.selected}
+            disabled={preview}
+            placeholder="Select niches…"
+            onChange={(next) => { if (!preview) niches.onChange(next) }}
+          />
+        </Field>
+      )}
+
       <Field label="Format">
         <select className="sel" value={format ?? ''} disabled={preview} onChange={(e) => pickFormat(e.target.value)}>
           <option value="">Select…</option>
