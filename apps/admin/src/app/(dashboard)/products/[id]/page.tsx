@@ -40,6 +40,7 @@ import {
   ExternalLink,
   Sparkles,
   Image as ImageIcon,
+  Boxes,
   CheckCircle2,
   XCircle,
   Building2,
@@ -56,7 +57,13 @@ import type {
   FlavorPresetStatus,
 } from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
-import { cn } from '@ilaunchify/ui'
+import {
+  cn,
+  resolvePackMode,
+  type PackMode,
+  type PricingBasis,
+  type FlavorPolicy,
+} from '@ilaunchify/ui'
 import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { partnerUrl } from '@/lib/partner-url'
 import {
@@ -234,6 +241,52 @@ const STORAGE_CLASS_LABEL: Record<'AMBIENT' | 'CHILLED' | 'FROZEN', string> = {
   AMBIENT: 'Ambient',
   CHILLED: 'Chilled',
   FROZEN: 'Frozen',
+}
+
+// -----------------------------------------------------------------------------
+// Pack model (variety-pack matrix) — read-only display labels. Mirrors the
+// partner Passport's "Pack model" card (apps/partner/.../ReviewSummary.tsx +
+// review-actions.ts) so admin sees the same human labels for the manufacturer's
+// pack-composition setup (docs/VARIETY_PACK_MODEL.md §4-6, §8).
+// -----------------------------------------------------------------------------
+
+const PACK_MODE_LABEL: Record<PackMode, string> = {
+  SINGLE_UNIT: 'Single unit',
+  PACK_ONE_FLAVOR: 'One-flavor multipack',
+  PACK_FIXED: 'Fixed assortment',
+  PACK_PICK: 'Pick-your-own',
+}
+const PRICING_BASIS_LABEL: Record<PricingBasis, string> = {
+  PER_FLAVOR: 'Per flavor — summed',
+  PER_PACK: 'Per pack — flat',
+}
+const FLAVOR_POLICY_LABEL: Record<FlavorPolicy, string> = {
+  CREATOR_PICK: 'Creator picks',
+  PARTNER_FIXED: 'Fixed assortment',
+}
+const FILL_RULE_LABEL: Record<string, string> = {
+  CREATOR_CHOOSES: 'Creator chooses which repeats',
+  EVEN_AUTO: 'Even split (auto remainder)',
+  MANUFACTURER_FIXED: 'Manufacturer-fixed distribution',
+}
+
+/** Read-only pack-composition picture for the admin detail. Null when the
+ *  product has no pack matrix (single-unit, no offered sizes). */
+interface AdminPackModel {
+  mode: PackMode
+  pricingBasis: PricingBasis | null
+  flavorPolicy: FlavorPolicy | null
+  minFlavorsPerPack: number | null
+  maxFlavorsPerPack: number | null
+  fillRule: string | null
+  sizes: Array<{
+    label: string
+    unitsPerPack: number
+    moqPacks: number
+    pricePerPackCents: number | null
+  }>
+  perFlavorPrices: Array<{ name: string; unitPriceCents: number | null }>
+  assortment: Array<{ flavor: string; qty: number }>
 }
 
 // -----------------------------------------------------------------------------
@@ -682,6 +735,141 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
     leadTimeRepeatDays != null ||
     leadTimeFirstRunDays != null ||
     maxFlavorsPerPack != null
+
+  // -------------------------------------------------------------------------
+  // Pack model (variety-pack matrix) — SEPARATE cast-guarded read (the main
+  // query above stays typed). Every column here ships with the variety-pack
+  // migration (docs/VARIETY_PACK_MODEL.md §9) and may be ungenerated on the
+  // local client, so reach via a loose delegate + cast and degrade to null on
+  // any failure. resolvePackMode labels the mode + decides whether the product
+  // even HAS a pack matrix (null when SINGLE_UNIT + no offered sizes). Mirrors
+  // the partner Passport loader (review-actions.ts).
+  // -------------------------------------------------------------------------
+
+  const packModel: AdminPackModel | null = await (async () => {
+    try {
+      const packLooseDb = prisma as unknown as {
+        productTemplate: {
+          findUnique: (a: unknown) => Promise<{
+            pricingBasis: string | null
+            flavorPolicy: string | null
+            minFlavorsPerPack: number | null
+            maxFlavorsPerPack: number | null
+            flavorFillRule: string | null
+            packingProfile: { structuralType: string | null; flavorMode: string | null } | null
+            variants: Array<{
+              unitsPerPack: number | null
+              containerFormat: string | null
+              moqMin: number | null
+              pricePerPackCents: number | null
+              assortmentFlavors: unknown
+            }>
+            flavorPresets: Array<{ name: string; unitPriceCents: number | null; sortOrder: number }>
+          } | null>
+        }
+      }
+      const row = await packLooseDb.productTemplate
+        .findUnique({
+          where: { id },
+          select: {
+            pricingBasis: true,
+            flavorPolicy: true,
+            minFlavorsPerPack: true,
+            maxFlavorsPerPack: true,
+            flavorFillRule: true,
+            packingProfile: { select: { structuralType: true, flavorMode: true } },
+            variants: {
+              select: {
+                unitsPerPack: true,
+                containerFormat: true,
+                moqMin: true,
+                pricePerPackCents: true,
+                assortmentFlavors: true,
+              },
+            },
+            flavorPresets: {
+              select: { name: true, unitPriceCents: true, sortOrder: true },
+            },
+          },
+        })
+        .catch(() => null)
+      if (!row) return null
+
+      // Offered pack sizes = variant rows carrying a typed unitsPerPack.
+      const sizeVariants = (row.variants ?? []).filter(
+        (v) => v.unitsPerPack != null && v.unitsPerPack > 0,
+      )
+      const flavorPolicy =
+        row.flavorPolicy === 'CREATOR_PICK' || row.flavorPolicy === 'PARTNER_FIXED'
+          ? (row.flavorPolicy as FlavorPolicy)
+          : null
+      const pricingBasis =
+        row.pricingBasis === 'PER_FLAVOR' || row.pricingBasis === 'PER_PACK'
+          ? (row.pricingBasis as PricingBasis)
+          : null
+
+      const mode = resolvePackMode({
+        structuralType:
+          (row.packingProfile?.structuralType as Parameters<typeof resolvePackMode>[0]['structuralType']) ??
+          null,
+        flavorPolicy,
+        flavorMode: template.flavorPresets.length > 1 ? 'MULTI' : 'SINGLE',
+        offeredSizes: sizeVariants.length,
+      })
+
+      // Single-unit product with no offered sizes → nothing new to show.
+      if (mode === 'SINGLE_UNIT' && sizeVariants.length === 0) return null
+
+      const presets = [...(row.flavorPresets ?? [])].sort(
+        (a, b) => a.sortOrder - b.sortOrder,
+      )
+
+      const sizes = sizeVariants.map((v) => ({
+        label: v.containerFormat?.trim() || `${v.unitsPerPack}-pack`,
+        unitsPerPack: v.unitsPerPack ?? 0,
+        moqPacks: v.moqMin ?? 0,
+        pricePerPackCents: v.pricePerPackCents ?? null,
+      }))
+
+      const perFlavorPrices = presets.map((f) => ({
+        name: f.name,
+        unitPriceCents: f.unitPriceCents ?? null,
+      }))
+
+      // Fixed assortment lives on the first offered size's `assortmentFlavors`
+      // JSON ([{ flavor, qty }]). Resolve flavor ids → names where possible.
+      const presetNameById = new Map(
+        template.flavorPresets.map((f) => [f.id, f.name] as const),
+      )
+      const rawAssort = sizeVariants.find(
+        (v) =>
+          Array.isArray(v.assortmentFlavors) &&
+          (v.assortmentFlavors as unknown[]).length > 0,
+      )?.assortmentFlavors
+      const assortment = Array.isArray(rawAssort)
+        ? (rawAssort as Array<{ flavor?: unknown; qty?: unknown }>)
+            .filter((a) => a && typeof a.flavor === 'string' && typeof a.qty === 'number')
+            .map((a) => ({
+              flavor: presetNameById.get(a.flavor as string) ?? (a.flavor as string),
+              qty: a.qty as number,
+            }))
+        : []
+
+      return {
+        mode,
+        pricingBasis,
+        flavorPolicy,
+        minFlavorsPerPack: row.minFlavorsPerPack ?? null,
+        maxFlavorsPerPack: row.maxFlavorsPerPack ?? null,
+        fillRule: row.flavorFillRule ?? null,
+        sizes,
+        perFlavorPrices,
+        assortment,
+      }
+    } catch {
+      return null
+    }
+  })()
 
   // Tone + label resolution (strict-TS bang on Record<EnumKey, T>).
   const tone = STATUS_TONE[template.status]!
@@ -1228,6 +1416,185 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               </ul>
             )}
           </SnapshotCard>
+
+          {/* Pack model — variety-pack matrix (docs/VARIETY_PACK_MODEL.md §4-6,
+              §8). Read-only mirror of the partner Passport's Pack model card.
+              Only renders when the product carries a pack matrix. */}
+          {packModel && (
+            <SnapshotCard
+              id="pack-model"
+              icon={Boxes}
+              title="Pack model"
+              subtitle={`${PACK_MODE_LABEL[packModel.mode]}${
+                packModel.pricingBasis
+                  ? ` · ${PRICING_BASIS_LABEL[packModel.pricingBasis]}`
+                  : ''
+              }`}
+            >
+              <dl className="divide-y divide-ink-100">
+                <Row label="Mode">{PACK_MODE_LABEL[packModel.mode]}</Row>
+                <Row label="Pricing basis">
+                  {packModel.pricingBasis ? (
+                    PRICING_BASIS_LABEL[packModel.pricingBasis]
+                  ) : (
+                    <span className="text-ink-500">—</span>
+                  )}
+                </Row>
+                {packModel.mode === 'PACK_PICK' && (
+                  <Row label="Flavors per pack">
+                    {packModel.minFlavorsPerPack != null ||
+                    packModel.maxFlavorsPerPack != null ? (
+                      <span className="tabular-nums">
+                        {packModel.minFlavorsPerPack ?? 1}–
+                        {packModel.maxFlavorsPerPack ?? '∞'}
+                      </span>
+                    ) : (
+                      <span className="text-ink-500">—</span>
+                    )}
+                  </Row>
+                )}
+                {packModel.mode === 'PACK_PICK' && (
+                  <Row label="Fill rule">
+                    {packModel.fillRule ? (
+                      FILL_RULE_LABEL[packModel.fillRule] ??
+                      humanizeTopology(packModel.fillRule)
+                    ) : (
+                      <span className="text-ink-500">—</span>
+                    )}
+                  </Row>
+                )}
+                {packModel.mode !== 'SINGLE_UNIT' &&
+                  packModel.mode !== 'PACK_ONE_FLAVOR' && (
+                    <Row label="Flavor policy">
+                      {packModel.flavorPolicy ? (
+                        FLAVOR_POLICY_LABEL[packModel.flavorPolicy]
+                      ) : (
+                        <span className="text-ink-500">—</span>
+                      )}
+                    </Row>
+                  )}
+              </dl>
+
+              {/* Offered pack sizes */}
+              {packModel.sizes.length > 0 && (
+                <div className="mt-3">
+                  <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
+                    Offered pack sizes
+                  </div>
+                  <table className="w-full text-[12.5px]">
+                    <thead>
+                      <tr className="text-left text-[12px] uppercase tracking-wider text-ink-700">
+                        <th className="pb-1.5 pr-3 font-semibold">Size</th>
+                        <th className="pb-1.5 pr-3 font-semibold text-right">
+                          Units / pack
+                        </th>
+                        <th className="pb-1.5 pr-3 font-semibold text-right">
+                          MOQ (packs)
+                        </th>
+                        {packModel.pricingBasis === 'PER_PACK' && (
+                          <th className="pb-1.5 font-semibold text-right">
+                            Price / pack
+                          </th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {packModel.sizes.map((s, i) => (
+                        <tr key={i} className="border-t border-ink-100">
+                          <td className="py-1.5 pr-3 font-medium text-ink-900">
+                            {s.label}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right tabular-nums text-ink-700">
+                            {s.unitsPerPack}
+                          </td>
+                          <td className="py-1.5 pr-3 text-right tabular-nums text-ink-700">
+                            {s.moqPacks.toLocaleString()}
+                          </td>
+                          {packModel.pricingBasis === 'PER_PACK' && (
+                            <td className="py-1.5 text-right font-mono tabular-nums text-ink-900">
+                              {s.pricePerPackCents != null ? (
+                                `$${(s.pricePerPackCents / 100).toFixed(2)}`
+                              ) : (
+                                <span className="text-ink-500">—</span>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Per-flavor prices (PER_FLAVOR basis) — show unpriced as "—". */}
+              {packModel.pricingBasis === 'PER_FLAVOR' &&
+                packModel.perFlavorPrices.length > 0 && (
+                  <div className="mt-3">
+                    <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
+                      Per-flavor prices
+                    </div>
+                    <table className="w-full text-[12.5px]">
+                      <thead>
+                        <tr className="text-left text-[12px] uppercase tracking-wider text-ink-700">
+                          <th className="pb-1.5 pr-3 font-semibold">Flavor</th>
+                          <th className="pb-1.5 font-semibold text-right">
+                            Price / unit
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {packModel.perFlavorPrices.map((f, i) => (
+                          <tr key={i} className="border-t border-ink-100">
+                            <td className="py-1.5 pr-3 font-medium text-ink-900">
+                              {f.name}
+                            </td>
+                            <td className="py-1.5 text-right font-mono tabular-nums text-ink-900">
+                              {f.unitPriceCents != null ? (
+                                `$${(f.unitPriceCents / 100).toFixed(2)}`
+                              ) : (
+                                <span className="text-ink-500">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+              {/* Fixed assortment (PARTNER_FIXED) — flavor × per-pack count. */}
+              {packModel.flavorPolicy === 'PARTNER_FIXED' &&
+                packModel.assortment.length > 0 && (
+                  <div className="mt-3">
+                    <div className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
+                      Fixed assortment
+                    </div>
+                    <table className="w-full text-[12.5px]">
+                      <thead>
+                        <tr className="text-left text-[12px] uppercase tracking-wider text-ink-700">
+                          <th className="pb-1.5 pr-3 font-semibold">Flavor</th>
+                          <th className="pb-1.5 font-semibold text-right">
+                            Per pack
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {packModel.assortment.map((a, i) => (
+                          <tr key={i} className="border-t border-ink-100">
+                            <td className="py-1.5 pr-3 font-medium text-ink-900">
+                              {a.flavor}
+                            </td>
+                            <td className="py-1.5 text-right tabular-nums text-ink-900">
+                              ×{a.qty}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+            </SnapshotCard>
+          )}
 
           {/* Flavors — §5 "one product, many curated variations". */}
           <SnapshotCard
