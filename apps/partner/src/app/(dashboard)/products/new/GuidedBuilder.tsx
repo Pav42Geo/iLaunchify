@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, Boxes, type LucideIcon } from 'lucide-react'
+import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, Boxes, ArrowLeft, type LucideIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
@@ -384,6 +384,17 @@ export function GuidedBuilder({
             onSave={saveNow}
             onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
           />
+          {/* Back — sits next to the History icon, always visible in the top bar.
+              On Basics (first step) it exits the builder; otherwise steps back. */}
+          <button
+            type="button"
+            onClick={() => (cur > 0 ? go(cur - 1) : exitBack())}
+            className="inline-flex items-center gap-1 rounded-md py-2 pl-1.5 pr-2.5 text-[13px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+            title={cur > 0 ? 'Back to previous step' : 'Exit builder'}
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-5 w-5" /> Back
+          </button>
         </span>, topSlots.left)}
       {topSlots.right && createPortal(
         <span className="gb gb-topinject">
@@ -422,10 +433,6 @@ export function GuidedBuilder({
               </span>
             ))}
           </div>
-
-          {/* Back — between the stepper and the title. On Basics (first step) it
-              leaves the builder to the previous page; otherwise it steps back. */}
-          <button className="btn sm" type="button" onClick={() => (cur > 0 ? go(cur - 1) : exitBack())} style={{ marginBottom: 12 }}>← Back</button>
 
           {/* Page title — defaults to "Add Product", becomes the product name
               once the manufacturer types it in Basics. Hidden on the Review step:

@@ -136,9 +136,14 @@ surfaced as **"Standard lead time"** (still `ProductTemplate.leadTimeRepeatDays`
    soft warning; thread effective lead to cards/PDP + flavor-card lead under price.
 4. **Marketplace** — PDP recipe studio flavor tabs + Facts swap.
 5. **Review/Passport + admin** — show per-flavor recipes + leads.
-6. **Migration/backfill** — for existing multi-flavor products, seed each flavor's
-   `FlavorRecipeSlot[]` from base + its `extras` (one-time script); demo seed authors
-   independent flavor recipes.
+6. **Migration/backfill** — ✅ BUILT. `packages/db/prisma/backfill-flavor-recipes.ts`
+   seeds each flavor's `FlavorRecipeSlot[]` (+ replacements/optionals) from the
+   template base recipe + that flavor's `extras`. Idempotent (skips presets that
+   already have `recipeSlots`); **dry-run by default**, `--apply` to write; pure
+   transforms in `flavor-recipe-backfill-plan.ts` with tests. Run:
+   `pnpm --filter @ilaunchify/db backfill:flavor-recipes` (preview) then
+   `…:apply`. Custom extras with no `ingredientId` are reported + skipped
+   (re-author in the builder). Demo seed authors independent flavor recipes.
 
 ## 8. Open / build-time decisions
 
