@@ -43,6 +43,11 @@ const FIELDS: FieldDef[] = [
   { key: 'shelfLifeDays', label: 'Shelf life (days)', kind: 'int', aliases: ['shelf life', 'shelf', 'expiry', 'expiration'] },
   { key: 'netContentValue', label: 'Net content value', kind: 'num', aliases: ['net content', 'net weight', 'variant grams', 'fill weight', 'grams', 'fill', 'net', 'content'] },
   { key: 'netContentUnit', label: 'Net content unit', kind: 'text', aliases: ['net content unit', 'weight unit', 'unit of measure', 'net unit', 'content unit', 'uom', 'unit'] },
+  // Flavor matrix — rows that share a Base SKU collapse into one multi-flavor product.
+  { key: 'flavor', label: 'Flavor', kind: 'text', aliases: ['flavor', 'flavour', 'variant name', 'variation', 'variant'] },
+  { key: 'flavorStatementOfIdentity', label: 'Flavor statement of identity', kind: 'text', aliases: ['flavor statement of identity', 'flavour statement of identity', 'flavor soi', 'flavour soi', 'statement of identity', 'soi'] },
+  { key: 'flavorUnitPriceCents', label: 'Flavor price (USD)', kind: 'num', aliases: ['flavor price', 'flavour price', 'price per flavor', 'flavor unit price', 'per-flavor price'] },
+  { key: 'flavorLeadTimeDays', label: 'Flavor lead time (days)', kind: 'int', aliases: ['flavor lead time', 'flavour lead time', 'flavor lead', 'per-flavor lead'] },
 ]
 
 const COUNTRY_TO_CODE: Record<string, string> = {
@@ -94,10 +99,16 @@ function fieldResolve(f: FieldDef, raw: string): { shown: string; flag: PreviewF
 }
 
 function downloadTemplate() {
-  const headers = ['Product name', 'Category', 'Base SKU', 'Short description', 'Country of origin', 'MOQ', 'Order increment', 'Repeat lead time (days)', 'First-run lead time (days)', 'Monthly capacity', 'Shelf life (days)', 'Net content value', 'Net content unit']
-  const example = ['Sparkling Yuzu Soda', 'Beverages', 'SODA-YUZU', 'Crisp Japanese yuzu, lightly sparkling, zero sugar', 'US', '500', '100', '21', '35', '50000', '365', '473', 'mL']
+  const headers = ['Product name', 'Category', 'Base SKU', 'Short description', 'Country of origin', 'MOQ', 'Order increment', 'Repeat lead time (days)', 'First-run lead time (days)', 'Monthly capacity', 'Shelf life (days)', 'Net content value', 'Net content unit', 'Flavor', 'Flavor statement of identity', 'Flavor price (USD)', 'Flavor lead time (days)']
+  // Single-flavor product (one row) + a multi-flavor product (rows sharing a Base
+  // SKU — one row per flavor). Repeat the product name + Base SKU on every flavor row.
+  const examples = [
+    ['Sparkling Yuzu Soda', 'Beverages', 'SODA-YUZU', 'Crisp Japanese yuzu, lightly sparkling, zero sugar', 'US', '500', '100', '21', '35', '50000', '365', '473', 'mL', '', '', '', ''],
+    ['Protein Cookie', 'Snacks', 'PCK-001', 'Soft-baked protein cookie', 'US', '1000', '100', '28', '42', '20000', '270', '60', 'g', 'Chocolate Chip', 'Chocolate Chip Protein Cookie', '2.50', '28'],
+    ['Protein Cookie', 'Snacks', 'PCK-001', 'Soft-baked protein cookie', 'US', '1000', '100', '28', '42', '20000', '270', '60', 'g', 'Strawberry', 'Strawberry Protein Cookie', '2.50', '28'],
+  ]
   const esc = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)
-  const csv = [headers, example].map((r) => r.map(esc).join(',')).join('\n')
+  const csv = [headers, ...examples].map((r) => r.map(esc).join(',')).join('\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
   const a = document.createElement('a')
   a.href = url; a.download = 'ilaunchify-products-template.csv'; a.click()
@@ -225,6 +236,10 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
       shelfLifeDays: toInt(g('shelfLifeDays')),
       netContentValue: toNum(g('netContentValue')),
       netContentUnit: g('netContentUnit') || null,
+      flavor: g('flavor') || null,
+      flavorStatementOfIdentity: g('flavorStatementOfIdentity') || null,
+      flavorUnitPriceCents: (() => { const d = toNum(g('flavorUnitPriceCents')); return d == null ? null : Math.round(d * 100) })(),
+      flavorLeadTimeDays: toInt(g('flavorLeadTimeDays')),
     }
   }
 
@@ -317,22 +332,41 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
     return s
   }, [overrides, rows, cellOf])
 
+  // Flavor matrix — collapse valid rows that share a Base SKU (or name) into ONE
+  // product. The representative is the first row; `flavors` lists the distinct
+  // flavor names; `memberRowIndexes` are every row in the group (expanded at commit).
+  type GroupEntry = { base: BaseRow; issues: number; rowIndex: number; sheetCategory: string; flavors: string[]; memberRowIndexes: number[] }
+  const groups = useMemo<GroupEntry[]>(() => {
+    const m = new Map<string, GroupEntry>()
+    const order: string[] = []
+    for (const v of valid) {
+      const key = (v.base.familyCode || v.base.name).trim().toLowerCase()
+      let g = m.get(key)
+      if (!g) { g = { ...v, flavors: [], memberRowIndexes: [] }; m.set(key, g); order.push(key) }
+      g.memberRowIndexes.push(v.rowIndex)
+      g.issues = Math.max(g.issues, v.issues)
+      const fl = (v.base.flavor ?? '').trim()
+      if (fl && !g.flavors.includes(fl)) g.flavors.push(fl)
+    }
+    return order.map((k) => m.get(k)!)
+  }, [valid])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return valid
-    return valid.filter((v) => v.base.name.toLowerCase().includes(q) || (v.base.familyCode ?? '').toLowerCase().includes(q))
-  }, [valid, query])
+    if (!q) return groups
+    return groups.filter((v) => v.base.name.toLowerCase().includes(q) || (v.base.familyCode ?? '').toLowerCase().includes(q))
+  }, [groups, query])
 
-  const selectedCount = valid.filter((v) => selected.has(v.rowIndex)).length
+  const selectedCount = groups.filter((v) => selected.has(v.rowIndex)).length
   const chosen = useMemo(
-    () => valid.filter((v) => selected.has(v.rowIndex) && isReady(v)),
-    [valid, selected, isReady],
+    () => groups.filter((v) => selected.has(v.rowIndex) && isReady(v)),
+    [groups, selected, isReady],
   )
   const needCategory = selectedCount - chosen.length
 
   function next() {
-    if (!valid.length) { toast.error('No products found to import.'); return }
-    setSelected(new Set(valid.map((v) => v.rowIndex)))
+    if (!groups.length) { toast.error('No products found to import.'); return }
+    setSelected(new Set(groups.map((v) => v.rowIndex)))
     setStep('select')
   }
 
@@ -340,7 +374,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
     if (!bulkCat || !bulkSub) return
     setAssign((a) => {
       const n = { ...a }
-      for (const v of valid) if (selected.has(v.rowIndex)) n[v.rowIndex] = { categoryId: bulkCat, subcategoryId: bulkSub }
+      for (const v of groups) if (selected.has(v.rowIndex)) n[v.rowIndex] = { categoryId: bulkCat, subcategoryId: bulkSub }
       return n
     })
   }
@@ -364,17 +398,24 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
   function commit() {
     const ready = chosen
     if (!ready.length) { toast.error('Select products and give each a category.'); return }
-    const importRows: ImportRow[] = ready.map((v) => {
+    // Expand each product group to one ImportRow per member row (so the server gets
+    // every flavor), all sharing the group's resolved category + a groupKey.
+    const importRows: ImportRow[] = ready.flatMap((v) => {
       const e = effAssign(v)
       const sug = isSuggested(e)
       const subLabel = e.subcategoryId ? subNameOf(e.categoryId, e.subcategoryId) : ''
       const label = (catNameOf(e.categoryId) || v.sheetCategory || 'New') + (subLabel ? ` › ${subLabel}` : '')
-      return {
-        ...v.base,
-        subcategoryId: sug ? firstSubId : e.subcategoryId,
-        suggestedCategoryName: sug ? label : null,
-        manufacturerRefs: buildRefs(v.rowIndex),
-      }
+      const groupKey = (v.base.familyCode || v.base.name).trim().toLowerCase()
+      return v.memberRowIndexes
+        .map((ri) => rowToBase(ri))
+        .filter((b): b is BaseRow => b != null)
+        .map((b) => ({
+          ...b,
+          subcategoryId: sug ? firstSubId : e.subcategoryId,
+          suggestedCategoryName: sug ? label : null,
+          manufacturerRefs: buildRefs(v.rowIndex),
+          groupKey,
+        }))
     })
     setBusy(true)
     bulkImportProducts(importRows).then((res) => {
@@ -673,9 +714,15 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                             className="h-4 w-4 flex-none accent-pink-600"
                           />
                           <span className="min-w-0">
-                            <span className="block truncate text-[13px] font-medium text-ink-900">{v.base.name}</span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate text-[13px] font-medium text-ink-900">{v.base.name}</span>
+                              {v.flavors.length >= 2 && (
+                                <span className="flex-none rounded-full bg-pink-50 px-1.5 py-0.5 text-[10px] font-semibold text-pink-700">{v.flavors.length} flavors</span>
+                              )}
+                            </span>
                             <span className="flex items-center gap-1.5 text-[11px]">
                               {v.base.familyCode && <span className="truncate text-ink-400">{v.base.familyCode}</span>}
+                              {v.flavors.length >= 2 && <span className="truncate text-ink-500">{v.flavors.join(', ')}</span>}
                               {v.issues > 0 && <span className="text-warning-700">{v.issues} to check</span>}
                               {editedRows.has(v.rowIndex) && <span className="text-pink-700">· edited</span>}
                               {sug && <span className="text-warning-700">· admin review</span>}
@@ -719,7 +766,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                       {needCategory > 0 && <span className="text-pink-700">· {needCategory} need a category</span>}
                       {skippedNoName > 0 && <span className="text-ink-500">· {skippedNoName} skipped (missing name)</span>}
                     </span>
-                    <span className="text-ink-500">{valid.length} found · {selectedCount} selected</span>
+                    <span className="text-ink-500">{groups.length} product{groups.length === 1 ? '' : 's'} · {selectedCount} selected</span>
                   </div>
                 </>
               )}
@@ -737,6 +784,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                           ? <Check className="h-3.5 w-3.5 flex-none text-success-600" aria-hidden="true" />
                           : <X className="h-3.5 w-3.5 flex-none text-danger-600" aria-hidden="true" />}
                         <span className="min-w-0 flex-1 truncate text-ink-900">{r.name}</span>
+                        {r.ok && r.flavors ? <span className="flex-none rounded-full bg-pink-50 px-1.5 py-0.5 text-[10px] font-semibold text-pink-700">{r.flavors} flavors</span> : null}
                         {r.ok && r.id
                           ? <a href={`/products/new?draft=${r.id}&imported=1`} className="flex-none text-[12px] font-semibold text-pink-700 hover:text-pink-800">Open →</a>
                           : !r.ok && <span className="ml-auto truncate text-[12px] text-danger-700">{r.error}</span>}

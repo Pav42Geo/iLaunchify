@@ -136,6 +136,18 @@ surfaced as **"Standard lead time"** (still `ProductTemplate.leadTimeRepeatDays`
    soft warning; thread effective lead to cards/PDP + flavor-card lead under price.
 4. **Marketplace** — PDP recipe studio flavor tabs + Facts swap.
 5. **Review/Passport + admin** — show per-flavor recipes + leads.
+### Bulk import (flavor matrix) — ✅ BUILT 2026-06-30
+The partner spreadsheet importer (`apps/partner/.../products/import/`) accepts a
+**flavor matrix**: rows that share a **Base SKU** collapse into ONE product, each
+row's `Flavor` column becoming a `FlavorPreset`. Per-flavor columns: `Flavor`,
+`Flavor statement of identity`, `Flavor price (USD)`, `Flavor lead time (days)`.
+≥2 distinct flavors → `saveFlavors` + `flavorMode: MULTI`; <2 stays single-flavor.
+The select step groups rows by product (shows an "N flavors" badge); commit expands
+each group server-side (`bulkImportProducts` groups by `groupKey`). Per-flavor
+recipes are still authored in the builder Recipe step (or seeded by the Slice 6
+backfill from `extras`) — the importer sets flavor identity/price/lead/SoI, not
+ingredient lists.
+
 6. **Migration/backfill** — ✅ BUILT. `packages/db/prisma/backfill-flavor-recipes.ts`
    seeds each flavor's `FlavorRecipeSlot[]` (+ replacements/optionals) from the
    template base recipe + that flavor's `extras`. Idempotent (skips presets that

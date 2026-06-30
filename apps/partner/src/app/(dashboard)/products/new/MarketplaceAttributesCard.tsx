@@ -13,7 +13,7 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
   formatOptionsForDomain,
-  MANUFACTURING_PROCESS_OPTIONS,
+  processOptionsForDomain,
   ALLERGEN_FREE_OPTIONS,
 } from '@ilaunchify/types'
 import { setMarketplaceAttributes } from './build-actions'
@@ -102,7 +102,7 @@ export function MarketplaceAttributesCard({
 
       <Field label="Manufacturing process">
         <MultiSelect
-          options={MANUFACTURING_PROCESS_OPTIONS}
+          options={processOptionsForDomain(domain)}
           selected={processes}
           disabled={preview}
           placeholder="Select processes…"

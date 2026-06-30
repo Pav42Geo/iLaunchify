@@ -3379,24 +3379,73 @@ model ProductTemplate {
 // Manufacturing Formats). Single-select per template; a flat cross-domain set
 // (food / supplement / beverage / cosmetic) the UI groups for display. Additive
 // 2026-06-18.
+// Manufacturing/dosage forms across all product domains. Each value is scoped to
+// the domains where it's plausible in @ilaunchify/types FORMAT_OPTIONS
+// (formatOptionsForDomain). Additive — original values kept; the rest appended in
+// the 2026-06-30 catalog expansion.
 enum ManufacturingFormat {
+  // Cross-domain
   POWDER
+  LIQUID
+  // Supplement / nutraceutical
   CAPSULE
   TABLET
+  CHEWABLE_TABLET
   SOFTGEL
   GUMMY
   SOFT_CHEW
-  LIQUID
+  LOZENGE
+  ORAL_STRIP
+  TINCTURE
+  STICK_PACK
+  EFFERVESCENT
+  // Beverage
   READY_TO_DRINK
   CONCENTRATE
-  EFFERVESCENT
+  LIQUID_SHOT
+  SYRUP
+  // Food
   BAR
+  HARD_CANDY
+  CHOCOLATE
+  BAKED_GOOD
+  SNACK
+  SAUCE
+  SPREAD
+  FROZEN
+  // Cosmetic / personal care
   CREAM
   LOTION
   SERUM
+  GEL
   OIL
   BALM
+  BUTTER
+  MIST
   SPRAY
+  MASK
+  SCRUB
+  CLEANSER
+  STICK
+  ROLLERBALL
+  SOAP_BAR
+  SHAMPOO
+  CONDITIONER
+  POMADE
+  // Pet
+  KIBBLE
+  WET_FOOD
+  FRESH_FOOD
+  FREEZE_DRIED
+  TREAT
+  DENTAL_CHEW
+  FOOD_TOPPER
+  // OTC drug forms
+  OINTMENT
+  DROPS
+  PATCH
+  SUPPOSITORY
+  MEDICATED_PAD
   OTHER
 }
 
