@@ -3484,7 +3484,9 @@ model FlavorRecipeSlot {
   flavorPreset        FlavorPreset              @relation(fields: [flavorPresetId], references: [id], onDelete: Cascade)
   baseIngredient      Ingredient                @relation("FlavorSlotBaseIngredient", fields: [baseIngredientId], references: [id])
   replacements        FlavorRecipeReplacement[]
-  optionalIngredients FlavorRecipeOptional[]
+  // Optionals are per-FLAVOR (keyed to flavorPresetId on FlavorRecipeOptional,
+  // mirroring TemplateOptionalIngredient at the template level) — they hang off
+  // FlavorPreset.recipeOptionals, NOT off an individual slot.
 
   @@index([flavorPresetId, displayOrder])
 }
