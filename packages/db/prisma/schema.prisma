@@ -3251,6 +3251,16 @@ model ProductTemplate {
   // many DISTINCT flavors a Creator may combine into one pack. Null = no cap
   // (Creator can use the whole pool). The marketplace pack-builder enforces it.
   maxFlavorsPerPack          Int?
+  // Variety-pack model (docs/VARIETY_PACK_MODEL.md, 2026-06-29). minFlavorsPerPack
+  // is the distinct-flavor FLOOR the creator must pick; flavorFillRule decides how
+  // a pack's units are distributed when units > distinct flavors; pricingBasis
+  // selects per-flavor-summed vs flat per-pack pricing; flavorPolicy promotes the
+  // existing enum (CREATOR_PICK vs PARTNER_FIXED fixed assortment) to the template.
+  // All nullable/additive — null = legacy behavior.
+  minFlavorsPerPack          Int?
+  flavorFillRule             FlavorFillRule?
+  pricingBasis               PricingBasis?
+  flavorPolicy               FlavorPolicy?
   // ---- Configurator constraints (docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md, 2026-06-08) ----
   // #3 first-run vs repeat economics. Repeat = standard re-order lead time;
   // firstRun = new-SKU lead time (incl. stability testing). Seed per-variant
@@ -3460,6 +3470,13 @@ model ProductTemplateVariant {
   assortmentFlavors    Json?
   // Free-form extras (retail-display dimensions, refill-pod ml, etc.)
   packingConfig        Json?
+  // Variety-pack model (docs/VARIETY_PACK_MODEL.md §4.2): each offered pack SIZE
+  // is its own variant row. unitsPerPack promotes the count out of packingConfig
+  // JSON to a typed column (units one pack of this size holds, e.g. 24).
+  // pricePerPackCents is the flat per-pack price used when the template's
+  // pricingBasis = PER_PACK. Both nullable/additive — null = legacy.
+  unitsPerPack         Int?
+  pricePerPackCents    Int?
 
   // ---- Retail identity (per sellable SKU configuration) ----
   // The SKU/GTIN belong here, not on FlavorPreset: a single can vs a 6-pack of
@@ -4348,6 +4365,21 @@ enum FlavorPolicy {
   PARTNER_FIXED // partner has fixed assortment; creator can't customize
 }
 
+// Variety-pack remainder distribution (docs/VARIETY_PACK_MODEL.md §4.3). When a
+// pack holds more units than the distinct flavors the creator picked, some
+// flavor(s) repeat to fill it. This decides who assigns the extra units.
+enum FlavorFillRule {
+  CREATOR_CHOOSES // creator decides which picked flavor(s) repeat (default when unset)
+  EVEN_AUTO // system splits evenly, remainder round-robin by pick order
+  MANUFACTURER_FIXED // manufacturer pre-defines the distribution; creator can't change
+}
+
+// Pricing basis for a variety/multi-flavor product (docs/VARIETY_PACK_MODEL.md §5).
+enum PricingBasis {
+  PER_FLAVOR // each flavor priced per unit; pack price = sum over the pack's units (flavor cards show price)
+  PER_PACK // flat price per offered pack size (flavor cards show NO price)
+}
+
 enum PackagingStatus {
   DRAFT
   ACTIVE
@@ -5213,6 +5245,11 @@ model FlavorPreset {
   slotResolution      Json // [{ slotId, optionId | { customIngredientId, qty, unit } }]
   extras              Json? // [{ name, ingredientId, qty, unit }] flavor-only ingredients
   priceDeltaCents     Int                @default(0) // additive to per-size base price
+  // Absolute per-unit price for this flavor (cents), used when the template's
+  // pricingBasis = PER_FLAVOR (docs/VARIETY_PACK_MODEL.md §5.1): pack price = sum
+  // over the pack's units of each flavor's unitPriceCents. Null falls back to the
+  // size base price + priceDeltaCents. Additive.
+  unitPriceCents      Int?
   status              FlavorPresetStatus @default(ACTIVE)
   sortOrder           Int                @default(0)
   // V1 — per-flavor nutrient overrides (e.g., strawberry adds water content; shifts moisture)
