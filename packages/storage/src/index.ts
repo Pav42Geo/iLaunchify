@@ -29,4 +29,5 @@ export {
   certificateThumbnailKey,
   ticketAttachmentKey,
   dielineNormalizedKey,
+  flavorAssetKey,
 } from './keys'

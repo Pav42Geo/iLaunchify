@@ -109,6 +109,11 @@ export interface ProductDetailConfiguratorProps {
   /** Notifies the parent hero when the selected packaging changes, so the
    *  gallery hero image can follow the package (when image data exists). */
   onPackagingChange?: (packagingId: string) => void
+  /** Per-flavor hero (task #203). Notifies the parent hero of the URL of the
+   *  flavor hero image to show in the gallery — the hovered flavor's hero, else
+   *  the last-picked flavor's hero, else null (keep the product/package hero).
+   *  Only ever non-null when a flavor actually has an uploaded hero. */
+  onFlavorHeroChange?: (heroUrl: string | null) => void
   /** Secondary "Order a sample →" opener — supplied by the page (opens the
    *  SampleDrawer). When omitted, the sample button is hidden. */
   onOpenSample?: () => void
@@ -138,6 +143,7 @@ export function ProductDetailConfigurator({
   assortment = [],
   fixedDistribution = null,
   onPackagingChange,
+  onFlavorHeroChange,
   onOpenSample,
 }: ProductDetailConfiguratorProps) {
   // Product-level fallback sizes (legacy behaviour — used when the selected
@@ -207,6 +213,30 @@ export function ProductDetailConfigurator({
     sizeId: resolvedPackSizes[0]?.id ?? '',
     choices: [] as FlavorChoice[],
   }))
+
+  // ── Per-flavor hero (task #203) ─────────────────────────────────────────────
+  // Track the hovered flavor (chip hover/focus) + the last-picked flavor. The
+  // gallery hero swaps to the hovered flavor's hero on hover, locking to the last
+  // picked flavor's hero when nothing is hovered. Resolves to a URL only when that
+  // flavor actually has an uploaded hero — otherwise the product/package hero stays.
+  const [hoveredFlavorId, setHoveredFlavorId] = React.useState<string | null>(null)
+  const heroByFlavorId = React.useMemo(() => {
+    const m = new Map<string, string>()
+    for (const f of flavorPool) if (f.heroUrl) m.set(f.id, f.heroUrl)
+    return m
+  }, [flavorPool])
+  // Last picked = the most recently added flavor still in the pack (end of list).
+  const lastPickedFlavorId = packValue.choices.length > 0
+    ? packValue.choices[packValue.choices.length - 1]!.flavorPresetId
+    : null
+  const activeFlavorHeroUrl =
+    (hoveredFlavorId ? heroByFlavorId.get(hoveredFlavorId) : undefined) ??
+    (lastPickedFlavorId ? heroByFlavorId.get(lastPickedFlavorId) : undefined) ??
+    null
+  React.useEffect(() => {
+    onFlavorHeroChange?.(activeFlavorHeroUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFlavorHeroUrl])
   // Live composition for the selected size (drives price + summary + lead time).
   const selectedPackSize = resolvedPackSizes.find((s) => s.id === packValue.sizeId) ?? resolvedPackSizes[0] ?? null
   const packUnitsPerPack = selectedPackSize?.unitsPerPack ?? 0
@@ -464,6 +494,7 @@ export function ProductDetailConfigurator({
             flavorPresetId: f.id,
             name: f.name,
             swatchHex: f.swatchHex,
+            thumbnailUrl: f.thumbnailUrl,
             unitPriceCents: flavorUnitPriceCents[f.id] ?? null,
           }))}
           rules={packRules}
@@ -473,6 +504,7 @@ export function ProductDetailConfigurator({
           fixedDistribution={fixedDistribution}
           value={packValue}
           onChange={setPackValue}
+          onHoverFlavor={setHoveredFlavorId}
         />
       ) : (
         detail.flavors.length > 0 && (

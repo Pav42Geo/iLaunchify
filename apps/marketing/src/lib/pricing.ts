@@ -114,6 +114,11 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
   // the PDP — the configurator's pre-migration fallback covers an empty result.
   const pack = await readPackModel(slug)
 
+  // Per-flavor images (task #203) — resolve each flavor's thumbnail + hero Asset
+  // publicUrl. Cast-guarded (swatchImageFileId/heroImageFileId additive). Keyed by
+  // flavor id; null for flavors with no image (chip falls back to the swatch).
+  const flavorImages = await readFlavorImages(template.flavorPresets.map((f) => f.id))
+
   // The stored fixed assortment keys flavors by NAME (the builder authors names,
   // not ids); the VarietyPackBuilder matches against flavorPresetId. Resolve
   // name → id here where the pool (id + name) is in hand. Entries that already
@@ -132,6 +137,8 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
       name: f.name,
       swatchHex: f.swatchHex,
       statementOfIdentity: f.statementOfIdentity,
+      thumbnailUrl: flavorImages.get(f.id)?.thumbnailUrl ?? null,
+      heroUrl: flavorImages.get(f.id)?.heroUrl ?? null,
     })),
     changeoverDays: settings.changeoverDays,
     flavorPricing,
@@ -287,6 +294,52 @@ function coerceAssortment(raw: unknown): PackBuilderData['assortment'] {
     if (typeof flavor === 'string' && flavor && Number.isFinite(qty) && qty > 0) {
       out.push({ flavor, qty: Math.floor(qty) })
     }
+  }
+  return out
+}
+
+/**
+ * Per-flavor images (task #203) — resolve each flavor's thumbnail + hero Asset
+ * publicUrl, keyed by flavor preset id. Cast-guarded: `swatchImageFileId` (thumb)
+ * and `heroImageFileId` (hero) are additive FlavorPreset columns; a P2022 pre-push
+ * must not crash the PDP. Returns an empty map on any failure (chips fall back to
+ * the swatch circle, gallery keeps the product hero).
+ */
+async function readFlavorImages(
+  flavorIds: string[],
+): Promise<Map<string, { thumbnailUrl: string | null; heroUrl: string | null }>> {
+  const out = new Map<string, { thumbnailUrl: string | null; heroUrl: string | null }>()
+  if (flavorIds.length === 0) return out
+  try {
+    const fp = await (prisma as unknown as {
+      flavorPreset: {
+        findMany: (a: unknown) => Promise<Array<{ id: string; swatchImageFileId: string | null; heroImageFileId: string | null }>>
+      }
+    }).flavorPreset.findMany({
+      where: { id: { in: flavorIds } },
+      select: { id: true, swatchImageFileId: true, heroImageFileId: true },
+    })
+    // Batch-resolve every referenced Asset id → publicUrl in one query.
+    const assetIds = [
+      ...new Set(
+        fp.flatMap((f) => [f.swatchImageFileId, f.heroImageFileId]).filter((v): v is string => Boolean(v)),
+      ),
+    ]
+    const urlByAssetId = new Map<string, string>()
+    if (assetIds.length > 0) {
+      const assets = await prisma.asset
+        .findMany({ where: { id: { in: assetIds }, publicUrl: { not: null } }, select: { id: true, publicUrl: true } })
+        .catch(() => [] as Array<{ id: string; publicUrl: string | null }>)
+      for (const a of assets) if (a.publicUrl) urlByAssetId.set(a.id, a.publicUrl)
+    }
+    for (const f of fp) {
+      out.set(f.id, {
+        thumbnailUrl: f.swatchImageFileId ? urlByAssetId.get(f.swatchImageFileId) ?? null : null,
+        heroUrl: f.heroImageFileId ? urlByAssetId.get(f.heroImageFileId) ?? null : null,
+      })
+    }
+  } catch {
+    return new Map()
   }
   return out
 }

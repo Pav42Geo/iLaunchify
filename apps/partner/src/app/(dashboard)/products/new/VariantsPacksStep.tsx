@@ -25,7 +25,8 @@ import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
 import { packUiKindForProfile } from './structuralPackType'
-import { Boxes, Factory, DollarSign, FlaskConical, Sparkles, Package, Repeat, CheckSquare, Layers, SlidersHorizontal } from 'lucide-react'
+import { Boxes, Factory, DollarSign, FlaskConical, Sparkles, Package, Repeat, CheckSquare, Layers, SlidersHorizontal, ImagePlus, Loader2, X } from 'lucide-react'
+import { uploadFlavorImage, removeFlavorImage } from './flavor-image-actions'
 
 interface FacilityOption { id: string; name: string }
 
@@ -50,7 +51,7 @@ export interface FlavorLine {
 }
 // `ingId` is the legacy single-overlay field (kept for back-compat); the live
 // model is `lines` — a child mini-recipe of flavor-only additions.
-export interface Flavor { name: string; ingId: string; soi: string; lines?: FlavorLine[]; priceCents?: number | null }
+export interface Flavor { name: string; ingId: string; soi: string; lines?: FlavorLine[]; priceCents?: number | null; thumbnailUrl?: string | null }
 
 export interface PackSplit { flavors: number; perFlavor: number; even: boolean; distribution: string }
 
@@ -658,6 +659,122 @@ const FILL_RULE_OPTIONS: Array<{ value: FlavorFillRuleInput; label: string }> = 
   { value: 'MANUFACTURER_FIXED', label: 'Fixed by you' },
 ]
 
+/** Per-flavor image control (task #203). A ~38px square card in front of the
+ *  flavor row: shows the saved THUMBNAIL when set, else a dashed placeholder with
+ *  an ImagePlus icon. Click → a small inline drag-drop uploader (FileUploadSlot
+ *  pattern, scaled down). One image per flavor; the action auto-derives a hero +
+ *  thumbnail. The flavor must have a saved NAME first (the action resolves by
+ *  name). Reports the new thumb URL up via onThumbnail so the row state updates. */
+function FlavorImageControl({
+  draftId,
+  flavorName,
+  thumbnailUrl,
+  onThumbnail,
+}: {
+  draftId: string | null
+  flavorName: string
+  thumbnailUrl: string | null | undefined
+  onThumbnail: (url: string | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
+  const [dragOver, setDragOver] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const named = flavorName.trim().length > 0
+  const ready = Boolean(draftId) && named
+
+  function handleFile(files: FileList | null) {
+    const file = files?.[0]
+    if (!file || !draftId) return
+    startTransition(async () => {
+      const fd = new FormData()
+      fd.set('productTemplateId', draftId)
+      fd.set('flavorName', flavorName.trim())
+      fd.set('file', file)
+      const res = await uploadFlavorImage(fd)
+      if (!res.ok) {
+        toast.error(res.error)
+      } else {
+        onThumbnail(res.data.thumbnailUrl)
+        toast.success('Flavor image saved')
+        setOpen(false)
+      }
+    })
+  }
+
+  function handleRemove() {
+    if (!draftId) return
+    startTransition(async () => {
+      const res = await removeFlavorImage(draftId, flavorName.trim())
+      if (!res.ok) toast.error(res.error)
+      else {
+        onThumbnail(null)
+        setOpen(false)
+      }
+    })
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => ready && setOpen((o) => !o)}
+        disabled={!ready || pending}
+        aria-label={thumbnailUrl ? `Change image for ${flavorName || 'flavor'}` : `Add image for ${flavorName || 'flavor'}`}
+        title={!named ? 'Name this flavor first' : thumbnailUrl ? 'Change flavor image' : 'Add flavor image'}
+        className="rb-flavor-img"
+        data-has-image={thumbnailUrl ? 'true' : 'false'}
+      >
+        {pending ? (
+          <Loader2 size={16} className="rb-flavor-img-spin" strokeWidth={2} />
+        ) : thumbnailUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={thumbnailUrl} alt="" />
+        ) : (
+          <ImagePlus size={16} strokeWidth={2} />
+        )}
+      </button>
+
+      {open && ready && (
+        <div className="rb-flavor-img-pop" role="dialog" aria-label={`Image for ${flavorName}`}>
+          <div className="rb-flavor-img-pop-head">
+            <span>Flavor image</span>
+            <button type="button" aria-label="Close" onClick={() => setOpen(false)}><X size={13} strokeWidth={2.5} /></button>
+          </div>
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); if (!pending) handleFile(e.dataTransfer.files) }}
+            className="rb-flavor-img-drop"
+            data-drag={dragOver ? 'true' : 'false'}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              style={{ display: 'none' }}
+              onChange={(e) => handleFile(e.target.files)}
+              disabled={pending}
+            />
+            {pending ? (
+              <span className="rb-flavor-img-drop-busy"><Loader2 size={14} className="rb-flavor-img-spin" strokeWidth={2} /> Uploading…</span>
+            ) : (
+              <button type="button" onClick={() => inputRef.current?.click()} className="rb-flavor-img-drop-cta">
+                <ImagePlus size={18} strokeWidth={2} />
+                <span>Drop or click to upload</span>
+                <span className="rb-flavor-img-drop-hint">PNG, JPG, WebP · one image, auto-thumbnailed</span>
+              </button>
+            )}
+          </div>
+          {thumbnailUrl && !pending && (
+            <button type="button" onClick={handleRemove} className="rb-flavor-img-remove">Remove image</button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlavors, initialMax, initialMin, initialFillRule, initialBasis, initialPolicy, initialFixedDistribution, initialPackSizes, packing }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; maxColumns: number; flavors: Flavor[]; onFlavors: (f: Flavor[]) => void; initialMax?: number | null; initialMin?: number | null; initialFillRule?: FlavorFillRuleInput | null; initialBasis?: PricingBasisInput | null; initialPolicy?: FlavorPolicyInput | null; initialFixedDistribution?: Record<string, number[]> | null; initialPackSizes?: InitialDraft['packSizes']; packing: PackingInit }) {
   const list = flavors.length ? flavors : [{ name: '', ingId: 'cane', soi: '' }]
   const [perFlavorCap, setPerFlavorCap] = useState(false)
@@ -940,11 +1057,19 @@ function MultiFlavor({ draftId, facilities, baseSku, maxColumns, flavors, onFlav
       </div>
 
       <table style={{ marginTop: 14 }}>
-        <thead><tr><th>#</th><th>Flavor name</th><th>SKU</th><th>Statement of Identity</th>{basis === 'PER_FLAVOR' && <th>Price / unit ($)</th>}{perFlavorCap && <><th>MOQ</th><th>Capacity</th></>}<th>Facility</th><th /></tr></thead>
+        <thead><tr><th>#</th><th>Image</th><th>Flavor name</th><th>SKU</th><th>Statement of Identity</th>{basis === 'PER_FLAVOR' && <th>Price / unit ($)</th>}{perFlavorCap && <><th>MOQ</th><th>Capacity</th></>}<th>Facility</th><th /></tr></thead>
         <tbody>
           {list.map((f, i) => (
             <tr key={i}>
               <td>{i + 1}</td>
+              <td>
+                <FlavorImageControl
+                  draftId={draftId}
+                  flavorName={f.name}
+                  thumbnailUrl={f.thumbnailUrl}
+                  onThumbnail={(url) => set(i, { thumbnailUrl: url })}
+                />
+              </td>
               <td><input className="input" value={f.name} placeholder={`Flavor ${i + 1}`} onChange={(e) => set(i, { name: e.target.value })} /></td>
               <td className="muted">{baseSku ? `${baseSku}-F${i + 1}` : `F${i + 1}`}</td>
               <td><input className="input" value={f.soi} placeholder="e.g. Sparkling yuzu soda" onChange={(e) => set(i, { soi: e.target.value })} /></td>

@@ -114,6 +114,22 @@ export function packagingAssetKey(params: {
   return `partners/${params.partnerId}/packaging/${params.packagingSystemId}/${params.kind}/${id}-${safe}`
 }
 
+// Per-flavor images (task #203 — partner uploads one photo per flavor; the upload
+// action derives a high-quality HERO + a small square THUMBNAIL). Path convention:
+//   flavors/{productTemplateId}/{flavorPresetId}/{kind}/{cuid}-{filename}
+// Per-template + per-flavor namespacing lets us delete-all-by-flavor on removal and
+// delete-all-by-template on teardown. {kind} = 'hero' | 'thumb'.
+export function flavorAssetKey(params: {
+  productTemplateId: string
+  flavorPresetId: string
+  kind: 'hero' | 'thumb'
+  filename: string
+}): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `flavors/${params.productTemplateId}/${params.flavorPresetId}/${params.kind}/${id}-${safe}`
+}
+
 // Admin-normalized die-line SVG (Slice C9.g — Die-line Curator). Path convention:
 //   dielines/{dielineId}/normalized/{cuid}.svg
 // This is the platform-generated NORMALIZED artifact the Studio renders — it is

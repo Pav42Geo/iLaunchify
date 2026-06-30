@@ -110,6 +110,10 @@ export function ProductDetailHero({
   const [selectedPackagingId, setSelectedPackagingId] = React.useState<string>(
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
   )
+  // Per-flavor hero (task #203) — the configurator reports the URL of the flavor
+  // hero to show (hovered flavor's hero, else last-picked, else null). When set,
+  // it takes priority over the package image in the gallery; null falls back.
+  const [flavorHeroUrl, setFlavorHeroUrl] = React.useState<string | null>(null)
 
   // ZONE 1 image resolution. When the selected package carries a resolved
   // imageUrl (server-side, from its PackagingSystem), the gallery shows it as the
@@ -117,10 +121,14 @@ export function ProductDetailHero({
   // else emoji+gradient). `undefined` → no swap.
   const selectedPackageImage = detail.packaging.find((p) => p.id === selectedPackagingId)?.imageUrl
 
+  // The flavor hero (when a flavor with an uploaded hero is hovered/picked) wins
+  // over the package image; otherwise the package image (then the product hero).
+  const galleryHeroImage = flavorHeroUrl ?? selectedPackageImage
+
   return (
     <section className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.15fr_1fr_380px] lg:gap-[26px]">
       {/* ZONE 1 — gallery */}
-      <HeroGallery template={template} images={images} packageImage={selectedPackageImage} />
+      <HeroGallery template={template} images={images} packageImage={galleryHeroImage} />
 
       {/* ZONE 2 — identity (server-rendered) */}
       <div className="flex flex-col">{identity}</div>
@@ -151,6 +159,7 @@ export function ProductDetailHero({
                 flavorPricing={flavorPricing}
                 {...packProps}
                 onPackagingChange={setSelectedPackagingId}
+                onFlavorHeroChange={setFlavorHeroUrl}
                 onOpenSample={open}
               />
             )}
@@ -170,6 +179,7 @@ export function ProductDetailHero({
             flavorPricing={flavorPricing}
             {...packProps}
             onPackagingChange={setSelectedPackagingId}
+            onFlavorHeroChange={setFlavorHeroUrl}
           />
         )}
 

@@ -182,6 +182,7 @@ export function GuidedBuilder({
   const [flavors, setFlavors] = useState<Flavor[]>(
     initial?.flavors.map((f) => ({
       name: f.name, ingId: 'cane', soi: f.soi, priceCents: f.unitPriceCents ?? null,
+      thumbnailUrl: f.thumbnailUrl ?? null,
       lines: (f.lines ?? []).map((l) => ({ ingId: l.ingredientId, name: l.name, qty: l.qty, unit: l.unit })),
     })) ?? [],
   )
@@ -630,6 +631,27 @@ const CSS = `
 .gb .btn.pink{background:var(--pink);color:#fff;border-color:var(--pink)} .gb .btn.sm{padding:6px 12px;font-size:var(--fs-sm)}
 .gb .rb-btn-add{background:#fff;color:var(--pink-700);border:1px solid var(--pink-100);border-radius:8px;padding:6px 12px;font:inherit;font-size:var(--fs-xs);font-weight:600;cursor:pointer;transition:.12s}
 .gb .rb-btn-add:hover{background:var(--pink-50)} .gb .rb-btn-add:disabled{opacity:.5;cursor:not-allowed}
+/* Per-flavor image control (task #203) */
+.gb .rb-flavor-img{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;overflow:hidden;cursor:pointer;background:#fff;color:var(--ink-400);transition:.12s}
+.gb .rb-flavor-img[data-has-image=false]{border:1.5px dashed var(--border-soft)}
+.gb .rb-flavor-img[data-has-image=true]{border:1px solid var(--ink-200)}
+.gb .rb-flavor-img:hover:not(:disabled){border-color:var(--pink);color:var(--pink-700)}
+.gb .rb-flavor-img:disabled{opacity:.45;cursor:not-allowed}
+.gb .rb-flavor-img img{width:100%;height:100%;object-fit:cover}
+.gb .rb-flavor-img-spin{animation:rb-spin 1s linear infinite}
+@keyframes rb-spin{to{transform:rotate(360deg)}}
+.gb .rb-flavor-img-pop{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:240px;background:#fff;border:1px solid var(--ink-200);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:12px}
+.gb .rb-flavor-img-pop-head{display:flex;align-items:center;justify-content:space-between;font-size:var(--fs-xs);font-weight:600;color:var(--ink-700);margin-bottom:8px}
+.gb .rb-flavor-img-pop-head button{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;color:var(--ink-400);cursor:pointer}
+.gb .rb-flavor-img-pop-head button:hover{background:var(--ink-100);color:var(--ink-700)}
+.gb .rb-flavor-img-drop{border:1.5px dashed var(--border-soft);border-radius:10px;padding:14px 10px;text-align:center;transition:.12s}
+.gb .rb-flavor-img-drop[data-drag=true]{border-color:var(--pink);background:var(--pink-50)}
+.gb .rb-flavor-img-drop-cta{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;color:var(--ink-700);cursor:pointer}
+.gb .rb-flavor-img-drop-cta>span:nth-child(2){font-size:var(--fs-sm);font-weight:600}
+.gb .rb-flavor-img-drop-hint{font-size:var(--fs-2xs,11px);color:var(--ink-500)}
+.gb .rb-flavor-img-drop-busy{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm);color:var(--ink-600)}
+.gb .rb-flavor-img-remove{margin-top:8px;width:100%;font-size:var(--fs-xs);font-weight:600;color:var(--pink-700);background:#fff;border:1px solid var(--pink-100);border-radius:8px;padding:6px;cursor:pointer}
+.gb .rb-flavor-img-remove:hover{background:var(--pink-50)}
 .gb .card{border:var(--card-border-width) solid var(--card-border-color);border-radius:var(--card-radius);background:#fff;padding:18px}
 .gb .field label{display:block;font-size:var(--fs-base);font-weight:600;color:var(--ink-800);margin-bottom:7px;letter-spacing:-.005em}
 .gb .input,.gb .sel,.gb textarea{width:100%;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;font:inherit;font-size:var(--fs-base);color:var(--ink-900);background:#fff}

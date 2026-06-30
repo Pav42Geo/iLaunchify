@@ -33,6 +33,9 @@ import {
 /** A flavor in the pool, with display + (PER_FLAVOR) price. */
 export interface VarietyPoolFlavor extends PoolFlavor {
   swatchHex?: string | null
+  /** Per-flavor thumbnail (task #203) — when set, the chip renders this image in
+   *  place of the color circle. null/undefined → swatch circle (default). */
+  thumbnailUrl?: string | null
 }
 
 export interface VarietyPackValue {
@@ -67,6 +70,10 @@ export interface VarietyPackBuilderProps {
   /** Optional render callback receiving the live composition for the chosen
    *  size, so the parent can show price/summary without recomputing. */
   onCompose?: (info: { size: PackSize | null; composed: ComposedPack }) => void
+  /** Per-flavor hero hover (task #203). Fires with a flavor id on chip
+   *  hover/focus and `null` on leave/blur, so the parent can swap the PDP gallery
+   *  hero to that flavor's image (and lock to the last pick when nothing hovers). */
+  onHoverFlavor?: (flavorPresetId: string | null) => void
   className?: string
 }
 
@@ -85,6 +92,7 @@ export function VarietyPackBuilder({
   value,
   onChange,
   onCompose,
+  onHoverFlavor,
   className,
 }: VarietyPackBuilderProps) {
   const size = packSizes.find((s) => s.id === value.sizeId) ?? packSizes[0] ?? null
@@ -348,26 +356,42 @@ export function VarietyPackBuilder({
                 key={fl.flavorPresetId}
                 type="button"
                 onClick={() => toggleFlavor(fl.flavorPresetId)}
+                onMouseEnter={() => onHoverFlavor?.(fl.flavorPresetId)}
+                onMouseLeave={() => onHoverFlavor?.(null)}
+                onFocus={() => onHoverFlavor?.(fl.flavorPresetId)}
+                onBlur={() => onHoverFlavor?.(null)}
                 disabled={disabled}
                 aria-pressed={active}
                 title={fl.name}
                 className={cn(
-                  'group relative flex w-[78px] flex-shrink-0 snap-start flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
+                  'group relative flex w-[78px] flex-shrink-0 snap-start flex-col items-center gap-1.5 rounded-xl bg-white px-2 py-2.5 text-center transition-[border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500',
                   active
-                    ? 'border-pink-400 bg-pink-50/50'
-                    : 'border-ink-100 bg-white hover:border-ink-300',
+                    ? 'border-2 border-ink-900'
+                    : 'border border-ink-200 hover:border-ink-400',
                   disabled && 'cursor-not-allowed opacity-40',
                 )}
               >
-                <span
-                  className={cn(
-                    'inline-block h-9 w-9 rounded-full border',
-                    active ? 'border-pink-400 ring-2 ring-pink-500/30' : 'border-ink-200',
-                  )}
-                  style={{ backgroundColor: fl.swatchHex ?? '#E7E2D8' }}
-                />
+                {fl.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={fl.thumbnailUrl}
+                    alt=""
+                    className={cn(
+                      'h-9 w-9 rounded-full border object-cover',
+                      active ? 'border-ink-400' : 'border-ink-200',
+                    )}
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      'inline-block h-9 w-9 rounded-full border',
+                      active ? 'border-ink-400' : 'border-ink-200',
+                    )}
+                    style={{ backgroundColor: fl.swatchHex ?? '#E7E2D8' }}
+                  />
+                )}
                 {active && (
-                  <span className="absolute right-1.5 top-1.5 grid h-4 w-4 place-items-center rounded-full bg-pink-600 text-white">
+                  <span className="absolute right-1.5 top-1.5 grid h-4 w-4 place-items-center rounded-full bg-ink-900 text-white">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
                   </span>
                 )}
@@ -411,7 +435,7 @@ export function VarietyPackBuilder({
               return (
                 <li
                   key={c.flavorPresetId}
-                  className="flex items-center gap-3 rounded-xl border border-pink-200 bg-pink-50/30 px-3 py-2"
+                  className="flex items-center gap-3 rounded-xl border border-ink-200 bg-white px-3 py-2"
                 >
                   <span
                     className="inline-block h-4 w-4 flex-shrink-0 rounded-full border border-ink-200"

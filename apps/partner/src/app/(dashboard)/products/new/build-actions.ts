@@ -281,7 +281,7 @@ export interface InitialDraft {
   manufacturingProcesses: string[]
   allergenFreeClaims: string[]
   marketCodes: string[]
-  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[]; unitPriceCents: number | null }>
+  flavors: Array<{ name: string; soi: string; lines: FlavorExtraLine[]; unitPriceCents: number | null; thumbnailUrl?: string | null }>
   axes: InitialDraftAxis[]
   // Recipe entry method — restores the chosen mode (Search / AI / Declare) when
   // resuming a draft so the builder reopens on the right surface.
@@ -365,7 +365,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null; countryOfOrigin: string | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       subcategory: { categoryId: string } | null
-      flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown; unitPriceCents: number | null }>
+      flavorPresets: Array<{ name: string; statementOfIdentity: string | null; extras: unknown; unitPriceCents: number | null; swatchImageFileId: string | null }>
       ingredientSlots: Array<{ id: string; baseIngredientId: string; weightG: number | null; baseIngredient: { internalName: string | null; name: string; nutritionPer100g: unknown; densityGPerML: number | null; allergenFlags: string[] } | null }>
       niches: Array<{ nicheId: string }>
       lifestyleTags: Array<{ lifestyleTagId: string }>
@@ -395,7 +395,9 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         storageClass: true, storageTempMinF: true, storageTempMaxF: true, countryOfOrigin: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         subcategory: { select: { categoryId: true } },
-        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true, unitPriceCents: true } },
+        // swatchImageFileId post-dates some generated clients → the whole load is
+        // cast-guarded already; selecting it is safe (it's a real column post-push).
+        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { name: true, statementOfIdentity: true, extras: true, unitPriceCents: true, swatchImageFileId: true } },
         ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, baseIngredient: { select: { internalName: true, name: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } } } },
         niches: { select: { nicheId: true } },
         lifestyleTags: { select: { lifestyleTagId: true } },
@@ -435,6 +437,13 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
     // Axes bind to the stable baseIngredientId client-side; the DB stores the
     // real slot id. Map it back so the binding re-selects the right base row.
     const slotToIng = new Map(tpl.ingredientSlots.map((s) => [s.id, s.baseIngredientId]))
+
+    // Per-flavor thumbnail URLs (task #203) — resolve each flavor's
+    // swatchImageFileId (THUMB Asset id) → displayable URL so the Flavors table
+    // shows the saved image on resume. publicUrl preferred, signed fallback.
+    const flavorThumbUrls = await resolveCertBadgeUrls(
+      tpl.flavorPresets.map((f) => f.swatchImageFileId),
+    ).catch(() => new Map<string, string>())
 
     return {
       id: tpl.id,
@@ -484,6 +493,8 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         name: f.name,
         soi: f.statementOfIdentity ?? '',
         unitPriceCents: f.unitPriceCents ?? null,
+        // Per-flavor thumbnail (task #203) — null when no image uploaded.
+        thumbnailUrl: f.swatchImageFileId ? flavorThumbUrls.get(f.swatchImageFileId) ?? null : null,
         lines: Array.isArray(f.extras)
           ? (f.extras as Array<Record<string, unknown>>)
               .filter((e) => e && e.ingredientId)

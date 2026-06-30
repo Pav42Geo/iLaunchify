@@ -25,6 +25,11 @@ export interface PackBuilderFlavor {
   name: string
   swatchHex?: string | null
   statementOfIdentity?: string | null
+  /** Per-flavor images (task #203). `thumbnailUrl` = small square shown on the PDP
+   *  chip in place of the color circle; `heroUrl` = large gallery image swapped in
+   *  on chip hover. Both undefined/null → color circle + product hero (default). */
+  thumbnailUrl?: string | null
+  heroUrl?: string | null
 }
 
 export interface PackBuilderProps {
