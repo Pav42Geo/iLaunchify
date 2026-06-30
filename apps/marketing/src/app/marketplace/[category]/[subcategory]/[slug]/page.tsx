@@ -27,6 +27,7 @@ import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getProductRestrictions } from '@/lib/product-restrictions'
 import { getProductSampleOptions, getOwnedSampleProductId } from '@/lib/product-sample-options'
 import { getPackagingImageMap } from '@/lib/packaging-images-db'
+import { processLabel } from '@ilaunchify/types'
 
 /**
  * /marketplace/[category]/[subcategory]/[slug] — ProductTemplate at detail size.
@@ -450,16 +451,18 @@ function IdentityColumn({
           drives the score, ratingCount the launch count; "New" when unrated. */}
       <RatingRow ratingAvg={template.ratingAvg} launches={template.ratingCount ?? 0} />
 
-      {/* Key-facts card — DIRECTLY under the title. Format · MOQ · Lead · From.
-          Reuses the spec-grid data (this is the single source of these facts —
-          the old rating/meta line that duplicated them is removed). "From" value
-          uses the prototype's pink accent. */}
+      {/* Key-facts card — DIRECTLY under the title. Format · MOQ · Lead ·
+          Process (the manufacturer's production method). Process reads real
+          ProductTemplate.manufacturingProcesses; shows "--" when none is set. */}
       <ProductSpecGrid
         items={[
           { label: 'Format', value: detail.format },
           { label: 'MOQ', value: template.minUnits.toLocaleString() },
           { label: 'Lead', value: `${template.leadTimeDays}d` },
-          { label: 'From', value: `$${template.pricePerUnit.toFixed(2)}`, accent: true },
+          {
+            label: 'Process',
+            value: template.processSlugs?.[0] ? processLabel(template.processSlugs[0]) : '--',
+          },
         ]}
         className="mb-3.5 overflow-hidden rounded-[var(--card-radius)]"
       />

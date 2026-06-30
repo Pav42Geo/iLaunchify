@@ -14,6 +14,9 @@ export type SampleTemplate = Omit<ProductCardProps, 'href'> & {
   ratingAvg?: number | null
   /** Number of ratings backing ratingAvg. */
   ratingCount?: number
+  /** Manufacturing-process slugs (ProductTemplate.manufacturingProcesses) — the
+   *  PDP "Process" fact shows the first one's label, or "--" when absent. */
+  processSlugs?: string[]
 }
 
 function href(t: { categorySlug: string; subcategorySlug?: string; slug: string }) {

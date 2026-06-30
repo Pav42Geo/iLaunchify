@@ -106,3 +106,8 @@ export function formatLabel(value: string): string {
 export function leadLabel(value: string): string {
   return LEAD_BUCKET_OPTIONS.find((o) => o.value === value)?.label ?? value
 }
+
+/** Human label for a manufacturing-process slug. */
+export function processLabel(value: string): string {
+  return MANUFACTURING_PROCESS_OPTIONS.find((o) => o.value === value)?.label ?? value
+}

@@ -485,6 +485,9 @@ type DbTemplate = Awaited<
   // reads compile against the (possibly stale) generated client.
   ratingAvg?: number | null
   ratingCount?: number
+  // Manufacturing process slugs (ProductTemplate.manufacturingProcesses) — drives
+  // the PDP "Process" fact. Empty/absent → the page shows "--".
+  manufacturingProcesses?: string[]
 }
 
 function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
@@ -511,6 +514,7 @@ function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
     pricePerUnit: t.priceFloorCents / 100,
     ratingAvg: t.ratingAvg ?? null,
     ratingCount: t.ratingCount ?? 0,
+    processSlugs: t.manufacturingProcesses ?? [],
   }
 }
 
