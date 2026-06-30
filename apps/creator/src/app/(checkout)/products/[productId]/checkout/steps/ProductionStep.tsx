@@ -458,6 +458,7 @@ export function ProductionStep({
             pricingBasis={packMatrix?.pricingBasis ?? 'PER_FLAVOR'}
             mode={packMode}
             assortment={packMatrix?.assortment ?? []}
+            fixedDistribution={packMatrix?.fixedDistribution ?? null}
             value={packValue}
             onChange={(next) => writePack(next, Math.max(moqPacks, packCount || moqPacks))}
           />

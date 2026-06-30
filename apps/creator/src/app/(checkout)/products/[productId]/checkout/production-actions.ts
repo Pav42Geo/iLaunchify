@@ -229,6 +229,9 @@ export interface VarietyPackMatrix {
   flavorPolicy: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
   /** Manufacturer's fixed assortment [{flavor,qty}] (PACK_FIXED). */
   assortment: Array<{ flavor: string; qty: number }>
+  /** MANUFACTURER_FIXED fill-rule weights (spec §4.3) — { [flavorCount]: number[] }.
+   *  null when unauthored / the rule isn't MANUFACTURER_FIXED. */
+  fixedDistribution: Record<string, number[]> | null
   packSizes: VarietyPackSizeOption[]
   pool: Array<{
     flavorPresetId: string
@@ -270,6 +273,7 @@ export async function getVarietyPackMatrix(
     structuralType: null,
     flavorPolicy: null,
     assortment: [],
+    fixedDistribution: null,
     packSizes: [],
     pool: (product?.productTemplate?.flavorPresets ?? []).map((f) => ({
       flavorPresetId: f.id,
@@ -294,6 +298,7 @@ export async function getVarietyPackMatrix(
           flavorFillRule: VarietyPackMatrix['fillRule'] | null
           pricingBasis: VarietyPackMatrix['pricingBasis'] | null
           flavorPolicy: VarietyPackMatrix['flavorPolicy']
+          fixedDistribution: unknown
           packingProfile: { structuralType: string | null } | null
           variants: Array<{
             id: string
@@ -313,6 +318,7 @@ export async function getVarietyPackMatrix(
         flavorFillRule: true,
         pricingBasis: true,
         flavorPolicy: true,
+        fixedDistribution: true,
         packingProfile: { select: { structuralType: true } },
         variants: {
           where: { isActive: true },
@@ -367,6 +373,7 @@ export async function getVarietyPackMatrix(
         structuralType: (t.packingProfile?.structuralType ?? null) as VarietyPackMatrix['structuralType'],
         flavorPolicy: t.flavorPolicy ?? null,
         assortment,
+        fixedDistribution: t.flavorFillRule === 'MANUFACTURER_FIXED' ? coerceFixedDistribution(t.fixedDistribution) : null,
         packSizes,
         pool: empty.pool.map((f) => ({
           ...f,
@@ -377,6 +384,21 @@ export async function getVarietyPackMatrix(
   } catch {
     return { ok: true, data: empty }
   }
+}
+
+/** Coerce a stored fixedDistribution JSON into { [flavorCount]: number[] } (spec
+ *  §4.3). Integer keys >= 1; each vector of non-negative integers must match its
+ *  key length. Drops malformed rows; returns null when nothing valid remains. */
+function coerceFixedDistribution(raw: unknown): Record<string, number[]> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const out: Record<string, number[]> = {}
+  for (const [k, vec] of Object.entries(raw as Record<string, unknown>)) {
+    const count = Math.floor(Number(k))
+    if (!Number.isFinite(count) || count < 1) continue
+    if (!Array.isArray(vec) || vec.length !== count) continue
+    out[String(count)] = vec.map((x) => Math.max(0, Math.floor(Number(x) || 0)))
+  }
+  return Object.keys(out).length > 0 ? out : null
 }
 
 // -----------------------------------------------------------------------------

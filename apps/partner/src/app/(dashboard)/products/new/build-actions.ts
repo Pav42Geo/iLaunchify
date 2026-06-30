@@ -268,6 +268,9 @@ export interface InitialDraft {
   pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
   /** §8 — who picks the flavors. null = legacy (treated as CREATOR_PICK). */
   flavorPolicy: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
+  /** MANUFACTURER_FIXED fill-rule distribution (spec §4.3) — { [flavorCount]: weights[] }.
+   *  null when unauthored / the rule isn't MANUFACTURER_FIXED. */
+  fixedDistribution: Record<string, number[]> | null
   /** Offered pack sizes — the typed-`unitsPerPack` sibling variants (§4.2). Each
    *  may carry a fixed assortment [{flavor,qty}] (PARTNER_FIXED). */
   packSizes: Array<{ id: string; label: string; unitsPerPack: number; moqPacks: number | null; pricePerPackCents: number | null; assortment: Array<{ flavor: string; qty: number }> }>
@@ -329,6 +332,21 @@ function plainNutrition(v: unknown): Record<string, number> {
   return out
 }
 
+/** Coerce a stored fixedDistribution JSON into a { [flavorCount]: number[] } map
+ *  (spec §4.3). Integer keys >= 1; each vector of non-negative integers must match
+ *  its key length. Drops malformed rows; returns null when nothing valid remains. */
+function coerceFixedDistribution(raw: unknown): Record<string, number[]> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const out: Record<string, number[]> = {}
+  for (const [k, vec] of Object.entries(raw as Record<string, unknown>)) {
+    const count = Math.floor(Number(k))
+    if (!Number.isFinite(count) || count < 1) continue
+    if (!Array.isArray(vec) || vec.length !== count) continue
+    out[String(count)] = vec.map((x) => Math.max(0, Math.floor(Number(x) || 0)))
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
 /** Load an existing DRAFT for the guided builder to resume (#35 load-back). Returns
  *  null if not found / not owned. Single cast query so new columns + relations
  *  (packingProfileId, optionAxes, …) resolve before the client is regenerated. */
@@ -342,7 +360,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       id: string; status: string; name: string; familyCode: string | null; description: string | null
       longDescription: string | null; manufacturerServiceId: string | null; subcategoryId: string
       packingProfileId: string | null; maxFlavorsPerPack: number | null; recipeEntryMode: string | null; labelingType: string; intendedAgeGroup: string | null
-      minFlavorsPerPack: number | null; flavorFillRule: string | null; pricingBasis: string | null; flavorPolicy: string | null
+      minFlavorsPerPack: number | null; flavorFillRule: string | null; pricingBasis: string | null; flavorPolicy: string | null; fixedDistribution: unknown
       manufacturingFormat: string | null; manufacturingProcesses: string[]; allergenFreeClaims: string[]; marketCodes: string[]
       storageClass: string | null; storageTempMinF: number | null; storageTempMaxF: number | null; countryOfOrigin: string | null
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
@@ -372,7 +390,7 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
         id: true, status: true, name: true, familyCode: true, description: true, longDescription: true,
         manufacturerServiceId: true, subcategoryId: true, packingProfileId: true, maxFlavorsPerPack: true,
         recipeEntryMode: true, labelingType: true, intendedAgeGroup: true,
-        minFlavorsPerPack: true, flavorFillRule: true, pricingBasis: true, flavorPolicy: true,
+        minFlavorsPerPack: true, flavorFillRule: true, pricingBasis: true, flavorPolicy: true, fixedDistribution: true,
         manufacturingFormat: true, manufacturingProcesses: true, allergenFreeClaims: true, marketCodes: true,
         storageClass: true, storageTempMinF: true, storageTempMaxF: true, countryOfOrigin: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
@@ -433,6 +451,9 @@ export async function loadDraft(productTemplateId: string): Promise<InitialDraft
       flavorFillRule: (tpl.flavorFillRule as InitialDraft['flavorFillRule']) ?? null,
       pricingBasis: (tpl.pricingBasis as InitialDraft['pricingBasis']) ?? null,
       flavorPolicy: (tpl.flavorPolicy as InitialDraft['flavorPolicy']) ?? null,
+      // MANUFACTURER_FIXED weight vectors (spec §4.3) — coerce the JSON into a
+      // { [flavorCount]: number[] } map; drop malformed rows. null when unauthored.
+      fixedDistribution: coerceFixedDistribution(tpl.fixedDistribution),
       packSizes: (tpl.sizeVariants ?? [])
         .filter((v) => v.unitsPerPack != null)
         .map((v) => ({
@@ -1026,6 +1047,28 @@ export interface FlavorRulesInput {
   pricingBasis?: PricingBasisInput | null
   /** §8 — who selects the flavors: creator picks, or a partner-fixed assortment. */
   flavorPolicy?: FlavorPolicyInput | null
+  /** MANUFACTURER_FIXED fill rule (spec §4.3) — per-flavor-count weight vectors,
+   *  { [flavorCount]: number[] }. Scaled to each offered pack size at runtime.
+   *  undefined = leave; null clears. */
+  fixedDistribution?: Record<string, number[]> | null
+}
+
+/** Sanitize a { [flavorCount]: number[] } weight map: integer keys >= 1, vectors
+ *  of non-negative integers whose length matches the key. Drops malformed rows.
+ *  Returns null when nothing valid remains (so the column clears cleanly). */
+function cleanFixedDistribution(
+  raw: Record<string, number[]> | null | undefined,
+): Record<string, number[]> | null {
+  if (!raw || typeof raw !== 'object') return null
+  const out: Record<string, number[]> = {}
+  for (const [k, vec] of Object.entries(raw)) {
+    const count = Math.floor(Number(k))
+    if (!Number.isFinite(count) || count < 1) continue
+    if (!Array.isArray(vec) || vec.length !== count) continue
+    const weights = vec.map((x) => Math.max(0, Math.floor(Number(x) || 0)))
+    out[String(count)] = weights
+  }
+  return Object.keys(out).length > 0 ? out : null
 }
 
 /** Persist the pack RULES onto the ProductTemplate (min flavors / fill rule /
@@ -1051,6 +1094,15 @@ export async function saveFlavorRules(productTemplateId: string, input: FlavorRu
     if (input.flavorFillRule !== undefined) data.flavorFillRule = input.flavorFillRule
     if (input.pricingBasis !== undefined) data.pricingBasis = input.pricingBasis
     if (input.flavorPolicy !== undefined) data.flavorPolicy = input.flavorPolicy
+    // MANUFACTURER_FIXED distribution (spec §4.3) — only persist a cleaned map when
+    // the rule is MANUFACTURER_FIXED; clear it otherwise so a rule switch wipes
+    // stale weights. The fixedDistribution column post-dates the client → cast write.
+    if (input.fixedDistribution !== undefined) {
+      data.fixedDistribution =
+        input.flavorFillRule === 'MANUFACTURER_FIXED'
+          ? cleanFixedDistribution(input.fixedDistribution)
+          : null
+    }
     if (Object.keys(data).length === 0) return { ok: true }
 
     await (prisma as unknown as { productTemplate: { update: (a: unknown) => Promise<unknown> } })
@@ -2081,7 +2133,7 @@ export async function cloneDraftFromTemplate(
     // Single cast query so newer columns/relations resolve before the generated
     // client is regenerated on this machine (same pattern loadDraft uses).
     type SrcSlot = { id: string; baseIngredientId: string; weightG: unknown; costPerKgCents: number | null; displayOrder: number; allowReplacement: boolean; label: string | null; description: string | null }
-    type SrcFlavor = { id: string; name: string; statementOfIdentity: string | null; swatchHex: string | null; swatchImageFileId: string | null; dielineId: string | null; slotResolution: unknown; extras: unknown; priceDeltaCents: number; status: string; sortOrder: number; nutrientOverrides: unknown }
+    type SrcFlavor = { id: string; name: string; statementOfIdentity: string | null; swatchHex: string | null; swatchImageFileId: string | null; dielineId: string | null; slotResolution: unknown; extras: unknown; priceDeltaCents: number; unitPriceCents: number | null; status: string; sortOrder: number; nutrientOverrides: unknown }
     type SrcVariant = Record<string, unknown> & { id: string }
     type SrcAxis = { id: string; key: string; label: string; layer: string; editableByCreator: boolean; required: boolean; affectsLabel: boolean; boundSlotId: string | null; sortOrder: number; isActive: boolean; values: SrcValue[] }
     type SrcValue = { id: string; label: string; isDefault: boolean; status: string; leadTimeDeltaDays: number; unitCostDeltaCents: number; moqOverride: number | null; priceDeltaCents: number; flavorPresetId: string | null; substrateId: string | null; packagingTypeId: string | null; overlayOp: string; recipeOverlay: unknown; sortOrder: number }
@@ -2097,6 +2149,9 @@ export async function cloneDraftFromTemplate(
       labelingType: string; labelingTypeLocked: boolean; intendedAgeGroup: string; flavorsRunSequentially: boolean
       formulationData: unknown; statementOfIdentity: string | null; familyCode: string | null; productType: string
       packingProfileId: string | null; maxFlavorsPerPack: number | null
+      // Variety-pack model (docs/VARIETY_PACK_MODEL.md) — carried so a clone keeps
+      // the manufacturer's pack rules + pricing basis + flavor policy.
+      minFlavorsPerPack: number | null; flavorFillRule: string | null; pricingBasis: string | null; flavorPolicy: string | null; fixedDistribution: unknown
       leadTimeRepeatDays: number | null; leadTimeFirstRunDays: number | null
       storageClass: string; storageTempMinF: number | null; storageTempMaxF: number | null
       marketingDetail: unknown
@@ -2132,14 +2187,15 @@ export async function cloneDraftFromTemplate(
         labelingType: true, labelingTypeLocked: true, intendedAgeGroup: true, flavorsRunSequentially: true,
         formulationData: true, statementOfIdentity: true, familyCode: true, productType: true,
         packingProfileId: true, maxFlavorsPerPack: true,
+        minFlavorsPerPack: true, flavorFillRule: true, pricingBasis: true, flavorPolicy: true, fixedDistribution: true,
         leadTimeRepeatDays: true, leadTimeFirstRunDays: true,
         storageClass: true, storageTempMinF: true, storageTempMaxF: true,
         marketingDetail: true,
         manufacturingFormat: true, manufacturingProcesses: true, allergenFreeClaims: true, marketCodes: true,
         phraseFacts: true,
         ingredientSlots: { orderBy: { displayOrder: 'asc' }, select: { id: true, baseIngredientId: true, weightG: true, costPerKgCents: true, displayOrder: true, allowReplacement: true, label: true, description: true } },
-        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, statementOfIdentity: true, swatchHex: true, swatchImageFileId: true, dielineId: true, slotResolution: true, extras: true, priceDeltaCents: true, status: true, sortOrder: true, nutrientOverrides: true } },
-        variants: { orderBy: { createdAt: 'asc' }, select: { id: true, flavor: true, containerFormat: true, containerSizeG: true, servingsPerContainer: true, servingSizeG: true, servingSizeDesc: true, packingType: true, flavorArrangement: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, assortmentFlavors: true, packingConfig: true, sku: true, gtin: true, gtinSource: true, moqMin: true, moqMax: true, leadTimeDays: true, unitCostCentsOverride: true, fulfillmentMode: true, monthlyCapacity: true, shelfLifeDays: true, orderIncrement: true, lotTracking: true, facilityId: true, dieCutTemplateId: true, isActive: true, packagingTypeId: true } },
+        flavorPresets: { orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, statementOfIdentity: true, swatchHex: true, swatchImageFileId: true, dielineId: true, slotResolution: true, extras: true, priceDeltaCents: true, unitPriceCents: true, status: true, sortOrder: true, nutrientOverrides: true } },
+        variants: { orderBy: { createdAt: 'asc' }, select: { id: true, flavor: true, containerFormat: true, containerSizeG: true, servingsPerContainer: true, servingSizeG: true, servingSizeDesc: true, packingType: true, flavorArrangement: true, innerPacksPerOuter: true, outerPacksPerCase: true, customerPicksCount: true, subscriptionInterval: true, assortmentFlavors: true, unitsPerPack: true, pricePerPackCents: true, packingConfig: true, sku: true, gtin: true, gtinSource: true, moqMin: true, moqMax: true, leadTimeDays: true, unitCostCentsOverride: true, fulfillmentMode: true, monthlyCapacity: true, shelfLifeDays: true, orderIncrement: true, lotTracking: true, facilityId: true, dieCutTemplateId: true, isActive: true, packagingTypeId: true } },
         packagingSystems: { select: { packagingSystemId: true, basePriceCents: true, moqOverride: true, leadTimeDays: true, pricingTiers: true, surfaceOverrides: true, coPackerServiceId: true } },
         pricingTiers: { orderBy: [{ fulfillmentMode: 'asc' }, { sortOrder: 'asc' }], select: { fulfillmentMode: true, sortOrder: true, minQty: true, maxQty: true, perUnitCostCents: true, perUnitFloorCents: true, leadTimeDays: true, notes: true } },
         fees: { orderBy: { sortOrder: 'asc' }, select: { label: true, basis: true, amountCents: true, waivedAboveQty: true, sortOrder: true } },
@@ -2226,6 +2282,7 @@ export async function cloneDraftFromTemplate(
       slotResolution: remapSlotResolution(f.slotResolution),
       extras: f.extras ?? undefined,
       priceDeltaCents: f.priceDeltaCents,
+      unitPriceCents: f.unitPriceCents,
       status: f.status,
       sortOrder: f.sortOrder,
       nutrientOverrides: f.nutrientOverrides ?? undefined,
@@ -2369,6 +2426,16 @@ export async function cloneDraftFromTemplate(
           productType: src.productType,
           packingProfileId: src.packingProfileId,
           maxFlavorsPerPack: src.maxFlavorsPerPack,
+          // Variety-pack model (docs/VARIETY_PACK_MODEL.md) — pack rules + basis +
+          // policy. Offered pack sizes + per-pack price + fixed assortment ride
+          // along on the cloned variants (unitsPerPack/pricePerPackCents/
+          // assortmentFlavors are in the variant select); per-flavor price on the
+          // cloned FlavorPresets (unitPriceCents).
+          minFlavorsPerPack: src.minFlavorsPerPack,
+          flavorFillRule: src.flavorFillRule ?? undefined,
+          pricingBasis: src.pricingBasis ?? undefined,
+          flavorPolicy: src.flavorPolicy ?? undefined,
+          fixedDistribution: src.fixedDistribution ?? undefined,
           leadTimeRepeatDays: src.leadTimeRepeatDays,
           leadTimeFirstRunDays: src.leadTimeFirstRunDays,
           storageClass: src.storageClass,

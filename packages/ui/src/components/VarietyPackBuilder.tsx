@@ -17,11 +17,13 @@ import {
   composePack,
   evenFill,
   resolveFixedChoices,
+  fixedDistributionChoices,
   type PackSize,
   type PoolFlavor,
   type FlavorRules,
   type FlavorChoice,
   type FlavorFillRule,
+  type FixedDistribution,
   type PricingBasis,
   type PackMode,
   type AssortmentEntry,
@@ -55,6 +57,11 @@ export interface VarietyPackBuilderProps {
   /** Manufacturer's fixed assortment (PACK_FIXED only) — [{ flavor, qty }]. Scaled
    *  per offered size via the engine. Ignored in the other modes. */
   assortment?: AssortmentEntry[]
+  /** MANUFACTURER_FIXED fill rule (spec §4.3) — per-flavor-count weight vectors,
+   *  { [flavorCount]: number[] }. When `rules.fillRule === 'MANUFACTURER_FIXED'`
+   *  in a PACK_PICK pack the creator picks WHICH flavors; their per-flavor units
+   *  are derived from these weights (read-only). Ignored for the other fill rules. */
+  fixedDistribution?: FixedDistribution | null
   value: VarietyPackValue
   onChange: (next: VarietyPackValue) => void
   /** Optional render callback receiving the live composition for the chosen
@@ -74,6 +81,7 @@ export function VarietyPackBuilder({
   pricingBasis,
   mode = 'PACK_PICK',
   assortment = [],
+  fixedDistribution = null,
   value,
   onChange,
   onCompose,
@@ -116,32 +124,48 @@ export function VarietyPackBuilder({
     [fixed, assortment, unitsPerPack],
   )
 
-  const choices = fixed ? fixedChoices : value.choices
+  // MANUFACTURER_FIXED (spec §4.3) in a PICK pack — the creator still chooses WHICH
+  // flavors, but their per-flavor counts come from the manufacturer's weight vectors
+  // (keyed by pick count), scaled to the chosen size. Read-only (no steppers).
+  const manuFixed = !oneFlavor && !fixed && rules.fillRule === 'MANUFACTURER_FIXED'
+
+  // For MANUFACTURER_FIXED, derive the per-flavor units from the authored
+  // distribution for the CURRENT picks + size. Picks are kept in pick order.
+  const manuFixedChoices: FlavorChoice[] = React.useMemo(
+    () =>
+      manuFixed
+        ? fixedDistributionChoices(value.choices.map((c) => c.flavorPresetId), unitsPerPack, fixedDistribution)
+        : [],
+    [manuFixed, value.choices, unitsPerPack, fixedDistribution],
+  )
+
+  const choices = fixed ? fixedChoices : manuFixed ? manuFixedChoices : value.choices
   const chosenIds = new Set(choices.map((c) => c.flavorPresetId))
   const atFlavorCap = chosenIds.size >= effectiveMax
-  // CREATOR_CHOOSES per-flavor steppers only apply in PACK_PICK; one-flavor and
-  // fixed packs are auto-filled.
+  // CREATOR_CHOOSES per-flavor steppers only apply in PACK_PICK; one-flavor, fixed,
+  // and manufacturer-fixed packs are auto-filled (read-only counts).
   const creatorFills = !oneFlavor && !fixed && rules.fillRule === 'CREATOR_CHOOSES'
 
   const composed = fixed
     ? composePack({ unitsPerPack }, fixedChoices, { minFlavorsPerPack: 1, maxFlavorsPerPack: null, fillRule: 'MANUFACTURER_FIXED' })
     : composePack({ unitsPerPack }, choices, engineRules)
 
-  // Surface the live composition to the parent (price/summary). For PACK_FIXED the
-  // parent also needs the resolved fixed choices written into `value` so its
-  // pricing + order persistence see the assortment — push them up once per
-  // size/assortment change (the creator never edits them).
+  // Surface the live composition to the parent (price/summary). For PACK_FIXED and
+  // MANUFACTURER_FIXED the parent also needs the resolved per-flavor units written
+  // into `value` so its pricing + order persistence see the distribution — push
+  // them up whenever the picks/size change (the creator never edits the counts).
   React.useEffect(() => {
-    if (fixed) {
+    const resolved = fixed ? fixedChoices : manuFixed ? manuFixedChoices : null
+    if (resolved) {
       const same =
-        value.choices.length === fixedChoices.length &&
-        value.choices.every((c, i) => c.flavorPresetId === fixedChoices[i]?.flavorPresetId && (c.units ?? 0) === (fixedChoices[i]?.units ?? 0))
-      if (!same) onChange({ sizeId: value.sizeId, choices: fixedChoices })
+        value.choices.length === resolved.length &&
+        value.choices.every((c, i) => c.flavorPresetId === resolved[i]?.flavorPresetId && (c.units ?? 0) === (resolved[i]?.units ?? 0))
+      if (!same) onChange({ sizeId: value.sizeId, choices: resolved })
     }
     onCompose?.({ size, composed })
     // Re-fire whenever the inputs to composePack change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value.sizeId, JSON.stringify(choices), unitsPerPack, rules.fillRule, fixed])
+  }, [value.sizeId, JSON.stringify(choices), unitsPerPack, rules.fillRule, fixed, manuFixed])
 
   // ── Mutators ────────────────────────────────────────────────────────────────
   function setSize(id: string) {

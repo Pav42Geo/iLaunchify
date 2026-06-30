@@ -60,6 +60,9 @@ export interface PackBuilderData {
   structuralType: import('@ilaunchify/ui').StructuralPackType | null
   flavorPolicy: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
   assortment: import('@ilaunchify/ui').AssortmentEntry[]
+  /** MANUFACTURER_FIXED fill-rule weights (spec §4.3) — { [flavorCount]: number[] }.
+   *  null when unauthored / the rule isn't MANUFACTURER_FIXED. */
+  fixedDistribution: import('@ilaunchify/ui').FixedDistribution | null
 }
 
 export async function getPackBuilderData(slug: string): Promise<PackBuilderData> {
@@ -93,6 +96,7 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
       structuralType: null,
       flavorPolicy: null,
       assortment: [],
+      fixedDistribution: null,
     }
   }
   // Per-flavor price deltas for the PDP flavor cards. saleDeltaCents stays null
@@ -152,6 +156,7 @@ async function readPackModel(slug: string): Promise<{
   structuralType: PackBuilderData['structuralType']
   flavorPolicy: PackBuilderData['flavorPolicy']
   assortment: PackBuilderData['assortment']
+  fixedDistribution: PackBuilderData['fixedDistribution']
 }> {
   const empty = {
     packSizes: [] as PackSizeOption[],
@@ -162,6 +167,7 @@ async function readPackModel(slug: string): Promise<{
     structuralType: null as PackBuilderData['structuralType'],
     flavorPolicy: null as PackBuilderData['flavorPolicy'],
     assortment: [] as PackBuilderData['assortment'],
+    fixedDistribution: null as PackBuilderData['fixedDistribution'],
   }
   try {
     const t = await (prisma as unknown as {
@@ -171,6 +177,7 @@ async function readPackModel(slug: string): Promise<{
           flavorFillRule: PackBuilderData['fillRule']
           pricingBasis: PackBuilderData['pricingBasis']
           flavorPolicy: PackBuilderData['flavorPolicy']
+          fixedDistribution: unknown
           packingProfile: { structuralType: string | null } | null
           variants: Array<{
             id: string
@@ -192,6 +199,7 @@ async function readPackModel(slug: string): Promise<{
         flavorFillRule: true,
         pricingBasis: true,
         flavorPolicy: true,
+        fixedDistribution: true,
         packingProfile: { select: { structuralType: true } },
         variants: {
           where: { isActive: true },
@@ -245,10 +253,27 @@ async function readPackModel(slug: string): Promise<{
       assortment: coerceAssortment(
         sizeVariants.find((v) => Array.isArray(v.assortmentFlavors) && (v.assortmentFlavors as unknown[]).length > 0)?.assortmentFlavors,
       ),
+      // MANUFACTURER_FIXED weights (spec §4.3) — only meaningful for that fill rule.
+      fixedDistribution: t.flavorFillRule === 'MANUFACTURER_FIXED' ? coerceFixedDistribution(t.fixedDistribution) : null,
     }
   } catch {
     return empty
   }
+}
+
+/** Coerce a stored fixedDistribution JSON into { [flavorCount]: number[] } (spec
+ *  §4.3). Integer keys >= 1; each vector of non-negative integers must match its
+ *  key length. Drops malformed rows; returns null when nothing valid remains. */
+function coerceFixedDistribution(raw: unknown): PackBuilderData['fixedDistribution'] {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const out: Record<string, number[]> = {}
+  for (const [k, vec] of Object.entries(raw as Record<string, unknown>)) {
+    const count = Math.floor(Number(k))
+    if (!Number.isFinite(count) || count < 1) continue
+    if (!Array.isArray(vec) || vec.length !== count) continue
+    out[String(count)] = vec.map((x) => Math.max(0, Math.floor(Number(x) || 0)))
+  }
+  return Object.keys(out).length > 0 ? out : null
 }
 
 /** Coerce a variant's `assortmentFlavors` JSON into typed [{flavor,qty}] entries.

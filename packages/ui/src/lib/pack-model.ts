@@ -252,6 +252,79 @@ export function resolveFixedChoices(
   return scaled.map((s) => ({ flavorPresetId: s.flavor, units: s.floor }))
 }
 
+// ── MANUFACTURER_FIXED distribution (spec §4.3 fill rule) ─────────────────────
+//
+// For a PICK pack (creator chooses WHICH flavors) whose fill rule is
+// MANUFACTURER_FIXED, the manufacturer pre-defines how the pack's units split
+// across the picked positions, keyed by how many flavors the creator picked.
+// They author an ordered WEIGHT vector per flavor-count (e.g. count 2 → [2,1]
+// means "first pick gets twice the second"); the weights are scaled to each
+// offered size's unitsPerPack at runtime. Stored as `fixedDistribution` JSON on
+// the template: { [flavorCount]: number[] }. Absent / all-zero → even split.
+
+/** Per-flavor-count weight vectors (manufacturer-authored). */
+export type FixedDistribution = Record<string, number[]>
+
+/**
+ * Scale an ordered `weights` vector to sum exactly to `unitsPerPack` (proportional
+ * + largest-remainder, deterministic). All-zero / empty weights → even split.
+ * Guarantees ≥1 per position when the pack can hold them (units >= positions).
+ * Pure. Returns a counts array the same length as `weights`.
+ */
+export function resolveFixedDistribution(unitsPerPack: number, weights: number[]): number[] {
+  const units = Math.max(0, Math.floor(unitsPerPack))
+  const n = weights.length
+  if (n === 0 || units === 0) return n === 0 ? [] : new Array(n).fill(0)
+  const cleaned = weights.map((x) => Math.max(0, Number(x) || 0))
+  const sum = cleaned.reduce((t, x) => t + x, 0)
+  const eff = sum > 0 ? cleaned : cleaned.map(() => 1)
+  const base = eff.reduce((t, x) => t + x, 0)
+  const scaled = eff.map((x) => {
+    const exact = (x * units) / base
+    return { floor: Math.floor(exact), frac: exact - Math.floor(exact) }
+  })
+  let remainder = units - scaled.reduce((t, s) => t + s.floor, 0)
+  const order = scaled.map((s, i) => ({ i, frac: s.frac })).sort((a, b) => b.frac - a.frac || a.i - b.i)
+  for (const { i } of order) {
+    if (remainder <= 0) break
+    scaled[i]!.floor += 1
+    remainder -= 1
+  }
+  // No-zero when the pack can physically hold one of each position.
+  if (units >= n) {
+    for (let i = 0; i < n; i += 1) {
+      if (scaled[i]!.floor === 0) {
+        const donor = scaled.reduce((mi, s, j) => (s.floor > scaled[mi]!.floor ? j : mi), 0)
+        if (scaled[donor]!.floor > 1) {
+          scaled[donor]!.floor -= 1
+          scaled[i]!.floor += 1
+        }
+      }
+    }
+  }
+  return scaled.map((s) => s.floor)
+}
+
+/**
+ * Map a MANUFACTURER_FIXED distribution onto the creator's picked flavor ids (in
+ * pick order) for a pack of `unitsPerPack`. Looks up the weight vector for the
+ * chosen flavor count; falls back to an even split when none is authored (or the
+ * stored vector's length doesn't match the pick count). Returns FlavorChoice[]
+ * with `units` set, ready for `composePack`. Pure.
+ */
+export function fixedDistributionChoices(
+  chosenFlavorIds: string[],
+  unitsPerPack: number,
+  distribution?: FixedDistribution | null,
+): FlavorChoice[] {
+  const n = chosenFlavorIds.length
+  if (n === 0) return []
+  const authored = distribution?.[String(n)]
+  const weights = authored && authored.length === n ? authored : new Array(n).fill(1)
+  const counts = resolveFixedDistribution(unitsPerPack, weights)
+  return chosenFlavorIds.map((id, i) => ({ flavorPresetId: id, units: counts[i] ?? 0 }))
+}
+
 // ── Compose ───────────────────────────────────────────────────────────────────
 
 /**

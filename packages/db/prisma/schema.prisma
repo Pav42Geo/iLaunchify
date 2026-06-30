@@ -3273,6 +3273,12 @@ model ProductTemplate {
   flavorFillRule             FlavorFillRule?
   pricingBasis               PricingBasis?
   flavorPolicy               FlavorPolicy?
+  // MANUFACTURER_FIXED fill rule (spec §4.3): when flavorFillRule = MANUFACTURER_FIXED
+  // on a CREATOR_PICK bucket, the manufacturer pre-defines HOW a pack's units split
+  // across the picked positions, keyed by how many flavors were picked. Stored as
+  // { [flavorCount]: number[] } weight vectors (engine `FixedDistribution`); weights
+  // scale to each offered size's unitsPerPack at runtime. null/absent → even split.
+  fixedDistribution          Json?
   // ---- Configurator constraints (docs/PRODUCT_CONFIGURATOR_CONSTRAINTS.md, 2026-06-08) ----
   // #3 first-run vs repeat economics. Repeat = standard re-order lead time;
   // firstRun = new-SKU lead time (incl. stability testing). Seed per-variant

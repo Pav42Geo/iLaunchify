@@ -25,6 +25,7 @@ import {
   type PackMode,
   type StructuralPackType,
   type AssortmentEntry,
+  type FixedDistribution,
   type ComposedPack,
   type VarietyPackValue,
 } from '@ilaunchify/ui'
@@ -95,6 +96,9 @@ export interface ProductDetailConfiguratorProps {
   structuralType?: StructuralPackType | null
   flavorPolicy?: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
   assortment?: AssortmentEntry[]
+  /** MANUFACTURER_FIXED fill-rule weights (spec §4.3) — { [flavorCount]: number[] }.
+   *  Threaded into VarietyPackBuilder to derive read-only per-flavor units. */
+  fixedDistribution?: FixedDistribution | null
   /** Per-flavor price deltas (cents) keyed by flavor id — drives the flavor
    *  cards' per-flavor unit price + optional strike-through. */
   flavorPricing?: Record<
@@ -131,6 +135,7 @@ export function ProductDetailConfigurator({
   structuralType = null,
   flavorPolicy = null,
   assortment = [],
+  fixedDistribution = null,
   onPackagingChange,
   onOpenSample,
 }: ProductDetailConfiguratorProps) {
@@ -437,6 +442,7 @@ export function ProductDetailConfigurator({
           pricingBasis={effPricingBasis}
           mode={packMode}
           assortment={assortment}
+          fixedDistribution={fixedDistribution}
           value={packValue}
           onChange={setPackValue}
         />

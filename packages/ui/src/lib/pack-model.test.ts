@@ -16,6 +16,8 @@ import {
   packSummary,
   resolvePackMode,
   resolveFixedChoices,
+  resolveFixedDistribution,
+  fixedDistributionChoices,
   type FlavorRules,
   type PoolFlavor,
   type PackSlot,
@@ -142,6 +144,25 @@ assert(one12.ok && eq(one12.slots, [{ flavorPresetId: 'x', units: 12 }]) && one1
 const onePool: PoolFlavor[] = [{ flavorPresetId: 'x', unitPriceCents: 210 }]
 assert(packPriceCents('PER_FLAVOR', {}, one12.slots, onePool) === 2520, 'PACK_ONE_FLAVOR PER_FLAVOR = 12×210 = 2520')
 assert(packPriceCents('PER_PACK', { pricePerPackCents: 2520 }, one12.slots, onePool) === 2520, 'PACK_ONE_FLAVOR PER_PACK = flat 2520')
+
+// --- MANUFACTURER_FIXED distribution (fill rule for PICK packs) ---
+// resolveFixedDistribution scales an ordered weight vector to the pack size.
+assert(eq(resolveFixedDistribution(24, [1, 1, 1]), [8, 8, 8]), 'fixedDist equal weights 24/[1,1,1] → 8/8/8')
+assert(eq(resolveFixedDistribution(24, [2, 1]), [16, 8]), 'fixedDist [2,1] over 24 → 16/8')
+assert(eq(resolveFixedDistribution(12, [3, 2, 1]), [6, 4, 2]), 'fixedDist [3,2,1] over 12 → 6/4/2')
+assert(resolveFixedDistribution(10, [3, 2, 1]).reduce((t, x) => t + x, 0) === 10, 'fixedDist [3,2,1] over 10 → sums to 10')
+assert(eq(resolveFixedDistribution(6, [0, 0]), [3, 3]), 'fixedDist all-zero weights → even split 3/3')
+assert(resolveFixedDistribution(5, [9, 1, 1]).every((x) => x >= 1), 'fixedDist no-zero when units≥positions (5,[9,1,1])')
+// fixedDistributionChoices maps the distribution onto picked flavor ids in order.
+const fdc = fixedDistributionChoices(['a', 'b'], 24, { '2': [2, 1], '3': [3, 2, 1] })
+assert(eq(fdc, [{ flavorPresetId: 'a', units: 16 }, { flavorPresetId: 'b', units: 8 }]), 'fixedDistributionChoices 2 picks → a16/b8')
+const fdc3 = fixedDistributionChoices(['a', 'b', 'c'], 12, { '3': [3, 2, 1] })
+assert(eq(fdc3.map((c) => c.units), [6, 4, 2]), 'fixedDistributionChoices 3 picks → 6/4/2')
+// No authored vector for the chosen count → even split.
+assert(eq(fixedDistributionChoices(['a', 'b'], 6, { '3': [1, 1, 1] }).map((c) => c.units), [3, 3]), 'fixedDistributionChoices unauthored count → even')
+// Composes cleanly through composePack (counts sum to capacity).
+const fdComposed = composePack({ unitsPerPack: 24 }, fdc, { minFlavorsPerPack: 1, maxFlavorsPerPack: 3, fillRule: 'MANUFACTURER_FIXED' })
+assert(fdComposed.ok && eq(fdComposed.slots.map((s) => s.units), [16, 8]), 'fixedDist choices compose ok via MANUFACTURER_FIXED')
 
 console.log(failures === 0 ? '\nALL PACK-MODEL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`)
 if (failures > 0) process.exit(1)

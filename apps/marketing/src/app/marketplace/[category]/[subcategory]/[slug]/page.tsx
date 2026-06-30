@@ -310,6 +310,7 @@ export default async function ProductDetailPage({
             structuralType={packData.structuralType}
             flavorPolicy={packData.flavorPolicy}
             assortment={packData.assortment}
+            fixedDistribution={packData.fixedDistribution}
             sample={
               sampleData.options.length > 0
                 ? {
