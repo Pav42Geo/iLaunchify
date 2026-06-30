@@ -28,6 +28,7 @@ import {
   type LifeStage,
   type AdequacyMethod,
 } from '@ilaunchify/nutrition'
+import { resolvePackMode, type PackMode, type PricingBasis, type FlavorPolicy } from '@ilaunchify/ui'
 import type { PanelData } from '@ilaunchify/types'
 
 export interface ReviewSummary {
@@ -283,6 +284,39 @@ export interface ReviewDetailFinish {
   note: string | null
 }
 
+/** One offered pack size in the variety-pack matrix (a typed ProductTemplateVariant). */
+export interface ReviewDetailPackSize {
+  label: string
+  unitsPerPack: number
+  /** MOQ in PACKS (ProductTemplateVariant.moqMin reinterpreted for pack products). */
+  moqPacks: number
+  /** Flat per-pack price (cents) — meaningful when basis = PER_PACK. */
+  pricePerPackCents: number | null
+}
+/** The pack-composition model the manufacturer authored (docs/VARIETY_PACK_MODEL.md
+ *  §4-6, §8). Null when the product has no pack matrix (single-unit products show
+ *  nothing new). Read-only display picture for the Passport. */
+export interface ReviewDetailPackModel {
+  /** Resolved configure mode (Single unit / one-flavor multipack / fixed / pick). */
+  mode: PackMode
+  /** Per-flavor (summed) vs per-pack (flat). Null when un-set. */
+  pricingBasis: PricingBasis | null
+  /** Who picks the flavors (creator vs manufacturer-fixed). Null when un-set. */
+  flavorPolicy: FlavorPolicy | null
+  /** Distinct-flavor floor (pick modes). */
+  minFlavorsPerPack: number | null
+  /** Distinct-flavor cap (pick modes). */
+  maxFlavorsPerPack: number | null
+  /** Remainder-distribution rule (pick modes). */
+  fillRule: string | null
+  /** Offered pack sizes (typed unitsPerPack variants). */
+  sizes: ReviewDetailPackSize[]
+  /** Per-flavor absolute prices (PER_FLAVOR basis). */
+  perFlavorPrices: Array<{ name: string; unitPriceCents: number | null }>
+  /** Manufacturer-fixed assortment (PARTNER_FIXED policy): flavor × per-pack count. */
+  assortment: Array<{ flavor: string; qty: number }>
+}
+
 export interface ReviewDetail {
   // ---- Identity / Basics ----
   name: string
@@ -330,6 +364,8 @@ export interface ReviewDetail {
   variants: ReviewDetailVariant[]
   // ---- Flavors ----
   flavors: ReviewDetailFlavor[]
+  // ---- Pack model (variety-pack matrix) — null for single-unit products ----
+  packModel: ReviewDetailPackModel | null
   // ---- Cost & pricing ----
   priceFloorCents: number
   unitCostCents: number
@@ -591,6 +627,132 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
           }))
       : []
 
+    // Pack model (variety-pack matrix) — all NEW columns are cast-guarded since
+    // `pnpm db:generate` hasn't run here (the client is stale). Mirrors the admin
+    // loose-delegate pattern: one wrapped read, degrade to null on any failure so
+    // a pre-migration draft never crashes the Review. The engine's resolvePackMode
+    // labels the mode + decides whether this product even HAS a pack matrix.
+    const packModel: ReviewDetailPackModel | null = await (async () => {
+      try {
+        const packLooseDb = prisma as unknown as {
+          productTemplate: {
+            findUnique: (a: unknown) => Promise<{
+              pricingBasis: string | null
+              flavorPolicy: string | null
+              minFlavorsPerPack: number | null
+              maxFlavorsPerPack: number | null
+              flavorFillRule: string | null
+              packingProfile: { structuralType: string | null } | null
+              variants: Array<{
+                unitsPerPack: number | null
+                containerFormat: string | null
+                moqMin: number | null
+                pricePerPackCents: number | null
+                assortmentFlavors: unknown
+              }>
+              flavorPresets: Array<{ name: string; unitPriceCents: number | null }>
+            } | null>
+          }
+        }
+        const row = await packLooseDb.productTemplate
+          .findUnique({
+            where: { id: draftId },
+            select: {
+              pricingBasis: true,
+              flavorPolicy: true,
+              minFlavorsPerPack: true,
+              maxFlavorsPerPack: true,
+              flavorFillRule: true,
+              packingProfile: { select: { structuralType: true } },
+              variants: {
+                orderBy: { createdAt: 'asc' },
+                select: {
+                  unitsPerPack: true,
+                  containerFormat: true,
+                  moqMin: true,
+                  pricePerPackCents: true,
+                  assortmentFlavors: true,
+                },
+              },
+              flavorPresets: {
+                orderBy: { sortOrder: 'asc' },
+                select: { name: true, unitPriceCents: true },
+              },
+            },
+          })
+          .catch(() => null)
+        if (!row) return null
+
+        // Offered pack sizes = variant rows that carry a typed unitsPerPack.
+        const sizeVariants = (row.variants ?? []).filter(
+          (v) => v.unitsPerPack != null && v.unitsPerPack > 0,
+        )
+        const flavorPolicy =
+          row.flavorPolicy === 'CREATOR_PICK' || row.flavorPolicy === 'PARTNER_FIXED'
+            ? (row.flavorPolicy as FlavorPolicy)
+            : null
+        const pricingBasis =
+          row.pricingBasis === 'PER_FLAVOR' || row.pricingBasis === 'PER_PACK'
+            ? (row.pricingBasis as PricingBasis)
+            : null
+
+        const mode = resolvePackMode({
+          structuralType:
+            (row.packingProfile?.structuralType as Parameters<typeof resolvePackMode>[0]['structuralType']) ??
+            null,
+          flavorPolicy,
+          flavorMode: tpl.flavorPresets.length > 1 ? 'MULTI' : 'SINGLE',
+          offeredSizes: sizeVariants.length,
+        })
+
+        // Single-unit product with no offered sizes → nothing new to show.
+        if (mode === 'SINGLE_UNIT' && sizeVariants.length === 0) return null
+
+        const sizes: ReviewDetailPackSize[] = sizeVariants.map((v) => ({
+          label: v.containerFormat?.trim() || `${v.unitsPerPack}-pack`,
+          unitsPerPack: v.unitsPerPack ?? 0,
+          moqPacks: v.moqMin ?? 0,
+          pricePerPackCents: v.pricePerPackCents ?? null,
+        }))
+
+        const perFlavorPrices = (row.flavorPresets ?? []).map((f) => ({
+          name: f.name,
+          unitPriceCents: f.unitPriceCents ?? null,
+        }))
+
+        // Fixed assortment lives on the first offered size's `assortmentFlavors`
+        // JSON ([{ flavor, qty }]). Resolve flavor ids → names where possible.
+        const presetNameById = new Map(
+          tpl.flavorPresets.map((f) => [f.id, f.name] as const),
+        )
+        const rawAssort = sizeVariants.find(
+          (v) => Array.isArray(v.assortmentFlavors) && (v.assortmentFlavors as unknown[]).length > 0,
+        )?.assortmentFlavors
+        const assortment = Array.isArray(rawAssort)
+          ? (rawAssort as Array<{ flavor?: unknown; qty?: unknown }>)
+              .filter((a) => a && typeof a.flavor === 'string' && typeof a.qty === 'number')
+              .map((a) => ({
+                flavor: presetNameById.get(a.flavor as string) ?? (a.flavor as string),
+                qty: a.qty as number,
+              }))
+          : []
+
+        return {
+          mode,
+          pricingBasis,
+          flavorPolicy,
+          minFlavorsPerPack: row.minFlavorsPerPack ?? null,
+          maxFlavorsPerPack: row.maxFlavorsPerPack ?? null,
+          fillRule: row.flavorFillRule ?? null,
+          sizes,
+          perFlavorPrices,
+          assortment,
+        }
+      } catch {
+        return null
+      }
+    })()
+
     // ---- Domain-aware formulation summary (reuse the existing DOMAIN_LABEL +
     // the same per-domain logic as getProductReviewSummary) ----
     const dom = tpl.labelingType
@@ -779,6 +941,7 @@ export async function getProductReviewDetail(draftId: string): Promise<DetailRes
           hasOverrides: overrides.length > 0,
         }
       }),
+      packModel,
       priceFloorCents: tpl.priceFloorCents,
       unitCostCents: tpl.unitCostCents,
       pricingTiers: tpl.pricingTiers.map((t) => ({

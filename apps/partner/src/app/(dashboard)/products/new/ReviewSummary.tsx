@@ -20,6 +20,7 @@ import {
   FlaskConical,
   Beaker,
   Box,
+  Boxes,
   Layers,
   DollarSign,
   ImageIcon,
@@ -55,6 +56,26 @@ const STORAGE_CLASS_LABEL: Record<string, string> = {
 const FULFILLMENT_LABEL: Record<string, string> = {
   BULK_PRODUCTION: 'Bulk',
   ON_DEMAND: 'On-demand',
+}
+// Variety-pack model labels (docs/VARIETY_PACK_MODEL.md §4-6, §8).
+const PACK_MODE_LABEL: Record<string, string> = {
+  SINGLE_UNIT: 'Single unit',
+  PACK_ONE_FLAVOR: 'One-flavor multipack',
+  PACK_FIXED: 'Fixed assortment',
+  PACK_PICK: 'Pick-your-own',
+}
+const PRICING_BASIS_LABEL: Record<string, string> = {
+  PER_FLAVOR: 'Per flavor — summed',
+  PER_PACK: 'Per pack — flat',
+}
+const FLAVOR_POLICY_LABEL: Record<string, string> = {
+  CREATOR_PICK: 'Creator picks',
+  PARTNER_FIXED: 'Fixed assortment',
+}
+const FILL_RULE_LABEL: Record<string, string> = {
+  CREATOR_CHOOSES: 'Creator chooses',
+  EVEN_AUTO: 'Even split',
+  MANUFACTURER_FIXED: 'Fixed',
 }
 const humanize = (s: string) =>
   s.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
@@ -604,6 +625,108 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
                       </span>
                     </div>
                   ))}
+                </div>
+              )}
+            </Section>
+          )}
+
+          {/* 3b · PACK MODEL (variety-pack matrix) — only when authored */}
+          {d.packModel && (
+            <Section icon={Boxes} title="Pack model">
+              <DefGrid>
+                <DefCell label="Mode">{PACK_MODE_LABEL[d.packModel.mode] ?? humanize(d.packModel.mode)}</DefCell>
+                <DefCell label="Pricing basis">
+                  {d.packModel.pricingBasis ? (PRICING_BASIS_LABEL[d.packModel.pricingBasis] ?? d.packModel.pricingBasis) : <NotSet />}
+                </DefCell>
+                {(d.packModel.mode === 'PACK_PICK') && (
+                  <DefCell label="Flavors per pack">
+                    {d.packModel.minFlavorsPerPack != null || d.packModel.maxFlavorsPerPack != null ? (
+                      <span className="tnum">
+                        {d.packModel.minFlavorsPerPack ?? 1}–{d.packModel.maxFlavorsPerPack ?? '∞'}
+                      </span>
+                    ) : (
+                      <NotSet />
+                    )}
+                  </DefCell>
+                )}
+                {(d.packModel.mode === 'PACK_PICK') && (
+                  <DefCell label="Fill rule">
+                    {d.packModel.fillRule ? (FILL_RULE_LABEL[d.packModel.fillRule] ?? humanize(d.packModel.fillRule)) : <NotSet />}
+                  </DefCell>
+                )}
+                {d.packModel.mode !== 'SINGLE_UNIT' && d.packModel.mode !== 'PACK_ONE_FLAVOR' && (
+                  <DefCell label="Flavor policy">
+                    {d.packModel.flavorPolicy ? (FLAVOR_POLICY_LABEL[d.packModel.flavorPolicy] ?? d.packModel.flavorPolicy) : <NotSet />}
+                  </DefCell>
+                )}
+              </DefGrid>
+
+              {/* Offered pack sizes */}
+              {d.packModel.sizes.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ ...LABEL_STYLE, marginBottom: 8 }}>Offered pack sizes</div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Size</th>
+                        <th>Units / pack</th>
+                        <th>MOQ (packs)</th>
+                        {d.packModel.pricingBasis === 'PER_PACK' && <th>Price / pack</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.packModel.sizes.map((s, i) => (
+                        <tr key={`packsize-${i}`}>
+                          <td><b>{s.label}</b></td>
+                          <td className="tnum">{s.unitsPerPack}</td>
+                          <td className="tnum">{s.moqPacks > 0 ? s.moqPacks.toLocaleString() : '—'}</td>
+                          {d.packModel!.pricingBasis === 'PER_PACK' && (
+                            <td className="tnum">{s.pricePerPackCents != null ? usd(s.pricePerPackCents) : '—'}</td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Per-flavor prices (PER_FLAVOR basis) — show unpriced as "—" (do not block) */}
+              {d.packModel.pricingBasis === 'PER_FLAVOR' && d.packModel.perFlavorPrices.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ ...LABEL_STYLE, marginBottom: 8 }}>Per-flavor prices</div>
+                  <table>
+                    <thead>
+                      <tr><th>Flavor</th><th>Unit price</th></tr>
+                    </thead>
+                    <tbody>
+                      {d.packModel.perFlavorPrices.map((f, i) => (
+                        <tr key={`flavorprice-${i}`}>
+                          <td><b>{f.name}</b></td>
+                          <td className="tnum">{f.unitPriceCents != null ? usd(f.unitPriceCents) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Fixed assortment (PARTNER_FIXED) — flavor × per-pack count */}
+              {d.packModel.flavorPolicy === 'PARTNER_FIXED' && d.packModel.assortment.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ ...LABEL_STYLE, marginBottom: 8 }}>Fixed assortment</div>
+                  <table>
+                    <thead>
+                      <tr><th>Flavor</th><th>Units / pack</th></tr>
+                    </thead>
+                    <tbody>
+                      {d.packModel.assortment.map((a, i) => (
+                        <tr key={`assort-${i}`}>
+                          <td><b>{a.flavor}</b></td>
+                          <td className="tnum">{a.qty}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </Section>
