@@ -331,13 +331,16 @@ export function GuidedBuilder({
   // pending debounced autosave immediately (no waiting on the debounce). Creates
   // the draft shell first if the maker hasn't advanced past Basics yet.
   const [manualSaving, setManualSaving] = useState(false)
-  async function saveNow() {
-    if (manualSaving) return
+  // Returns true only when a save actually happened — the SavedIndicator uses
+  // this to decide whether to show the green "Saved" confirmation. Nothing to
+  // save (no draft yet / invalid Basics / error) returns false → no false-positive.
+  async function saveNow(): Promise<boolean> {
+    if (manualSaving) return false
     let id = draftId
     if (!id) {
-      if (!basicsValid) { toast.error('Add a product name and category first.'); return }
+      if (!basicsValid) { toast.error('Add a product name and category first.'); return false }
       const res = await createDraftShell({ name: name.trim(), subcategoryId })
-      if (!res || !res.ok) { toast.error(res?.error ?? 'Could not save.'); return }
+      if (!res || !res.ok) { toast.error(res?.error ?? 'Could not save.'); return false }
       id = res.data.id
       setDraftId(id)
     }
@@ -345,9 +348,10 @@ export function GuidedBuilder({
     try {
       await Promise.allSettled([...flushers.current].map((f) => f()))
       setLastSavedAt(new Date())
-      toast.success('Saved')
+      return true
     } catch {
       toast.error('Could not save — try again.')
+      return false
     } finally {
       setManualSaving(false)
     }
@@ -372,7 +376,7 @@ export function GuidedBuilder({
         <span className="gb gb-topinject">
           <TopMenu />
           <SavedIndicator
-            status={isPending || manualSaving ? 'saving' : 'saved'}
+            status={isPending || manualSaving ? 'saving' : draftId ? 'saved' : 'dirty'}
             savedAt={draftId ? lastSavedAt : null}
             onSave={saveNow}
             onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}

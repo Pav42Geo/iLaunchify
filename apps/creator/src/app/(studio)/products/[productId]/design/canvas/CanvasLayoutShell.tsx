@@ -941,6 +941,7 @@ export function CanvasLayoutShell({
         onRedo={history.redo}
         saveStatus={autosave.status}
         lastSavedAt={autosave.lastSavedAt}
+        onSaveNow={autosave.saveNow}
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
         onSaveDraft={handleSaveDraft}
         onSaveAsTemplate={onSaveTemplateClick}
@@ -1309,6 +1310,7 @@ function TopBar({
   onRedo,
   saveStatus,
   lastSavedAt,
+  onSaveNow,
   complianceOpen,
   onToggleCompliance,
   mockupOpen,
@@ -1334,6 +1336,8 @@ function TopBar({
   onRedo: () => void
   saveStatus: SaveStatus
   lastSavedAt: Date | null
+  /** Top-bar "Save now" — flush the debounced autosave on demand. */
+  onSaveNow: () => void | Promise<void>
   onOpenHistory: () => void
   complianceOpen: boolean
   onToggleCompliance: () => void
@@ -1375,6 +1379,7 @@ function TopBar({
         <SavedIndicator
           status={saveStatus}
           savedAt={lastSavedAt}
+          onSave={onSaveNow}
           onOpenHistory={onOpenHistory}
         />
         <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>

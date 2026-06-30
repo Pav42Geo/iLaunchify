@@ -431,6 +431,27 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
     queueSave(nextLayout, nextTrim, nextSafe)
   }, [queueSave, trim, safe, layout])
 
+  // Force-flush the pending autosave immediately — wired to the top-bar
+  // SavedIndicator so the user can save on demand instead of waiting on debounce.
+  const saveNow = useCallback(async () => {
+    if (!resolvedDielineId && !(customMode && activeSystemId)) return
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    setSaveStatus('saving')
+    if (resolvedDielineId) {
+      const [a, b] = await Promise.all([
+        saveDielineFrames(resolvedDielineId, layout),
+        saveDielineGeometry(resolvedDielineId, { trimBox: trim, safeAreaBox: safe }),
+      ])
+      setSaveStatus(a.ok && b.ok ? 'saved' : 'idle')
+      if (a.ok && b.ok) { setLastSavedAt(new Date()); toast.success('Saved') }
+      else if (!a.ok) toast.error(a.error)
+    } else if (activeSystemId) {
+      const r = await saveCustomDieline(activeSystemId, { layout, trim, safe })
+      setSaveStatus(r.ok ? 'saved' : 'idle')
+      if (r.ok) { setLastSavedAt(new Date()); toast.success('Saved') }
+    }
+  }, [resolvedDielineId, customMode, activeSystemId, layout, trim, safe])
+
   const undo = useCallback(() => {
     setPast((p) => {
       if (p.length === 0) return p
@@ -585,6 +606,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
           <SavedIndicator
             status={saveStatus === 'saving' ? 'saving' : 'saved'}
             savedAt={lastSavedAt}
+            onSave={saveNow}
             onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
           />
         </span>

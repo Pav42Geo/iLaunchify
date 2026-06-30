@@ -9,7 +9,7 @@
 // Backed by @ilaunchify/db EditSnapshot (createSnapshot/listSnapshots/getSnapshotJson).
 
 import * as React from 'react'
-import { Check, ChevronLeft, ChevronRight, Clock, History, Loader2, Lock, RotateCcw, Pin, Bookmark, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Clock, History, Loader2, Lock, RotateCcw, Pin, Bookmark, Save, X } from 'lucide-react'
 
 export type SnapshotKind = 'AUTO' | 'MILESTONE' | 'MANUAL'
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -66,8 +66,10 @@ export function SavedIndicator({
   status: SaveStatus
   savedAt: Date | null
   /** When provided, the status icon becomes a "Save now" button — clicking it
-   *  flushes pending autosaves immediately instead of waiting for the debounce. */
-  onSave?: () => void | Promise<void>
+   *  flushes pending autosaves immediately instead of waiting for the debounce.
+   *  Return false (or reject) when nothing was actually saved — e.g. required
+   *  fields missing — so the green "Saved" confirmation does NOT show. */
+  onSave?: () => void | boolean | Promise<void | boolean>
   onOpenHistory?: () => void
   /** Step to the previous (older) version in the history panel. */
   onPrev?: () => void
@@ -85,26 +87,34 @@ export function SavedIndicator({
     return () => clearInterval(t)
   }, [savedAt])
 
-  // Brief "Saved!" confirmation flash after a manual click — a green check that
-  // pops, so the user sees their click did something. Clears after ~1.4s.
+  // Brief post-click flash — a green check on success, a pink X when nothing was
+  // saved (e.g. required fields missing) — so the user sees their click did (or
+  // couldn't do) something. Clears after ~1.4s.
   const [justSaved, setJustSaved] = React.useState(false)
+  const [justFailed, setJustFailed] = React.useState(false)
   const flashTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const flash = React.useCallback((ok: boolean) => {
+    setJustSaved(ok)
+    setJustFailed(!ok)
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => { setJustSaved(false); setJustFailed(false) }, 1400)
+  }, [])
   React.useEffect(() => () => { if (flashTimer.current) clearTimeout(flashTimer.current) }, [])
   const handleSaveClick = React.useCallback(async () => {
     if (status === 'saving') return
     try {
-      await onSave?.()
-      setJustSaved(true)
-      if (flashTimer.current) clearTimeout(flashTimer.current)
-      flashTimer.current = setTimeout(() => setJustSaved(false), 1400)
+      const result = await onSave?.()
+      flash(result !== false) // false → nothing saved → pink-X flash; otherwise green check
     } catch {
-      /* leave the live status to surface any error */
+      flash(false)
     }
-  }, [status, onSave])
+  }, [status, onSave, flash])
 
-  let StatusIcon = Check
+  // Resting affordance is a Save (floppy) icon — the icon doubles as a manual
+  // "save now" button, so it reads as an action, not a passive checkmark.
+  let StatusIcon = Save
   let tip = savedAt ? `Saved at ${clockTime(savedAt)}` : 'All changes saved automatically'
-  let tone = 'text-success-600'
+  let tone = 'text-ink-600'
   let spin = false
   if (status === 'saving') {
     StatusIcon = Loader2
@@ -116,21 +126,26 @@ export function SavedIndicator({
     tip = 'Save failed — retrying'
     tone = 'text-danger-600'
   } else if (status === 'dirty') {
-    StatusIcon = Clock
-    tip = 'Unsaved changes…'
-    tone = 'text-ink-500'
+    tip = savedAt ? 'Unsaved changes' : 'Not saved yet'
+    tone = 'text-pink-600'
   }
 
-  // The confirmation flash overrides whatever the live status is showing.
+  // The post-click flash overrides whatever the live status is showing.
   if (justSaved && status !== 'saving') {
     StatusIcon = Check
     tone = 'text-success-600'
     spin = false
     tip = 'Saved!'
+  } else if (justFailed && status !== 'saving') {
+    StatusIcon = X
+    tone = 'text-pink-600'
+    spin = false
+    tip = 'Not saved'
   }
 
+  // Borderless icon-button — same chrome as the notification bell in the top bar.
   const btn =
-    'grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-ink-300 hover:bg-ink-100 hover:text-ink-900 disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:bg-white disabled:hover:text-ink-600'
+    'rounded-md p-2 text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-600'
 
   // When onSave is wired, the status icon doubles as a "Save now" button —
   // shows live autosave state AND lets the user force a save on demand.
@@ -145,17 +160,13 @@ export function SavedIndicator({
             type="button"
             onClick={() => { void handleSaveClick() }}
             disabled={status === 'saving'}
-            className={`grid h-8 w-8 place-items-center rounded-lg border ${tone} transition-colors ${
-              justSaved
-                ? 'border-success-300 bg-success-50'
-                : 'border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-100 hover:text-ink-900'
-            } disabled:cursor-default disabled:hover:border-ink-200 disabled:hover:bg-white`}
+            className={`rounded-md p-2 ${tone} transition-colors hover:bg-ink-100 disabled:cursor-default disabled:hover:bg-transparent`}
             title={saveTip}
             aria-label={saveTip}
           >
-            <StatusIcon className={`h-4 w-4 transition-transform duration-200 ${spin ? 'animate-spin' : ''} ${justSaved ? 'scale-125' : 'scale-100'}`} />
+            <StatusIcon className={`h-5 w-5 transition-transform duration-200 ${spin ? 'animate-spin' : ''} ${justSaved || justFailed ? 'scale-110' : 'scale-100'}`} />
           </button>
-          {/* Confirmation — auto-shows for ~1.4s under the icon after a manual save. */}
+          {/* Post-click message — auto-shows for ~1.4s under the icon. */}
           {justSaved && savedAt && status !== 'saving' && (
             <span
               role="status"
@@ -164,10 +175,18 @@ export function SavedIndicator({
               Saved at {clockTime(savedAt)}
             </span>
           )}
+          {justFailed && status !== 'saving' && (
+            <span
+              role="status"
+              className="pointer-events-none absolute top-full left-1/2 z-50 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-ink-200 bg-white px-2 py-1 text-[11px] font-medium text-pink-600 shadow-lg"
+            >
+              Not saved yet
+            </span>
+          )}
         </span>
       ) : (
-        <span className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`} title={tip} aria-label={tip}>
-          <StatusIcon className={`h-4 w-4 ${spin ? 'animate-spin' : ''}`} />
+        <span className={`rounded-md p-2 ${tone}`} title={tip} aria-label={tip}>
+          <StatusIcon className={`h-5 w-5 ${spin ? 'animate-spin' : ''}`} />
         </span>
       )}
 
@@ -184,7 +203,7 @@ export function SavedIndicator({
 
       {onOpenHistory && (
         <button type="button" className={btn} onClick={onOpenHistory} title="Version history" aria-label="Version history">
-          <History className="h-4 w-4" />
+          <History className="h-5 w-5" />
         </button>
       )}
     </div>
