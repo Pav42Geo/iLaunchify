@@ -232,11 +232,20 @@ export function VarietyPackBuilder({
   }
 
   function setUnits(id: string, units: number) {
+    const requested = Math.max(0, Math.floor(units))
+    // Capacity-accurate: a flavor can take at most what's LEFT after the others,
+    // so the per-pack total can never overflow unitsPerPack. The other flavors are
+    // never auto-moved — to give one flavor more, the creator lowers another. This
+    // is the "don't silently rebalance" rule (manufacturer didn't fix the split).
+    const others = choices.reduce(
+      (t, c) => (c.flavorPresetId === id ? t : t + Math.max(0, Math.floor(c.units ?? 0))),
+      0,
+    )
+    const cap = Math.max(0, unitsPerPack - others)
+    const clamped = Math.min(requested, cap)
     onChange({
       ...value,
-      choices: choices.map((c) =>
-        c.flavorPresetId === id ? { ...c, units: Math.max(0, Math.floor(units)) } : c,
-      ),
+      choices: choices.map((c) => (c.flavorPresetId === id ? { ...c, units: clamped } : c)),
     })
   }
 
@@ -486,7 +495,9 @@ export function VarietyPackBuilder({
                     <input
                       type="number"
                       min={1}
-                      max={unitsPerPack}
+                      // Remaining capacity for THIS flavor = pack size − the other
+                      // flavors' units, so the stepper can't be pushed past a full pack.
+                      max={Math.max(1, unitsPerPack - (placedSum - Math.max(0, Math.floor(c.units ?? 0))))}
                       inputMode="numeric"
                       value={c.units ?? 0}
                       onChange={(e) => setUnits(c.flavorPresetId, parseInt(e.target.value, 10) || 0)}

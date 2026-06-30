@@ -301,6 +301,18 @@ export function ProductDetailConfigurator({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packagingId])
   const [quantity, setQuantity] = React.useState<number>(template.minUnits)
+  // Minimum order (MOQ) the field can never drop below: in multi-flavor pack mode
+  // it's the selected size's `moqPacks` (packs); otherwise the product `minUnits`
+  // (units). The HTML `min` attribute alone doesn't clamp typed/programmatic
+  // values, so we enforce it on the steppers, on blur, and whenever the floor
+  // rises (pack-size switch) below.
+  const minQty = isMultiFlavor ? (selectedPackSize?.moqPacks ?? 1) : template.minUnits
+  const qtyStep = isMultiFlavor ? 1 : 50
+  React.useEffect(() => {
+    // Re-clamp UP when the floor rises (e.g. switching to a size with a higher
+    // MOQ, or entering multi-flavor mode). Never auto-lowers a larger order.
+    setQuantity((q) => (q < minQty ? minQty : q))
+  }, [minQty])
   // Subscribe & save — UI affordance only for now (the launch action doesn't yet
   // accept a subscription flag). // TODO wire subscribe into the launch/checkout
   // params once the recurring-production order type lands.
@@ -626,26 +638,33 @@ export function ProductDetailConfigurator({
           <button
             type="button"
             aria-label={isMultiFlavor ? 'Decrease packs' : 'Decrease quantity'}
-            onClick={() => setQuantity((q) => Math.max(0, q - (isMultiFlavor ? 1 : 50)))}
-            className="h-9 w-9 text-[18px] text-ink-700 transition-colors hover:bg-ink-50"
+            onClick={() => setQuantity((q) => Math.max(minQty, q - qtyStep))}
+            disabled={quantity <= minQty}
+            className="h-9 w-9 text-[18px] text-ink-700 transition-colors hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             −
           </button>
           <input
             type="number"
-            min={isMultiFlavor ? (selectedPackSize?.moqPacks ?? 1) : template.minUnits}
-            step={isMultiFlavor ? 1 : 50}
+            min={minQty}
+            step={qtyStep}
             value={quantity}
             onChange={(e) => {
+              // Permissive while typing (floor 0) so multi-digit entry works…
               const v = parseInt(e.target.value, 10)
               setQuantity(Number.isFinite(v) ? Math.max(0, v) : 0)
+            }}
+            onBlur={() => {
+              // …then snap up to the MOQ floor when the field loses focus, so the
+              // committed value can never be below the minimum order.
+              setQuantity((q) => (q < minQty ? minQty : q))
             }}
             className="w-16 border-0 text-center text-[14px] font-semibold tabular-nums text-ink-900 focus:outline-none"
           />
           <button
             type="button"
             aria-label={isMultiFlavor ? 'Increase packs' : 'Increase quantity'}
-            onClick={() => setQuantity((q) => q + (isMultiFlavor ? 1 : 50))}
+            onClick={() => setQuantity((q) => Math.max(minQty, q) + qtyStep)}
             className="h-9 w-9 text-[18px] text-ink-700 transition-colors hover:bg-ink-50"
           >
             +
@@ -772,7 +791,7 @@ export function ProductDetailConfigurator({
           flavorId={flavorId}
           sizeKey={sizeKey}
           packagingId={packagingId}
-          quantity={quantity}
+          quantity={Math.max(minQty, quantity)}
           isAuthenticated={isAuthenticated}
           decorationMethod={null}
           partnerOfferingId={null}
