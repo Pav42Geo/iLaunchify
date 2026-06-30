@@ -9,7 +9,28 @@
 // Backed by @ilaunchify/db EditSnapshot (createSnapshot/listSnapshots/getSnapshotJson).
 
 import * as React from 'react'
-import { Check, ChevronLeft, ChevronRight, Clock, History, Loader2, Lock, RotateCcw, Pin, Bookmark, Save, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Clock, Cloud, History, Loader2, Lock, RotateCcw, Pin, Bookmark, X } from 'lucide-react'
+
+// lucide's `cloud-check` ships in a newer release than we pin (0.453.0), so we
+// draw it here in the same 24×24 stroke style — a cloud with a check, matching
+// the familiar "saved to cloud" affordance.
+function CloudCheck({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 0 1 1.5 8.74" />
+      <path d="m9 12.75 2 2 4-4" />
+    </svg>
+  )
+}
 
 export type SnapshotKind = 'AUTO' | 'MILESTONE' | 'MANUAL'
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -110,9 +131,9 @@ export function SavedIndicator({
     }
   }, [status, onSave, flash])
 
-  // Resting affordance is a Save (floppy) icon — the icon doubles as a manual
-  // "save now" button, so it reads as an action, not a passive checkmark.
-  let StatusIcon = Save
+  // Resting affordance is a cloud-with-check ("saved to cloud") — the icon also
+  // doubles as a manual "save now" button. A plain cloud means not-saved-yet.
+  let StatusIcon: React.ComponentType<{ className?: string }> = CloudCheck
   let tip = savedAt ? `Saved at ${clockTime(savedAt)}` : 'All changes saved automatically'
   let tone = 'text-ink-600'
   let spin = false
@@ -126,6 +147,7 @@ export function SavedIndicator({
     tip = 'Save failed — retrying'
     tone = 'text-danger-600'
   } else if (status === 'dirty') {
+    StatusIcon = Cloud
     tip = savedAt ? 'Unsaved changes' : 'Not saved yet'
     tone = 'text-pink-600'
   }
