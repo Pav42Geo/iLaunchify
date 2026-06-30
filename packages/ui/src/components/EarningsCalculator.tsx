@@ -29,6 +29,9 @@ export interface EarningsCalculatorProps {
    * info panel rather than a primary action (PDP configure box).
    */
   tone?: 'default' | 'neutral'
+  /** Pricing unit shown after the figures — 'unit' (default) or 'pack' for
+   *  per-pack variety pricing, so the earnings basis matches the price basis. */
+  unitLabel?: string
   className?: string
 }
 
@@ -37,6 +40,7 @@ export function EarningsCalculator({
   defaultRetail,
   onChange,
   tone = 'default',
+  unitLabel = 'unit',
   className,
 }: EarningsCalculatorProps) {
   const initial = defaultRetail ?? Math.round(costPerUnit * 3.5 * 100) / 100
@@ -50,7 +54,7 @@ export function EarningsCalculator({
       className={cn(
         'grid grid-cols-2 gap-4 p-4 rounded-lg border',
         tone === 'neutral'
-          ? 'border-[var(--card-border)] bg-[var(--bg-subtle)]'
+          ? 'border-ink-100 bg-ink-50/60'
           : 'border-ink-200 bg-white',
         className,
       )}
@@ -61,7 +65,7 @@ export function EarningsCalculator({
         </div>
         <div className="text-2xl font-bold text-pink-700 tracking-[-0.01em] leading-none">
           ${margin > 0 ? margin.toFixed(2) : '0.00'}
-          <span className="text-ink-500 text-[13px] font-medium ml-1.5">/ unit</span>
+          <span className="text-ink-500 text-[13px] font-medium ml-1.5">/ {unitLabel}</span>
         </div>
         <div className="text-[12px] text-ink-500 mt-1">
           {margin > 0 ? `${marginPct.toFixed(0)}% margin` : 'set retail above cost'}
@@ -91,7 +95,7 @@ export function EarningsCalculator({
           />
         </div>
         <div className="text-[12px] text-ink-500 mt-1 tabular-nums">
-          cost ${costPerUnit.toFixed(2)} / unit
+          cost ${costPerUnit.toFixed(2)} / {unitLabel}
         </div>
       </div>
     </div>

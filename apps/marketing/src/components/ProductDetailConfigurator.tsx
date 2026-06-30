@@ -325,6 +325,13 @@ export function ProductDetailConfigurator({
       ? onDemandUnitCost
       : previewUnitCost
 
+  // Earnings basis follows the PRICING basis (spec §5): a PER_PACK product earns
+  // per pack (cost = pack price), everything else earns per unit. The label +
+  // figure on the earnings panel switch together so they read consistently.
+  const earningsPerPack = isMultiFlavor && effPricingBasis === 'PER_PACK'
+  const earningsCost = earningsPerPack ? +(packPriceWithSub / 100).toFixed(2) : activeUnitCost
+  const earningsUnitLabel = earningsPerPack ? 'pack' : 'unit'
+
   const baseLeadTimeDays =
     matchedRow.leadTimeDays ??
     detail.packaging.find((p) => p.id === packagingId)?.leadTimeDays ??
@@ -552,7 +559,7 @@ export function ProductDetailConfigurator({
              secondary = per-pack price. Strike-through shows the no-sub total. */
           <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
             ${(packOrderTotalCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            <span className="ml-1.5 text-[15px] font-semibold text-ink-500">
+            <span className="ml-1.5 text-[15px] font-semibold text-ink-400">
               (${(packPriceWithSub / 100).toFixed(2)} / pack)
             </span>
             {subscribe && packOrderTotalCentsNoSub !== packOrderTotalCents && (
@@ -564,13 +571,13 @@ export function ProductDetailConfigurator({
         ) : effectiveMode === 'ON_DEMAND' && onDemandUnitCost != null ? (
           <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
             ${onDemandUnitCost.toFixed(2)}
-            <span className="ml-1.5 text-[15px] font-semibold text-ink-500">/ unit</span>
+            <span className="ml-1.5 text-[15px] font-semibold text-ink-400">/ unit</span>
             <span className="ml-2 align-middle text-[12px] font-medium text-ink-400">no minimum</span>
           </div>
         ) : (
           <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
             ${totalOrderCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            <span className="ml-1.5 text-[15px] font-semibold text-ink-500">
+            <span className="ml-1.5 text-[15px] font-semibold text-ink-400">
               (${previewUnitCost.toFixed(2)} / unit)
             </span>
             {subscribe && (
@@ -604,7 +611,7 @@ export function ProductDetailConfigurator({
       </div>
 
       {/* 5) Earnings — neutral gray surface (info panel, not a primary action). */}
-      <EarningsCalculator costPerUnit={activeUnitCost} tone="neutral" />
+      <EarningsCalculator costPerUnit={earningsCost} unitLabel={earningsUnitLabel} tone="neutral" />
 
       {/* 6) Primary actions — stacked vertically, both full-width: "Order a
           sample" on TOP (opens the SampleDrawer) and Launch BELOW
