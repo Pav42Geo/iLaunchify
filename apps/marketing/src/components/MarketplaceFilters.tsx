@@ -5,11 +5,11 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import { Checkbox } from '@ilaunchify/ui'
 import {
-  FORMAT_OPTIONS,
-  MANUFACTURING_PROCESS_OPTIONS,
   ALLERGEN_FREE_OPTIONS,
   LEAD_BUCKET_OPTIONS,
   MOQ_PRESET_OPTIONS,
+  formatOptionsForDomain,
+  processOptionsForDomain,
   type Option,
 } from '@/lib/filter-constants'
 import type { LifestyleTagGroups } from '@/lib/lifestyle-tags-db'
@@ -45,12 +45,19 @@ export function MarketplaceFilters({
   certOptions,
   packagingGroups,
   marketOptions,
+  domain,
 }: {
   lifestyleGroups: LifestyleTagGroups
   certOptions: CertOption[]
   packagingGroups: PackagingFilterGroup[]
   marketOptions: MarketOption[]
+  /** Product domain (LabelingType) when the page is scoped to one category.
+   *  Scopes the Format + Manufacturing-process options to that domain. */
+  domain?: string | null
 }) {
+  // Domain-scoped option sets (Format + Process). null/undefined → all options.
+  const formatOptions = formatOptionsForDomain(domain)
+  const processOptions = processOptionsForDomain(domain)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -116,7 +123,7 @@ export function MarketplaceFilters({
 
       <SingleGroup
         title="Format"
-        options={FORMAT_OPTIONS}
+        options={formatOptions}
         value={single('format')}
         onSelect={(v) => setSingle('format', v)}
         firstBorderless
@@ -175,7 +182,7 @@ export function MarketplaceFilters({
       />
       <MultiGroup
         title="Manufacturing process"
-        options={MANUFACTURING_PROCESS_OPTIONS}
+        options={processOptions}
         active={csv('process')}
         onToggle={(v) => toggleCsv('process', v)}
       />
