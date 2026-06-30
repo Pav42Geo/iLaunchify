@@ -244,7 +244,7 @@ export default async function OrderDetailPage({
             {palette.label}
           </span>
           <span>
-            <span className="text-ink-500">Order</span> &nbsp;#{order.id.slice(-8)}
+            <span className="text-ink-500">Order</span> &nbsp;{(order as { orderNumber?: string | null }).orderNumber ?? `#${order.id.slice(-8)}`}
           </span>
           <span className="ml-auto text-ink-500">
             Placed {new Date(order.createdAt).toLocaleDateString()}

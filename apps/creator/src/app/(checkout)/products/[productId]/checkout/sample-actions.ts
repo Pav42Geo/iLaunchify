@@ -18,7 +18,7 @@ import { prisma, getSampleSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { createCheckoutSession } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
-import { quoteSample, type SampleSelection, type SampleOption } from '@ilaunchify/orders'
+import { quoteSample, createOrderWithNumber, type SampleSelection, type SampleOption } from '@ilaunchify/orders'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -165,10 +165,12 @@ export async function createSampleOrder(
   const totalCents = quote.subtotalCents + shippingCents + platformFeeCents
 
   // --- 6. Create the SAMPLE order (+ item). No MOQ check by design. -----------
-  const order = await (prisma as unknown as {
+  //         orderNumber stamped with a @unique P2002 retry (createOrderWithNumber).
+  const order = await createOrderWithNumber((orderNumber) => (prisma as unknown as {
     order: { create: (a: unknown) => Promise<{ id: string }> }
   }).order.create({
     data: {
+      orderNumber,
       brandId: product.brandId,
       creatorUserId: user.id,
       status: 'PENDING_PAYMENT',
@@ -198,7 +200,7 @@ export async function createSampleOrder(
         },
       },
     } as never,
-  })
+  }))
 
   await logAuditAs(user, {
     entityType: 'Order',
@@ -209,6 +211,7 @@ export async function createSampleOrder(
       brandId: product.brandId,
       productId: product.id,
       productTemplateId,
+      orderNumber: (order as { orderNumber?: string | null }).orderNumber ?? null,
       kind: input.kind,
       unitCount: quote.unitCount,
       subtotalCents: quote.subtotalCents,

@@ -513,7 +513,7 @@ function OrdersTable({
                     href={`/orders/${o.id}`}
                     className="font-mono text-[11.5px] font-semibold text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 focus-visible:rounded"
                   >
-                    #{o.id.slice(-8)}
+                    {(o as { orderNumber?: string | null }).orderNumber ?? `#${o.id.slice(-8)}`}
                   </Link>
                   {(o as { orderType?: string }).orderType === 'SAMPLE' && (
                     <span className="mt-1 inline-flex items-center rounded-full border border-info-200 bg-info-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-info-700">

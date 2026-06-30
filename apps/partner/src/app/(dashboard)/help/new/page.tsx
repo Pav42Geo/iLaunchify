@@ -42,7 +42,9 @@ export default async function NewTicketPage({ searchParams }: PageProps) {
       where: { partnerService: { partner: { userId: user.id } } },
       orderBy: { createdAt: 'desc' },
       take: 20,
-      select: { id: true, type: true, orderId: true },
+      // orderNumber post-dates the generated client → spread it in loosely so the
+      // known keys stay precisely typed; read cast-guarded at the use site.
+      select: { id: true, type: true, orderId: true, order: { select: { ...({ orderNumber: true } as object) } } },
     }),
     prisma.productTemplate.findMany({
       where: { manufacturerService: { partner: { userId: user.id } } },
@@ -83,7 +85,7 @@ export default async function NewTicketPage({ searchParams }: PageProps) {
         attachBySlug={ATTACH_BY_SLUG}
         dispatches={dispatches.map((d) => ({
           id: d.id,
-          label: `Dispatch #${d.id.slice(-8)} · ${d.type.toLowerCase()} · order #${d.orderId.slice(-8)}`,
+          label: `Dispatch #${d.id.slice(-8)} · ${d.type.toLowerCase()} · order ${(d as { order?: { orderNumber?: string | null } }).order?.orderNumber ?? `#${d.orderId.slice(-8)}`}`,
         }))}
         products={products.map((p) => ({ id: p.id, label: p.name }))}
         initialCategorySlug={initialCategorySlug}

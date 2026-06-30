@@ -139,7 +139,7 @@ export default async function DispatchDetailPage({
               </span>
             </h1>
             <p className="mt-1.5 text-[13px] text-ink-600">
-              Order <span className="font-medium text-ink-800">#{dispatch.order.id.slice(-8)}</span>
+              Order <span className="font-medium text-ink-800">{(dispatch.order as { orderNumber?: string | null }).orderNumber ?? `#${dispatch.order.id.slice(-8)}`}</span>
               {' · '}Brand <span className="font-medium text-ink-800">{dispatch.order.brand.name}</span>
               {' · '}Created {fmtDate(dispatch.createdAt)}
             </p>

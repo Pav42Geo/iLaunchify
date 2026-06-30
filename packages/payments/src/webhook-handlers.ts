@@ -23,7 +23,7 @@
 
 import { prisma, getSampleSettings, getOrderSettings } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
-import { createDispatches, mintSampleCredit } from '@ilaunchify/orders'
+import { createDispatches, mintSampleCredit, createOrderWithNumber } from '@ilaunchify/orders'
 import { setCreatorTierWithAudit } from '@ilaunchify/auth'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { appLogger } from '@ilaunchify/logger'
@@ -568,9 +568,12 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
 
   // Order + OrderItem in one transaction so partial failures don't
   // leave half a cycle on the books.
-  const order = await prisma.$transaction(async (tx) => {
+  const order = await createOrderWithNumber((orderNumber) => prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
+      // orderNumber post-dates the generated client (cast-guarded). The @unique
+      // retry lives in createOrderWithNumber.
       data: {
+        orderNumber,
         brandId: sub.brandId,
         creatorUserId: sub.creatorUserId,
         status: 'PAID',
@@ -592,7 +595,7 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
         productionSubscriptionId: sub.id,
         subscriptionCycleNumber: cycleNumber,
         internalNotes,
-      },
+      } as Parameters<typeof tx.order.create>[0]['data'],
     })
     await tx.orderItem.create({
       data: {
@@ -623,7 +626,7 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
       },
     })
     return created
-  })
+  }))
 
   // Routing — same path as the one-time order. Auto-holds if no partner match.
   await createDispatches({ orderId: order.id })

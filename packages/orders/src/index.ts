@@ -1,5 +1,17 @@
 // Order lifecycle + dispatch FSM + routing + transfer planning.
 
+// Human-friendly order numbers — `ILF-YYMMDD-XXXXX`.
+export {
+  generateOrderNumber,
+  isValidOrderNumber,
+  ORDER_CODE_ALPHABET,
+  ORDER_CODE_LENGTH,
+  ORDER_NUMBER_PREFIX,
+  ORDER_NUMBER_REGEX,
+} from './order-number'
+export type { RandomBytes } from './order-number'
+export { createOrderWithNumber, ORDER_NUMBER_MAX_ATTEMPTS } from './create-order'
+
 export {
   transitionOrder,
   assertOrderTransition,

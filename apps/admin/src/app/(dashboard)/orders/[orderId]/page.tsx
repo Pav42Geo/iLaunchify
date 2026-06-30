@@ -279,7 +279,7 @@ export default async function AdminOrderDetail({ params }: PageProps) {
         backHref="/orders"
         backLabel="All orders"
         eyebrow="Orders · Detail"
-        title={`Order #${order.id.slice(-8)}`}
+        title={(order as { orderNumber?: string | null }).orderNumber ?? `Order #${order.id.slice(-8)}`}
         meta={
           <>
             <span className="inline-flex items-center gap-1 font-medium text-ink-900">

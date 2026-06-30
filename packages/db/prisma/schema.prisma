@@ -2219,6 +2219,12 @@ enum ProductionSubscriptionStatus {
 
 model Order {
   id                       String                  @id @default(cuid())
+  // Human-friendly order number — `ILF-YYMMDD-XXXXX` (date + 5-char unambiguous
+  // code). Nullable + additive: existing rows stay null; Cockroach's unique index
+  // permits multiple NULLs. Generated at create time via @ilaunchify/orders'
+  // generateOrderNumber() with a P2002 retry. Routing/links still key off `id`;
+  // this is display-only. (2026-06-30)
+  orderNumber              String?                 @unique
   brandId                  String // which brand this batch is produced under
   creatorUserId            String // the creator paying iLaunchify
   status                   OrderStatus             @default(PENDING_PAYMENT)
@@ -5253,7 +5259,14 @@ model FlavorPreset {
   // back to ProductTemplate.statementOfIdentity.
   statementOfIdentity String?
   swatchHex           String? // '#5C3317' for picker
-  swatchImageFileId   String? // small jar/scoop photo for picker
+  // Per-flavor images (task #203). The partner uploads ONE photo per flavor; the
+  // upload action derives two sizes and links them here (Asset ids, soft FK to
+  // Asset). `swatchImageFileId` = the small square THUMBNAIL shown on the PDP
+  // flavor chip (replaces the color circle). `heroImageFileId` = the high-quality
+  // HERO swapped into the PDP gallery on chip hover. Both null → color circle +
+  // product hero (today's behaviour). Additive; cast-guarded everywhere.
+  swatchImageFileId   String? // THUMBNAIL Asset id — small square for the PDP chip
+  heroImageFileId     String? // HERO Asset id — large gallery image (hover swap)
   // Per-flavor die-line slot (PER_FLAVOR packing types; docs/HANDOFF-TO-CODE-
   // per-flavor-labels.md). null = this flavor uses the template/packaging die-line
   // shared by all flavors (the common case: same container, different label). Set

@@ -316,7 +316,7 @@ function OrderCard({ order: o }: { order: OrderRow }) {
         <StatusPill palette={palette} />
         <span>
           <span className="text-ink-500">Order</span>{' '}
-          <span className="font-mono text-[11.5px]">{shortId(o.id)}</span>
+          <span className="font-mono text-[11.5px]">{displayOrderNo(o)}</span>
         </span>
         <span>
           <span className="text-ink-500">Placed</span>{' '}
@@ -473,7 +473,7 @@ function OrderTable({ orders }: { orders: OrderRow[] }) {
               const productName = o.items[0]?.product?.name ?? 'Untitled product'
               return (
                 <tr key={o.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
-                  <td className="px-5 py-3 font-mono text-[11.5px] text-ink-700">{shortId(o.id)}</td>
+                  <td className="px-5 py-3 font-mono text-[11.5px] text-ink-700">{displayOrderNo(o)}</td>
                   <td className="px-3 py-3">
                     <div className="font-medium text-ink-900">{productName}</div>
                     <div className="text-[11px] text-ink-400">
@@ -807,6 +807,13 @@ function totalUnits(o: OrderRow): number {
 
 function shortId(id: string): string {
   return 'ORD-' + id.slice(-8).toUpperCase()
+}
+
+// Human order number when present (ILF-YYMMDD-XXXXX), else the legacy short id.
+// orderNumber post-dates the generated client → read cast-guarded. Display only;
+// routing/links still use o.id.
+function displayOrderNo(o: { id: string; orderNumber?: string | null }): string {
+  return o.orderNumber ?? shortId(o.id)
 }
 
 function formatDate(d: Date): string {

@@ -96,7 +96,10 @@ export default async function ProviderDashboardHome() {
             acceptDeadlineAt: true,
             createdAt: true,
             type: true,
-            order: { select: { id: true, brand: { select: { name: true } } } },
+            // orderNumber post-dates the generated client → spread it in loosely
+            // (sent at runtime, read cast-guarded at the use site) so the known
+            // keys stay precisely typed.
+            order: { select: { id: true, brand: { select: { name: true } }, ...({ orderNumber: true } as object) } },
           },
           orderBy: { createdAt: 'desc' },
           take: 120,
@@ -221,7 +224,7 @@ export default async function ProviderDashboardHome() {
   const recentDispatches: ListWidgetItem[] = dispatches.slice(0, 8).map((d) => ({
     id: d.id,
     label: `${d.order.brand.name} · ${d.type.toLowerCase()}`,
-    sublabel: `#${d.order.id.slice(-8)} · ${new Date(d.createdAt).toLocaleDateString()}`,
+    sublabel: `${(d.order as { orderNumber?: string | null }).orderNumber ?? `#${d.order.id.slice(-8)}`} · ${new Date(d.createdAt).toLocaleDateString()}`,
     value: `$${(d.costCents / 100).toFixed(0)}`,
     href: `/orders/${d.id}`,
     tone: PIPELINE_TONE[d.status as string] ?? 'ink',

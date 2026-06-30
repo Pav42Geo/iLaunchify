@@ -5,9 +5,30 @@
 //
 // Run: pnpm --filter @ilaunchify/db exec tsx prisma/seed-sample-orders.ts
 
+import { randomBytes } from 'node:crypto'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
+
+// Local order-number generator (packages/db is a leaf and cannot import
+// @ilaunchify/orders, which depends on db). Mirrors generateOrderNumber:
+// ILF-YYMMDD-XXXXX over the unambiguous alphabet.
+const ORDER_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ'
+function seedOrderNumber(date = new Date()): string {
+  const yy = String(date.getUTCFullYear() % 100).padStart(2, '0')
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(date.getUTCDate()).padStart(2, '0')
+  const ceiling = Math.floor(256 / ORDER_CODE_ALPHABET.length) * ORDER_CODE_ALPHABET.length
+  let code = ''
+  while (code.length < 5) {
+    for (const b of randomBytes(8)) {
+      if (code.length >= 5) break
+      if (b >= ceiling) continue
+      code += ORDER_CODE_ALPHABET[b % ORDER_CODE_ALPHABET.length]
+    }
+  }
+  return `ILF-${yy}${mm}${dd}-${code}`
+}
 
 async function main() {
   const creator = await prisma.user.findUnique({
@@ -89,6 +110,7 @@ async function main() {
     const totalA = subtotalA + shippingA + taxA + platformFeeA
     const orderA = await prisma.order.create({
       data: {
+        orderNumber: seedOrderNumber(),
         brandId: brand.id,
         creatorUserId: creator.id,
         internalNotes: orderASlug,
@@ -159,7 +181,7 @@ async function main() {
               : []),
           ],
         },
-      },
+      } as Parameters<typeof prisma.order.create>[0]['data'],
     })
     console.log(`✓ Created order A (in production / changes requested): ${orderA.id}`)
   } else {
@@ -181,6 +203,7 @@ async function main() {
     const totalB = subtotalB + shippingB + taxB + platformFeeB
     const orderB = await prisma.order.create({
       data: {
+        orderNumber: seedOrderNumber(),
         brandId: brand.id,
         creatorUserId: creator.id,
         internalNotes: orderBSlug,
@@ -240,7 +263,7 @@ async function main() {
             },
           ],
         },
-      },
+      } as Parameters<typeof prisma.order.create>[0]['data'],
     })
     console.log(`✓ Created order B (delivered): ${orderB.id}`)
   } else {

@@ -19,7 +19,7 @@
 
 import { prisma, getSampleSettings, resolveOrderSettings } from '@ilaunchify/db'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
-import { findRouting, estimateDispatchCosts, applySampleCredit, type SampleCreditEntry } from '@ilaunchify/orders'
+import { findRouting, estimateDispatchCosts, applySampleCredit, createOrderWithNumber, type SampleCreditEntry } from '@ilaunchify/orders'
 import {
   createCheckoutSession,
   createProductionSubscription,
@@ -424,9 +424,12 @@ export async function placeOrderFromCheckoutDraft(
   })
   const lockedDesignVersionId = lockedDesign?.versions[0]?.id ?? null
 
-  const order = await prisma.$transaction(async (tx) => {
+  const order = await createOrderWithNumber((orderNumber) => prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
+      // orderNumber post-dates the generated client (cast-guarded). The @unique
+      // retry lives in createOrderWithNumber.
       data: {
+        orderNumber,
         brandId: product.brandId,
         creatorUserId: user.id,
         status: 'PENDING_PAYMENT',
@@ -447,7 +450,7 @@ export async function placeOrderFromCheckoutDraft(
         shipToPostalCode: shipTo.data.postalCode,
         shipToCountry: shipTo.data.country,
         internalNotes,
-      },
+      } as Parameters<typeof tx.order.create>[0]['data'],
     })
     const orderItem = await tx.orderItem.create({
       data: {
@@ -535,7 +538,7 @@ export async function placeOrderFromCheckoutDraft(
     await tx.checkoutDraft.delete({ where: { id: draft.id } })
 
     return created
-  })
+  }))
 
   // --- 11. Audit log --------------------------------------------------------
   await logAuditAs(user, {
@@ -553,6 +556,7 @@ export async function placeOrderFromCheckoutDraft(
       sampleCreditAppliedCents,
       totalCents,
       shipToType: shipTo.data.shipToType,
+      orderNumber: (order as { orderNumber?: string | null }).orderNumber ?? null,
       surface: 'checkout-wizard',
       // Variety-pack structure (null for non-pack items) — recorded for
       // reproducibility alongside the snapshot columns on OrderItem.

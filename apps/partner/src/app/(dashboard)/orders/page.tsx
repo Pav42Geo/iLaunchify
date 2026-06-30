@@ -217,7 +217,7 @@ export default async function OrdersPage({
                   const pill = STATUS_PILL[d.status as string] ?? { label: d.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
                   return (
                     <tr key={d.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
-                      <td className="px-5 py-3 font-mono text-[11.5px] text-ink-700">#{d.order.id.slice(-8)}</td>
+                      <td className="px-5 py-3 font-mono text-[11.5px] text-ink-700">{(d.order as { orderNumber?: string | null }).orderNumber ?? `#${d.order.id.slice(-8)}`}</td>
                       <td className="px-3 py-3 font-medium text-ink-900">{d.order.brand.name}</td>
                       <td className="px-3 py-3 text-[12px] text-ink-600">{d.type} · {d.serviceType}</td>
                       <td className="px-3 py-3">
@@ -233,7 +233,7 @@ export default async function OrdersPage({
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end">
-                          <OrderRowActions dispatchId={d.id} orderId={d.order.id} />
+                          <OrderRowActions dispatchId={d.id} orderId={d.order.id} orderNumber={(d.order as { orderNumber?: string | null }).orderNumber} />
                         </div>
                       </td>
                     </tr>
@@ -313,7 +313,7 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
           {pill.label}
         </span>
         <span>
-          <span className="text-ink-500">Order</span> <span className="font-mono text-[11.5px]">#{d.order.id.slice(-8)}</span>
+          <span className="text-ink-500">Order</span> <span className="font-mono text-[11.5px]">{(d.order as { orderNumber?: string | null }).orderNumber ?? `#${d.order.id.slice(-8)}`}</span>
         </span>
         <Link
           href={`/orders/${d.id}#manifest`}
@@ -366,7 +366,7 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
           Get order support
         </ActionLink>
         <span className="ml-auto">
-          <OrderRowActions dispatchId={d.id} orderId={d.order.id} />
+          <OrderRowActions dispatchId={d.id} orderId={d.order.id} orderNumber={(d.order as { orderNumber?: string | null }).orderNumber} />
         </span>
       </footer>
     </article>

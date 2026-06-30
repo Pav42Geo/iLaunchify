@@ -22,6 +22,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import type Stripe from 'stripe'
+import { generateOrderNumber } from '@ilaunchify/orders'
 import { handleStripeEvent } from '../src/webhook-handlers'
 
 const TAG = `wht_${Date.now()}`
@@ -68,6 +69,7 @@ async function main() {
   })
   const order = await prisma.order.create({
     data: {
+      orderNumber: generateOrderNumber(),
       brandId: brand.id,
       creatorUserId: user.id,
       status: 'PENDING_PAYMENT',
@@ -78,7 +80,7 @@ async function main() {
       shipToCity: 'Austin',
       shipToState: 'TX',
       shipToPostalCode: '78701',
-    },
+    } as Parameters<typeof prisma.order.create>[0]['data'],
   })
 
   const piId = `pi_${TAG}`
