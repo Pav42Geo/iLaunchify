@@ -36,6 +36,7 @@ import {
   FileDown,
   Scissors,
   ShoppingBag,
+  FileText,
   type LucideIcon,
 } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
@@ -44,6 +45,7 @@ import { PanelDataSchema } from '@ilaunchify/types'
 import { marketingUrl } from '@/lib/marketing-url'
 import { LiveToggle } from '../../LiveToggle'
 import { SaveAsTemplateButton } from './SaveAsTemplateButton'
+import { ReviewSummary } from '../../new/ReviewSummary'
 
 export const dynamic = 'force-dynamic'
 
@@ -388,6 +390,29 @@ export default async function ProductPreviewPage({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr,340px]">
         {/* MAIN — the record */}
         <div className="space-y-6">
+          {/* Product passport — the document-grade review. Printable on live products. */}
+          <details className="group rounded-2xl border border-ink-200 bg-white" {...(status === 'PUBLISHED' || status === 'PAUSED' ? { open: true } : {})}>
+            <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+              <div className="min-w-0">
+                <h2 className="flex items-center gap-2 font-display text-[16px] font-semibold text-ink-900">
+                  <span className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-700">
+                    <FileText className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  Product passport
+                </h2>
+                <p className="ml-9 mt-0.5 text-[12px] leading-snug text-ink-500">
+                  The full document-grade record. {status === 'PUBLISHED' || status === 'PAUSED' ? 'Use the print button to print just the passport.' : 'Printing is available once the product is live.'}
+                </p>
+              </div>
+              <div className="flex flex-shrink-0 items-center gap-2 pt-1">
+                <ChevronDown className="h-4 w-4 text-ink-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </div>
+            </summary>
+            <div className="px-5 pb-5">
+              <ReviewSummary draftId={id} printable={status === 'PUBLISHED' || status === 'PAUSED'} />
+            </div>
+          </details>
+
           {/* Marketplace presence */}
           <Section icon={Store} title="Marketplace & performance" desc="How this product is selling and where it shows up for creators." meta={status === 'PUBLISHED' ? 'Visible to creators' : status === 'PAUSED' ? 'Hidden (paused)' : pill.label}>
             <div className="space-y-3">

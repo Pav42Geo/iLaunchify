@@ -29,6 +29,7 @@ import {
   Scissors,
   ClipboardList,
   Sparkles,
+  Printer,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -257,7 +258,14 @@ function Gallery({ images }: { images: Array<{ url: string; label: string }> }) 
 
 // ── view ─────────────────────────────────────────────────────────────────────
 
-export function ReviewSummary({ draftId }: { draftId?: string | null }) {
+export function ReviewSummary({
+  draftId,
+  printable = false,
+}: {
+  draftId?: string | null
+  /** When true (live/approved products only), show a Print affordance that prints just the passport. */
+  printable?: boolean
+}) {
   const [data, setData] = React.useState<ProductPassport | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [labelViewerOpen, setLabelViewerOpen] = React.useState(false)
@@ -307,7 +315,7 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
   const canViewFlavorLabels = d.isMultiFlavor && d.flavorColumns.length > 0
 
   return (
-    <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+    <div className="passport-print-root" data-passport-root style={{ maxWidth: 1180, margin: '0 auto' }}>
       {/* ── COVER (full width across both columns) ──────────────────────────── */}
       <div
         className="card"
@@ -340,7 +348,34 @@ export function ReviewSummary({ draftId }: { draftId?: string | null }) {
               />
             </div>
           ) : null}
-          <div style={{ padding: 24 }}>
+          <div style={{ padding: 24, position: 'relative' }}>
+            {printable && (
+              <button
+                type="button"
+                className="no-print"
+                aria-label="Print passport"
+                title="Print passport"
+                onClick={() => window.print()}
+                style={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 999,
+                  border: '1px solid var(--ink-200)',
+                  background: 'var(--bg-card, #fff)',
+                  color: 'var(--ink-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                <Printer size={16} aria-hidden="true" />
+              </button>
+            )}
             <div className="eyebrow" style={{ color: 'var(--pink-700)' }}>Digital product passport</div>
             <h2
               className="display"
@@ -1122,4 +1157,13 @@ const PASSPORT_CSS = `
 .passport-main{min-width:0}
 .passport-rail{position:sticky;top:16px;align-self:start;display:flex;flex-direction:column;gap:16px;min-width:0}
 @media(max-width:900px){.passport-body{grid-template-columns:1fr}.passport-rail{position:static}}
+@media print{
+  /* Print ONLY the passport. Hide everything else, then re-show the passport tree. */
+  body *{visibility:hidden !important}
+  .passport-print-root,.passport-print-root *{visibility:visible !important}
+  .passport-print-root{position:absolute !important;left:0;top:0;width:100%;max-width:none !important;margin:0 !important}
+  /* Let it expand naturally — drop sticky/overflow constraints that clip print. */
+  .passport-rail{position:static !important}
+  .no-print{display:none !important}
+}
 `
