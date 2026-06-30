@@ -47,7 +47,7 @@ import { packUiKindForProfile } from './structuralPackType'
 interface CategoryOption { id: string; name: string; mainCategory: string; labelingType: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
 interface PackagingOption { id: string; partnerName: string; topology: string; unitCount: number; moq: number; grossWeightG?: number | null; casesPerLayer?: number | null; layersPerPallet?: number | null }
-interface ChipOption { id: string; label: string }
+interface ChipOption { id: string; label: string; group?: string }
 
 interface GuidedBuilderProps {
   categories: CategoryOption[]

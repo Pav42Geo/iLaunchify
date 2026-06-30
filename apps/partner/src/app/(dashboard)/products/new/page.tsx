@@ -77,7 +77,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       orderBy: { partnerName: 'asc' },
     }),
     prisma.niche.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
-    prisma.lifestyleTag.findMany({ select: { id: true, name: true }, orderBy: { displayOrder: 'asc' } }),
+    prisma.lifestyleTag.findMany({ select: { id: true, name: true, group: true }, orderBy: { displayOrder: 'asc' } }),
   ])
 
   // Admin-curated packing taxonomy (the product-type gate). Cast keeps it green
@@ -141,7 +141,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       subcategories={subcategories}
       packagingSystems={packagingSystems}
       niches={niches.map((n) => ({ id: n.id, label: n.name }))}
-      lifestyleTags={lifestyleTags.map((t) => ({ id: t.id, label: t.name }))}
+      lifestyleTags={lifestyleTags.map((t) => ({ id: t.id, label: t.name, group: t.group }))}
       facilities={[]}
       packingProfiles={packingProfiles}
       serviceScopes={serviceScopes}

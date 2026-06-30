@@ -24,6 +24,7 @@ export function MarketplaceAttributesCard({
   initial,
   domain,
   marketOptions = [{ value: 'US', label: 'United States' }],
+  lifestyle,
   preview = false,
 }: {
   draftId: string | null
@@ -37,6 +38,15 @@ export function MarketplaceAttributesCard({
   domain?: string | null
   /** ACTIVE markets from admin Markets & Regions (default US-only). */
   marketOptions?: SelectOption[]
+  /** Lifestyle-tag filter groups (Diet / Audience / Trend). All three pickers share
+   *  one `selected` id list (the LifestyleTag join); `onChange` persists upstream. */
+  lifestyle?: {
+    diet: SelectOption[]
+    audience: SelectOption[]
+    trend: SelectOption[]
+    selected: string[]
+    onChange: (next: string[]) => void
+  }
   preview?: boolean
 }) {
   const [format, setFormat] = useState<string | null>(initial.format)
@@ -84,7 +94,7 @@ export function MarketplaceAttributesCard({
   const domainFormats = formatOptionsForDomain(domain)
 
   return (
-    <div className="grid" style={{ gap: 16 }}>
+    <div className="grid" style={{ gap: 16, gridTemplateColumns: '1fr 1fr' }}>
       <Field label="Format">
         <select className="sel" value={format ?? ''} disabled={preview} onChange={(e) => pickFormat(e.target.value)}>
           <option value="">Select…</option>
@@ -123,6 +133,40 @@ export function MarketplaceAttributesCard({
           onChange={(next) => setMulti(setMarkets, 'markets', next)}
         />
       </Field>
+
+      {/* Lifestyle-tag filters (Layer 4) — Diet / Audience / Trend. All three share
+          one selected id list; toggling preserves the other groups' selections. */}
+      {lifestyle && (
+        <>
+          <Field label="Diet">
+            <MultiSelect
+              options={lifestyle.diet}
+              selected={lifestyle.selected}
+              disabled={preview}
+              placeholder="Select diets…"
+              onChange={(next) => { if (!preview) lifestyle.onChange(next) }}
+            />
+          </Field>
+          <Field label="Audience">
+            <MultiSelect
+              options={lifestyle.audience}
+              selected={lifestyle.selected}
+              disabled={preview}
+              placeholder="Select audiences…"
+              onChange={(next) => { if (!preview) lifestyle.onChange(next) }}
+            />
+          </Field>
+          <Field label="Trend">
+            <MultiSelect
+              options={lifestyle.trend}
+              selected={lifestyle.selected}
+              disabled={preview}
+              placeholder="Select trends…"
+              onChange={(next) => { if (!preview) lifestyle.onChange(next) }}
+            />
+          </Field>
+        </>
+      )}
     </div>
   )
 }

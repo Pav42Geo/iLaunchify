@@ -20,22 +20,9 @@ import { MarketplaceAttributesCard } from './MarketplaceAttributesCard'
 import { MediaUpload } from './MediaUpload'
 import { Tag, Filter, FileText, ListPlus, Hash } from 'lucide-react'
 import { Section, Field, RichTextField, SmartTextInput } from './_ui'
+import { COUNTRY_OPTIONS } from './_countries'
 
-// Finished-good country of origin (ISO-3166-1 alpha-2). Prefilled from the
-// partner's product defaults; editable per product.
-const COO_OPTS: { value: string; label: string }[] = [
-  { value: 'US', label: 'United States' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'MX', label: 'Mexico' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
-  { value: 'IT', label: 'Italy' },
-  { value: 'CN', label: 'China' },
-  { value: 'IN', label: 'India' },
-]
-
-interface Opt { id: string; label: string }
+interface Opt { id: string; label: string; group?: string }
 interface CategoryOption { id: string; name: string; mainCategory: string; labelingType: string }
 interface SubcategoryOption { id: string; name: string; categoryId: string }
 interface FacilityOption { id: string; name: string }
@@ -242,14 +229,11 @@ export function BasicsScreen({
               <Field label="Country of origin">
                 <select className="sel" value={coo} onChange={(e) => setCoo(e.target.value)}>
                   <option value="">—</option>
-                  {COO_OPTS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  {COUNTRY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </Field>
               <Field full label="Niches">
                 <ChipSelect options={niches} selected={selNiches} onToggle={(id) => toggleChip(selNiches, setSelNiches, id, 3)} placeholder="Add a niche…" />
-              </Field>
-              <Field full label="Lifestyle tags">
-                <ChipSelect options={lifestyleTags} selected={selTags} onToggle={(id) => toggleChip(selTags, setSelTags, id)} placeholder="Add a lifestyle tag…" />
               </Field>
             </div>
           </Section>
@@ -264,6 +248,13 @@ export function BasicsScreen({
                 processes: initial?.manufacturingProcesses ?? [],
                 allergenFree: initial?.allergenFreeClaims ?? [],
                 markets: initial?.marketCodes ?? [],
+              }}
+              lifestyle={{
+                diet: lifestyleTags.filter((t) => t.group === 'LIFESTYLE').map((t) => ({ value: t.id, label: t.label })),
+                audience: lifestyleTags.filter((t) => t.group === 'AUDIENCE').map((t) => ({ value: t.id, label: t.label })),
+                trend: lifestyleTags.filter((t) => t.group === 'TREND').map((t) => ({ value: t.id, label: t.label })),
+                selected: selTags,
+                onChange: setSelTags,
               }}
             />
           </Section>
