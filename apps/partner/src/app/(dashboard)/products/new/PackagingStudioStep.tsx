@@ -585,7 +585,13 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
           <BrandMark imageSrc={studioLogo?.src ?? undefined} sublabel={studioLogo?.sublabel} size={26} className="flex-shrink-0" />
         )}
 
-        {/* Center cluster — same as gb-topbar-center: ☰ menu + Saved/History. */}
+        {/* Studio name next to the logo. */}
+        <span className="flex flex-shrink-0 items-center gap-2.5">
+          <span className="h-5 w-px bg-ink-200" />
+          <span className="text-[14px] font-semibold text-ink-900">Packaging Studio</span>
+        </span>
+
+        {/* Center cluster — same as gb-topbar-center: ☰ menu + Saved/History + Back. */}
         <span className="inline-flex items-center gap-2">
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Studio menu" className="grid h-8 w-8 place-items-center rounded-[9px] border border-ink-200 bg-white text-ink-700 transition-colors hover:bg-ink-50">
@@ -604,11 +610,6 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
                       <Save className="h-3.5 w-3.5" /> Save draft
                     </button>
                   )}
-                  {onBack && (
-                    <button type="button" onClick={() => { setMenuOpen(false); onBack() }} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-ink-700 hover:bg-ink-50">
-                      <ArrowLeft className="h-3.5 w-3.5" /> Back to recipe step
-                    </button>
-                  )}
                 </div>
               </>
             )}
@@ -619,6 +620,18 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
             onSave={saveNow}
             onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
           />
+          {/* Back — next to the History icon, like the builder's top bar. */}
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-1 rounded-md py-2 pl-1.5 pr-2.5 text-[13px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+              title="Back to recipe step"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" /> Back
+            </button>
+          )}
         </span>
 
         {/* Right cluster — ml-auto gap-2: [3D⇄Die-line] · Next · bell · account. */}

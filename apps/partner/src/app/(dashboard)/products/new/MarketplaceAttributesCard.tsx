@@ -12,7 +12,7 @@
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
-  FORMAT_OPTIONS,
+  formatOptionsForDomain,
   MANUFACTURING_PROCESS_OPTIONS,
   ALLERGEN_FREE_OPTIONS,
 } from '@ilaunchify/types'
@@ -22,6 +22,7 @@ import { Field, MultiSelect, type SelectOption } from './_ui'
 export function MarketplaceAttributesCard({
   draftId,
   initial,
+  domain,
   marketOptions = [{ value: 'US', label: 'United States' }],
   preview = false,
 }: {
@@ -32,6 +33,8 @@ export function MarketplaceAttributesCard({
     allergenFree: string[]
     markets: string[]
   }
+  /** Product domain (LabelingType) — scopes the Format picker to relevant forms. */
+  domain?: string | null
   /** ACTIVE markets from admin Markets & Regions (default US-only). */
   marketOptions?: SelectOption[]
   preview?: boolean
@@ -74,19 +77,22 @@ export function MarketplaceAttributesCard({
     persist({ [key]: next })
   }
 
-  const formatGroups = [...new Set(FORMAT_OPTIONS.filter((o) => o.group).map((o) => o.group))]
+  // Only formats relevant to the chosen product domain (Supplement forms for a
+  // supplement, beverage/food forms for a food, etc.) — not every domain's forms.
+  const domainFormats = formatOptionsForDomain(domain)
+  const formatGroups = [...new Set(domainFormats.filter((o) => o.group).map((o) => o.group))]
 
   return (
     <div className="grid" style={{ gap: 16 }}>
       <Field label="Format">
         <select className="sel" value={format ?? ''} disabled={preview} onChange={(e) => pickFormat(e.target.value)}>
           <option value="">Select…</option>
-          {FORMAT_OPTIONS.filter((o) => !o.group).map((o) => (
+          {domainFormats.filter((o) => !o.group).map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
           {formatGroups.map((g) => (
             <optgroup key={g} label={g!}>
-              {FORMAT_OPTIONS.filter((o) => o.group === g).map((o) => (
+              {domainFormats.filter((o) => o.group === g).map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </optgroup>

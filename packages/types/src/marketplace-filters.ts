@@ -13,28 +13,42 @@ export interface FilterOption {
   label: string
   /** Optional display grouping (e.g. domain for Format). */
   group?: string
+  /** Product domains (LabelingType keys: FOOD · DIETARY_SUPPLEMENT · PET_PRODUCT ·
+   *  OTC · COSMETIC) this option applies to. Used to scope the Format picker to the
+   *  selected domain. Omitted = applies to every domain. */
+  domains?: string[]
 }
 
-/** Format = ManufacturingFormat enum values (single-select). */
+/** Format = ManufacturingFormat enum values (single-select). `domains` scopes each
+ *  form to the product domains where it's plausible, so the builder's Format picker
+ *  only shows formats relevant to the chosen domain (see formatOptionsForDomain). */
 export const FORMAT_OPTIONS: FilterOption[] = [
-  { value: 'POWDER', label: 'Powder' },
-  { value: 'CAPSULE', label: 'Capsule', group: 'Supplement' },
-  { value: 'TABLET', label: 'Tablet', group: 'Supplement' },
-  { value: 'SOFTGEL', label: 'Softgel', group: 'Supplement' },
-  { value: 'GUMMY', label: 'Gummy', group: 'Supplement' },
-  { value: 'SOFT_CHEW', label: 'Soft chew', group: 'Supplement' },
-  { value: 'READY_TO_DRINK', label: 'Ready-to-drink', group: 'Beverage' },
-  { value: 'CONCENTRATE', label: 'Concentrate', group: 'Beverage' },
-  { value: 'EFFERVESCENT', label: 'Effervescent', group: 'Beverage' },
-  { value: 'LIQUID', label: 'Liquid' },
-  { value: 'BAR', label: 'Bar', group: 'Food' },
-  { value: 'CREAM', label: 'Cream', group: 'Cosmetic' },
-  { value: 'LOTION', label: 'Lotion', group: 'Cosmetic' },
-  { value: 'SERUM', label: 'Serum', group: 'Cosmetic' },
-  { value: 'OIL', label: 'Oil', group: 'Cosmetic' },
-  { value: 'BALM', label: 'Balm', group: 'Cosmetic' },
-  { value: 'SPRAY', label: 'Spray', group: 'Cosmetic' },
+  { value: 'POWDER', label: 'Powder', domains: ['FOOD', 'DIETARY_SUPPLEMENT', 'PET_PRODUCT', 'COSMETIC'] },
+  { value: 'CAPSULE', label: 'Capsule', group: 'Supplement', domains: ['DIETARY_SUPPLEMENT', 'OTC'] },
+  { value: 'TABLET', label: 'Tablet', group: 'Supplement', domains: ['DIETARY_SUPPLEMENT', 'OTC'] },
+  { value: 'SOFTGEL', label: 'Softgel', group: 'Supplement', domains: ['DIETARY_SUPPLEMENT', 'OTC'] },
+  { value: 'GUMMY', label: 'Gummy', group: 'Supplement', domains: ['DIETARY_SUPPLEMENT'] },
+  { value: 'SOFT_CHEW', label: 'Soft chew', group: 'Supplement', domains: ['DIETARY_SUPPLEMENT', 'PET_PRODUCT'] },
+  { value: 'READY_TO_DRINK', label: 'Ready-to-drink', group: 'Beverage', domains: ['FOOD'] },
+  { value: 'CONCENTRATE', label: 'Concentrate', group: 'Beverage', domains: ['FOOD'] },
+  { value: 'EFFERVESCENT', label: 'Effervescent', group: 'Beverage', domains: ['FOOD', 'DIETARY_SUPPLEMENT'] },
+  { value: 'LIQUID', label: 'Liquid', domains: ['FOOD', 'DIETARY_SUPPLEMENT', 'PET_PRODUCT', 'COSMETIC', 'OTC'] },
+  { value: 'BAR', label: 'Bar', group: 'Food', domains: ['FOOD', 'PET_PRODUCT'] },
+  { value: 'CREAM', label: 'Cream', group: 'Cosmetic', domains: ['COSMETIC', 'OTC'] },
+  { value: 'LOTION', label: 'Lotion', group: 'Cosmetic', domains: ['COSMETIC', 'OTC'] },
+  { value: 'SERUM', label: 'Serum', group: 'Cosmetic', domains: ['COSMETIC'] },
+  { value: 'OIL', label: 'Oil', group: 'Cosmetic', domains: ['COSMETIC', 'FOOD'] },
+  { value: 'BALM', label: 'Balm', group: 'Cosmetic', domains: ['COSMETIC', 'OTC'] },
+  { value: 'SPRAY', label: 'Spray', group: 'Cosmetic', domains: ['COSMETIC', 'OTC'] },
 ]
+
+/** Format options available for a product domain (LabelingType key). An unknown or
+ *  empty domain returns every format (no scoping). Options without `domains` always
+ *  pass. */
+export function formatOptionsForDomain(domain: string | null | undefined): FilterOption[] {
+  if (!domain) return FORMAT_OPTIONS
+  return FORMAT_OPTIONS.filter((o) => !o.domains || o.domains.includes(domain))
+}
 
 /** Manufacturing process tags. Slugs match ProductTemplate.manufacturingProcesses. */
 export const MANUFACTURING_PROCESS_OPTIONS: FilterOption[] = [

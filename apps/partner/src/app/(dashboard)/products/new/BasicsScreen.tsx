@@ -257,6 +257,7 @@ export function BasicsScreen({
           <Section icon={Filter} title="Marketplace filters">
             <MarketplaceAttributesCard
               draftId={draftId}
+              domain={domain}
               marketOptions={markets}
               initial={{
                 format: initial?.manufacturingFormat ?? null,
