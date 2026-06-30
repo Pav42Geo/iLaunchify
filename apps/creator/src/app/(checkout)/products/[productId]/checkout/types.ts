@@ -60,7 +60,30 @@ export interface ProductionState {
   // Variety-pack builder (Slice 1) — distinct flavors + per-flavor unit splits the
   // creator composed. Empty for single-flavor products. Persisted to OrderItemFlavor
   // at checkout; the sum must equal `quantity` for a fixed-capacity pack.
+  //
+  // LEGACY: this "split the whole order quantity across flavors" shape is kept so
+  // existing in-progress drafts still load. The NEW pack-based model writes `pack`
+  // (below) instead and leaves this empty.
   flavors: Array<{ flavorPresetId: string; qty: number }>
+  // Variety-pack MODEL (docs/VARIETY_PACK_MODEL.md §6-7, step 4) — the NEW
+  // pack-based composition: a chosen pack SIZE (variant), the distinct flavors
+  // picked for ONE pack with their per-pack slot units, and the number of PACKS.
+  // Null for single-flavor / non-pack products. `quantity` above MEANS pack count
+  // when this is present (total units = packCount × unitsPerPack).
+  pack: VarietyPackSelection | null
+}
+
+/** The creator's pack composition for a single pack (one pack's slots) + count. */
+export interface VarietyPackSelection {
+  /** Chosen ProductTemplateVariant (offered pack size) id. */
+  packVariantId: string
+  /** Units one pack of the chosen size holds (snapshot of the size's unitsPerPack). */
+  unitsPerPack: number
+  /** Number of packs ordered. */
+  packCount: number
+  /** One pack's flavor slots — flavor id + how many of its units sit in ONE pack.
+   *  Per-flavor ORDER total = packCount × that slot's units (see cart-actions). */
+  slots: Array<{ flavorPresetId: string; units: number }>
 }
 
 export interface SubscriptionState {
@@ -172,6 +195,7 @@ export function emptyDraftState(): CheckoutDraftState {
       packagingMaterialSlug: null,
       finishPartnerFinishIds: [],
       flavors: [],
+      pack: null,
     },
     subscription: {
       seenOffer: false,

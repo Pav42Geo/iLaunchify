@@ -31,6 +31,16 @@ export interface StartLaunchInput {
    *  can price the container's decoration. */
   decorationMethod?: DecorationMethod
   partnerOfferingId?: string
+  /** Variety-pack model (docs/VARIETY_PACK_MODEL.md, step 4) — the AUTHENTICATED
+   *  PDP carries the chosen pack composition so the wizard resumes pre-filled.
+   *  Guests re-pick in checkout (we don't encode the slot array in the signup
+   *  URL). Best-effort: an invalid / partial pack just seeds nothing. */
+  pack?: {
+    packVariantId: string
+    unitsPerPack: number
+    packCount: number
+    slots: Array<{ flavorPresetId: string; units: number }>
+  }
 }
 
 export type StartLaunchResult =
@@ -240,7 +250,14 @@ async function resolveOrCreateProductForTemplate(
     // so a Stripe-style P2002 unique-constraint hiccup never blocks
     // the canvas redirect — wizard will fall back to an empty draft.
     const { defaultMoq } = await getOrderSettings()
-    const clampedQty = clampQuantity(input.quantity, defaultMoq)
+    // Pack model — when the PDP carried a pack composition (authed path), the
+    // wizard's quantity MEANS total units (packCount × unitsPerPack); we seed that
+    // and the pack structure so checkout resumes pre-filled. Otherwise the legacy
+    // units quantity is clamped to the MOQ floor.
+    const seedPack = normalizeSeedPack(input.pack)
+    const seedQty = seedPack
+      ? seedPack.packCount * seedPack.unitsPerPack
+      : clampQuantity(input.quantity, defaultMoq)
     try {
       await prisma.checkoutDraft.create({
         data: {
@@ -248,7 +265,7 @@ async function resolveOrCreateProductForTemplate(
           productId: product.id,
           currentStep: 1,
           completedSteps: [],
-          state: buildSeedDraftState({ quantity: clampedQty }) as unknown as object,
+          state: buildSeedDraftState({ quantity: seedQty, pack: seedPack }) as unknown as object,
         },
       })
     } catch (draftErr) {
@@ -413,7 +430,20 @@ export async function startSampleFromTemplate(
 // shape changes, this must follow.
 // -----------------------------------------------------------------------------
 
-function buildSeedDraftState({ quantity }: { quantity: number | null }) {
+interface SeedPack {
+  packVariantId: string
+  unitsPerPack: number
+  packCount: number
+  slots: Array<{ flavorPresetId: string; units: number }>
+}
+
+function buildSeedDraftState({
+  quantity,
+  pack = null,
+}: {
+  quantity: number | null
+  pack?: SeedPack | null
+}) {
   return {
     review: {
       ackDesignFinal: false,
@@ -425,6 +455,10 @@ function buildSeedDraftState({ quantity }: { quantity: number | null }) {
       substrateSlug: null,
       packagingMaterialSlug: null,
       finishPartnerFinishIds: [] as string[],
+      // Variety-pack model — seeded only when the PDP carried a composition
+      // (authed path). Legacy `flavors` stays empty; the wizard reads `pack`.
+      flavors: [] as Array<{ flavorPresetId: string; qty: number }>,
+      pack,
     },
     subscription: {
       seenOffer: false,
@@ -459,6 +493,25 @@ function clampQuantity(n: number | undefined, floor: number = FALLBACK_MIN_QTY):
   if (n < floor) return floor
   if (n > MAX_QTY) return MAX_QTY
   return Math.round(n)
+}
+
+// Validate + normalize the PDP pack selection into a clean SeedPack, or null when
+// it's incomplete (so the wizard simply re-prompts). Best-effort: bad input never
+// throws — the launch flow must not break on a malformed pack.
+function normalizeSeedPack(
+  pack: StartLaunchInput['pack'] | undefined,
+): SeedPack | null {
+  if (!pack) return null
+  const packVariantId = typeof pack.packVariantId === 'string' ? pack.packVariantId : ''
+  const unitsPerPack = Math.max(0, Math.floor(pack.unitsPerPack || 0))
+  const packCount = Math.max(0, Math.floor(pack.packCount || 0))
+  const slots = Array.isArray(pack.slots)
+    ? pack.slots
+        .filter((s) => s && typeof s.flavorPresetId === 'string' && s.flavorPresetId)
+        .map((s) => ({ flavorPresetId: s.flavorPresetId, units: Math.max(0, Math.floor(s.units || 0)) }))
+    : []
+  if (!packVariantId || unitsPerPack <= 0 || packCount <= 0 || slots.length === 0) return null
+  return { packVariantId, unitsPerPack, packCount, slots }
 }
 
 function slugify(s: string): string {

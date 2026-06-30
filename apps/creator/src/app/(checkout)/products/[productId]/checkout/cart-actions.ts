@@ -26,7 +26,14 @@ import {
   getOrCreateCreatorCustomer,
 } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
-import { validatePackSelection } from '@ilaunchify/ui'
+import {
+  validatePackSelection,
+  composePack,
+  packPriceCents,
+  orderTotalCents,
+  type PricingBasis as PackPricingBasis,
+  type FlavorFillRule as PackFlavorFillRule,
+} from '@ilaunchify/ui'
 import type { CheckoutDraftState } from './types'
 import { checkProductRestrictions } from './restriction-actions'
 import { loadProductLabelCompliance } from '@/lib/dieline-compliance'
@@ -166,19 +173,85 @@ export async function placeOrderFromCheckoutDraft(
     return { ok: false, error: 'Pick a destination in step 4 before paying.' }
   }
 
-  // --- 2b. Variety-pack flavor composition (Slice 1) -------------------------
-  // A MULTI-flavor product requires a valid pack: up to maxFlavorsPerPack distinct
-  // flavors whose per-flavor quantities sum to the order quantity. We snapshot the
-  // flavor name + Statement of Identity at order time (the FlavorPreset can change
-  // later but the produced labels must reflect what was sold).
+  // --- 2b. Variety-pack flavor composition -----------------------------------
+  // Two paths:
+  //   • NEW pack model (docs/VARIETY_PACK_MODEL.md): state.production.pack carries
+  //     a chosen pack SIZE (variant), per-pack flavor slots, and a PACK COUNT. We
+  //     validate the pack with composePack, derive per-flavor ORDER totals as
+  //     packCount × slot units, and snapshot the per-pack price + basis.
+  //   • LEGACY model: state.production.flavors splits the whole order qty across
+  //     flavors (validatePackSelection). Kept for in-progress drafts.
+  // Either way we write OrderItemFlavor rows (per-flavor aggregate qty) and snapshot
+  // the flavor name + Statement of Identity at order time.
   let flavorRows: Array<{ flavorPresetId: string; qty: number; flavorName: string; soiSnapshot: string | null; designVersionId: string | null }> = []
+  // Pack-structure + price snapshot (null for non-pack / legacy items).
+  let packPersist: {
+    packVariantId: string
+    packCount: number
+    packUnitsPerPack: number
+    pricingBasisSnapshot: PackPricingBasis
+    pricePerPackCentsSnapshot: number
+  } | null = null
+  // The basis-aware pack-priced subtotal (cents) — reconciled with the production
+  // cost below so the order is never under-funded.
+  let packPricedSubtotalCents = 0
+
   const packRules = product.productTemplateId
     ? await prisma.productTemplate.findUnique({
         where: { id: product.productTemplateId },
         select: { maxFlavorsPerPack: true, packingProfile: { select: { flavorMode: true } } },
       })
     : null
-  if (packRules?.packingProfile?.flavorMode === 'MULTI') {
+
+  const packSel = state.production.pack
+  if (packSel && packSel.packVariantId && packSel.packCount > 0) {
+    // ── NEW pack model ────────────────────────────────────────────────────────
+    // Cast-guarded read of the chosen variant's pack columns + template rules +
+    // per-flavor prices (the generated client may not type them pre-migration).
+    const matrix = await readPackOrderInputs(product.productTemplateId, packSel.packVariantId)
+    const unitsPerPack = matrix.unitsPerPack ?? packSel.unitsPerPack
+    const choices = packSel.slots.map((s) => ({ flavorPresetId: s.flavorPresetId, units: s.units }))
+    const composed = composePack({ unitsPerPack }, choices, {
+      minFlavorsPerPack: matrix.minFlavors ?? 1,
+      maxFlavorsPerPack: packRules?.maxFlavorsPerPack ?? null,
+      fillRule: (matrix.fillRule ?? 'CREATOR_CHOOSES') as PackFlavorFillRule,
+    })
+    if (!composed.ok) {
+      return { ok: false, error: composed.errors[0]?.message ?? 'Adjust your variety pack in step 2 before paying.' }
+    }
+    const basis: PackPricingBasis = (matrix.pricingBasis ?? 'PER_FLAVOR') as PackPricingBasis
+    const pricePerPack = packPriceCents(
+      basis,
+      { pricePerPackCents: matrix.pricePerPackCents ?? null },
+      composed.slots,
+      matrix.pool,
+    )
+    packPricedSubtotalCents = orderTotalCents(pricePerPack, packSel.packCount)
+    packPersist = {
+      packVariantId: packSel.packVariantId,
+      packCount: packSel.packCount,
+      packUnitsPerPack: unitsPerPack,
+      pricingBasisSnapshot: basis,
+      pricePerPackCentsSnapshot: pricePerPack,
+    }
+
+    // Per-flavor ORDER total = packCount × that slot's per-pack units.
+    const presetIds = composed.slots.map((s) => s.flavorPresetId)
+    const presets = await prisma.flavorPreset.findMany({
+      where: { id: { in: presetIds } },
+      select: { id: true, name: true, statementOfIdentity: true },
+    })
+    const byId = new Map(presets.map((p) => [p.id, p]))
+    const dvByFlavor = await resolveFlavorDesignVersions(product.id, presetIds)
+    flavorRows = composed.slots.map((s) => ({
+      flavorPresetId: s.flavorPresetId,
+      qty: packSel.packCount * s.units,
+      flavorName: byId.get(s.flavorPresetId)?.name ?? 'Flavor',
+      soiSnapshot: byId.get(s.flavorPresetId)?.statementOfIdentity ?? null,
+      designVersionId: dvByFlavor.get(s.flavorPresetId) ?? null,
+    }))
+  } else if (packRules?.packingProfile?.flavorMode === 'MULTI') {
+    // ── LEGACY model (split the order quantity) ───────────────────────────────
     const picks = state.production.flavors ?? []
     const validation = validatePackSelection(picks, {
       maxFlavors: packRules.maxFlavorsPerPack,
@@ -194,20 +267,7 @@ export async function placeOrderFromCheckoutDraft(
       select: { id: true, name: true, statementOfIdentity: true },
     })
     const byId = new Map(presets.map((p) => [p.id, p]))
-    // Per-flavor labels Phase 4 — resolve each flavor's working DesignVersion so
-    // the order can snapshot the right per-flavor artwork (safe read; the write is
-    // best-effort post-commit below). Null = the flavor has no per-flavor design.
-    const flavorDesignVersions = await prisma.designVersion.findMany({
-      where: {
-        version: 1,
-        design: { productId: product.id, flavorPresetId: { in: chosen.map((p) => p.flavorPresetId) } },
-      },
-      select: { id: true, design: { select: { flavorPresetId: true } } },
-    })
-    const dvByFlavor = new Map<string, string>()
-    for (const dv of flavorDesignVersions) {
-      if (dv.design.flavorPresetId) dvByFlavor.set(dv.design.flavorPresetId, dv.id)
-    }
+    const dvByFlavor = await resolveFlavorDesignVersions(product.id, chosen.map((p) => p.flavorPresetId))
     flavorRows = chosen.map((p) => ({
       flavorPresetId: p.flavorPresetId,
       qty: p.qty,
@@ -280,11 +340,18 @@ export async function placeOrderFromCheckoutDraft(
   const dispatchSubtotal =
     dispatchCosts.manufacturerCostCents + dispatchCosts.printProviderCostCents
 
-  // Reconcile — pick the higher of the two so partner cost is never under-
-  // funded. The wizard UI showed productionSubtotalCents; if dispatch math
-  // comes out higher we treat the gap as a 'platform absorbs' line (V1
-  // simplification; V2 reconciles partner pricing properly).
-  const productionTotalCents = Math.max(productionSubtotalCents, dispatchSubtotal)
+  // Reconcile — pick the higher of the candidates so partner cost is never under-
+  // funded. The wizard UI showed productionSubtotalCents; if dispatch math comes
+  // out higher we treat the gap as a 'platform absorbs' line (V1 simplification;
+  // V2 reconciles partner pricing properly). For a NEW pack-model order the
+  // creator-facing basis-aware pack price (packPricedSubtotalCents) is the amount
+  // the creator agreed to pay, so it also enters the reconcile — the booked
+  // subtotal is the max of all three, never below the priced pack total.
+  const productionTotalCents = Math.max(
+    productionSubtotalCents,
+    dispatchSubtotal,
+    packPricedSubtotalCents,
+  )
 
   // Admin-tunable order policy (fees + shipping), resolved for THIS creator's tier
   // so scoped overrides (tier/market/region) take effect.
@@ -390,7 +457,18 @@ export async function placeOrderFromCheckoutDraft(
         unitPriceCents: Math.round(productionTotalCents / qty),
         totalCents: productionTotalCents,
         designVersionId: lockedDesignVersionId,
-      },
+        // Variety-pack structure snapshot (cast-guarded — these columns post-date
+        // the generated client until the migration). Null for non-pack items.
+        ...(packPersist
+          ? ({
+              packVariantId: packPersist.packVariantId,
+              packCount: packPersist.packCount,
+              packUnitsPerPack: packPersist.packUnitsPerPack,
+              pricingBasisSnapshot: packPersist.pricingBasisSnapshot,
+              pricePerPackCentsSnapshot: packPersist.pricePerPackCentsSnapshot,
+            } as Record<string, unknown>)
+          : {}),
+      } as Parameters<typeof tx.orderItem.create>[0]['data'],
     })
 
     // Variety-pack composition — one OrderItemFlavor per distinct flavor (Slice 1).
@@ -476,6 +554,17 @@ export async function placeOrderFromCheckoutDraft(
       totalCents,
       shipToType: shipTo.data.shipToType,
       surface: 'checkout-wizard',
+      // Variety-pack structure (null for non-pack items) — recorded for
+      // reproducibility alongside the snapshot columns on OrderItem.
+      ...(packPersist
+        ? {
+            packVariantId: packPersist.packVariantId,
+            packCount: packPersist.packCount,
+            packUnitsPerPack: packPersist.packUnitsPerPack,
+            pricingBasis: packPersist.pricingBasisSnapshot,
+            pricePerPackCents: packPersist.pricePerPackCentsSnapshot,
+          }
+        : {}),
     },
   })
 
@@ -801,4 +890,100 @@ function buildInternalNotes(args: {
       `Finishes: ${args.state.production.finishPartnerFinishIds.join(', ')} (PartnerFinish IDs)`,
     )
   return lines.join('\n')
+}
+
+// -----------------------------------------------------------------------------
+// Variety-pack helpers (docs/VARIETY_PACK_MODEL.md, step 4)
+// -----------------------------------------------------------------------------
+
+/**
+ * Resolve, per flavor, its working DesignVersion (version 1) so the order can
+ * snapshot the right per-flavor artwork (per-flavor labels Phase 4). Null entries
+ * are omitted from the returned Map (the flavor falls back to the base design).
+ */
+async function resolveFlavorDesignVersions(
+  productId: string,
+  flavorPresetIds: string[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (flavorPresetIds.length === 0) return out
+  const versions = await prisma.designVersion.findMany({
+    where: {
+      version: 1,
+      design: { productId, flavorPresetId: { in: flavorPresetIds } },
+    },
+    select: { id: true, design: { select: { flavorPresetId: true } } },
+  })
+  for (const dv of versions) {
+    if (dv.design.flavorPresetId) out.set(dv.design.flavorPresetId, dv.id)
+  }
+  return out
+}
+
+/**
+ * Cast-guarded read of the additive pack columns needed to PRICE + validate a
+ * pack order at order time: the chosen variant's `unitsPerPack` + `pricePerPackCents`,
+ * the template's `minFlavorsPerPack` / `flavorFillRule` / `pricingBasis`, and the
+ * per-flavor `unitPriceCents` pool. Mirrors readPackModel in marketing/pricing.ts.
+ * Returns empty defaults on any failure (pre-migration / missing columns) so the
+ * caller falls back to the snapshot the client sent (packSel.unitsPerPack) and a
+ * PER_FLAVOR default basis — the order still places.
+ */
+async function readPackOrderInputs(
+  templateId: string | null,
+  variantId: string,
+): Promise<{
+  unitsPerPack: number | null
+  pricePerPackCents: number | null
+  minFlavors: number | null
+  fillRule: PackFlavorFillRule | null
+  pricingBasis: PackPricingBasis | null
+  pool: Array<{ flavorPresetId: string; unitPriceCents: number | null }>
+}> {
+  const empty = {
+    unitsPerPack: null,
+    pricePerPackCents: null,
+    minFlavors: null,
+    fillRule: null as PackFlavorFillRule | null,
+    pricingBasis: null as PackPricingBasis | null,
+    pool: [] as Array<{ flavorPresetId: string; unitPriceCents: number | null }>,
+  }
+  if (!templateId) return empty
+  try {
+    const t = await (prisma as unknown as {
+      productTemplate: {
+        findUnique: (a: unknown) => Promise<{
+          minFlavorsPerPack: number | null
+          flavorFillRule: PackFlavorFillRule | null
+          pricingBasis: PackPricingBasis | null
+          variants: Array<{ id: string; unitsPerPack: number | null; pricePerPackCents: number | null }>
+          flavorPresets: Array<{ id: string; unitPriceCents: number | null }>
+        } | null>
+      }
+    }).productTemplate.findUnique({
+      where: { id: templateId },
+      select: {
+        minFlavorsPerPack: true,
+        flavorFillRule: true,
+        pricingBasis: true,
+        variants: { select: { id: true, unitsPerPack: true, pricePerPackCents: true } },
+        flavorPresets: { where: { status: 'ACTIVE' }, select: { id: true, unitPriceCents: true } },
+      },
+    })
+    if (!t) return empty
+    const v = (t.variants ?? []).find((x) => x.id === variantId)
+    return {
+      unitsPerPack: v?.unitsPerPack ?? null,
+      pricePerPackCents: v?.pricePerPackCents ?? null,
+      minFlavors: t.minFlavorsPerPack ?? null,
+      fillRule: t.flavorFillRule ?? null,
+      pricingBasis: t.pricingBasis ?? null,
+      pool: (t.flavorPresets ?? []).map((f) => ({
+        flavorPresetId: f.id,
+        unitPriceCents: f.unitPriceCents ?? null,
+      })),
+    }
+  } catch {
+    return empty
+  }
 }

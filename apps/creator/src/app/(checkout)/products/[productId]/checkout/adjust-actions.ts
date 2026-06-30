@@ -123,6 +123,9 @@ export async function startOrderAdjustment(input: {
       finishPartnerFinishIds: lookups.finishPartnerIds,
       // Slice 2: carry the original variety-pack flavors into the adjustment.
       flavors: existingFlavors.map((f) => ({ flavorPresetId: f.flavorPresetId, qty: f.qty })),
+      // Pack model (step 4) — adjustments re-pick the pack in the wizard; seed null
+      // so a pack-based order falls back to the composer rather than a stale snapshot.
+      pack: null,
     },
     fulfillment,
     designVersionId: item.designVersionId,

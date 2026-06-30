@@ -26,7 +26,16 @@ import {
   ShieldCheck,
   Truck,
 } from 'lucide-react'
-import { PackBuilder, type PackPreviewColumn } from '@ilaunchify/ui'
+import {
+  PackBuilder,
+  VarietyPackBuilder,
+  composePack,
+  packSummary,
+  orderTotalUnits,
+  type PackPreviewColumn,
+  type PackSize,
+  type VarietyPackValue,
+} from '@ilaunchify/ui'
 import { getVarietyPreviewColumns } from '@/components/labels/label-actions'
 import { StepShell } from './_StepShell'
 import { ComponentsPanel } from './ComponentsPanel'
@@ -34,9 +43,11 @@ import type { ProductionState } from '../types'
 import {
   getProductionOptions,
   getPackBuilderConfig,
+  getVarietyPackMatrix,
   estimateProductionCost,
   type CostBreakdown,
   type PackBuilderConfig,
+  type VarietyPackMatrix,
   type PackagingMaterialOption,
   type SubstrateOption,
 } from '../production-actions'
@@ -80,6 +91,7 @@ export function ProductionStep({
   const [substrates, setSubstrates] = useState<SubstrateOption[]>([])
   const [packagings, setPackagings] = useState<PackagingMaterialOption[]>([])
   const [packConfig, setPackConfig] = useState<PackBuilderConfig | null>(null)
+  const [packMatrix, setPackMatrix] = useState<VarietyPackMatrix | null>(null)
   const [previewColumns, setPreviewColumns] = useState<PackPreviewColumn[]>([])
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [moqFloor, setMoqFloor] = useState(FALLBACK_MOQ)
@@ -96,7 +108,8 @@ export function ProductionStep({
       getProductionOptions(productId),
       getPackBuilderConfig(productId),
       getVarietyPreviewColumns(productId),
-    ]).then(([options, pack, preview]) => {
+      getVarietyPackMatrix(productId),
+    ]).then(([options, pack, preview, matrix]) => {
       if (cancelled) return
       if (options.ok) {
         setSubstrates(options.data.substrates)
@@ -104,6 +117,7 @@ export function ProductionStep({
         setMoqFloor(options.data.defaultMoq)
       }
       if (pack.ok) setPackConfig(pack.data)
+      if (matrix.ok) setPackMatrix(matrix.data)
       if (preview.ok) {
         setPreviewColumns(
           preview.columns.map((c) => ({
@@ -171,6 +185,75 @@ export function ProductionStep({
     if (n < moqFloor) return moqFloor
     if (n > DEFAULT_MAX) return DEFAULT_MAX
     return n
+  }
+
+  // ── NEW pack-based variety model (docs/VARIETY_PACK_MODEL.md §6-7) ───────────
+  // Active only when the manufacturer authored a real pack matrix. The chosen
+  // pack SIZE drives unitsPerPack; the creator picks min–max distinct flavors,
+  // fills the pack, and sets PACK COUNT. We keep the wizard's existing units-based
+  // cost estimator + MOQ coherent by mirroring total units (packCount × units/pack)
+  // into `state.quantity`, while persisting the authoritative pack structure in
+  // `state.pack` for order creation + manifest.
+  const usePackModel = !!packMatrix?.enabled
+  const packSizes: PackSize[] = useMemo(
+    () =>
+      (packMatrix?.packSizes ?? []).map((s) => ({
+        id: s.variantId,
+        unitsPerPack: s.unitsPerPack,
+        label: s.label,
+        pricePerPackCents: s.pricePerPackCents,
+        moqPacks: s.moqPacks,
+      })),
+    [packMatrix],
+  )
+  // Derive the controlled VarietyPackValue from the persisted `state.pack`.
+  const packValue: VarietyPackValue = useMemo(() => {
+    const p = state.pack
+    const firstSize = packSizes[0]?.id ?? ''
+    if (!p) return { sizeId: firstSize, choices: [] }
+    return {
+      sizeId: p.packVariantId || firstSize,
+      // CREATOR_CHOOSES carries per-flavor units; the engine ignores `units` for
+      // EVEN_AUTO so it's harmless to always pass them.
+      choices: p.slots.map((s) => ({ flavorPresetId: s.flavorPresetId, units: s.units })),
+    }
+  }, [state.pack, packSizes])
+
+  const selectedPackSize = packSizes.find((s) => s.id === packValue.sizeId) ?? packSizes[0] ?? null
+  const packUnitsPerPack = selectedPackSize?.unitsPerPack ?? 0
+  const composedPack = useMemo(
+    () =>
+      composePack({ unitsPerPack: packUnitsPerPack }, packValue.choices, {
+        minFlavorsPerPack: packMatrix?.minFlavors ?? 1,
+        maxFlavorsPerPack: packMatrix?.maxFlavors ?? null,
+        fillRule: packMatrix?.fillRule ?? 'CREATOR_CHOOSES',
+      }),
+    [packUnitsPerPack, packValue.choices, packMatrix],
+  )
+  const packCount = state.pack?.packCount ?? 0
+  const moqPacks = selectedPackSize?.moqPacks ?? 1
+
+  // Persist a new pack composition: write `state.pack` (authoritative) AND mirror
+  // total units into `state.quantity` so the cost estimator + downstream still see
+  // a units figure. Re-compute slots from the engine so per-pack units are correct.
+  function writePack(next: VarietyPackValue, nextPackCount: number) {
+    const size = packSizes.find((s) => s.id === next.sizeId) ?? packSizes[0] ?? null
+    const units = size?.unitsPerPack ?? 0
+    const composed = composePack({ unitsPerPack: units }, next.choices, {
+      minFlavorsPerPack: packMatrix?.minFlavors ?? 1,
+      maxFlavorsPerPack: packMatrix?.maxFlavors ?? null,
+      fillRule: packMatrix?.fillRule ?? 'CREATOR_CHOOSES',
+    })
+    const count = Math.max(0, Math.floor(nextPackCount))
+    onChange({
+      pack: {
+        packVariantId: size?.id ?? '',
+        unitsPerPack: units,
+        packCount: count,
+        slots: composed.slots.map((s) => ({ flavorPresetId: s.flavorPresetId, units: s.units })),
+      },
+      quantity: orderTotalUnits(units, count),
+    })
   }
 
   return (
@@ -256,33 +339,58 @@ export function ProductionStep({
             </div>
           </div>
 
-          {/* Quantity + per-unit pricing row */}
+          {/* Quantity + per-unit pricing row. In the NEW pack model the quantity
+              is PACK COUNT (total units derived); otherwise it's units. */}
           <div className="grid gap-5 border-t border-ink-100 bg-ink-50/30 px-5 py-4 sm:grid-cols-[minmax(0,1fr),auto] sm:items-end">
             <div>
               <label
                 htmlFor="qty-input"
                 className="block text-[12px] font-bold uppercase tracking-widest text-ink-700"
               >
-                Quantity (units)
+                {usePackModel ? 'Packs' : 'Quantity (units)'}
               </label>
-              <div className="mt-1.5 flex items-center gap-3">
-                <QuantityStepper
-                  value={qty}
-                  min={moqFloor}
-                  max={DEFAULT_MAX}
-                  step={DEFAULT_STEP}
-                  onChange={(n) => onChange({ quantity: clampQty(n) })}
-                />
-                <span className="text-[11.5px] text-ink-500">
-                  MOQ {moqFloor.toLocaleString()} · steps of{' '}
-                  {DEFAULT_STEP.toLocaleString()}
-                </span>
-              </div>
-              {qty > 0 && qty < moqFloor && (
-                <p className="mt-1.5 text-[11.5px] text-pink-700">
-                  Production minimums require at least{' '}
-                  {moqFloor.toLocaleString()} units.
-                </p>
+              {usePackModel ? (
+                <>
+                  <div className="mt-1.5 flex items-center gap-3">
+                    <QuantityStepper
+                      value={packCount}
+                      min={moqPacks}
+                      max={DEFAULT_MAX}
+                      step={1}
+                      onChange={(n) => writePack(packValue, Math.max(moqPacks, n))}
+                    />
+                    <span className="text-[11.5px] text-ink-500 tabular-nums">
+                      {packSummary(composedPack.distinctCount, packUnitsPerPack, packCount, selectedPackSize?.label)}
+                    </span>
+                  </div>
+                  {moqPacks > 1 && packCount > 0 && packCount < moqPacks && (
+                    <p className="mt-1.5 text-[11.5px] text-pink-700">
+                      This pack size has a minimum of {moqPacks} packs.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="mt-1.5 flex items-center gap-3">
+                    <QuantityStepper
+                      value={qty}
+                      min={moqFloor}
+                      max={DEFAULT_MAX}
+                      step={DEFAULT_STEP}
+                      onChange={(n) => onChange({ quantity: clampQty(n) })}
+                    />
+                    <span className="text-[11.5px] text-ink-500">
+                      MOQ {moqFloor.toLocaleString()} · steps of{' '}
+                      {DEFAULT_STEP.toLocaleString()}
+                    </span>
+                  </div>
+                  {qty > 0 && qty < moqFloor && (
+                    <p className="mt-1.5 text-[11.5px] text-pink-700">
+                      Production minimums require at least{' '}
+                      {moqFloor.toLocaleString()} units.
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
@@ -311,22 +419,45 @@ export function ProductionStep({
           </div>
         </article>
 
-        {/* Variety-pack builder (Slice 1) — only for MULTI-flavor products. Splits
-            the order quantity across the chosen distinct flavors. */}
-        {packConfig?.flavorMode === 'MULTI' && packConfig.pool.length > 0 && (
-          <PackBuilder
-            pool={packConfig.pool.map((f) => ({
-              id: f.id,
+        {/* Variety-pack composer. NEW pack model (docs/VARIETY_PACK_MODEL.md):
+            pack size → flavors (min–max) → fill → pack count; price by basis. The
+            pack-count stepper above drives `state.pack`; this composes ONE pack.
+            Falls back to the legacy "split the order quantity" PackBuilder for
+            products without an authored pack matrix. */}
+        {usePackModel ? (
+          <VarietyPackBuilder
+            packSizes={packSizes}
+            pool={(packMatrix?.pool ?? []).map((f) => ({
+              flavorPresetId: f.flavorPresetId,
               name: f.name,
               swatchHex: f.swatchHex,
-              statementOfIdentity: f.statementOfIdentity,
+              unitPriceCents: f.unitPriceCents,
             }))}
-            maxFlavors={packConfig.maxFlavorsPerPack}
-            capacity={qty}
-            value={state.flavors ?? []}
-            onChange={(picks) => onChange({ flavors: picks })}
-            previewColumns={previewColumns}
+            rules={{
+              minFlavors: packMatrix?.minFlavors ?? 1,
+              maxFlavors: packMatrix?.maxFlavors ?? null,
+              fillRule: packMatrix?.fillRule ?? 'CREATOR_CHOOSES',
+            }}
+            pricingBasis={packMatrix?.pricingBasis ?? 'PER_FLAVOR'}
+            value={packValue}
+            onChange={(next) => writePack(next, Math.max(moqPacks, packCount || moqPacks))}
           />
+        ) : (
+          packConfig?.flavorMode === 'MULTI' && packConfig.pool.length > 0 && (
+            <PackBuilder
+              pool={packConfig.pool.map((f) => ({
+                id: f.id,
+                name: f.name,
+                swatchHex: f.swatchHex,
+                statementOfIdentity: f.statementOfIdentity,
+              }))}
+              maxFlavors={packConfig.maxFlavorsPerPack}
+              capacity={qty}
+              value={state.flavors ?? []}
+              onChange={(picks) => onChange({ flavors: picks })}
+              previewColumns={previewColumns}
+            />
+          )
         )}
 
         {/* C7.f — packaging components (primary / closure / seal). */}

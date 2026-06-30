@@ -33,6 +33,15 @@ interface Props {
    *  so checkout can price the primary container. Null when none picked. */
   decorationMethod?: string | null
   partnerOfferingId?: string | null
+  /** Variety-pack model (docs/VARIETY_PACK_MODEL.md, step 4) — the chosen pack
+   *  composition. Carried into the AUTHENTICATED launch so the wizard resumes
+   *  pre-filled. Null for single-flavor / non-pack products. */
+  pack?: {
+    packVariantId: string
+    unitsPerPack: number
+    packCount: number
+    slots: Array<{ flavorPresetId: string; units: number }>
+  } | null
 }
 
 export function LaunchCtaCluster({
@@ -44,6 +53,7 @@ export function LaunchCtaCluster({
   isAuthenticated: _isAuthenticated,
   decorationMethod = null,
   partnerOfferingId = null,
+  pack = null,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +73,7 @@ export function LaunchCtaCluster({
           ? { decorationMethod: decorationMethod as never }
           : {}),
         ...(partnerOfferingId ? { partnerOfferingId } : {}),
+        ...(pack ? { pack } : {}),
       })
       if (result.ok) {
         window.location.href = result.url

@@ -2505,6 +2505,18 @@ model OrderItem {
   // makes further canvas edits. Nullable for legacy orders placed
   // before G8 shipped.
   designVersionId String?
+  // Variety-pack model (docs/VARIETY_PACK_MODEL.md §6-7, step 4). When this item
+  // is a pack-based variety order, these record the PACK STRUCTURE the creator
+  // composed so production knows N packs of size X, not just aggregate flavor
+  // totals. quantity above == packCount (the order quantity for a pack product is
+  // the number of packs). All nullable/additive — null = legacy single-flavor /
+  // non-pack item. Pricing snapshots make the per-pack price reproducible at
+  // order time ("snapshot for legal reproducibility").
+  packVariantId   String? // the ProductTemplateVariant (offered pack size) chosen
+  packCount       Int? // number of packs ordered (== quantity for pack items)
+  packUnitsPerPack Int? // units one pack of the chosen size holds (snapshot)
+  pricingBasisSnapshot PricingBasis? // PER_FLAVOR | PER_PACK at order time
+  pricePerPackCentsSnapshot Int? // the per-pack price (cents) at order time
   order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product         Product        @relation(fields: [productId], references: [id])
   designVersion   DesignVersion? @relation(fields: [designVersionId], references: [id])

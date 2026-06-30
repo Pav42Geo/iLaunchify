@@ -60,6 +60,92 @@ export function scopeDispatchComponents(params: {
   return []
 }
 
+// -----------------------------------------------------------------------------
+// PURE variety-pack helpers (docs/VARIETY_PACK_MODEL.md, step 4). Kept
+// side-effect-free so the persistence + manifest math is unit-testable without a
+// DB. These are the single source of truth the cart-action + manifest build use.
+// -----------------------------------------------------------------------------
+
+/** One pack's flavor slot — flavor id + units of that flavor in ONE pack. */
+export interface PackSlotInput {
+  flavorPresetId: string
+  units: number
+}
+
+/**
+ * Per-flavor ORDER aggregate quantities = packCount × that flavor's per-pack slot
+ * units. This is exactly what OrderItemFlavor.qty stores for a pack order. Pure.
+ */
+export function aggregateFlavorQuantities(
+  packCount: number,
+  slots: PackSlotInput[],
+): Array<{ flavorPresetId: string; qty: number }> {
+  const n = Math.max(0, Math.floor(packCount))
+  return slots.map((s) => ({
+    flavorPresetId: s.flavorPresetId,
+    qty: n * Math.max(0, Math.floor(s.units)),
+  }))
+}
+
+/**
+ * The basis-aware order total (cents) for a pack order (spec §5):
+ *  - PER_PACK   → flat pricePerPackCents × packCount.
+ *  - PER_FLAVOR → Σ(slot.units × flavor unitPrice) × packCount.
+ * Pure; integer-cent. `unitPriceByFlavor` is consulted only for PER_FLAVOR.
+ */
+export function packOrderTotalCents(
+  basis: 'PER_FLAVOR' | 'PER_PACK',
+  packCount: number,
+  args: {
+    pricePerPackCents?: number | null
+    slots?: PackSlotInput[]
+    unitPriceByFlavor?: Record<string, number>
+  },
+): number {
+  const count = Math.max(0, Math.floor(packCount))
+  if (basis === 'PER_PACK') {
+    return Math.max(0, Math.round(args.pricePerPackCents ?? 0)) * count
+  }
+  const prices = args.unitPriceByFlavor ?? {}
+  const perPack = (args.slots ?? []).reduce(
+    (t, s) => t + Math.max(0, Math.floor(s.units)) * Math.max(0, Math.round(prices[s.flavorPresetId] ?? 0)),
+    0,
+  )
+  return perPack * count
+}
+
+/**
+ * The manifest pack-structure block for a pack order — N packs of size X, each
+ * holding `unitsPerPack` units, plus the derived total. Null for non-pack items.
+ * Pure mirror of what generateOrderManifest emits from the snapshot columns.
+ */
+export function buildManifestPackStructure(input: {
+  packVariantId: string | null
+  packCount: number | null
+  unitsPerPack: number | null
+  pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
+  pricePerPackCents: number | null
+}): {
+  packVariantId: string
+  packCount: number
+  unitsPerPack: number
+  totalUnits: number
+  pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
+  pricePerPackCents: number | null
+} | null {
+  if (!input.packVariantId || (input.packCount ?? 0) <= 0) return null
+  const packCount = Math.max(0, Math.floor(input.packCount ?? 0))
+  const unitsPerPack = Math.max(0, Math.floor(input.unitsPerPack ?? 0))
+  return {
+    packVariantId: input.packVariantId,
+    packCount,
+    unitsPerPack,
+    totalUnits: packCount * unitsPerPack,
+    pricingBasis: input.pricingBasis ?? null,
+    pricePerPackCents: input.pricePerPackCents ?? null,
+  }
+}
+
 export interface ProductionManifest {
   manifestVersion: typeof MANIFEST_VERSION
   generatedAt: string                      // ISO
@@ -121,10 +207,24 @@ export interface ProductionManifest {
     decorationMethod: string
     dielineId: string | null
   }>
+  // ---- Variety-pack structure (docs/VARIETY_PACK_MODEL.md §6-7, step 4) ------
+  // For a pack-based variety order: N packs of the chosen size, each holding
+  // `unitsPerPack` units. Null for single-flavor / non-pack items. The pricing
+  // snapshot is reproduced from order time for the partner record. The aggregate
+  // per-flavor totals below still apply (and equal packCount × per-pack slot units).
+  pack: {
+    packVariantId: string
+    packCount: number
+    unitsPerPack: number
+    totalUnits: number // packCount × unitsPerPack
+    pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
+    pricePerPackCents: number | null
+  } | null
   // ---- Variety-pack per-flavor splits (OrderItemFlavor) ---------------------
   // The distinct flavors + per-flavor unit quantities the creator composed. The
   // manufacturer produces these splits. Empty for single-flavor items. Each carries
   // the flavor's Statement of Identity snapshot for the per-flavor label column.
+  // For a pack order, qty is the ORDER aggregate (packCount × per-pack slot units).
   flavors: Array<{ flavorName: string; qty: number; statementOfIdentity: string | null }>
   // ---- Ship-to summary -----------------------------------------------------
   shipTo: {
@@ -222,6 +322,24 @@ export async function generateOrderManifest(
       orderBy: { qty: 'desc' },
     })
     .catch(() => [] as Array<{ flavorName: string; qty: number; soiSnapshot: string | null }>)
+
+  // Variety-pack STRUCTURE for THIS item (step 4). Cast-guarded — the pack columns
+  // on OrderItem post-date the generated client until the migration. Null when the
+  // item carries no packVariantId (single-flavor / non-pack / legacy).
+  const packCols = item as unknown as {
+    packVariantId: string | null
+    packCount: number | null
+    packUnitsPerPack: number | null
+    pricingBasisSnapshot: 'PER_FLAVOR' | 'PER_PACK' | null
+    pricePerPackCentsSnapshot: number | null
+  }
+  const packStructure = buildManifestPackStructure({
+    packVariantId: packCols.packVariantId,
+    packCount: packCols.packCount,
+    unitsPerPack: packCols.packUnitsPerPack,
+    pricingBasis: packCols.pricingBasisSnapshot,
+    pricePerPackCents: packCols.pricePerPackCentsSnapshot,
+  })
 
   // Phase 2 — scope the decorated components THIS dispatch covers. A LABEL
   // dispatch prints the components whose chosen offering belongs to its
@@ -341,6 +459,7 @@ export async function generateOrderManifest(
       decorationMethod: c.decorationMethod,
       dielineId: c.dielineId,
     })),
+    pack: packStructure,
     flavors: itemFlavors.map((f) => ({
       flavorName: f.flavorName,
       qty: f.qty,

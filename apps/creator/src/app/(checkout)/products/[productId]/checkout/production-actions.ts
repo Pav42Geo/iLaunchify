@@ -193,6 +193,155 @@ export async function getPackBuilderConfig(
 }
 
 // -----------------------------------------------------------------------------
+// getVarietyPackMatrix — the NEW pack-based variety model for Step 2
+// (docs/VARIETY_PACK_MODEL.md §4-6, step 4). Cast-guarded reads of the additive
+// pack columns so this compiles against a possibly-stale generated client. When
+// the migration hasn't run / the manufacturer authored no pack matrix, the
+// caller falls back to the legacy PackBuilder (capacity = order quantity).
+// -----------------------------------------------------------------------------
+
+export interface VarietyPackSizeOption {
+  /** ProductTemplateVariant id. */
+  variantId: string
+  unitsPerPack: number
+  label: string
+  /** Flat per-pack price (cents) — meaningful when basis = PER_PACK. */
+  pricePerPackCents: number | null
+  /** MOQ in PACKS for this size. */
+  moqPacks: number | null
+}
+
+export interface VarietyPackMatrix {
+  /** True only when this product is MULTI-flavor AND ≥1 variant carries a typed
+   *  unitsPerPack (a real authored pack matrix). When false the caller uses the
+   *  legacy PackBuilder. */
+  enabled: boolean
+  minFlavors: number
+  maxFlavors: number | null
+  fillRule: 'CREATOR_CHOOSES' | 'EVEN_AUTO' | 'MANUFACTURER_FIXED'
+  pricingBasis: 'PER_FLAVOR' | 'PER_PACK'
+  packSizes: VarietyPackSizeOption[]
+  pool: Array<{
+    flavorPresetId: string
+    name: string
+    swatchHex: string | null
+    unitPriceCents: number | null
+  }>
+}
+
+export async function getVarietyPackMatrix(
+  productId: string,
+): Promise<Result<VarietyPackMatrix>> {
+  const { user, error } = await authorize(productId)
+  if (error || !user) return { ok: false, error: error ?? 'NOT_A_CREATOR' }
+
+  const product = await prisma.product.findFirst({
+    where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
+    select: {
+      productTemplateId: true,
+      productTemplate: {
+        select: {
+          maxFlavorsPerPack: true,
+          packingProfile: { select: { flavorMode: true } },
+          flavorPresets: {
+            where: { status: 'ACTIVE' },
+            orderBy: { sortOrder: 'asc' },
+            select: { id: true, name: true, swatchHex: true },
+          },
+        },
+      },
+    },
+  })
+
+  const empty: VarietyPackMatrix = {
+    enabled: false,
+    minFlavors: 1,
+    maxFlavors: product?.productTemplate?.maxFlavorsPerPack ?? null,
+    fillRule: 'CREATOR_CHOOSES',
+    pricingBasis: 'PER_FLAVOR',
+    packSizes: [],
+    pool: (product?.productTemplate?.flavorPresets ?? []).map((f) => ({
+      flavorPresetId: f.id,
+      name: f.name,
+      swatchHex: f.swatchHex,
+      unitPriceCents: null,
+    })),
+  }
+
+  const isMulti = product?.productTemplate?.packingProfile?.flavorMode === 'MULTI'
+  if (!product?.productTemplateId || !isMulti) return { ok: true, data: empty }
+
+  // Cast-guarded read of the additive pack columns (mirrors readPackModel in
+  // apps/marketing/src/lib/pricing.ts). try/catch so a P2022 "column does not
+  // exist" pre-push returns the legacy-fallback empty matrix, never crashes.
+  try {
+    const t = await (prisma as unknown as {
+      productTemplate: {
+        findUnique: (a: unknown) => Promise<{
+          minFlavorsPerPack: number | null
+          flavorFillRule: VarietyPackMatrix['fillRule'] | null
+          pricingBasis: VarietyPackMatrix['pricingBasis'] | null
+          variants: Array<{
+            id: string
+            isActive: boolean
+            unitsPerPack: number | null
+            pricePerPackCents: number | null
+            moqMin: number | null
+          }>
+          flavorPresets: Array<{ id: string; unitPriceCents: number | null }>
+        } | null>
+      }
+    }).productTemplate.findUnique({
+      where: { id: product.productTemplateId },
+      select: {
+        minFlavorsPerPack: true,
+        flavorFillRule: true,
+        pricingBasis: true,
+        variants: {
+          where: { isActive: true },
+          select: { id: true, isActive: true, unitsPerPack: true, pricePerPackCents: true, moqMin: true },
+        },
+        flavorPresets: { where: { status: 'ACTIVE' }, select: { id: true, unitPriceCents: true } },
+      },
+    })
+    if (!t) return { ok: true, data: empty }
+
+    const packSizes: VarietyPackSizeOption[] = (t.variants ?? [])
+      .filter((v) => typeof v.unitsPerPack === 'number' && (v.unitsPerPack ?? 0) > 0)
+      .map((v) => ({
+        variantId: v.id,
+        unitsPerPack: v.unitsPerPack as number,
+        label: `${v.unitsPerPack}-pack`,
+        pricePerPackCents: v.pricePerPackCents ?? null,
+        moqPacks: v.moqMin ?? null,
+      }))
+      .sort((a, b) => a.unitsPerPack - b.unitsPerPack)
+
+    if (packSizes.length === 0) return { ok: true, data: empty }
+
+    const priceById = new Map((t.flavorPresets ?? []).map((f) => [f.id, f.unitPriceCents ?? null]))
+
+    return {
+      ok: true,
+      data: {
+        enabled: true,
+        minFlavors: Math.max(1, t.minFlavorsPerPack ?? 1),
+        maxFlavors: product.productTemplate?.maxFlavorsPerPack ?? null,
+        fillRule: t.flavorFillRule ?? 'CREATOR_CHOOSES',
+        pricingBasis: t.pricingBasis ?? 'PER_FLAVOR',
+        packSizes,
+        pool: empty.pool.map((f) => ({
+          ...f,
+          unitPriceCents: priceById.get(f.flavorPresetId) ?? null,
+        })),
+      },
+    }
+  } catch {
+    return { ok: true, data: empty }
+  }
+}
+
+// -----------------------------------------------------------------------------
 // estimateProductionCost — cent-precise breakdown for OrderSummary
 // -----------------------------------------------------------------------------
 

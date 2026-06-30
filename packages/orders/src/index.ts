@@ -49,8 +49,11 @@ export {
   generateOrderManifest,
   parseInternalNotesLookups,
   MANIFEST_VERSION,
+  aggregateFlavorQuantities,
+  packOrderTotalCents,
+  buildManifestPackStructure,
 } from './manifest'
-export type { ProductionManifest } from './manifest'
+export type { ProductionManifest, PackSlotInput } from './manifest'
 export { recomputeAggregateApprovalStatus, computeAggregateStatus } from './aggregate-approval'
 export type { AggregateStatus } from './aggregate-approval'
 export {

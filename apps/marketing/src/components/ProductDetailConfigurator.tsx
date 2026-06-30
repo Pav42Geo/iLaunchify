@@ -637,6 +637,19 @@ export function ProductDetailConfigurator({
           isAuthenticated={isAuthenticated}
           decorationMethod={null}
           partnerOfferingId={null}
+          pack={
+            isMultiFlavor && selectedPackSize && composedPack.ok && packCount > 0
+              ? {
+                  packVariantId: selectedPackSize.id,
+                  unitsPerPack: packUnitsPerPack,
+                  packCount,
+                  slots: composedPack.slots.map((s) => ({
+                    flavorPresetId: s.flavorPresetId,
+                    units: s.units,
+                  })),
+                }
+              : null
+          }
         />
       </div>
 
