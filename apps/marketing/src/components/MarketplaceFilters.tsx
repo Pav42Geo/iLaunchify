@@ -120,7 +120,6 @@ export function MarketplaceFilters({
         value={single('format')}
         onSelect={(v) => setSingle('format', v)}
         firstBorderless
-        pill
       />
       <MultiGroup
         title="Diet"
@@ -356,19 +355,16 @@ function SingleGroup({
               </button>
             )
           }
+          // Single-select rendered as a checkbox row (matches the multi-select
+          // groups) — selecting one clears the previous; clicking the active clears it.
           return (
-            <label key={opt.value} className="flex cursor-pointer items-center gap-2.5 text-[13px] text-ink-700">
-              <button
-                type="button"
-                onClick={() => onSelect(on ? undefined : opt.value)}
-                aria-pressed={on}
-                className={
-                  'h-4 w-4 flex-shrink-0 rounded-full border-[1.5px] transition-colors ' +
-                  (on ? 'border-pink-500 bg-pink-500 ring-2 ring-inset ring-white' : 'border-ink-300 hover:border-ink-500')
-                }
-              />
-              {opt.label}
-            </label>
+            <Checkbox
+              key={opt.value}
+              checked={on}
+              onChange={() => onSelect(on ? undefined : opt.value)}
+              label={opt.label}
+              className={'gap-2.5 text-[13px] ' + (on ? 'text-ink-900' : 'text-ink-600')}
+            />
           )
         })}
       </div>
