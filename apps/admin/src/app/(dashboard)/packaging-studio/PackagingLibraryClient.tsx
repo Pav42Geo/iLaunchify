@@ -63,6 +63,7 @@ export function PackagingLibraryClient({ data }: { data: PackagingLibraryData })
           topology: form.topology,
           model3dSource: 'PARAMETRIC',
           has3dModel: false,
+          previewUrl: null,
           surfaceCount: 0,
           boundSurfaceCount: 0,
           dielineCount: 0,
@@ -164,9 +165,14 @@ export function PackagingLibraryClient({ data }: { data: PackagingLibraryData })
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((m) => (
             <div key={m.id} className={`rounded-2xl border bg-white p-3 ${m.status === 'ACTIVE' ? 'border-ink-200' : 'border-ink-200 opacity-60'}`}>
-              <div className="mb-2 flex aspect-[16/9] items-center justify-center rounded-xl bg-ink-50">
-                <Boxes className="h-8 w-8 text-ink-300" />
-              </div>
+              {m.previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.previewUrl} alt={m.displayName} className="mb-2 aspect-[16/9] w-full rounded-xl bg-ink-50 object-cover" />
+              ) : (
+                <div className="mb-2 flex aspect-[16/9] items-center justify-center rounded-xl bg-ink-50">
+                  <Boxes className="h-8 w-8 text-ink-300" />
+                </div>
+              )}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-[13px] font-semibold text-ink-900">{m.displayName}</p>

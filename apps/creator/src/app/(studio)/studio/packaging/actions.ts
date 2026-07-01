@@ -65,6 +65,44 @@ export async function attachPackagingModel3d(packagingTypeId: string, form: Form
   return { ok: true }
 }
 
+// Import a 2D mockup / preview image for a packaging model. Reuses model3dThumbKey as the
+// package's preview image (shown as the thumbnail across the studio picker + admin grid) —
+// no migration. Any image type; 4MB cap. catalog:write + audited.
+export async function attachPackagingImage(packagingTypeId: string, form: FormData): Promise<SaveResult> {
+  const admin = await requireCapability('catalog:write')
+  const img = form.get('image')
+  if (!(img instanceof File) || img.size === 0) return { ok: false, error: 'No image provided.' }
+  if (!img.type.startsWith('image/')) return { ok: false, error: 'File must be an image.' }
+  if (img.size > THUMB_MAX_BYTES) return { ok: false, error: 'Image is too large (4MB max).' }
+
+  const key = packagingModelAssetKey({ packagingTypeId, kind: 'thumb', filename: img.name })
+  const up = await uploadFile({ key, body: Buffer.from(await img.arrayBuffer()), contentType: img.type }).catch(() => null)
+  if (!up) return { ok: false, error: 'Upload failed — check R2 configuration.' }
+
+  const done = await (
+    prisma as unknown as { packagingType: { update: (a: unknown) => Promise<unknown> } }
+  ).packagingType
+    .update({ where: { id: packagingTypeId }, data: { model3dThumbKey: key } })
+    .catch(() => null)
+  if (done === null) return { ok: false, error: 'Uploaded, but could not attach the image.' }
+
+  await logAuditAs(admin, { entityType: 'PackagingType', entityId: packagingTypeId, action: 'packaging-model.image-imported', payload: { key, bytes: up.sizeBytes } })
+  return { ok: true }
+}
+
+/** Remove the 2D preview image. */
+export async function removePackagingImage(packagingTypeId: string): Promise<SaveResult> {
+  const admin = await requireCapability('catalog:write')
+  const done = await (
+    prisma as unknown as { packagingType: { update: (a: unknown) => Promise<unknown> } }
+  ).packagingType
+    .update({ where: { id: packagingTypeId }, data: { model3dThumbKey: null } })
+    .catch(() => null)
+  if (done === null) return { ok: false, error: 'Could not remove the image.' }
+  await logAuditAs(admin, { entityType: 'PackagingType', entityId: packagingTypeId, action: 'packaging-model.image-removed', payload: {} })
+  return { ok: true }
+}
+
 /** Remove the imported 3D model, reverting the studio to the parametric mesh. */
 export async function removePackagingModel3d(packagingTypeId: string): Promise<SaveResult> {
   const admin = await requireCapability('catalog:write')

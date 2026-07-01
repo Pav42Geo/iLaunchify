@@ -20,6 +20,8 @@ export interface PackagingAuthoringData {
   has3dModel: boolean
   /** Signed URL to the imported glTF/glb, or null (renders parametric). */
   model3dUrl: string | null
+  /** Signed URL to the 2D mockup / preview image (model3dThumbKey), or null. */
+  previewUrl: string | null
   surfaces: PackagingSurface[]
   dielines: BindableDieline[]
 }
@@ -31,6 +33,8 @@ export interface PackagingModelPick {
   containerCategory: string | null
   topology: string
   has3dModel: boolean
+  /** Signed URL to the preview image (model3dThumbKey), or null. */
+  previewUrl: string | null
   surfaceCount: number
   dielineCount: number
 }
@@ -41,6 +45,7 @@ type PickRow = {
   defaultTopology: string
   containerCategory: string | null
   model3dKey: string | null
+  model3dThumbKey: string | null
   defaultSurfaces: unknown
   _count?: { dielines?: number } | null
 }
@@ -59,21 +64,25 @@ export async function loadPackagingModelList(): Promise<PackagingModelPick[]> {
         defaultTopology: true,
         containerCategory: true,
         model3dKey: true,
+        model3dThumbKey: true,
         defaultSurfaces: true,
         _count: { select: { dielines: true } },
       },
     })
     .catch(() => [])) as PickRow[]
 
-  return rows.map((r) => ({
-    id: r.id,
-    displayName: r.displayName,
-    containerCategory: r.containerCategory,
-    topology: r.defaultTopology,
-    has3dModel: Boolean(r.model3dKey),
-    surfaceCount: resolvePackagingSurfaces(r.defaultSurfaces).length,
-    dielineCount: r._count?.dielines ?? 0,
-  }))
+  return Promise.all(
+    rows.map(async (r) => ({
+      id: r.id,
+      displayName: r.displayName,
+      containerCategory: r.containerCategory,
+      topology: r.defaultTopology,
+      has3dModel: Boolean(r.model3dKey),
+      previewUrl: r.model3dThumbKey ? await getSignedReadUrl(r.model3dThumbKey, { expiresInSeconds: 600 }).catch(() => null) : null,
+      surfaceCount: resolvePackagingSurfaces(r.defaultSurfaces).length,
+      dielineCount: r._count?.dielines ?? 0,
+    })),
+  )
 }
 
 type PtRow = {
@@ -82,6 +91,7 @@ type PtRow = {
   defaultTopology: string
   containerCategory: string | null
   model3dKey: string | null
+  model3dThumbKey: string | null
   defaultSurfaces: unknown
 } | null
 
@@ -93,7 +103,7 @@ export async function loadPackagingAuthoring(packagingTypeId: string): Promise<P
   ).packagingType
     .findUnique({
       where: { id: packagingTypeId },
-      select: { id: true, displayName: true, defaultTopology: true, containerCategory: true, model3dKey: true, defaultSurfaces: true },
+      select: { id: true, displayName: true, defaultTopology: true, containerCategory: true, model3dKey: true, model3dThumbKey: true, defaultSurfaces: true },
     })
     .catch(() => null)) as PtRow
   if (!pt) return null
@@ -116,7 +126,10 @@ export async function loadPackagingAuthoring(packagingTypeId: string): Promise<P
     return { id: d.id, label: `${d.canonicalShape?.name ?? `Die-line ${i + 1}`}${dims}` }
   })
 
-  const model3dUrl = pt.model3dKey ? await getSignedReadUrl(pt.model3dKey, { expiresInSeconds: 600 }).catch(() => null) : null
+  const [model3dUrl, previewUrl] = await Promise.all([
+    pt.model3dKey ? getSignedReadUrl(pt.model3dKey, { expiresInSeconds: 600 }).catch(() => null) : Promise.resolve(null),
+    pt.model3dThumbKey ? getSignedReadUrl(pt.model3dThumbKey, { expiresInSeconds: 600 }).catch(() => null) : Promise.resolve(null),
+  ])
 
   return {
     id: pt.id,
@@ -125,6 +138,7 @@ export async function loadPackagingAuthoring(packagingTypeId: string): Promise<P
     containerCategory: pt.containerCategory,
     has3dModel: Boolean(pt.model3dKey),
     model3dUrl,
+    previewUrl,
     surfaces: resolvePackagingSurfaces(pt.defaultSurfaces),
     dielines,
   }

@@ -185,6 +185,14 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
   projected onto the model, drag-rotate + zoom, and a **"Place marker"** raycast mode that
   sets the selected surface's 3D `hotspot.anchor`. (Refinements to eyeball: glTF-import
   models + exact per-mesh borders come with P1.5.)
+- **2D mockup / preview image import.** ✅ DONE 2026-07-01. Admins can import a 2D
+  mockup/photo per package (studio Library drawer → "Import image"). Reuses
+  `PackagingType.model3dThumbKey` as the preview image (**no migration**);
+  `attachPackagingImage` / `removePackagingImage` (catalog:write + audit). The image
+  is surfaced as the thumbnail on the studio picker cards, the studio Library preview,
+  AND the admin management grid cards (loaders return a signed `previewUrl`). Replaces the
+  generic Boxes placeholder wherever a model has one.
+
 - **3D model import (glTF/glb).** ✅ DONE 2026-07-01. Admins can import a real 3D mockup
   per package from the studio Library drawer ("Import .glb" / Replace / Remove). Stored in
   R2 via `packagingModelAssetKey` + `uploadFile`; persisted to `PackagingType.model3dKey` +

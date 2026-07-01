@@ -27,7 +27,7 @@ import {
   type SurfaceRole,
   type SurfacePurpose,
 } from '@ilaunchify/ui'
-import { savePackagingSurfaces, getDielineEditorData, saveDielineFrames, attachPackagingModel3d, removePackagingModel3d, type DielineEditorData } from './actions'
+import { savePackagingSurfaces, getDielineEditorData, saveDielineFrames, attachPackagingModel3d, removePackagingModel3d, attachPackagingImage, removePackagingImage, type DielineEditorData } from './actions'
 import type { PackagingAuthoringData, BindableDieline, PackagingModelPick } from './loader'
 import { Packaging3DView } from './Packaging3DView'
 
@@ -317,10 +317,11 @@ function LibraryDrawer({
         </div>
       </div>
 
-      {/* Import a real 3D model for the current package */}
+      {/* Import 3D model + 2D preview image for the current package */}
       {data && (
-        <div className="border-b border-ink-100 p-3">
+        <div className="space-y-3 border-b border-ink-100 p-3">
           <Model3dImport id={data.id} has3dModel={data.has3dModel} />
+          <ImageImport id={data.id} previewUrl={data.previewUrl} />
         </div>
       )}
 
@@ -361,7 +362,12 @@ function LibraryDrawer({
                   onClick={() => onOpen(m.id)}
                   className={`overflow-hidden rounded-xl border bg-white text-left transition ${active ? 'border-pink-500 ring-1 ring-pink-200' : 'border-ink-200 hover:border-pink-300'}`}
                 >
-                  <div className="flex aspect-[4/3] items-center justify-center bg-ink-50"><Boxes className="h-6 w-6 text-ink-300" /></div>
+                  {m.previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.previewUrl} alt={m.displayName} className="aspect-[4/3] w-full bg-ink-50 object-cover" />
+                  ) : (
+                    <div className="flex aspect-[4/3] items-center justify-center bg-ink-50"><Boxes className="h-6 w-6 text-ink-300" /></div>
+                  )}
                   <div className="p-2">
                     <p className="truncate text-[11.5px] font-semibold text-ink-900">{m.displayName}</p>
                     <p className="truncate text-[10px] text-ink-400">{m.containerCategory ? pretty(m.containerCategory) : 'Uncat.'} · {pretty(m.topology)}</p>
@@ -567,6 +573,60 @@ function Model3dImport({ id, has3dModel }: { id: string; has3dModel: boolean }) 
       />
       {msg && <p className="mt-1 text-[10.5px] text-warning-700">{msg}</p>}
       <p className="mt-1 text-[10px] leading-snug text-ink-400">Upload a glTF/glb mockup to rotate the real package (40MB max). Falls back to the parametric shape if none.</p>
+    </div>
+  )
+}
+
+// Import / replace / remove the package's 2D mockup / preview image (model3dThumbKey).
+// This is the thumbnail shown across the studio picker + admin grid.
+function ImageImport({ id, previewUrl }: { id: string; previewUrl: string | null }) {
+  const router = useRouter()
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = React.useState(false)
+  const [msg, setMsg] = React.useState<string | null>(null)
+
+  async function onFile(file: File | undefined) {
+    if (!file) return
+    setBusy(true)
+    setMsg(null)
+    const fd = new FormData()
+    fd.set('image', file)
+    const res = await attachPackagingImage(id, fd).catch(() => null)
+    setBusy(false)
+    if (res && res.ok) router.refresh()
+    else setMsg(res && !res.ok ? res.error : 'Upload failed.')
+  }
+  async function onRemove() {
+    setBusy(true)
+    const res = await removePackagingImage(id).catch(() => null)
+    setBusy(false)
+    if (res && res.ok) router.refresh()
+    else setMsg('Could not remove.')
+  }
+
+  return (
+    <div>
+      <p className="mb-1.5 inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">
+        <Boxes className="h-3 w-3" /> 2D mockup / photo
+      </p>
+      <div className="flex items-center gap-2">
+        {previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={previewUrl} alt="preview" className="h-11 w-11 shrink-0 rounded-lg border border-ink-200 object-cover" />
+        ) : (
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-dashed border-ink-200 bg-ink-50 text-ink-300"><Boxes className="h-4 w-4" /></span>
+        )}
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => inputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:border-ink-400 disabled:opacity-50">
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} {previewUrl ? 'Replace' : 'Import image'}
+          </button>
+          {previewUrl && (
+            <button onClick={onRemove} disabled={busy} className="rounded-full border border-ink-200 px-2.5 py-1 text-[11px] font-semibold text-ink-600 hover:border-ink-400 disabled:opacity-50">Remove</button>
+          )}
+        </div>
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+      {msg && <p className="mt-1 text-[10.5px] text-warning-700">{msg}</p>}
     </div>
   )
 }

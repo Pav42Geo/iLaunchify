@@ -4,6 +4,7 @@
 // authoring canvas (P2). Read-only; mutations live in actions.ts.
 
 import { prisma } from '@ilaunchify/db'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import { resolvePackagingSurfaces } from '@ilaunchify/ui'
 
 export interface PackagingModelRow {
@@ -14,6 +15,8 @@ export interface PackagingModelRow {
   topology: string
   model3dSource: string | null
   has3dModel: boolean
+  /** Signed URL to the 2D mockup / preview image (model3dThumbKey), or null. */
+  previewUrl: string | null
   surfaceCount: number
   boundSurfaceCount: number
   dielineCount: number
@@ -33,6 +36,7 @@ type Row = {
   containerCategory: string | null
   defaultTopology: string
   model3dKey: string | null
+  model3dThumbKey: string | null
   model3dSource: string | null
   defaultSurfaces: unknown
   status: string
@@ -53,6 +57,7 @@ export async function loadPackagingModels(): Promise<PackagingLibraryData> {
         containerCategory: true,
         defaultTopology: true,
         model3dKey: true,
+        model3dThumbKey: true,
         model3dSource: true,
         defaultSurfaces: true,
         status: true,
@@ -61,22 +66,25 @@ export async function loadPackagingModels(): Promise<PackagingLibraryData> {
     })
     .catch(() => [])) as Row[]
 
-  const models: PackagingModelRow[] = rows.map((r) => {
-    const surfaces = resolvePackagingSurfaces(r.defaultSurfaces)
-    return {
-      id: r.id,
-      displayName: r.displayName,
-      slug: r.slug,
-      containerCategory: r.containerCategory,
-      topology: r.defaultTopology,
-      model3dSource: r.model3dSource,
-      has3dModel: Boolean(r.model3dKey),
-      surfaceCount: surfaces.length,
-      boundSurfaceCount: surfaces.filter((s) => s.decorable && s.dielineIds.length > 0).length,
-      dielineCount: r._count?.dielines ?? 0,
-      status: r.status,
-    }
-  })
+  const models: PackagingModelRow[] = await Promise.all(
+    rows.map(async (r) => {
+      const surfaces = resolvePackagingSurfaces(r.defaultSurfaces)
+      return {
+        id: r.id,
+        displayName: r.displayName,
+        slug: r.slug,
+        containerCategory: r.containerCategory,
+        topology: r.defaultTopology,
+        model3dSource: r.model3dSource,
+        has3dModel: Boolean(r.model3dKey),
+        previewUrl: r.model3dThumbKey ? await getSignedReadUrl(r.model3dThumbKey, { expiresInSeconds: 600 }).catch(() => null) : null,
+        surfaceCount: surfaces.length,
+        boundSurfaceCount: surfaces.filter((s) => s.decorable && s.dielineIds.length > 0).length,
+        dielineCount: r._count?.dielines ?? 0,
+        status: r.status,
+      }
+    }),
+  )
 
   return {
     models,
