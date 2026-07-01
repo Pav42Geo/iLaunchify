@@ -18,7 +18,7 @@ import { NutritionFactsRenderer } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { FileText, Loader2, X } from 'lucide-react'
 import type { PanelData, NutrientRow } from '@ilaunchify/types'
-import { declareNutritionPanel } from './declared-panel-actions'
+import { declareNutritionPanel, declareFlavorNutritionPanel } from './declared-panel-actions'
 
 interface DeclaredPanelPanelProps {
   productTemplateId: string
@@ -26,6 +26,12 @@ interface DeclaredPanelPanelProps {
   labelingType: string
   /** Existing slot count — triggers the replacement-confirm modal when > 0. */
   existingSlotCount: number
+  /** When set, declare the panel for THIS flavor (per-flavor "I already have my
+   *  data") instead of the whole product. The synthetic slot + typed panel land
+   *  on the FlavorPreset, not the template. */
+  flavorPresetId?: string
+  /** Flavor name for the per-flavor header/disclosure copy. */
+  flavorName?: string
   onSaved: () => void
   onCancel: () => void
 }
@@ -68,9 +74,12 @@ export function DeclaredPanelPanel({
   productTemplateId,
   labelingType,
   existingSlotCount,
+  flavorPresetId,
+  flavorName,
   onSaved,
   onCancel,
 }: DeclaredPanelPanelProps) {
+  const isFlavor = !!flavorPresetId
   const isSupplement = labelingType === 'SUPPLEMENT'
   const [servingSize, setServingSize] = useState('')
   const [servingsPerContainer, setServingsPerContainer] = useState('')
@@ -118,12 +127,15 @@ export function DeclaredPanelPanel({
 
   function doSave() {
     startSave(async () => {
-      const res = await declareNutritionPanel(productTemplateId, {
+      const args = {
         panel,
         ingredientStatement: ingredientStatement.trim(),
         netQuantity: netQuantity.trim(),
         allergens,
-      })
+      }
+      const res = isFlavor
+        ? await declareFlavorNutritionPanel(flavorPresetId!, args)
+        : await declareNutritionPanel(productTemplateId, args)
       if (!res.ok) {
         toast.error(
           res.error === 'upgrade-required'
@@ -151,6 +163,7 @@ export function DeclaredPanelPanel({
         <FileText className="h-4 w-4 text-pink-600" />
         <span className="text-sm font-semibold text-ink-900">
           Declare the {isSupplement ? 'Supplement' : 'Nutrition'} Facts
+          {isFlavor && flavorName ? ` — ${flavorName}` : ''}
         </span>
       </div>
 

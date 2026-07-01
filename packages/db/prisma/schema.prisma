@@ -5507,6 +5507,12 @@ model FlavorPreset {
   // flavor's effective lead = leadTimeDays ?? standard; the product quotes the
   // MAX effective lead across involved flavors + the existing changeover.
   leadTimeDays        Int? // additive, cast-guarded
+  // Per-flavor DECLARED panel ("I already have my data", per-flavor — mirrors
+  // ProductTemplate.declaredPanel). When set, this flavor's recipe is a single
+  // synthetic slot and the typed panel publishes as "Declared by manufacturer".
+  // null = this flavor is COMPUTED from its FlavorRecipeSlots (the default).
+  // Additive; cast-guarded until the migration regenerates the client.
+  declaredPanel       Json?
   productTemplate     ProductTemplate    @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
   orderItemFlavors    OrderItemFlavor[] // variety-pack builder selections referencing this flavor
   // Per-flavor independent recipe (docs/PER_FLAVOR_RECIPES.md §3.1) — additive.

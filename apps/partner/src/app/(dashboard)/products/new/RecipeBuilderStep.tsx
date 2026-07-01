@@ -290,6 +290,11 @@ export function RecipeBuilderStep({
   // its own FULL recipe, keyed by the durable FlavorPreset id. The active recipe
   // tab ('BASE' or a flavorPresetId) drives which row set the builder edits.
   const [activeRecipeTab, setActiveRecipeTab] = useState<'BASE' | string>('BASE')
+  // DECLARED_PANEL ("I already have my data") target: 'BASE' = the product-level
+  // declared panel; a flavorPresetId = that flavor's own declared panel (MULTI).
+  // Kept separate from activeRecipeTab so opening a declared target never triggers
+  // the SEARCH_BUILD recipe-row machinery.
+  const [declaredTarget, setDeclaredTarget] = useState<'BASE' | string>('BASE')
   const [flavorRowsByPreset, setFlavorRowsByPreset] = useState<Record<string, Row[]>>({})
   // Which flavor presetIds have been loaded from the server (lazy, on tab open).
   const flavorLoaded = useRef<Set<string>>(new Set())
@@ -1085,7 +1090,56 @@ export function RecipeBuilderStep({
 
       {entryMode === 'DECLARED_PANEL' && (
         draftId
-          ? <DeclaredPanelPanel productTemplateId={draftId} labelingType={legacyLabelingType(domain)} existingSlotCount={base.length} onSaved={() => setChooserOpen(false)} onCancel={() => { setEntryMode('SEARCH_BUILD'); setChooserOpen(false) }} />
+          ? (() => {
+              // MULTI products declare ONE panel per flavor (+ a Base panel). The
+              // Base/flavor selector below targets the declare action; single-flavor
+              // products skip it and declare the product directly.
+              const declarableFlavors = flavorMode === 'MULTI' ? flavors.filter((f) => f.presetId) : []
+              const onFlavor = declaredTarget !== 'BASE'
+              const activeFlavor = onFlavor ? declarableFlavors.find((f) => f.presetId === declaredTarget) : undefined
+              // If the selected flavor lost its presetId (rare), fall back to Base.
+              const target = onFlavor && !activeFlavor ? 'BASE' : declaredTarget
+              return (
+                <>
+                  {flavorMode === 'MULTI' && (
+                    <>
+                      <div className="recipe-flavtabs" role="tablist" aria-label="Declare by flavor">
+                        <button
+                          type="button" role="tab" aria-selected={target === 'BASE'}
+                          className={`recipe-flavtab${target === 'BASE' ? ' on' : ''}`}
+                          onClick={() => setDeclaredTarget('BASE')}
+                          title="Declare the base product panel."
+                        >Base</button>
+                        {declarableFlavors.map((f, i) => (
+                          <button
+                            key={f.presetId} type="button" role="tab"
+                            aria-selected={target === f.presetId}
+                            className={`recipe-flavtab${target === f.presetId ? ' on' : ''}`}
+                            title={`Declare ${f.name || `Flavor ${i + 1}`}'s panel`}
+                            onClick={() => setDeclaredTarget(f.presetId!)}
+                          >{f.name || `Flavor ${i + 1}`}</button>
+                        ))}
+                      </div>
+                      {declarableFlavors.length < flavors.length && (
+                        <p className="muted tiny" style={{ margin: '6px 0 0' }}>
+                          Flavors appear here once they’ve been added in the Variants step.
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <DeclaredPanelPanel
+                    key={target}
+                    productTemplateId={draftId}
+                    labelingType={legacyLabelingType(domain)}
+                    existingSlotCount={target === 'BASE' ? base.length : 0}
+                    flavorPresetId={target === 'BASE' ? undefined : target}
+                    flavorName={target === 'BASE' ? undefined : activeFlavor?.name}
+                    onSaved={() => setChooserOpen(false)}
+                    onCancel={() => { setEntryMode('SEARCH_BUILD'); setChooserOpen(false) }}
+                  />
+                </>
+              )
+            })()
           : <p className="muted tiny">Save your draft first to declare a nutrition panel.</p>
       )}
 
