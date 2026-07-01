@@ -10,6 +10,7 @@ import { resolveDomainOptions, type LabelingDomain, type DomainPreset, type Flav
 import { tierLimits, resolveOutputPolicy, type CreatorBillingTier, type OutputPolicy } from '@ilaunchify/imagegen'
 import type { FrameLayout } from '@ilaunchify/ui'
 import type { AiCreatePanelProps, DielineTarget, CreatorTier, AiUsageSnapshot, SavedConcept } from './AiCreatePanel'
+import type { LibraryItem } from './library-types'
 
 // Fallback accent ramp for flavours with no swatchHex and no brand palette to draw from.
 const DEFAULT_ACCENTS = ['#E5486B', '#6B4423', '#7BA05B', '#E7A93D', '#4A78B5', '#B5559E', '#3FA796', '#D2603A']
@@ -74,6 +75,7 @@ async function loadDielineTargets(productTemplateId: string | null): Promise<Die
       id: r.id,
       label: r.canonicalShape?.name ?? 'Die-line',
       shapeLabel: r.canonicalShape?.category ? r.canonicalShape.category.replace(/_/g, ' ').toLowerCase() : undefined,
+      containerCategory: r.canonicalShape?.category ?? null,
       layout: r.frames,
       surface: { widthMm: w, heightMm: h },
     })
@@ -190,6 +192,103 @@ async function loadSavedConcepts(userId: string, productTemplateId: string | nul
   })
 }
 
+// -----------------------------------------------------------------------------
+// Template library loaders (tabs: This product / My library / Starter gallery)
+// -----------------------------------------------------------------------------
+
+function strArr(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+}
+
+/** The creator's generations for the library — all products (my-library) or one (this-product). */
+export async function loadGenerationLibrary(userId: string, opts: { productTemplateId?: string | null }): Promise<LibraryItem[]> {
+  const rows = (await (
+    prisma as unknown as {
+      aiDesignGeneration: {
+        findMany: (a: unknown) => Promise<
+          Array<{
+            id: string
+            title: string | null
+            promptJson: unknown
+            favorited: boolean | null
+            containerCategory: string | null
+            aspectBucket: string | null
+            finalizeMegapixels: unknown
+            createdAt: Date
+          }>
+        >
+      }
+    }
+  ).aiDesignGeneration
+    .findMany({
+      where: { authorUserId: userId, scope: 'CREATOR', status: 'READY', ...(opts.productTemplateId ? { productTemplateId: opts.productTemplateId } : {}) },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: { id: true, title: true, promptJson: true, favorited: true, containerCategory: true, aspectBucket: true, finalizeMegapixels: true, createdAt: true },
+    })
+    .catch(() => [])) as Array<{
+    id: string
+    title: string | null
+    promptJson: unknown
+    favorited: boolean | null
+    containerCategory: string | null
+    aspectBucket: string | null
+    finalizeMegapixels: unknown
+    createdAt: Date
+  }>
+
+  return rows.map((r) => {
+    const p = (r.promptJson && typeof r.promptJson === 'object' ? (r.promptJson as Record<string, unknown>) : {}) as Record<string, unknown>
+    const brief = (p.brief && typeof p.brief === 'object' ? (p.brief as Record<string, unknown>) : {}) as Record<string, unknown>
+    return {
+      id: r.id,
+      title: r.title ?? (typeof brief.descriptor === 'string' ? brief.descriptor : 'Concept'),
+      domain: typeof p.domain === 'string' ? p.domain : 'FOOD',
+      containerCategory: r.containerCategory,
+      aspectBucket: r.aspectBucket,
+      favorited: Boolean(r.favorited),
+      createdAtIso: r.createdAt.toISOString(),
+      source: 'GENERATION' as const,
+      styleTags: strArr(brief.styleTags),
+      hasBrief: Boolean(brief.descriptor || strArr(brief.styleTags).length),
+      megapixels: Number(String(r.finalizeMegapixels ?? 0)) || undefined,
+    }
+  })
+}
+
+/** Admin-curated premium templates → the Starter gallery tab. Optionally filtered by domain. */
+export async function loadStarterGallery(domain?: string): Promise<LibraryItem[]> {
+  const rows = (await (
+    prisma as unknown as {
+      brandTemplate: {
+        findMany: (a: unknown) => Promise<
+          Array<{ id: string; name: string; thumbnailUrl: string | null; domain: string | null; targetContainerCategory: string | null; aspectBucket: string | null; createdAt: Date }>
+        >
+      }
+    }
+  ).brandTemplate
+    .findMany({
+      where: { isPremium: true, ...(domain ? { domain } : {}) },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: { id: true, name: true, thumbnailUrl: true, domain: true, targetContainerCategory: true, aspectBucket: true, createdAt: true },
+    })
+    .catch(() => [])) as Array<{ id: string; name: string; thumbnailUrl: string | null; domain: string | null; targetContainerCategory: string | null; aspectBucket: string | null; createdAt: Date }>
+
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.name,
+    thumbnailUrl: r.thumbnailUrl ?? undefined,
+    domain: r.domain ?? 'FOOD',
+    containerCategory: r.targetContainerCategory,
+    aspectBucket: r.aspectBucket,
+    favorited: false,
+    createdAtIso: r.createdAt.toISOString(),
+    source: 'STARTER' as const,
+    hasBrief: false,
+  }))
+}
+
 /** Resolve the brand's primary logo to a public URL (best-effort; null when unavailable). */
 async function resolveBrandLogoUrl(logoAssetId: string | null | undefined): Promise<string | undefined> {
   if (!logoAssetId) return undefined
@@ -202,6 +301,8 @@ async function resolveBrandLogoUrl(logoAssetId: string | null | undefined): Prom
 export interface AiCreateData {
   props: Omit<AiCreatePanelProps, 'onGenerate'>
   productName: string
+  /** ProductTemplate id — for generation provenance + the "This product" library tab. */
+  productTemplateId: string | null
 }
 
 /** Load real AiCreatePanel props for a product owned by the given user, or null. */
@@ -244,6 +345,7 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
 
   return {
     productName: product.name,
+    productTemplateId: product.productTemplateId ?? null,
     props: {
       productDescriptor: product.name,
       brandName: product.brand?.name ?? undefined,
@@ -301,6 +403,7 @@ export async function loadAdminAiCreateProps(input: { dieCutId?: string; domain?
 
   return {
     productName: cut.name,
+    productTemplateId: null,
     props: {
       productDescriptor: `${cut.name} template`,
       brandName: 'System Templates',

@@ -33,6 +33,8 @@ export interface DielineTarget {
   label: string
   /** "flip-top mailer box". */
   shapeLabel?: string
+  /** Container category (BOX/JAR/POUCH…) for the library shape-match gate. */
+  containerCategory?: string | null
   layout: FrameLayout
   surface: SurfaceDims
 }
@@ -49,12 +51,14 @@ export interface AiUsageSnapshot {
   storageBytesCap: number
 }
 
-/** Extra provider context threaded through onGenerate (brand reference + palette + output). */
+/** Extra provider context threaded through onGenerate (brand reference + palette + output + brief). */
 export interface GenerateContext {
   brandRefUrl?: string
   /** Effective palette after brand-kit/manual resolution (prompt already encodes it; this is for the provider). */
   palette?: string[]
   output?: OutputSettings
+  /** Raw brief so a saved generation can be RE-RUN ("use as inspiration") on another die-line. */
+  brief?: { descriptor?: string; styleTags?: string[]; colorTags?: string[]; elementTags?: string[] }
 }
 
 /** A previously saved / finalized concept, for the "My templates" grid. */
@@ -108,6 +112,12 @@ export interface AiCreatePanelProps {
   onEditInStudio?: (result: { svg: string; dielineId: string; label: string }) => void
   /** Export a generated concept (SVG/PDF). When absent the button is hidden. */
   onExport?: (result: { svg: string; dielineId: string; label: string }) => void
+  /** Force a single-column stack (for the narrow in-canvas drawer). Full page stays 2-col. */
+  stacked?: boolean
+  /** Label for the primary result action (default "Edit in Studio"; the drawer uses "Use on canvas"). */
+  editActionLabel?: string
+  /** Seed the intake from a saved generation ("use as inspiration") — descriptor + chips. */
+  initialBrief?: { descriptor?: string; styleTags?: string[]; colorTags?: string[]; elementTags?: string[] }
 }
 
 const DEFAULT_STYLES = ['Minimal', 'Vintage', 'Luxury', 'Playful', 'Modern', 'Hand-drawn', 'Bold', 'Natural', 'Warm', 'Geometric']
@@ -149,10 +159,10 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
 
   const [scope, setScope] = useState<'single' | 'set' | 'flavors'>('single')
   const [selectedId, setSelectedId] = useState(dielines[0]?.id ?? '')
-  const [descriptor, setDescriptor] = useState(props.productDescriptor)
-  const [styles, setStyles] = useState<string[]>([])
-  const [colors, setColors] = useState<string[]>([])
-  const [elements, setElements] = useState<string[]>([])
+  const [descriptor, setDescriptor] = useState(props.initialBrief?.descriptor ?? props.productDescriptor)
+  const [styles, setStyles] = useState<string[]>(props.initialBrief?.styleTags ?? [])
+  const [colors, setColors] = useState<string[]>(props.initialBrief?.colorTags ?? [])
+  const [elements, setElements] = useState<string[]>(props.initialBrief?.elementTags ?? [])
   const [variations, setVariations] = useState<string[]>([])
   const [setVariants, setSetVariants] = useState<{ id: string; label: string; svg: string }[]>([])
   const [masterGenerated, setMasterGenerated] = useState(false)
@@ -220,7 +230,12 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
     set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
 
-  const genCtx: GenerateContext = { brandRefUrl, palette: effPalette, output: output ?? undefined }
+  const genCtx: GenerateContext = {
+    brandRefUrl,
+    palette: effPalette,
+    output: output ?? undefined,
+    brief: { descriptor, styleTags: styles, colorTags: colors, elementTags: elements },
+  }
 
   async function generate() {
     if (setMode) {
@@ -267,7 +282,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+    <div className={`grid gap-4 ${props.stacked ? '' : 'lg:grid-cols-[360px_1fr]'}`}>
       {/* ---- Intake column ---- */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -463,7 +478,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                 <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: v.svg }} />
                 {setVariants.length > 0 && (
                   <div className="mt-1.5 flex items-center justify-end">
-                    <ResultActions result={{ svg: v.svg, dielineId: v.id, label: v.label }} onEdit={props.onEditInStudio} onExport={props.onExport} />
+                    <ResultActions result={{ svg: v.svg, dielineId: v.id, label: v.label }} onEdit={props.onEditInStudio} onExport={props.onExport} editLabel={props.editActionLabel} />
                   </div>
                 )}
               </div>
@@ -534,6 +549,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                     result={{ svg: v, dielineId: selected?.id ?? '', label: selected?.label ?? '' }}
                     onEdit={props.onEditInStudio}
                     onExport={props.onExport}
+                    editLabel={props.editActionLabel}
                   />
                 </div>
               </div>
@@ -914,17 +930,19 @@ function ResultActions({
   result,
   onEdit,
   onExport,
+  editLabel = 'Edit in Studio',
 }: {
   result: { svg: string; dielineId: string; label: string }
   onEdit?: (r: { svg: string; dielineId: string; label: string }) => void
   onExport?: (r: { svg: string; dielineId: string; label: string }) => void
+  editLabel?: string
 }) {
   if (!onEdit && !onExport) return null
   return (
     <div className="flex gap-1 text-[11px]">
       {onEdit && (
         <button onClick={() => onEdit(result)} className="rounded-full border border-ink-200 px-2 py-0.5 font-semibold text-ink-600 hover:bg-ink-50">
-          Edit in Studio
+          {editLabel}
         </button>
       )}
       {onExport && (

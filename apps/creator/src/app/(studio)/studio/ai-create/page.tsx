@@ -12,6 +12,7 @@ import { auth, requireCapability } from '@ilaunchify/auth'
 import { resolveOutputPolicy } from '@ilaunchify/imagegen'
 import { AiCreatePanel, type DielineTarget } from './AiCreatePanel'
 import { AiCreatePanelClient } from './AiCreatePanelClient'
+import { AiCreateWorkspace } from './AiCreateWorkspace'
 import { loadAiCreateProps, loadAdminAiCreateProps } from './loader'
 import type { FrameLayout } from '@ilaunchify/ui'
 
@@ -90,7 +91,7 @@ export default async function AiCreatePage({
     }
     return (
       <div className="mx-auto max-w-5xl space-y-4 p-6">
-        <AiCreatePanelClient {...data.props} productId={productId} />
+        <AiCreateWorkspace {...data.props} productId={productId} productTemplateId={data.productTemplateId} />
       </div>
     )
   }

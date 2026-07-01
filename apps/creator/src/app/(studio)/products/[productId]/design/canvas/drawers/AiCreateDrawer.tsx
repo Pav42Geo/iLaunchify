@@ -3,32 +3,26 @@
 // =============================================================================
 // AI Templator — in-canvas drawer (AI_PACKAGING_GENERATOR §8).
 //
-// The Canva-style, stay-in-the-canvas surface: opens as the left rail drawer (like
-// Templates / Elements), generates concepts for the CURRENT product's die-line, shows
-// them as a thumbnail grid, and "Use this" drops the chosen concept onto the Fabric
-// stage as the CREATIVE background layer — UNDER the truth-layer frames (Nutrition
-// Facts, ingredients, barcode stay crisp on top). You never leave the canvas.
+// Two tabs, both in the canvas: Create (the SAME AiCreatePanel the full page uses —
+// brand identity, output, meters, saved templates, coordinated sets + flavour
+// families) and Library (This product / My library / Starter gallery).
 //
-// Single die-line only. Coordinated SETS (jar front + top) and FLAVOUR families need
-// multiple surfaces, so those live in the full-screen generator, reached via "Batch".
+// Because we're ALREADY in the canvas:
+//   • "Use on canvas" drops the concept onto the Fabric stage UNDER the truth-layer
+//     frames (Facts / ingredients / barcode stay crisp on top).
+//   • Library → "Use" places a matching-shape template onto the canvas; "Inspire"
+//     reloads a saved design's brief into Create for THIS die-line and re-creates it.
 // =============================================================================
 
 import * as React from 'react'
-import { Sparkles, Lock, CheckCircle2, AlertTriangle, Loader2, Wand2, ArrowUpRight } from 'lucide-react'
-import { planGeneration, addImageFromUrl, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
-import { clampOutput, type OutputSettings } from '@ilaunchify/imagegen'
+import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig } from 'lucide-react'
+import { addImageFromUrl, deriveTemplateTargeting, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
-import { getAiCreateDrawerProps, generateAiConcepts } from '../../../../../studio/ai-create/actions'
-import {
-  BrandIdentitySection,
-  OutputSection,
-  UsageMeters,
-  SavedTemplatesGrid,
-  type AiCreatePanelProps,
-  type DielineTarget,
-  type ManualBrand,
-} from '../../../../../studio/ai-create/AiCreatePanel'
+import { getAiCreateDrawerProps, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
+import { AiCreatePanel, type AiCreatePanelProps, type DielineTarget, type GenerateContext } from '../../../../../studio/ai-create/AiCreatePanel'
+import { TemplateLibrary } from '../../../../../studio/ai-create/TemplateLibrary'
 import { readAiConceptHandoff, clearAiConceptHandoff } from '../../../../../studio/ai-create/handoff'
+import type { LibraryItem, ShapeKey } from '../../../../../studio/ai-create/library-types'
 
 type Props = {
   canvas: FabricCanvas | null
@@ -53,9 +47,6 @@ function targetFromDieCut(dieCut: DieCutSpec): DielineTarget {
   }
 }
 
-const chipCls = (on: boolean) =>
-  `rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition ${on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`
-
 /** SVG markup → data URL; URLs/data-URLs pass through. */
 function conceptToSource(concept: string): string {
   const c = concept.trim()
@@ -64,25 +55,37 @@ function conceptToSource(concept: string): string {
   return c
 }
 
+/** Draft pixels for a surface aspect at ~1 MP (cheap draft; finalize upscales). */
+function draftPixels(widthMm: number, heightMm: number): { widthPx: number; heightPx: number } {
+  const ratio = widthMm / Math.max(1, heightMm)
+  const h = Math.round(Math.sqrt(1_000_000 / Math.max(0.1, ratio)))
+  return { widthPx: Math.round(h * ratio), heightPx: h }
+}
+
+/** Trigger a browser download of an SVG string or an image URL. */
+function downloadConcept(svgOrUrl: string, label: string): void {
+  if (typeof window === 'undefined') return
+  const safe = (label || 'concept').replace(/[^a-z0-9\-_]+/gi, '-').toLowerCase()
+  const s = svgOrUrl.trim()
+  const isSvg = s.startsWith('<svg')
+  const href = isSvg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}` : s
+  const a = document.createElement('a')
+  a.href = href
+  a.download = `${safe}.${isSvg ? 'svg' : 'img'}`
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
 export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
   void onClose
   const [loading, setLoading] = React.useState(true)
   const [props, setProps] = React.useState<AiCreatePanelProps | null>(null)
-  const [descriptor, setDescriptor] = React.useState('')
-  const [styles, setStyles] = React.useState<string[]>([])
-  const [colors, setColors] = React.useState<string[]>([])
-  const [elements, setElements] = React.useState<string[]>([])
-  const [busy, setBusy] = React.useState(false)
-  const [concepts, setConcepts] = React.useState<string[]>([])
-  const [applied, setApplied] = React.useState<number | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
-
-  // Brand identity + output — same controls as the full page, compact in the drawer.
-  const [brandMode, setBrandMode] = React.useState<'kit' | 'manual'>('kit')
-  const [follow, setFollow] = React.useState(true)
-  const [manual, setManual] = React.useState<ManualBrand>({ brandName: '', market: '', audience: '', colours: [] })
-  const [output, setOutput] = React.useState<OutputSettings | null>(null)
-  const [presetId, setPresetId] = React.useState('default')
+  const [productTemplateId, setProductTemplateId] = React.useState<string | null>(null)
+  const [tab, setTab] = React.useState<'create' | 'library'>('create')
+  const [initialBrief, setInitialBrief] = React.useState<AiCreatePanelProps['initialBrief']>(undefined)
+  const [briefKey, setBriefKey] = React.useState(0)
   // A concept handed over from the full-page generator's "Edit in Studio" (same-origin).
   const [pending, setPending] = React.useState<{ svg: string; label: string } | null>(null)
 
@@ -91,15 +94,9 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
     setLoading(true)
     getAiCreateDrawerProps(productId)
       .then((data) => {
-        if (cancelled) return
-        if (data) {
-          setProps(data.props)
-          setDescriptor(data.props.productDescriptor)
-          setManual((m) => ({ ...m, brandName: data.props.brandName ?? '' }))
-          const kit = (data.props.brandPalette?.length ?? 0) > 0 || Boolean(data.props.brandLogoUrl)
-          setBrandMode(kit ? 'kit' : 'manual')
-          if (data.props.outputPolicy) setOutput(clampOutput(data.props.outputPolicy.defaults, data.props.outputPolicy).settings)
-        }
+        if (cancelled || !data) return
+        setProps(data.props)
+        setProductTemplateId(data.productTemplateId)
       })
       .finally(() => !cancelled && setLoading(false))
     return () => {
@@ -113,83 +110,90 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
     if (h) setPending({ svg: h.svg, label: h.label })
   }, [productId])
 
-  const gated = props?.tier === 'maker'
-  const manualMode = brandMode === 'manual'
-  const kitPalette = props?.brandPalette ?? []
-  const effBrandName = manualMode ? manual.brandName || undefined : props?.brandName
-  const effPalette = manualMode ? (manual.colours.length ? manual.colours : undefined) : kitPalette.length ? kitPalette : undefined
-  const brandRefUrl = manualMode ? manual.logoDataUrl : follow ? props?.brandLogoUrl : undefined
-  const referencePhrases = React.useMemo(
-    () => (manualMode ? ([manual.market && `for ${manual.market}`, manual.audience && `audience: ${manual.audience}`].filter(Boolean) as string[]) : []),
-    [manualMode, manual.market, manual.audience],
+  /** Drop a concept / template onto the canvas UNDER the truth-layer frames. */
+  const applyToCanvas = React.useCallback(
+    async (concept: string) => {
+      if (!canvas) return
+      const img = await addImageFromUrl(canvas, conceptToSource(concept), { maxFraction: 0.98 })
+      if (img) {
+        ;(canvas as unknown as { sendObjectToBack?: (o: unknown) => void }).sendObjectToBack?.(img)
+        canvas.requestRenderAll()
+      }
+    },
+    [canvas],
   )
-  // Prefer a confirmed product die-line; otherwise fall back to the canvas die-cut so the
-  // generator always has a surface to design (mirrors what the canvas itself renders).
-  const target = props ? props.dielines[0] ?? targetFromDieCut(dieCut) : null
-  const styleOptions = props?.styleOptions ?? []
-  const colorOptions = props?.colorOptions ?? []
-  const elementOptions = props?.elementOptions ?? []
 
-  const plan = React.useMemo<GenerationPlan | null>(() => {
-    if (!props || !target) return null
-    return planGeneration({
-      productDescriptor: descriptor,
-      brandName: effBrandName,
-      brandPalette: effPalette,
-      styleTags: styles,
-      colorTags: colors,
-      elementTags: elements,
-      referencePhrases,
-      layout: target.layout,
-      surface: target.surface,
-      domain: props.domain,
-      market: props.market ?? 'US',
-    })
-  }, [props, target, descriptor, effBrandName, effPalette, referencePhrases, styles, colors, elements])
+  // The die-line SET the panel designs — real confirmed die-lines, else the canvas die-cut.
+  const dielines = React.useMemo<DielineTarget[]>(
+    () => (props && props.dielines.length ? props.dielines : [targetFromDieCut(dieCut)]),
+    [props, dieCut],
+  )
 
-  const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
-    set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
+  const productShapes = React.useMemo<ShapeKey[]>(
+    () =>
+      dielines.map((d) => ({
+        containerCategory: d.containerCategory ?? null,
+        aspectBucket: deriveTemplateTargeting({ containerCategory: d.containerCategory ?? undefined, widthMm: d.surface.widthMm, heightMm: d.surface.heightMm }).aspectBucket,
+      })),
+    [dielines],
+  )
 
-  async function generate() {
-    if (!plan || !target || !props || gated) return
-    setBusy(true)
-    setError(null)
-    setApplied(null)
+  function surfaceFor(dielineId: string) {
+    return dielines.find((d) => d.id === dielineId)?.surface ?? { widthMm: 100, heightMm: 150 }
+  }
+
+  async function onGenerate(plan: GenerationPlan, dielineId: string, ctx?: GenerateContext): Promise<string[]> {
+    if (!props) return []
+    const s = surfaceFor(dielineId)
+    const { widthPx, heightPx } = draftPixels(s.widthMm, s.heightMm)
     try {
-      const ratio = target.surface.widthMm / Math.max(1, target.surface.heightMm)
-      const h = Math.round(Math.sqrt(1_000_000 / Math.max(0.1, ratio)))
-      const w = Math.round(h * ratio)
       const res = await generateAiConcepts({
         prompt: plan.prompt,
         negativePrompt: plan.negativePrompt,
         mask: plan.maskSvg,
-        widthPx: w,
-        heightPx: h,
-        dielineId: target.id,
-        brandPalette: effPalette,
-        brandRefUrl,
+        widthPx,
+        heightPx,
+        dielineId,
+        productTemplateId: productTemplateId ?? undefined,
+        brandPalette: ctx?.palette ?? props.brandPalette,
+        brandRefUrl: ctx?.brandRefUrl,
         domain: props.domain,
         market: props.market ?? 'US',
         complianceJson: plan.compliance as unknown as Record<string, unknown>,
+        brief: ctx?.brief,
       })
-      if (!res.ok) setError(res.error)
-      else setConcepts(res.images.length ? res.images : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg])
+      return res.ok ? res.images : []
     } catch {
-      setError('Generation failed. Try again.')
-    } finally {
-      setBusy(false)
+      return []
     }
   }
 
-  async function applyToCanvas(concept: string, idx: number) {
-    if (!canvas) return
-    const img = await addImageFromUrl(canvas, conceptToSource(concept), { maxFraction: 0.98 })
-    if (img) {
-      // Send under the truth-layer frames so Facts / barcode stay on top + readable.
-      ;(canvas as unknown as { sendObjectToBack?: (o: unknown) => void }).sendObjectToBack?.(img)
-      canvas.requestRenderAll()
-      setApplied(idx)
+  async function onExport(result: { svg: string; dielineId: string; label: string }): Promise<void> {
+    const surface = surfaceFor(result.dielineId)
+    const { widthPx, heightPx } = draftPixels(surface.widthMm, surface.heightMm)
+    const dpi = props?.outputPolicy?.defaults.dpi ?? 300
+    try {
+      const res = await finalizeAiConcept({
+        concept: { svg: result.svg, width: widthPx, height: heightPx },
+        widthMm: surface.widthMm,
+        heightMm: surface.heightMm,
+        dpi,
+        svgBytes: result.svg.length,
+      })
+      downloadConcept(res.ok ? res.image.svg ?? res.image.url ?? result.svg : result.svg, result.label)
+    } catch {
+      downloadConcept(result.svg, result.label)
     }
+  }
+
+  // Library → "Inspire": reload a saved design's brief into Create for this die-line.
+  async function handleInspire(item: LibraryItem) {
+    const brief = await getGenerationBrief(item.id).catch(() => null)
+    if (brief) {
+      setInitialBrief({ descriptor: brief.descriptor, styleTags: brief.styleTags, colorTags: brief.colorTags, elementTags: brief.elementTags })
+      setBriefKey((k) => k + 1)
+    }
+    setTab('create')
   }
 
   if (loading) {
@@ -200,12 +204,8 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
     )
   }
 
-  if (!props || !target) {
-    return (
-      <div className="p-4 text-[12.5px] text-ink-600">
-        Couldn’t load this product. Try reopening the Studio.
-      </div>
-    )
+  if (!props) {
+    return <div className="p-4 text-[12.5px] text-ink-600">Couldn’t load this product. Try reopening the Studio.</div>
   }
 
   return (
@@ -213,25 +213,37 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
       <div className="flex items-center gap-1.5">
         <Wand2 className="h-4 w-4 text-pink-600" />
         <h3 className="text-[13px] font-bold text-ink-900">AI Templator</h3>
-        {typeof props.creditsRemaining === 'number' && !gated && (
-          <span className="ml-auto rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[10.5px] font-semibold tabular-nums text-ink-600">
-            {props.creditsRemaining} left
-          </span>
-        )}
+        <a
+          href={`/studio/ai-create?productId=${productId}`}
+          className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-ink-400 hover:text-ink-900"
+          title="Open the full-screen generator"
+        >
+          Full view <ArrowUpRight className="h-3 w-3" />
+        </a>
       </div>
-      <p className="text-[11px] text-ink-400">
-        Generating for <strong className="text-ink-600">{target.label}</strong>. Concepts drop onto your die-line under the compliance layer.
-      </p>
 
-      {pending && (
+      {/* Create / Library tabs */}
+      <div className="flex gap-1">
+        <DrawerTab active={tab === 'create'} onClick={() => setTab('create')} icon={<Sparkles className="h-3.5 w-3.5" />}>
+          Create
+        </DrawerTab>
+        <DrawerTab active={tab === 'library'} onClick={() => setTab('library')} icon={<LibraryBig className="h-3.5 w-3.5" />}>
+          Library
+        </DrawerTab>
+      </div>
+
+      {pending && tab === 'create' && (
         <div className="rounded-lg border border-pink-300 bg-pink-50 p-2.5">
           <p className="text-[11.5px] font-semibold text-pink-800">Concept from the generator</p>
           <p className="mb-2 text-[11px] text-pink-700">“{pending.label}” is ready to drop onto this canvas.</p>
-          <div className="[&_svg]:h-auto [&_svg]:w-full mb-2 overflow-hidden rounded border border-pink-200 bg-white" dangerouslySetInnerHTML={{ __html: pending.svg.trim().startsWith('<svg') ? pending.svg : `<img src="${pending.svg}" alt="${pending.label}" style="width:100%;height:auto"/>` }} />
+          <div
+            className="[&_svg]:h-auto [&_svg]:w-full mb-2 overflow-hidden rounded border border-pink-200 bg-white"
+            dangerouslySetInnerHTML={{ __html: pending.svg.trim().startsWith('<svg') ? pending.svg : `<img src="${pending.svg}" alt="${pending.label}" style="width:100%;height:auto"/>` }}
+          />
           <div className="flex gap-1.5">
             <button
               onClick={async () => {
-                await applyToCanvas(pending.svg, -1)
+                await applyToCanvas(pending.svg)
                 clearAiConceptHandoff()
                 setPending(null)
               }}
@@ -252,114 +264,41 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
         </div>
       )}
 
-      {gated && (
-        <div className="flex items-start gap-2 rounded-lg border border-pink-200 bg-pink-50 p-2.5 text-[11.5px] text-pink-800">
-          <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>AI Templator is a Builder &amp; Agency feature. Explore below — upgrade to generate onto your die-line.</span>
-        </div>
-      )}
-
-      <label className="block">
-        <span className="mb-1 block text-[10.5px] font-bold uppercase tracking-wider text-ink-500">Describe the design</span>
-        <textarea
-          value={descriptor}
-          onChange={(e) => setDescriptor(e.target.value)}
-          rows={2}
-          className="w-full resize-none rounded-lg border border-ink-200 px-2.5 py-2 text-[12.5px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-200"
+      {tab === 'create' ? (
+        // The full generator, in the drawer. "Use on canvas" applies to THIS canvas.
+        <AiCreatePanel
+          key={briefKey}
+          {...props}
+          stacked
+          editActionLabel="Use on canvas"
+          initialBrief={initialBrief}
+          dielines={dielines}
+          onGenerate={onGenerate}
+          onExport={onExport}
+          onEditInStudio={(r) => applyToCanvas(r.svg)}
         />
-      </label>
-
-      <BrandIdentitySection
-        mode={brandMode}
-        onMode={setBrandMode}
-        hasKit={kitPalette.length > 0 || Boolean(props.brandLogoUrl)}
-        kitPalette={kitPalette}
-        kitLogoUrl={props.brandLogoUrl}
-        kitBrandName={props.brandName}
-        follow={follow}
-        onFollow={setFollow}
-        manual={manual}
-        onManual={setManual}
-      />
-
-      <ChipRow title="Style" options={styleOptions} selected={styles} onToggle={(v) => toggle(styles, setStyles, v)} />
-      <ChipRow title="Colour mood" options={colorOptions} selected={colors} onToggle={(v) => toggle(colors, setColors, v)} />
-      <ChipRow title="Elements" options={elementOptions} selected={elements} onToggle={(v) => toggle(elements, setElements, v)} />
-
-      {props.outputPolicy && output && (
-        <OutputSection policy={props.outputPolicy} tier={props.tier} value={output} onChange={setOutput} presetId={presetId} onPreset={setPresetId} />
-      )}
-      {props.usage && <UsageMeters usage={props.usage} />}
-
-      {plan && (
-        <div className={`flex items-start gap-1.5 rounded-lg border p-2 text-[11px] ${plan.compliance.complete ? 'border-success-200 bg-success-50 text-success-800' : 'border-warning-200 bg-warning-50 text-warning-800'}`}>
-          {plan.compliance.complete ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
-          <span>{plan.compliance.complete ? `Compliance-ready — ${plan.compliance.summary}` : `${plan.compliance.summary} — add before export`}</span>
-        </div>
-      )}
-
-      {gated ? (
-        <a href="/subscriptions" className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-4 py-2.5 text-[12.5px] font-semibold text-white hover:bg-ink-800">
-          <Lock className="h-4 w-4" /> Upgrade to generate
-        </a>
       ) : (
-        <button
-          onClick={generate}
-          disabled={busy || !plan}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-4 py-2.5 text-[12.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          {busy ? 'Generating…' : concepts.length ? 'Regenerate' : 'Generate concepts'}
-        </button>
+        <TemplateLibrary
+          productTemplateId={productTemplateId ?? undefined}
+          domain={props.domain}
+          productShapes={productShapes}
+          onUseAsInspiration={handleInspire}
+          onUseOnCanvas={(item) => item.thumbnailUrl && applyToCanvas(item.thumbnailUrl)}
+        />
       )}
-      {error && <p className="text-[11px] font-medium text-danger-600">{error}</p>}
-
-      {concepts.length > 0 && (
-        <div>
-          <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">Concepts — click “Use this” to drop onto the canvas</p>
-          <div className="grid grid-cols-2 gap-2">
-            {concepts.map((c, i) => (
-              <div key={i} className={`rounded-lg border p-1.5 ${applied === i ? 'border-pink-500' : 'border-ink-200'}`}>
-                <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: c.trim().startsWith('<svg') ? c : `<img src="${c}" alt="concept ${i + 1}" style="width:100%;height:auto"/>` }} />
-                <button
-                  onClick={() => applyToCanvas(c, i)}
-                  className="mt-1.5 w-full rounded-full border border-ink-200 py-1 text-[10.5px] font-semibold text-ink-700 hover:bg-ink-50"
-                >
-                  {applied === i ? 'On canvas ✓' : 'Use this'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {props.savedConcepts && props.savedConcepts.length > 0 && (
-        <SavedTemplatesGrid concepts={props.savedConcepts} storageUsed={props.usage?.storageBytesUsed} storageCap={props.usage?.storageBytesCap} />
-      )}
-
-      <a
-        href={`/studio/ai-create?productId=${productId}`}
-        className="mt-auto inline-flex items-center gap-1 pt-2 text-[11px] font-semibold text-ink-500 hover:text-ink-900"
-      >
-        Batch: coordinated sets &amp; flavour families <ArrowUpRight className="h-3.5 w-3.5" />
-      </a>
     </div>
   )
 }
 
-function ChipRow({ title, options, selected, onToggle }: { title: string; options: string[]; selected: string[]; onToggle: (v: string) => void }) {
-  if (options.length === 0) return null
+function DrawerTab({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div>
-      <p className="mb-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">{title}</p>
-      <div className="flex flex-wrap gap-1">
-        {options.map((o) => (
-          <button key={o} type="button" onClick={() => onToggle(o)} className={chipCls(selected.includes(o))}>
-            {o}
-          </button>
-        ))}
-      </div>
-    </div>
+    <button
+      onClick={onClick}
+      className={`inline-flex flex-1 items-center justify-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-semibold transition ${active ? 'bg-ink-900 text-white' : 'border border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+    >
+      {icon}
+      {children}
+    </button>
   )
 }
 

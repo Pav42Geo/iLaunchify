@@ -6933,6 +6933,15 @@ model AiDesignGeneration {
   packagingCategoryId String?
   /// Canonical die-line template (shape) the template belongs to (soft FK -> DieCutTemplate).
   dieCutTemplateId    String?
+  // --- Template library (tabs + favorites + shape-family filtering / match gate) ---
+  /// Creator-facing name for the "My library" grid (defaults from the descriptor).
+  title              String?
+  /// Starred into the creator's favorites tab.
+  favorited          Boolean      @default(false)
+  /// Denormalized shape family (from deriveTemplateTargeting) so library filtering +
+  /// the "can I drop this on THIS die-line?" gate are indexed lookups, not recomputes.
+  containerCategory  String? // e.g. 'BOX', 'JAR', 'POUCH' (ContainerCategory value)
+  aspectBucket       String? // e.g. 'SQUARE', 'TALL', 'WIDE'
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
@@ -6941,6 +6950,8 @@ model AiDesignGeneration {
   @@index([status])
   @@index([packagingCategoryId])
   @@index([dieCutTemplateId])
+  @@index([authorUserId, favorited])
+  @@index([containerCategory])
 }
 
 /// Per-creator, per-billing-period usage of the two metered levers.

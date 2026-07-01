@@ -23,6 +23,8 @@ import type { GenerationPlan } from '@ilaunchify/ui'
 type Props = Omit<AiCreatePanelProps, 'onGenerate' | 'onEditInStudio' | 'onExport'> & {
   /** When set (real product mode), Edit-in-Studio hands the concept to that product's canvas. */
   productId?: string
+  /** ProductTemplate id — tags generations for the "This product" library tab. */
+  productTemplateId?: string | null
 }
 
 /** Pick draft pixels for a surface aspect at ~1 MP (cheap draft; finalize upscales). */
@@ -49,7 +51,7 @@ function downloadConcept(svgOrUrl: string, label: string): void {
 }
 
 export function AiCreatePanelClient(props: Props) {
-  const { productId, ...panelProps } = props
+  const { productId, productTemplateId, ...panelProps } = props
   const router = useRouter()
 
   function surfaceFor(dielineId: string) {
@@ -68,11 +70,13 @@ export function AiCreatePanelClient(props: Props) {
         widthPx,
         heightPx,
         dielineId,
+        productTemplateId: productTemplateId ?? undefined,
         brandPalette: ctx?.palette ?? panelProps.brandPalette,
         brandRefUrl: ctx?.brandRefUrl,
         domain: panelProps.domain,
         market: panelProps.market ?? 'US',
         complianceJson: plan.compliance as unknown as Record<string, unknown>,
+        brief: ctx?.brief,
       })
       return res.ok ? res.images : []
     } catch {

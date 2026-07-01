@@ -19,7 +19,8 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { loadAiCreateProps, type AiCreateData } from './loader'
+import { loadAiCreateProps, loadGenerationLibrary, loadStarterGallery, type AiCreateData } from './loader'
+import type { LibraryItem, LibraryScope } from './library-types'
 import {
   resolveImageGenProvider,
   runDraftGeneration,
@@ -29,6 +30,7 @@ import {
   type CreatorBillingTier,
 } from '@ilaunchify/imagegen'
 import type { LabelingDomain, MarketCode } from '@ilaunchify/ai-design'
+import { deriveTemplateTargeting } from '@ilaunchify/ui'
 
 /** Load the in-canvas AI drawer's props for a product the caller owns (die-line set,
  *  brand palette, domain, tier, per-domain chip vocab, credits). Thin authed wrapper
@@ -83,6 +85,30 @@ export interface GenerateConceptsInput {
   /** compliance report at gen time (legal reproducibility). */
   complianceJson?: Record<string, unknown>
   seed?: number
+  /** Raw brief (descriptor + chips) stored so the generation can be re-run ("use as inspiration"). */
+  brief?: { descriptor?: string; styleTags?: string[]; colorTags?: string[]; elementTags?: string[] }
+  /** Creator-facing title (defaults from the descriptor). */
+  title?: string
+}
+
+/** Resolve a die-line's shape family (container + aspect) for library filtering + the
+ *  cross-die-line match gate. Synthetic "diecut:*" ids and missing rows → nulls. */
+async function resolveShapeFamily(dielineId?: string): Promise<{ containerCategory: string | null; aspectBucket: string | null }> {
+  if (!dielineId || dielineId.startsWith('diecut:')) return { containerCategory: null, aspectBucket: null }
+  const row = (await (
+    prisma as unknown as {
+      packagingDieline?: { findUnique: (a: unknown) => Promise<{ widthMm: unknown; heightMm: unknown; canonicalShape: { category: string } | null } | null> }
+    }
+  ).packagingDieline
+    ?.findUnique({ where: { id: dielineId }, select: { widthMm: true, heightMm: true, canonicalShape: { select: { category: true } } } })
+    .catch(() => null)) as { widthMm: unknown; heightMm: unknown; canonicalShape: { category: string } | null } | null
+  if (!row) return { containerCategory: null, aspectBucket: null }
+  const t = deriveTemplateTargeting({
+    containerCategory: row.canonicalShape?.category,
+    widthMm: Number(String(row.widthMm ?? '')) || 100,
+    heightMm: Number(String(row.heightMm ?? '')) || 150,
+  })
+  return { containerCategory: t.targetContainerCategory, aspectBucket: t.aspectBucket }
 }
 
 export type GenerateConceptsResult =
@@ -105,6 +131,8 @@ export async function generateAiConcepts(input: GenerateConceptsInput): Promise<
 
   const provider = resolveImageGenProvider(process.env as Record<string, string | undefined>)
   const n = Math.max(1, limits.draftVariations)
+  const shape = await resolveShapeFamily(input.dielineId)
+  const title = (input.title ?? input.brief?.descriptor ?? '').trim().slice(0, 80) || null
 
   // Create the run row (QUEUED→RUNNING) for provenance before calling the provider.
   const gen = await genDelegate()
@@ -116,9 +144,19 @@ export async function generateAiConcepts(input: GenerateConceptsInput): Promise<
         productTemplateId: input.productTemplateId ?? null,
         dielineId: input.dielineId ?? null,
         brandId: input.brandId ?? null,
-        promptJson: { prompt: input.prompt, negativePrompt: input.negativePrompt, domain: input.domain, market: input.market ?? 'US', palette: input.brandPalette ?? [] },
+        promptJson: {
+          prompt: input.prompt,
+          negativePrompt: input.negativePrompt,
+          domain: input.domain,
+          market: input.market ?? 'US',
+          palette: input.brandPalette ?? [],
+          brief: input.brief ?? null,
+        },
         provider: provider.backing.raster,
         complianceJson: input.complianceJson ?? undefined,
+        title,
+        containerCategory: shape.containerCategory,
+        aspectBucket: shape.aspectBucket,
       },
     })
     .catch(() => null)
@@ -245,4 +283,70 @@ export async function finalizeAiConcept(input: FinalizeConceptInput): Promise<Fi
 
   const img = result.image ?? { kind: 'raster' as const, width: input.concept.width, height: input.concept.height, url: input.concept.url, svg: input.concept.svg }
   return { ok: true, image: { svg: img.svg, url: img.url, width: img.width, height: img.height }, megapixels: result.debit.megapixels }
+}
+
+// -----------------------------------------------------------------------------
+// Template library — favorite + brief reload ("use as inspiration")
+// -----------------------------------------------------------------------------
+
+type FavDelegate = {
+  findFirst: (a: unknown) => Promise<{ id: string; favorited: boolean } | null>
+  update: (a: unknown) => Promise<unknown>
+}
+const favDelegate = () => (prisma as unknown as { aiDesignGeneration?: FavDelegate }).aiDesignGeneration ?? null
+
+/** Star / unstar a generation into the creator's Favorites tab. Owner-checked. */
+export async function toggleGenerationFavorite(generationId: string): Promise<{ ok: boolean; favorited: boolean }> {
+  const user = await requireUser()
+  const row = await favDelegate()
+    ?.findFirst({ where: { id: generationId, authorUserId: user.id }, select: { id: true, favorited: true } })
+    .catch(() => null)
+  if (!row) return { ok: false, favorited: false }
+  const next = !row.favorited
+  await favDelegate()?.update({ where: { id: generationId }, data: { favorited: next } }).catch(() => {})
+  await logAuditAs(user, {
+    entityType: 'AiDesignGeneration',
+    entityId: generationId,
+    action: next ? 'AI_DESIGN_FAVORITED' : 'AI_DESIGN_UNFAVORITED',
+    payload: {},
+  })
+  return { ok: true, favorited: next }
+}
+
+/** Fetch a library tab for the current creator. `starter` ignores productTemplateId. */
+export async function getTemplateLibrary(scope: LibraryScope, opts?: { productTemplateId?: string; domain?: string }): Promise<LibraryItem[]> {
+  const user = await requireUser()
+  if (scope === 'starter') return loadStarterGallery(opts?.domain)
+  return loadGenerationLibrary(user.id, { productTemplateId: scope === 'this-product' ? opts?.productTemplateId ?? null : null })
+}
+
+export interface GenerationBrief {
+  descriptor?: string
+  styleTags?: string[]
+  colorTags?: string[]
+  elementTags?: string[]
+  palette?: string[]
+}
+
+/** The stored brief for a generation, to seed the intake ("use as inspiration"). Owner-checked. */
+export async function getGenerationBrief(generationId: string): Promise<GenerationBrief | null> {
+  const user = await requireUser()
+  const row = (await (
+    prisma as unknown as {
+      aiDesignGeneration?: { findFirst: (a: unknown) => Promise<{ promptJson: unknown } | null> }
+    }
+  ).aiDesignGeneration
+    ?.findFirst({ where: { id: generationId, authorUserId: user.id }, select: { promptJson: true } })
+    .catch(() => null)) as { promptJson: unknown } | null
+  if (!row) return null
+  const p = (row.promptJson && typeof row.promptJson === 'object' ? (row.promptJson as Record<string, unknown>) : {}) as Record<string, unknown>
+  const brief = (p.brief && typeof p.brief === 'object' ? (p.brief as Record<string, unknown>) : {}) as Record<string, unknown>
+  const arr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
+  return {
+    descriptor: typeof brief.descriptor === 'string' ? brief.descriptor : undefined,
+    styleTags: arr(brief.styleTags),
+    colorTags: arr(brief.colorTags),
+    elementTags: arr(brief.elementTags),
+    palette: arr(p.palette),
+  }
 }
