@@ -28,6 +28,7 @@ export * from './lib/pack-composition'
 export * from './lib/lead'
 export * from './lib/pack-model'
 export * from './lib/template-match'
+export * from './lib/packaging-surfaces'
 export { brandThemeToCssVars } from './brand-theme'
 export * from './fonts'
 
