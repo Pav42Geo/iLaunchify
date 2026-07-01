@@ -467,7 +467,69 @@ over the code defaults.
 
 ---
 
-## 14. The one-sentence pitch
+## 14. Coordinated sets & variant families (SHIPPED 2026-06-23)
+
+Two *different* multi-output axes. Both produce a consistent "family," but by
+different mechanisms — and they compose into a matrix.
+
+### 14a. Coordinated SET — one product, many die-lines (jar front + top, box + carton…)
+Applies to **any** multi-die-line package, not just jars. The creator multi-selects
+the die-lines ("design as a coordinated set"); we generate them from **one shared brief
++ one shared seed**, so they come out as a family (same palette, motif, mood) while each
+is generated **into its own die-line** (respecting its geometry, bleed, safe area). Each
+label still carries its **own truth layer** (the front holds the full Facts panel +
+ingredients; the round top holds just brand + net qty).
+
+Compliance is evaluated at the **PACKAGE level**: a mandatory element only has to appear
+on **one** surface of the pack, so we UNION the satisfied elements across all the pack's
+labels and score once.
+
+Engine — `@ilaunchify/ui/planGenerationSet(brief, targets[])` → `{ seed, perDieline[],
+compliance }`; package roll-up via `@ilaunchify/ai-design/evaluateCompliancePackage`.
+Pure, golden-tested. Cost: one draft cycle for the family; finalize MP summed across the
+labels the creator keeps.
+
+### 14b. Variant FAMILY (flavors) — one die-line, N variants (7 protein-bar flavors)
+Identical brand look; only the **flavour accent colour** + the **flavour design element**
+differ. The rule that makes them *identical*: you **cannot** independently AI-generate
+each flavour (diffusion is stochastic → they'd drift). So it's **base-then-derive**:
+1. Generate + approve **one MASTER** design (the brand look).
+2. **Derive** each flavour deterministically — recolour the master's `FLAVOR_ACCENT`
+   colour role to the flavour's hex, and swap the flavour-accent frame's element
+   (sliced strawberry vs cocoa). **Everything else is locked** (layout, typography,
+   logo, motif, geometry, all truth zones) → guaranteed identical brand.
+
+Each flavour still gets its **own** truth layer — its recipe drives its own Facts panel
+(different macros per flavour) — via the existing per-flavor labels model. Only the
+CREATIVE derivation is shared.
+
+**Batch or add-one-later:** derivative seeds are a stable function of the master seed +
+flavour id (`master:flavorId`), so generating all 7 at once and adding an 8th flavour
+next month yield the same deterministic result for a given flavour. The creator specifies
+"how many + the specifics of each" (name, accent colour, element) in one table.
+
+Engine — `@ilaunchify/ai-design/planFlavorSeries(masterSeed, flavors[])` →
+`{ masterSeed, derivatives[], lockedInvariants[], rejected[] }`. Pure, golden-tested;
+rejects duplicate ids / bad hex (surfaced, never silently dropped). The recolour uses the
+existing recolor engine + `colorRoles`; the flavour element is one small AI render placed
+into the SAME frame.
+
+**Cost efficiency:** a 7-flavour series ≈ **1 full generation + 7 small element renders +
+7 recolours** — far cheaper (and far more consistent) than 7 full generations. Meters
+accordingly.
+
+### 14c. The matrix (set × flavors)
+A jar with front + top labels **and** 7 flavours = die-lines × variants. Flavour 1 is the
+coordinated SET (master); flavours 2–7 derive by recolour + element-swap **across every
+label in the set** — so the whole line stays a family in both dimensions.
+
+**Guardrail (both):** families share the *creative* layer; each member keeps its own
+correct *truth* layer, and compliance is enforced per member (variant) and per package
+(set). Consistency never overrides correctness.
+
+---
+
+## 15. The one-sentence pitch
 
 > Describe it in plain words; we generate four on-brand concepts **into your real
 > die-line**, drop in your **true** ingredients, allergens, Nutrition Facts, barcode and

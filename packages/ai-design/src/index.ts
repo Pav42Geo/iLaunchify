@@ -17,6 +17,7 @@ export {
 export {
   requiredElements,
   evaluateCompliance,
+  evaluateCompliancePackage,
   elementKindsForFrame,
   satisfiedElementsFromFrames,
   type LabelingDomain,
@@ -27,3 +28,10 @@ export {
   type MandatoryElement,
   type ComplianceReport,
 } from './mandatory'
+
+export {
+  planFlavorSeries,
+  type FlavorSpec,
+  type FlavorDerivative,
+  type FlavorSeriesPlan,
+} from './flavorSeries'

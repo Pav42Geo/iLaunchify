@@ -193,6 +193,22 @@ export interface ComplianceReport {
 }
 
 /**
+ * PACKAGE-LEVEL compliance for a multi-die-line package (Coordinated sets, §15).
+ * On a jar (front label + top label) or any multi-label pack, a mandatory element
+ * only has to appear on ONE surface of the package — not every label. So we UNION
+ * the satisfied element kinds across all the package's surfaces, then score once.
+ */
+export function evaluateCompliancePackage(
+  domain: LabelingDomain,
+  satisfiedPerSurface: ReadonlyArray<ReadonlyArray<LabelElementKind>>,
+  market: MarketCode = 'US',
+): ComplianceReport {
+  const union = new Set<LabelElementKind>()
+  for (const surface of satisfiedPerSurface) for (const k of surface) union.add(k)
+  return evaluateCompliance(domain, [...union], market)
+}
+
+/**
  * Score a design against its domain × market pack. `satisfied` is the set of element
  * kinds the design already provides (truth layer rendered them). Gates export.
  */

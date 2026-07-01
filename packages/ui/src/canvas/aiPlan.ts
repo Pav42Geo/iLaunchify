@@ -25,6 +25,7 @@ import {
 import {
   assemblePrompt,
   evaluateCompliance,
+  evaluateCompliancePackage,
   satisfiedElementsFromFrames,
   domainPreset,
   type ComplianceReport,
@@ -105,4 +106,56 @@ export function planGeneration(input: PlanGenerationInput): GenerationPlan {
   const compliance = evaluateCompliance(domain, satisfied, market)
 
   return { prompt, negativePrompt, maskSvg, previewSvg, reservedLabels, presentKinds: present, compliance }
+}
+
+// -----------------------------------------------------------------------------
+// Coordinated sets / brand families (§15). One product, MULTIPLE die-lines (a jar's
+// front + circular top label, a box + its outer carton, any multi-die-line pack).
+// One SHARED brief + one SHARED SEED → each die-line generated as a family member,
+// and compliance evaluated at the PACKAGE level (a mandatory element only needs to
+// appear on ONE surface of the pack). Same input → same set.
+// -----------------------------------------------------------------------------
+
+export interface SetTarget {
+  id: string
+  label: string
+  layout: FrameLayout
+  surface: SurfaceDims
+  surfaceId?: string
+}
+
+/** The shared creative brief for the whole set (no per-die-line layout/surface). */
+export type SetBrief = Omit<PlanGenerationInput, 'layout' | 'surface' | 'surfaceId' | 'artByFrameId'>
+
+export interface GenerationSetPlan {
+  /** Deterministic seed shared by every die-line so they render as a family. */
+  seed: string
+  perDieline: { id: string; label: string; plan: GenerationPlan }[]
+  /** Package-level roll-up — required elements only need to appear on ONE surface. */
+  compliance: ComplianceReport
+}
+
+/** djb2 — tiny stable string hash so the shared seed is reproducible. */
+function seedFrom(s: string): string {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0
+  return String(h)
+}
+
+/**
+ * Plan a coordinated set: one shared brief + seed across N die-lines, with a
+ * package-level compliance roll-up. Works for ANY multi-die-line package.
+ */
+export function planGenerationSet(brief: SetBrief, targets: ReadonlyArray<SetTarget>): GenerationSetPlan {
+  const seed = seedFrom(`${brief.productDescriptor}|${brief.brandName ?? ''}|${targets.map((t) => t.id).join(',')}`)
+  const perDieline = targets.map((t) => ({
+    id: t.id,
+    label: t.label,
+    plan: planGeneration({ ...brief, layout: t.layout, surface: t.surface, surfaceId: t.surfaceId }),
+  }))
+  const satisfiedPerSurface = perDieline.map((d) =>
+    satisfiedElementsFromFrames(d.plan.presentKinds, brief.domain),
+  )
+  const compliance = evaluateCompliancePackage(brief.domain, satisfiedPerSurface, brief.market ?? 'US')
+  return { seed, perDieline, compliance }
 }
