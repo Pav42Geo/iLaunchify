@@ -185,9 +185,11 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
   projected onto the model, drag-rotate + zoom, and a **"Place marker"** raycast mode that
   sets the selected surface's 3D `hotspot.anchor`. (Refinements to eyeball: glTF-import
   models + exact per-mesh borders come with P1.5.)
-- **P3 — Surface → die-line binding + click-through.** 🟡 Binding DONE (per-surface
-  die-line multi-select in the editor). Remaining: click a surface → inline 2D Fabric
-  editor (reuse `PackagingStudioStep`'s 3D⇄die-line editor); curate + save.
+- **P3 — Surface → die-line binding + click-through.** ✅ DONE 2026-07-01. Per-surface
+  die-line multi-select binding, and **"Edit die-line" opens the shared `DielineFrameEditor`
+  in place** (full view) loaded with the die-line's frames/trim/safe; auto-persists via
+  `saveDielineFrames`; "Back to surfaces" returns. (Backdrop image = null for now — frames
+  on a blank surface until signed-URL wiring; real backdrop lands with P1.5/storage.)
 - **P4 — Partner consumption.** Ensure the Add-Product step reads the enriched surfaces so
   partner surface-clicks route to the right die-line.
 - **P5 — Polish.** Materials/scene (Pacdora-style), export, per-surface previews.

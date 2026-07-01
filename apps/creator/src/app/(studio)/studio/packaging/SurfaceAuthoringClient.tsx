@@ -7,9 +7,9 @@
 // already authors everything the surface JSON carries (incl. the die-line binding).
 
 import * as React from 'react'
-import { Plus, Trash2, Save, Loader2, Check, Cuboid, Link2, Crosshair } from 'lucide-react'
-import type { PackagingSurface, SurfaceRole, SurfacePurpose } from '@ilaunchify/ui'
-import { savePackagingSurfaces } from './actions'
+import { Plus, Trash2, Save, Loader2, Check, Cuboid, Link2, Crosshair, ArrowLeft, PencilRuler } from 'lucide-react'
+import { DielineFrameEditor, DEFAULT_FRAME_LAYOUT, type PackagingSurface, type SurfaceRole, type SurfacePurpose } from '@ilaunchify/ui'
+import { savePackagingSurfaces, getDielineEditorData, saveDielineFrames, type DielineEditorData } from './actions'
 import type { PackagingAuthoringData, BindableDieline } from './loader'
 import { Packaging3DView } from './Packaging3DView'
 
@@ -28,6 +28,18 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
   const [err, setErr] = React.useState<string | null>(null)
   const [selectedKey, setSelectedKey] = React.useState<string | null>(data.surfaces[0]?.key ?? null)
   const [placeMode, setPlaceMode] = React.useState(false)
+  // Inline 2D die-line editor (click a bound surface's die-line → opens "in place").
+  const [editing, setEditing] = React.useState<{ id: string; label: string; data: DielineEditorData } | null>(null)
+  const [loadingDieline, setLoadingDieline] = React.useState<string | null>(null)
+
+  const dielineLabel = React.useMemo(() => new Map(data.dielines.map((d) => [d.id, d.label])), [data.dielines])
+
+  async function openDieline(dielineId: string) {
+    setLoadingDieline(dielineId)
+    const d = await getDielineEditorData(dielineId).catch(() => null)
+    setLoadingDieline(null)
+    if (d) setEditing({ id: dielineId, label: dielineLabel.get(dielineId) ?? 'Die-line', data: d })
+  }
 
   function update(i: number, patch: Partial<PackagingSurface>) {
     setSurfaces((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
@@ -59,6 +71,31 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
     setSaving(false)
     if (res && res.ok) setSaved(true)
     else setErr(res && !res.ok ? res.error : 'Could not save.')
+  }
+
+  // Inline 2D die-line editor — opens "in the same place" (full view) for the surface's die-line.
+  if (editing) {
+    const ed = editing
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-white">
+        <DielineFrameEditor
+          initialLayout={structuredClone(ed.data.frames ?? DEFAULT_FRAME_LAYOUT)}
+          initialTrim={ed.data.trim}
+          initialSafe={ed.data.safe}
+          backdrop={{ fileUrl: ed.data.backdropUrl, isPdf: false }}
+          onPersist={async ({ layout, trim, safe }) => {
+            const res = await saveDielineFrames(ed.id, { layout, trim, safe }).catch(() => null)
+            return res && res.ok ? { ok: true } : { ok: false, error: (res && !res.ok && res.error) || 'Could not save.' }
+          }}
+          topBarLeft={
+            <button onClick={() => setEditing(null)} className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 px-3 py-1.5 text-[12.5px] font-semibold text-ink-700 hover:border-ink-400">
+              <ArrowLeft className="h-4 w-4" /> Back to surfaces
+              <span className="ml-1 text-ink-400">· {ed.label}</span>
+            </button>
+          }
+        />
+      </div>
+    )
   }
 
   return (
@@ -198,6 +235,21 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
                           </button>
                         )
                       })}
+                    </div>
+                  )}
+                  {/* Open the bound die-line's 2D editor in place */}
+                  {s.dielineIds.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {s.dielineIds.map((id) => (
+                        <button
+                          key={id}
+                          onClick={() => openDieline(id)}
+                          disabled={loadingDieline === id}
+                          className="inline-flex items-center gap-1 rounded-full bg-ink-900 px-2.5 py-1 text-[10.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+                        >
+                          {loadingDieline === id ? <Loader2 className="h-3 w-3 animate-spin" /> : <PencilRuler className="h-3 w-3" />} Edit {dielineLabel.get(id) ?? 'die-line'}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
