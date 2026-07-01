@@ -1485,20 +1485,64 @@ export async function getProductPassport(draftId: string): Promise<PassportResul
       // customMeta column not present yet — degrade to [].
     }
 
-    // ---- Per-flavor Nutrition Facts columns (FOOD multi-flavor) ----
-    // The Passport's "View all flavor labels" feeds LabelViewerModal a column
-    // per flavor. Each unit in a variety pack carries its OWN single-flavor
-    // label; absent per-flavor nutrient overrides (a live-builder feature), that
-    // single-flavor panel is the base recipe panel. We attach the flavor name +
-    // base PanelData so the reviewer sees one labelled column per flavor.
+    // ---- Per-flavor Nutrition Facts panels (FOOD multi-flavor) ----
+    // Each FOOD flavor that carries its OWN recipe (FlavorRecipeSlot) gets a
+    // panel computed from THAT recipe — same engine as the base panel above — so
+    // the "View all flavor labels" modal shows each flavor's real label, not the
+    // base panel repeated. Flavors without a per-flavor recipe fall back to the
+    // base panel. Cast-guarded (FlavorRecipe* post-date the client until db:push).
+    const flavorPanelMap = new Map<string, { panel: PanelData; contains: string | null }>()
+    if (base.labelingType === 'FOOD' && base.flavors.length > 1 && !factsPanel?.declared) {
+      try {
+        const variant = tpl?.variants[0]
+        const servingSizeG = Number(variant?.servingSizeG) || 0
+        const servingsPerPackage = Number(variant?.servingsPerContainer) || 1
+        if (servingSizeG > 0) {
+          const FSEL = { select: { name: true, internalName: true, nutritionPer100g: true, densityGPerML: true, allergenFlags: true } } as const
+          const fps = await (prisma as unknown as {
+            flavorPreset: { findMany: (a: unknown) => Promise<Array<{
+              id: string
+              recipeSlots: Array<{ weightG: unknown; baseIngredient: { name: string; internalName: string | null; nutritionPer100g: unknown; densityGPerML: number | null; allergenFlags: string[] | null } }>
+            }>> }
+          }).flavorPreset.findMany({
+            where: { productTemplateId: draftId, status: 'ACTIVE' },
+            select: { id: true, recipeSlots: { orderBy: { displayOrder: 'asc' }, select: { weightG: true, baseIngredient: FSEL } } },
+          })
+          for (const fp of fps) {
+            if (fp.recipeSlots.length === 0) continue
+            const rows = composeMarketplaceRows(
+              fp.recipeSlots.map((s) => ({
+                weightG: Number(s.weightG) || 0,
+                base: { name: s.baseIngredient.internalName ?? s.baseIngredient.name, per100g: (s.baseIngredient.nutritionPer100g ?? {}) as Record<string, number>, densityGPerMl: s.baseIngredient.densityGPerML ?? undefined },
+              })),
+              [],
+              {},
+            )
+            const result = calculateLabel(rows, { basis: 'serving', servingSizeG, servingsPerPackage }, { audience: tpl?.intendedAgeGroup ?? 'GENERAL' })
+            const panel = toPanelData(result, { suggestedServing: variant?.servingSizeDesc ?? undefined, showVoluntaryFats: true })
+            const contains = composeContainsAllergens(
+              fp.recipeSlots.map((s, i) => ({ id: `slot-${i}`, allergens: passportDisplayAllergens(s.baseIngredient.allergenFlags) })),
+              [],
+              {},
+            )
+            flavorPanelMap.set(fp.id, { panel, contains: contains.length ? `Contains: ${contains.join(', ')}.` : null })
+          }
+        }
+      } catch {
+        // Schema not migrated / compute failed — fall back to the base panel below.
+      }
+    }
+
+    // The Passport's "View all flavor labels" feeds LabelViewerModal a column per
+    // flavor — each flavor's own panel when it has a per-flavor recipe, else the
+    // base recipe panel.
     const flavorColumns: Array<{ label: string; data: PanelData; contains?: string }> = []
     if (base.labelingType === 'FOOD' && base.flavors.length > 1 && factsPanel?.panel) {
       for (const f of base.flavors) {
-        flavorColumns.push({
-          label: f.name,
-          data: factsPanel.panel,
-          ...(factsPanel.contains ? { contains: factsPanel.contains } : {}),
-        })
+        const own = flavorPanelMap.get(f.id)
+        const data = own?.panel ?? factsPanel.panel
+        const contains = own ? own.contains : factsPanel.contains
+        flavorColumns.push({ label: f.name, data, ...(contains ? { contains } : {}) })
       }
     }
     // Per-flavor Supplement Facts / Guaranteed Analysis (multi-flavor supplement +
