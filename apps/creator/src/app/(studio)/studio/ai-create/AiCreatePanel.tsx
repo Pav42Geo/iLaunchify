@@ -1,7 +1,7 @@
 'use client'
 
 // =============================================================================
-// AI Create panel (AI_PACKAGING_GENERATOR §8, P2).
+// AI Create panel (AI_PACKAGING_GENERATOR §8, P2 + §16 output).
 //
 // DIE-LINE-FIRST by design (Pavel 2026-06-23): the generator always targets an
 // EXISTING die-line — or one die-line of a SET (primary + outer carton, a variety
@@ -9,16 +9,23 @@
 // never invent a structure. Everything downstream (prompt, mask, compliance,
 // preview) is computed by planGeneration() for the selected die-line.
 //
-// Prop-driven + presentational: no DB, no model. onGenerate is the P3 seam — until
-// a provider is wired it returns nothing and we show the deterministic placeholder
-// composite. Tier-gated: Builder/Agency creators + Admin; Maker is steered to the
-// premium template library.
+// Full-page surface — carries the rich intake the in-canvas drawer keeps compact:
+//   • Brand identity — Follow-my-Brand-Kit (lock palette + logo as the AI reference)
+//     vs Packaging-idea (manual: brand name, market, audience, custom colours, logo).
+//   • Output settings — tier-clamped preset + fine-tune (format/DPI/CMYK/marks…),
+//     from the pure @ilaunchify/imagegen output policy; every downgrade is shown.
+//   • Usage meters — draft cycles / finalize budget / storage against the tier caps.
+//
+// Prop-driven + presentational: no DB, no model. onGenerate is the P3 seam; brand
+// reference + output ride along in its ctx. Tier-gated: Builder/Agency + Admin;
+// Maker explores everything and is steered to the premium template library.
 // =============================================================================
 
 import { useMemo, useState } from 'react'
-import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette } from 'lucide-react'
+import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge } from 'lucide-react'
 import { planGeneration, planGenerationSet, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief } from '@ilaunchify/ui'
 import { planFlavorSeries, type LabelingDomain, type MarketCode, type FlavorSpec, type FlavorSeriesPlan } from '@ilaunchify/ai-design'
+import { clampOutput, formatBytes, type OutputPolicy, type OutputSettings, type OutputFormat } from '@ilaunchify/imagegen'
 
 export interface DielineTarget {
   id: string
@@ -32,10 +39,28 @@ export interface DielineTarget {
 
 export type CreatorTier = 'maker' | 'builder' | 'agency' | 'admin'
 
+/** Per-creator usage this period, for the meters. */
+export interface AiUsageSnapshot {
+  draftCyclesUsed: number
+  draftCyclesCap: number
+  finalizeMpUsed: number
+  finalizeMpBudget: number
+  storageBytesUsed: number
+  storageBytesCap: number
+}
+
+/** Extra provider context threaded through onGenerate (brand reference + output). */
+export interface GenerateContext {
+  brandRefUrl?: string
+  output?: OutputSettings
+}
+
 export interface AiCreatePanelProps {
   productDescriptor: string
   brandName?: string
   brandPalette?: string[]
+  /** Primary brand logo (public URL) — shown + used as the AI reference when Follow is on. */
+  brandLogoUrl?: string
   substrateLabel?: string
   domain: LabelingDomain
   market?: MarketCode
@@ -46,14 +71,18 @@ export interface AiCreatePanelProps {
   elementOptions?: string[]
   tier: CreatorTier
   creditsRemaining?: number
+  /** Tier-resolved output policy (allowed formats/DPI/caps + defaults). When absent the output section is hidden. */
+  outputPolicy?: OutputPolicy
+  /** Usage snapshot for the meters. When absent the meters are hidden. */
+  usage?: AiUsageSnapshot
   /**
    * Optional flavour variants (e.g. 7 protein-bar flavours). When present with >1
    * entry, unlocks Flavour-family mode: generate ONE master, then derive each flavour
    * by recolouring its accent + swapping its element — identical brand, different accent.
    */
   flavors?: FlavorSpec[]
-  /** P3 provider: given the plan + die-line, return N variation image refs. */
-  onGenerate?: (plan: GenerationPlan, dielineId: string) => Promise<string[]>
+  /** P3 provider: given the plan + die-line (+ brand ref / output ctx), return N variation image refs. */
+  onGenerate?: (plan: GenerationPlan, dielineId: string, ctx?: GenerateContext) => Promise<string[]>
   /**
    * Load a generated concept into the Design Studio canvas for editing (and, in admin
    * mode, saving as a library template via the existing template-author flow). The
@@ -67,6 +96,14 @@ export interface AiCreatePanelProps {
 const DEFAULT_STYLES = ['Minimal', 'Vintage', 'Luxury', 'Playful', 'Modern', 'Hand-drawn', 'Bold', 'Natural', 'Warm', 'Geometric']
 const DEFAULT_COLORS = ['Vibrant', 'Muted', 'Warm Tones', 'Cool Tones', 'Pastel', 'Earthy', 'Monochrome', 'Jewel Tones']
 const DEFAULT_ELEMENTS = ['Botanicals', 'Fruits', 'Liquid Swirls', 'Patterns', 'Abstract Shapes', 'Doodles', 'Waves', 'Celestial']
+
+interface ManualBrand {
+  brandName: string
+  market: string
+  audience: string
+  colours: string[]
+  logoDataUrl?: string
+}
 
 function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   return (
@@ -90,6 +127,8 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const multi = dielines.length > 1
   const flavors = props.flavors ?? []
   const hasFlavors = flavors.length > 1
+  const kitPalette = props.brandPalette ?? []
+  const hasKit = kitPalette.length > 0 || Boolean(props.brandLogoUrl)
 
   const [scope, setScope] = useState<'single' | 'set' | 'flavors'>('single')
   const [selectedId, setSelectedId] = useState(dielines[0]?.id ?? '')
@@ -98,30 +137,49 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const [colors, setColors] = useState<string[]>([])
   const [elements, setElements] = useState<string[]>([])
   const [variations, setVariations] = useState<string[]>([])
-  // In set-mode we keep one preview per die-line instead of 4 concepts.
   const [setVariants, setSetVariants] = useState<{ id: string; label: string; svg: string }[]>([])
-  // In flavour-mode the master must be generated first, then flavours derive from it.
   const [masterGenerated, setMasterGenerated] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  // --- Brand identity ---
+  const [brandMode, setBrandMode] = useState<'kit' | 'manual'>(hasKit ? 'kit' : 'manual')
+  const [follow, setFollow] = useState(true)
+  const [manual, setManual] = useState<ManualBrand>({ brandName: props.brandName ?? '', market: '', audience: '', colours: [] })
+
+  // --- Output settings ---
+  const policy = props.outputPolicy
+  const [output, setOutput] = useState<OutputSettings | null>(policy ? clampOutput(policy.defaults, policy).settings : null)
+  const [presetId, setPresetId] = useState<string>('default')
 
   const setMode = multi && scope === 'set'
   const flavorMode = hasFlavors && scope === 'flavors'
   const selected = dielines.find((d) => d.id === selectedId) ?? dielines[0]
 
+  const manualMode = brandMode === 'manual'
+  // Effective brand inputs the brief + provider use.
+  const effBrandName = manualMode ? manual.brandName || undefined : props.brandName
+  const effPalette = manualMode ? (manual.colours.length ? manual.colours : undefined) : kitPalette.length ? kitPalette : undefined
+  const brandRefUrl = manualMode ? manual.logoDataUrl : follow ? props.brandLogoUrl : undefined
+  const referencePhrases = useMemo(
+    () => (manualMode ? [manual.market && `for ${manual.market}`, manual.audience && `audience: ${manual.audience}`].filter(Boolean) as string[] : []),
+    [manualMode, manual.market, manual.audience],
+  )
+
   // Shared creative brief — identical for single or set; only the die-line differs.
   const brief = useMemo<SetBrief>(
     () => ({
       productDescriptor: descriptor,
-      brandName: props.brandName,
-      brandPalette: props.brandPalette,
+      brandName: effBrandName,
+      brandPalette: effPalette,
       substrateLabel: props.substrateLabel,
       styleTags: styles,
       colorTags: colors,
       elementTags: elements,
+      referencePhrases,
       domain,
       market,
     }),
-    [descriptor, styles, colors, elements, props.brandName, props.brandPalette, props.substrateLabel, domain, market],
+    [descriptor, effBrandName, effPalette, styles, colors, elements, referencePhrases, props.substrateLabel, domain, market],
   )
 
   const plan = useMemo<GenerationPlan | null>(() => {
@@ -129,7 +187,6 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     return planGeneration({ ...brief, layout: selected.layout, surface: selected.surface })
   }, [selected, brief])
 
-  // Coordinated set: one shared seed across every die-line + package-level compliance.
   const setPlan = useMemo<GenerationSetPlan | null>(() => {
     if (!setMode) return null
     return planGenerationSet(
@@ -138,7 +195,6 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     )
   }, [setMode, brief, dielines])
 
-  // Flavour family: derive N flavours from ONE approved master on the selected die-line.
   const flavorPlan = useMemo<FlavorSeriesPlan | null>(() => {
     if (!flavorMode || !plan) return null
     return planFlavorSeries(`${descriptor}|${selected?.id ?? ''}`, flavors)
@@ -147,15 +203,16 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
     set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
 
+  const genCtx: GenerateContext = { brandRefUrl, output: output ?? undefined }
+
   async function generate() {
     if (setMode) {
       if (!setPlan) return
       setBusy(true)
       try {
-        // P3 provider fills each surface; P2 shows the per-die-line composite.
         const out: { id: string; label: string; svg: string }[] = []
         for (const d of setPlan.perDieline) {
-          const refs = props.onGenerate ? await props.onGenerate(d.plan, d.id) : []
+          const refs = props.onGenerate ? await props.onGenerate(d.plan, d.id, genCtx) : []
           out.push({ id: d.id, label: d.label, svg: refs[0] ?? d.plan.previewSvg })
         }
         setSetVariants(out)
@@ -165,11 +222,10 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
       return
     }
     if (flavorMode) {
-      // Only the MASTER is generated; flavours derive from it (recolour + element swap).
       if (!plan || !selected) return
       setBusy(true)
       try {
-        if (props.onGenerate) await props.onGenerate(plan, selected.id)
+        if (props.onGenerate) await props.onGenerate(plan, selected.id, genCtx)
         setMasterGenerated(true)
       } finally {
         setBusy(false)
@@ -179,15 +235,13 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     if (!plan || !selected) return
     setBusy(true)
     try {
-      const refs = props.onGenerate ? await props.onGenerate(plan, selected.id) : []
-      // P2 with no provider → show the deterministic placeholder composite ×4.
+      const refs = props.onGenerate ? await props.onGenerate(plan, selected.id, genCtx) : []
       setVariations(refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg])
     } finally {
       setBusy(false)
     }
   }
 
-  // Switching scope clears stale results so the preview column stays truthful.
   function switchScope(next: 'single' | 'set' | 'flavors') {
     setScope(next)
     setVariations([])
@@ -295,7 +349,21 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
           )}
         </div>
 
-        {/* Intake scaffold */}
+        {/* Brand identity — Follow a kit, or enter it by hand. */}
+        <BrandIdentitySection
+          mode={brandMode}
+          onMode={setBrandMode}
+          hasKit={hasKit}
+          kitPalette={kitPalette}
+          kitLogoUrl={props.brandLogoUrl}
+          kitBrandName={props.brandName}
+          follow={follow}
+          onFollow={setFollow}
+          manual={manual}
+          onManual={setManual}
+        />
+
+        {/* Describe */}
         <div>
           <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-ink-500">Describe the design</label>
           <textarea
@@ -304,11 +372,27 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
             rows={2}
             className="w-full resize-none rounded-lg border border-ink-200 px-3 py-2 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-200"
           />
+          <p className="mt-1 text-[11px] text-ink-400">Chips + prompt tone are domain-tuned for {domainLabel(domain)}.</p>
         </div>
 
         <ChipGroup title="Style" options={styleOptions} selected={styles} onToggle={(v) => toggle(styles, setStyles, v)} />
         <ChipGroup title="Colour mood" options={colorOptions} selected={colors} onToggle={(v) => toggle(colors, setColors, v)} />
         <ChipGroup title="Elements" options={elementOptions} selected={elements} onToggle={(v) => toggle(elements, setElements, v)} />
+
+        {/* Output settings — tier-clamped preset + fine-tune. */}
+        {policy && output && (
+          <OutputSection
+            policy={policy}
+            tier={tier}
+            value={output}
+            onChange={setOutput}
+            presetId={presetId}
+            onPreset={setPresetId}
+          />
+        )}
+
+        {/* Usage meters. */}
+        {props.usage && <UsageMeters usage={props.usage} />}
 
         {gated ? (
           <a
@@ -355,7 +439,6 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
             )}
 
         {setMode ? (
-          // Coordinated set: one card per die-line, all sharing the family look.
           <div className="grid grid-cols-2 gap-3">
             {(setVariants.length > 0 ? setVariants : (setPlan?.perDieline ?? []).map((d) => ({ id: d.id, label: d.label, svg: d.plan.previewSvg }))).map((v) => (
               <div key={v.id} className="rounded-xl border border-ink-200 bg-white p-2">
@@ -375,7 +458,6 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
             )}
           </div>
         ) : flavorMode ? (
-          // Flavour family: locked master + N derived flavours (recolour + element swap).
           <div className="space-y-3">
             <div className="rounded-2xl border border-ink-200 bg-white p-4">
               <div className="mb-2 flex items-center justify-between">
@@ -449,6 +531,306 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   )
 }
 
+// -----------------------------------------------------------------------------
+// Brand identity
+// -----------------------------------------------------------------------------
+
+function BrandIdentitySection({
+  mode,
+  onMode,
+  hasKit,
+  kitPalette,
+  kitLogoUrl,
+  kitBrandName,
+  follow,
+  onFollow,
+  manual,
+  onManual,
+}: {
+  mode: 'kit' | 'manual'
+  onMode: (m: 'kit' | 'manual') => void
+  hasKit: boolean
+  kitPalette: string[]
+  kitLogoUrl?: string
+  kitBrandName?: string
+  follow: boolean
+  onFollow: (v: boolean) => void
+  manual: ManualBrand
+  onManual: (m: ManualBrand) => void
+}) {
+  function onLogoFile(file?: File) {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => onManual({ ...manual, logoDataUrl: typeof reader.result === 'string' ? reader.result : undefined })
+    reader.readAsDataURL(file)
+  }
+  function addColour(hex: string) {
+    const v = hex.trim()
+    if (!/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) || manual.colours.includes(v)) return
+    onManual({ ...manual, colours: [...manual.colours, v].slice(0, 6) })
+  }
+
+  return (
+    <div>
+      <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-500">
+        Brand identity <span className="font-medium normal-case tracking-normal text-ink-400">— follow a kit, or enter it manually</span>
+      </p>
+      <div className="mb-2 flex rounded-lg border border-ink-200 bg-ink-50 p-0.5 text-[12px] font-semibold">
+        <button
+          onClick={() => onMode('kit')}
+          disabled={!hasKit}
+          className={`flex-1 rounded-md px-2 py-1.5 transition disabled:opacity-40 ${mode === 'kit' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500'}`}
+        >
+          Brand Kit
+        </button>
+        <button
+          onClick={() => onMode('manual')}
+          className={`flex-1 rounded-md px-2 py-1.5 transition ${mode === 'manual' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500'}`}
+        >
+          Packaging idea (manual)
+        </button>
+      </div>
+
+      {mode === 'kit' ? (
+        <div className="rounded-lg border border-ink-200 bg-white p-3">
+          {!hasKit ? (
+            <p className="text-[11.5px] text-ink-500">No Brand Kit set up yet — switch to “Packaging idea (manual)” to describe it by hand.</p>
+          ) : (
+            <>
+              <label className="flex cursor-pointer items-start gap-2">
+                <input type="checkbox" checked={follow} onChange={(e) => onFollow(e.target.checked)} className="mt-0.5 h-4 w-4 accent-pink-600" />
+                <span className="text-[12px] text-ink-700">
+                  <span className="font-semibold text-ink-900">Follow my Brand Kit</span> — lock the palette{kitLogoUrl ? ' + use the logo as the AI reference' : ''}.
+                </span>
+              </label>
+              <div className="mt-2 flex items-center gap-2">
+                {kitLogoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={kitLogoUrl} alt="Brand logo" className="h-9 w-9 rounded border border-ink-200 object-contain" />
+                )}
+                <div className="flex flex-wrap gap-1">
+                  {kitPalette.map((c) => (
+                    <span key={c} className="h-6 w-6 rounded-full border border-ink-200" style={{ backgroundColor: c }} title={c} />
+                  ))}
+                  {kitPalette.length === 0 && <span className="text-[11px] text-ink-400">No palette colours saved.</span>}
+                </div>
+              </div>
+              {kitBrandName && <p className="mt-2 text-[11px] text-ink-500">Brand: {kitBrandName}</p>}
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2 rounded-lg border border-ink-200 bg-white p-3">
+          <Field label="Brand name" value={manual.brandName} placeholder="Your brand" onChange={(v) => onManual({ ...manual, brandName: v })} />
+          <Field label="Target market" value={manual.market} placeholder="e.g. US specialty grocery" onChange={(v) => onManual({ ...manual, market: v })} />
+          <Field label="Target audience" value={manual.audience} placeholder="e.g. premium gift shoppers" onChange={(v) => onManual({ ...manual, audience: v })} />
+
+          <div>
+            <p className="mb-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">Custom colours</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {manual.colours.map((c) => (
+                <span key={c} className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-ink-50 py-0.5 pl-1 pr-1.5 text-[11px]">
+                  <span className="h-3.5 w-3.5 rounded-full border border-ink-200" style={{ backgroundColor: c }} />
+                  {c}
+                  <button onClick={() => onManual({ ...manual, colours: manual.colours.filter((x) => x !== c) })} className="text-ink-400 hover:text-ink-700">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              <input
+                type="color"
+                onChange={(e) => addColour(e.target.value)}
+                className="h-7 w-7 cursor-pointer rounded border border-ink-200 bg-white p-0.5"
+                title="Add a colour"
+              />
+            </div>
+          </div>
+
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink-700 hover:bg-ink-50">
+            <Upload className="h-3.5 w-3.5" /> {manual.logoDataUrl ? 'Replace logo' : 'Upload logo'}
+            <input type="file" accept="image/*" hidden onChange={(e) => onLogoFile(e.target.files?.[0])} />
+          </label>
+          {manual.logoDataUrl && (
+            <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={manual.logoDataUrl} alt="Uploaded logo" className="h-9 w-9 rounded border border-ink-200 object-contain" />
+              <button onClick={() => onManual({ ...manual, logoDataUrl: undefined })} className="text-[11px] text-ink-400 hover:text-ink-700">
+                Remove
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Field({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="mb-0.5 block text-[10.5px] font-bold uppercase tracking-wider text-ink-500">{label}</label>
+      <input
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border border-ink-200 px-2.5 py-1.5 text-[12.5px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-200"
+      />
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Output settings
+// -----------------------------------------------------------------------------
+
+function OutputSection({
+  policy,
+  tier,
+  value,
+  onChange,
+  presetId,
+  onPreset,
+}: {
+  policy: OutputPolicy
+  tier: CreatorTier
+  value: OutputSettings
+  onChange: (s: OutputSettings) => void
+  presetId: string
+  onPreset: (id: string) => void
+}) {
+  const presets = useMemo(() => buildPresets(policy), [policy])
+  const clamp = clampOutput(value, policy)
+
+  function applyPreset(id: string) {
+    onPreset(id)
+    if (id === 'default') return onChange(clampOutput(policy.defaults, policy).settings)
+    const p = presets.find((x) => x.id === id)
+    if (p) onChange(clampOutput(p.settings, policy).settings)
+  }
+
+  function set<K extends keyof OutputSettings>(k: K, v: OutputSettings[K]) {
+    onPreset('custom')
+    onChange(clampOutput({ ...value, [k]: v }, policy).settings)
+  }
+
+  return (
+    <div>
+      <p className="mb-1.5 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-ink-500">
+        <Sliders className="h-3.5 w-3.5" /> Output <span className="font-medium normal-case tracking-normal text-ink-400">— preset or fine-tune (tier-clamped)</span>
+      </p>
+
+      <select
+        value={presetId}
+        onChange={(e) => applyPreset(e.target.value)}
+        className="mb-2 w-full rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-[12.5px] text-ink-900"
+      >
+        <option value="default">Recommended for your plan</option>
+        {presets.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+        <option value="custom">Custom</option>
+      </select>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Select
+          label="Format"
+          value={value.format}
+          options={policy.allowedFormats.map((f) => ({ value: f, label: f }))}
+          onChange={(v) => set('format', v as OutputFormat)}
+        />
+        <Select
+          label="Resolution"
+          value={String(value.dpi)}
+          options={dpiChoices(policy.maxDpi).map((d) => ({ value: String(d), label: `${d} DPI` }))}
+          onChange={(v) => set('dpi', Number(v))}
+        />
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <Toggle label="CMYK" on={value.colorProfile === 'CMYK'} disabled={!policy.allowCmyk} onClick={() => set('colorProfile', value.colorProfile === 'CMYK' ? 'RGB' : 'CMYK')} />
+        <Toggle label="Crop marks" on={value.marks} onClick={() => set('marks', !value.marks)} />
+        <Toggle label="Layered" on={value.layered} disabled={!policy.allowLayered} onClick={() => set('layered', !value.layered)} />
+        {policy.allowBatch && <Toggle label="Batch set" on={value.batch} onClick={() => set('batch', !value.batch)} />}
+        {policy.allowWhiteLabel && <Toggle label="White-label" on={value.whiteLabel} onClick={() => set('whiteLabel', !value.whiteLabel)} />}
+        {policy.forceWatermark && <span className="rounded-full border border-ink-200 bg-ink-50 px-2.5 py-1 text-[11px] text-ink-500">Watermarked</span>}
+      </div>
+
+      {clamp.adjustments.length > 0 && (
+        <p className="mt-1.5 text-[11px] text-warning-700">
+          Your {tier} plan adjusts: {clamp.adjustments.join('; ')}.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function Select({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-0.5 block text-[10.5px] font-bold uppercase tracking-wider text-ink-500">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-ink-200 bg-white px-2 py-1.5 text-[12.5px] text-ink-900">
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function Toggle({ label, on, disabled, onClick }: { label: string; on: boolean; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+    >
+      {label}
+    </button>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Usage meters
+// -----------------------------------------------------------------------------
+
+function UsageMeters({ usage }: { usage: AiUsageSnapshot }) {
+  return (
+    <div className="space-y-2 rounded-lg border border-ink-200 bg-white p-3">
+      <p className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-ink-500">
+        <Gauge className="h-3.5 w-3.5" /> This month
+      </p>
+      <Meter label="Draft cycles" used={usage.draftCyclesUsed} cap={usage.draftCyclesCap} render={(u, c) => `${u} / ${c}`} />
+      <Meter label="Finalize budget (MP)" used={usage.finalizeMpUsed} cap={usage.finalizeMpBudget} render={(u, c) => `${u} / ${c} MP`} />
+      <Meter label="Storage" used={usage.storageBytesUsed} cap={usage.storageBytesCap} render={(u, c) => `${formatBytes(u)} / ${formatBytes(c)}`} />
+    </div>
+  )
+}
+
+function Meter({ label, used, cap, render }: { label: string; used: number; cap: number; render: (u: number, c: number) => string }) {
+  const pct = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0
+  const hot = pct >= 90
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="text-ink-600">{label}</span>
+        <span className={`tabular-nums ${hot ? 'font-semibold text-warning-700' : 'text-ink-500'}`}>{render(used, cap)}</span>
+      </div>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-100">
+        <div className={`h-full rounded-full ${hot ? 'bg-warning-500' : 'bg-pink-500'}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Shared bits
+// -----------------------------------------------------------------------------
+
 function ResultActions({
   result,
   onEdit,
@@ -498,4 +880,35 @@ function ComplianceChip({ complete, summary, missing }: { complete: boolean; sum
       </div>
     </div>
   )
+}
+
+// ---- pure helpers ----
+
+function domainLabel(d: LabelingDomain): string {
+  return d === 'DIETARY_SUPPLEMENT' ? 'Supplement' : d === 'PET_PRODUCT' ? 'Pet' : d === 'OTC' ? 'OTC drug' : d === 'COSMETIC' ? 'Cosmetic' : 'Food'
+}
+
+/** DPI choices offered, capped by the tier policy (96 web / 150 / 300 print / 600 hi-res). */
+function dpiChoices(maxDpi: number): number[] {
+  return [96, 150, 300, 600].filter((d) => d <= maxDpi)
+}
+
+/** Web / Print / Source starting bundles, each clamped to the tier at render time. */
+function buildPresets(policy: OutputPolicy): { id: string; label: string; settings: OutputSettings }[] {
+  const base = policy.defaults
+  const web: OutputSettings = { ...base, format: 'PNG', dpi: 96, colorProfile: 'RGB', marks: false, layered: false }
+  const print: OutputSettings = { ...base, format: policy.allowedFormats.includes('PDF') ? 'PDF' : base.format, dpi: 300, colorProfile: 'CMYK', marks: true }
+  const source: OutputSettings = {
+    ...base,
+    format: policy.allowedFormats.includes('AI') ? 'AI' : policy.allowedFormats.includes('SVG') ? 'SVG' : base.format,
+    dpi: policy.maxDpi,
+    layered: true,
+    marks: true,
+  }
+  const out = [
+    { id: 'web', label: 'Web / share (PNG, 96dpi)', settings: web },
+    { id: 'print', label: 'Print-ready (PDF, 300dpi CMYK)', settings: print },
+  ]
+  if (policy.allowLayered) out.push({ id: 'source', label: 'Source / editable (layered, hi-res)', settings: source })
+  return out
 }

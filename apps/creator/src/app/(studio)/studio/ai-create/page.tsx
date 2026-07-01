@@ -9,6 +9,7 @@
 // The Studio-rail mount (Templates tab) is Code's hot file — see HANDOFF.
 
 import { auth, requireCapability } from '@ilaunchify/auth'
+import { resolveOutputPolicy } from '@ilaunchify/imagegen'
 import { AiCreatePanel, type DielineTarget } from './AiCreatePanel'
 import { loadAiCreateProps, loadAdminAiCreateProps } from './loader'
 import type { FrameLayout } from '@ilaunchify/ui'
@@ -113,6 +114,15 @@ export default async function AiCreatePage({
         ]}
         tier="agency"
         creditsRemaining={30}
+        outputPolicy={resolveOutputPolicy('agency')}
+        usage={{
+          draftCyclesUsed: 8,
+          draftCyclesCap: 120,
+          finalizeMpUsed: 42,
+          finalizeMpBudget: 240,
+          storageBytesUsed: 380 * 1024 * 1024,
+          storageBytesCap: 5 * 1024 * 1024 * 1024,
+        }}
       />
     </div>
   )

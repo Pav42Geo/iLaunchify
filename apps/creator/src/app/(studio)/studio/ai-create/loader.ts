@@ -7,9 +7,9 @@
 import { prisma, getAiGeneratorSettings, listActiveDieCuts } from '@ilaunchify/db'
 import { getCreatorTier } from '@ilaunchify/auth'
 import { resolveDomainOptions, type LabelingDomain, type DomainPreset, type FlavorSpec } from '@ilaunchify/ai-design'
-import { tierLimits, type CreatorBillingTier } from '@ilaunchify/imagegen'
+import { tierLimits, resolveOutputPolicy, type CreatorBillingTier, type OutputPolicy } from '@ilaunchify/imagegen'
 import type { FrameLayout } from '@ilaunchify/ui'
-import type { AiCreatePanelProps, DielineTarget, CreatorTier } from './AiCreatePanel'
+import type { AiCreatePanelProps, DielineTarget, CreatorTier, AiUsageSnapshot } from './AiCreatePanel'
 
 // Fallback accent ramp for flavours with no swatchHex and no brand palette to draw from.
 const DEFAULT_ACCENTS = ['#E5486B', '#6B4423', '#7BA05B', '#E7A93D', '#4A78B5', '#B5559E', '#3FA796', '#D2603A']
@@ -98,17 +98,55 @@ async function loadFlavors(productTemplateId: string | null, palette: string[]):
   }))
 }
 
+function periodKeyNow(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** Per-creator usage this period + the tier caps, for the panel meters. */
+async function usageSnapshot(userId: string, tier: CreatorBillingTier): Promise<AiUsageSnapshot> {
+  const limits = tierLimits(tier)
+  const periodKey = periodKeyNow()
+  const [usage, storage] = await Promise.all([
+    (prisma as unknown as {
+      aiGenerationUsage: { findUnique: (a: unknown) => Promise<{ draftCyclesUsed: number; finalizeMpUsed: unknown } | null> }
+    }).aiGenerationUsage
+      .findUnique({ where: { userId_periodKey: { userId, periodKey } }, select: { draftCyclesUsed: true, finalizeMpUsed: true } })
+      .catch(() => null),
+    (prisma as unknown as {
+      generationStorageUsage: { findUnique: (a: unknown) => Promise<{ kilobytesUsed: number } | null> }
+    }).generationStorageUsage
+      .findUnique({ where: { userId }, select: { kilobytesUsed: true } })
+      .catch(() => null),
+  ])
+  return {
+    draftCyclesUsed: usage?.draftCyclesUsed ?? 0,
+    draftCyclesCap: limits.draftCyclesPerPeriod,
+    finalizeMpUsed: Number(String(usage?.finalizeMpUsed ?? 0)) || 0,
+    finalizeMpBudget: limits.finalizeMpBudget,
+    storageBytesUsed: (storage?.kilobytesUsed ?? 0) * 1024,
+    storageBytesCap: limits.storageBytes,
+  }
+}
+
 async function creditsRemaining(userId: string, tier: CreatorBillingTier): Promise<number> {
   const cap = tierLimits(tier).draftCyclesPerPeriod
   if (cap <= 0) return 0
-  const now = new Date()
-  const periodKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const used = (await (
     prisma as unknown as { aiGenerationUsage: { findUnique: (a: unknown) => Promise<{ draftCyclesUsed: number } | null> } }
   ).aiGenerationUsage
-    .findUnique({ where: { userId_periodKey: { userId, periodKey } }, select: { draftCyclesUsed: true } })
+    .findUnique({ where: { userId_periodKey: { userId, periodKey: periodKeyNow() } }, select: { draftCyclesUsed: true } })
     .catch(() => null)) as { draftCyclesUsed: number } | null
   return Math.max(0, cap - (used?.draftCyclesUsed ?? 0))
+}
+
+/** Resolve the brand's primary logo to a public URL (best-effort; null when unavailable). */
+async function resolveBrandLogoUrl(logoAssetId: string | null | undefined): Promise<string | undefined> {
+  if (!logoAssetId) return undefined
+  const asset = await prisma.asset
+    .findUnique({ where: { id: logoAssetId }, select: { publicUrl: true } })
+    .catch(() => null)
+  return asset?.publicUrl ?? undefined
 }
 
 export interface AiCreateData {
@@ -126,7 +164,7 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
       category: true,
       productTemplateId: true,
       productTemplate: { select: { labelingType: true } },
-      brand: { select: { name: true, colorPrimary: true, colorSecondary: true, colorAccent: true, brandSwatches: true } },
+      brand: { select: { name: true, colorPrimary: true, colorSecondary: true, colorAccent: true, brandSwatches: true, logoAssetId: true } },
     },
   })
   if (!product) return null
@@ -140,11 +178,17 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
   const vocab: DomainPreset = resolveDomainOptions(domain, settings.domainVocab[domain] as Partial<DomainPreset> | undefined)
 
   const palette = product.brand ? brandPalette(product.brand) : []
+  const outputPolicy: OutputPolicy = resolveOutputPolicy(
+    meteredTier,
+    settings.outputPolicies[meteredTier] as Partial<OutputPolicy> | undefined,
+  )
 
-  const [dielines, flavors, credits] = await Promise.all([
+  const [dielines, flavors, credits, brandLogoUrl, usage] = await Promise.all([
     loadDielineTargets(product.productTemplateId),
     loadFlavors(product.productTemplateId, palette),
     creditsRemaining(userId, meteredTier),
+    resolveBrandLogoUrl(product.brand?.logoAssetId),
+    usageSnapshot(userId, meteredTier),
   ])
 
   return {
@@ -153,6 +197,7 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
       productDescriptor: product.name,
       brandName: product.brand?.name ?? undefined,
       brandPalette: palette,
+      brandLogoUrl,
       domain,
       market: 'US',
       dielines,
@@ -162,6 +207,8 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
       elementOptions: vocab.elements,
       tier,
       creditsRemaining: credits,
+      outputPolicy,
+      usage,
     },
   }
 }
