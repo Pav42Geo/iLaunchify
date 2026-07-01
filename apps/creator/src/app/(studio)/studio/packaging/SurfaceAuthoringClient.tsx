@@ -7,10 +7,11 @@
 // already authors everything the surface JSON carries (incl. the die-line binding).
 
 import * as React from 'react'
-import { Boxes, Plus, Trash2, Save, Loader2, Check, Cuboid, Link2 } from 'lucide-react'
+import { Plus, Trash2, Save, Loader2, Check, Cuboid, Link2, Crosshair } from 'lucide-react'
 import type { PackagingSurface, SurfaceRole, SurfacePurpose } from '@ilaunchify/ui'
 import { savePackagingSurfaces } from './actions'
 import type { PackagingAuthoringData, BindableDieline } from './loader'
+import { Packaging3DView } from './Packaging3DView'
 
 const ROLES: SurfaceRole[] = ['CONTAINER', 'CLOSURE', 'WRAP', 'PANEL', 'OTHER']
 const PURPOSES: SurfacePurpose[] = ['pdp', 'info', 'other']
@@ -25,6 +26,8 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
   const [err, setErr] = React.useState<string | null>(null)
+  const [selectedKey, setSelectedKey] = React.useState<string | null>(data.surfaces[0]?.key ?? null)
+  const [placeMode, setPlaceMode] = React.useState(false)
 
   function update(i: number, patch: Partial<PackagingSurface>) {
     setSurfaces((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
@@ -36,6 +39,10 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
   }
   function remove(i: number) {
     setSurfaces((prev) => prev.filter((_, idx) => idx !== i).map((s, idx) => ({ ...s, sortOrder: idx })))
+    setSaved(false)
+  }
+  function setAnchor(key: string, anchor: { x: number; y: number; z: number }) {
+    setSurfaces((prev) => prev.map((s) => (s.key === key ? { ...s, hotspot: { ...s.hotspot, anchor } } : s)))
     setSaved(false)
   }
   function toggleBinding(i: number, dielineId: string) {
@@ -77,21 +84,34 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
       {err && <p className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[12px] text-warning-800">{err}</p>}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
-        {/* 3D preview (schematic until the three.js canvas slice) */}
+        {/* Live 3D model + clickable surface markers */}
         <div className="rounded-2xl border border-ink-200 bg-white p-4">
-          <p className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-500">
-            <Cuboid className="h-3.5 w-3.5" /> 3D model
-          </p>
-          <div className="flex aspect-square items-center justify-center rounded-xl bg-ink-50">
-            <div className="text-center">
-              <Boxes className="mx-auto h-10 w-10 text-ink-300" />
-              <p className="mt-2 text-[11px] text-ink-400">Interactive 3D + clickable hotspots</p>
-              <p className="text-[10.5px] text-ink-300">next slice</p>
-            </div>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-500">
+              <Cuboid className="h-3.5 w-3.5" /> 3D model
+            </p>
+            <button
+              onClick={() => setPlaceMode((v) => !v)}
+              disabled={!selectedKey}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-40 ${placeMode ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 text-ink-600 hover:border-ink-400'}`}
+              title="Click the model to position the selected surface's clickable marker"
+            >
+              <Crosshair className="h-3.5 w-3.5" /> {placeMode ? 'Placing…' : 'Place marker'}
+            </button>
           </div>
+          <Packaging3DView
+            topology={data.topology}
+            surfaces={surfaces}
+            selectedKey={selectedKey}
+            onSelect={(k) => setSelectedKey(k)}
+            placeMode={placeMode}
+            onPlaceAnchor={(k, a) => {
+              setAnchor(k, a)
+              setPlaceMode(false)
+            }}
+          />
           <p className="mt-2 text-[11px] text-ink-500">
-            {surfaces.length} surface{surfaces.length === 1 ? '' : 's'} ·{' '}
-            {surfaces.filter((s) => s.decorable && s.dielineIds.length > 0).length} bound to a die-line
+            Drag to rotate · scroll to zoom · click a marker to select. {surfaces.filter((s) => s.decorable && s.dielineIds.length > 0).length}/{surfaces.length} surfaces bound.
           </p>
         </div>
 

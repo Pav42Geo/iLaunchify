@@ -178,12 +178,13 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
   P1.5). `apps/admin/.../packaging-studio` — visual grid by category, KPI strip, create
   model (name/topology/category), surface + die-line counts via the resolver. Header icon
   "Packaging Studio (Admin)" (Box) + sidebar entry. "Author 3D surfaces" is the disabled P2 seam.
-- **P2 — 3D authoring canvas.** 🟡 Slice A DONE 2026-07-01: creator-app admin route
-  `/studio/packaging` (reached via the `/go/packaging-studio` session bridge from the
-  library's "Author surfaces") — a **surface editor** (label/role/purpose/part/bleed/
-  decorable) that **saves to `defaultSurfaces`** via the resolver + a schematic 3D preview.
-  Slice B (remaining): the real three.js canvas — load the model, raycast to draw
-  clickable hotspots (CSS2DRenderer markers), place the borders on the mesh.
+- **P2 — 3D authoring canvas.** ✅ DONE 2026-07-01. Slice A: `/studio/packaging` surface
+  editor (label/role/purpose/part/bleed/decorable) saving to `defaultSurfaces` via the
+  resolver. Slice B: **live three.js viewer** (`Packaging3DView`, CDN-loaded, isolated from
+  the partner studio) — parametric model per topology, clickable surface **markers**
+  projected onto the model, drag-rotate + zoom, and a **"Place marker"** raycast mode that
+  sets the selected surface's 3D `hotspot.anchor`. (Refinements to eyeball: glTF-import
+  models + exact per-mesh borders come with P1.5.)
 - **P3 — Surface → die-line binding + click-through.** 🟡 Binding DONE (per-surface
   die-line multi-select in the editor). Remaining: click a surface → inline 2D Fabric
   editor (reuse `PackagingStudioStep`'s 3D⇄die-line editor); curate + save.

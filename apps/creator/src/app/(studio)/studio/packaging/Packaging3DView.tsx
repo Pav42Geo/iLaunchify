@@ -1,0 +1,274 @@
+'use client'
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// =============================================================================
+// Packaging Studio — 3D surface view (ADMIN_PACKAGING_STUDIO.md P2 Slice B).
+//
+// A self-contained three.js viewer for the admin surface-authoring page. Renders a
+// parametric package for the model's topology (can / jar / box / pouch / tube …),
+// overlays a clickable MARKER per surface (projected 3D→screen), and — in "place"
+// mode — raycasts a click on the mesh to set the selected surface's 3D anchor (the
+// clickable border position). three.js is loaded from the CDN at runtime (no npm dep),
+// matching the existing packaging-3d spike. `any`-typed since @types/three isn't installed.
+//
+// Isolated to this folder on purpose: it does not touch the partner Packaging Studio.
+// =============================================================================
+
+import * as React from 'react'
+import type { PackagingSurface } from '@ilaunchify/ui'
+
+const THREE_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
+
+type Vec3 = { x: number; y: number; z: number }
+
+interface Props {
+  topology: string
+  surfaces: PackagingSurface[]
+  selectedKey: string | null
+  onSelect: (key: string) => void
+  /** Place mode: clicking the model sets the selected surface's anchor. */
+  placeMode?: boolean
+  onPlaceAnchor?: (key: string, anchor: Vec3) => void
+}
+
+/** Load three.js from the CDN once; resolve when window.THREE is ready. */
+function loadThree(): Promise<any> {
+  const w = window as any
+  if (w.THREE) return Promise.resolve(w.THREE)
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${THREE_SRC}"]`) as HTMLScriptElement | null
+    if (existing) {
+      existing.addEventListener('load', () => resolve((window as any).THREE))
+      existing.addEventListener('error', reject)
+      return
+    }
+    const s = document.createElement('script')
+    s.src = THREE_SRC
+    s.async = true
+    s.onload = () => resolve((window as any).THREE)
+    s.onerror = reject
+    document.head.appendChild(s)
+  })
+}
+
+/** Rough half-extents for the parametric mesh by topology (three.js units). */
+function dimsFor(topology: string): { r: number; h: number; d: number; kind: 'cyl' | 'box'; lid: boolean } {
+  switch (topology) {
+    case 'CAPSULE_JAR':
+      return { r: 1, h: 1.8, d: 1, kind: 'cyl', lid: true }
+    case 'TUBE':
+      return { r: 0.5, h: 2.2, d: 0.5, kind: 'cyl', lid: true }
+    case 'SINGLE_CONTAINER':
+      return { r: 0.9, h: 2.2, d: 0.9, kind: 'cyl', lid: false }
+    case 'POUCH_STAND_UP':
+    case 'POUCH_FLAT':
+      return { r: 1, h: 2.2, d: 0.45, kind: 'box', lid: false }
+    case 'STICK_PACK':
+    case 'SACHET':
+      return { r: 0.35, h: 2.4, d: 0.18, kind: 'box', lid: false }
+    case 'MULTI_CONTAINER_BOX':
+    case 'CASE':
+      return { r: 1.4, h: 2.0, d: 0.95, kind: 'box', lid: false }
+    default:
+      return { r: 1, h: 2, d: 1, kind: 'box', lid: false }
+  }
+}
+
+/** Default anchor for a surface with no stored hotspot — infer from part/role. */
+function defaultAnchor(s: PackagingSurface, d: ReturnType<typeof dimsFor>, i: number): Vec3 {
+  const top = s.part === 'lid' || s.role === 'CLOSURE'
+  const base = s.role === 'OTHER' && /base/i.test(s.label)
+  if (top) return { x: 0, y: d.h / 2 + 0.05, z: 0 }
+  if (base) return { x: 0, y: -d.h / 2 - 0.05, z: 0 }
+  // Spread body surfaces around the front/sides so markers don't overlap.
+  const ang = (i * 0.7) % (Math.PI * 1.2) - 0.6
+  const rad = d.kind === 'cyl' ? d.r + 0.04 : d.d / 2 + 0.04
+  return { x: Math.sin(ang) * (d.kind === 'cyl' ? d.r + 0.04 : d.r * 0.7), y: 0, z: Math.cos(ang) * rad }
+}
+
+export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, placeMode, onPlaceAnchor }: Props) {
+  const mountRef = React.useRef<HTMLDivElement>(null)
+  const [markers, setMarkers] = React.useState<{ key: string; label: string; x: number; y: number; front: boolean }[]>([])
+  const [err, setErr] = React.useState<string | null>(null)
+  const stateRef = React.useRef<any>({})
+  // Keep the latest props available to the render loop without re-initializing the scene.
+  const propsRef = React.useRef({ surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology })
+  propsRef.current = { surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology }
+
+  React.useEffect(() => {
+    let disposed = false
+    let raf = 0
+    const mount = mountRef.current
+    if (!mount) return
+
+    loadThree()
+      .then((THREE) => {
+        if (disposed || !mount) return
+        const W = mount.clientWidth || 360
+        const H = mount.clientHeight || 360
+        const scene = new THREE.Scene()
+        scene.background = new THREE.Color(0xf4f4f5)
+        const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100)
+        camera.position.set(0, 0.6, 6)
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+        renderer.setSize(W, H)
+        mount.appendChild(renderer.domElement)
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.75))
+        const key = new THREE.DirectionalLight(0xffffff, 0.9)
+        key.position.set(3, 5, 4)
+        scene.add(key)
+
+        const d = dimsFor(topology)
+        const group = new THREE.Group()
+        const mat = new THREE.MeshStandardMaterial({ color: 0xd8d8dc, roughness: 0.6, metalness: 0.1 })
+        let body: any
+        if (d.kind === 'cyl') {
+          body = new THREE.Mesh(new THREE.CylinderGeometry(d.r, d.r, d.h, 48), mat)
+        } else {
+          body = new THREE.Mesh(new THREE.BoxGeometry(d.r * 2, d.h, d.d, 1, 1, 1), mat)
+        }
+        body.name = 'body'
+        group.add(body)
+        if (d.lid) {
+          const lid = new THREE.Mesh(new THREE.CylinderGeometry(d.r * 1.04, d.r * 1.04, d.h * 0.18, 48), new THREE.MeshStandardMaterial({ color: 0xb9b9c0, roughness: 0.5 }))
+          lid.position.y = d.h / 2 - d.h * 0.05
+          lid.name = 'lid'
+          group.add(lid)
+        }
+        scene.add(group)
+
+        // Manual orbit + zoom (avoids the OrbitControls addon import-map).
+        let rotX = -0.15
+        let rotY = 0.5
+        let dragging = false
+        let lastX = 0
+        let lastY = 0
+        let moved = false
+        const raycaster = new THREE.Raycaster()
+        const ndc = new THREE.Vector2()
+
+        function onDown(e: PointerEvent) {
+          dragging = true
+          moved = false
+          lastX = e.clientX
+          lastY = e.clientY
+        }
+        function onMove(e: PointerEvent) {
+          if (!dragging) return
+          const dx = e.clientX - lastX
+          const dy = e.clientY - lastY
+          if (Math.abs(dx) + Math.abs(dy) > 3) moved = true
+          rotY += dx * 0.01
+          rotX = Math.max(-1.2, Math.min(1.2, rotX + dy * 0.01))
+          lastX = e.clientX
+          lastY = e.clientY
+        }
+        function onUp(e: PointerEvent) {
+          dragging = false
+          if (moved) return
+          // A click (no drag): in place mode, raycast to set the selected surface's anchor.
+          const p = propsRef.current
+          if (!p.placeMode || !p.selectedKey || !p.onPlaceAnchor) return
+          const rect = renderer.domElement.getBoundingClientRect()
+          ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+          ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+          raycaster.setFromCamera(ndc, camera)
+          const hits = raycaster.intersectObjects(group.children, true)
+          if (hits.length) {
+            // Convert world point → local (group) space so it tracks rotation.
+            const local = group.worldToLocal(hits[0].point.clone())
+            p.onPlaceAnchor(p.selectedKey, { x: local.x, y: local.y, z: local.z })
+          }
+        }
+        function onWheel(e: WheelEvent) {
+          e.preventDefault()
+          camera.position.z = Math.max(3, Math.min(10, camera.position.z + e.deltaY * 0.002))
+        }
+        const el = renderer.domElement
+        el.style.touchAction = 'none'
+        el.addEventListener('pointerdown', onDown)
+        window.addEventListener('pointermove', onMove)
+        window.addEventListener('pointerup', onUp)
+        el.addEventListener('wheel', onWheel, { passive: false })
+
+        stateRef.current = { THREE, renderer, camera, scene, group, el, onDown, onMove, onUp, onWheel, dims: d }
+
+        const project = new THREE.Vector3()
+        let acc = 0
+        function tick() {
+          if (disposed) return
+          raf = requestAnimationFrame(tick)
+          group.rotation.x = rotX
+          group.rotation.y = rotY
+          renderer.render(scene, camera)
+
+          acc += 1
+          if (acc % 2 !== 0) return // throttle marker DOM updates
+          const p = propsRef.current
+          const rect = el.getBoundingClientRect()
+          const next = p.surfaces.map((s, i) => {
+            const a = s.hotspot?.anchor ?? defaultAnchor(s, d, i)
+            project.set(a.x, a.y, a.z)
+            group.localToWorld(project)
+            const front = project.clone().sub(camera.position).dot(camera.getWorldDirection(new THREE.Vector3())) > 0
+            project.project(camera)
+            return {
+              key: s.key,
+              label: s.label,
+              x: (project.x * 0.5 + 0.5) * rect.width,
+              y: (-project.y * 0.5 + 0.5) * rect.height,
+              front,
+            }
+          })
+          setMarkers(next)
+        }
+        tick()
+      })
+      .catch(() => setErr('Could not load the 3D engine.'))
+
+    return () => {
+      disposed = true
+      cancelAnimationFrame(raf)
+      const st = stateRef.current
+      if (st?.el) {
+        st.el.removeEventListener('pointerdown', st.onDown)
+        window.removeEventListener('pointermove', st.onMove)
+        window.removeEventListener('pointerup', st.onUp)
+        st.el.removeEventListener('wheel', st.onWheel)
+        st.renderer?.dispose?.()
+        if (mount && st.el.parentNode === mount) mount.removeChild(st.el)
+      }
+    }
+    // Re-init only when topology changes (surfaces/selection ride via propsRef).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topology])
+
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-ink-50" style={{ aspectRatio: '1 / 1' }}>
+      <div ref={mountRef} className="absolute inset-0" />
+      {err && <div className="absolute inset-0 flex items-center justify-center text-[12px] text-warning-700">{err}</div>}
+      {/* Surface markers */}
+      {markers.map((m) => {
+        const active = m.key === selectedKey
+        return (
+          <button
+            key={m.key}
+            onClick={() => onSelect(m.key)}
+            style={{ left: m.x, top: m.y, opacity: m.front ? 1 : 0.35, transform: 'translate(-50%,-50%)' }}
+            className={`absolute z-10 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-semibold shadow-sm transition ${active ? 'border-pink-500 bg-pink-600 text-white' : 'border-ink-200 bg-white/95 text-ink-700 hover:border-pink-400'}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : 'bg-pink-500'}`} />
+            {m.label}
+          </button>
+        )
+      })}
+      {placeMode && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-pink-600/90 px-3 py-1 text-center text-[11px] font-semibold text-white">
+          Click the model to place “{surfaces.find((s) => s.key === selectedKey)?.label ?? 'the surface'}”
+        </div>
+      )}
+    </div>
+  )
+}
