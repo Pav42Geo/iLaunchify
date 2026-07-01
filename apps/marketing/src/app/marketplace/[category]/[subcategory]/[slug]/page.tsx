@@ -19,6 +19,8 @@ import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/s
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
 import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
 import { getTemplateFlavorRecipes } from '@/lib/flavor-recipe-detail'
+import { getTemplateFlavorDomainFacts } from '@/lib/flavor-domain-facts'
+import { DomainFactsSwitcher } from '@/components/DomainFactsSwitcher'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
@@ -99,6 +101,8 @@ export default async function ProductDetailPage({
   const recipeDetail = await getTemplateRecipeDetail(template.slug)
   // Slice 4 — per-flavor recipes for the Recipe-tab flavor tabs (multi-flavor only).
   const flavorRecipes = await getTemplateFlavorRecipes(template.slug)
+  // Per-flavor Supplement Facts / Guaranteed Analysis (multi-flavor supplement + pet).
+  const flavorDomainFacts = await getTemplateFlavorDomainFacts(template.slug)
   // Real product images (hero first) for the gallery; [] → emoji+gradient fallback.
   const galleryImages = await getTemplateGalleryImages(template.slug)
   // A product is "recipe-backed" if the DB gave us real ingredients, a computed/
@@ -356,6 +360,7 @@ export default async function ProductDetailPage({
               recipeDetail={recipeDetail}
               hasRealRecipe={hasRealRecipe}
               flavors={flavorRecipes}
+              flavorDomainFacts={flavorDomainFacts}
             />
           }
           packaging={<PackingTab detail={detail} />}
@@ -600,6 +605,7 @@ function RecipeTab({
   recipeDetail,
   hasRealRecipe,
   flavors,
+  flavorDomainFacts,
 }: {
   template: SampleTemplate
   detail: ReturnType<typeof findTemplateDetail>
@@ -608,12 +614,13 @@ function RecipeTab({
   recipeDetail: Awaited<ReturnType<typeof getTemplateRecipeDetail>>
   hasRealRecipe: boolean
   flavors: Awaited<ReturnType<typeof getTemplateFlavorRecipes>>
+  flavorDomainFacts: Awaited<ReturnType<typeof getTemplateFlavorDomainFacts>>
 }) {
   // Cosmetic / pet declaration (or a DB product with no swappable food slots) —
   // there's nothing to customize, so show the declaration block only.
   if (domain || (hasRealRecipe && detail.ingredients.length === 0)) {
     return (
-      <RecipeNutritionTab detail={detail} nutrientSource={nutrientSource} domain={domain} />
+      <RecipeNutritionTab detail={detail} nutrientSource={nutrientSource} domain={domain} flavorDomainFacts={flavorDomainFacts} />
     )
   }
 
@@ -641,14 +648,20 @@ function RecipeNutritionTab({
   detail,
   nutrientSource,
   domain,
+  flavorDomainFacts = [],
 }: {
   detail: ReturnType<typeof findTemplateDetail>
   nutrientSource: 'COMPUTED' | 'DECLARED' | null
   /** Cosmetic INCI / pet Guaranteed Analysis — when present, the domain block
    *  replaces the (food/supplement) nutrition panel on the right. */
   domain?: DomainFacts
+  /** Per-flavor supplement/pet panels — when non-empty, the right rail shows a
+   *  Base + flavor switcher instead of the single base panel. */
+  flavorDomainFacts?: Awaited<ReturnType<typeof getTemplateFlavorDomainFacts>>
 }) {
   const declared = nutrientSource === 'DECLARED'
+  const petFlavors = flavorDomainFacts.filter((f) => f.domain?.kind === 'PET')
+  const supplementFlavors = flavorDomainFacts.filter((f) => f.nutrition != null)
   // A real domain declaration (cosmetic/pet) takes precedence over any fixture
   // nutrition panel — a cosmetic must never show a food/supplement panel.
   if (domain) {
@@ -666,30 +679,37 @@ function RecipeNutritionTab({
           )}
         </div>
         <div className="lg:justify-self-end">
-          <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-3">
-            {domain.kind === 'COSMETIC' ? 'INCI declaration' : 'Guaranteed Analysis'}
-          </div>
-          {domain.kind === 'COSMETIC' ? (
-            <InciDeclarationSvg
-              ingredients={domain.ingredients}
-              netContents={domain.netContents}
-              responsiblePerson={domain.responsiblePerson}
-              adverseEventContact={domain.adverseEventContact}
-              widthPx={340}
-            />
+          {domain.kind === 'PET' && petFlavors.length > 0 ? (
+            // Multi-flavor pet food — Base + per-flavor GA switcher.
+            <DomainFactsSwitcher kind="PET" baseDomain={domain} flavors={petFlavors} widthPx={340} />
           ) : (
-            <GuaranteedAnalysisSvg
-              gaRows={domain.gaRows}
-              ingredients={domain.ingredients}
-              adequacyStatement={domain.adequacyStatement}
-              feedingDirections={domain.feedingDirections}
-              widthPx={340}
-            />
+            <>
+              <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-3">
+                {domain.kind === 'COSMETIC' ? 'INCI declaration' : 'Guaranteed Analysis'}
+              </div>
+              {domain.kind === 'COSMETIC' ? (
+                <InciDeclarationSvg
+                  ingredients={domain.ingredients}
+                  netContents={domain.netContents}
+                  responsiblePerson={domain.responsiblePerson}
+                  adverseEventContact={domain.adverseEventContact}
+                  widthPx={340}
+                />
+              ) : (
+                <GuaranteedAnalysisSvg
+                  gaRows={domain.gaRows}
+                  ingredients={domain.ingredients}
+                  adequacyStatement={domain.adequacyStatement}
+                  feedingDirections={domain.feedingDirections}
+                  widthPx={340}
+                />
+              )}
+              <div className="text-[11px] text-ink-500 mt-2 max-w-[340px]">
+                Computed from the manufacturer&rsquo;s formulation. Final label is
+                re-validated by the compliance service before production.
+              </div>
+            </>
           )}
-          <div className="text-[11px] text-ink-500 mt-2 max-w-[340px]">
-            Computed from the manufacturer&rsquo;s formulation. Final label is
-            re-validated by the compliance service before production.
-          </div>
         </div>
       </div>
     )
@@ -729,7 +749,10 @@ function RecipeNutritionTab({
               The manufacturer attests to their accuracy.
             </div>
           )}
-          {detail.nutrition && (
+          {detail.nutrition && supplementFlavors.length > 0 ? (
+            // Multi-flavor supplement — Base + per-flavor Supplement Facts switcher.
+            <DomainFactsSwitcher kind="SUPPLEMENT" baseNutrition={detail.nutrition} declared={declared} flavors={supplementFlavors} widthPx={300} />
+          ) : detail.nutrition ? (
             <>
               <div className="text-[12px] font-bold uppercase tracking-[0.07em] text-ink-700 mb-3">
                 Supplement Facts (base recipe)
@@ -745,7 +768,7 @@ function RecipeNutritionTab({
                   : 'Renders per FDA 21 CFR 101.36. Live-updates when the creator adjusts the recipe.'}
               </div>
             </>
-          )}
+          ) : null}
         </div>
       )}
     </div>
