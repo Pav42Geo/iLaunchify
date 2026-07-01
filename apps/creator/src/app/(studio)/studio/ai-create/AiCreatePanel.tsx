@@ -21,7 +21,7 @@
 // Maker explores everything and is steered to the premium template library.
 // =============================================================================
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge } from 'lucide-react'
 import { planGeneration, planGenerationSet, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief } from '@ilaunchify/ui'
 import { planFlavorSeries, type LabelingDomain, type MarketCode, type FlavorSpec, type FlavorSeriesPlan } from '@ilaunchify/ai-design'
@@ -631,6 +631,8 @@ export function BrandIdentitySection({
   manual: ManualBrand
   onManual: (m: ManualBrand) => void
 }) {
+  const colorInputRef = useRef<HTMLInputElement>(null)
+
   function onLogoFile(file?: File) {
     if (!file) return
     const reader = new FileReader()
@@ -710,12 +712,16 @@ export function BrandIdentitySection({
                   </button>
                 </span>
               ))}
-              <input
-                type="color"
-                onChange={(e) => addColour(e.target.value)}
-                className="h-7 w-7 cursor-pointer rounded border border-ink-200 bg-white p-0.5"
+              <button
+                type="button"
+                onClick={() => colorInputRef.current?.click()}
                 title="Add a colour"
-              />
+                aria-label="Add a colour"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-ink-300 text-ink-400 transition hover:border-pink-400 hover:text-pink-500"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <input ref={colorInputRef} type="color" onChange={(e) => addColour(e.target.value)} className="sr-only" tabIndex={-1} aria-hidden="true" />
             </div>
           </div>
 
