@@ -320,6 +320,19 @@ export async function getTemplateLibrary(scope: LibraryScope, opts?: { productTe
   return loadGenerationLibrary(user.id, { productTemplateId: scope === 'this-product' ? opts?.productTemplateId ?? null : null })
 }
 
+/** Rename a saved generation (My library card title). Owner-checked. */
+export async function renameGeneration(generationId: string, title: string): Promise<{ ok: boolean; title: string }> {
+  const user = await requireUser()
+  const clean = title.trim().slice(0, 80)
+  const row = await favDelegate()
+    ?.findFirst({ where: { id: generationId, authorUserId: user.id }, select: { id: true, favorited: true } })
+    .catch(() => null)
+  if (!row) return { ok: false, title }
+  await favDelegate()?.update({ where: { id: generationId }, data: { title: clean || null } }).catch(() => {})
+  await logAuditAs(user, { entityType: 'AiDesignGeneration', entityId: generationId, action: 'AI_DESIGN_RENAMED', payload: { title: clean } })
+  return { ok: true, title: clean }
+}
+
 export interface GenerationBrief {
   descriptor?: string
   styleTags?: string[]

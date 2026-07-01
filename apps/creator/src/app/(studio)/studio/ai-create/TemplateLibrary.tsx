@@ -15,9 +15,11 @@
 // =============================================================================
 
 import * as React from 'react'
-import { Sparkles, Star, Wand2, ImageDown, Loader2, CheckCircle2 } from 'lucide-react'
-import { getTemplateLibrary, toggleGenerationFavorite } from './actions'
+import { Sparkles, Star, Wand2, ImageDown, Loader2, CheckCircle2, Search, Pencil, Check } from 'lucide-react'
+import { getTemplateLibrary, toggleGenerationFavorite, renameGeneration } from './actions'
 import { libraryItemMatchesShapes, type LibraryItem, type LibraryScope, type ShapeKey } from './library-types'
+
+type SortKey = 'relevant' | 'newest' | 'name'
 
 const DOMAIN_LABEL: Record<string, string> = {
   FOOD: 'Food',
@@ -51,6 +53,8 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
   const [favoritesOnly, setFavoritesOnly] = React.useState(false)
   const [matchOnly, setMatchOnly] = React.useState(false)
   const [domainFilter, setDomainFilter] = React.useState<string>('ALL')
+  const [query, setQuery] = React.useState('')
+  const [sort, setSort] = React.useState<SortKey>('relevant')
 
   React.useEffect(() => {
     let cancelled = false
@@ -67,25 +71,38 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
   const domains = React.useMemo(() => Array.from(new Set(items.map((i) => i.domain))), [items])
 
   const shown = React.useMemo(() => {
+    const q = query.trim().toLowerCase()
     const filtered = items.filter((i) => {
       if (favoritesOnly && !i.favorited) return false
       if (domainFilter !== 'ALL' && i.domain !== domainFilter) return false
       if (matchOnly && !libraryItemMatchesShapes(i, productShapes)) return false
+      if (q && !i.title.toLowerCase().includes(q)) return false
       return true
     })
-    // Matches-this-die-line first, then newest.
     return filtered.sort((a, b) => {
+      if (sort === 'name') return a.title.localeCompare(b.title)
+      const byNew = b.createdAtIso.localeCompare(a.createdAtIso)
+      if (sort === 'newest') return byNew
+      // relevant: matches-this-die-line first, then newest.
       const am = libraryItemMatchesShapes(a, productShapes) ? 0 : 1
       const bm = libraryItemMatchesShapes(b, productShapes) ? 0 : 1
-      return am - bm || b.createdAtIso.localeCompare(a.createdAtIso)
+      return am - bm || byNew
     })
-  }, [items, favoritesOnly, domainFilter, matchOnly, productShapes])
+  }, [items, favoritesOnly, domainFilter, matchOnly, query, sort, productShapes])
 
   async function toggleFav(item: LibraryItem) {
     if (item.source !== 'GENERATION') return
     setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, favorited: !x.favorited } : x)))
     const res = await toggleGenerationFavorite(item.id).catch(() => null)
     if (!res || !res.ok) setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, favorited: item.favorited } : x)))
+  }
+
+  async function rename(item: LibraryItem, title: string) {
+    const clean = title.trim()
+    if (!clean || clean === item.title) return
+    setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, title: clean } : x)))
+    const res = await renameGeneration(item.id, clean).catch(() => null)
+    if (!res || !res.ok) setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, title: item.title } : x)))
   }
 
   return (
@@ -101,6 +118,24 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
             {t.label}
           </button>
         ))}
+      </div>
+
+      {/* Search + sort */}
+      <div className="flex items-center gap-1.5">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search templates…"
+            className="w-full rounded-full border border-ink-200 bg-white py-1.5 pl-8 pr-3 text-[12px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-200"
+          />
+        </div>
+        <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="rounded-full border border-ink-200 bg-white px-2.5 py-1.5 text-[11.5px] text-ink-700">
+          <option value="relevant">Relevant</option>
+          <option value="newest">Newest</option>
+          <option value="name">Name</option>
+        </select>
       </div>
 
       {/* Filters */}
@@ -150,6 +185,7 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
               item={item}
               fits={libraryItemMatchesShapes(item, productShapes)}
               onFav={() => toggleFav(item)}
+              onRename={item.source === 'GENERATION' ? (t) => rename(item, t) : undefined}
               onInspire={item.hasBrief ? () => onUseAsInspiration(item) : undefined}
               onCanvas={onUseOnCanvas && item.thumbnailUrl && libraryItemMatchesShapes(item, productShapes) ? () => onUseOnCanvas(item) : undefined}
             />
@@ -164,15 +200,26 @@ function LibraryCard({
   item,
   fits,
   onFav,
+  onRename,
   onInspire,
   onCanvas,
 }: {
   item: LibraryItem
   fits: boolean
   onFav: () => void
+  onRename?: (title: string) => void
   onInspire?: () => void
   onCanvas?: () => void
 }) {
+  const [editing, setEditing] = React.useState(false)
+  const [draft, setDraft] = React.useState(item.title)
+  React.useEffect(() => setDraft(item.title), [item.title])
+
+  function commit() {
+    setEditing(false)
+    if (onRename) onRename(draft)
+  }
+
   return (
     <div className="group overflow-hidden rounded-xl border border-ink-200 bg-white">
       <div className="relative flex aspect-square items-center justify-center bg-ink-50">
@@ -199,7 +246,36 @@ function LibraryCard({
         )}
       </div>
       <div className="p-1.5">
-        <p className="truncate text-[11px] font-semibold text-ink-800">{item.title}</p>
+        {editing ? (
+          <div className="flex items-center gap-1">
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commit()
+                if (e.key === 'Escape') {
+                  setDraft(item.title)
+                  setEditing(false)
+                }
+              }}
+              className="w-full rounded border border-ink-200 px-1 py-0.5 text-[11px] text-ink-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-pink-300"
+            />
+            <button onClick={commit} className="text-ink-400 hover:text-ink-700" aria-label="Save name">
+              <Check className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink-800">{item.title}</p>
+            {onRename && (
+              <button onClick={() => setEditing(true)} className="shrink-0 text-ink-300 opacity-0 transition group-hover:opacity-100 hover:text-ink-600" aria-label="Rename">
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
         <p className="truncate text-[10px] text-ink-400">
           {DOMAIN_LABEL[item.domain] ?? item.domain}
           {item.containerCategory ? ` · ${item.containerCategory.replace(/_/g, ' ').toLowerCase()}` : ''}
