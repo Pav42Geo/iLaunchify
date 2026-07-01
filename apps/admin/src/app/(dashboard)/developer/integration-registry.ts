@@ -160,6 +160,32 @@ export const INTEGRATIONS: IntegrationDef[] = [
     testable: true,
     envVars: [{ name: 'ANTHROPIC_API_KEY', kind: 'secret', required: false }],
   },
+  {
+    key: 'fal',
+    name: 'fal.ai',
+    vendor: 'fal.ai',
+    category: 'AI',
+    description:
+      'AI Packaging Generator — FLUX.1 raster panels, ControlNet structure-lock (die-line + reserved zones), and finalize upscale. Falls back to the deterministic stub when unset.',
+    docsUrl: 'https://docs.fal.ai',
+    dashboardUrl: 'https://fal.ai/dashboard/keys',
+    rotationDays: 180,
+    lifecycle: 'live',
+    envVars: [{ name: 'FAL_KEY', kind: 'secret', required: false, note: 'Raster generation + upscale; generator uses the stub until set' }],
+  },
+  {
+    key: 'recraft',
+    name: 'Recraft',
+    vendor: 'Recraft',
+    category: 'AI',
+    description:
+      'AI Packaging Generator — vector type / accent art (SVG) for crisp in-frame typography. Falls back to the deterministic stub when unset.',
+    docsUrl: 'https://www.recraft.ai/docs',
+    dashboardUrl: 'https://www.recraft.ai/profile/api',
+    rotationDays: 180,
+    lifecycle: 'live',
+    envVars: [{ name: 'RECRAFT_API_KEY', kind: 'secret', required: false, note: 'Vector type art; generator uses the stub until set' }],
+  },
   // Monitoring
   {
     key: 'sentry',
