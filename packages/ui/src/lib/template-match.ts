@@ -86,14 +86,47 @@ export function aspectBucketFor(
 // plus the surface's mm dimensions. Shared by every save path so scoping is uniform.
 // -----------------------------------------------------------------------------
 
-/** Coarse DieCutCategory (6 values) → ContainerCategory. Fallback when no real container. */
+/** DieCutCategory → ContainerCategory. Fallback used only when no real container is known. */
 export const DIE_CUT_CATEGORY_TO_CONTAINER: Record<string, string> = {
+  // original set
   BOTTLE_WRAP: 'BOTTLE',
   TUB_LID: 'JAR',
   POUCH_FRONT: 'POUCH',
   BOX_PANEL: 'BOX',
   STICKER: 'OTHER',
   CUSTOM: 'OTHER',
+  // applied labels & sleeves
+  CAN_WRAP: 'CAN',
+  JAR_WRAP: 'JAR',
+  WRAP_AROUND_LABEL: 'WRAP',
+  FRONT_BACK_LABEL: 'BOTTLE',
+  SHRINK_SLEEVE: 'BOTTLE',
+  NECK_LABEL: 'BOTTLE',
+  LID_LABEL: 'TUB',
+  HANG_TAG: 'PEGGED',
+  // folding cartons
+  STRAIGHT_TUCK_CARTON: 'CARTON',
+  REVERSE_TUCK_CARTON: 'CARTON',
+  SEAL_END_CARTON: 'CARTON',
+  AUTO_BOTTOM_CARTON: 'CARTON',
+  SNAP_LOCK_CARTON: 'CARTON',
+  GABLE_TOP_CARTON: 'CARTON',
+  FOLDING_TRAY: 'TRAY',
+  CARTON_SLEEVE: 'SLEEVE',
+  RIGID_BOX: 'BOX',
+  MAILER_BOX: 'BOX',
+  SHIPPER_CASE: 'CASE',
+  // flexible packaging
+  STAND_UP_POUCH: 'POUCH',
+  FLAT_POUCH: 'POUCH',
+  GUSSETED_BAG: 'BAG',
+  SACHET: 'SACHET',
+  STICK_PACK: 'STICK_PACK',
+  FLOW_WRAP: 'WRAP',
+  ROLLSTOCK: 'ROLLSTOCK',
+  // rigid / other
+  BLISTER_CARD: 'PEGGED',
+  CLAMSHELL: 'OTHER',
 }
 
 export interface TemplateTargetingInput {

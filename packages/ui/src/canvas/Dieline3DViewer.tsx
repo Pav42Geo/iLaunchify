@@ -19,11 +19,32 @@ export type DielineShapeKind = 'BOX' | 'CYLINDER' | 'FLAT'
 
 export function shapeKindForCategory(category?: string | null): DielineShapeKind {
   switch ((category ?? '').toUpperCase()) {
+    // Rigid rectangular structures → box
     case 'BOX_PANEL':
+    case 'STRAIGHT_TUCK_CARTON':
+    case 'REVERSE_TUCK_CARTON':
+    case 'SEAL_END_CARTON':
+    case 'AUTO_BOTTOM_CARTON':
+    case 'SNAP_LOCK_CARTON':
+    case 'GABLE_TOP_CARTON':
+    case 'FOLDING_TRAY':
+    case 'CARTON_SLEEVE':
+    case 'RIGID_BOX':
+    case 'MAILER_BOX':
+    case 'SHIPPER_CASE':
       return 'BOX'
+    // Round bodies / wraps / sleeves → cylinder
     case 'BOTTLE_WRAP':
+    case 'CAN_WRAP':
+    case 'JAR_WRAP':
+    case 'WRAP_AROUND_LABEL':
+    case 'FRONT_BACK_LABEL':
+    case 'SHRINK_SLEEVE':
+    case 'NECK_LABEL':
     case 'TUB_LID':
+    case 'LID_LABEL':
       return 'CYLINDER'
+    // Everything flexible / flat (pouches, sachets, sticks, tags, cards) → flat
     default:
       return 'FLAT'
   }

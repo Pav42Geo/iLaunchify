@@ -32,13 +32,47 @@ export interface DieCutSpec {
   outlineSvg?: string             // SVG path string for the cut outline (rendered as background mask)
 }
 
+// Full die-cut taxonomy (mirrors Prisma enum DieCutCategory). Additive.
 export type DieCutCategoryCode =
+  // original set
   | 'BOTTLE_WRAP'
   | 'TUB_LID'
   | 'POUCH_FRONT'
   | 'BOX_PANEL'
   | 'STICKER'
   | 'CUSTOM'
+  // applied labels & sleeves
+  | 'CAN_WRAP'
+  | 'JAR_WRAP'
+  | 'WRAP_AROUND_LABEL'
+  | 'FRONT_BACK_LABEL'
+  | 'SHRINK_SLEEVE'
+  | 'NECK_LABEL'
+  | 'LID_LABEL'
+  | 'HANG_TAG'
+  // folding cartons
+  | 'STRAIGHT_TUCK_CARTON'
+  | 'REVERSE_TUCK_CARTON'
+  | 'SEAL_END_CARTON'
+  | 'AUTO_BOTTOM_CARTON'
+  | 'SNAP_LOCK_CARTON'
+  | 'GABLE_TOP_CARTON'
+  | 'FOLDING_TRAY'
+  | 'CARTON_SLEEVE'
+  | 'RIGID_BOX'
+  | 'MAILER_BOX'
+  | 'SHIPPER_CASE'
+  // flexible packaging
+  | 'STAND_UP_POUCH'
+  | 'FLAT_POUCH'
+  | 'GUSSETED_BAG'
+  | 'SACHET'
+  | 'STICK_PACK'
+  | 'FLOW_WRAP'
+  | 'ROLLSTOCK'
+  // rigid / other
+  | 'BLISTER_CARD'
+  | 'CLAMSHELL'
 
 /**
  * Per-die-cut placement zones (Product Name, Nutrition Facts, Ingredients List, etc).

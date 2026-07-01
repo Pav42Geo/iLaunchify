@@ -74,14 +74,46 @@ export function substrateById(id: string | null | undefined): SubstrateSwatch {
 /** Sensible default material for a canonical shape category. */
 export function defaultSubstrateId(category?: string | null): string {
   switch ((category ?? '').toUpperCase()) {
+    // Corrugated / heavy paperboard structures → kraft
     case 'BOX_PANEL':
+    case 'MAILER_BOX':
+    case 'SHIPPER_CASE':
+    case 'GABLE_TOP_CARTON':
       return 'kraft'
+    // Folding cartons + rigid boxes + applied labels → coated white board
     case 'TUB_LID':
+    case 'LID_LABEL':
     case 'BOTTLE_WRAP':
+    case 'CAN_WRAP':
+    case 'JAR_WRAP':
+    case 'WRAP_AROUND_LABEL':
+    case 'FRONT_BACK_LABEL':
+    case 'NECK_LABEL':
+    case 'STRAIGHT_TUCK_CARTON':
+    case 'REVERSE_TUCK_CARTON':
+    case 'SEAL_END_CARTON':
+    case 'AUTO_BOTTOM_CARTON':
+    case 'SNAP_LOCK_CARTON':
+    case 'FOLDING_TRAY':
+    case 'CARTON_SLEEVE':
+    case 'RIGID_BOX':
       return 'white-board'
+    // Flexible films / sleeves → clear film
     case 'POUCH_FRONT':
+    case 'STAND_UP_POUCH':
+    case 'FLAT_POUCH':
+    case 'GUSSETED_BAG':
+    case 'SACHET':
+    case 'STICK_PACK':
+    case 'FLOW_WRAP':
+    case 'ROLLSTOCK':
+    case 'SHRINK_SLEEVE':
       return 'clear-film'
+    // Adhesive labels / tags / cards → coated white
     case 'STICKER':
+    case 'HANG_TAG':
+    case 'BLISTER_CARD':
+    case 'CLAMSHELL':
       return 'coated-white'
     default:
       return 'white-board'

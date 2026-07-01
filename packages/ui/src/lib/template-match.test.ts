@@ -118,6 +118,13 @@ assert(carton.groups[0]!.styleId === null && carton.groups[0]!.styleLabel === 'O
   const c = deriveTemplateTargeting({ dieCutCategory: 'MYSTERY' })
   assert(c.targetContainerCategory === null && c.aspectBucket === null, 'unknown die-cut + no dims → null targeting')
 
+  // Expanded taxonomy maps to the right container family.
+  assert(deriveTemplateTargeting({ dieCutCategory: 'CAN_WRAP' }).targetContainerCategory === 'CAN', 'CAN_WRAP → CAN')
+  assert(deriveTemplateTargeting({ dieCutCategory: 'STRAIGHT_TUCK_CARTON' }).targetContainerCategory === 'CARTON', 'STRAIGHT_TUCK_CARTON → CARTON')
+  assert(deriveTemplateTargeting({ dieCutCategory: 'STAND_UP_POUCH' }).targetContainerCategory === 'POUCH', 'STAND_UP_POUCH → POUCH')
+  assert(deriveTemplateTargeting({ dieCutCategory: 'SHIPPER_CASE' }).targetContainerCategory === 'CASE', 'SHIPPER_CASE → CASE')
+  assert(deriveTemplateTargeting({ dieCutCategory: 'STICK_PACK' }).targetContainerCategory === 'STICK_PACK', 'STICK_PACK → STICK_PACK')
+
   // A saved template's targeting round-trips through the matcher onto the same die-line.
   const derived = deriveTemplateTargeting({ containerCategory: 'POUCH', widthMm: 100, heightMm: 150 })
   const savedTpl: MatchableTemplate = {
