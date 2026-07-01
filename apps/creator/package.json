@@ -47,7 +47,8 @@
     "tailwind-merge": "^2.5.4",
     "zod": "^3.23.8",
     "zustand": "^5.0.0",
-    "@ilaunchify/ai-design": "workspace:*"
+    "@ilaunchify/ai-design": "workspace:*",
+    "@ilaunchify/imagegen": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^18.3.11",

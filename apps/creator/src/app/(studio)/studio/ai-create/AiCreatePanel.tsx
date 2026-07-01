@@ -195,18 +195,6 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     setMasterGenerated(false)
   }
 
-  if (gated) {
-    return (
-      <div className="rounded-2xl border border-ink-200 bg-white p-6 text-center">
-        <Lock className="mx-auto h-5 w-5 text-ink-400" />
-        <p className="mt-2 text-[14px] font-semibold text-ink-900">AI Create is a Builder &amp; Agency feature</p>
-        <p className="mx-auto mt-1 max-w-sm text-[12.5px] text-ink-500">
-          On Maker you can start from our compliance-checked premium templates and recolour them to your brand. Upgrade to generate original designs into your die-line.
-        </p>
-      </div>
-    )
-  }
-
   return (
     <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
       {/* ---- Intake column ---- */}
@@ -221,6 +209,19 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
             </span>
           )}
         </div>
+
+        {/* Gated (Maker) — the whole generator stays explorable; only Generate is locked. */}
+        {gated && (
+          <div className="flex items-start gap-2 rounded-xl border border-pink-200 bg-pink-50 p-3 text-[12.5px] text-pink-800">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">AI Create is a Builder &amp; Agency feature</p>
+              <p className="mt-0.5 text-[11.5px]">
+                Explore the whole flow below. Upgrade to generate original designs into your die-line — on Maker you can still recolour our compliance-checked premium templates.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Scope toggle — appears when there's more than one die-line and/or flavours. */}
         {(multi || hasFlavors) && (
@@ -309,23 +310,32 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
         <ChipGroup title="Colour mood" options={colorOptions} selected={colors} onToggle={(v) => toggle(colors, setColors, v)} />
         <ChipGroup title="Elements" options={elementOptions} selected={elements} onToggle={(v) => toggle(elements, setElements, v)} />
 
-        <button
-          onClick={generate}
-          disabled={busy || (setMode ? !setPlan : !plan)}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
-        >
-          <Sparkles className="h-4 w-4" />{' '}
-          {busy
-            ? 'Generating…'
-            : setMode
-              ? `Generate matching set (${dielines.length})`
-              : flavorMode
-                ? masterGenerated
-                  ? 'Regenerate master'
-                  : 'Generate master'
-                : 'Generate 4 concepts'}
-        </button>
-        {!props.onGenerate && (
+        {gated ? (
+          <a
+            href="/subscriptions"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink-800"
+          >
+            <Lock className="h-4 w-4" /> Upgrade to generate
+          </a>
+        ) : (
+          <button
+            onClick={generate}
+            disabled={busy || (setMode ? !setPlan : !plan)}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-4 py-2.5 text-[13px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+          >
+            <Sparkles className="h-4 w-4" />{' '}
+            {busy
+              ? 'Generating…'
+              : setMode
+                ? `Generate matching set (${dielines.length})`
+                : flavorMode
+                  ? masterGenerated
+                    ? 'Regenerate master'
+                    : 'Generate master'
+                  : 'Generate 4 concepts'}
+          </button>
+        )}
+        {!gated && !props.onGenerate && (
           <p className="text-[11px] text-ink-400">Preview shows the deterministic composite. Connect an image provider to generate real art (P3).</p>
         )}
       </div>
