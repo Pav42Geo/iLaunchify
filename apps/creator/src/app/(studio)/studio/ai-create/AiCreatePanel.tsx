@@ -717,7 +717,7 @@ export function BrandIdentitySection({
                 onClick={() => colorInputRef.current?.click()}
                 title="Add a colour"
                 aria-label="Add a colour"
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-ink-300 text-ink-400 transition hover:border-pink-400 hover:text-pink-500"
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-dashed border-ink-300 text-ink-400 transition hover:border-pink-400 hover:text-pink-500"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
