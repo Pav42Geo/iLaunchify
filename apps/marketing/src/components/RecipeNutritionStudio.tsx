@@ -518,7 +518,7 @@ export function RecipeNutritionStudio({
                   (recomputing ? 'opacity-50' : 'opacity-100')
                 }
               >
-                <NutritionFactsRenderer data={shownPanel} widthPx={320} />
+                <NutritionFactsRenderer data={shownPanel} widthPx={320} declaredByManufacturer={activeFlavor?.declared ?? false} />
               </div>
               <button
                 type="button"
@@ -721,7 +721,7 @@ export function RecipeNutritionStudio({
             <div className="mb-3 pr-8 font-display text-[18px] font-semibold text-ink-900">
               Full label preview
             </div>
-            <NutritionFactsRenderer data={shownPanel} widthPx={420} />
+            <NutritionFactsRenderer data={shownPanel} widthPx={420} declaredByManufacturer={activeFlavor?.declared ?? false} />
           </div>
         </div>
       )}
