@@ -212,6 +212,7 @@ export default async function AdminTicketDetailPage({ params }: PageProps) {
           <TicketControls
             ticketId={ticket.id}
             currentStatus={status}
+            currentPriority={ticket.priority as TicketPriority}
             nextStatuses={nextStatuses}
             assigneeUserId={ticket.assigneeUserId}
             admins={admins}

@@ -8,6 +8,7 @@ import {
   replyTicketAction,
   transitionTicketAction,
   assignTicketAction,
+  setPriorityAction,
   uploadTicketAttachments,
 } from './actions'
 
@@ -19,6 +20,8 @@ type TicketStatus =
   | 'RESOLVED'
   | 'CLOSED'
 
+type TicketPriority = 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'
+
 const STATUS_LABEL: Record<TicketStatus, string> = {
   NEW: 'New',
   TRIAGED: 'Triaged',
@@ -28,9 +31,22 @@ const STATUS_LABEL: Record<TicketStatus, string> = {
   CLOSED: 'Closed',
 }
 
+const PRIORITIES: TicketPriority[] = ['URGENT', 'HIGH', 'MEDIUM', 'LOW']
+// Selected/active chip tone per priority; unselected chips are neutral.
+const PRIORITY_ACTIVE: Record<TicketPriority, string> = {
+  URGENT: 'border-danger-300 bg-danger-50 text-danger-700',
+  HIGH: 'border-warning-300 bg-warning-50 text-warning-800',
+  MEDIUM: 'border-ink-300 bg-ink-100 text-ink-800',
+  LOW: 'border-ink-200 bg-ink-50 text-ink-600',
+}
+const PRIORITY_LABEL: Record<TicketPriority, string> = {
+  URGENT: 'Urgent', HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low',
+}
+
 export function TicketControls({
   ticketId,
   currentStatus,
+  currentPriority,
   nextStatuses,
   assigneeUserId,
   admins,
@@ -38,6 +54,7 @@ export function TicketControls({
 }: {
   ticketId: string
   currentStatus: TicketStatus
+  currentPriority: TicketPriority
   nextStatuses: TicketStatus[]
   assigneeUserId: string | null
   admins: { id: string; name: string | null; email: string }[]
@@ -47,6 +64,7 @@ export function TicketControls({
   const [body, setBody] = useState('')
   const [internal, setInternal] = useState(false)
   const [assignee, setAssignee] = useState(assigneeUserId ?? '')
+  const [priority, setPriorityState] = useState<TicketPriority>(currentPriority)
   const [files, setFiles] = useState<File[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
   const [pending, start] = useTransition()
@@ -116,6 +134,22 @@ export function TicketControls({
         return
       }
       toast.success(next ? 'Ticket assigned.' : 'Ticket unassigned.')
+      router.refresh()
+    })
+  }
+
+  function setPri(next: TicketPriority) {
+    if (next === priority) return
+    const prev = priority
+    setPriorityState(next)
+    start(async () => {
+      const res = await setPriorityAction({ ticketId, priority: next })
+      if (!res.ok) {
+        setPriorityState(prev)
+        toast.error(res.error)
+        return
+      }
+      toast.success(`Priority set to ${PRIORITY_LABEL[next]}.`)
       router.refresh()
     })
   }
@@ -249,6 +283,33 @@ export function TicketControls({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Priority */}
+      <div className="rounded-2xl border border-ink-200 bg-white p-4">
+        <h3 className="text-[13px] font-semibold text-ink-900">Priority</h3>
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          {PRIORITIES.map((p) => {
+            const active = p === priority
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPri(p)}
+                disabled={pending}
+                aria-pressed={active}
+                className={
+                  'rounded-full border px-3.5 py-1.5 text-[12.5px] font-medium disabled:opacity-50 ' +
+                  (active
+                    ? PRIORITY_ACTIVE[p]
+                    : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400')
+                }
+              >
+                {PRIORITY_LABEL[p]}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Assignee */}
