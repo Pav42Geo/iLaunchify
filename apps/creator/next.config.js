@@ -39,6 +39,14 @@ const nextConfig = {
         ...list,
       ]
     }
+    // Silence the expected "Critical dependency: the request of a dependency is an
+    // expression" warning from the DELIBERATE lazy `import(moduleSpec)` of jsPDF in
+    // @ilaunchify/ui (exportPdf.ts / blankSpec.ts) — the variable specifier is intentional
+    // so the package builds without jspdf installed. Cosmetic; no behaviour change.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      { module: /packages\/ui\/src\/canvas\/(exportPdf|blankSpec)\.ts/, message: /Critical dependency/ },
+    ]
     return config
   },
   // docs/SECURITY_ARCHITECTURE.md Tier 0.2 — CSP is report-only until tightened.
