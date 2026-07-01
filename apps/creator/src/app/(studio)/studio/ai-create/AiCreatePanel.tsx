@@ -23,7 +23,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge } from 'lucide-react'
-import { planGeneration, planGenerationSet, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief } from '@ilaunchify/ui'
+import { planGeneration, planGenerationSet, Dieline3DViewer, shapeKindForCategory, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief } from '@ilaunchify/ui'
 import { planFlavorSeries, type LabelingDomain, type MarketCode, type FlavorSpec, type FlavorSeriesPlan } from '@ilaunchify/ai-design'
 import { clampOutput, formatBytes, type OutputPolicy, type OutputSettings, type OutputFormat } from '@ilaunchify/imagegen'
 
@@ -164,6 +164,9 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const [colors, setColors] = useState<string[]>(props.initialBrief?.colorTags ?? [])
   const [elements, setElements] = useState<string[]>(props.initialBrief?.elementTags ?? [])
   const [variations, setVariations] = useState<string[]>([])
+  // Which concept index is showing its 3D wrap (null = all flat). Concept SVGs are
+  // wrapped onto the die-line's shape via Dieline3DViewer — see the AI design on the pack.
+  const [threeDIdx, setThreeDIdx] = useState<number | null>(null)
   const [setVariants, setSetVariants] = useState<{ id: string; label: string; svg: string }[]>([])
   const [masterGenerated, setMasterGenerated] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -542,9 +545,30 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
           <div className="grid grid-cols-2 gap-3">
             {variations.map((v, i) => (
               <div key={i} className="rounded-xl border border-ink-200 bg-white p-2">
-                <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: v }} />
+                {threeDIdx === i && selected ? (
+                  <div className="h-[220px] overflow-hidden rounded-lg bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#f1f0ec)]">
+                    <Dieline3DViewer
+                      shape={shapeKindForCategory(selected.containerCategory)}
+                      widthMm={selected.surface.widthMm}
+                      heightMm={selected.surface.heightMm}
+                      textureSvg={v}
+                      baseColor="#f4f2ee"
+                      className="flex h-full w-full flex-col p-1.5"
+                    />
+                  </div>
+                ) : (
+                  <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: v }} />
+                )}
                 <div className="mt-1.5 flex items-center justify-between">
-                  <span className="text-[10.5px] text-ink-400">Concept {i + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => setThreeDIdx((cur) => (cur === i ? null : i))}
+                    aria-pressed={threeDIdx === i}
+                    title="Preview this concept in 3D"
+                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${threeDIdx === i ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 text-ink-500 hover:border-ink-400'}`}
+                  >
+                    <Box className="h-3 w-3" /> {threeDIdx === i ? 'Flat' : '3D'}
+                  </button>
                   <ResultActions
                     result={{ svg: v, dielineId: selected?.id ?? '', label: selected?.label ?? '' }}
                     onEdit={props.onEditInStudio}
