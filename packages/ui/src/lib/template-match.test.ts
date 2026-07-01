@@ -6,6 +6,7 @@
  */
 import {
   aspectBucketFor,
+  deriveTemplateTargeting,
   matchTemplatesToProduct,
   type MatchableTemplate,
   type ProductComponentDieline,
@@ -100,6 +101,35 @@ const carton = sections[1]!
 const cartonIds = carton.groups.flatMap((g) => g.templates.map((x) => x.id))
 assert(cartonIds.length === 1 && cartonIds[0] === 'fam-carton', 'carton matches only the carton template')
 assert(carton.groups[0]!.styleId === null && carton.groups[0]!.styleLabel === 'Other', 'styleless template → Other group')
+
+// --- deriveTemplateTargeting ---
+{
+  // Real container preferred over the coarse die-cut map.
+  const a = deriveTemplateTargeting({ containerCategory: 'CAN', dieCutCategory: 'BOX_PANEL', widthMm: 200, heightMm: 60 })
+  assert(a.targetContainerCategory === 'CAN', 'real container wins over die-cut map')
+  assert(a.aspectBucket === 'WRAP', 'wide can → WRAP bucket')
+
+  // Falls back to mapping the die-cut category when no container is known.
+  const b = deriveTemplateTargeting({ dieCutCategory: 'TUB_LID', widthMm: 90, heightMm: 90 })
+  assert(b.targetContainerCategory === 'JAR', 'TUB_LID die-cut → JAR container')
+  assert(b.aspectBucket === 'PANEL_SQUARE', 'square lid → PANEL_SQUARE bucket')
+
+  // Unknown die-cut + no container + no dims → all null (matcher will treat as unscoped).
+  const c = deriveTemplateTargeting({ dieCutCategory: 'MYSTERY' })
+  assert(c.targetContainerCategory === null && c.aspectBucket === null, 'unknown die-cut + no dims → null targeting')
+
+  // A saved template's targeting round-trips through the matcher onto the same die-line.
+  const derived = deriveTemplateTargeting({ containerCategory: 'POUCH', widthMm: 100, heightMm: 150 })
+  const savedTpl: MatchableTemplate = {
+    id: 'derived', name: 'Derived', thumbnailUrl: null, isPremium: true, domain: 'FOOD',
+    matchMode: 'SHAPE_FAMILY', packagingTypeId: null,
+    targetContainerCategory: derived.targetContainerCategory, aspectBucket: derived.aspectBucket,
+    primaryStyleId: 's1', primaryStyleLabel: 'Minimal',
+  }
+  const pouch: ProductComponentDieline = { componentId: 'p', label: 'Pouch front', packagingTypeId: null, containerCategory: 'POUCH', widthMm: 100, heightMm: 150 }
+  const sec = matchTemplatesToProduct([pouch], 'FOOD', [savedTpl])
+  assert(sec[0]!.groups.flatMap((g) => g.templates).some((t) => t.id === 'derived'), 'derived targeting matches its own die-line')
+}
 
 console.log(failures === 0 ? '\nALL TEMPLATE-MATCH CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`)
 if (failures > 0) process.exit(1)

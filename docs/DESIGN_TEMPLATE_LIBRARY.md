@@ -312,6 +312,20 @@ mode, so the admin designs and curates in the same canvas creators use. Sequenci
 move into the Studio first is an open product decision — start with template authoring (plumbing
 ready), then layer the others.
 
+### 8.2 Die-line targeting is derived, not hand-picked (2026-06-30)
+
+Every save path (admin Studio authoring, AI-generated concepts) tags the template with the die-line
+it belongs to via one shared pure helper — `deriveTemplateTargeting()` in `@ilaunchify/ui`
+(`lib/template-match.ts`, golden-tested). It resolves `{ targetContainerCategory, aspectBucket }` from
+whatever the caller knows, preferring the product's **real `ContainerCategory`** (full 30-value
+vocabulary, from the packaging type) and falling back to mapping the coarse 6-value `DieCutCategory`
+(`DIE_CUT_CATEGORY_TO_CONTAINER`); the aspect bucket comes from the surface's mm dimensions
+(`aspectBucketFor`). This guarantees a saved template's targeting round-trips through
+`matchTemplatesToProduct` onto the exact die-line it was authored on — so in the creator canvas, a
+product's die-line pulls in **only** the templates that belong to it. The admin Studio route
+(`/studio`) now derives its `templateAuthor` container + aspect from this helper instead of a local
+partial map.
+
 ## 9. Phasing
 
 1. **Research + taxonomy** — this doc. ✅

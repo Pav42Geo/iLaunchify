@@ -6,7 +6,7 @@
 import { prisma, getOrCreateSystemTemplatesBrand, listActiveDieCuts } from '@ilaunchify/db'
 import type { LabelingType } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
-import type { BrandCanvasAssets } from '@ilaunchify/ui'
+import { deriveTemplateTargeting, type BrandCanvasAssets } from '@ilaunchify/ui'
 import { buildBrandCanvasAssets } from '@/lib/brand-canvas-assets'
 import { CanvasLayoutShell } from '../products/[productId]/design/canvas/CanvasLayoutShell'
 
@@ -14,14 +14,6 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Design a template — Admin' }
 
 const VALID_DOMAINS = ['FOOD', 'DIETARY_SUPPLEMENT', 'PET_PRODUCT', 'COSMETIC', 'OTC']
-const CATEGORY_TO_CONTAINER: Record<string, string> = {
-  BOTTLE_WRAP: 'BOTTLE',
-  TUB_LID: 'JAR',
-  POUCH_FRONT: 'POUCH',
-  BOX_PANEL: 'BOX',
-  STICKER: 'OTHER',
-  CUSTOM: 'OTHER',
-}
 
 // Fallback surface so Admin Mode always opens, even with no seeded die-cuts.
 const BLANK_DIECUT = {
@@ -33,16 +25,6 @@ const BLANK_DIECUT = {
   bleedMm: 3,
   safeAreaMm: 3,
   outlineSvg: '',
-}
-
-function aspectBucket(w: number, h: number): string | null {
-  if (!w || !h) return null
-  const r = w / h
-  if (r >= 2.5) return 'WRAP'
-  if (r >= 1.3) return 'PANEL_WIDE'
-  if (r >= 0.8) return 'PANEL_SQUARE'
-  if (r >= 0.3) return 'PANEL_TALL'
-  return 'LONG_STRIP'
 }
 
 export default async function TemplateAuthorPage({
@@ -124,8 +106,10 @@ export default async function TemplateAuthorPage({
       nonFoodPanelData={null}
       templateAuthor={{
         domain,
-        container: CATEGORY_TO_CONTAINER[chosen.category] ?? null,
-        aspectBucket: aspectBucket(chosen.widthMm, chosen.heightMm),
+        ...(() => {
+          const t = deriveTemplateTargeting({ dieCutCategory: chosen.category, widthMm: chosen.widthMm, heightMm: chosen.heightMm })
+          return { container: t.targetContainerCategory, aspectBucket: t.aspectBucket }
+        })(),
       }}
     />
   )

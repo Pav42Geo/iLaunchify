@@ -75,6 +75,55 @@ export function aspectBucketFor(
   return 'LONG_STRIP'
 }
 
+// -----------------------------------------------------------------------------
+// Template targeting derivation (docs/DESIGN_TEMPLATE_LIBRARY.md §8.2).
+//
+// When a template is SAVED (admin Studio authoring, or an AI-generated concept), it
+// must be tagged with the die-line it belongs to so the matcher scopes it correctly.
+// This derives { targetContainerCategory, aspectBucket } from whatever the caller
+// knows: a real ContainerCategory (preferred — comes from the product's packaging
+// type, full 30-value vocabulary) OR the coarse 6-value DieCutCategory (fallback),
+// plus the surface's mm dimensions. Shared by every save path so scoping is uniform.
+// -----------------------------------------------------------------------------
+
+/** Coarse DieCutCategory (6 values) → ContainerCategory. Fallback when no real container. */
+export const DIE_CUT_CATEGORY_TO_CONTAINER: Record<string, string> = {
+  BOTTLE_WRAP: 'BOTTLE',
+  TUB_LID: 'JAR',
+  POUCH_FRONT: 'POUCH',
+  BOX_PANEL: 'BOX',
+  STICKER: 'OTHER',
+  CUSTOM: 'OTHER',
+}
+
+export interface TemplateTargetingInput {
+  /** The product's real container (ContainerCategory enum value) — preferred, most precise. */
+  containerCategory?: string | null
+  /** Coarse die-cut category — used only when containerCategory is absent. */
+  dieCutCategory?: string | null
+  widthMm?: number | null
+  heightMm?: number | null
+}
+
+export interface TemplateTargeting {
+  targetContainerCategory: string | null
+  aspectBucket: AspectBucket | null
+}
+
+/**
+ * Resolve a template's die-line targeting. Prefers a real ContainerCategory; falls back
+ * to mapping the coarse DieCutCategory; aspect bucket comes from the surface dimensions.
+ * Pure — same input → same targeting.
+ */
+export function deriveTemplateTargeting(input: TemplateTargetingInput): TemplateTargeting {
+  const fromContainer = input.containerCategory?.trim() || null
+  const fromDieCut = input.dieCutCategory ? DIE_CUT_CATEGORY_TO_CONTAINER[input.dieCutCategory] ?? null : null
+  return {
+    targetContainerCategory: fromContainer ?? fromDieCut,
+    aspectBucket: aspectBucketFor(input.widthMm, input.heightMm),
+  }
+}
+
 const UNCATEGORIZED = '__uncategorized__'
 
 function templateMatchesComponent(
