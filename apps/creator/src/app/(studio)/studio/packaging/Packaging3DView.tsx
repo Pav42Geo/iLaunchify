@@ -135,7 +135,7 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
         // Frame the model high + centred: sit back and aim BELOW the model centre, which
         // lifts the package up on screen (aiming at the origin left it hanging low).
         camera.position.set(0, 1.1, 7.5)
-        camera.lookAt(0, -0.7, 0)
+        camera.lookAt(0, -1.3, 0)
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         renderer.setSize(W, H)
