@@ -266,6 +266,7 @@ type ToolKey =
   | 'product'
   | 'label'
   | 'templates'
+  | 'ai'
   | 'brand'
   | 'text'
   | 'elements'
@@ -297,6 +298,8 @@ const TOOLS: Array<{
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
   { key: 'label', label: 'Label', icon: Tag, v1: true },
   { key: 'templates', label: 'Templates', icon: LayoutTemplate, v1: true },
+  // AI Templator — opens the AI packaging generator for this product's die-line set.
+  { key: 'ai', label: 'AI Templator', icon: Sparkles, v1: true },
   { key: 'brand', label: 'Brand', icon: Palette, v1: true },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
   // Elements (Pavel 2026-06-23) — Canva-style merge of Images / Graphics /
@@ -868,6 +871,8 @@ export function CanvasLayoutShell({
   }, [])
 
   const scheduleOpen = React.useCallback((key: ToolKey) => {
+    // AI Templator navigates away rather than opening a drawer — don't hover-open it.
+    if (key === 'ai') return
     cancelClose()
     if (openTimerRef.current !== null) {
       window.clearTimeout(openTimerRef.current)
@@ -896,6 +901,12 @@ export function CanvasLayoutShell({
   React.useEffect(() => clearTimers, [clearTimers])
 
   function toggleTool(key: ToolKey) {
+    // AI Templator opens the AI packaging generator for this product's die-line set
+    // (its own full-screen studio surface), rather than a slide-out drawer.
+    if (key === 'ai') {
+      window.location.assign(`/studio/ai-create?productId=${productId}`)
+      return
+    }
     // Click is decisive — cancel any pending hover schedules first.
     clearTimers()
     // Always defer to the rail tool over the font drawer (DS-66f).
@@ -1641,6 +1652,7 @@ function ToolDrawer({
     product: 'Product',
     label: 'Label',
     templates: 'Templates',
+    ai: 'AI Templator',
     brand: 'Brand',
     text: 'Text',
     elements: 'Elements',
