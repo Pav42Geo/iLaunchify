@@ -184,13 +184,15 @@ export function PackagingLibraryClient({ data }: { data: PackagingLibraryData })
                 <Chip>{m.dielineCount} die-line{m.dielineCount === 1 ? '' : 's'}</Chip>
               </div>
               <div className="mt-3 flex items-center gap-1.5">
-                <button
-                  disabled
-                  title="3D surface authoring ships in P2"
-                  className="inline-flex flex-1 cursor-not-allowed items-center justify-center gap-1 rounded-full border border-ink-200 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-400"
+                <a
+                  href={`/go/packaging-studio?packagingTypeId=${encodeURIComponent(m.id)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Author this model's clickable surfaces + bind die-lines"
+                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-full border border-ink-200 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-700 hover:border-ink-400"
                 >
-                  <Cuboid className="h-3.5 w-3.5" /> Author 3D surfaces · next
-                </button>
+                  <Cuboid className="h-3.5 w-3.5" /> Author surfaces
+                </a>
                 <button
                   onClick={() => toggleStatus(m)}
                   className="rounded-full border border-ink-200 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-600 hover:border-ink-400"

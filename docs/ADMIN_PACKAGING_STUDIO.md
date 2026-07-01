@@ -178,12 +178,15 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
   P1.5). `apps/admin/.../packaging-studio` — visual grid by category, KPI strip, create
   model (name/topology/category), surface + die-line counts via the resolver. Header icon
   "Packaging Studio (Admin)" (Box) + sidebar entry. "Author 3D surfaces" is the disabled P2 seam.
-- **P2 — 3D authoring canvas.** Creator-app admin route mounting the three.js studio;
-  define/label surfaces, set role/part/bleed, place clickable hotspots (raycast +
-  CSS2DRenderer).
-- **P3 — Surface → die-line binding + click-through.** Bind die-lines to surfaces; click a
-  surface → inline 2D Fabric editor (reuse `PackagingStudioStep`'s 3D⇄die-line editor);
-  curate + save.
+- **P2 — 3D authoring canvas.** 🟡 Slice A DONE 2026-07-01: creator-app admin route
+  `/studio/packaging` (reached via the `/go/packaging-studio` session bridge from the
+  library's "Author surfaces") — a **surface editor** (label/role/purpose/part/bleed/
+  decorable) that **saves to `defaultSurfaces`** via the resolver + a schematic 3D preview.
+  Slice B (remaining): the real three.js canvas — load the model, raycast to draw
+  clickable hotspots (CSS2DRenderer markers), place the borders on the mesh.
+- **P3 — Surface → die-line binding + click-through.** 🟡 Binding DONE (per-surface
+  die-line multi-select in the editor). Remaining: click a surface → inline 2D Fabric
+  editor (reuse `PackagingStudioStep`'s 3D⇄die-line editor); curate + save.
 - **P4 — Partner consumption.** Ensure the Add-Product step reads the enriched surfaces so
   partner surface-clicks route to the right die-line.
 - **P5 — Polish.** Materials/scene (Pacdora-style), export, per-surface previews.
