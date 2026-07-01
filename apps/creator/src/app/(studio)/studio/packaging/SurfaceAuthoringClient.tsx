@@ -16,7 +16,7 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Save, Loader2, Check, Cuboid, Link2, Crosshair, ArrowLeft, PencilRuler, Inbox, Shapes, Boxes, Search } from 'lucide-react'
+import { Plus, Trash2, Save, Loader2, Check, Cuboid, Link2, Crosshair, ArrowLeft, PencilRuler, Inbox, Shapes, Boxes, Search, Upload } from 'lucide-react'
 import {
   PackagingStudioShell,
   DielineFrameEditor,
@@ -27,7 +27,7 @@ import {
   type SurfaceRole,
   type SurfacePurpose,
 } from '@ilaunchify/ui'
-import { savePackagingSurfaces, getDielineEditorData, saveDielineFrames, type DielineEditorData } from './actions'
+import { savePackagingSurfaces, getDielineEditorData, saveDielineFrames, attachPackagingModel3d, removePackagingModel3d, type DielineEditorData } from './actions'
 import type { PackagingAuthoringData, BindableDieline, PackagingModelPick } from './loader'
 import { Packaging3DView } from './Packaging3DView'
 
@@ -213,6 +213,7 @@ export function SurfaceAuthoringClient({ data, models }: { data: PackagingAuthor
                 setAnchor(k, a)
                 setPlaceMode(false)
               }}
+              modelUrl={data.model3dUrl}
             />
             <div className="absolute right-4 top-4">
               <button
@@ -315,6 +316,13 @@ function LibraryDrawer({
           ))}
         </div>
       </div>
+
+      {/* Import a real 3D model for the current package */}
+      {data && (
+        <div className="border-b border-ink-100 p-3">
+          <Model3dImport id={data.id} has3dModel={data.has3dModel} />
+        </div>
+      )}
 
       {/* Current model's die-lines (when one is loaded) */}
       {data && (
@@ -492,6 +500,73 @@ function SurfacesDrawer({
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// Import / replace / remove the package's 3D model (glTF/glb). On success reloads the
+// route so the viewer picks up the new signed model URL.
+function Model3dImport({ id, has3dModel }: { id: string; has3dModel: boolean }) {
+  const router = useRouter()
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = React.useState(false)
+  const [msg, setMsg] = React.useState<string | null>(null)
+
+  async function onFile(file: File | undefined) {
+    if (!file) return
+    setBusy(true)
+    setMsg(null)
+    const fd = new FormData()
+    fd.set('file', file)
+    const res = await attachPackagingModel3d(id, fd).catch(() => null)
+    setBusy(false)
+    if (res && res.ok) {
+      setMsg(null)
+      router.refresh()
+    } else {
+      setMsg(res && !res.ok ? res.error : 'Upload failed.')
+    }
+  }
+
+  async function onRemove() {
+    setBusy(true)
+    const res = await removePackagingModel3d(id).catch(() => null)
+    setBusy(false)
+    if (res && res.ok) router.refresh()
+    else setMsg('Could not remove.')
+  }
+
+  return (
+    <div>
+      <p className="mb-1.5 inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">
+        <Cuboid className="h-3 w-3" /> 3D model
+      </p>
+      <div className="flex items-center gap-2">
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${has3dModel ? 'bg-pink-50 text-pink-700' : 'bg-ink-100 text-ink-500'}`}>
+          {has3dModel ? 'Imported' : 'Parametric'}
+        </span>
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2.5 py-1 text-[11px] font-semibold text-ink-700 hover:border-ink-400 disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} {has3dModel ? 'Replace' : 'Import .glb'}
+        </button>
+        {has3dModel && (
+          <button onClick={onRemove} disabled={busy} className="rounded-full border border-ink-200 px-2.5 py-1 text-[11px] font-semibold text-ink-600 hover:border-ink-400 disabled:opacity-50">
+            Remove
+          </button>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
+        className="hidden"
+        onChange={(e) => onFile(e.target.files?.[0])}
+      />
+      {msg && <p className="mt-1 text-[10.5px] text-warning-700">{msg}</p>}
+      <p className="mt-1 text-[10px] leading-snug text-ink-400">Upload a glTF/glb mockup to rotate the real package (40MB max). Falls back to the parametric shape if none.</p>
     </div>
   )
 }

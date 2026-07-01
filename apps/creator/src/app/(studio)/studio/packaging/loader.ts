@@ -4,6 +4,7 @@
 // the creator app because the studio chrome can't be imported cross-app. Cast-guarded.
 
 import { prisma } from '@ilaunchify/db'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import { resolvePackagingSurfaces, type PackagingSurface } from '@ilaunchify/ui'
 
 export interface BindableDieline {
@@ -17,6 +18,8 @@ export interface PackagingAuthoringData {
   topology: string
   containerCategory: string | null
   has3dModel: boolean
+  /** Signed URL to the imported glTF/glb, or null (renders parametric). */
+  model3dUrl: string | null
   surfaces: PackagingSurface[]
   dielines: BindableDieline[]
 }
@@ -113,12 +116,15 @@ export async function loadPackagingAuthoring(packagingTypeId: string): Promise<P
     return { id: d.id, label: `${d.canonicalShape?.name ?? `Die-line ${i + 1}`}${dims}` }
   })
 
+  const model3dUrl = pt.model3dKey ? await getSignedReadUrl(pt.model3dKey, { expiresInSeconds: 600 }).catch(() => null) : null
+
   return {
     id: pt.id,
     displayName: pt.displayName,
     topology: pt.defaultTopology,
     containerCategory: pt.containerCategory,
     has3dModel: Boolean(pt.model3dKey),
+    model3dUrl,
     surfaces: resolvePackagingSurfaces(pt.defaultSurfaces),
     dielines,
   }

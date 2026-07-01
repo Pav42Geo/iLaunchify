@@ -30,4 +30,5 @@ export {
   ticketAttachmentKey,
   dielineNormalizedKey,
   flavorAssetKey,
+  packagingModelAssetKey,
 } from './keys'

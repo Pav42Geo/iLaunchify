@@ -185,6 +185,16 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
   projected onto the model, drag-rotate + zoom, and a **"Place marker"** raycast mode that
   sets the selected surface's 3D `hotspot.anchor`. (Refinements to eyeball: glTF-import
   models + exact per-mesh borders come with P1.5.)
+- **3D model import (glTF/glb).** ✅ DONE 2026-07-01. Admins can import a real 3D mockup
+  per package from the studio Library drawer ("Import .glb" / Replace / Remove). Stored in
+  R2 via `packagingModelAssetKey` + `uploadFile`; persisted to `PackagingType.model3dKey` +
+  `model3dSource=UPLOAD` (existing fields — no migration). `attachPackagingModel3d` /
+  `removePackagingModel3d` (catalog:write + audit); loader returns a signed `model3dUrl`.
+  `Packaging3DView` loads the real mesh via GLTFLoader (jsDelivr r128 UMD), normalized +
+  centered, with a **bulletproof parametric fallback** on any load failure (never breaks
+  authoring). 40MB cap. NOTE: GLB render path is unverified in the build sandbox — eyeball
+  live. Next: 2D mockup image import (needs a schema field), real thumbnails in the grid.
+
 - **Entry points — grid AND studio (both).** ✅ DONE 2026-07-01. Two surfaces on purpose:
   the **management grid** at admin `/packaging-studio` (sidebar → Design Studio → Packaging
   Studio) for browsing/creating/deprecating the whole catalog; and the **Step-4 studio**

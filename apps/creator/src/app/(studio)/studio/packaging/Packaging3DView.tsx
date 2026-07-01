@@ -18,6 +18,8 @@ import * as React from 'react'
 import type { PackagingSurface } from '@ilaunchify/ui'
 
 const THREE_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
+// GLTFLoader for three r128 — the examples/js UMD build attaches THREE.GLTFLoader.
+const GLTF_SRC = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js'
 
 type Vec3 = { x: number; y: number; z: number }
 
@@ -29,6 +31,8 @@ interface Props {
   /** Place mode: clicking the model sets the selected surface's anchor. */
   placeMode?: boolean
   onPlaceAnchor?: (key: string, anchor: Vec3) => void
+  /** Signed URL to an imported glTF/glb. When set, renders the real mesh (parametric fallback on error). */
+  modelUrl?: string | null
 }
 
 /** Load three.js from the CDN once; resolve when window.THREE is ready. */
@@ -46,6 +50,25 @@ function loadThree(): Promise<any> {
     s.src = THREE_SRC
     s.async = true
     s.onload = () => resolve((window as any).THREE)
+    s.onerror = reject
+    document.head.appendChild(s)
+  })
+}
+
+/** Load the GLTFLoader UMD script (needs global THREE first). Resolves when ready. */
+function loadGLTFLoader(THREE: any): Promise<void> {
+  if (THREE.GLTFLoader) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${GLTF_SRC}"]`) as HTMLScriptElement | null
+    if (existing) {
+      existing.addEventListener('load', () => resolve())
+      existing.addEventListener('error', reject)
+      return
+    }
+    const s = document.createElement('script')
+    s.src = GLTF_SRC
+    s.async = true
+    s.onload = () => resolve()
     s.onerror = reject
     document.head.appendChild(s)
   })
@@ -86,14 +109,14 @@ function defaultAnchor(s: PackagingSurface, d: ReturnType<typeof dimsFor>, i: nu
   return { x: Math.sin(ang) * (d.kind === 'cyl' ? d.r + 0.04 : d.r * 0.7), y: 0, z: Math.cos(ang) * rad }
 }
 
-export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, placeMode, onPlaceAnchor }: Props) {
+export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, placeMode, onPlaceAnchor, modelUrl }: Props) {
   const mountRef = React.useRef<HTMLDivElement>(null)
   const [markers, setMarkers] = React.useState<{ key: string; label: string; x: number; y: number; front: boolean }[]>([])
   const [err, setErr] = React.useState<string | null>(null)
   const stateRef = React.useRef<any>({})
   // Keep the latest props available to the render loop without re-initializing the scene.
-  const propsRef = React.useRef({ surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology })
-  propsRef.current = { surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology }
+  const propsRef = React.useRef({ surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl })
+  propsRef.current = { surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl }
 
   React.useEffect(() => {
     let disposed = false
@@ -123,21 +146,68 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
         const d = dimsFor(topology)
         const group = new THREE.Group()
         const mat = new THREE.MeshStandardMaterial({ color: 0xd8d8dc, roughness: 0.6, metalness: 0.1 })
-        let body: any
-        if (d.kind === 'cyl') {
-          body = new THREE.Mesh(new THREE.CylinderGeometry(d.r, d.r, d.h, 48), mat)
-        } else {
-          body = new THREE.Mesh(new THREE.BoxGeometry(d.r * 2, d.h, d.d, 1, 1, 1), mat)
-        }
-        body.name = 'body'
-        group.add(body)
-        if (d.lid) {
-          const lid = new THREE.Mesh(new THREE.CylinderGeometry(d.r * 1.04, d.r * 1.04, d.h * 0.18, 48), new THREE.MeshStandardMaterial({ color: 0xb9b9c0, roughness: 0.5 }))
-          lid.position.y = d.h / 2 - d.h * 0.05
-          lid.name = 'lid'
-          group.add(lid)
+
+        // Build the parametric placeholder mesh (also the fallback if a GLB fails to load).
+        function addParametric() {
+          let body: any
+          if (d.kind === 'cyl') {
+            body = new THREE.Mesh(new THREE.CylinderGeometry(d.r, d.r, d.h, 48), mat)
+          } else {
+            body = new THREE.Mesh(new THREE.BoxGeometry(d.r * 2, d.h, d.d, 1, 1, 1), mat)
+          }
+          body.name = 'body'
+          group.add(body)
+          if (d.lid) {
+            const lid = new THREE.Mesh(new THREE.CylinderGeometry(d.r * 1.04, d.r * 1.04, d.h * 0.18, 48), new THREE.MeshStandardMaterial({ color: 0xb9b9c0, roughness: 0.5 }))
+            lid.position.y = d.h / 2 - d.h * 0.05
+            lid.name = 'lid'
+            group.add(lid)
+          }
         }
         scene.add(group)
+
+        const initialModelUrl = propsRef.current.modelUrl
+        if (initialModelUrl) {
+          // Import the real glTF/glb; normalize to ~2.4 units and center it. Parametric fallback on any failure.
+          loadGLTFLoader(THREE)
+            .then(() => {
+              const loader = new THREE.GLTFLoader()
+              loader.load(
+                initialModelUrl,
+                (gltf: any) => {
+                  if (disposed) return
+                  const obj = gltf.scene || (gltf.scenes && gltf.scenes[0])
+                  if (!obj) {
+                    addParametric()
+                    return
+                  }
+                  const bbox = new THREE.Box3().setFromObject(obj)
+                  const size = new THREE.Vector3()
+                  const center = new THREE.Vector3()
+                  bbox.getSize(size)
+                  bbox.getCenter(center)
+                  const maxDim = Math.max(size.x, size.y, size.z) || 1
+                  const scale = 2.4 / maxDim
+                  obj.scale.setScalar(scale)
+                  obj.position.set(-center.x * scale, -center.y * scale, -center.z * scale)
+                  group.add(obj)
+                },
+                undefined,
+                () => {
+                  if (disposed) return
+                  addParametric()
+                  setErr('Could not load the imported 3D model — showing a placeholder.')
+                },
+              )
+            })
+            .catch(() => {
+              if (disposed) return
+              addParametric()
+              setErr('Could not load the 3D model loader — showing a placeholder.')
+            })
+        } else {
+          addParametric()
+        }
 
         // Manual orbit + zoom (avoids the OrbitControls addon import-map).
         let rotX = -0.15

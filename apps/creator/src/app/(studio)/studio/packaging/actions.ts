@@ -8,9 +8,75 @@
 import { prisma } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { uploadFile, packagingModelAssetKey } from '@ilaunchify/storage'
 import { serializePackagingSurfaces, resolvePackagingSurfaces, type PackagingSurface, type FrameLayout, type NormBox } from '@ilaunchify/ui'
 
 export type SaveResult = { ok: true } | { ok: false; error: string }
+
+// Import a 3D model (glTF/glb) + optional thumbnail for a packaging model, persist the
+// R2 keys on PackagingType (model3dKey / model3dThumbKey / model3dSource = UPLOAD). This
+// is the "import 3D mockup and assign it to a package" flow. catalog:write + audited.
+const MODEL_MAX_BYTES = 40 * 1024 * 1024 // 40MB — glb models are typically 1–15MB
+const THUMB_MAX_BYTES = 4 * 1024 * 1024
+
+export async function attachPackagingModel3d(packagingTypeId: string, form: FormData): Promise<SaveResult> {
+  const admin = await requireCapability('catalog:write')
+
+  const file = form.get('file')
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'No 3D model file provided.' }
+  const name = file.name.toLowerCase()
+  if (!name.endsWith('.glb') && !name.endsWith('.gltf')) return { ok: false, error: 'Model must be a .glb or .gltf file.' }
+  if (file.size > MODEL_MAX_BYTES) return { ok: false, error: 'Model is too large (40MB max).' }
+
+  const modelKey = packagingModelAssetKey({ packagingTypeId, kind: 'model3d', filename: file.name })
+  const buf = Buffer.from(await file.arrayBuffer())
+  const up = await uploadFile({
+    key: modelKey,
+    body: buf,
+    contentType: name.endsWith('.glb') ? 'model/gltf-binary' : 'model/gltf+json',
+  }).catch(() => null)
+  if (!up) return { ok: false, error: 'Upload failed — check R2 configuration.' }
+
+  // Optional thumbnail (any image).
+  let thumbKey: string | undefined
+  const thumb = form.get('thumb')
+  if (thumb instanceof File && thumb.size > 0 && thumb.size <= THUMB_MAX_BYTES && thumb.type.startsWith('image/')) {
+    const tk = packagingModelAssetKey({ packagingTypeId, kind: 'thumb', filename: thumb.name })
+    const ok = await uploadFile({ key: tk, body: Buffer.from(await thumb.arrayBuffer()), contentType: thumb.type }).catch(() => null)
+    if (ok) thumbKey = tk
+  }
+
+  const done = await (
+    prisma as unknown as { packagingType: { update: (a: unknown) => Promise<unknown> } }
+  ).packagingType
+    .update({
+      where: { id: packagingTypeId },
+      data: { model3dKey: modelKey, model3dSource: 'UPLOAD', ...(thumbKey ? { model3dThumbKey: thumbKey } : {}) },
+    })
+    .catch(() => null)
+  if (done === null) return { ok: false, error: 'Uploaded, but could not attach to the model.' }
+
+  await logAuditAs(admin, {
+    entityType: 'PackagingType',
+    entityId: packagingTypeId,
+    action: 'packaging-model.3d-imported',
+    payload: { modelKey, thumb: Boolean(thumbKey), bytes: up.sizeBytes },
+  })
+  return { ok: true }
+}
+
+/** Remove the imported 3D model, reverting the studio to the parametric mesh. */
+export async function removePackagingModel3d(packagingTypeId: string): Promise<SaveResult> {
+  const admin = await requireCapability('catalog:write')
+  const done = await (
+    prisma as unknown as { packagingType: { update: (a: unknown) => Promise<unknown> } }
+  ).packagingType
+    .update({ where: { id: packagingTypeId }, data: { model3dKey: null, model3dThumbKey: null, model3dSource: 'PARAMETRIC' } })
+    .catch(() => null)
+  if (done === null) return { ok: false, error: 'Could not remove the 3D model.' }
+  await logAuditAs(admin, { entityType: 'PackagingType', entityId: packagingTypeId, action: 'packaging-model.3d-removed', payload: {} })
+  return { ok: true }
+}
 
 const FULL: NormBox = { x: 0, y: 0, w: 1, h: 1 }
 function box(v: unknown): NormBox {

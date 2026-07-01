@@ -140,3 +140,18 @@ export function dielineNormalizedKey(params: { dielineId: string }): string {
   const id = generateCuid()
   return `dielines/${params.dielineId}/normalized/${id}.svg`
 }
+
+// Admin Packaging Studio — an imported 3D model (glTF/glb) or its preview thumbnail
+// for a PackagingType. Path convention:
+//   packaging-models/{packagingTypeId}/{kind}/{cuid}-{filename}
+// {kind} = 'model3d' | 'thumb'. Keyed per model so re-uploads namespace cleanly; the
+// newest key is stored on PackagingType.model3dKey / .model3dThumbKey.
+export function packagingModelAssetKey(params: {
+  packagingTypeId: string
+  kind: 'model3d' | 'thumb'
+  filename: string
+}): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `packaging-models/${params.packagingTypeId}/${params.kind}/${id}-${safe}`
+}
