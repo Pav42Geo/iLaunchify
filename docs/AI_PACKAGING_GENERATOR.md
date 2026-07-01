@@ -235,11 +235,21 @@ The same generation engine serves two surfaces, gated by capability/tier:
 
 ### A. Admin — **Premium Template Authoring**
 - Lives in the **admin Design Studio "Admin Mode"** (already built: `/studio?adminMode=1`,
-  Admin Mode badge) next to the Die-line Curator.
-- Admin generates against a canonical die-line → curates → **saves as a premium
-  `BrandTemplate`/library template** (domain × shape × style, `isPremium`, `tier`,
-  `colorRoles` for recolor — schema already exists in [[DESIGN_TEMPLATE_LIBRARY]]).
-- These become the high-quality, compliance-correct starting points creators pick from.
+  Admin Mode badge) next to the Die-line Curator. The same `AiCreatePanel` mounts here,
+  unmetered.
+- Admin generates against a canonical die-line → curates → **"Save as premium template"**,
+  which **classifies the saved template on two axes** (Pavel 2026-06-23):
+  1. a **Packaging category** — the marketplace Product Category / packaging taxonomy the
+     template is offered under (so creators find it by category), and
+  2. a **die-line template** it *belongs to* — the canonical `DieCutTemplate` (shape) the
+     generation was authored against, so the template only shows for products on a
+     compatible die-line.
+  Plus the existing `domain × style`, `isPremium`, `tier`, `colorRoles` (recolor) fields
+  from [[DESIGN_TEMPLATE_LIBRARY]]. The save writes/updates a library `BrandTemplate` row
+  linked to `packagingCategoryId` + `dieCutTemplateId`, and stamps the source
+  `AiDesignGeneration.savedTemplateId`.
+- These become the high-quality, compliance-correct starting points creators pick from —
+  filtered by category + matched to their product's die-line shape.
 - Gated by `requireCapability('catalog:write')`.
 
 ### B. Creators — **Builder & Agency self-serve** (NOT Maker)

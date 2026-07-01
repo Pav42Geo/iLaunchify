@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iLaunchify — AI Packaging Generator prototype</title>
+<style>
+  :root{
+    --pink:#FF2E63; --pink-50:#FFF0F4; --pink-700:#C31347;
+    --ink-900:#141517; --ink-700:#33363b; --ink-500:#6b7280; --ink-400:#9aa0a6;
+    --ink-200:#e6e8eb; --ink-100:#f0f1f3; --bg:#f6f7f9; --neon:#B5FF3D;
+    --ok:#0f9d58; --ok-bg:#e8f6ee; --warn:#b26a00; --warn-bg:#fff5e6;
+    --card:#fff; --radius:16px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink-900);font-size:14px}
+  .app{max-width:1180px;margin:0 auto;padding:18px}
+  .topbar{display:flex;align-items:center;gap:14px;background:var(--ink-900);color:#fff;border-radius:14px;padding:10px 16px}
+  .wordmark{font-weight:800;letter-spacing:-.02em}
+  .badge{background:var(--neon);color:#111;font-weight:700;font-size:11px;padding:2px 8px;border-radius:999px}
+  .spacer{flex:1}
+  .viewtoggle{display:flex;background:#2a2c30;border-radius:999px;padding:3px}
+  .viewtoggle button{border:0;background:transparent;color:#cfd2d6;font-weight:600;font-size:12px;padding:6px 14px;border-radius:999px;cursor:pointer}
+  .viewtoggle button.on{background:#fff;color:#111}
+  .note{margin:12px 0;background:var(--warn-bg);border:1px solid #ffe1b0;color:var(--warn);border-radius:10px;padding:8px 12px;font-size:12px}
+
+  /* studio chrome */
+  .studio{display:grid;grid-template-columns:64px 1fr;gap:14px;margin-top:14px}
+  .rail{background:var(--card);border:1px solid var(--ink-200);border-radius:14px;padding:10px 6px;display:flex;flex-direction:column;gap:4px;align-items:center;height:fit-content}
+  .rail .tool{width:48px;height:48px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink-500);font-size:9px;cursor:pointer}
+  .rail .tool.on{background:var(--pink-50);color:var(--pink-700)}
+  .rail .tool svg{width:18px;height:18px}
+  .panel{background:var(--card);border:1px solid var(--ink-200);border-radius:var(--radius);overflow:hidden}
+  .panel-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--ink-100)}
+  .panel-head h2{margin:0;font-size:15px;font-weight:800}
+  .subtabs{display:flex;gap:4px;background:var(--ink-100);border-radius:999px;padding:3px}
+  .subtabs button{border:0;background:transparent;font-weight:700;font-size:12px;padding:6px 14px;border-radius:999px;cursor:pointer;color:var(--ink-500)}
+  .subtabs button.on{background:#fff;color:var(--ink-900);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .body{padding:16px}
+
+  /* AI create layout */
+  .aigrid{display:grid;grid-template-columns:340px 1fr;gap:18px}
+  .lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500);margin:0 0 8px}
+  .dieline{display:flex;gap:8px;align-items:center;width:100%;text-align:left;border:1px solid var(--ink-200);background:#fff;border-radius:12px;padding:9px 12px;cursor:pointer;margin-bottom:8px}
+  .dieline.on{border-color:var(--pink);background:var(--pink-50)}
+  .dieline .nm{font-weight:700;font-size:13px}
+  .dieline .sh{font-size:11px;color:var(--ink-500)}
+  .dieline .fr{margin-left:auto;font-size:10.5px;color:var(--ink-400)}
+  textarea{width:100%;border:1px solid var(--ink-200);border-radius:10px;padding:9px 11px;font:inherit;resize:none}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .chip{border:1px solid var(--ink-200);background:#fff;color:var(--ink-700);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer}
+  .chip.on{border-color:var(--pink);background:var(--pink-50);color:var(--pink-700)}
+  .row{display:flex;gap:10px;align-items:center}
+  select,input[type=number]{border:1px solid var(--ink-200);border-radius:9px;padding:7px 9px;font:inherit;background:#fff}
+  .pill{display:inline-flex;align-items:center;gap:8px;background:var(--ink-900);color:#fff;border:0;border-radius:999px;padding:11px 18px;font-weight:700;cursor:pointer;width:100%;justify-content:center;font-size:13px}
+  .pill:disabled{opacity:.45;cursor:not-allowed}
+  .meter{margin:8px 0}
+  .meter .top{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-500);margin-bottom:4px}
+  .bar{height:7px;background:var(--ink-100);border-radius:999px;overflow:hidden}
+  .bar > i{display:block;height:100%;background:var(--pink);border-radius:999px}
+  .bar.warn > i{background:var(--warn)}
+
+  .compliance{display:flex;gap:9px;align-items:flex-start;border-radius:12px;padding:11px 13px;font-size:12.5px;margin-bottom:12px}
+  .compliance.ok{background:var(--ok-bg);border:1px solid #bfe6cd;color:#0b6b3a}
+  .compliance.bad{background:var(--warn-bg);border:1px solid #ffe1b0;color:var(--warn)}
+
+  .concepts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .concept{border:1px solid var(--ink-200);border-radius:12px;overflow:hidden;background:#fff}
+  .art{position:relative;aspect-ratio:4/5;display:flex;align-items:center;justify-content:center}
+  .art .zone{position:absolute;border:1.5px dashed rgba(255,255,255,.85);border-radius:4px;font-size:9px;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(0,0,0,.16)}
+  .art .brand{position:absolute;top:12%;left:0;right:0;text-align:center;color:#fff;font-weight:800;font-size:17px;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .concept .foot{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;font-size:11px}
+  .mini{border:1px solid var(--ink-200);background:#fff;border-radius:999px;padding:3px 9px;font-weight:700;font-size:11px;cursor:pointer;color:var(--ink-700)}
+  .mini.pink{border-color:var(--pink);color:var(--pink-700);background:var(--pink-50)}
+  .saved{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px}
+  .saved .t{aspect-ratio:4/5;border-radius:10px;border:1px solid var(--ink-200)}
+  .empty{color:var(--ink-400);font-size:12px;padding:14px;text-align:center;border:1px dashed var(--ink-200);border-radius:12px}
+
+  /* admin */
+  .tiertable{width:100%;border-collapse:collapse;font-size:13px}
+  .tiertable th,.tiertable td{border-bottom:1px solid var(--ink-100);padding:9px 8px;text-align:left}
+  .tiertable th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-500)}
+  .tiertable input{width:90px}
+  .card2{border:1px solid var(--ink-200);border-radius:12px;padding:14px;margin-bottom:14px}
+  .card2 h3{margin:0 0 10px;font-size:13px}
+  .vocab{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .vocab .x{cursor:pointer;color:var(--ink-400);margin-left:5px}
+  .addrow{display:flex;gap:6px;margin-top:8px}
+  .addrow input{flex:1}
+  .hint{font-size:11.5px;color:var(--ink-500);margin:2px 0 0}
+  .flex{display:flex;gap:14px;flex-wrap:wrap}
+  .kv{font-size:12px;color:var(--ink-500)}
+  .kv b{color:var(--ink-900)}
+  h4.sec{margin:18px 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-500)}
+  .mfield{margin-bottom:8px}
+  .mfield label{display:block;font-size:11px;color:var(--ink-500);margin-bottom:3px;font-weight:600}
+  .mfield label .req{color:var(--pink)}
+  .mfield input{width:100%;border:1px solid var(--ink-200);border-radius:9px;padding:7px 9px;font:inherit}
+  .uploadbtn{display:flex;align-items:center;justify-content:center;gap:6px;border:1px dashed var(--ink-200);border-radius:10px;padding:11px;font-size:12px;color:var(--ink-500);cursor:pointer;margin-bottom:10px}
+  .swatches{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .swatches .sw{width:22px;height:22px;border-radius:6px;border:1px solid #0002}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <span class="wordmark">iLaunchify</span><span class="badge">Studio</span>
+    <span class="spacer"></span>
+    <span style="font-size:12px;color:#c9ccd0">Viewing as</span>
+    <select id="asTier" style="color:#111">
+      <option value="maker">Maker (creator)</option>
+      <option value="builder" selected>Builder (creator)</option>
+      <option value="agency">Agency (creator)</option>
+      <option value="admin">Admin — author templates</option>
+    </select>
+    <div class="viewtoggle">
+      <button id="vCreator" class="on" onclick="setView('creator')">Creator</button>
+      <button id="vAdmin" onclick="setView('admin')">Admin</button>
+    </div>
+  </div>
+
+  <div class="note">Prototype for eyeballing — placeholder art, not wired to real generation. Admin edits update the Creator view live to show the flexibility.</div>
+
+  <!-- ================= CREATOR ================= -->
+  <div id="creatorView">
+    <div class="studio">
+      <div class="rail">
+        <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Elements</div>
+        <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>Brand</div>
+        <div class="tool on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>Templates</div>
+        <div class="tool"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2 5 5 .5-4 3.5 1 5-4-2.5L7 19l1-5-4-3.5 5-.5z"/></svg>Layers</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Templates</h2>
+          <div class="subtabs">
+            <button onclick="setTpl('library',this)">Library</button>
+            <button class="on" onclick="setTpl('ai',this)">✨ AI Create</button>
+          </div>
+          <span class="spacer"></span>
+          <span id="creditPill" class="mini">— credits</span>
+        </div>
+
+        <div class="body">
+          <div id="tplLibrary" style="display:none">
+            <div class="saved">
+              <div class="t" style="background:linear-gradient(135deg,#E8943A,#f3c48b)"></div>
+              <div class="t" style="background:linear-gradient(135deg,#9CC4A0,#d7ead9)"></div>
+              <div class="t" style="background:linear-gradient(135deg,#6b7cff,#b9c1ff)"></div>
+              <div class="t" style="background:linear-gradient(135deg,#ff8fab,#ffd0dd)"></div>
+            </div>
+            <p class="hint" style="margin-top:10px">Premium admin-authored templates (compliance-checked). Maker recolours these; Builder/Agency also generate their own →</p>
+          </div>
+
+          <div id="tplAi" class="aigrid">
+            <!-- intake -->
+            <div>
+              <p class="lbl">① Design which die-line?</p>
+              <div id="dielines"></div>
+
+              <p class="lbl" style="margin-top:14px">② Brand identity <span style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink-400)">— follow a kit, or enter it manually</span></p>
+              <div class="subtabs" style="margin-bottom:8px">
+                <button id="mKit" class="on" onclick="setMode('kit')">Brand Kit</button>
+                <button id="mMan" onclick="setMode('manual')">Packaging idea (manual)</button>
+              </div>
+              <div id="kitMode">
+                <div class="row" style="margin-bottom:6px"><select id="kitSel" style="flex:1" onchange="pickKit(this.value)"></select></div>
+                <div id="kitBody"></div>
+              </div>
+              <div id="manualMode" style="display:none">
+                <p class="hint" style="margin-top:0">No kit set up, or just experimenting? Describe the packaging idea by hand.</p>
+                <div class="mfield"><label>Brand name</label><input id="mBrand" placeholder="Your brand" oninput="state.manual.brand=this.value;if(state.gen)generate(true)"></div>
+                <div class="mfield"><label>Target market</label><input id="mMarket" placeholder="e.g. US specialty grocery"></div>
+                <div class="mfield"><label>Target audience</label><input id="mAud" placeholder="e.g. premium gift shoppers"></div>
+                <label class="uploadbtn">⬆ Upload logo <span style="color:var(--ink-400)">(JPG / PNG)</span><input type="file" hidden onchange="state.manual.logo=!!this.files.length;renderManual();if(state.gen)generate(true)"></label>
+                <p class="lbl" style="margin-top:2px">Custom colours</p>
+                <div class="swatches" id="swWrap"></div>
+              </div>
+
+              <p class="lbl" style="margin-top:14px">③ Describe the design</p>
+              <textarea id="descr" rows="2">box of stroopwafel cookies</textarea>
+
+              <p class="lbl" style="margin-top:14px">Style</p><div class="chips" id="chStyle"></div>
+              <p class="lbl">Colour mood</p><div class="chips" id="chColor"></div>
+              <p class="lbl">Elements</p><div class="chips" id="chEl"></div>
+
+              <p class="lbl" style="margin-top:6px">③ Output resolution</p>
+              <div class="row" style="margin-bottom:12px">
+                <select id="resSel" onchange="renderMeters()"></select>
+                <span class="kv" id="resCost"></span>
+              </div>
+
+              <div class="meter"><div class="top"><span>Draft cycles this month</span><span id="cycTxt"></span></div><div class="bar" id="cycBar"><i></i></div></div>
+              <div class="meter"><div class="top"><span>Finalize budget (MP)</span><span id="mpTxt"></span></div><div class="bar" id="mpBar"><i></i></div></div>
+
+              <button class="pill" id="genBtn" onclick="generate()">✨ Generate 4 concepts</button>
+              <p class="hint" id="genHint"></p>
+            </div>
+
+            <!-- preview -->
+            <div>
+              <div class="compliance ok" id="compl">
+                <span>✓</span><div><b id="complTop">8 / 8 required present — compliance-ready</b>
+                <div id="complMiss" style="display:none"></div></div>
+              </div>
+              <label class="hint"><input type="checkbox" id="demoMiss" onchange="renderCompliance()"> demo: simulate a missing required element</label>
+
+              <div id="conceptWrap" style="margin-top:12px">
+                <div class="empty">Pick a die-line, add a few chips, and hit Generate to see 4 concepts painted into your die-line — with the legal zones kept clear.</div>
+              </div>
+
+              <h4 class="sec">My templates <span id="stoTxt" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h4>
+              <div class="bar" id="stoBar" style="margin-bottom:8px"><i></i></div>
+              <div class="saved" id="savedGrid"></div>
+              <div class="empty" id="savedEmpty">Saved concepts appear here (counts against your storage).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ADMIN ================= -->
+  <div id="adminView" style="display:none">
+    <div class="panel">
+      <div class="panel-head"><h2>AI Generator settings</h2><span class="spacer"></span><span class="mini">singleton · like Order Settings</span></div>
+      <div class="body">
+        <div class="card2">
+          <h3>Per-tier limits &amp; price range — <span style="color:var(--pink-700)">edit anything, Creator view updates live</span></h3>
+          <table class="tiertable">
+            <thead><tr><th>Tier</th><th>Draft cycles/mo</th><th>Finalize MP budget</th><th>Max render (MP)</th><th>Storage (MB)</th><th>Price /mo (USD)</th><th>Top-up pack</th></tr></thead>
+            <tbody id="tierRows"></tbody>
+          </table>
+          <p class="hint">Max render (MP) = the resolution ceiling per finalize. A creator spends the MP budget on many small labels OR a few big cartons.</p>
+        </div>
+
+        <div class="flex">
+          <div class="card2" style="flex:1;min-width:260px">
+            <h3>Option vocabulary (chips)</h3>
+            <p class="lbl">Style</p><div class="vocab" id="vStyle"></div>
+            <div class="addrow"><input id="addStyle" placeholder="add style…"><button class="mini" onclick="addVocab('styles','addStyle')">Add</button></div>
+            <p class="lbl" style="margin-top:12px">Colour mood</p><div class="vocab" id="vColor"></div>
+            <div class="addrow"><input id="addColor" placeholder="add colour…"><button class="mini" onclick="addVocab('colors','addColor')">Add</button></div>
+            <p class="lbl" style="margin-top:12px">Elements</p><div class="vocab" id="vEl"></div>
+            <div class="addrow"><input id="addEl" placeholder="add element…"><button class="mini" onclick="addVocab('elements','addEl')">Add</button></div>
+          </div>
+
+          <div class="card2" style="flex:1;min-width:260px">
+            <h3>Providers &amp; cost knobs</h3>
+            <div class="kv" style="line-height:2">
+              Raster: <b>fal.ai FLUX.1 [dev] + ControlNet</b> · $<input type="number" step="0.005" value="0.075" style="width:70px" id="cFlux">/MP<br>
+              Vector type: <b>Recraft</b> · $<input type="number" step="0.01" value="0.08" style="width:70px" id="cRec">/img<br>
+              Upscale (finalize): $<input type="number" step="0.005" value="0.01" style="width:70px" id="cUp">/MP<br>
+              Draft images/cycle: <input type="number" value="4" style="width:60px" id="cN">
+            </div>
+            <p class="hint" id="cogs"></p>
+            <h4 class="sec">Gates</h4>
+            <label class="kv"><input type="checkbox" checked> Maker: templates + recolour only (no generation)</label><br>
+            <label class="kv"><input type="checkbox" checked> Block export until compliance complete</label><br>
+            <label class="kv"><input type="checkbox" checked> Block save when over storage cap</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tplModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;width:390px;max-width:92vw;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <h3 style="margin:0 0 4px;font-size:15px">Save as premium template</h3>
+    <p class="hint" style="margin:0 0 12px">Admin Mode — classify so creators find it &amp; it matches their die-line.</p>
+    <div class="mfield"><label>Packaging category <span class="req">*</span></label><select id="tCat"></select></div>
+    <div class="mfield"><label>Die-line template <span class="req">*</span> <span style="font-weight:400;color:var(--ink-400)">— belongs to this shape</span></label><select id="tDie"></select></div>
+    <div class="mfield"><label>Template name</label><input id="tName" placeholder="e.g. Warm Caramel Drizzle"></div>
+    <label class="hint" style="display:flex;gap:6px;align-items:center;margin:2px 0 14px"><input type="checkbox" id="tPrem" checked> Mark as premium (tier-gated in the library)</label>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="mini" onclick="closeAdminSave()">Cancel</button>
+      <button class="pill" style="width:auto;padding:9px 16px" onclick="saveAsTemplate()">Save template</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- shared config (this is the admin-editable AiGeneratorSettings) ----------
+const CFG = {
+  tiers:{
+    maker:  {draftCycles:0,  mpBudget:0,   maxRes:0,  storageMB:0,   price:29,  topup:'—'},
+    builder:{draftCycles:30, mpBudget:36,  maxRes:6,  storageMB:500, price:79,  topup:'$15 / 200 MP'},
+    agency: {draftCycles:120,mpBudget:240, maxRes:16, storageMB:5120,price:199, topup:'$15 / 200 MP'},
+  },
+  styles:['Minimal','Vintage','Luxury','Playful','Modern','Hand-drawn','Bold','Natural','Warm','Geometric'],
+  colors:['Vibrant','Muted','Warm Tones','Cool Tones','Pastel','Earthy','Monochrome','Jewel Tones'],
+  elements:['Botanicals','Fruits','Liquid Swirls','Patterns','Abstract Shapes','Doodles','Waves','Celestial'],
+};
+const COLORHEX={ 'Warm Tones':['#E8943A','#f3c48b'],'Cool Tones':['#5b8def','#a9c4ff'],'Vibrant':['#ff2e63','#ff9f1c'],
+  'Muted':['#a3a3a3','#d9d9d9'],'Pastel':['#ffd6e0','#c9e4de'],'Earthy':['#8a6d3b','#c9b18b'],
+  'Monochrome':['#222','#888'],'Jewel Tones':['#7b2d8e','#2d6b8e'] };
+const BRANDKITS={
+  none:   {nm:'None / free-style',            palette:[],                                   logo:null},
+  mood:   {nm:'Mood Cookies (default kit)',   palette:['#E8943A','#9CC4A0','#3b2a20','#F7EFE2'], logo:'MC'},
+  moodhol:{nm:'Mood — Holiday kit',           palette:['#C0392B','#1E5631','#F4E4C1','#7A3B2E'], logo:'MC'},
+};
+const DIELINES=[
+  {id:'primary',nm:'Primary box',sh:'flip-top mailer box',frames:8,zones:['Nutrition Facts','Ingredients','Statement of Identity','Net Qty','Barcode']},
+  {id:'carton', nm:'Outer carton',sh:'shipping carton',frames:3,zones:['Statement of Identity']},
+  {id:'label',  nm:'Vanilla label',sh:'wrap label (per-flavor)',frames:5,zones:['Nutrition Facts','Ingredients','Net Qty']},
+];
+
+const CATEGORIES=['Snacks & Cookies','Beverages','Supplements','Cosmetics','Pet Treats','Coffee & Tea','Confectionery'];
+const DIETPLS=['Flip-top mailer box','Straight-tuck carton','Reverse-tuck carton','Stand-up pouch','Gable box','Wrap label','Jar + lid'];
+let pendingSave=-1;
+let state={tier:'builder',die:'primary',mode:'kit',kit:'mood',followBrand:true,manual:{brand:'',market:'',aud:'',logo:false,colors:[]},styles:[],colors:[],elements:[],res:0,used:{cycles:6,mp:9,sto:120},saved:[]};
+
+function brandLocked(){const k=BRANDKITS[state.kit];return state.mode==='kit' && state.followBrand && k && k.palette.length>0;}
+function setMode(m){state.mode=m;
+  document.getElementById('kitMode').style.display=m==='kit'?'block':'none';
+  document.getElementById('manualMode').style.display=m==='manual'?'block':'none';
+  document.getElementById('mKit').classList.toggle('on',m==='kit');
+  document.getElementById('mMan').classList.toggle('on',m==='manual');
+  renderChips();if(state.gen)generate(true);
+}
+function addCustomColor(v){state.manual.colors.push(v);renderManual();if(state.gen)generate(true);}
+function delCustomColor(i){state.manual.colors.splice(i,1);renderManual();if(state.gen)generate(true);}
+function renderManual(){
+  document.getElementById('swWrap').innerHTML=
+    state.manual.colors.map((c,i)=>`<span class="sw" style="background:${c}" title="${c} — click to remove" onclick="delCustomColor(${i})"></span>`).join('')+
+    `<input type="color" value="#E8943A" onchange="addCustomColor(this.value)" style="width:26px;height:26px;padding:0;border:0;background:none;cursor:pointer" title="Add colour">`;
+}
+function renderKit(){
+  document.getElementById('kitSel').innerHTML=Object.entries(BRANDKITS).map(([id,v])=>`<option value="${id}" ${id===state.kit?'selected':''}>${v.nm}</option>`).join('');
+  const k=BRANDKITS[state.kit];const body=document.getElementById('kitBody');
+  if(state.kit==='none'){body.innerHTML='<p class="hint">No kit — the generator free-styles colours &amp; type.</p>';return;}
+  body.innerHTML=`<div class="row" style="gap:6px;align-items:center;margin-bottom:6px">
+    <span style="width:30px;height:30px;border-radius:8px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">${k.logo}</span>
+    ${k.palette.map(c=>`<span title="${c}" style="width:20px;height:20px;border-radius:5px;border:1px solid #0002;background:${c}"></span>`).join('')}</div>
+    <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="followBrand" ${state.followBrand?'checked':''} onchange="toggleFollow(this.checked)"> Follow my Brand Kit — lock palette + logo (used as the AI brand reference)</label>`;
+}
+function pickKit(id){state.kit=id;if(id==='none')state.followBrand=false;renderKit();renderChips();if(state.gen)generate(true);}
+function toggleFollow(v){state.followBrand=v;renderChips();if(state.gen)generate(true);}
+
+// ---------- helpers ----------
+function tier(){ if(state.tier==='admin') return {...CFG.tiers.agency, draftCycles:99999, mpBudget:99999, storageMB:9999999}; return CFG.tiers[state.tier]; }
+function isAdmin(){return state.tier==='admin';}
+function resOptions(){ // resolution presets bounded by tier max
+  const max=tier().maxRes; const out=[{n:'Draft (preview)',mp:1}];
+  if(max>=3)out.push({n:'Standard print (3 MP)',mp:3});
+  if(max>=6)out.push({n:'High print (6 MP)',mp:6});
+  if(max>=12)out.push({n:'XL carton (12 MP)',mp:12});
+  if(max>=16)out.push({n:'Max ('+max+' MP)',mp:max});
+  return out;
+}
+
+// ---------- CREATOR render ----------
+function renderDielines(){
+  document.getElementById('dielines').innerHTML=DIELINES.map(d=>`
+    <button class="dieline ${d.id===state.die?'on':''}" onclick="pick('${d.id}')">
+      <span>📦</span><span><span class="nm">${d.nm}</span><span class="sh">${d.sh}</span></span>
+      <span class="fr">${d.frames} frames</span></button>`).join('');
+}
+function renderChips(){
+  const mk=(arr,sel,grp)=>arr.map(c=>`<span class="chip ${sel.includes(c)?'on':''}" onclick="toggle('${grp}','${c.replace(/'/g,"")}')">${c}</span>`).join('');
+  document.getElementById('chStyle').innerHTML=mk(CFG.styles,state.styles,'styles');
+  document.getElementById('chColor').innerHTML= brandLocked()
+    ? `<span class="hint">🔒 Locked to your Brand Kit palette. Turn off “Follow my Brand Kit” to pick a colour mood.</span>`
+    : mk(CFG.colors,state.colors,'colors');
+  document.getElementById('chEl').innerHTML=mk(CFG.elements,state.elements,'elements');
+}
+function renderRes(){
+  const opts=resOptions();
+  if(state.res>=opts.length)state.res=0;
+  document.getElementById('resSel').innerHTML=opts.map((o,i)=>`<option value="${i}" ${i===state.res?'selected':''}>${o.n}</option>`).join('');
+  document.getElementById('resSel').onchange=e=>{state.res=+e.target.value;renderMeters();};
+}
+function renderMeters(){
+  const t=tier(); const opt=resOptions()[state.res]||{mp:1};
+  document.getElementById('resCost').innerHTML = state.tier==='maker'?'':`≈ ${opt.mp} MP / finalize`;
+  const c=state.used.cycles, cm=t.draftCycles;
+  const mp=state.used.mp, mm=t.mpBudget;
+  const so=state.used.sto, sm=t.storageMB;
+  set('cycTxt',`${c} / ${cm}`); bar('cycBar',c,cm);
+  set('mpTxt',`${mp} / ${mm} MP`); bar('mpBar',mp,mm);
+  set('stoTxt',`(${so} / ${sm} MB)`); bar('stoBar',so,sm);
+  document.getElementById('creditPill').textContent = isAdmin()?'Admin · unmetered':(state.tier==='maker'?'templates only':`${Math.max(0,cm-c)} cycles left`);
+  const canGen = state.tier!=='maker' && c<cm;
+  document.getElementById('genBtn').disabled=!canGen;
+  document.getElementById('genHint').textContent = isAdmin()
+    ? 'Admin Mode — unmetered. Generated concepts can be saved as premium templates.'
+    : (state.tier==='maker'
+      ? 'Maker: use premium templates + recolour. Upgrade to generate.'
+      : (c>=cm?'Out of draft cycles this month — top up or upgrade.':'Preview shows the composite into your die-line; legal zones stay clear.'));
+}
+function set(id,v){document.getElementById(id).textContent=v;}
+function bar(id,used,max){const el=document.getElementById(id);const pct=max?Math.min(100,used/max*100):0;
+  el.classList.toggle('warn',pct>85);el.querySelector('i').style.width=pct+'%';}
+
+function renderCompliance(){
+  const miss=document.getElementById('demoMiss').checked;
+  const el=document.getElementById('compl');
+  el.className='compliance '+(miss?'bad':'ok');
+  document.getElementById('complTop').textContent= miss?'7 / 8 required — add before export':'8 / 8 required present — compliance-ready';
+  const m=document.getElementById('complMiss'); m.style.display=miss?'block':'none'; m.textContent='Missing: Net quantity of contents';
+  el.querySelector('span').textContent=miss?'!':'✓';
+}
+
+function pick(id){state.die=id;renderDielines();if(state.gen)generate(true);}
+function toggle(grp,c){const a=state[grp];const i=a.indexOf(c);i<0?a.push(c):a.splice(i,1);renderChips();if(state.gen)generate(true);}
+
+function conceptArt(seed){
+  const k=BRANDKITS[state.kit];
+  let pair;
+  if(state.mode==='manual' && state.manual.colors.length){ const c=state.manual.colors; pair=[c[seed%c.length], c[(seed+1)%c.length]]; }
+  else if(brandLocked()){ pair=[k.palette[seed%k.palette.length], k.palette[(seed+1)%k.palette.length]]; }
+  else { const cols=state.colors.length?state.colors:['Warm Tones']; pair=COLORHEX[cols[seed%cols.length]]||['#E8943A','#f3c48b']; }
+  const brandName = state.mode==='manual' ? (state.manual.brand||'Your Brand') : 'Mood Cookies';
+  const die=DIELINES.find(d=>d.id===state.die);
+  const zoneEls=die.zones.map((z,i)=>{
+    const rows=die.zones.length; const h=Math.min(26,60/rows);
+    const top=52+i*(h+3);
+    return `<div class="zone" style="left:8%;right:8%;top:${top}%;height:${h}%">${z}</div>`;
+  }).join('');
+  const logo = brandLocked()
+    ? `<span style="display:inline-flex;width:20px;height:20px;border-radius:5px;background:#111;color:#fff;align-items:center;justify-content:center;font-size:10px;margin-right:5px;vertical-align:middle">${k.logo}</span>`
+    : '✦ ';
+  const badge = brandLocked()
+    ? `<div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;padding:2px 7px;border-radius:999px">🔒 Brand colours + logo</div>`
+    : (state.mode==='manual' && state.manual.colors.length ? `<div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,.45);color:#fff;font-size:9px;padding:2px 7px;border-radius:999px">Manual idea</div>` : '');
+  return `<div class="art" style="background:linear-gradient(${140+seed*12}deg,${pair[0]},${pair[1]})">
+    <div class="brand">${logo}${brandName}</div>${zoneEls}${badge}</div>`;
+}
+function generate(silent){
+  state.gen=true;
+  if(!silent){ state.used.cycles=Math.min(tier().draftCycles,state.used.cycles+1); }
+  const wrap=document.getElementById('conceptWrap');
+  wrap.innerHTML=`<div class="concepts">${[0,1,2,3].map(i=>`
+    <div class="concept">${conceptArt(i)}
+      <div class="foot"><span style="color:var(--ink-400)">Concept ${i+1}</span>
+      <span><button class="mini" onclick="save(${i})">${isAdmin()?'Save as template':'Save'}</button>
+      <button class="mini pink" onclick="alert('Opens this concept in the full Design Studio canvas to fine-tune + export a print-ready die-line.')">Edit in Studio</button></span></div>
+    </div>`).join('')}</div>
+    <div style="margin-top:10px"><button class="mini" onclick="generate()">↻ Re-roll (uses a cycle)</button></div>`;
+  renderMeters();
+}
+function bgFor(i){const cols=state.colors.length?state.colors:['Warm Tones'];const pair=COLORHEX[cols[i%cols.length]]||['#E8943A','#f3c48b'];return `linear-gradient(135deg,${pair[0]},${pair[1]})`;}
+function save(i){
+  if(isAdmin()){openAdminSave(i);return;}
+  const t=tier(); const per=25; // ~25 MB per saved finalized template (demo)
+  if(state.used.sto+per>t.storageMB){alert('Storage cap reached ('+t.storageMB+' MB). Delete an old template or upgrade.');return;}
+  state.used.sto+=per;
+  state.saved.push({bg:bgFor(i)});
+  renderSaved();renderMeters();
+}
+function renderSaved(){
+  const g=document.getElementById('savedGrid');const e=document.getElementById('savedEmpty');
+  e.style.display=state.saved.length?'none':'block';
+  document.querySelector('h4.sec').firstChild.textContent = isAdmin()?'Premium templates I authored ':'My templates ';
+  g.innerHTML=state.saved.map(s=>`<div><div class="t" style="background:${s.bg}"></div>${s.cap?`<div style="font-size:9px;color:var(--ink-500);margin-top:3px;line-height:1.2">${s.cap}</div>`:''}</div>`).join('');
+}
+
+// ----- Admin: Save as premium template (packaging category + die-line template) -----
+function openAdminSave(i){
+  pendingSave=i;
+  document.getElementById('tCat').innerHTML=CATEGORIES.map(c=>`<option>${c}</option>`).join('');
+  const guess=DIELINES.find(d=>d.id===state.die)?.sh||DIETPLS[0];
+  document.getElementById('tDie').innerHTML=DIETPLS.map(d=>`<option ${d===guess?'selected':''}>${d}</option>`).join('');
+  document.getElementById('tName').value='';
+  document.getElementById('tplModal').style.display='flex';
+}
+function closeAdminSave(){document.getElementById('tplModal').style.display='none';pendingSave=-1;}
+function saveAsTemplate(){
+  const cat=document.getElementById('tCat').value, die=document.getElementById('tDie').value;
+  const prem=document.getElementById('tPrem').checked;
+  state.saved.push({bg:bgFor(pendingSave<0?0:pendingSave),cap:`${prem?'★ ':''}${cat} · ${die}`});
+  closeAdminSave();renderSaved();
+}
+
+// ---------- ADMIN render ----------
+function renderAdmin(){
+  document.getElementById('tierRows').innerHTML=Object.entries(CFG.tiers).map(([k,t])=>`
+    <tr><td style="font-weight:700;text-transform:capitalize">${k}</td>
+    <td><input type="number" value="${t.draftCycles}" onchange="edit('${k}','draftCycles',this.value)"></td>
+    <td><input type="number" value="${t.mpBudget}" onchange="edit('${k}','mpBudget',this.value)"></td>
+    <td><input type="number" value="${t.maxRes}" onchange="edit('${k}','maxRes',this.value)"></td>
+    <td><input type="number" value="${t.storageMB}" onchange="edit('${k}','storageMB',this.value)"></td>
+    <td>$<input type="number" value="${t.price}" onchange="edit('${k}','price',this.value)"></td>
+    <td><input value="${t.topup}" style="width:120px" onchange="edit('${k}','topup',this.value)"></td></tr>`).join('');
+  const vv=(arr,grp,el)=>document.getElementById(el).innerHTML=arr.map((c,i)=>`<span class="chip">${c}<span class="x" onclick="delVocab('${grp}',${i})">✕</span></span>`).join('');
+  vv(CFG.styles,'styles','vStyle');vv(CFG.colors,'colors','vColor');vv(CFG.elements,'elements','vEl');
+  renderCogs();
+}
+function edit(tierKey,field,val){CFG.tiers[tierKey][field]= field==='topup'?val:(+val);renderAdmin();renderMeters();renderRes();}
+function addVocab(grp,inp){const v=document.getElementById(inp).value.trim();if(v){CFG[grp].push(v);document.getElementById(inp).value='';renderAdmin();renderChips();}}
+function delVocab(grp,i){CFG[grp].splice(i,1);renderAdmin();renderChips();}
+function renderCogs(){
+  const n=+document.getElementById('cN').value, flux=+document.getElementById('cFlux').value,
+        up=+document.getElementById('cUp').value, rec=+document.getElementById('cRec').value;
+  const draft=(n*1*flux), fin=(6*up+rec);
+  document.getElementById('cogs').innerHTML=`Est. COGS: draft cycle ≈ <b>$${draft.toFixed(2)}</b>, finalize (6 MP) ≈ <b>$${fin.toFixed(2)}</b>. Builder @ 30 cycles + 6 finalizes ≈ <b>$${(30*draft+6*fin).toFixed(0)}</b>/mo vs $${CFG.tiers.builder.price} price.`;
+}
+['cN','cFlux','cUp','cRec'].forEach(id=>document.addEventListener('input',e=>{if(e.target.id===id)renderCogs();}));
+
+// ---------- view switching ----------
+function setView(v){
+  document.getElementById('creatorView').style.display=v==='creator'?'block':'none';
+  document.getElementById('adminView').style.display=v==='admin'?'block':'none';
+  document.getElementById('vCreator').classList.toggle('on',v==='creator');
+  document.getElementById('vAdmin').classList.toggle('on',v==='admin');
+  if(v==='admin')renderAdmin();
+}
+function setTpl(t,btn){
+  document.getElementById('tplLibrary').style.display=t==='library'?'block':'none';
+  document.getElementById('tplAi').style.display=t==='ai'?'grid':'none';
+  [...btn.parentNode.children].forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+}
+document.getElementById('asTier').onchange=e=>{state.tier=e.target.value;
+  // reset usage sensibly for the tier
+  const z=state.tier==='maker'; state.used={cycles:z?0:6,mp:z?0:9,sto:z?0:120};
+  renderRes();renderMeters();renderSaved();if(state.gen)generate(true);
+};
+
+// init
+renderDielines();renderKit();renderManual();renderChips();renderRes();renderMeters();renderCompliance();renderSaved();
+</script>
+</body>
+</html>

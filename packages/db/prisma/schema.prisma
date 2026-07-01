@@ -6888,12 +6888,21 @@ model AiDesignGeneration {
   creditsSpent       Int          @default(0)
   /// evaluateCompliance() report at generation time (legal reproducibility).
   complianceJson     Json?
+  // --- Admin "Save as premium template" classification (ADMIN_TEMPLATE scope) ---
+  /// The library BrandTemplate this generation was saved as (soft FK).
+  savedTemplateId     String?
+  /// Packaging category the saved template is offered under (soft FK -> Category).
+  packagingCategoryId String?
+  /// Canonical die-line template (shape) the template belongs to (soft FK -> DieCutTemplate).
+  dieCutTemplateId    String?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
   @@index([authorUserId])
   @@index([productTemplateId])
   @@index([status])
+  @@index([packagingCategoryId])
+  @@index([dieCutTemplateId])
 }
 
 /// Per-creator, per-billing-period usage of the two metered levers.
