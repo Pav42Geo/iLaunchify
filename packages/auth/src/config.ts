@@ -91,7 +91,12 @@ if (isDevSignInOnly) {
   )
 }
 
-if (providers.length === 0) {
+// Guard RUNTIME, not the build. `next build` imports every route to collect page
+// data with NODE_ENV=production (so the dev-credentials fallback above is skipped);
+// throwing here at import time would fail the build in any env without provider keys.
+// During the build phase (NEXT_PHASE=phase-production-build) we skip the throw — the
+// same check still fires when the server actually boots to serve requests.
+if (providers.length === 0 && process.env.NEXT_PHASE !== 'phase-production-build') {
   throw new Error(
     'No auth providers configured. Set AUTH_GOOGLE_ID + AUTH_GOOGLE_SECRET, or AUTH_RESEND_KEY + AUTH_EMAIL_FROM in your env.',
   )
