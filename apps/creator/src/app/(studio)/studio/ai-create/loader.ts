@@ -6,10 +6,13 @@
 
 import { prisma, getAiGeneratorSettings } from '@ilaunchify/db'
 import { getCreatorTier } from '@ilaunchify/auth'
-import { resolveDomainOptions, type LabelingDomain, type DomainPreset } from '@ilaunchify/ai-design'
+import { resolveDomainOptions, type LabelingDomain, type DomainPreset, type FlavorSpec } from '@ilaunchify/ai-design'
 import { tierLimits, type CreatorBillingTier } from '@ilaunchify/imagegen'
 import type { FrameLayout } from '@ilaunchify/ui'
 import type { AiCreatePanelProps, DielineTarget, CreatorTier } from './AiCreatePanel'
+
+// Fallback accent ramp for flavours with no swatchHex and no brand palette to draw from.
+const DEFAULT_ACCENTS = ['#E5486B', '#6B4423', '#7BA05B', '#E7A93D', '#4A78B5', '#B5559E', '#3FA796', '#D2603A']
 
 /** LabelingType → the generator's domain (same enum values; category can override). */
 function resolveDomain(labelingType: string | null, category: string): LabelingDomain {
@@ -78,6 +81,23 @@ async function loadDielineTargets(productTemplateId: string | null): Promise<Die
   return out
 }
 
+/** Product's flavour presets → FlavorSpec[], accent = swatchHex ?? brand palette ?? ramp. */
+async function loadFlavors(productTemplateId: string | null, palette: string[]): Promise<FlavorSpec[]> {
+  if (!productTemplateId) return []
+  const rows = await prisma.flavorPreset
+    .findMany({
+      where: { productTemplateId, status: 'ACTIVE' },
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true, name: true, swatchHex: true },
+    })
+    .catch(() => [] as Array<{ id: string; name: string; swatchHex: string | null }>)
+  return rows.map((r, i) => ({
+    id: r.id,
+    name: r.name,
+    accentHex: hex(r.swatchHex) ?? palette[i % Math.max(1, palette.length)] ?? DEFAULT_ACCENTS[i % DEFAULT_ACCENTS.length]!,
+  }))
+}
+
 async function creditsRemaining(userId: string, tier: CreatorBillingTier): Promise<number> {
   const cap = tierLimits(tier).draftCyclesPerPeriod
   if (cap <= 0) return 0
@@ -119,8 +139,11 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
   const settings = await getAiGeneratorSettings()
   const vocab: DomainPreset = resolveDomainOptions(domain, settings.domainVocab[domain] as Partial<DomainPreset> | undefined)
 
-  const [dielines, credits] = await Promise.all([
+  const palette = product.brand ? brandPalette(product.brand) : []
+
+  const [dielines, flavors, credits] = await Promise.all([
     loadDielineTargets(product.productTemplateId),
+    loadFlavors(product.productTemplateId, palette),
     creditsRemaining(userId, meteredTier),
   ])
 
@@ -129,10 +152,11 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
     props: {
       productDescriptor: product.name,
       brandName: product.brand?.name ?? undefined,
-      brandPalette: product.brand ? brandPalette(product.brand) : [],
+      brandPalette: palette,
       domain,
       market: 'US',
       dielines,
+      flavors,
       styleOptions: vocab.styles,
       colorOptions: vocab.colors,
       elementOptions: vocab.elements,

@@ -54,6 +54,14 @@ export interface AiCreatePanelProps {
   flavors?: FlavorSpec[]
   /** P3 provider: given the plan + die-line, return N variation image refs. */
   onGenerate?: (plan: GenerationPlan, dielineId: string) => Promise<string[]>
+  /**
+   * Load a generated concept into the Design Studio canvas for editing (and, in admin
+   * mode, saving as a library template via the existing template-author flow). The
+   * Studio shell wires this; when absent the button is hidden.
+   */
+  onEditInStudio?: (result: { svg: string; dielineId: string; label: string }) => void
+  /** Export a generated concept (SVG/PDF). When absent the button is hidden. */
+  onExport?: (result: { svg: string; dielineId: string; label: string }) => void
 }
 
 const DEFAULT_STYLES = ['Minimal', 'Vintage', 'Luxury', 'Playful', 'Modern', 'Hand-drawn', 'Bold', 'Natural', 'Warm', 'Geometric']
@@ -344,9 +352,8 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                 <p className="mb-1 truncate text-[10.5px] font-semibold text-ink-500">{v.label}</p>
                 <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: v.svg }} />
                 {setVariants.length > 0 && (
-                  <div className="mt-1.5 flex items-center justify-end gap-1 text-[11px]">
-                    <button className="rounded-full border border-ink-200 px-2 py-0.5 font-semibold text-ink-600 hover:bg-ink-50">Edit in Studio</button>
-                    <button className="rounded-full border border-ink-200 px-2 py-0.5 font-semibold text-ink-600 hover:bg-ink-50">Export</button>
+                  <div className="mt-1.5 flex items-center justify-end">
+                    <ResultActions result={{ svg: v.svg, dielineId: v.id, label: v.label }} onEdit={props.onEditInStudio} onExport={props.onExport} />
                   </div>
                 )}
               </div>
@@ -414,10 +421,11 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                 <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: v }} />
                 <div className="mt-1.5 flex items-center justify-between">
                   <span className="text-[10.5px] text-ink-400">Concept {i + 1}</span>
-                  <div className="flex gap-1 text-[11px]">
-                    <button className="rounded-full border border-ink-200 px-2 py-0.5 font-semibold text-ink-600 hover:bg-ink-50">Edit in Studio</button>
-                    <button className="rounded-full border border-ink-200 px-2 py-0.5 font-semibold text-ink-600 hover:bg-ink-50">Export</button>
-                  </div>
+                  <ResultActions
+                    result={{ svg: v, dielineId: selected?.id ?? '', label: selected?.label ?? '' }}
+                    onEdit={props.onEditInStudio}
+                    onExport={props.onExport}
+                  />
                 </div>
               </div>
             ))}
@@ -427,6 +435,32 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function ResultActions({
+  result,
+  onEdit,
+  onExport,
+}: {
+  result: { svg: string; dielineId: string; label: string }
+  onEdit?: (r: { svg: string; dielineId: string; label: string }) => void
+  onExport?: (r: { svg: string; dielineId: string; label: string }) => void
+}) {
+  if (!onEdit && !onExport) return null
+  return (
+    <div className="flex gap-1 text-[11px]">
+      {onEdit && (
+        <button onClick={() => onEdit(result)} className="rounded-full border border-ink-200 px-2 py-0.5 font-semibold text-ink-600 hover:bg-ink-50">
+          Edit in Studio
+        </button>
+      )}
+      {onExport && (
+        <button onClick={() => onExport(result)} className="rounded-full border border-ink-200 px-2 py-0.5 font-semibold text-ink-600 hover:bg-ink-50">
+          Export
+        </button>
+      )}
     </div>
   )
 }

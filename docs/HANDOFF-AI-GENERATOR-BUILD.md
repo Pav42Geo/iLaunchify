@@ -61,15 +61,21 @@ After `db:generate`, the cast-guarded db helpers (`getAiGeneratorSettings`,
   only the accent differs. Shows the locked master, the derived-flavour strip (accent
   swatch + element cue), held-constant invariants, and any rejected specs.
 
-The fixture demo exercises all three. **Follow-up:** the real loader does not yet pass
-`flavors` — decide where per-flavour accent colours come from (add `accentHex` to
-`FlavorPreset`, or derive from the brand palette) before wiring `loadAiCreateProps` to
-populate it.
+The fixture demo exercises all three, and the **real loader now populates `flavors`**:
+`loadAiCreateProps` reads the product's ACTIVE `FlavorPreset` rows and maps each accent from
+`swatchHex`, falling back to the brand palette, then a default ramp — no migration needed.
+Flavour-family mode appears automatically for any product with ≥2 flavours.
 
 ## 4. Still to build (next slices)
 - Mount `AiCreatePanel` into the **Studio → Templates** tab, passing `?productId` of the
   open product. (Studio shell is Code's hot file — coordinate; the loader + route are ready
-  to consume.)
+  to consume.) Wire two callbacks so generated concepts leave the panel:
+  - `onEditInStudio({ svg, dielineId, label })` — load the concept onto the Fabric canvas.
+    In admin (template-author) mode, saving then reuses the existing
+    `saveStudioLibraryTemplate` flow (system-templates brand + category/die-line metadata) —
+    the AI panel does NOT need its own save-as-template path.
+  - `onExport({ svg, dielineId, label })` — hand off to the existing label export.
+  Until wired, both buttons are hidden (no dead controls).
 - P3: fal + Recraft adapters implementing `ImageGenProvider`; `AiDesignGeneration` FSM
   wired to debit usage via the metering engine. **Needs `FAL_KEY` + `RECRAFT_API_KEY`.**
 - Coordinated-set + flavor-series UI; template management (product-aware matching +
