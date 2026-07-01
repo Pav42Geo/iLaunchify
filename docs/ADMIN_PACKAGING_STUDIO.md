@@ -185,6 +185,15 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
   projected onto the model, drag-rotate + zoom, and a **"Place marker"** raycast mode that
   sets the selected surface's 3D `hotspot.anchor`. (Refinements to eyeball: glTF-import
   models + exact per-mesh borders come with P1.5.)
+- **Entry points — grid AND studio (both).** ✅ DONE 2026-07-01. Two surfaces on purpose:
+  the **management grid** at admin `/packaging-studio` (sidebar → Design Studio → Packaging
+  Studio) for browsing/creating/deprecating the whole catalog; and the **Step-4 studio**
+  opened from the **top-bar packaging icon** → `/go/packaging-studio` (creator app,
+  Design Studio Admin Mode look). The studio opens with a **model picker in its Library
+  drawer** (search + category chips + cards → deep-links `?packagingTypeId`); the grid's
+  "Author surfaces" still deep-links a specific model. `loadPackagingModelList()` feeds the
+  picker.
+
 - **Shared Step-4 chrome — `PackagingStudioShell` (@ilaunchify/ui).** ✅ DONE 2026-07-01.
   Extracted the partner Step-4 chrome (top bar · 3D⇄Die-line toggle · left rail ·
   slide-out drawer · canvas) into a presentational `PackagingStudioShell` with a

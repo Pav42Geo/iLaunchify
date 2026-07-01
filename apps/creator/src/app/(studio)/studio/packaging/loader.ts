@@ -21,6 +21,58 @@ export interface PackagingAuthoringData {
   dielines: BindableDieline[]
 }
 
+// One row in the studio's Library drawer model picker (like the partner Library tab).
+export interface PackagingModelPick {
+  id: string
+  displayName: string
+  containerCategory: string | null
+  topology: string
+  has3dModel: boolean
+  surfaceCount: number
+  dielineCount: number
+}
+
+type PickRow = {
+  id: string
+  displayName: string
+  defaultTopology: string
+  containerCategory: string | null
+  model3dKey: string | null
+  defaultSurfaces: unknown
+  _count?: { dielines?: number } | null
+}
+
+/** All active packaging models, for the studio's in-drawer model picker. */
+export async function loadPackagingModelList(): Promise<PackagingModelPick[]> {
+  const rows = (await (
+    prisma as unknown as { packagingType: { findMany: (a: unknown) => Promise<PickRow[]> } }
+  ).packagingType
+    .findMany({
+      orderBy: { displayName: 'asc' },
+      take: 500,
+      select: {
+        id: true,
+        displayName: true,
+        defaultTopology: true,
+        containerCategory: true,
+        model3dKey: true,
+        defaultSurfaces: true,
+        _count: { select: { dielines: true } },
+      },
+    })
+    .catch(() => [])) as PickRow[]
+
+  return rows.map((r) => ({
+    id: r.id,
+    displayName: r.displayName,
+    containerCategory: r.containerCategory,
+    topology: r.defaultTopology,
+    has3dModel: Boolean(r.model3dKey),
+    surfaceCount: resolvePackagingSurfaces(r.defaultSurfaces).length,
+    dielineCount: r._count?.dielines ?? 0,
+  }))
+}
+
 type PtRow = {
   id: string
   displayName: string

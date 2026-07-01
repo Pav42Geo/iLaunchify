@@ -1,14 +1,14 @@
-// Admin Packaging Studio — surface authoring route (ADMIN_PACKAGING_STUDIO.md P2).
-// Admin-gated; lives in the creator app so it can reuse the studio chrome later. Reached
-// from the admin library ("Author 3D surfaces") via the /go/packaging-studio bridge which
-// establishes the creator session first.
+// Admin Packaging Studio — the full Step-4 studio (Design Studio Admin Mode look).
+// Reached from the admin top-bar packaging icon via /go/packaging-studio (establishes the
+// creator session first). Opens with a model picker in the Library drawer; pick a model
+// (or arrive with ?packagingTypeId) to author its 3D surfaces + die-lines in place.
 
 import { requireCapability } from '@ilaunchify/auth'
-import { loadPackagingAuthoring } from './loader'
+import { loadPackagingAuthoring, loadPackagingModelList } from './loader'
 import { SurfaceAuthoringClient } from './SurfaceAuthoringClient'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Packaging surfaces — Admin' }
+export const metadata = { title: 'Packaging Studio — Admin' }
 
 export default async function PackagingAuthoringPage({
   searchParams,
@@ -17,19 +17,12 @@ export default async function PackagingAuthoringPage({
 }) {
   await requireCapability('catalog:write')
   const { packagingTypeId } = await searchParams
-  const data = packagingTypeId ? await loadPackagingAuthoring(packagingTypeId) : null
+  const [data, models] = await Promise.all([
+    packagingTypeId ? loadPackagingAuthoring(packagingTypeId) : Promise.resolve(null),
+    loadPackagingModelList(),
+  ])
 
-  if (!data) {
-    return (
-      <div className="mx-auto max-w-5xl space-y-4 p-6">
-        <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-600">
-          Packaging model not found. Open one from the admin Packaging Studio library.
-        </div>
-      </div>
-    )
-  }
-
-  // The client renders the full-screen shared studio shell (fixed inset-0).
-  return <SurfaceAuthoringClient data={data} />
-
+  // The client renders the full-screen shared studio shell (fixed inset-0). When no model
+  // is selected it shows the Library drawer picker; selecting one deep-links ?packagingTypeId.
+  return <SurfaceAuthoringClient data={data} models={models} />
 }

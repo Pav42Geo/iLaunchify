@@ -82,10 +82,13 @@ const TABS: TabDef[] = [
   {
     key: 'packaging',
     label: 'Packaging Studio (Admin)',
-    // Visual packaging model library (internal admin route). 3D authoring canvas is P2.
-    href: '/packaging-studio',
-    external: false,
-    isActive: (p) => p.startsWith('/packaging-studio'),
+    // Opens the full Step-4 studio (Design Studio Admin Mode look) in the creator app via
+    // a same-app bridge that establishes the :3000 session first (like /go/design-studio).
+    // The studio opens with a model PICKER in its Library drawer. The roomy management grid
+    // stays at /packaging-studio (sidebar → Design Studio → Packaging Studio).
+    href: '/go/packaging-studio',
+    external: true, // renders as <a target="_blank"> — the endpoint 302s cross-app
+    isActive: () => false,
     Icon: Box,
   },
 ]

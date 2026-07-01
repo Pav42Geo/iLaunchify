@@ -1,19 +1,22 @@
 'use client'
 
 // =============================================================================
-// Admin Packaging Studio — surface authoring, now rendered on the SHARED Step-4
-// chrome (PackagingStudioShell from @ilaunchify/ui). This makes the admin studio
-// look identical to the partner New-Product Step 4: top bar + 3D⇄Die-line toggle,
-// left tool rail, slide-out drawer, center canvas.
+// Admin Packaging Studio — the full Step-4 studio (Design Studio Admin Mode look),
+// rendered on the shared PackagingStudioShell (@ilaunchify/ui). Opened from the admin
+// top-bar packaging icon (via /go/packaging-studio).
 //
-// Admin-only tools live in the drawer (Library = model + die-lines; Surfaces =
-// author the clickable borders + bind die-lines). Clicking "Edit" on a bound
-// die-line opens the shared DielineFrameEditor full-view "in the same place".
-// Nothing here touches the partner hot file.
+// Library drawer = model PICKER (search + category chips + cards, like the partner
+// Library tab) + the current model's die-lines. Pick a model → deep-links
+// ?packagingTypeId and it loads in place (3D + surfaces + die-lines). Surfaces drawer =
+// author the clickable borders + bind die-lines. Clicking "Edit" on a bound die-line
+// opens the shared DielineFrameEditor full-view "in the same place".
+//
+// The roomy management grid stays at admin /packaging-studio — this is the studio view.
 // =============================================================================
 
 import * as React from 'react'
-import { Plus, Trash2, Save, Loader2, Check, Cuboid, Link2, Crosshair, ArrowLeft, PencilRuler, Inbox, Shapes, Boxes } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, Trash2, Save, Loader2, Check, Cuboid, Link2, Crosshair, ArrowLeft, PencilRuler, Inbox, Shapes, Boxes, Search } from 'lucide-react'
 import {
   PackagingStudioShell,
   DielineFrameEditor,
@@ -25,7 +28,7 @@ import {
   type SurfacePurpose,
 } from '@ilaunchify/ui'
 import { savePackagingSurfaces, getDielineEditorData, saveDielineFrames, type DielineEditorData } from './actions'
-import type { PackagingAuthoringData, BindableDieline } from './loader'
+import type { PackagingAuthoringData, BindableDieline, PackagingModelPick } from './loader'
 import { Packaging3DView } from './Packaging3DView'
 
 const ROLES: SurfaceRole[] = ['CONTAINER', 'CLOSURE', 'WRAP', 'PANEL', 'OTHER']
@@ -36,20 +39,21 @@ function blankSurface(i: number): PackagingSurface {
   return { key: `surface-${i + 1}-${Date.now().toString(36)}`, label: `Surface ${i + 1}`, role: 'CONTAINER', surfacePurpose: 'pdp', decorable: true, defaultBleedMm: 3, dielineIds: [], sortOrder: i }
 }
 
-export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData }) {
-  const [surfaces, setSurfaces] = React.useState<PackagingSurface[]>(data.surfaces)
+export function SurfaceAuthoringClient({ data, models }: { data: PackagingAuthoringData | null; models: PackagingModelPick[] }) {
+  const router = useRouter()
+  const [surfaces, setSurfaces] = React.useState<PackagingSurface[]>(data?.surfaces ?? [])
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
   const [err, setErr] = React.useState<string | null>(null)
-  const [selectedKey, setSelectedKey] = React.useState<string | null>(data.surfaces[0]?.key ?? null)
+  const [selectedKey, setSelectedKey] = React.useState<string | null>(data?.surfaces[0]?.key ?? null)
   const [placeMode, setPlaceMode] = React.useState(false)
   const [view, setView] = React.useState<StudioView>('3d')
-  const [tool, setTool] = React.useState<'library' | 'surfaces'>('surfaces')
+  const [tool, setTool] = React.useState<'library' | 'surfaces'>(data ? 'surfaces' : 'library')
   // Inline 2D die-line editor (click a bound surface's die-line → opens "in place").
   const [editing, setEditing] = React.useState<{ id: string; label: string; data: DielineEditorData } | null>(null)
   const [loadingDieline, setLoadingDieline] = React.useState<string | null>(null)
 
-  const dielineLabel = React.useMemo(() => new Map(data.dielines.map((d) => [d.id, d.label])), [data.dielines])
+  const dielineLabel = React.useMemo(() => new Map((data?.dielines ?? []).map((d) => [d.id, d.label])), [data])
   const boundCount = surfaces.filter((s) => s.decorable && s.dielineIds.length > 0).length
 
   async function openDieline(dielineId: string) {
@@ -83,12 +87,17 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
   }
 
   async function save() {
+    if (!data) return
     setSaving(true)
     setErr(null)
     const res = await savePackagingSurfaces(data.id, surfaces.map((s, i) => ({ ...s, sortOrder: i }))).catch(() => null)
     setSaving(false)
     if (res && res.ok) setSaved(true)
     else setErr(res && !res.ok ? res.error : 'Could not save.')
+  }
+
+  function openModel(id: string) {
+    router.push(`/studio/packaging?packagingTypeId=${encodeURIComponent(id)}`)
   }
 
   // Inline 2D die-line editor — takes over the whole studio "in the same place".
@@ -118,7 +127,7 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
 
   const rail: StudioRailItem[] = [
     { key: 'library', label: 'Library', icon: <Inbox className="h-5 w-5" /> },
-    { key: 'surfaces', label: 'Surfaces', icon: <Shapes className="h-5 w-5" /> },
+    { key: 'surfaces', label: 'Surfaces', icon: <Shapes className="h-5 w-5" />, disabled: !data },
   ]
 
   const rightSlot = (
@@ -126,8 +135,9 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
       {err && <span className="max-w-[260px] truncate rounded-lg border border-warning-200 bg-warning-50 px-2.5 py-1 text-[11px] text-warning-800">{err}</span>}
       <button
         onClick={save}
-        disabled={saving}
-        className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600 disabled:opacity-50"
+        disabled={saving || !data}
+        title={data ? 'Save surfaces' : 'Pick a model first'}
+        className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600 disabled:opacity-40"
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
         {saved ? 'Saved' : 'Save surfaces'}
@@ -137,8 +147,17 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
 
   const drawer =
     tool === 'library' ? (
-      <LibraryDrawer data={data} boundCount={boundCount} dielineLabel={dielineLabel} onEdit={openDieline} loadingDieline={loadingDieline} />
-    ) : (
+      <LibraryDrawer
+        models={models}
+        currentId={data?.id ?? null}
+        onOpen={openModel}
+        data={data}
+        boundCount={boundCount}
+        dielineLabel={dielineLabel}
+        onEdit={openDieline}
+        loadingDieline={loadingDieline}
+      />
+    ) : data ? (
       <SurfacesDrawer
         surfaces={surfaces}
         dielines={data.dielines}
@@ -152,7 +171,7 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
         loadingDieline={loadingDieline}
         dielineLabel={dielineLabel}
       />
-    )
+    ) : null
 
   return (
     <div className="fixed inset-0 z-[70]">
@@ -163,19 +182,26 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
         centerSlot={
           <span className="inline-flex items-center gap-2 text-[12px] text-ink-500">
             <span className="h-5 w-px bg-ink-200" />
-            <span className="max-w-[280px] truncate font-medium text-ink-700">{data.displayName}</span>
-            <span className="hidden sm:inline">· {data.containerCategory ? pretty(data.containerCategory) : 'Uncategorized'} · {pretty(data.topology)}</span>
+            <span className="max-w-[280px] truncate font-medium text-ink-700">{data ? data.displayName : 'Choose a model'}</span>
+            {data && <span className="hidden sm:inline">· {data.containerCategory ? pretty(data.containerCategory) : 'Uncategorized'} · {pretty(data.topology)}</span>}
           </span>
         }
         view={view}
         onViewChange={setView}
+        showViewToggle={Boolean(data)}
         rightSlot={rightSlot}
         rail={rail}
         activeTool={tool}
         onToolChange={(k) => setTool(k as 'library' | 'surfaces')}
         drawer={drawer}
       >
-        {view === '3d' ? (
+        {!data ? (
+          <div className="max-w-sm rounded-2xl border border-dashed border-ink-300 bg-white/70 p-8 text-center">
+            <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-ink-50 text-ink-400"><Boxes className="h-5 w-5" /></div>
+            <div className="text-[13.5px] font-semibold text-ink-800">Pick a model to start</div>
+            <p className="mx-auto mt-1.5 max-w-[18rem] text-[12px] leading-relaxed text-ink-500">Choose a packaging model from the <b>Library</b> to author its 3D surfaces and die-lines. Manage the full catalog in the admin Packaging Studio grid.</p>
+          </div>
+        ) : view === '3d' ? (
           <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#eceef0_70%,#e2e4e7)]">
             <Packaging3DView
               topology={data.topology}
@@ -188,7 +214,6 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
                 setPlaceMode(false)
               }}
             />
-            {/* Place-marker control */}
             <div className="absolute right-4 top-4">
               <button
                 onClick={() => setPlaceMode((v) => !v)}
@@ -241,55 +266,105 @@ export function SurfaceAuthoringClient({ data }: { data: PackagingAuthoringData 
 // -----------------------------------------------------------------------------
 
 function LibraryDrawer({
+  models,
+  currentId,
+  onOpen,
   data,
   boundCount,
   dielineLabel,
   onEdit,
   loadingDieline,
 }: {
-  data: PackagingAuthoringData
+  models: PackagingModelPick[]
+  currentId: string | null
+  onOpen: (id: string) => void
+  data: PackagingAuthoringData | null
   boundCount: number
   dielineLabel: Map<string, string>
   onEdit: (id: string) => void
   loadingDieline: string | null
 }) {
+  const [q, setQ] = React.useState('')
+  const [cat, setCat] = React.useState<string | null>(null)
+  const categories = React.useMemo(() => {
+    const set = new Set<string>()
+    models.forEach((m) => m.containerCategory && set.add(m.containerCategory))
+    return Array.from(set).sort()
+  }, [models])
+  const shown = React.useMemo(() => {
+    const query = q.trim().toLowerCase()
+    return models.filter((m) => {
+      if (cat && m.containerCategory !== cat) return false
+      if (query && !m.displayName.toLowerCase().includes(query)) return false
+      return true
+    })
+  }, [models, q, cat])
+
   return (
-    <div className="p-3">
-      <DrawerHead title="Model" sub="Package + its die-lines." icon={Cuboid} />
-      <div className="rounded-xl border border-ink-200 bg-ink-50 p-3">
-        <div className="mb-2 flex aspect-[16/9] items-center justify-center rounded-lg bg-white"><Boxes className="h-8 w-8 text-ink-300" /></div>
-        <p className="truncate text-[13px] font-semibold text-ink-900">{data.displayName}</p>
-        <p className="text-[11px] text-ink-500">
-          {data.containerCategory ? pretty(data.containerCategory) : 'Uncategorized'} · {pretty(data.topology)} · {data.has3dModel ? '3D model' : 'Parametric'}
-        </p>
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[10.5px] text-ink-500">
-          <span className="rounded-full bg-ink-100 px-2 py-0.5">{data.surfaces.length} surface{data.surfaces.length === 1 ? '' : 's'}</span>
-          <span className="rounded-full bg-ink-100 px-2 py-0.5">{boundCount} bound</span>
-          <span className="rounded-full bg-ink-100 px-2 py-0.5">{data.dielines.length} die-line{data.dielines.length === 1 ? '' : 's'}</span>
+    <div className="flex h-full flex-col">
+      <div className="border-b border-ink-100 p-3">
+        <DrawerHead title="Library" sub={`${models.length} packaging models`} icon={Boxes} />
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search models…" className="w-full rounded-full border border-ink-200 bg-white py-1.5 pl-8 pr-3 text-[12.5px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-200" />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          <CatChip label="All" active={cat === null} onClick={() => setCat(null)} />
+          {categories.map((c) => (
+            <CatChip key={c} label={pretty(c)} active={cat === c} onClick={() => setCat(c)} />
+          ))}
         </div>
       </div>
 
-      <p className="mb-1.5 mt-4 inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">
-        <PencilRuler className="h-3 w-3" /> Die-lines
-      </p>
-      {data.dielines.length === 0 ? (
-        <p className="text-[11px] text-ink-400">No die-lines on this package yet.</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {data.dielines.map((d) => (
-            <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-ink-200 px-2.5 py-1.5">
-              <span className="min-w-0 truncate text-[12px] font-medium text-ink-800">{dielineLabel.get(d.id) ?? d.label}</span>
-              <button
-                onClick={() => onEdit(d.id)}
-                disabled={loadingDieline === d.id}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 px-2 py-1 text-[10.5px] font-semibold text-ink-700 hover:border-ink-400 disabled:opacity-50"
-              >
-                {loadingDieline === d.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <PencilRuler className="h-3 w-3" />} Edit
-              </button>
-            </li>
-          ))}
-        </ul>
+      {/* Current model's die-lines (when one is loaded) */}
+      {data && (
+        <div className="border-b border-ink-100 p-3">
+          <p className="mb-1.5 inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">
+            <PencilRuler className="h-3 w-3" /> {data.displayName} · die-lines
+          </p>
+          {data.dielines.length === 0 ? (
+            <p className="text-[11px] text-ink-400">No die-lines on this package yet. {boundCount} bound.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {data.dielines.map((d) => (
+                <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-ink-200 px-2.5 py-1.5">
+                  <span className="min-w-0 truncate text-[12px] font-medium text-ink-800">{dielineLabel.get(d.id) ?? d.label}</span>
+                  <button onClick={() => onEdit(d.id)} disabled={loadingDieline === d.id} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 px-2 py-1 text-[10.5px] font-semibold text-ink-700 hover:border-ink-400 disabled:opacity-50">
+                    {loadingDieline === d.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <PencilRuler className="h-3 w-3" />} Edit
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
+
+      {/* Model picker grid */}
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        {shown.length === 0 ? (
+          <p className="px-1 py-6 text-center text-[12px] text-ink-400">No models match.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {shown.map((m) => {
+              const active = m.id === currentId
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => onOpen(m.id)}
+                  className={`overflow-hidden rounded-xl border bg-white text-left transition ${active ? 'border-pink-500 ring-1 ring-pink-200' : 'border-ink-200 hover:border-pink-300'}`}
+                >
+                  <div className="flex aspect-[4/3] items-center justify-center bg-ink-50"><Boxes className="h-6 w-6 text-ink-300" /></div>
+                  <div className="p-2">
+                    <p className="truncate text-[11.5px] font-semibold text-ink-900">{m.displayName}</p>
+                    <p className="truncate text-[10px] text-ink-400">{m.containerCategory ? pretty(m.containerCategory) : 'Uncat.'} · {pretty(m.topology)}</p>
+                    <p className="mt-0.5 truncate text-[9.5px] text-ink-400">{m.surfaceCount} surf · {m.dielineCount} die-line{m.dielineCount === 1 ? '' : 's'}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -427,6 +502,18 @@ function DrawerHead({ title, sub, icon: Icon }: { title: string; sub?: string; i
       <p className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-ink-900">{Icon && <Icon className="h-4 w-4 text-ink-500" />}{title}</p>
       {sub && <p className="text-[11px] text-ink-500">{sub}</p>}
     </div>
+  )
+}
+
+function CatChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${active ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+    >
+      {label}
+    </button>
   )
 }
 
