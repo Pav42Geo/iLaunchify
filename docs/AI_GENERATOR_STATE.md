@@ -75,10 +75,12 @@ All packages typecheck; all golden suites pass (`ai-design`, `imagegen`, `ui/tem
    `/developer`). Until then the stub serves; everything else already runs.
 2. **Mac apply** — `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next` to make the
    additive schema (AI models + expanded `DieCutCategory`) real.
-3. **Panel wiring** — pass `generateAiConcepts` into `AiCreatePanel` as an RSC server-action
-   prop and call it from `generate()` (draft px ≈ 1 MP at the die-line aspect). Snippet in
-   `HANDOFF-AI-GENERATOR-BUILD.md`. Pairs with the Studio → Templates mount (**Code's hot
-   file** — coordinate).
+3. **Panel wiring** — ✅ DONE 2026-07-01. `AiCreatePanelClient` adapts `generateAiConcepts`
+   to the panel's `onGenerate` (product + admin branches). Full page + in-canvas drawer both
+   generate for real on the stub; brand-ref/palette/output thread through. Also surfaced the
+   full intake: brand-kit/manual identity, output settings, usage meters, saved-templates grid
+   (`docs/AI_GENERATOR_CHECKLIST.md`). Remaining: finalize/export path + `onEditInStudio` on
+   the full page (drawer already applies-to-canvas).
 4. **R2 persistence** — upload variation images and store `variationKeys` (currently returned
    inline).
 5. **Pavel decisions** — final tier price points + allotments (seeds in `DEFAULT_TIER_LIMITS` /

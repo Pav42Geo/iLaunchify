@@ -11,6 +11,7 @@
 import { auth, requireCapability } from '@ilaunchify/auth'
 import { resolveOutputPolicy } from '@ilaunchify/imagegen'
 import { AiCreatePanel, type DielineTarget } from './AiCreatePanel'
+import { AiCreatePanelClient } from './AiCreatePanelClient'
 import { loadAiCreateProps, loadAdminAiCreateProps } from './loader'
 import type { FrameLayout } from '@ilaunchify/ui'
 
@@ -68,7 +69,7 @@ export default async function AiCreatePage({
         <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-600">
           Admin template mode — generating for <strong>{data.productName}</strong>. Save concepts to the library from the Studio.
         </div>
-        <AiCreatePanel {...data.props} />
+        <AiCreatePanelClient {...data.props} />
       </div>
     )
   }
@@ -89,7 +90,7 @@ export default async function AiCreatePage({
     }
     return (
       <div className="mx-auto max-w-5xl space-y-4 p-6">
-        <AiCreatePanel {...data.props} />
+        <AiCreatePanelClient {...data.props} />
       </div>
     )
   }

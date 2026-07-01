@@ -124,7 +124,10 @@ The real work = flip the 🟡 and ⬜ rows that belong in the **creator UI**:
 - [x] Brand identity (kit/manual), Output section, Usage meters, Saved grid now render in the in-canvas drawer, reusing the exported panel sections (single source, no duplication). Brand ref + effective palette thread into the real `generateAiConcepts` call.
 - [ ] 5.2–5.3 Coordinated set / flavour family still live only on the full page (reached from the drawer's "Batch" link) — multi-surface, intentionally not crammed into the 400px drawer.
 
-> Note: full-page real generation is still the P3 seam (`onGenerate` not yet passed on the full page — the drawer already generates for real). Brand ref + output ride in the `onGenerate` ctx, ready to wire.
+**Full-page real generation** ✅ shipped (2026-07-01)
+- [x] `AiCreatePanelClient` wraps the panel and adapts `generateAiConcepts` to `onGenerate` (maps die-line → ~1 MP draft px; threads brand ref + palette + output). Product + admin branches now generate for real (stub today; fal/Recraft on keys). Demo harness stays preview-only.
+
+> Remaining P3/infra (yours): `FAL_KEY` + `RECRAFT_API_KEY` in env, `db:push` + `db:generate` on Mac, R2 persistence of variation images (fills in saved-grid thumbnails).
 
 **Explicitly NOT building** (parked): 7.6 pricing columns, 9.3 add-on wiring.
 

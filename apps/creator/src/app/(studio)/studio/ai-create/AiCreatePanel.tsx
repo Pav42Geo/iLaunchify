@@ -49,9 +49,11 @@ export interface AiUsageSnapshot {
   storageBytesCap: number
 }
 
-/** Extra provider context threaded through onGenerate (brand reference + output). */
+/** Extra provider context threaded through onGenerate (brand reference + palette + output). */
 export interface GenerateContext {
   brandRefUrl?: string
+  /** Effective palette after brand-kit/manual resolution (prompt already encodes it; this is for the provider). */
+  palette?: string[]
   output?: OutputSettings
 }
 
@@ -218,7 +220,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
     set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
 
-  const genCtx: GenerateContext = { brandRefUrl, output: output ?? undefined }
+  const genCtx: GenerateContext = { brandRefUrl, palette: effPalette, output: output ?? undefined }
 
   async function generate() {
     if (setMode) {
