@@ -31,6 +31,8 @@ export interface PromptInput {
   packagingTypeLabel?: string
   /** Extra descriptive phrases (e.g. from competitive-analysis reverse-prompt). */
   referencePhrases?: string[]
+  /** Domain mood phrase (from domainPreset) woven in so the creative suits the domain. */
+  domainTone?: string
 }
 
 export interface AssembledPrompt {
@@ -84,8 +86,10 @@ export function assemblePrompt(input: PromptInput, reservedZoneLabels?: Readonly
           ? `Colour palette: ${colorWords.join(', ')}.`
           : ''
 
+  const tone = (input.domainTone ?? '').trim()
   const prompt = sentence([
     `Packaging artwork for ${subject}${input.brandName ? ` (brand: ${input.brandName})` : ''}.`,
+    tone ? `Mood: ${tone}.` : '',
     input.packagingTypeLabel ? `Structure: ${input.packagingTypeLabel}.` : '',
     styles.length > 0 ? `Style: ${styles.join(', ')}.` : '',
     elements.length > 0 ? `Decorative elements: ${elements.join(', ')}.` : '',

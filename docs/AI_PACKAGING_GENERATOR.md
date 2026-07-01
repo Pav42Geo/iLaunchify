@@ -426,7 +426,48 @@ persist.
 
 ---
 
-## 13. The one-sentence pitch
+## 13. Domain-aware generation (SHIPPED 2026-06-23)
+
+Compliance is domain-aware already (§6). This makes the **creative layer** domain-aware
+too — so a supplement isn't offered "Kawaii doodles" and a cosmetic leans premium/minimal
+— without ever bending compliance.
+
+**Two layers of domain-appropriateness, kept separate:**
+1. **Structure** — *inherited, not invented.* We're die-line-first; the die-line already
+   encodes the package, and the taxonomy binds it to the domain
+   (`Category.labelingType` → domain → `StructuralPackType`/`DieCutTemplate`). The
+   generator works on the product's die-line, so structure is domain-correct by
+   construction. The **only** place we *recommend* a structure is the "no die-line yet /
+   manual packaging idea" path — see `recommendedPackageTypes` below.
+2. **Creative** — domain-tuned defaults: chip presets + prompt tone + substrate hint.
+
+**Engine — `@ilaunchify/ai-design/domainPreset.ts` (pure, golden-tested):**
+- `domainPreset(domain)` → `{ styles, colors, elements, promptTone, substrateHint,
+  packageTypes }`. Distinct personality per domain (FOOD = appetite/warm; SUPPLEMENT =
+  clinical/trust; OTC = medical-grade/legible; COSMETIC = premium/editorial; PET =
+  playful/friendly).
+- `resolveDomainOptions(domain, overrides?)` → merges the domain defaults with **admin
+  `AiGeneratorSettings` overrides** (per-domain vocab). Any provided dimension replaces
+  that dimension; omitted dimensions keep the domain default.
+- `recommendedPackageTypes(domain)` → domain-appropriate structures for the no-die-line
+  path only (supplement → bottle/jar; cosmetic → tube/jar/pump; food → carton/pouch…).
+
+**Prompt wiring:** `assemblePrompt` gains `domainTone`, woven in as a `Mood: …` clause.
+`planGeneration` defaults `domainTone` to `domainPreset(domain).promptTone`, so every
+generation is domain-tuned automatically (override-able).
+
+**Guardrail:** domain shapes creative + the *recommended* structure only — it never
+overrides compliance, and it's only DEFAULTS (admin can override per domain; creator can
+always deviate).
+
+**Admin flexibility:** the `AiGeneratorSettings` option vocabulary is **per-domain** — the
+admin edits the FOOD / SUPPLEMENT / OTC / COSMETIC / PET chip sets, tones and substrate
+hints independently. `resolveDomainOptions` is the read path that layers admin overrides
+over the code defaults.
+
+---
+
+## 14. The one-sentence pitch
 
 > Describe it in plain words; we generate four on-brand concepts **into your real
 > die-line**, drop in your **true** ingredients, allergens, Nutrition Facts, barcode and

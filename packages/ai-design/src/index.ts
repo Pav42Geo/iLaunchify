@@ -8,6 +8,13 @@ export {
 } from './prompt'
 
 export {
+  domainPreset,
+  resolveDomainOptions,
+  recommendedPackageTypes,
+  type DomainPreset,
+} from './domainPreset'
+
+export {
   requiredElements,
   evaluateCompliance,
   elementKindsForFrame,

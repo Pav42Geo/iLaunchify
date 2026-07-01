@@ -26,6 +26,7 @@ import {
   assemblePrompt,
   evaluateCompliance,
   satisfiedElementsFromFrames,
+  domainPreset,
   type ComplianceReport,
   type LabelingDomain,
   type MarketCode,
@@ -54,6 +55,8 @@ export interface PlanGenerationInput {
 
   /** Already-generated art per CREATIVE frame (P3+). Missing → placeholders. */
   artByFrameId?: Record<string, string>
+  /** Override the domain mood phrase; defaults to domainPreset(domain).promptTone. */
+  domainTone?: string
 }
 
 export interface GenerationPlan {
@@ -77,6 +80,7 @@ export function planGeneration(input: PlanGenerationInput): GenerationPlan {
   const { layout, surface, surfaceId, domain, market = 'US' } = input
 
   const reservedLabels = reservedZoneLabels(layout, surfaceId)
+  const domainTone = input.domainTone ?? domainPreset(domain).promptTone
   const { prompt, negativePrompt } = assemblePrompt(
     {
       productDescriptor: input.productDescriptor,
@@ -88,6 +92,7 @@ export function planGeneration(input: PlanGenerationInput): GenerationPlan {
       substrateLabel: input.substrateLabel,
       packagingTypeLabel: input.packagingTypeLabel,
       referencePhrases: input.referencePhrases,
+      domainTone,
     },
     reservedLabels,
   )

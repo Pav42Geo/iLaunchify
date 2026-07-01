@@ -182,7 +182,8 @@
               <p class="lbl" style="margin-top:14px">③ Describe the design</p>
               <textarea id="descr" rows="2">box of stroopwafel cookies</textarea>
 
-              <p class="lbl" style="margin-top:14px">Style</p><div class="chips" id="chStyle"></div>
+              <p class="hint" style="margin:12px 0 6px">✨ Chips + prompt tone are <b>domain-tuned for Food</b> — a supplement or cosmetic shows a different set.</p>
+              <p class="lbl">Style</p><div class="chips" id="chStyle"></div>
               <p class="lbl">Colour mood</p><div class="chips" id="chColor"></div>
               <p class="lbl">Elements</p><div class="chips" id="chEl"></div>
 
@@ -238,13 +239,20 @@
 
         <div class="flex">
           <div class="card2" style="flex:1;min-width:260px">
-            <h3>Option vocabulary (chips)</h3>
+            <h3>Option vocabulary — <span style="color:var(--pink-700)">per domain</span></h3>
+            <div class="row" style="margin-bottom:10px"><span class="kv" style="font-weight:600">Editing domain</span>
+              <select id="adminDomSel" onchange="adminDom=this.value;renderAdmin()">
+                <option value="FOOD">Food</option><option value="SUPPLEMENT">Supplement</option><option value="OTC">OTC / Drug</option><option value="COSMETIC">Cosmetic</option><option value="PET">Pet</option>
+              </select>
+            </div>
             <p class="lbl">Style</p><div class="vocab" id="vStyle"></div>
             <div class="addrow"><input id="addStyle" placeholder="add style…"><button class="mini" onclick="addVocab('styles','addStyle')">Add</button></div>
             <p class="lbl" style="margin-top:12px">Colour mood</p><div class="vocab" id="vColor"></div>
             <div class="addrow"><input id="addColor" placeholder="add colour…"><button class="mini" onclick="addVocab('colors','addColor')">Add</button></div>
             <p class="lbl" style="margin-top:12px">Elements</p><div class="vocab" id="vEl"></div>
             <div class="addrow"><input id="addEl" placeholder="add element…"><button class="mini" onclick="addVocab('elements','addEl')">Add</button></div>
+            <p class="lbl" style="margin-top:12px">Prompt tone <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-400)">— mood woven into the AI prompt</span></p>
+            <input id="domTone" style="width:100%;border:1px solid var(--ink-200);border-radius:9px;padding:7px 9px;font:inherit" oninput="CFG.domains[adminDom].tone=this.value">
           </div>
 
           <div class="card2" style="flex:1;min-width:260px">
@@ -290,10 +298,17 @@ const CFG = {
     builder:{draftCycles:30, mpBudget:36,  maxRes:6,  storageMB:500, price:79,  topup:'$15 / 200 MP'},
     agency: {draftCycles:120,mpBudget:240, maxRes:16, storageMB:5120,price:199, topup:'$15 / 200 MP'},
   },
-  styles:['Minimal','Vintage','Luxury','Playful','Modern','Hand-drawn','Bold','Natural','Warm','Geometric'],
-  colors:['Vibrant','Muted','Warm Tones','Cool Tones','Pastel','Earthy','Monochrome','Jewel Tones'],
-  elements:['Botanicals','Fruits','Liquid Swirls','Patterns','Abstract Shapes','Doodles','Waves','Celestial'],
+  // Per-domain option vocabulary — admin edits each domain independently (domainPreset).
+  domains:{
+    FOOD:      {styles:['Appetising','Warm','Natural','Bold','Playful','Vintage','Minimal'],colors:['Warm Tones','Vibrant','Earthy','Pastel','Jewel Tones'],elements:['Fruits','Botanicals','Liquid Swirls','Ingredients','Patterns'],tone:'appetite-appealing, fresh, mouth-watering'},
+    SUPPLEMENT:{styles:['Clinical','Trustworthy','Modern','Minimal','Premium','Scientific'],colors:['Cool Tones','Monochrome','Jewel Tones','Muted'],elements:['Molecular','Botanicals','Geometric','Icons'],tone:'clean, credible, health-forward, high-trust'},
+    OTC:       {styles:['Clinical','Trustworthy','Clean','Modern','Minimal','Serious'],colors:['Cool Tones','Monochrome','Muted'],elements:['Icons','Geometric','Health marks'],tone:'medical-grade clarity, reassuring, legible'},
+    COSMETIC:  {styles:['Premium','Minimal','Luxury','Elegant','Modern','Art Deco'],colors:['Muted','Pastel','Monochrome','Metallic'],elements:['Botanicals','Line Art','Liquid Swirls','Textures'],tone:'elevated, editorial beauty, spa-luxe'},
+    PET:       {styles:['Playful','Friendly','Bold','Natural','Hand-drawn','Warm'],colors:['Vibrant','Warm Tones','Earthy','Pastel'],elements:['Animals','Paw prints','Doodles','Patterns'],tone:'friendly, wholesome, energetic'},
+  },
 };
+const CREATOR_DOMAIN='FOOD';   // the demo product (Mood Cookies) is FOOD
+let adminDom='FOOD';           // which domain the admin is editing in the vocab card
 const COLORHEX={ 'Warm Tones':['#E8943A','#f3c48b'],'Cool Tones':['#5b8def','#a9c4ff'],'Vibrant':['#ff2e63','#ff9f1c'],
   'Muted':['#a3a3a3','#d9d9d9'],'Pastel':['#ffd6e0','#c9e4de'],'Earthy':['#8a6d3b','#c9b18b'],
   'Monochrome':['#222','#888'],'Jewel Tones':['#7b2d8e','#2d6b8e'] };
@@ -361,11 +376,12 @@ function renderDielines(){
 }
 function renderChips(){
   const mk=(arr,sel,grp)=>arr.map(c=>`<span class="chip ${sel.includes(c)?'on':''}" onclick="toggle('${grp}','${c.replace(/'/g,"")}')">${c}</span>`).join('');
-  document.getElementById('chStyle').innerHTML=mk(CFG.styles,state.styles,'styles');
+  const V=CFG.domains[CREATOR_DOMAIN]; // chips are domain-tuned (this product = Food)
+  document.getElementById('chStyle').innerHTML=mk(V.styles,state.styles,'styles');
   document.getElementById('chColor').innerHTML= brandLocked()
     ? `<span class="hint">🔒 Locked to your Brand Kit palette. Turn off “Follow my Brand Kit” to pick a colour mood.</span>`
-    : mk(CFG.colors,state.colors,'colors');
-  document.getElementById('chEl').innerHTML=mk(CFG.elements,state.elements,'elements');
+    : mk(V.colors,state.colors,'colors');
+  document.getElementById('chEl').innerHTML=mk(V.elements,state.elements,'elements');
 }
 function renderRes(){
   const opts=resOptions();
@@ -485,13 +501,16 @@ function renderAdmin(){
     <td><input type="number" value="${t.storageMB}" onchange="edit('${k}','storageMB',this.value)"></td>
     <td>$<input type="number" value="${t.price}" onchange="edit('${k}','price',this.value)"></td>
     <td><input value="${t.topup}" style="width:120px" onchange="edit('${k}','topup',this.value)"></td></tr>`).join('');
+  const D=CFG.domains[adminDom];
   const vv=(arr,grp,el)=>document.getElementById(el).innerHTML=arr.map((c,i)=>`<span class="chip">${c}<span class="x" onclick="delVocab('${grp}',${i})">✕</span></span>`).join('');
-  vv(CFG.styles,'styles','vStyle');vv(CFG.colors,'colors','vColor');vv(CFG.elements,'elements','vEl');
+  vv(D.styles,'styles','vStyle');vv(D.colors,'colors','vColor');vv(D.elements,'elements','vEl');
+  const dt=document.getElementById('domTone'); if(dt) dt.value=D.tone;
+  const ds=document.getElementById('adminDomSel'); if(ds) ds.value=adminDom;
   renderCogs();
 }
 function edit(tierKey,field,val){CFG.tiers[tierKey][field]= field==='topup'?val:(+val);renderAdmin();renderMeters();renderRes();}
-function addVocab(grp,inp){const v=document.getElementById(inp).value.trim();if(v){CFG[grp].push(v);document.getElementById(inp).value='';renderAdmin();renderChips();}}
-function delVocab(grp,i){CFG[grp].splice(i,1);renderAdmin();renderChips();}
+function addVocab(grp,inp){const v=document.getElementById(inp).value.trim();if(v){CFG.domains[adminDom][grp].push(v);document.getElementById(inp).value='';renderAdmin();if(adminDom===CREATOR_DOMAIN)renderChips();}}
+function delVocab(grp,i){CFG.domains[adminDom][grp].splice(i,1);renderAdmin();if(adminDom===CREATOR_DOMAIN)renderChips();}
 function renderCogs(){
   const n=+document.getElementById('cN').value, flux=+document.getElementById('cFlux').value,
         up=+document.getElementById('cUp').value, rec=+document.getElementById('cRec').value;
