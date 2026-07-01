@@ -23,7 +23,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge } from 'lucide-react'
-import { planGeneration, planGenerationSet, Dieline3DViewer, shapeKindForCategory, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief } from '@ilaunchify/ui'
+import { planGeneration, planGenerationSet, Dieline3DViewer, shapeKindForCategory, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief, type BoxFace, type FaceTexture } from '@ilaunchify/ui'
 import { planFlavorSeries, type LabelingDomain, type MarketCode, type FlavorSpec, type FlavorSeriesPlan } from '@ilaunchify/ai-design'
 import { clampOutput, formatBytes, type OutputPolicy, type OutputSettings, type OutputFormat } from '@ilaunchify/imagegen'
 
@@ -229,6 +229,20 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     if (!flavorMode || !plan) return null
     return planFlavorSeries(`${descriptor}|${selected?.id ?? ''}`, flavors)
   }, [flavorMode, plan, descriptor, selected, flavors])
+
+  // Phase 3 — a coordinated SET rendered as ONE multi-panel box: each surface maps to a face
+  // (front/back/top/left/right/bottom, in order). Memoized so the 3D scene isn't re-init'd.
+  const setFaces = useMemo<Partial<Record<BoxFace, FaceTexture>> | null>(() => {
+    const surfaces = setVariants.length > 0 ? setVariants : (setPlan?.perDieline ?? []).map((d) => ({ id: d.id, label: d.label, svg: d.plan.previewSvg }))
+    if (surfaces.length === 0) return null
+    const order: BoxFace[] = ['front', 'back', 'top', 'left', 'right', 'bottom']
+    const f: Partial<Record<BoxFace, FaceTexture>> = {}
+    surfaces.slice(0, 6).forEach((s, i) => {
+      const face = order[i]
+      if (face) f[face] = { svg: s.svg }
+    })
+    return f
+  }, [setVariants, setPlan])
 
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
     set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
@@ -474,8 +488,26 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
             )}
 
         {setMode ? (
-          <div className="grid grid-cols-2 gap-3">
-            {(setVariants.length > 0 ? setVariants : (setPlan?.perDieline ?? []).map((d) => ({ id: d.id, label: d.label, svg: d.plan.previewSvg }))).map((v) => (
+          <div className="space-y-3">
+            {setFaces && selected && (
+              <div className="rounded-2xl border border-ink-200 bg-white p-2">
+                <p className="mb-1 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">Coordinated set · 3D</p>
+                <div className="h-[240px] overflow-hidden rounded-lg bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#f1f0ec)]">
+                  <Dieline3DViewer
+                    shape="BOX"
+                    widthMm={selected.surface.widthMm}
+                    heightMm={selected.surface.heightMm}
+                    depthMm={selected.surface.widthMm * 0.6}
+                    faces={setFaces}
+                    baseColor="#f4f2ee"
+                    className="flex h-full w-full flex-col p-1.5"
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-ink-400">Each surface mapped to a box face · drag to rotate · preview only, not the print file.</p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              {(setVariants.length > 0 ? setVariants : (setPlan?.perDieline ?? []).map((d) => ({ id: d.id, label: d.label, svg: d.plan.previewSvg }))).map((v) => (
               <div key={v.id} className="rounded-xl border border-ink-200 bg-white p-2">
                 <p className="mb-1 truncate text-[10.5px] font-semibold text-ink-500">{v.label}</p>
                 <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: v.svg }} />
@@ -491,6 +523,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                 <Plus className="h-3.5 w-3.5" /> Re-roll set
               </button>
             )}
+            </div>
           </div>
         ) : flavorMode ? (
           <div className="space-y-3">

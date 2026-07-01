@@ -139,7 +139,7 @@ export {
 export { parseDielineSvg, type DielineParseResult, type ParsedBox as DielineParsedBox, type ParsedFold as DielineParsedFold } from './canvas/dielineParse'
 export { parsePdfDieline, type PdfDielineResult, type PdfDielineBox } from './canvas/dielinePdf'
 export { SUBSTRATE_SWATCHES, substrateById, defaultSubstrateId, type SubstrateSwatch } from './canvas/substrates'
-export { Dieline3DViewer, shapeKindForCategory, type Dieline3DViewerProps, type DielineShapeKind } from './canvas/Dieline3DViewer'
+export { Dieline3DViewer, shapeKindForCategory, type Dieline3DViewerProps, type DielineShapeKind, type BoxFace, type FaceTexture } from './canvas/Dieline3DViewer'
 export {
   classifyFrames,
   pickSurfaceFrames,

@@ -17,6 +17,16 @@ import * as THREE from 'three'
 
 export type DielineShapeKind = 'BOX' | 'CYLINDER' | 'FLAT'
 
+// Phase 3 — multi-panel box. Each face can carry its own die-line/surface texture, and a
+// click reports which face was hit so the host can route to that surface's 2D editor.
+export type BoxFace = 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom'
+export interface FaceTexture {
+  svg?: string | null
+  imageUrl?: string | null
+}
+// three BoxGeometry material order is [+X,-X,+Y,-Y,+Z,-Z].
+const MATERIAL_FACE_ORDER: BoxFace[] = ['right', 'left', 'top', 'bottom', 'front', 'back']
+
 export function shapeKindForCategory(category?: string | null): DielineShapeKind {
   switch ((category ?? '').toUpperCase()) {
     // Rigid rectangular structures → box
@@ -60,16 +70,21 @@ export interface Dieline3DViewerProps {
   /** Raster image (data URL / URL) wrapped as the surface texture — e.g. a live
    *  design snapshot from the Fabric canvas. Takes precedence over textureSvg. */
   textureImageUrl?: string | null
+  /** Phase 3 — per-face textures for a BOX (front/back/left/right/top/bottom). When set,
+   *  each face renders its own die-line/surface and clicks report the face. Ignored for
+   *  non-box shapes and when neither svg nor imageUrl is given for a face. */
+  faces?: Partial<Record<BoxFace, FaceTexture>>
   /** Substrate base colour (hex). */
   baseColor?: string
   className?: string
   /** When provided, the viewer sets `.current` to a function that captures the current
    *  frame as a PNG data URL (for "download 3D image"). Requires preserveDrawingBuffer. */
   captureRef?: React.MutableRefObject<(() => string | null) | null>
-  /** Click-to-edit (Studio 3D+2D Phase 2b): fired on a click (not a drag) on the printed
-   *  surface with the hit's UV in 0..1 (u = left→right, v = top→bottom of the texture), so
-   *  the host can select the matching element on the 2D canvas. */
-  onSurfaceClick?: (uv: { u: number; v: number }) => void
+  /** Click-to-edit (Studio 3D+2D Phase 2b/3): fired on a click (not a drag) on the printed
+   *  surface with the hit's UV in 0..1 (u = left→right, v = top→bottom of the texture) and,
+   *  for a multi-panel box, the `face` that was hit — so the host can select the matching
+   *  element on the 2D canvas or route to that surface's editor. */
+  onSurfaceClick?: (hit: { u: number; v: number; face?: BoxFace }) => void
 }
 
 function rasterTexture(url: string): THREE.Texture {
@@ -90,6 +105,7 @@ export function Dieline3DViewer({
   depthMm,
   textureSvg,
   textureImageUrl,
+  faces,
   baseColor = '#f2efe7',
   className,
   captureRef,
@@ -135,13 +151,24 @@ export function Dieline3DViewer({
     fill.position.set(-4, 2, -3)
     scene.add(fill)
 
-    const tex = textureImageUrl ? rasterTexture(textureImageUrl) : textureSvg ? svgTexture(textureSvg) : null
+    // Track every texture we create so cleanup disposes them all (multi-panel makes several).
+    const disposables: THREE.Texture[] = []
+    const trackTex = (t: THREE.Texture | null): THREE.Texture | null => {
+      if (t) disposables.push(t)
+      return t
+    }
+    const tex = textureImageUrl ? trackTex(rasterTexture(textureImageUrl)) : textureSvg ? trackTex(svgTexture(textureSvg)) : null
     const base = new THREE.Color(baseColor)
     const substrateMat = () => new THREE.MeshStandardMaterial({ color: base, roughness: 0.85, metalness: 0.04 })
     const printedMat = () =>
       tex
         ? new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, roughness: 0.7 })
         : substrateMat()
+    // Per-face material for a multi-panel box (Phase 3). Textured if the face has svg/image.
+    const faceMat = (ft?: FaceTexture) => {
+      const t = ft?.imageUrl ? trackTex(rasterTexture(ft.imageUrl)) : ft?.svg ? trackTex(svgTexture(ft.svg)) : null
+      return t ? new THREE.MeshStandardMaterial({ map: t, color: 0xffffff, roughness: 0.7 }) : substrateMat()
+    }
 
     const group = new THREE.Group()
     scene.add(group)
@@ -151,8 +178,10 @@ export function Dieline3DViewer({
 
     if (shape === 'BOX') {
       const geo = new THREE.BoxGeometry(w * s, h * s, d * s)
-      // material order: +X,-X,+Y,-Y,+Z,-Z — print on the front (+Z).
-      const mats = [substrateMat(), substrateMat(), substrateMat(), substrateMat(), printedMat(), substrateMat()]
+      // material order: +X,-X,+Y,-Y,+Z,-Z. Multi-panel → per-face textures; else print on front.
+      const mats = faces
+        ? MATERIAL_FACE_ORDER.map((f) => faceMat(faces[f]))
+        : [substrateMat(), substrateMat(), substrateMat(), substrateMat(), printedMat(), substrateMat()]
       group.add(new THREE.Mesh(geo, mats))
 
       lid = new THREE.Group()
@@ -201,7 +230,11 @@ export function Dieline3DViewer({
       raycaster.setFromCamera(ndc, camera)
       const hits = raycaster.intersectObjects(group.children, true)
       const hit = hits.find((h) => h.uv)
-      if (hit && hit.uv) clickRef.current({ u: hit.uv.x, v: 1 - hit.uv.y })
+      if (hit && hit.uv) {
+        const mi = (hit.face as { materialIndex?: number } | undefined)?.materialIndex
+        const face = typeof mi === 'number' ? MATERIAL_FACE_ORDER[mi] : undefined
+        clickRef.current({ u: hit.uv.x, v: 1 - hit.uv.y, face })
+      }
     }
     const onMove = (e: PointerEvent) => {
       if (!dragging) return
@@ -248,11 +281,12 @@ export function Dieline3DViewer({
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointermove', onMove)
       renderer.domElement.removeEventListener('wheel', onWheel)
-      tex?.dispose()
+      disposables.forEach((t) => t.dispose())
       renderer.dispose()
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement)
     }
-  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor])
+    // `faces` should be memoized by the caller (a new object re-inits the scene).
+  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces])
 
   return (
     <div className={className ?? 'flex h-full w-full flex-col'}>
