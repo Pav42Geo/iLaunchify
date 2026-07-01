@@ -53,6 +53,17 @@ Server actions: `getTemplateLibrary(scope)`, `toggleGenerationFavorite(id)`,
 `getGenerationBrief(id)`. UI: `TemplateLibrary.tsx` (grid + filters), `AiCreateWorkspace.tsx`
 (full-page Create|Library tabs); the drawer hosts the same two tabs.
 
+## Admin pool (all creators)
+
+`/ai-generator/pool` (catalog:write) — the platform-wide view of **every** creator
+generation. KPI strip (total / this week / favorites / featured / promoted), lens filters
+(all / featured / favorited / promoted), domain filter, search (concept or creator).
+Per card the admin can **Feature** (shortlist, `featured` flag), **Promote to Starter**
+(publishes a premium `BrandTemplate` from the concept — needs a persisted image, so R2-gated),
+and **Studio** (deep-link to author a premium template from the concept). Actions:
+`setGenerationFeatured`, `promoteGenerationToStarter` (uses `getOrCreateSystemTemplatesBrand`
++ `createBrandTemplate`). Additive `featured` column.
+
 ## Gated on the same db:push
 
 Persistence (favorites, shape family, this-product filtering, thumbnails) lights up with the

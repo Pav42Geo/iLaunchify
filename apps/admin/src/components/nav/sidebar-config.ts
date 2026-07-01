@@ -338,6 +338,7 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
         { kind: 'item', label: 'Die-lines', icon: Layout, href: '/dielines' },
         { kind: 'item', label: 'AI Generator', icon: Sparkles, href: '/ai-generator', capability: 'catalog:write' },
+        { kind: 'item', label: 'AI Template Pool', icon: Sparkles, href: '/ai-generator/pool', capability: 'catalog:write' },
         { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
         { kind: 'item', label: 'Container Die-lines', icon: Boxes, href: '/asset-management/packaging-containers' },
       ],

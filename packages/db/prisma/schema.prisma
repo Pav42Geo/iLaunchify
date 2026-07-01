@@ -6944,6 +6944,8 @@ model AiDesignGeneration {
   aspectBucket       String? // e.g. 'SQUARE', 'TALL', 'WIDE'
   /// Soft-hidden from the library (reversible). Never a hard delete.
   archived           Boolean      @default(false)
+  /// Admin shortlist flag in the generated-templates pool (curation, not creator-visible).
+  featured           Boolean      @default(false)
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
