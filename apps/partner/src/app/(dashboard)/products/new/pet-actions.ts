@@ -41,7 +41,10 @@ async function ownDraft(draftId: string) {
   return { user, error: null as null }
 }
 
-export async function savePetFormulation(draftId: string, payload: PetFormulationPayload): Promise<Result> {
+/** Persist the pet formulation. `flavorPresetId` → stored per flavor under
+ *  `formulationData.petByFlavor[id]` (multi-flavor pet food — chicken vs beef with
+ *  different GA panels); omitted writes the base `formulationData.pet`. Backward-compatible. */
+export async function savePetFormulation(draftId: string, payload: PetFormulationPayload, flavorPresetId?: string): Promise<Result> {
   const gate = await ownDraft(draftId)
   if (gate.error || !gate.user) return { ok: false, error: gate.error ?? 'Unauthorized.' }
   try {
@@ -52,13 +55,16 @@ export async function savePetFormulation(draftId: string, payload: PetFormulatio
       }
     }
     const existing = await px.productTemplate.findUnique({ where: { id: draftId }, select: { formulationData: true } }).catch(() => null)
-    const merged = { ...(existing?.formulationData ?? {}), pet: payload }
+    const baseFd = (existing?.formulationData ?? {}) as Record<string, unknown>
+    const merged = flavorPresetId
+      ? { ...baseFd, petByFlavor: { ...((baseFd.petByFlavor as Record<string, unknown>) ?? {}), [flavorPresetId]: payload } }
+      : { ...baseFd, pet: payload }
     await px.productTemplate.update({ where: { id: draftId }, data: { formulationData: merged } })
     await logAuditAs(gate.user, {
       entityType: 'ProductTemplate',
       entityId: draftId,
       action: 'PET_FORMULATION_SAVED',
-      payload: { ingredients: payload.ingredients.length, method: payload.method },
+      payload: { ingredients: payload.ingredients.length, method: payload.method, flavorPresetId: flavorPresetId ?? null },
     })
     return { ok: true }
   } catch (err) {
@@ -66,15 +72,18 @@ export async function savePetFormulation(draftId: string, payload: PetFormulatio
   }
 }
 
-export async function loadPetFormulation(draftId: string): Promise<LoadResult> {
+/** Load the pet formulation. `flavorPresetId` loads that flavor's; omitted loads the base. */
+export async function loadPetFormulation(draftId: string, flavorPresetId?: string): Promise<LoadResult> {
   const gate = await ownDraft(draftId)
   if (gate.error) return { ok: false, error: gate.error }
   try {
     const px = prisma as unknown as {
-      productTemplate: { findUnique: (a: unknown) => Promise<{ formulationData: { pet?: PetFormulationPayload } | null } | null> }
+      productTemplate: { findUnique: (a: unknown) => Promise<{ formulationData: { pet?: PetFormulationPayload; petByFlavor?: Record<string, PetFormulationPayload> } | null } | null> }
     }
     const row = await px.productTemplate.findUnique({ where: { id: draftId }, select: { formulationData: true } }).catch(() => null)
-    return { ok: true, data: row?.formulationData?.pet ?? null }
+    const fd = row?.formulationData
+    const data = flavorPresetId ? (fd?.petByFlavor?.[flavorPresetId] ?? null) : (fd?.pet ?? null)
+    return { ok: true, data }
   } catch (err) {
     return { ok: false, error: `Could not load formulation: ${(err as Error).message}` }
   }

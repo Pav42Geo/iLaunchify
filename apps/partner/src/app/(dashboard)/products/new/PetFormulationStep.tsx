@@ -22,7 +22,12 @@ const uid = () => `p${Date.now().toString(36)}${(seq++).toString(36)}`
 interface PetRow { uid: string; name: string; weight: number }
 interface GaOther { name: string; value: number; bound: 'min' | 'max'; unit: string }
 
-export function PetFormulationStep({ productName, draftId, registerFlush }: { productName?: string; draftId?: string | null; registerFlush?: (fn: () => Promise<void> | void) => () => void }) {
+export function PetFormulationStep({ productName, draftId, registerFlush, flavorMode = 'SINGLE', flavors = [] }: { productName?: string; draftId?: string | null; registerFlush?: (fn: () => Promise<void> | void) => () => void; flavorMode?: 'SINGLE' | 'MULTI'; flavors?: Array<{ name?: string; presetId?: string | null }> }) {
+  // Per-flavor formulation target: 'BASE' = product default; a flavorPresetId =
+  // that flavor's own GA/ingredients (e.g. chicken vs beef). Single-flavor hides the bar.
+  const declarableFlavors = flavorMode === 'MULTI' ? flavors.filter((f) => f.presetId) : []
+  const [activeTarget, setActiveTarget] = React.useState<'BASE' | string>('BASE')
+  const targetPresetId = activeTarget === 'BASE' ? undefined : activeTarget
   const [rows, setRows] = React.useState<PetRow[]>([])
   const [cp, setCp] = React.useState(0)
   const [cf, setCf] = React.useState(0)
@@ -34,11 +39,18 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
   const [method, setMethod] = React.useState<AdequacyMethod>('formulated')
   const [feedingDirections, setFeeding] = React.useState('')
 
+  // Reset to empty defaults when switching to a flavor tab with no saved data yet.
+  const resetForm = React.useCallback(() => {
+    setRows([]); setCp(0); setCf(0); setFiber(0); setMoisture(0); setOthers([])
+    setSpecies('Dog'); setLifeStage('maintenance'); setMethod('formulated'); setFeeding('')
+  }, [])
+
   const hydrated = React.useRef(false)
   React.useEffect(() => {
     if (!draftId) { hydrated.current = true; return }
+    hydrated.current = false
     let cancelled = false
-    loadPetFormulation(draftId).then((r) => {
+    loadPetFormulation(draftId, targetPresetId).then((r) => {
       if (cancelled) return
       if (r.ok && r.data) {
         const d = r.data
@@ -46,15 +58,17 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
         setCp(d.ga?.crudeProteinMinPct ?? 0); setCf(d.ga?.crudeFatMinPct ?? 0)
         setFiber(d.ga?.crudeFiberMaxPct ?? 0); setMoisture(d.ga?.moistureMaxPct ?? 0)
         setOthers(d.ga?.others ?? [])
-        if (d.species) setSpecies(d.species)
-        if (d.lifeStage) setLifeStage(d.lifeStage)
-        if (d.method) setMethod(d.method)
+        setSpecies(d.species || 'Dog')
+        setLifeStage(d.lifeStage || 'maintenance')
+        setMethod(d.method || 'formulated')
         setFeeding(d.feedingDirections ?? '')
+      } else {
+        resetForm()
       }
       hydrated.current = true
     })
     return () => { cancelled = true }
-  }, [draftId])
+  }, [draftId, targetPresetId, resetForm])
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   React.useEffect(() => {
     if (!draftId || !hydrated.current) return
@@ -64,10 +78,10 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
         ingredients: rows,
         ga: { crudeProteinMinPct: cp, crudeFatMinPct: cf, crudeFiberMaxPct: fiber, moistureMaxPct: moisture, others },
         species, lifeStage, method, feedingDirections,
-      })
+      }, targetPresetId)
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [rows, cp, cf, fiber, moisture, others, species, lifeStage, method, feedingDirections, draftId])
+  }, [rows, cp, cf, fiber, moisture, others, species, lifeStage, method, feedingDirections, draftId, targetPresetId])
 
   // Immediate flush before navigation (registry).
   const flushRef = React.useRef<() => Promise<void>>(async () => {})
@@ -78,12 +92,20 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
       ingredients: rows,
       ga: { crudeProteinMinPct: cp, crudeFatMinPct: cf, crudeFiberMaxPct: fiber, moistureMaxPct: moisture, others },
       species, lifeStage, method, feedingDirections,
-    })
+    }, targetPresetId)
   }
   React.useEffect(() => {
     if (!registerFlush) return
     return registerFlush(() => flushRef.current())
   }, [registerFlush])
+
+  // Switch target — flush the current one first (persists to the OLD target), then
+  // change; the load effect hydrates the new target.
+  async function switchTarget(next: 'BASE' | string) {
+    if (next === activeTarget) return
+    await flushRef.current()
+    setActiveTarget(next)
+  }
 
   const patch = (id: string, p: Partial<PetRow>) => setRows((rs) => rs.map((r) => (r.uid === id ? { ...r, ...p } : r)))
   const addRow = () => setRows((rs) => [...rs, { uid: uid(), name: '', weight: 0 }])
@@ -123,6 +145,33 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
   const statement = adequacyStatement(productName ?? '', species, lifeStage, method)
 
   return (
+    <div className="space-y-3">
+      {/* Per-flavor formulation tabs (MULTI pet food — chicken vs beef with
+          different GA panels). Base = the default; each flavor its own. */}
+      {declarableFlavors.length > 0 && (
+        <div className="recipe-flavtabs" role="tablist" aria-label="Formulation by flavor">
+          <button
+            type="button" role="tab" aria-selected={activeTarget === 'BASE'}
+            className={`recipe-flavtab${activeTarget === 'BASE' ? ' on' : ''}`}
+            onClick={() => void switchTarget('BASE')}
+            title="The base product formulation."
+          >Base</button>
+          {declarableFlavors.map((f, i) => (
+            <button
+              key={f.presetId} type="button" role="tab"
+              aria-selected={activeTarget === f.presetId}
+              className={`recipe-flavtab${activeTarget === f.presetId ? ' on' : ''}`}
+              title={`Formulate ${f.name || `Flavor ${i + 1}`}`}
+              onClick={() => void switchTarget(f.presetId!)}
+            >{f.name || `Flavor ${i + 1}`}</button>
+          ))}
+        </div>
+      )}
+      {activeTarget !== 'BASE' && (
+        <p className="muted tiny" style={{ margin: 0 }}>
+          Editing the <b style={{ color: 'var(--ink-900)' }}>{declarableFlavors.find((f) => f.presetId === activeTarget)?.name || 'flavor'}</b> guaranteed analysis. Base is the default for flavors you leave blank.
+        </p>
+      )}
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
       {/* LEFT — formulation */}
       <div className="space-y-4">
@@ -228,6 +277,7 @@ export function PetFormulationStep({ productName, draftId, registerFlush }: { pr
         />
         <p className="text-[11px] text-ink-500">Print-grade AAFCO label preview.</p>
       </div>
+    </div>
     </div>
   )
 }

@@ -74,12 +74,23 @@ export function SupplementFormulationStep({
   servingFormDefault = '1 capsule',
   draftId,
   registerFlush,
+  flavorMode = 'SINGLE',
+  flavors = [],
 }: {
   productName?: string
   servingFormDefault?: string
   draftId?: string | null
   registerFlush?: (fn: () => Promise<void> | void) => () => void
+  /** MULTI enables a Base + per-flavor formulation tab bar (gummy flavors, etc.). */
+  flavorMode?: 'SINGLE' | 'MULTI'
+  /** The draft's flavors (id + name). Only presetId-bearing flavors are declarable. */
+  flavors?: Array<{ name?: string; presetId?: string | null }>
 }) {
+  // Declared formulation target: 'BASE' = the product default; a flavorPresetId =
+  // that flavor's own Supplement Facts (multi-flavor). Single-flavor never shows the bar.
+  const declarableFlavors = flavorMode === 'MULTI' ? flavors.filter((f) => f.presetId) : []
+  const [activeTarget, setActiveTarget] = React.useState<'BASE' | string>('BASE')
+  const targetPresetId = activeTarget === 'BASE' ? undefined : activeTarget
   const [rows, setRows] = React.useState<DietRow[]>([])
   const [blends, setBlends] = React.useState<{ id: string; name: string; total: number; unit: string }[]>([])
   const [servingForm, setServingForm] = React.useState(servingFormDefault)
@@ -106,50 +117,72 @@ export function SupplementFormulationStep({
 
   // Load any saved formulation, then debounce-autosave subsequent edits. The
   // `hydrated` guard prevents the initial empty state from clobbering the load.
+  // Reset the whole form to empty defaults — used when switching to a flavor tab
+  // whose formulation is still blank, so one flavor's data never bleeds into another.
+  const resetForm = React.useCallback(() => {
+    setRows([]); setBlends([]); setServingForm(servingFormDefault); setSpc(30)
+    setDosageForm('capsule'); setNut({}); setNutLt({}); setNutOpen(false); setNoDvSymbol('†')
+  }, [servingFormDefault])
+
   const hydrated = React.useRef(false)
+  // Reload whenever the draft OR the active flavor target changes. hydrated is
+  // reset so the autosave effect can't clobber the new target mid-load.
   React.useEffect(() => {
     if (!draftId) { hydrated.current = true; return }
+    hydrated.current = false
     let cancelled = false
-    loadSupplementFormulation(draftId).then((r) => {
+    loadSupplementFormulation(draftId, targetPresetId).then((r) => {
       if (cancelled) return
       if (r.ok && r.data) {
         setRows((r.data.dietaryIngredients ?? []).map((d) => ({ ...d, name: cleanSourceName(d.name) })))
         setBlends((r.data.blends ?? []).map((b) => ({ ...b, name: cleanSourceName(b.name) })))
-        if (r.data.servingForm) setServingForm(r.data.servingForm)
-        if (r.data.servingsPerContainer) setSpc(r.data.servingsPerContainer)
-        if (r.data.dosageForm) setDosageForm(r.data.dosageForm)
+        setServingForm(r.data.servingForm || servingFormDefault)
+        setSpc(r.data.servingsPerContainer || 30)
+        setDosageForm(r.data.dosageForm || 'capsule')
         if (r.data.nutrition && Object.keys(r.data.nutrition).length) {
           setNut(Object.fromEntries(Object.entries(r.data.nutrition).map(([k, v]) => [k, String(v)])))
           setNutOpen(true)
-        }
-        if (r.data.nutritionLessThan) setNutLt(r.data.nutritionLessThan)
-        if (r.data.noDvSymbol) setNoDvSymbol(r.data.noDvSymbol)
+        } else { setNut({}); setNutOpen(false) }
+        setNutLt(r.data.nutritionLessThan ?? {})
+        setNoDvSymbol(r.data.noDvSymbol || '†')
+      } else {
+        // Fresh target (no saved formulation yet) — start blank.
+        resetForm()
       }
       hydrated.current = true
     })
     return () => { cancelled = true }
-  }, [draftId])
+  }, [draftId, targetPresetId, servingFormDefault, resetForm])
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   React.useEffect(() => {
     if (!draftId || !hydrated.current) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm, nutrition: builtNutrition, nutritionLessThan: nutLt, noDvSymbol })
+      void saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm, nutrition: builtNutrition, nutritionLessThan: nutLt, noDvSymbol }, targetPresetId)
     }, 1000)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [rows, blends, servingForm, servingsPerContainer, dosageForm, builtNutrition, nutLt, noDvSymbol, draftId])
+  }, [rows, blends, servingForm, servingsPerContainer, dosageForm, builtNutrition, nutLt, noDvSymbol, draftId, targetPresetId])
 
   // Immediate flush before navigation (registry).
   const flushRef = React.useRef<() => Promise<void>>(async () => {})
   flushRef.current = async () => {
     if (!draftId || !hydrated.current) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    await saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm, nutrition: builtNutrition, nutritionLessThan: nutLt, noDvSymbol })
+    await saveSupplementFormulation(draftId, { dietaryIngredients: rows, blends, servingForm, servingsPerContainer, dosageForm, nutrition: builtNutrition, nutritionLessThan: nutLt, noDvSymbol }, targetPresetId)
   }
   React.useEffect(() => {
     if (!registerFlush) return
     return registerFlush(() => flushRef.current())
   }, [registerFlush])
+
+  // Switch the active formulation target — flush the current one first (so its
+  // in-progress edits persist to the OLD target), then change; the load effect
+  // hydrates the new target. flushRef captures the pre-switch target.
+  async function switchTarget(next: 'BASE' | string) {
+    if (next === activeTarget) return
+    await flushRef.current()
+    setActiveTarget(next)
+  }
 
   // NIH DSLD ingredient search (live/hybrid per admin config).
   const [dsldQuery, setDsldQuery] = React.useState('')
@@ -215,6 +248,34 @@ export function SupplementFormulationStep({
   const otherRows = rows.filter((r) => r.isOther)
 
   return (
+    <div className="space-y-3">
+      {/* Per-flavor formulation tabs (MULTI supplements — e.g. gummy flavors that
+          differ). Base = the product default panel; each flavor gets its own
+          Supplement Facts. Single-flavor products never see this bar. */}
+      {declarableFlavors.length > 0 && (
+        <div className="recipe-flavtabs" role="tablist" aria-label="Formulation by flavor">
+          <button
+            type="button" role="tab" aria-selected={activeTarget === 'BASE'}
+            className={`recipe-flavtab${activeTarget === 'BASE' ? ' on' : ''}`}
+            onClick={() => void switchTarget('BASE')}
+            title="The base product formulation."
+          >Base</button>
+          {declarableFlavors.map((f, i) => (
+            <button
+              key={f.presetId} type="button" role="tab"
+              aria-selected={activeTarget === f.presetId}
+              className={`recipe-flavtab${activeTarget === f.presetId ? ' on' : ''}`}
+              title={`Formulate ${f.name || `Flavor ${i + 1}`}`}
+              onClick={() => void switchTarget(f.presetId!)}
+            >{f.name || `Flavor ${i + 1}`}</button>
+          ))}
+        </div>
+      )}
+      {activeTarget !== 'BASE' && (
+        <p className="muted tiny" style={{ margin: 0 }}>
+          Editing the <b style={{ color: 'var(--ink-900)' }}>{declarableFlavors.find((f) => f.presetId === activeTarget)?.name || 'flavor'}</b> Supplement Facts. The Base panel is the default for flavors you leave blank.
+        </p>
+      )}
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
       {/* LEFT — formulation */}
       <div className="space-y-4">
@@ -426,6 +487,7 @@ export function SupplementFormulationStep({
           <div className="card text-center text-[12.5px] text-ink-500">Add a dietary ingredient to see the live Supplement Facts panel.</div>
         )}
       </div>
+    </div>
     </div>
   )
 }

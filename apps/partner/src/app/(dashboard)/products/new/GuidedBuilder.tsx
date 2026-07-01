@@ -514,11 +514,11 @@ export function GuidedBuilder({
                 <style>{`.gb .domchip{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--ink-200);border-radius:999px;background:#fff;padding:5px 6px 5px 14px;font-size:var(--fs-sm);color:var(--ink-700)}.gb .domchip button{border:0;background:var(--ink-100,#EEEFF1);border-radius:999px;padding:4px 11px;font:inherit;font-size:var(--fs-xs);font-weight:600;color:var(--ink-700);cursor:pointer}.gb .domchip button:hover{background:var(--pink-50,#FFE9F0);color:var(--pink-700,#C71350)}`}</style>
               </div>
               {ltype === 'Supplement' ? (
-                <SupplementFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} />
+                <SupplementFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} flavorMode={profile?.flavorMode ?? 'SINGLE'} flavors={flavors} />
               ) : ltype === 'Cosmetic' ? (
                 <CosmeticFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} />
               ) : ltype === 'Pet' ? (
-                <PetFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} />
+                <PetFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} flavorMode={profile?.flavorMode ?? 'SINGLE'} flavors={flavors} />
               ) : (
                 <RecipeBuilderStep
                   productName={name}

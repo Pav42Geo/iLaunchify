@@ -72,8 +72,18 @@ async function ownDraft(draftId: string) {
   return { user, error: null as null }
 }
 
-/** Persist the supplement formulation onto the draft (merged into formulationData). */
-export async function saveSupplementFormulation(draftId: string, payload: SupplementFormulationPayload): Promise<Result> {
+/**
+ * Persist the supplement formulation onto the draft (merged into formulationData).
+ * When `flavorPresetId` is given, the payload is stored PER FLAVOR under
+ * `formulationData.supplementByFlavor[flavorPresetId]` (multi-flavor supplements —
+ * e.g. gummy flavors that differ). Without it, the base `formulationData.supplement`
+ * is written exactly as before. Backward-compatible.
+ */
+export async function saveSupplementFormulation(
+  draftId: string,
+  payload: SupplementFormulationPayload,
+  flavorPresetId?: string,
+): Promise<Result> {
   const gate = await ownDraft(draftId)
   if (gate.error || !gate.user) return { ok: false, error: gate.error ?? 'Unauthorized.' }
   try {
@@ -84,13 +94,22 @@ export async function saveSupplementFormulation(draftId: string, payload: Supple
       }
     }
     const existing = await px.productTemplate.findUnique({ where: { id: draftId }, select: { formulationData: true } }).catch(() => null)
-    const merged = { ...(existing?.formulationData ?? {}), supplement: payload }
+    const baseFd = (existing?.formulationData ?? {}) as Record<string, unknown>
+    const merged = flavorPresetId
+      ? {
+          ...baseFd,
+          supplementByFlavor: {
+            ...((baseFd.supplementByFlavor as Record<string, unknown>) ?? {}),
+            [flavorPresetId]: payload,
+          },
+        }
+      : { ...baseFd, supplement: payload }
     await px.productTemplate.update({ where: { id: draftId }, data: { formulationData: merged } })
     await logAuditAs(gate.user, {
       entityType: 'ProductTemplate',
       entityId: draftId,
       action: 'SUPPLEMENT_FORMULATION_SAVED',
-      payload: { dietaryCount: payload.dietaryIngredients.length, blends: payload.blends.length },
+      payload: { dietaryCount: payload.dietaryIngredients.length, blends: payload.blends.length, flavorPresetId: flavorPresetId ?? null },
     })
     return { ok: true }
   } catch (err) {
@@ -98,16 +117,19 @@ export async function saveSupplementFormulation(draftId: string, payload: Supple
   }
 }
 
-/** Load the supplement formulation for a draft (null if none). */
-export async function loadSupplementFormulation(draftId: string): Promise<LoadResult> {
+/** Load the supplement formulation for a draft (null if none). `flavorPresetId`
+ *  loads that flavor's formulation; omitted loads the base. */
+export async function loadSupplementFormulation(draftId: string, flavorPresetId?: string): Promise<LoadResult> {
   const gate = await ownDraft(draftId)
   if (gate.error) return { ok: false, error: gate.error }
   try {
     const px = prisma as unknown as {
-      productTemplate: { findUnique: (a: unknown) => Promise<{ formulationData: { supplement?: SupplementFormulationPayload } | null } | null> }
+      productTemplate: { findUnique: (a: unknown) => Promise<{ formulationData: { supplement?: SupplementFormulationPayload; supplementByFlavor?: Record<string, SupplementFormulationPayload> } | null } | null> }
     }
     const row = await px.productTemplate.findUnique({ where: { id: draftId }, select: { formulationData: true } }).catch(() => null)
-    return { ok: true, data: row?.formulationData?.supplement ?? null }
+    const fd = row?.formulationData
+    const data = flavorPresetId ? (fd?.supplementByFlavor?.[flavorPresetId] ?? null) : (fd?.supplement ?? null)
+    return { ok: true, data }
   } catch (err) {
     return { ok: false, error: `Could not load formulation: ${(err as Error).message}` }
   }
