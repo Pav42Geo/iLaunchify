@@ -79,8 +79,8 @@ All packages typecheck; all golden suites pass (`ai-design`, `imagegen`, `ui/tem
    to the panel's `onGenerate` (product + admin branches). Full page + in-canvas drawer both
    generate for real on the stub; brand-ref/palette/output thread through. Also surfaced the
    full intake: brand-kit/manual identity, output settings, usage meters, saved-templates grid
-   (`docs/AI_GENERATOR_CHECKLIST.md`). Remaining: finalize/export path + `onEditInStudio` on
-   the full page (drawer already applies-to-canvas).
+   (`docs/AI_GENERATOR_CHECKLIST.md`). Finalize/export (`finalizeAiConcept` → download) +
+   `onEditInStudio` (sessionStorage handoff → drawer "Apply to canvas") also DONE 2026-07-01.
 4. **R2 persistence** — upload variation images and store `variationKeys` (currently returned
    inline).
 5. **Pavel decisions** — final tier price points + allotments (seeds in `DEFAULT_TIER_LIMITS` /

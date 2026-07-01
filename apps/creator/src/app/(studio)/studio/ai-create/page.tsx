@@ -90,7 +90,7 @@ export default async function AiCreatePage({
     }
     return (
       <div className="mx-auto max-w-5xl space-y-4 p-6">
-        <AiCreatePanelClient {...data.props} />
+        <AiCreatePanelClient {...data.props} productId={productId} />
       </div>
     )
   }

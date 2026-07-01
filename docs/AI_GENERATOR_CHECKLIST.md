@@ -127,7 +127,11 @@ The real work = flip the 🟡 and ⬜ rows that belong in the **creator UI**:
 **Full-page real generation** ✅ shipped (2026-07-01)
 - [x] `AiCreatePanelClient` wraps the panel and adapts `generateAiConcepts` to `onGenerate` (maps die-line → ~1 MP draft px; threads brand ref + palette + output). Product + admin branches now generate for real (stub today; fal/Recraft on keys). Demo harness stays preview-only.
 
-> Remaining P3/infra (yours): `FAL_KEY` + `RECRAFT_API_KEY` in env, `db:push` + `db:generate` on Mac, R2 persistence of variation images (fills in saved-grid thumbnails).
+**Finalize / export + Edit-in-Studio** ✅ shipped (2026-07-01)
+- [x] **Export** — `onExport` calls `finalizeAiConcept` (upscale + debit finalize MP + storage + audit), then downloads the finalized asset (SVG today; print raster when providers land).
+- [x] **Edit in Studio** — `onEditInStudio` stashes the concept in a same-origin `handoff` (sessionStorage) and navigates to `/products/[id]/design/canvas`; the in-canvas AI Templator drawer detects it on open and offers **Apply to canvas** (drops under the truth layer). No edit to Code's canvas shell.
+
+> Remaining P3/infra (yours): `FAL_KEY` + `RECRAFT_API_KEY` in env, `db:push` + `db:generate` on Mac, R2 persistence of variation images (fills in saved-grid thumbnails + real print-raster export).
 
 **Explicitly NOT building** (parked): 7.6 pricing columns, 9.3 add-on wiring.
 

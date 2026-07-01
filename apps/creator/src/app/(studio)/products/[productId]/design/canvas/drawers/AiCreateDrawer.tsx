@@ -28,6 +28,7 @@ import {
   type DielineTarget,
   type ManualBrand,
 } from '../../../../../studio/ai-create/AiCreatePanel'
+import { readAiConceptHandoff, clearAiConceptHandoff } from '../../../../../studio/ai-create/handoff'
 
 type Props = {
   canvas: FabricCanvas | null
@@ -82,6 +83,8 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
   const [manual, setManual] = React.useState<ManualBrand>({ brandName: '', market: '', audience: '', colours: [] })
   const [output, setOutput] = React.useState<OutputSettings | null>(null)
   const [presetId, setPresetId] = React.useState('default')
+  // A concept handed over from the full-page generator's "Edit in Studio" (same-origin).
+  const [pending, setPending] = React.useState<{ svg: string; label: string } | null>(null)
 
   React.useEffect(() => {
     let cancelled = false
@@ -102,6 +105,12 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
     return () => {
       cancelled = true
     }
+  }, [productId])
+
+  // Pick up a concept handed over from the full-page generator (survives the navigation).
+  React.useEffect(() => {
+    const h = readAiConceptHandoff(productId)
+    if (h) setPending({ svg: h.svg, label: h.label })
   }, [productId])
 
   const gated = props?.tier === 'maker'
@@ -213,6 +222,35 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
       <p className="text-[11px] text-ink-400">
         Generating for <strong className="text-ink-600">{target.label}</strong>. Concepts drop onto your die-line under the compliance layer.
       </p>
+
+      {pending && (
+        <div className="rounded-lg border border-pink-300 bg-pink-50 p-2.5">
+          <p className="text-[11.5px] font-semibold text-pink-800">Concept from the generator</p>
+          <p className="mb-2 text-[11px] text-pink-700">“{pending.label}” is ready to drop onto this canvas.</p>
+          <div className="[&_svg]:h-auto [&_svg]:w-full mb-2 overflow-hidden rounded border border-pink-200 bg-white" dangerouslySetInnerHTML={{ __html: pending.svg.trim().startsWith('<svg') ? pending.svg : `<img src="${pending.svg}" alt="${pending.label}" style="width:100%;height:auto"/>` }} />
+          <div className="flex gap-1.5">
+            <button
+              onClick={async () => {
+                await applyToCanvas(pending.svg, -1)
+                clearAiConceptHandoff()
+                setPending(null)
+              }}
+              className="flex-1 rounded-full bg-ink-900 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-ink-800"
+            >
+              Apply to canvas
+            </button>
+            <button
+              onClick={() => {
+                clearAiConceptHandoff()
+                setPending(null)
+              }}
+              className="rounded-full border border-pink-300 px-3 py-1.5 text-[11.5px] font-semibold text-pink-700 hover:bg-pink-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {gated && (
         <div className="flex items-start gap-2 rounded-lg border border-pink-200 bg-pink-50 p-2.5 text-[11.5px] text-pink-800">
