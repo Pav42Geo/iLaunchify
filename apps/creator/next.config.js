@@ -11,6 +11,8 @@ const nextConfig = {
     '@ilaunchify/orders',
     '@ilaunchify/compliance-client',
     '@ilaunchify/nutrition',
+    '@ilaunchify/ai-design',
+    '@ilaunchify/imagegen',
   ],
   experimental: {
     serverActions: { allowedOrigins: ['app.ilaunchify.com', 'localhost:3000'] },
