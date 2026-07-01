@@ -12,12 +12,13 @@
 // =============================================================================
 
 import * as React from 'react'
-import { Box as BoxIcon, X, Maximize2, Minimize2 } from 'lucide-react'
+import { Box as BoxIcon, X, Maximize2, Minimize2, Download } from 'lucide-react'
 import {
   snapshotCanvasTrimmed,
   Dieline3DViewer,
   shapeKindForCategory,
   type DieCutSpec,
+  type DielineShapeKind,
   type FabricCanvas,
 } from '@ilaunchify/ui'
 
@@ -33,7 +34,23 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
   const [open, setOpen] = React.useState(false)
   const [expanded, setExpanded] = React.useState(false)
   const [snapshot, setSnapshot] = React.useState<string | null>(null)
-  const shape = React.useMemo(() => shapeKindForCategory(dieCut.category), [dieCut.category])
+  // null = auto (derive from the product's die-cut category); otherwise a manual override so
+  // the creator can preview the same label on a different container shape.
+  const [shapeOverride, setShapeOverride] = React.useState<DielineShapeKind | null>(null)
+  const autoShape = React.useMemo(() => shapeKindForCategory(dieCut.category), [dieCut.category])
+  const shape = shapeOverride ?? autoShape
+  const captureRef = React.useRef<(() => string | null) | null>(null)
+
+  function downloadShot() {
+    const url = captureRef.current?.() ?? null
+    if (!url) return
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '3d-preview.png'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
 
   // Re-snapshot the live canvas (throttled) while open. Subscribes to Fabric edit
   // events so the 3D reflects edits without a manual refresh.
@@ -110,7 +127,27 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
           <div className="flex h-full items-center justify-center text-[12px] text-ink-400">Preparing preview…</div>
         )}
       </div>
-      <p className="px-3 py-1.5 text-[10px] leading-snug text-ink-400">Updates as you design · preview only, not the print file.</p>
+      {/* Shape switcher — preview the same label on a different container. */}
+      <div className="flex items-center gap-1 border-t border-ink-100 px-2.5 py-1.5">
+        <span className="mr-0.5 text-[9.5px] font-bold uppercase tracking-wider text-ink-400">Shape</span>
+        <ShapeBtn label="Auto" active={shapeOverride === null} onClick={() => setShapeOverride(null)} />
+        <ShapeBtn label="Round" active={shapeOverride === 'CYLINDER'} onClick={() => setShapeOverride('CYLINDER')} />
+        <ShapeBtn label="Box" active={shapeOverride === 'BOX'} onClick={() => setShapeOverride('BOX')} />
+        <ShapeBtn label="Flat" active={shapeOverride === 'FLAT'} onClick={() => setShapeOverride('FLAT')} />
+      </div>
+      <p className="px-3 pb-1.5 text-[10px] leading-snug text-ink-400">Updates as you design · preview only, not the print file.</p>
     </div>
+  )
+}
+
+function ShapeBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold transition ${active ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+    >
+      {label}
+    </button>
   )
 }
