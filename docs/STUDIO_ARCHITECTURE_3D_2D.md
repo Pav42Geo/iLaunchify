@@ -86,9 +86,12 @@ Well-trodden and low-risk:
 
 - **Phase 0 (done):** clarify roles. Die-line curation is a Design-Studio surface; Packaging
   Studio is admin authoring; both consume the shared frame editor.
-- **Phase 1:** add a **read-only docked 3D preview** to the creator Design Studio — render the
-  current design as a CanvasTexture on the bound model. No 3D editing yet. High delight, low
-  risk; reuses `Packaging3DView` + a canvas snapshot.
+- **Phase 1:** ✅ DONE 2026-07-01. Added a **"3D" variant to the creator Design Studio's
+  Preview (MockupModal)** — the live design snapshot is wrapped onto a rotatable box/cylinder/
+  flat model via the existing `Dieline3DViewer` (shape from `shapeKindForCategory(dieCut)`).
+  `Dieline3DViewer` gained an optional `textureImageUrl` (raster snapshot, not just SVG).
+  Read-only; the snapshot refreshes each time the Preview opens. Labeled "preview only (not the
+  print file)". No hot-Stage surgery — MockupModal is self-contained.
 - **Phase 2:** **click a 3D panel → focus that panel's 2D editor** (raycaster → panel → open
   canvas). This is the "one studio" feel.
 - **Phase 3:** multi-panel material groups + per-surface die-line binding, so a box maps each

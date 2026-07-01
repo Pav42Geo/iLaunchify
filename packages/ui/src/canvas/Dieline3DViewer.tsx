@@ -57,17 +57,23 @@ export interface Dieline3DViewerProps {
   depthMm?: number | null
   /** SVG string (normalized die-line or design) wrapped as the surface texture. */
   textureSvg?: string | null
+  /** Raster image (data URL / URL) wrapped as the surface texture — e.g. a live
+   *  design snapshot from the Fabric canvas. Takes precedence over textureSvg. */
+  textureImageUrl?: string | null
   /** Substrate base colour (hex). */
   baseColor?: string
   className?: string
 }
 
-function svgTexture(svg: string): THREE.Texture {
-  const url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+function rasterTexture(url: string): THREE.Texture {
   const tex = new THREE.TextureLoader().load(url)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 4
   return tex
+}
+
+function svgTexture(svg: string): THREE.Texture {
+  return rasterTexture(`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`)
 }
 
 export function Dieline3DViewer({
@@ -76,6 +82,7 @@ export function Dieline3DViewer({
   heightMm,
   depthMm,
   textureSvg,
+  textureImageUrl,
   baseColor = '#f2efe7',
   className,
 }: Dieline3DViewerProps) {
@@ -114,7 +121,7 @@ export function Dieline3DViewer({
     fill.position.set(-4, 2, -3)
     scene.add(fill)
 
-    const tex = textureSvg ? svgTexture(textureSvg) : null
+    const tex = textureImageUrl ? rasterTexture(textureImageUrl) : textureSvg ? svgTexture(textureSvg) : null
     const base = new THREE.Color(baseColor)
     const substrateMat = () => new THREE.MeshStandardMaterial({ color: base, roughness: 0.85, metalness: 0.04 })
     const printedMat = () =>
@@ -213,7 +220,7 @@ export function Dieline3DViewer({
       renderer.dispose()
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement)
     }
-  }, [shape, widthMm, heightMm, depthMm, textureSvg, baseColor])
+  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor])
 
   return (
     <div className={className ?? 'flex h-full w-full flex-col'}>

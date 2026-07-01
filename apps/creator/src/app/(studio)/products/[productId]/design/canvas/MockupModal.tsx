@@ -22,6 +22,8 @@ import * as React from 'react'
 import { X, Download, Save, Loader2 } from 'lucide-react'
 import {
   snapshotCanvasTrimmed,
+  Dieline3DViewer,
+  shapeKindForCategory,
   type DieCutSpec,
   type FabricCanvas,
 } from '@ilaunchify/ui'
@@ -218,10 +220,11 @@ export function MockupModal({
 // Header
 // ============================================================================
 
-type MockupVariant = 'product' | 'bottle' | 'tub' | 'pouch' | 'box' | 'sticker' | 'flat'
+type MockupVariant = 'product' | '3d' | 'bottle' | 'tub' | 'pouch' | 'box' | 'sticker' | 'flat'
 
 const VARIANT_LABELS: Record<MockupVariant, string> = {
   product: 'Product photo',
+  '3d': '3D',
   bottle: 'Bottle',
   tub: 'Tub',
   pouch: 'Pouch',
@@ -276,6 +279,7 @@ function Header({
 }) {
   const variants: MockupVariant[] = [
     ...(hasMockup ? (['product'] as const) : []),
+    '3d',
     'flat',
     'bottle',
     'tub',
@@ -379,6 +383,8 @@ function Mockup({
       ) : (
         <FlatMockup snapshot={snapshot} dieCut={dieCut} />
       )
+    case '3d':
+      return <Preview3DMockup snapshot={snapshot} dieCut={dieCut} />
     case 'bottle':
       return <BottleMockup snapshot={snapshot} />
     case 'tub':
@@ -518,6 +524,31 @@ function ProductMockup({
         )}
       </div>
       <div className="text-[10.5px] font-mono text-white/60">{mockup.label}</div>
+    </div>
+  )
+}
+
+// ----- 3D: the live design wrapped onto a real rotatable 3D model (Studio 3D+2D
+// Phase 1). Read-only preview — the design snapshot refreshes each time the modal
+// opens. The exact print die-line stays separate; this is a visualization only. -----
+
+function Preview3DMockup({ snapshot, dieCut }: { snapshot: string; dieCut: DieCutSpec }) {
+  const shape = shapeKindForCategory(dieCut.category)
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="h-[520px] w-[520px] max-w-[80vw] rounded-2xl bg-white/5 p-4">
+        <Dieline3DViewer
+          shape={shape}
+          widthMm={dieCut.widthMm}
+          heightMm={dieCut.heightMm}
+          textureImageUrl={snapshot}
+          baseColor="#f4f2ee"
+          className="flex h-full w-full flex-col"
+        />
+      </div>
+      <div className="text-[10.5px] font-mono text-white/60">
+        Drag to rotate · scroll to zoom · preview only (not the print file)
+      </div>
     </div>
   )
 }
