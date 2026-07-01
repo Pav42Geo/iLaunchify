@@ -92,8 +92,12 @@ Well-trodden and low-risk:
   `Dieline3DViewer` gained an optional `textureImageUrl` (raster snapshot, not just SVG).
   Read-only; the snapshot refreshes each time the Preview opens. Labeled "preview only (not the
   print file)". No hot-Stage surgery — MockupModal is self-contained.
-- **Phase 2:** **click a 3D panel → focus that panel's 2D editor** (raycaster → panel → open
-  canvas). This is the "one studio" feel.
+- **Phase 2:** 🟡 PARTIAL 2026-07-01. **Live docked 3D preview** shipped —
+  `LivePreview3DDock` (floating bottom-right in the creator Design Studio) re-snapshots the
+  Fabric canvas on edit events (`object:modified/added/removed`, `text:changed`, throttled
+  ~450ms) and re-textures the model, so the 3D updates AS YOU DESIGN. Two-line mount in
+  `CanvasLayoutShell` (dock owns its own state + canvas subscription). Remaining Phase 2b:
+  **click a 3D panel → focus that panel's 2D editor** (raycaster `faceIndex`/`uv` → panel).
 - **Phase 3:** multi-panel material groups + per-surface die-line binding, so a box maps each
   face to its die-line and preview.
 - **Always:** prepress export comes from the vector die-line, never from the 3D texture.

@@ -90,6 +90,7 @@ import { CodeToolbar } from './CodeToolbar'
 import { CompliancePanel } from './CompliancePanel'
 import type { FrameDims } from './frameComplianceCanvas'
 import { MockupModal, type StudioMockup } from './MockupModal'
+import { LivePreview3DDock } from './LivePreview3DDock'
 import { applyBaseToAllFlavors } from './flavor-actions'
 import { findNutritionPanel, regenerateNutritionPanel } from './lib/managedNutritionPanel'
 import { ExportModal } from './ExportModal'
@@ -1193,6 +1194,10 @@ export function CanvasLayoutShell({
             panMode={panMode}
             onTogglePan={togglePan}
           />
+
+          {/* Live 3D preview dock (Studio 3D+2D Phase 2) — floats bottom-right and
+              updates as you edit. Visualization only; the die-line stays the print master. */}
+          <LivePreview3DDock canvas={canvas} dieCut={dieCut} pxPerMm={pxPerMm} />
         </div>
       </div>
 
