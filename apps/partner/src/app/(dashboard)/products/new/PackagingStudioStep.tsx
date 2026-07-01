@@ -52,11 +52,13 @@ import {
 import {
   Brand,
   BrandMark,
+  PackagingStudioShell,
   DEFAULT_FRAME_LAYOUT,
   FRAME_SCOPE,
   validateFrameLayout,
   SavedIndicator,
   VersionHistoryDrawer,
+  type StudioRailItem,
   type SnapshotItem,
   type Frame,
   type FrameKind,
@@ -572,101 +574,84 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // The studio shell — rendered once, placed either inline or in the full-screen
   // portal. Same chrome as the creator Design Studio.
   // ---------------------------------------------------------------------------
-  const shell = (
-    <div className="flex h-full min-h-0 w-full flex-col bg-ink-100 font-sans text-ink-900">
-      {/* ---- Top bar — pixel-matches the standard AppHeader topbar (same brand
-           mark, py-3 pl-7 pr-6, gap-5, bell-driven height) so nothing shifts
-           when stepping from 3 → 4. Only addition: the 3D⇄Die-line toggle. ---- */}
-      <header className="flex shrink-0 items-center gap-5 border-b border-ink-200 bg-white py-3 pl-7 pr-6">
-        {/* Compact mark only (no wordmark) — reads the uploaded mark via --brand-mark-url. */}
-        {studioLogo?.kind === 'full' ? (
-          <Brand imageSrc={studioLogo.src} sublabel={studioLogo.sublabel ?? undefined} className="flex-shrink-0" />
-        ) : (
-          <BrandMark imageSrc={studioLogo?.src ?? undefined} sublabel={studioLogo?.sublabel} size={26} className="flex-shrink-0" />
+  // Top-bar center cluster — ☰ menu + Saved/History + Back (unchanged markup, now
+  // fed to the shared PackagingStudioShell's centerSlot).
+  const studioBrand = studioLogo?.kind === 'full' ? (
+    <Brand imageSrc={studioLogo.src} sublabel={studioLogo.sublabel ?? undefined} className="flex-shrink-0" />
+  ) : (
+    <BrandMark imageSrc={studioLogo?.src ?? undefined} sublabel={studioLogo?.sublabel} size={26} className="flex-shrink-0" />
+  )
+  const studioCenter = (
+    <span className="inline-flex items-center gap-2">
+      <div className="relative">
+        <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Studio menu" className="grid h-8 w-8 place-items-center rounded-[9px] border border-ink-200 bg-white text-ink-700 transition-colors hover:bg-ink-50">
+          <Menu className="h-[18px] w-[18px]" />
+        </button>
+        {menuOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+            <div className="absolute left-0 top-10 z-50 w-60 rounded-xl border border-ink-200 bg-white p-1.5 shadow-lg">
+              <div className="px-2.5 py-1.5 text-[11px] leading-snug text-ink-500">
+                <span className="font-semibold text-ink-700">Packaging Studio</span><br />
+                {activeSystem ? activeSystem.name : draftId ? 'No packaging attached yet' : 'Save the draft to begin'}{activeSystem?.packagingTypeName ? ` · ${activeSystem.packagingTypeName}` : ''}
+              </div>
+              {onSaveDraft && (
+                <button type="button" onClick={() => { setMenuOpen(false); onSaveDraft() }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-ink-700 hover:bg-ink-50">
+                  <Save className="h-3.5 w-3.5" /> Save draft
+                </button>
+              )}
+            </div>
+          </>
         )}
-
-        {/* Studio name next to the logo. */}
-        <span className="flex flex-shrink-0 items-center gap-2.5">
-          <span className="h-5 w-px bg-ink-200" />
-          <span className="text-[14px] font-semibold text-ink-900">Packaging Studio</span>
-        </span>
-
-        {/* Center cluster — same as gb-topbar-center: ☰ menu + Saved/History + Back. */}
-        <span className="inline-flex items-center gap-2">
-          <div className="relative">
-            <button type="button" onClick={() => setMenuOpen((v) => !v)} aria-label="Studio menu" className="grid h-8 w-8 place-items-center rounded-[9px] border border-ink-200 bg-white text-ink-700 transition-colors hover:bg-ink-50">
-              <Menu className="h-[18px] w-[18px]" />
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute left-0 top-10 z-50 w-60 rounded-xl border border-ink-200 bg-white p-1.5 shadow-lg">
-                  <div className="px-2.5 py-1.5 text-[11px] leading-snug text-ink-500">
-                    <span className="font-semibold text-ink-700">Packaging Studio</span><br />
-                    {activeSystem ? activeSystem.name : draftId ? 'No packaging attached yet' : 'Save the draft to begin'}{activeSystem?.packagingTypeName ? ` · ${activeSystem.packagingTypeName}` : ''}
-                  </div>
-                  {onSaveDraft && (
-                    <button type="button" onClick={() => { setMenuOpen(false); onSaveDraft() }} className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] text-ink-700 hover:bg-ink-50">
-                      <Save className="h-3.5 w-3.5" /> Save draft
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          <SavedIndicator
-            status={saveStatus === 'saving' ? 'saving' : 'saved'}
-            savedAt={lastSavedAt}
-            onSave={saveNow}
-            onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
-          />
-          {/* Back — next to the History icon, like the builder's top bar. */}
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="inline-flex items-center gap-1 rounded-md py-2 pl-1.5 pr-2.5 text-[13px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
-              title="Back to recipe step"
-              aria-label="Back"
-            >
-              <ArrowLeft className="h-5 w-5" /> Back
-            </button>
-          )}
-        </span>
-
-        {/* Right cluster — ml-auto gap-2: [3D⇄Die-line] · Next · bell · account. */}
-        <div className="ml-auto flex flex-shrink-0 items-center gap-2">
-          <div className="inline-flex rounded-full border border-ink-200 bg-white p-0.5">
-            <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
-              <BoxIcon className="h-3.5 w-3.5" /> 3D
-            </button>
-            <button type="button" aria-pressed={view === 'die'} onClick={() => setView('die')} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${view === 'die' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'}`}>
-              <PencilRuler className="h-3.5 w-3.5" /> Die-line
-            </button>
-          </div>
-
-          {/* Next — matches the builder steps' gb-nextbtn: pink pill, 13px semibold. */}
-          {onNext && (
-            <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600" onClick={() => onNext()}>{nextLabel}</button>
-          )}
-
-          {/* Bell + account — the real PartnerTopbarRight, same as every other step. */}
-          {headerRight}
-        </div>
-      </header>
-
-      <div className="flex min-h-0 flex-1">
-        {/* ---- Left tool rail ---- */}
-        <nav className="flex w-[68px] shrink-0 flex-col items-center gap-1 border-r border-ink-200 bg-white py-3" role="toolbar" aria-label="Studio tools">
-          <RailButton icon={Inbox} label="Library" active={tool === 'library'} onClick={() => setTool('library')} />
-          <RailButton icon={Shapes} label="Frames" active={tool === 'frames'} onClick={() => setTool('frames')} />
-          <RailButton icon={SquareDashedBottom} label="Guides" active={tool === 'guides'} onClick={() => setTool('guides')} />
-          <RailButton icon={LayersIcon} label="Layers" active={tool === 'layers'} onClick={() => setTool('layers')} />
-          <RailButton icon={Sparkles} label="Finishes" active={tool === 'finishes'} onClick={() => setTool('finishes')} />
-        </nav>
-
-        {/* ---- Drawer ---- */}
-        <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-ink-200 bg-white">
+      </div>
+      <SavedIndicator
+        status={saveStatus === 'saving' ? 'saving' : 'saved'}
+        savedAt={lastSavedAt}
+        onSave={saveNow}
+        onOpenHistory={draftId ? () => { setHistoryOpen(true); void loadHistory() } : undefined}
+      />
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 rounded-md py-2 pl-1.5 pr-2.5 text-[13px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+          title="Back to recipe step"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-5 w-5" /> Back
+        </button>
+      )}
+    </span>
+  )
+  // Top-bar right cluster — Next CTA + the real PartnerTopbarRight (bell + account).
+  const studioRight = (
+    <>
+      {onNext && (
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600" onClick={() => onNext()}>{nextLabel}</button>
+      )}
+      {headerRight}
+    </>
+  )
+  const studioRail: StudioRailItem[] = [
+    { key: 'library', label: 'Library', icon: <Inbox className="h-5 w-5" /> },
+    { key: 'frames', label: 'Frames', icon: <Shapes className="h-5 w-5" /> },
+    { key: 'guides', label: 'Guides', icon: <SquareDashedBottom className="h-5 w-5" /> },
+    { key: 'layers', label: 'Layers', icon: <LayersIcon className="h-5 w-5" /> },
+    { key: 'finishes', label: 'Finishes', icon: <Sparkles className="h-5 w-5" /> },
+  ]
+  const shell = (
+    <PackagingStudioShell
+      mode="partner"
+      brand={studioBrand}
+      centerSlot={studioCenter}
+      view={view}
+      onViewChange={setView}
+      rail={studioRail}
+      activeTool={tool}
+      onToolChange={(k) => setTool(k as Tool)}
+      rightSlot={studioRight}
+      drawer={(
+        <>
           {tool === 'library' && (
             <LibraryDrawer
               tab={libTab}
@@ -705,11 +690,10 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
           {tool === 'guides' && <GuidesDrawer show={showGuides} setShow={setShowGuides} trim={trim} safe={safe} disabled={!resolvedDielineId && !customMode} />}
           {tool === 'layers' && <LayersDrawer layout={layout} selectedId={selectedFrameId} onSelect={setSelectedFrameId} onRemove={removeFrame} />}
           {tool === 'finishes' && <FinishesDrawer draftId={draftId} />}
-        </aside>
-
-        {/* ---- Canvas ---- */}
-        <main className="relative flex min-w-0 flex-1 items-center justify-center overflow-auto">
-          {!draftId ? (
+        </>
+      )}
+    >
+      {!draftId ? (
             <div className="max-w-sm rounded-2xl border border-dashed border-ink-300 bg-white/70 p-8 text-center">
               <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-ink-50 text-ink-400"><Lock className="h-5 w-5" /></div>
               <div className="text-[13.5px] font-semibold text-ink-800">Save your draft to start designing</div>
@@ -869,9 +853,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               )}
             </div>
           )}
-        </main>
-      </div>
-    </div>
+    </PackagingStudioShell>
   )
 
   // Step 4 IS the studio — a full-screen portal (no inline / expand toggle).
@@ -1840,14 +1822,7 @@ function LayersDrawer({ layout, selectedId, onSelect, onRemove }: { layout: Fram
 // Small bits
 // =============================================================================
 
-function RailButton({ icon: Icon, label, active, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className={`flex w-16 flex-col items-center gap-1 rounded-lg py-2 text-[10px] font-medium transition-colors ${active ? 'bg-pink-50 text-pink-700' : 'text-ink-500 hover:bg-ink-50'}`} aria-pressed={active}>
-      <Icon className="h-5 w-5" />
-      {label}
-    </button>
-  )
-}
+// (RailButton removed — the tool rail now lives in the shared PackagingStudioShell.)
 
 // One pill in the Library category strip (Pacdora-style horizontal scroller).
 function CatChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {

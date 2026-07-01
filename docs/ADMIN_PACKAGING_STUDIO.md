@@ -185,6 +185,18 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
   projected onto the model, drag-rotate + zoom, and a **"Place marker"** raycast mode that
   sets the selected surface's 3D `hotspot.anchor`. (Refinements to eyeball: glTF-import
   models + exact per-mesh borders come with P1.5.)
+- **Shared Step-4 chrome — `PackagingStudioShell` (@ilaunchify/ui).** ✅ DONE 2026-07-01.
+  Extracted the partner Step-4 chrome (top bar · 3D⇄Die-line toggle · left rail ·
+  slide-out drawer · canvas) into a presentational `PackagingStudioShell` with a
+  `mode` prop + data/callback slots. **Admin** (`SurfaceAuthoringClient`, creator app
+  `/studio/packaging`) and **partner** (`PackagingStudioStep`, the hot file) both now
+  render this shell — single source of truth for the studio frame. Server actions stay
+  in each host (a UI package can't hold `'use server'`); each host binds its own
+  actions to the shell's slots. Admin rail = Library (model + die-lines) · Surfaces
+  (author borders + bind die-lines); partner rail unchanged (Library/Frames/Guides/
+  Layers/Finishes). No runtime cost — sharing is source/build-time only; each app still
+  bundles + runs its own copy per browser session.
+
 - **P3 — Surface → die-line binding + click-through.** ✅ DONE 2026-07-01. Per-surface
   die-line multi-select binding, and **"Edit die-line" opens the shared `DielineFrameEditor`
   in place** (full view) loaded with the die-line's frames/trim/safe; auto-persists via

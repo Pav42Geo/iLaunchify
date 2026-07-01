@@ -76,6 +76,9 @@ export interface ProductCardProps {
   favorited?: boolean
   /** Called when the heart toggles. */
   onFavorite?: (next: boolean) => void
+  /** Compact variant — shorter (4:3) image area + smaller emoji. Used in dense
+   *  contexts like the "You might also like" carousel. */
+  compact?: boolean
   className?: string
 }
 
@@ -118,6 +121,7 @@ export function ProductCard({
   pricePerUnit,
   favorited,
   onFavorite,
+  compact = false,
   className,
 }: ProductCardProps) {
   const gradientKey = gradient ?? stableGradient(title)
@@ -135,7 +139,10 @@ export function ProductCard({
     >
       {/* IMAGE AREA */}
       <div
-        className="relative aspect-square flex items-center justify-center"
+        className={cn(
+          'relative flex items-center justify-center',
+          compact ? 'aspect-[4/3]' : 'aspect-square',
+        )}
         style={{ background: productGradient[gradientKey] }}
       >
         {statusCfg && (
@@ -156,7 +163,7 @@ export function ProductCard({
           />
         ) : (
         <span
-          className="text-[46px] leading-none"
+          className={cn('leading-none', compact ? 'text-[34px]' : 'text-[46px]')}
           style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.08))' }}
           aria-hidden="true"
         >
@@ -172,10 +179,10 @@ export function ProductCard({
 
       {/* BODY */}
       <div className="p-3 pb-3.5 flex flex-col gap-2">
-        <div className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-ink-500">
           {niche}
         </div>
-        <h3 className="text-sm font-bold leading-tight tracking-[-0.01em] text-ink-900 min-h-[34px]">
+        <h3 className="text-[15px] font-bold leading-tight tracking-[-0.01em] text-ink-900 min-h-[34px]">
           {title}
         </h3>
 
@@ -185,10 +192,10 @@ export function ProductCard({
               <span
                 key={tag.label}
                 className={cn(
-                  'text-[10px] font-medium px-2 py-0.5 rounded-pill whitespace-nowrap border',
+                  'text-[11px] font-medium px-2.5 py-0.5 rounded-pill whitespace-nowrap border',
                   tag.organic
                     ? 'bg-neon-500 border-neon-500 text-ink-900 font-semibold'
-                    : 'bg-ink-100 border-ink-200 text-ink-700',
+                    : 'bg-ink-50 border-ink-200 text-ink-600',
                 )}
               >
                 {tag.label}
@@ -229,7 +236,7 @@ function Stat({
       >
         {value}
       </div>
-      <div className="text-[12px] font-bold text-ink-700 uppercase tracking-[0.04em]">
+      <div className="text-[10.5px] font-semibold text-ink-500 uppercase tracking-[0.03em]">
         {label}
       </div>
     </div>

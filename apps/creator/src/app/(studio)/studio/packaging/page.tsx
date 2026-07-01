@@ -29,9 +29,7 @@ export default async function PackagingAuthoringPage({
     )
   }
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-4 p-6">
-      <SurfaceAuthoringClient data={data} />
-    </div>
-  )
+  // The client renders the full-screen shared studio shell (fixed inset-0).
+  return <SurfaceAuthoringClient data={data} />
+
 }
