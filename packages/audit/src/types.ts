@@ -91,6 +91,8 @@ export const AUDIT_ENTITY_TYPES = [
   'TaxDocument', // 1099 pointer + Express-dashboard access (docs/BILLING_AND_ACCOUNTING.md)
   'Brand', // brand kit edits (docs/BRAND_KIT_PROPOSAL.md)
   'BrandTemplate', // reusable brand design templates (docs/BRAND_KIT_PROPOSAL.md)
+  'AiGeneratorSettings', // AI generator admin config (docs/AI_PACKAGING_GENERATOR.md §7/§13/§16)
+  'AiOutputPreset', // admin-authored output presets (docs/AI_PACKAGING_GENERATOR.md §16)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
