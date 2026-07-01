@@ -123,6 +123,11 @@ export default async function AiCreatePage({
           storageBytesUsed: 380 * 1024 * 1024,
           storageBytesCap: 5 * 1024 * 1024 * 1024,
         }}
+        savedConcepts={[
+          { id: 's1', title: 'Stroopwafel — vintage', provider: 'stub', createdAtIso: new Date(Date.now() - 2 * 864e5).toISOString(), megapixels: 6, variationCount: 4 },
+          { id: 's2', title: 'Matcha family master', provider: 'stub', createdAtIso: new Date(Date.now() - 5 * 864e5).toISOString(), megapixels: 6, variationCount: 4 },
+          { id: 's3', title: 'Outer carton — bold', provider: 'stub', createdAtIso: new Date(Date.now() - 9 * 864e5).toISOString(), megapixels: 9, variationCount: 4 },
+        ]}
       />
     </div>
   )

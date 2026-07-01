@@ -16,9 +16,18 @@
 import * as React from 'react'
 import { Sparkles, Lock, CheckCircle2, AlertTriangle, Loader2, Wand2, ArrowUpRight } from 'lucide-react'
 import { planGeneration, addImageFromUrl, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
+import { clampOutput, type OutputSettings } from '@ilaunchify/imagegen'
 import type { LabelingType } from '@ilaunchify/db'
 import { getAiCreateDrawerProps, generateAiConcepts } from '../../../../../studio/ai-create/actions'
-import type { AiCreatePanelProps, DielineTarget } from '../../../../../studio/ai-create/AiCreatePanel'
+import {
+  BrandIdentitySection,
+  OutputSection,
+  UsageMeters,
+  SavedTemplatesGrid,
+  type AiCreatePanelProps,
+  type DielineTarget,
+  type ManualBrand,
+} from '../../../../../studio/ai-create/AiCreatePanel'
 
 type Props = {
   canvas: FabricCanvas | null
@@ -67,6 +76,13 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
   const [applied, setApplied] = React.useState<number | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
+  // Brand identity + output — same controls as the full page, compact in the drawer.
+  const [brandMode, setBrandMode] = React.useState<'kit' | 'manual'>('kit')
+  const [follow, setFollow] = React.useState(true)
+  const [manual, setManual] = React.useState<ManualBrand>({ brandName: '', market: '', audience: '', colours: [] })
+  const [output, setOutput] = React.useState<OutputSettings | null>(null)
+  const [presetId, setPresetId] = React.useState('default')
+
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -76,6 +92,10 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
         if (data) {
           setProps(data.props)
           setDescriptor(data.props.productDescriptor)
+          setManual((m) => ({ ...m, brandName: data.props.brandName ?? '' }))
+          const kit = (data.props.brandPalette?.length ?? 0) > 0 || Boolean(data.props.brandLogoUrl)
+          setBrandMode(kit ? 'kit' : 'manual')
+          if (data.props.outputPolicy) setOutput(clampOutput(data.props.outputPolicy.defaults, data.props.outputPolicy).settings)
         }
       })
       .finally(() => !cancelled && setLoading(false))
@@ -85,6 +105,15 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
   }, [productId])
 
   const gated = props?.tier === 'maker'
+  const manualMode = brandMode === 'manual'
+  const kitPalette = props?.brandPalette ?? []
+  const effBrandName = manualMode ? manual.brandName || undefined : props?.brandName
+  const effPalette = manualMode ? (manual.colours.length ? manual.colours : undefined) : kitPalette.length ? kitPalette : undefined
+  const brandRefUrl = manualMode ? manual.logoDataUrl : follow ? props?.brandLogoUrl : undefined
+  const referencePhrases = React.useMemo(
+    () => (manualMode ? ([manual.market && `for ${manual.market}`, manual.audience && `audience: ${manual.audience}`].filter(Boolean) as string[]) : []),
+    [manualMode, manual.market, manual.audience],
+  )
   // Prefer a confirmed product die-line; otherwise fall back to the canvas die-cut so the
   // generator always has a surface to design (mirrors what the canvas itself renders).
   const target = props ? props.dielines[0] ?? targetFromDieCut(dieCut) : null
@@ -96,17 +125,18 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
     if (!props || !target) return null
     return planGeneration({
       productDescriptor: descriptor,
-      brandName: props.brandName,
-      brandPalette: props.brandPalette,
+      brandName: effBrandName,
+      brandPalette: effPalette,
       styleTags: styles,
       colorTags: colors,
       elementTags: elements,
+      referencePhrases,
       layout: target.layout,
       surface: target.surface,
       domain: props.domain,
       market: props.market ?? 'US',
     })
-  }, [props, target, descriptor, styles, colors, elements])
+  }, [props, target, descriptor, effBrandName, effPalette, referencePhrases, styles, colors, elements])
 
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
     set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
@@ -127,7 +157,8 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
         widthPx: w,
         heightPx: h,
         dielineId: target.id,
-        brandPalette: props.brandPalette,
+        brandPalette: effPalette,
+        brandRefUrl,
         domain: props.domain,
         market: props.market ?? 'US',
         complianceJson: plan.compliance as unknown as Record<string, unknown>,
@@ -200,9 +231,27 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
         />
       </label>
 
+      <BrandIdentitySection
+        mode={brandMode}
+        onMode={setBrandMode}
+        hasKit={kitPalette.length > 0 || Boolean(props.brandLogoUrl)}
+        kitPalette={kitPalette}
+        kitLogoUrl={props.brandLogoUrl}
+        kitBrandName={props.brandName}
+        follow={follow}
+        onFollow={setFollow}
+        manual={manual}
+        onManual={setManual}
+      />
+
       <ChipRow title="Style" options={styleOptions} selected={styles} onToggle={(v) => toggle(styles, setStyles, v)} />
       <ChipRow title="Colour mood" options={colorOptions} selected={colors} onToggle={(v) => toggle(colors, setColors, v)} />
       <ChipRow title="Elements" options={elementOptions} selected={elements} onToggle={(v) => toggle(elements, setElements, v)} />
+
+      {props.outputPolicy && output && (
+        <OutputSection policy={props.outputPolicy} tier={props.tier} value={output} onChange={setOutput} presetId={presetId} onPreset={setPresetId} />
+      )}
+      {props.usage && <UsageMeters usage={props.usage} />}
 
       {plan && (
         <div className={`flex items-start gap-1.5 rounded-lg border p-2 text-[11px] ${plan.compliance.complete ? 'border-success-200 bg-success-50 text-success-800' : 'border-warning-200 bg-warning-50 text-warning-800'}`}>
@@ -244,6 +293,10 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
             ))}
           </div>
         </div>
+      )}
+
+      {props.savedConcepts && props.savedConcepts.length > 0 && (
+        <SavedTemplatesGrid concepts={props.savedConcepts} storageUsed={props.usage?.storageBytesUsed} storageCap={props.usage?.storageBytesCap} />
       )}
 
       <a

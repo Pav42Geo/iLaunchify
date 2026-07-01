@@ -9,7 +9,7 @@ import { getCreatorTier } from '@ilaunchify/auth'
 import { resolveDomainOptions, type LabelingDomain, type DomainPreset, type FlavorSpec } from '@ilaunchify/ai-design'
 import { tierLimits, resolveOutputPolicy, type CreatorBillingTier, type OutputPolicy } from '@ilaunchify/imagegen'
 import type { FrameLayout } from '@ilaunchify/ui'
-import type { AiCreatePanelProps, DielineTarget, CreatorTier, AiUsageSnapshot } from './AiCreatePanel'
+import type { AiCreatePanelProps, DielineTarget, CreatorTier, AiUsageSnapshot, SavedConcept } from './AiCreatePanel'
 
 // Fallback accent ramp for flavours with no swatchHex and no brand palette to draw from.
 const DEFAULT_ACCENTS = ['#E5486B', '#6B4423', '#7BA05B', '#E7A93D', '#4A78B5', '#B5559E', '#3FA796', '#D2603A']
@@ -140,6 +140,56 @@ async function creditsRemaining(userId: string, tier: CreatorBillingTier): Promi
   return Math.max(0, cap - (used?.draftCyclesUsed ?? 0))
 }
 
+/** Recent finalized/saved concepts for this creator → the "My templates" grid. */
+async function loadSavedConcepts(userId: string, productTemplateId: string | null): Promise<SavedConcept[]> {
+  const rows = (await (
+    prisma as unknown as {
+      aiDesignGeneration: {
+        findMany: (a: unknown) => Promise<
+          Array<{
+            id: string
+            promptJson: unknown
+            provider: string | null
+            variationKeys: string[] | null
+            finalizeMegapixels: unknown
+            createdAt: Date
+          }>
+        >
+      }
+    }
+  ).aiDesignGeneration
+    .findMany({
+      where: { authorUserId: userId, scope: 'CREATOR', status: 'READY', ...(productTemplateId ? { productTemplateId } : {}) },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      select: { id: true, promptJson: true, provider: true, variationKeys: true, finalizeMegapixels: true, createdAt: true },
+    })
+    .catch(() => [])) as Array<{
+    id: string
+    promptJson: unknown
+    provider: string | null
+    variationKeys: string[] | null
+    finalizeMegapixels: unknown
+    createdAt: Date
+  }>
+
+  return rows.map((r) => {
+    const p = (r.promptJson && typeof r.promptJson === 'object' ? (r.promptJson as Record<string, unknown>) : {}) as Record<string, unknown>
+    const descriptor = typeof p.productDescriptor === 'string' ? p.productDescriptor : typeof p.prompt === 'string' ? (p.prompt as string).slice(0, 40) : 'Concept'
+    const mp = Number(String(r.finalizeMegapixels ?? 0)) || undefined
+    return {
+      id: r.id,
+      title: descriptor,
+      provider: r.provider ?? undefined,
+      createdAtIso: r.createdAt.toISOString(),
+      megapixels: mp,
+      // variationKeys are R2 keys; a public/signed URL is resolved once storage is wired.
+      thumbnailUrl: undefined,
+      variationCount: r.variationKeys?.length ?? 0,
+    }
+  })
+}
+
 /** Resolve the brand's primary logo to a public URL (best-effort; null when unavailable). */
 async function resolveBrandLogoUrl(logoAssetId: string | null | undefined): Promise<string | undefined> {
   if (!logoAssetId) return undefined
@@ -183,12 +233,13 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
     settings.outputPolicies[meteredTier] as Partial<OutputPolicy> | undefined,
   )
 
-  const [dielines, flavors, credits, brandLogoUrl, usage] = await Promise.all([
+  const [dielines, flavors, credits, brandLogoUrl, usage, savedConcepts] = await Promise.all([
     loadDielineTargets(product.productTemplateId),
     loadFlavors(product.productTemplateId, palette),
     creditsRemaining(userId, meteredTier),
     resolveBrandLogoUrl(product.brand?.logoAssetId),
     usageSnapshot(userId, meteredTier),
+    loadSavedConcepts(userId, product.productTemplateId),
   ])
 
   return {
@@ -209,6 +260,7 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
       creditsRemaining: credits,
       outputPolicy,
       usage,
+      savedConcepts,
     },
   }
 }

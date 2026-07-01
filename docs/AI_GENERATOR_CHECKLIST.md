@@ -116,11 +116,13 @@ The real work = flip the 🟡 and ⬜ rows that belong in the **creator UI**:
 **Priority C — usage** ✅ shipped (full page, 2026-07-01)
 - [x] 3.1–3.3 Usage meters (draft cycles / finalize MP / storage) from real `AiGenerationUsage` + `GenerationStorageUsage`
 
-**Priority D — library**
-- [ ] 6.1–6.2 Saved-templates grid + storage bar
+**Priority D — library** ✅ shipped (full page + drawer, 2026-07-01)
+- [x] 6.1 Saved-templates grid — reads real READY `AiDesignGeneration` rows (thumbnails fill in when R2 keys resolve)
+- [x] 6.2 Storage bar (shared with the meters)
 
-**Priority E — parity in the drawer**
-- [ ] 5.2–5.3 Bring set / flavour modes + the A/B/C sections into the in-canvas drawer
+**Priority E — drawer parity** ✅ shipped (2026-07-01)
+- [x] Brand identity (kit/manual), Output section, Usage meters, Saved grid now render in the in-canvas drawer, reusing the exported panel sections (single source, no duplication). Brand ref + effective palette thread into the real `generateAiConcepts` call.
+- [ ] 5.2–5.3 Coordinated set / flavour family still live only on the full page (reached from the drawer's "Batch" link) — multi-surface, intentionally not crammed into the 400px drawer.
 
 > Note: full-page real generation is still the P3 seam (`onGenerate` not yet passed on the full page — the drawer already generates for real). Brand ref + output ride in the `onGenerate` ctx, ready to wire.
 

@@ -55,6 +55,19 @@ export interface GenerateContext {
   output?: OutputSettings
 }
 
+/** A previously saved / finalized concept, for the "My templates" grid. */
+export interface SavedConcept {
+  id: string
+  title: string
+  dielineLabel?: string
+  provider?: string
+  createdAtIso: string
+  megapixels?: number
+  /** Resolved variation image URL when available (R2). Placeholder tile otherwise. */
+  thumbnailUrl?: string
+  variationCount: number
+}
+
 export interface AiCreatePanelProps {
   productDescriptor: string
   brandName?: string
@@ -75,6 +88,8 @@ export interface AiCreatePanelProps {
   outputPolicy?: OutputPolicy
   /** Usage snapshot for the meters. When absent the meters are hidden. */
   usage?: AiUsageSnapshot
+  /** Previously saved / finalized concepts for the "My templates" grid. When absent the grid is hidden. */
+  savedConcepts?: SavedConcept[]
   /**
    * Optional flavour variants (e.g. 7 protein-bar flavours). When present with >1
    * entry, unlocks Flavour-family mode: generate ONE master, then derive each flavour
@@ -97,7 +112,7 @@ const DEFAULT_STYLES = ['Minimal', 'Vintage', 'Luxury', 'Playful', 'Modern', 'Ha
 const DEFAULT_COLORS = ['Vibrant', 'Muted', 'Warm Tones', 'Cool Tones', 'Pastel', 'Earthy', 'Monochrome', 'Jewel Tones']
 const DEFAULT_ELEMENTS = ['Botanicals', 'Fruits', 'Liquid Swirls', 'Patterns', 'Abstract Shapes', 'Doodles', 'Waves', 'Celestial']
 
-interface ManualBrand {
+export interface ManualBrand {
   brandName: string
   market: string
   audience: string
@@ -526,7 +541,63 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
             </button>
           </div>
         )}
+
+        {props.savedConcepts && (
+          <SavedTemplatesGrid concepts={props.savedConcepts} storageUsed={props.usage?.storageBytesUsed} storageCap={props.usage?.storageBytesCap} />
+        )}
       </div>
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Saved templates ("My templates")
+// -----------------------------------------------------------------------------
+
+export function SavedTemplatesGrid({ concepts, storageUsed, storageCap }: { concepts: SavedConcept[]; storageUsed?: number; storageCap?: number }) {
+  return (
+    <div className="rounded-2xl border border-ink-200 bg-white p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-500">My templates</p>
+        {typeof storageUsed === 'number' && typeof storageCap === 'number' && (
+          <span className="text-[10.5px] tabular-nums text-ink-400">
+            {formatBytes(storageUsed)} / {formatBytes(storageCap)}
+          </span>
+        )}
+      </div>
+      {typeof storageUsed === 'number' && typeof storageCap === 'number' && storageCap > 0 && (
+        <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-ink-100">
+          <div className="h-full rounded-full bg-pink-500" style={{ width: `${Math.min(100, Math.round((storageUsed / storageCap) * 100))}%` }} />
+        </div>
+      )}
+
+      {concepts.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-ink-200 bg-ink-50 px-3 py-4 text-center text-[11.5px] text-ink-500">
+          Saved concepts appear here once you finalize a design — they count against your storage.
+        </p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          {concepts.map((c) => (
+            <div key={c.id} className="overflow-hidden rounded-lg border border-ink-200 bg-white">
+              <div className="flex aspect-square items-center justify-center bg-ink-50">
+                {c.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.thumbnailUrl} alt={c.title} className="h-full w-full object-cover" />
+                ) : (
+                  <Sparkles className="h-5 w-5 text-ink-300" />
+                )}
+              </div>
+              <div className="p-1.5">
+                <p className="truncate text-[11px] font-semibold text-ink-800">{c.title}</p>
+                <p className="truncate text-[10px] text-ink-400">
+                  {new Date(c.createdAtIso).toLocaleDateString()}
+                  {c.megapixels ? ` · ${c.megapixels} MP` : ''}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -535,7 +606,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
 // Brand identity
 // -----------------------------------------------------------------------------
 
-function BrandIdentitySection({
+export function BrandIdentitySection({
   mode,
   onMode,
   hasKit,
@@ -683,7 +754,7 @@ function Field({ label, value, placeholder, onChange }: { label: string; value: 
 // Output settings
 // -----------------------------------------------------------------------------
 
-function OutputSection({
+export function OutputSection({
   policy,
   tier,
   value,
@@ -798,7 +869,7 @@ function Toggle({ label, on, disabled, onClick }: { label: string; on: boolean; 
 // Usage meters
 // -----------------------------------------------------------------------------
 
-function UsageMeters({ usage }: { usage: AiUsageSnapshot }) {
+export function UsageMeters({ usage }: { usage: AiUsageSnapshot }) {
   return (
     <div className="space-y-2 rounded-lg border border-ink-200 bg-white p-3">
       <p className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-ink-500">
