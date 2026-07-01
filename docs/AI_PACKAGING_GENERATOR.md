@@ -529,7 +529,55 @@ correct *truth* layer, and compliance is enforced per member (variant) and per p
 
 ---
 
-## 15. The one-sentence pitch
+## 15. Output settings & presets (SHIPPED 2026-06-23)
+
+The export/finalize knobs, governed by a **three-layer model**: admin defines the
+allowed set + defaults + presets; the creator picks within that; the tier gates the
+hard caps. Nothing illegal can ever be exported.
+
+**Settings (`OutputSettings`):** `format` (PNG/PDF/SVG/AI/GLB), `dpi`, `colorProfile`
+(RGB/CMYK), `marks` (bleed + crop/registration), `layered` (flattened vs editable/vector),
+`watermark`, `variations`, `batch` (whole coordinated set / flavour series at once),
+`whiteLabel` (no iLaunchify branding).
+
+**Engine — `@ilaunchify/imagegen/output.ts` (pure, golden-tested):**
+- `resolveOutputPolicy(tier, overrides?)` → the effective **allowed set + defaults** for
+  a tier, merging admin `AiGeneratorSettings` overrides over the code defaults.
+- `presetsForTier(tier, presets)` → the admin-authored `OutputPreset`s a tier may use
+  (gated by `minTier`).
+- `clampOutput(requested, policy)` → **the hard guard**: snaps any creator request DOWN
+  to the tier caps (format, dpi, CMYK, layered, batch, white-label, variations; forces
+  watermark where required) and **reports every downgrade** — nothing silently changed.
+- `applyPreset(preset, policy)` → apply a preset then clamp.
+
+**Tier gating (DEFAULT_OUTPUT_POLICIES — admin tunes):**
+
+| | Maker | Builder | Agency |
+|---|---|---|---|
+| Formats | PNG | PDF, PNG | PDF, AI, SVG, PNG, GLB |
+| Max DPI | 96 (watermarked) | 300 | 600 |
+| CMYK | — | ✓ | ✓ |
+| Dieline marks | — | ✓ | ✓ |
+| Layered / editable | — | — | ✓ |
+| Batch (set/flavours) | — | — | ✓ |
+| White-label | — | — | ✓ |
+| Watermark | forced on | off | off |
+| Max variations | 2 | 4 | 6 |
+
+**Regulation — hard vs soft.** Hard caps (max DPI, CMYK, layered, batch, white-label,
+variations) are **server-enforced** through `clampOutput(policy)` where the policy comes
+from `AiGeneratorSettings` + the tier — the *same* mechanism as `tierLimits` (metering)
+and `resolveDomainOptions`. DPI also ties into the megapixel budget (§12). Soft choices
+(which preset, marks on/off within the allowed range) are the creator's to adjust. The
+admin can **loosen or tighten per tier** and author/curate presets with **no code change**.
+
+**Schema (additive, needs Mac `db push`):** `AiOutputPreset` (id, label, minTier,
+settingsJson, sortOrder, active) — admin CRUD; the per-tier policy overrides live in the
+`AiGeneratorSettings` singleton alongside the tier limits + per-domain vocab.
+
+---
+
+## 16. The one-sentence pitch
 
 > Describe it in plain words; we generate four on-brand concepts **into your real
 > die-line**, drop in your **true** ingredients, allergens, Nutrition Facts, barcode and

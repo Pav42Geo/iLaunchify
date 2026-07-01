@@ -193,6 +193,11 @@
                 <span class="kv" id="resCost"></span>
               </div>
 
+              <p class="lbl">④ Output <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-400)">— preset or fine-tune (tier-clamped)</span></p>
+              <div class="row" style="margin-bottom:6px"><select id="outPreset" style="flex:1" onchange="applyOutPreset(this.value)"></select></div>
+              <div id="outControls"></div>
+              <p class="hint" id="outClamp" style="color:var(--warn)"></p>
+
               <div class="meter"><div class="top"><span>Draft cycles this month</span><span id="cycTxt"></span></div><div class="bar" id="cycBar"><i></i></div></div>
               <div class="meter"><div class="top"><span>Finalize budget (MP)</span><span id="mpTxt"></span></div><div class="bar" id="mpBar"><i></i></div></div>
 
@@ -270,6 +275,21 @@
             <label class="kv"><input type="checkbox" checked> Block save when over storage cap</label>
           </div>
         </div>
+
+        <div class="card2">
+          <h3>Output presets &amp; per-tier caps — <span style="color:var(--pink-700)">§16</span></h3>
+          <table class="tiertable"><thead><tr><th>Preset</th><th>Min tier</th><th>Format</th><th>DPI</th><th>CMYK</th></tr></thead><tbody id="presetRows"></tbody></table>
+          <div class="addrow" style="margin-top:8px">
+            <input id="pLabel" placeholder="preset name…" style="flex:2">
+            <select id="pTier"><option value="maker">Maker+</option><option value="builder" selected>Builder+</option><option value="agency">Agency+</option></select>
+            <select id="pFmt"><option>PDF</option><option>PNG</option><option>AI</option><option>SVG</option><option>GLB</option></select>
+            <input id="pDpi" type="number" value="300" style="width:64px">
+            <button class="mini" onclick="addPreset()">Add</button>
+          </div>
+          <h4 class="sec">Per-tier output caps</h4>
+          <table class="tiertable"><thead><tr><th>Tier</th><th>Max DPI</th><th>CMYK</th><th>Layered</th><th>Batch</th><th>White-label</th></tr></thead><tbody id="capRows"></tbody></table>
+          <p class="hint">Hard caps clamp any creator request down (clampOutput). Loosen/tighten here — no code change.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -309,6 +329,20 @@ const CFG = {
 };
 const CREATOR_DOMAIN='FOOD';   // the demo product (Mood Cookies) is FOOD
 let adminDom='FOOD';           // which domain the admin is editing in the vocab card
+
+// Output settings & presets (§16) — admin-governed, tier-gated.
+CFG.outputPolicies={
+  maker:  {formats:['PNG'],                       maxDpi:96, cmyk:false,layered:false,batch:false,whiteLabel:false,forceWatermark:true, defaults:{format:'PNG',dpi:96, cmyk:false,marks:false,watermark:true }},
+  builder:{formats:['PDF','PNG'],                 maxDpi:300,cmyk:true, layered:false,batch:false,whiteLabel:false,forceWatermark:false,defaults:{format:'PDF',dpi:300,cmyk:true, marks:true, watermark:false}},
+  agency: {formats:['PDF','AI','SVG','PNG','GLB'],maxDpi:600,cmyk:true, layered:true, batch:true, whiteLabel:true, forceWatermark:false,defaults:{format:'PDF',dpi:300,cmyk:true, marks:true, watermark:false}},
+};
+CFG.outputPresets=[
+  {id:'web',   label:'Web share PNG',        minTier:'maker',  format:'PNG',dpi:96, cmyk:false,marks:false},
+  {id:'print', label:'Print-ready CMYK PDF', minTier:'builder',format:'PDF',dpi:300,cmyk:true, marks:true },
+  {id:'source',label:'Editable AI source',   minTier:'agency', format:'AI', dpi:300,cmyk:true, marks:true },
+];
+const RANK={maker:0,builder:1,agency:2};
+let outState={preset:'',format:'PDF',dpi:300,cmyk:true,marks:true,watermark:false};
 const COLORHEX={ 'Warm Tones':['#E8943A','#f3c48b'],'Cool Tones':['#5b8def','#a9c4ff'],'Vibrant':['#ff2e63','#ff9f1c'],
   'Muted':['#a3a3a3','#d9d9d9'],'Pastel':['#ffd6e0','#c9e4de'],'Earthy':['#8a6d3b','#c9b18b'],
   'Monochrome':['#222','#888'],'Jewel Tones':['#7b2d8e','#2d6b8e'] };
@@ -411,6 +445,56 @@ function set(id,v){document.getElementById(id).textContent=v;}
 function bar(id,used,max){const el=document.getElementById(id);const pct=max?Math.min(100,used/max*100):0;
   el.classList.toggle('warn',pct>85);el.querySelector('i').style.width=pct+'%';}
 
+// ----- Output settings & presets (§16) -----
+function outPolicy(){ return CFG.outputPolicies[state.tier==='admin'?'agency':(state.tier||'builder')] || CFG.outputPolicies.agency; }
+function clampJS(req,pol){
+  const s={...req}; const adj=[];
+  if(!pol.formats.includes(s.format)){adj.push(`format ${s.format}→${pol.defaults.format}`);s.format=pol.defaults.format;}
+  if(s.dpi>pol.maxDpi){adj.push(`dpi ${s.dpi}→${pol.maxDpi}`);s.dpi=pol.maxDpi;}
+  if(s.cmyk&&!pol.cmyk){adj.push('CMYK→RGB');s.cmyk=false;}
+  if(pol.forceWatermark&&!s.watermark){adj.push('watermark forced on');s.watermark=true;}
+  return {settings:s,adjustments:adj};
+}
+function renderOutput(){
+  const pol=outPolicy(); const t=state.tier==='admin'?'agency':(state.tier||'builder');
+  const avail=CFG.outputPresets.filter(p=>RANK[p.minTier]<=RANK[t]);
+  document.getElementById('outPreset').innerHTML='<option value="">Custom…</option>'+avail.map(p=>`<option value="${p.id}" ${outState.preset===p.id?'selected':''}>${p.label}</option>`).join('');
+  document.getElementById('outControls').innerHTML=`
+   <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:6px">
+     <label class="kv">Format <select onchange="outState.format=this.value;outState.preset='';syncOut()">${pol.formats.map(f=>`<option ${outState.format===f?'selected':''}>${f}</option>`).join('')}</select></label>
+     <label class="kv">DPI <input type="number" value="${outState.dpi}" style="width:62px" onchange="outState.dpi=+this.value;outState.preset='';syncOut()"></label>
+   </div>
+   <div class="row" style="gap:12px;flex-wrap:wrap">
+     <label class="kv"><input type="checkbox" ${outState.cmyk?'checked':''} ${pol.cmyk?'':'disabled'} onchange="outState.cmyk=this.checked;outState.preset='';syncOut()"> CMYK${pol.cmyk?'':' 🔒'}</label>
+     <label class="kv"><input type="checkbox" ${outState.marks?'checked':''} onchange="outState.marks=this.checked"> Crop/bleed marks</label>
+   </div>
+   <p class="kv" style="margin-top:5px">${pol.layered?'✓ layered/editable':'🔒 flattened'} · ${pol.whiteLabel?'✓ white-label':'🔒 branded'} · ${pol.batch?'✓ batch export':'🔒 single'}${pol.forceWatermark?' · 🔒 watermarked':''}</p>`;
+  const r=clampJS(outState,pol);
+  document.getElementById('outClamp').textContent=r.adjustments.length?('Clamped to your tier: '+r.adjustments.join('; ')):'';
+}
+function syncOut(){ const r=clampJS(outState,outPolicy()); outState={...outState,...r.settings}; renderOutput(); }
+function applyOutPreset(id){ outState.preset=id; const p=CFG.outputPresets.find(x=>x.id===id); if(p){outState.format=p.format;outState.dpi=p.dpi;outState.cmyk=p.cmyk;outState.marks=p.marks;} syncOut(); }
+function resetOutForTier(){ const d=outPolicy().defaults; outState={preset:'',format:d.format,dpi:d.dpi,cmyk:d.cmyk,marks:d.marks,watermark:!!d.watermark}; }
+
+function renderOutputAdmin(){
+  document.getElementById('presetRows').innerHTML=CFG.outputPresets.map((p,i)=>`<tr>
+    <td>${p.label}</td><td style="text-transform:capitalize">${p.minTier}+</td><td>${p.format}</td><td>${p.dpi}</td>
+    <td>${p.cmyk?'✓':'—'} <span class="x" style="cursor:pointer;color:var(--ink-400)" onclick="CFG.outputPresets.splice(${i},1);renderOutputAdmin()">✕</span></td></tr>`).join('');
+  document.getElementById('capRows').innerHTML=Object.entries(CFG.outputPolicies).map(([k,p])=>`<tr>
+    <td style="text-transform:capitalize;font-weight:700">${k}</td>
+    <td><input type="number" value="${p.maxDpi}" onchange="p_edit('${k}','maxDpi',+this.value)"></td>
+    <td><input type="checkbox" ${p.cmyk?'checked':''} onchange="p_edit('${k}','cmyk',this.checked)"></td>
+    <td><input type="checkbox" ${p.layered?'checked':''} onchange="p_edit('${k}','layered',this.checked)"></td>
+    <td><input type="checkbox" ${p.batch?'checked':''} onchange="p_edit('${k}','batch',this.checked)"></td>
+    <td><input type="checkbox" ${p.whiteLabel?'checked':''} onchange="p_edit('${k}','whiteLabel',this.checked)"></td></tr>`).join('');
+}
+function p_edit(tier,field,val){ CFG.outputPolicies[tier][field]=val; renderOutputAdmin(); if((state.tier==='admin'?'agency':state.tier)===tier)renderOutput(); }
+function addPreset(){
+  const label=document.getElementById('pLabel').value.trim(); if(!label)return;
+  CFG.outputPresets.push({id:'p'+Date.now(),label,minTier:document.getElementById('pTier').value,format:document.getElementById('pFmt').value,dpi:+document.getElementById('pDpi').value,cmyk:true,marks:true});
+  document.getElementById('pLabel').value=''; renderOutputAdmin(); renderOutput();
+}
+
 function renderCompliance(){
   const miss=document.getElementById('demoMiss').checked;
   const el=document.getElementById('compl');
@@ -507,6 +591,7 @@ function renderAdmin(){
   const dt=document.getElementById('domTone'); if(dt) dt.value=D.tone;
   const ds=document.getElementById('adminDomSel'); if(ds) ds.value=adminDom;
   renderCogs();
+  renderOutputAdmin();
 }
 function edit(tierKey,field,val){CFG.tiers[tierKey][field]= field==='topup'?val:(+val);renderAdmin();renderMeters();renderRes();}
 function addVocab(grp,inp){const v=document.getElementById(inp).value.trim();if(v){CFG.domains[adminDom][grp].push(v);document.getElementById(inp).value='';renderAdmin();if(adminDom===CREATOR_DOMAIN)renderChips();}}
@@ -535,11 +620,11 @@ function setTpl(t,btn){
 document.getElementById('asTier').onchange=e=>{state.tier=e.target.value;
   // reset usage sensibly for the tier
   const z=state.tier==='maker'; state.used={cycles:z?0:6,mp:z?0:9,sto:z?0:120};
-  renderRes();renderMeters();renderSaved();if(state.gen)generate(true);
+  renderRes();resetOutForTier();renderOutput();renderMeters();renderSaved();if(state.gen)generate(true);
 };
 
 // init
-renderDielines();renderKit();renderManual();renderChips();renderRes();renderMeters();renderCompliance();renderSaved();
+renderDielines();renderKit();renderManual();renderChips();renderRes();resetOutForTier();renderOutput();renderMeters();renderCompliance();renderSaved();
 </script>
 </body>
 </html>

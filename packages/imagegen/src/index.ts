@@ -24,6 +24,20 @@ export {
 } from './metering'
 
 export {
+  type OutputFormat,
+  type ColorProfile,
+  type OutputSettings,
+  type OutputPolicy,
+  type OutputPreset,
+  type ClampResult,
+  DEFAULT_OUTPUT_POLICIES,
+  resolveOutputPolicy,
+  presetsForTier,
+  clampOutput,
+  applyPreset,
+} from './output'
+
+export {
   type ImageRef,
   type PanelGenRequest,
   type VectorTypeRequest,

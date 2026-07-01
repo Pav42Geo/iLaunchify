@@ -7059,3 +7059,21 @@ model PartnerProductDefaults {
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 }
+
+/// Admin-authored output preset (AI_PACKAGING_GENERATOR §16). A named bundle of
+/// OutputSettings (format/dpi/colour/marks/layered/watermark/variations/batch/
+/// whiteLabel), gated by minTier. Additive — NEEDS Mac pnpm db:push + db:generate.
+model AiOutputPreset {
+  id           String   @id @default(uuid())
+  label        String
+  /// Lowest creator tier that may use this preset ("maker"|"builder"|"agency").
+  minTier      String   @default("builder")
+  /// Serialized OutputSettings (JSON) — the effective knobs, clamped per tier on use.
+  settingsJson Json
+  sortOrder    Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([active])
+}
