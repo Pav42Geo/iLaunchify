@@ -4,7 +4,7 @@
 // admin-tuned per-domain chip vocabulary. Cast-guarded → degrades to sensible
 // defaults pre-migration, so it always returns usable props.
 
-import { prisma, getAiGeneratorSettings } from '@ilaunchify/db'
+import { prisma, getAiGeneratorSettings, listActiveDieCuts } from '@ilaunchify/db'
 import { getCreatorTier } from '@ilaunchify/auth'
 import { resolveDomainOptions, type LabelingDomain, type DomainPreset, type FlavorSpec } from '@ilaunchify/ai-design'
 import { tierLimits, type CreatorBillingTier } from '@ilaunchify/imagegen'
@@ -162,6 +162,59 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
       elementOptions: vocab.elements,
       tier,
       creditsRemaining: credits,
+    },
+  }
+}
+
+/**
+ * Admin (template-author) props: generate against a chosen die-cut and save the concept
+ * as a LIBRARY template. Product-less — targets one die-cut as a single die-line with a
+ * full-bleed CREATIVE frame. Tier = 'admin' (unmetered, ungated). Caller must have
+ * catalog:write. Returns null only if there are no die-cuts at all.
+ */
+export async function loadAdminAiCreateProps(input: { dieCutId?: string; domain?: string }): Promise<AiCreateData | null> {
+  const dieCuts = await listActiveDieCuts().catch(() => [])
+  if (dieCuts.length === 0) return null
+  const cut = dieCuts.find((d) => d.id === input.dieCutId) ?? dieCuts[0]!
+
+  const domain: LabelingDomain = (['FOOD', 'DIETARY_SUPPLEMENT', 'OTC', 'COSMETIC', 'PET_PRODUCT'] as const).includes(
+    (input.domain ?? '') as never,
+  )
+    ? (input.domain as LabelingDomain)
+    : 'FOOD'
+
+  // One full-bleed paintable frame — the admin authors a reusable CREATIVE template;
+  // the truth layer is product-specific and applied per-creator later, so it's not fixed here.
+  const layout: FrameLayout = {
+    version: 1,
+    frames: [{ id: 'creative', kind: 'IMAGERY', box: { x: 0.04, y: 0.04, w: 0.92, h: 0.92 }, required: false, source: 'PLATFORM' }],
+  }
+  const target: DielineTarget = {
+    id: cut.id,
+    label: cut.name,
+    shapeLabel: cut.category ? String(cut.category).replace(/_/g, ' ').toLowerCase() : undefined,
+    layout,
+    surface: { widthMm: cut.widthMm || 100, heightMm: cut.heightMm || 150 },
+  }
+
+  const settings = await getAiGeneratorSettings()
+  const vocab: DomainPreset = resolveDomainOptions(domain, settings.domainVocab[domain] as Partial<DomainPreset> | undefined)
+
+  return {
+    productName: cut.name,
+    props: {
+      productDescriptor: `${cut.name} template`,
+      brandName: 'System Templates',
+      brandPalette: [],
+      domain,
+      market: 'US',
+      dielines: [target],
+      flavors: [],
+      styleOptions: vocab.styles,
+      colorOptions: vocab.colors,
+      elementOptions: vocab.elements,
+      tier: 'admin',
+      creditsRemaining: undefined,
     },
   }
 }

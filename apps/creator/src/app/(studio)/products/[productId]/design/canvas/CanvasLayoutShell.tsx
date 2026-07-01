@@ -259,7 +259,7 @@ interface Props {
    * template on a die-line: "Save as template" routes to the admin library save dialog
    * instead of the creator's brand kit, and product-only rail tools are hidden.
    */
-  templateAuthor?: { domain: string; container: string | null; aspectBucket: string | null } | null
+  templateAuthor?: { domain: string; container: string | null; aspectBucket: string | null; dieCutId?: string | null } | null
 }
 
 type ToolKey =
@@ -904,7 +904,12 @@ export function CanvasLayoutShell({
     // AI Templator opens the AI packaging generator for this product's die-line set
     // (its own full-screen studio surface), rather than a slide-out drawer.
     if (key === 'ai') {
-      window.location.assign(`/studio/ai-create?productId=${productId}`)
+      // Admin (template-author) mode → generate against the chosen die-cut + domain and
+      // save as a library template. Creator mode → generate for this product's die-lines.
+      const url = templateAuthor
+        ? `/studio/ai-create?admin=1&domain=${encodeURIComponent(templateAuthor.domain)}${templateAuthor.dieCutId ? `&dieCut=${encodeURIComponent(templateAuthor.dieCutId)}` : ''}`
+        : `/studio/ai-create?productId=${productId}`
+      window.location.assign(url)
       return
     }
     // Click is decisive — cancel any pending hover schedules first.

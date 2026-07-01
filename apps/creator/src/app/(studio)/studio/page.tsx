@@ -106,6 +106,7 @@ export default async function TemplateAuthorPage({
       nonFoodPanelData={null}
       templateAuthor={{
         domain,
+        dieCutId: chosen.id,
         ...(() => {
           const t = deriveTemplateTargeting({ dieCutCategory: chosen.category, widthMm: chosen.widthMm, heightMm: chosen.heightMm })
           return { container: t.targetContainerCategory, aspectBucket: t.aspectBucket }

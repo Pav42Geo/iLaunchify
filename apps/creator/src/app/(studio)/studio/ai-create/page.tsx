@@ -8,9 +8,9 @@
 //   • no productId → FIXTURE demo so the flow stays viewable with no model/DB.
 // The Studio-rail mount (Templates tab) is Code's hot file — see HANDOFF.
 
-import { auth } from '@ilaunchify/auth'
+import { auth, requireCapability } from '@ilaunchify/auth'
 import { AiCreatePanel, type DielineTarget } from './AiCreatePanel'
-import { loadAiCreateProps } from './loader'
+import { loadAiCreateProps, loadAdminAiCreateProps } from './loader'
 import type { FrameLayout } from '@ilaunchify/ui'
 
 const primaryLayout: FrameLayout = {
@@ -44,9 +44,33 @@ const fixture: DielineTarget[] = [
 export default async function AiCreatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ productId?: string }>
+  searchParams: Promise<{ productId?: string; admin?: string; dieCut?: string; domain?: string }>
 }) {
-  const { productId } = await searchParams
+  const { productId, admin, dieCut, domain } = await searchParams
+
+  // Admin (Design Studio → Templates) mode: generate against a die-cut, save as a library
+  // template. Capability-gated — a normal creator can never reach this branch.
+  if (admin) {
+    await requireCapability('catalog:write')
+    const data = await loadAdminAiCreateProps({ dieCutId: dieCut, domain })
+    if (!data) {
+      return (
+        <div className="mx-auto max-w-5xl space-y-4 p-6">
+          <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-600">
+            No die-cuts are available yet. Seed the die-cut library, then generate a template.
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div className="mx-auto max-w-5xl space-y-4 p-6">
+        <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-600">
+          Admin template mode — generating for <strong>{data.productName}</strong>. Save concepts to the library from the Studio.
+        </div>
+        <AiCreatePanel {...data.props} />
+      </div>
+    )
+  }
 
   if (productId) {
     const session = await auth()
