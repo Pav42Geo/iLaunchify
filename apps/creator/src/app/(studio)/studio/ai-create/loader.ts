@@ -211,6 +211,7 @@ export async function loadGenerationLibrary(userId: string, opts: { productTempl
             title: string | null
             promptJson: unknown
             favorited: boolean | null
+            archived: boolean | null
             containerCategory: string | null
             aspectBucket: string | null
             finalizeMegapixels: unknown
@@ -223,14 +224,15 @@ export async function loadGenerationLibrary(userId: string, opts: { productTempl
     .findMany({
       where: { authorUserId: userId, scope: 'CREATOR', status: 'READY', ...(opts.productTemplateId ? { productTemplateId: opts.productTemplateId } : {}) },
       orderBy: { createdAt: 'desc' },
-      take: 100,
-      select: { id: true, title: true, promptJson: true, favorited: true, containerCategory: true, aspectBucket: true, finalizeMegapixels: true, createdAt: true },
+      take: 150,
+      select: { id: true, title: true, promptJson: true, favorited: true, archived: true, containerCategory: true, aspectBucket: true, finalizeMegapixels: true, createdAt: true },
     })
     .catch(() => [])) as Array<{
     id: string
     title: string | null
     promptJson: unknown
     favorited: boolean | null
+    archived: boolean | null
     containerCategory: string | null
     aspectBucket: string | null
     finalizeMegapixels: unknown
@@ -247,6 +249,7 @@ export async function loadGenerationLibrary(userId: string, opts: { productTempl
       containerCategory: r.containerCategory,
       aspectBucket: r.aspectBucket,
       favorited: Boolean(r.favorited),
+      archived: Boolean(r.archived),
       createdAtIso: r.createdAt.toISOString(),
       source: 'GENERATION' as const,
       styleTags: strArr(brief.styleTags),

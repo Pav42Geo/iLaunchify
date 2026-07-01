@@ -320,6 +320,18 @@ export async function getTemplateLibrary(scope: LibraryScope, opts?: { productTe
   return loadGenerationLibrary(user.id, { productTemplateId: scope === 'this-product' ? opts?.productTemplateId ?? null : null })
 }
 
+/** Soft-archive / restore a saved generation (reversible; never a hard delete). Owner-checked. */
+export async function setGenerationArchived(generationId: string, archived: boolean): Promise<{ ok: boolean; archived: boolean }> {
+  const user = await requireUser()
+  const row = await favDelegate()
+    ?.findFirst({ where: { id: generationId, authorUserId: user.id }, select: { id: true, favorited: true } })
+    .catch(() => null)
+  if (!row) return { ok: false, archived: false }
+  await favDelegate()?.update({ where: { id: generationId }, data: { archived } }).catch(() => {})
+  await logAuditAs(user, { entityType: 'AiDesignGeneration', entityId: generationId, action: archived ? 'AI_DESIGN_ARCHIVED' : 'AI_DESIGN_RESTORED', payload: {} })
+  return { ok: true, archived }
+}
+
 /** Rename a saved generation (My library card title). Owner-checked. */
 export async function renameGeneration(generationId: string, title: string): Promise<{ ok: boolean; title: string }> {
   const user = await requireUser()

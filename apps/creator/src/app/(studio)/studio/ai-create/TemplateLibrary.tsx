@@ -15,8 +15,8 @@
 // =============================================================================
 
 import * as React from 'react'
-import { Sparkles, Star, Wand2, ImageDown, Loader2, CheckCircle2, Search, Pencil, Check } from 'lucide-react'
-import { getTemplateLibrary, toggleGenerationFavorite, renameGeneration } from './actions'
+import { Sparkles, Star, Wand2, ImageDown, Loader2, CheckCircle2, Search, Pencil, Check, Archive, ArchiveRestore } from 'lucide-react'
+import { getTemplateLibrary, toggleGenerationFavorite, renameGeneration, setGenerationArchived } from './actions'
 import { libraryItemMatchesShapes, type LibraryItem, type LibraryScope, type ShapeKey } from './library-types'
 
 type SortKey = 'relevant' | 'newest' | 'name'
@@ -55,6 +55,7 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
   const [domainFilter, setDomainFilter] = React.useState<string>('ALL')
   const [query, setQuery] = React.useState('')
   const [sort, setSort] = React.useState<SortKey>('relevant')
+  const [showArchived, setShowArchived] = React.useState(false)
 
   React.useEffect(() => {
     let cancelled = false
@@ -73,6 +74,7 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
   const shown = React.useMemo(() => {
     const q = query.trim().toLowerCase()
     const filtered = items.filter((i) => {
+      if (showArchived ? !i.archived : !!i.archived) return false
       if (favoritesOnly && !i.favorited) return false
       if (domainFilter !== 'ALL' && i.domain !== domainFilter) return false
       if (matchOnly && !libraryItemMatchesShapes(i, productShapes)) return false
@@ -88,7 +90,9 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
       const bm = libraryItemMatchesShapes(b, productShapes) ? 0 : 1
       return am - bm || byNew
     })
-  }, [items, favoritesOnly, domainFilter, matchOnly, query, sort, productShapes])
+  }, [items, favoritesOnly, domainFilter, matchOnly, query, sort, showArchived, productShapes])
+
+  const archivedCount = React.useMemo(() => items.filter((i) => i.archived).length, [items])
 
   async function toggleFav(item: LibraryItem) {
     if (item.source !== 'GENERATION') return
@@ -103,6 +107,13 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
     setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, title: clean } : x)))
     const res = await renameGeneration(item.id, clean).catch(() => null)
     if (!res || !res.ok) setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, title: item.title } : x)))
+  }
+
+  async function setArchived(item: LibraryItem, archived: boolean) {
+    if (item.source !== 'GENERATION') return
+    setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, archived } : x)))
+    const res = await setGenerationArchived(item.id, archived).catch(() => null)
+    if (!res || !res.ok) setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, archived: item.archived } : x)))
   }
 
   return (
@@ -148,6 +159,11 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
             Fits this die-line
           </FilterChip>
         )}
+        {(archivedCount > 0 || showArchived) && (
+          <FilterChip on={showArchived} onClick={() => setShowArchived((v) => !v)}>
+            <Archive className="h-3 w-3" /> Archived{archivedCount > 0 ? ` (${archivedCount})` : ''}
+          </FilterChip>
+        )}
         {domains.length > 1 && (
           <select
             value={domainFilter}
@@ -186,6 +202,7 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
               fits={libraryItemMatchesShapes(item, productShapes)}
               onFav={() => toggleFav(item)}
               onRename={item.source === 'GENERATION' ? (t) => rename(item, t) : undefined}
+              onArchive={item.source === 'GENERATION' ? (a) => setArchived(item, a) : undefined}
               onInspire={item.hasBrief ? () => onUseAsInspiration(item) : undefined}
               onCanvas={onUseOnCanvas && item.thumbnailUrl && libraryItemMatchesShapes(item, productShapes) ? () => onUseOnCanvas(item) : undefined}
             />
@@ -201,6 +218,7 @@ function LibraryCard({
   fits,
   onFav,
   onRename,
+  onArchive,
   onInspire,
   onCanvas,
 }: {
@@ -208,6 +226,7 @@ function LibraryCard({
   fits: boolean
   onFav: () => void
   onRename?: (title: string) => void
+  onArchive?: (archived: boolean) => void
   onInspire?: () => void
   onCanvas?: () => void
 }) {
@@ -272,6 +291,16 @@ function LibraryCard({
             {onRename && (
               <button onClick={() => setEditing(true)} className="shrink-0 text-ink-300 opacity-0 transition group-hover:opacity-100 hover:text-ink-600" aria-label="Rename">
                 <Pencil className="h-3 w-3" />
+              </button>
+            )}
+            {onArchive && (
+              <button
+                onClick={() => onArchive(!item.archived)}
+                className="shrink-0 text-ink-300 opacity-0 transition group-hover:opacity-100 hover:text-ink-600"
+                aria-label={item.archived ? 'Restore' : 'Archive'}
+                title={item.archived ? 'Restore' : 'Archive'}
+              >
+                {item.archived ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
               </button>
             )}
           </div>

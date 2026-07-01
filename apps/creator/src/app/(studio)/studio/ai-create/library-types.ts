@@ -15,6 +15,8 @@ export interface LibraryItem {
   containerCategory: string | null
   aspectBucket: string | null
   favorited: boolean
+  /** Soft-hidden from the default library view (reversible). Generations only. */
+  archived?: boolean
   createdAtIso: string
   source: 'GENERATION' | 'STARTER'
   /** Style facets for the style filter (from the stored brief / template tags). */
