@@ -16,7 +16,11 @@
 // Pure + deterministic given an injected RNG — see the optional `randomBytes`
 // argument, which the test pins to make the output exact.
 
-import { randomBytes as nodeRandomBytes } from 'node:crypto'
+// NB: intentionally NO `node:crypto` import. This module is re-exported from the
+// @ilaunchify/orders barrel, which client components pull in for the pure quote /
+// validator helpers — a top-level `node:crypto` import would drag a Node builtin into
+// the browser bundle and fail the webpack build (UnhandledSchemeError). The default RNG
+// uses the Web Crypto API (`globalThis.crypto`), available in Node 19+ AND browsers.
 
 /** Crockford-style alphabet: no 0/1/I/L/O/U (ambiguous or accidentally rude). */
 export const ORDER_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ'
@@ -32,8 +36,17 @@ export const ORDER_NUMBER_REGEX = new RegExp(
   `^${ORDER_NUMBER_PREFIX}-\\d{6}-[${ORDER_CODE_ALPHABET}]{${ORDER_CODE_LENGTH}}$`,
 )
 
-/** Source of randomness — `(n) => Buffer`. Injectable for deterministic tests. */
-export type RandomBytes = (size: number) => Buffer
+/** Source of randomness — `(n) => bytes`. Injectable for deterministic tests.
+ *  Uint8Array (Buffer is a Uint8Array, so existing Buffer-returning injections fit). */
+export type RandomBytes = (size: number) => Uint8Array
+
+/** Universal default RNG — Web Crypto (`globalThis.crypto`), so no `node:crypto`
+ *  import is needed and this module stays safe to bundle for the browser. */
+function webRandomBytes(size: number): Uint8Array {
+  const bytes = new Uint8Array(size)
+  globalThis.crypto.getRandomValues(bytes)
+  return bytes
+}
 
 /**
  * Draw `length` symbols uniformly from `ORDER_CODE_ALPHABET` using rejection
@@ -68,13 +81,13 @@ function pad2(n: number): string {
  * Build a human-friendly order number for the given creation date.
  *
  * @param date        the order's creation instant (defaults to now).
- * @param randomBytes optional RNG override (defaults to node:crypto). Injecting
+ * @param randomBytes optional RNG override (defaults to Web Crypto). Injecting
  *                    a deterministic source makes the output exact + testable.
  * @returns `ILF-YYMMDD-XXXXX`
  */
 export function generateOrderNumber(
   date: Date = new Date(),
-  randomBytes: RandomBytes = nodeRandomBytes,
+  randomBytes: RandomBytes = webRandomBytes,
 ): string {
   const yy = pad2(date.getUTCFullYear() % 100)
   const mm = pad2(date.getUTCMonth() + 1)
