@@ -1,12 +1,16 @@
-// AI Create — P2 demo harness (AI_PACKAGING_GENERATOR §8).
+// AI Create (AI_PACKAGING_GENERATOR §8).
 //
-// Renders the AiCreatePanel against a FIXTURE die-line set so the whole flow is
-// viewable end-to-end on placeholder art, with no model and no DB. The real page
-// loads the product's actual die-line set + Brand Kit + domain/market + tier and
-// mounts this same panel into the Studio rail — see HANDOFF (Code owns the Studio
-// shell). Route: /studio/ai-create.
+// Two modes on one route (/studio/ai-create):
+//   • ?productId=… → REAL: loads that product's actual die-line SET + Brand Kit +
+//     domain/market + tier + resolved per-domain vocab via loadAiCreateProps, and
+//     mounts the panel against real data. Die-line-FIRST — the generator always
+//     targets existing die-lines, never invents structure.
+//   • no productId → FIXTURE demo so the flow stays viewable with no model/DB.
+// The Studio-rail mount (Templates tab) is Code's hot file — see HANDOFF.
 
+import { auth } from '@ilaunchify/auth'
 import { AiCreatePanel, type DielineTarget } from './AiCreatePanel'
+import { loadAiCreateProps } from './loader'
 import type { FrameLayout } from '@ilaunchify/ui'
 
 const primaryLayout: FrameLayout = {
@@ -37,11 +41,38 @@ const fixture: DielineTarget[] = [
   { id: 'carton', label: 'Outer carton', shapeLabel: 'shipping carton', layout: cartonLayout, surface: { widthMm: 200, heightMm: 150 } },
 ]
 
-export default function AiCreateDemoPage() {
+export default async function AiCreatePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ productId?: string }>
+}) {
+  const { productId } = await searchParams
+
+  if (productId) {
+    const session = await auth()
+    const userId = session?.user?.id
+    const data = userId ? await loadAiCreateProps(productId, userId) : null
+    if (!data) {
+      return (
+        <div className="mx-auto max-w-5xl space-y-4 p-6">
+          <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-600">
+            Product not found, or it has no confirmed die-line yet. The AI generator targets existing die-lines — add
+            a packaging die-line to this product first.
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div className="mx-auto max-w-5xl space-y-4 p-6">
+        <AiCreatePanel {...data.props} />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-6">
       <div className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[12px] text-warning-800">
-        P2 demo harness — fixture die-line set, placeholder art. Real loader + Studio-rail mount pending (Code).
+        Demo harness — fixture die-line set, placeholder art. Pass <code>?productId=…</code> to load a real product.
       </div>
       <AiCreatePanel
         productDescriptor="box of stroopwafel cookies"

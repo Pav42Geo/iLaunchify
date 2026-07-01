@@ -39,12 +39,19 @@ After `db:generate`, the cast-guarded db helpers (`getAiGeneratorSettings`,
 - **Admin → AI Generator** (`/ai-generator`, catalog:write): Providers readiness, Tier
   limits, Per-domain vocab, Output caps, Output presets CRUD, Gates. Edits persist to
   `AiGeneratorSettings` / `AiOutputPreset`.
-- The creator `AiCreatePanel` still runs on the fixture demo route `/studio/ai-create`.
+- **Creator `/studio/ai-create`** now runs on the REAL loader when given `?productId=…`:
+  `loadAiCreateProps(productId, userId)` (`apps/creator/src/app/(studio)/studio/ai-create/loader.ts`)
+  resolves the product's actual die-line SET (frames + mm dims via `productTemplatePackaging`
+  → `packagingTypeId` → `packagingDieline`), Brand Kit palette (brand colors + swatches),
+  regulatory domain (`labelingType`, SUPPLEMENT category override), creator tier, remaining
+  draft credits (tier cap − `AiGenerationUsage` this period), and the admin-tuned per-domain
+  chip vocab (`resolveDomainOptions`). No `productId` → fixture demo fallback (placeholder art).
+  Cast-guarded, so it returns usable props even pre-`db:push`.
 
 ## 4. Still to build (next slices)
-- Creator: real loader (product → die-line set + Brand Kit + domain/market + tier +
-  resolved settings) and mount `AiCreatePanel` into the **Studio → Templates** tab.
-  (Studio shell is Code's hot file — coordinate.)
+- Mount `AiCreatePanel` into the **Studio → Templates** tab, passing `?productId` of the
+  open product. (Studio shell is Code's hot file — coordinate; the loader + route are ready
+  to consume.)
 - P3: fal + Recraft adapters implementing `ImageGenProvider`; `AiDesignGeneration` FSM
   wired to debit usage via the metering engine. **Needs `FAL_KEY` + `RECRAFT_API_KEY`.**
 - Coordinated-set + flavor-series UI; template management (product-aware matching +
