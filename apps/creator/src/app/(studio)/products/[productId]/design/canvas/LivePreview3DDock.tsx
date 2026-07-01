@@ -12,7 +12,7 @@
 // =============================================================================
 
 import * as React from 'react'
-import { Box as BoxIcon, X } from 'lucide-react'
+import { Box as BoxIcon, X, Maximize2, Minimize2 } from 'lucide-react'
 import {
   snapshotCanvasTrimmed,
   Dieline3DViewer,
@@ -31,6 +31,7 @@ const THROTTLE_MS = 450
 
 export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
   const [open, setOpen] = React.useState(false)
+  const [expanded, setExpanded] = React.useState(false)
   const [snapshot, setSnapshot] = React.useState<string | null>(null)
   const shape = React.useMemo(() => shapeKindForCategory(dieCut.category), [dieCut.category])
 
@@ -73,7 +74,7 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         title="Live 3D preview"
-        className="absolute bottom-20 right-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-2 text-[12px] font-semibold text-ink-700 shadow-lg transition-colors hover:border-pink-400 hover:text-pink-700"
+        className="absolute top-4 right-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-2 text-[12px] font-semibold text-ink-700 shadow-lg transition-colors hover:border-pink-400 hover:text-pink-700"
       >
         <BoxIcon className="h-4 w-4" /> 3D preview
       </button>
@@ -81,16 +82,21 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
   }
 
   return (
-    <div className="absolute bottom-20 right-4 z-30 flex w-[320px] max-w-[86vw] flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-2xl">
+    <div className={`absolute top-4 right-4 z-30 flex max-w-[86vw] flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-2xl ${expanded ? 'w-[560px]' : 'w-[320px]'}`}>
       <div className="flex items-center justify-between border-b border-ink-100 px-3 py-2">
         <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-800">
           <BoxIcon className="h-3.5 w-3.5 text-pink-600" /> Live 3D preview
         </span>
-        <button type="button" onClick={() => setOpen(false)} aria-label="Close 3D preview" className="rounded-md p-1 text-ink-400 hover:bg-ink-50 hover:text-ink-700">
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button type="button" onClick={() => setExpanded((v) => !v)} aria-label={expanded ? 'Shrink' : 'Expand'} title={expanded ? 'Shrink' : 'Expand'} className="rounded-md p-1 text-ink-400 hover:bg-ink-50 hover:text-ink-700">
+            {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
+          <button type="button" onClick={() => setOpen(false)} aria-label="Close 3D preview" className="rounded-md p-1 text-ink-400 hover:bg-ink-50 hover:text-ink-700">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
-      <div className="h-[300px] bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#f1f0ec)]">
+      <div className={`bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#f1f0ec)] ${expanded ? 'h-[480px]' : 'h-[300px]'}`}>
         {snapshot ? (
           <Dieline3DViewer
             shape={shape}
