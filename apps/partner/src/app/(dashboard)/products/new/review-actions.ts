@@ -1067,6 +1067,17 @@ export interface PassportPetFacts {
   adequacyStatement: string | null
   feedingDirections: string | null
 }
+/** Per-flavor Supplement Facts / Guaranteed Analysis (multi-flavor supplement +
+ *  pet). Populated from formulationData.supplementByFlavor / petByFlavor. Empty
+ *  for single-flavor / food / cosmetic. Read-only — the Passport Facts card shows
+ *  a Base + flavor switcher when non-empty. */
+export interface PassportFlavorFacts {
+  id: string // FlavorPreset id
+  name: string
+  swatchHex: string | null
+  panel: PanelData | null // SUPPLEMENT
+  petFacts: PassportPetFacts | null // PET
+}
 export interface PassportFormulationIngredient {
   name: string
   amount: string | null // pre-formatted ("250 mg", "12 %", "" )
@@ -1102,6 +1113,9 @@ export interface ProductPassport extends ReviewDetail {
    *  its single-flavor PanelData + resolved "Contains" line. Empty when not
    *  computable (no base panel / non-food). Shape ≡ @ilaunchify/ui VarietyColumn. */
   flavorColumns: Array<{ label: string; data: PanelData; contains?: string }>
+  /** SUPPLEMENT / PET multi-flavor → each flavor's own Supplement Facts / GA panel
+   *  (from supplementByFlavor / petByFlavor). Empty when none authored. */
+  flavorFacts: PassportFlavorFacts[]
   /** Multiunit net-contents statement for the outer carton, when derivable. */
   packNetContents: string | null
   // ---- Formulation ingredient lists (non-food domains) ----
@@ -1487,6 +1501,53 @@ export async function getProductPassport(draftId: string): Promise<PassportResul
         })
       }
     }
+    // Per-flavor Supplement Facts / Guaranteed Analysis (multi-flavor supplement +
+    // pet). Computed with the SAME engine as the base panel above, keyed by
+    // FlavorPreset id from formulationData.supplementByFlavor / petByFlavor.
+    const flavorFacts: PassportFlavorFacts[] = []
+    if (base.flavors.length > 0 && (dom === 'DIETARY_SUPPLEMENT' || dom === 'PET_PRODUCT')) {
+      // Cast-guarded fetch — formulationData isn't on the main detail query.
+      const fdRow = await (prisma as unknown as {
+        productTemplate: { findUnique: (a: unknown) => Promise<{ formulationData: Record<string, unknown> | null } | null> }
+      }).productTemplate.findUnique({ where: { id: draftId }, select: { formulationData: true } }).catch(() => null)
+      const fdRoot = (fdRow?.formulationData ?? {}) as { supplementByFlavor?: Record<string, PassportSupplementPayload>; petByFlavor?: Record<string, PassportPetPayload> }
+      const supByFlavor = fdRoot.supplementByFlavor ?? {}
+      const petByFlavor = fdRoot.petByFlavor ?? {}
+      for (const f of base.flavors) {
+        if (dom === 'DIETARY_SUPPLEMENT') {
+          const p = supByFlavor[f.id]
+          const di = p?.dietaryIngredients ?? []
+          if (!di.length) continue
+          const dietary: DietaryIngredient[] = di.filter((r) => r.name?.trim()).map((r, i, arr) => ({
+            id: r.uid ?? `di-${i}`, name: r.name!.trim(), amountPerServing: r.amount ?? 0, unit: r.unit ?? '',
+            percentDV: r.percentDV?.trim() === '' || r.percentDV == null ? null : Number(r.percentDV),
+            blendId: r.blendId || null, isOtherIngredient: Boolean(r.isOther), sortWeight: arr.length - i,
+            amountLessThan: r.amountLessThan, symbol: r.symbol?.trim() || undefined,
+          }))
+          const blends: ProprietaryBlend[] = (p!.blends ?? []).map((b, i) => ({ id: b.id ?? `bl-${i}`, name: b.name ?? 'Blend', totalAmount: b.total ?? 0, unit: b.unit ?? '', percentDV: null, amountLessThan: b.amountLessThan }))
+          const { panel } = toSupplementPanelData(dietary, blends, {
+            servingSize: p!.servingForm ?? '', servingsPerContainer: p!.servingsPerContainer ?? 1,
+            nutrition: p!.nutrition, nutritionLessThan: p!.nutritionLessThan as Partial<Record<keyof SupplementNutrition, boolean>> | undefined,
+            noDvSymbol: p!.noDvSymbol, customFootnotes: p!.customFootnotes,
+          })
+          flavorFacts.push({ id: f.id, name: f.name, swatchHex: f.swatchHex, panel, petFacts: null })
+        } else {
+          const p = petByFlavor[f.id]
+          if (!p?.ga) continue
+          const gaRows = formatGuaranteedAnalysis(p.ga)
+          const ingredients = petIngredientOrder((p.ingredients ?? []).map((r, i) => ({ id: r.uid ?? `pi-${i}`, name: r.name ?? '', weight: Number(r.weight) || 0 }))).join(', ')
+          flavorFacts.push({
+            id: f.id, name: f.name, swatchHex: f.swatchHex, panel: null,
+            petFacts: {
+              gaRows, ingredients,
+              adequacyStatement: p.species && p.lifeStage && p.method ? adequacyStatement(tpl?.name ?? base.name, p.species, p.lifeStage, p.method) : null,
+              feedingDirections: p.feedingDirections?.trim() || null,
+            },
+          })
+        }
+      }
+    }
+
     // Outer-carton net contents for the aggregate (compare) view, when derivable.
     const firstVariant = base.variants[0] ?? null
     const packNetContents = firstVariant?.netContentDisplay ?? null
@@ -1498,6 +1559,7 @@ export async function getProductPassport(draftId: string): Promise<PassportResul
       petFacts,
       isMultiFlavor: base.flavors.length > 1,
       flavorColumns,
+      flavorFacts,
       packNetContents,
       supplementIngredients,
       cosmeticIngredients,

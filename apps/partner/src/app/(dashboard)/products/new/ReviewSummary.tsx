@@ -179,6 +179,23 @@ function RailCard({ icon: Icon, title, children }: { icon: LucideIcon; title: st
   )
 }
 
+/** A Base/flavor pill for the Facts-label switcher (multi-flavor supplement/pet). */
+function FactsFlavorTab({ label, active, onClick, swatchHex }: { label: string; active: boolean; onClick: () => void; swatchHex?: string | null }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`recipe-flavtab${active ? ' on' : ''}`}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+    >
+      {swatchHex && <span aria-hidden="true" style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 9999, background: swatchHex, border: '1px solid var(--ink-200)' }} />}
+      {label}
+    </button>
+  )
+}
+
 /** Interactive gallery: a large main image with a vertical thumbnail strip
  *  flush to its LEFT. Clicking a thumb swaps the main image. */
 function Gallery({ images }: { images: Array<{ url: string; label: string }> }) {
@@ -270,6 +287,8 @@ export function ReviewSummary({
   const [data, setData] = React.useState<ProductPassport | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [labelViewerOpen, setLabelViewerOpen] = React.useState(false)
+  // Facts card Base/flavor switcher (multi-flavor supplement + pet).
+  const [factsFlavor, setFactsFlavor] = React.useState<'BASE' | string>('BASE')
 
   React.useEffect(() => {
     if (!draftId) { setLoading(false); return }
@@ -1098,9 +1117,30 @@ export function ReviewSummary({
           {hasFacts && (
             <RailCard icon={Beaker} title="Facts label">
               <div style={{ ...LABEL_STYLE, marginBottom: 10 }}>{d.labelArtifact}</div>
+              {/* Multi-flavor supplement / pet — Base + flavor switcher. */}
+              {(() => {
+                const ff = d.flavorFacts ?? []
+                if (ff.length === 0) return null
+                const activeFF = factsFlavor === 'BASE' ? null : ff.find((f) => f.id === factsFlavor) ?? null
+                return (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }} role="tablist" aria-label="Facts by flavor">
+                    <FactsFlavorTab label="Base" active={factsFlavor === 'BASE'} onClick={() => setFactsFlavor('BASE')} />
+                    {ff.map((f) => (
+                      <FactsFlavorTab key={f.id} label={f.name} swatchHex={f.swatchHex} active={activeFF?.id === f.id} onClick={() => setFactsFlavor(f.id)} />
+                    ))}
+                  </div>
+                )
+              })()}
+              {(() => {
+                // Resolve the shown panel — the active flavor's, else the base.
+                const ff = d.flavorFacts ?? []
+                const activeFF = factsFlavor === 'BASE' ? null : ff.find((f) => f.id === factsFlavor) ?? null
+                const supPanel = activeFF?.panel ?? (d.factsPanel?.panel.format === 'SUPPLEMENT_FACTS' ? d.factsPanel.panel : null)
+                const petFacts = activeFF?.petFacts ?? d.petFacts
+                return (
               <div style={{ display: 'grid', placeItems: 'center', gap: 12 }}>
-                {d.factsPanel && d.factsPanel.panel.format === 'SUPPLEMENT_FACTS' ? (
-                  <SupplementFactsSvg data={d.factsPanel.panel} widthPx={280} />
+                {supPanel ? (
+                  <SupplementFactsSvg data={supPanel} widthPx={280} />
                 ) : d.factsPanel ? (
                   <NutritionFactsSvg
                     data={d.factsPanel.panel}
@@ -1120,16 +1160,18 @@ export function ReviewSummary({
                   />
                 )}
 
-                {d.petFacts && (
+                {petFacts && (
                   <GuaranteedAnalysisSvg
-                    gaRows={d.petFacts.gaRows}
-                    ingredients={d.petFacts.ingredients}
-                    adequacyStatement={d.petFacts.adequacyStatement ?? undefined}
-                    feedingDirections={d.petFacts.feedingDirections ?? undefined}
+                    gaRows={petFacts.gaRows}
+                    ingredients={petFacts.ingredients}
+                    adequacyStatement={petFacts.adequacyStatement ?? undefined}
+                    feedingDirections={petFacts.feedingDirections ?? undefined}
                     widthPx={280}
                   />
                 )}
               </div>
+                )
+              })()}
 
               {d.factsPanel?.declared && (
                 <p style={{ ...CAPTION_STYLE, marginTop: 10, textAlign: 'center' }}>
