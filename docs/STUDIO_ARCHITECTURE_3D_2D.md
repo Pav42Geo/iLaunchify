@@ -96,8 +96,15 @@ Well-trodden and low-risk:
   `LivePreview3DDock` (floating bottom-right in the creator Design Studio) re-snapshots the
   Fabric canvas on edit events (`object:modified/added/removed`, `text:changed`, throttled
   ~450ms) and re-textures the model, so the 3D updates AS YOU DESIGN. Two-line mount in
-  `CanvasLayoutShell` (dock owns its own state + canvas subscription). Remaining Phase 2b:
-  **click a 3D panel → focus that panel's 2D editor** (raycaster `faceIndex`/`uv` → panel).
+  `CanvasLayoutShell` (dock owns its own state + canvas subscription).
+- **Phase 2b:** ✅ DONE 2026-07-01. **Click the 3D model → select the matching element on the
+  2D canvas.** `Dieline3DViewer` raycasts a click (not a drag) to the hit `uv` and fires
+  `onSurfaceClick({u,v})`; `LivePreview3DDock` maps the UV to die-cut pixels
+  (`u·widthMm·pxPerMm`, `v·heightMm·pxPerMm`) and hit-tests Fabric objects top-down (skipping
+  non-selectable die-line/guides/locked panels), then `setActiveObject`. NOTE: mapping assumes
+  the die-cut occupies the canvas from origin; browser-unverified — eyeball, may need a
+  trim-origin offset if selection lands off. Multi-panel per-surface routing is the Phase 3
+  extension (needs per-surface UV binding).
 - **Phase 3:** multi-panel material groups + per-surface die-line binding, so a box maps each
   face to its die-line and preview.
 - **Always:** prepress export comes from the vector die-line, never from the 3D texture.

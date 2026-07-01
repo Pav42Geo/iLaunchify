@@ -34,6 +34,31 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
   const [open, setOpen] = React.useState(false)
   const [expanded, setExpanded] = React.useState(false)
   const [snapshot, setSnapshot] = React.useState<string | null>(null)
+
+  // Phase 2b — click a spot on the 3D model → select the matching design element on the 2D
+  // canvas. Maps the hit UV (0..1 across the die-cut) to canvas pixels and hit-tests objects
+  // top-down, skipping non-selectable ones (die-line, guides, locked truth panels).
+  function selectAtUv(uv: { u: number; v: number }) {
+    if (!canvas) return
+    const c = canvas as unknown as {
+      getObjects?: () => Array<{ selectable?: boolean; evented?: boolean; getBoundingRect?: (a?: boolean, b?: boolean) => { left: number; top: number; width: number; height: number } }>
+      setActiveObject?: (o: unknown) => void
+      requestRenderAll?: () => void
+    }
+    const px = uv.u * dieCut.widthMm * pxPerMm
+    const py = uv.v * dieCut.heightMm * pxPerMm
+    const objs = c.getObjects?.() ?? []
+    for (let i = objs.length - 1; i >= 0; i--) {
+      const o = objs[i]
+      if (!o || o.selectable === false || o.evented === false || !o.getBoundingRect) continue
+      const r = o.getBoundingRect(true, true)
+      if (px >= r.left && px <= r.left + r.width && py >= r.top && py <= r.top + r.height) {
+        c.setActiveObject?.(o)
+        c.requestRenderAll?.()
+        return
+      }
+    }
+  }
   // null = auto (derive from the product's die-cut category); otherwise a manual override so
   // the creator can preview the same label on a different container shape.
   const [shapeOverride, setShapeOverride] = React.useState<DielineShapeKind | null>(null)
@@ -105,6 +130,9 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
           <BoxIcon className="h-3.5 w-3.5 text-pink-600" /> Live 3D preview
         </span>
         <div className="flex items-center gap-0.5">
+          <button type="button" onClick={downloadShot} aria-label="Download 3D image" title="Download 3D image" className="rounded-md p-1 text-ink-400 hover:bg-ink-50 hover:text-ink-700">
+            <Download className="h-3.5 w-3.5" />
+          </button>
           <button type="button" onClick={() => setExpanded((v) => !v)} aria-label={expanded ? 'Shrink' : 'Expand'} title={expanded ? 'Shrink' : 'Expand'} className="rounded-md p-1 text-ink-400 hover:bg-ink-50 hover:text-ink-700">
             {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
           </button>
@@ -122,6 +150,8 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
             textureImageUrl={snapshot}
             baseColor="#f4f2ee"
             className="flex h-full w-full flex-col p-2"
+            captureRef={captureRef}
+            onSurfaceClick={selectAtUv}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-[12px] text-ink-400">Preparing preview…</div>
@@ -135,7 +165,7 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
         <ShapeBtn label="Box" active={shapeOverride === 'BOX'} onClick={() => setShapeOverride('BOX')} />
         <ShapeBtn label="Flat" active={shapeOverride === 'FLAT'} onClick={() => setShapeOverride('FLAT')} />
       </div>
-      <p className="px-3 pb-1.5 text-[10px] leading-snug text-ink-400">Updates as you design · preview only, not the print file.</p>
+      <p className="px-3 pb-1.5 text-[10px] leading-snug text-ink-400">Updates as you design · click the model to select that element · preview only, not the print file.</p>
     </div>
   )
 }

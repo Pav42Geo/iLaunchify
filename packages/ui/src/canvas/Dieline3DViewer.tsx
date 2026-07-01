@@ -63,6 +63,13 @@ export interface Dieline3DViewerProps {
   /** Substrate base colour (hex). */
   baseColor?: string
   className?: string
+  /** When provided, the viewer sets `.current` to a function that captures the current
+   *  frame as a PNG data URL (for "download 3D image"). Requires preserveDrawingBuffer. */
+  captureRef?: React.MutableRefObject<(() => string | null) | null>
+  /** Click-to-edit (Studio 3D+2D Phase 2b): fired on a click (not a drag) on the printed
+   *  surface with the hit's UV in 0..1 (u = left→right, v = top→bottom of the texture), so
+   *  the host can select the matching element on the 2D canvas. */
+  onSurfaceClick?: (uv: { u: number; v: number }) => void
 }
 
 function rasterTexture(url: string): THREE.Texture {
@@ -85,7 +92,11 @@ export function Dieline3DViewer({
   textureImageUrl,
   baseColor = '#f2efe7',
   className,
+  captureRef,
+  onSurfaceClick,
 }: Dieline3DViewerProps) {
+  const clickRef = useRef(onSurfaceClick)
+  clickRef.current = onSurfaceClick
   const mountRef = useRef<HTMLDivElement | null>(null)
   const [open, setOpen] = useState(0) // 0 = closed, 1 = open
   const openRef = useRef(open)
@@ -105,7 +116,10 @@ export function Dieline3DViewer({
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
     camera.position.set(0, 1.4, 5)
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })
+    // Expose a frame-capture fn for "download 3D image". preserveDrawingBuffer keeps the
+    // backbuffer readable so toDataURL returns the rendered frame (not a blank canvas).
+    if (captureRef) captureRef.current = () => renderer.domElement.toDataURL('image/png')
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     mount.appendChild(renderer.domElement)
     renderer.domElement.style.width = '100%'
@@ -169,12 +183,29 @@ export function Dieline3DViewer({
     let rotX = -0.35
     let rotY = 0.5
     let dragging = false
+    let moved = false
     let lastX = 0
     let lastY = 0
-    const onDown = (e: PointerEvent) => { dragging = true; lastX = e.clientX; lastY = e.clientY; renderer.domElement.style.cursor = 'grabbing' }
-    const onUp = () => { dragging = false; renderer.domElement.style.cursor = 'grab' }
+    const raycaster = new THREE.Raycaster()
+    const ndc = new THREE.Vector2()
+    const onDown = (e: PointerEvent) => { dragging = true; moved = false; lastX = e.clientX; lastY = e.clientY; renderer.domElement.style.cursor = 'grabbing' }
+    const onUp = (e: PointerEvent) => {
+      const wasDragging = dragging
+      dragging = false
+      renderer.domElement.style.cursor = 'grab'
+      // A click (no meaningful drag) on the printed surface → report the hit UV.
+      if (!wasDragging || moved || !clickRef.current) return
+      const rect = renderer.domElement.getBoundingClientRect()
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+      raycaster.setFromCamera(ndc, camera)
+      const hits = raycaster.intersectObjects(group.children, true)
+      const hit = hits.find((h) => h.uv)
+      if (hit && hit.uv) clickRef.current({ u: hit.uv.x, v: 1 - hit.uv.y })
+    }
     const onMove = (e: PointerEvent) => {
       if (!dragging) return
+      if (Math.abs(e.clientX - lastX) + Math.abs(e.clientY - lastY) > 2) moved = true
       rotY += (e.clientX - lastX) * 0.01
       rotX += (e.clientY - lastY) * 0.01
       rotX = Math.max(-1.3, Math.min(1.3, rotX))
@@ -210,6 +241,7 @@ export function Dieline3DViewer({
     loop()
 
     return () => {
+      if (captureRef) captureRef.current = null
       cancelAnimationFrame(raf)
       ro.disconnect()
       renderer.domElement.removeEventListener('pointerdown', onDown)
