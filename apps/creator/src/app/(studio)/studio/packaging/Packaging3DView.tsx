@@ -132,7 +132,10 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
         const scene = new THREE.Scene()
         scene.background = new THREE.Color(0xf4f4f5)
         const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100)
-        camera.position.set(0, 0.6, 6)
+        // Frame the model centred: sit slightly above/back and LOOK AT the origin. Without
+        // lookAt the camera stared down -Z and the package hung low + clipped off the bottom.
+        camera.position.set(0, 0.8, 7)
+        camera.lookAt(0, 0, 0)
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         renderer.setSize(W, H)
