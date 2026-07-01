@@ -18,6 +18,28 @@ export interface FlavorRecipeView {
   ingredients: IngredientRow[]
   addOns: IngredientAddOn[]
   nutrition: PanelData | null
+  /** True when this flavor's panel was DECLARED by the manufacturer ("I already
+   *  have my data", per-flavor) — the studio shows the typed statement + a
+   *  "Declared by the manufacturer" note instead of the swap UI. */
+  declared?: boolean
+  /** Manufacturer-typed ingredient statement (declared flavors only). */
+  declaredIngredientStatement?: string
+}
+
+/** Narrow a (possibly wrapped) declaredPanel blob to its PanelData + statement.
+ *  The stored shape is `{ panel, ingredientStatement, netQuantity, allergens }`;
+ *  older/flat rows may store the PanelData directly. */
+function readDeclaredPanel(v: unknown): { panel: PanelData; ingredientStatement: string } | null {
+  if (!v || typeof v !== 'object') return null
+  const wrap = v as { panel?: unknown; ingredientStatement?: unknown }
+  const raw = (wrap.panel ?? v) as { format?: unknown; rows?: unknown }
+  if (!raw || typeof raw !== 'object' || !('format' in raw) || !Array.isArray((raw as { rows?: unknown }).rows)) {
+    return null
+  }
+  return {
+    panel: raw as PanelData,
+    ingredientStatement: typeof wrap.ingredientStatement === 'string' ? wrap.ingredientStatement : '',
+  }
 }
 
 function displayAllergens(flags: string[] | null | undefined): string[] {
@@ -31,6 +53,7 @@ interface FlavorRow { weightG: unknown; label?: string | null; baseIngredient: R
 interface FlavorOpt { id: string; calloutText: string | null; ingredient: ResolvedIng }
 interface FlavorPresetRow {
   id: string; name: string; swatchHex: string | null
+  declaredPanel: unknown
   recipeSlots: FlavorRow[]
   recipeOptionals: FlavorOpt[]
 }
@@ -54,7 +77,7 @@ export async function getTemplateFlavorRecipes(slug: string): Promise<FlavorReci
           where: { status: 'ACTIVE', recipeSlots: { some: {} } },
           orderBy: { sortOrder: 'asc' },
           select: {
-            id: true, name: true, swatchHex: true,
+            id: true, name: true, swatchHex: true, declaredPanel: true,
             recipeSlots: {
               orderBy: { displayOrder: 'asc' },
               select: { weightG: true, label: true, baseIngredient: { select: ING_SELECT }, replacements: { orderBy: { displayOrder: 'asc' }, select: { id: true, ingredient: { select: ING_SELECT } } } },
@@ -73,6 +96,23 @@ export async function getTemplateFlavorRecipes(slug: string): Promise<FlavorReci
     const canComputeFacts = tmpl.labelingType === 'FOOD' && tmpl.nutrientSource !== 'DECLARED' && servingSizeG > 0
 
     return tmpl.flavorPresets.map((fp) => {
+      // DECLARED flavor ("I already have my data", per-flavor) — the manufacturer
+      // typed the panel. Show it verbatim + the typed ingredient statement, and
+      // skip the computed swap UI (a declared flavor has one synthetic slot).
+      const declared = readDeclaredPanel(fp.declaredPanel)
+      if (declared) {
+        return {
+          id: fp.id,
+          name: fp.name,
+          swatchHex: fp.swatchHex,
+          ingredients: [] as IngredientRow[],
+          addOns: [] as IngredientAddOn[],
+          nutrition: declared.panel,
+          declared: true,
+          declaredIngredientStatement: declared.ingredientStatement,
+        }
+      }
+
       const totalG = fp.recipeSlots.reduce((sum, s) => sum + (Number(s.weightG) || 0), 0)
       const ingredients: IngredientRow[] = fp.recipeSlots.map((s, i) => {
         const ing = s.baseIngredient

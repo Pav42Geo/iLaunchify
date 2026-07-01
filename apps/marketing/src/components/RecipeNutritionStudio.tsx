@@ -42,6 +42,10 @@ export interface FlavorView {
   ingredients: IngredientRow[]
   addOns?: IngredientAddOn[]
   nutrition?: PanelData | null
+  /** Manufacturer-declared flavor — show the typed statement + a declared note
+   *  instead of the computed swap UI. */
+  declared?: boolean
+  declaredIngredientStatement?: string
 }
 
 export interface RecipeNutritionStudioProps {
@@ -592,8 +596,23 @@ export function RecipeNutritionStudio({
             )}
           </div>
 
-          {/* 2 — Ingredients (live label-declaration statement) */}
-          {ingredientStatement.length > 0 && (
+          {/* 2 — Ingredients (live label-declaration statement). A DECLARED flavor
+              shows the manufacturer's typed statement verbatim (no swap UI). */}
+          {activeFlavor?.declared ? (
+            (activeFlavor.declaredIngredientStatement ?? '').trim().length > 0 && (
+              <div className={cardCx}>
+                <header className="mb-2 flex items-center justify-between gap-2">
+                  <div className={cardLabelCx}>Ingredients</div>
+                </header>
+                <p className="text-[12.5px] leading-relaxed text-ink-700">
+                  {activeFlavor.declaredIngredientStatement!.trim().replace(/\.*$/, '')}.
+                </p>
+                <p className="mt-2 text-[11px] leading-snug text-ink-400">
+                  Declared by the manufacturer for {activeFlavor.name}.
+                </p>
+              </div>
+            )
+          ) : ingredientStatement.length > 0 && (
             <div className={cardCx}>
               <header className="mb-2 flex items-center justify-between gap-2">
                 <div className={cardLabelCx}>Ingredients</div>
