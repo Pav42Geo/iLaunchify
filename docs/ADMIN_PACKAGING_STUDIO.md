@@ -171,10 +171,13 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
 
 ## Phased build plan
 
-- **P0 — Spec + typed surface model.** Lock the enriched `PackagingSurface` JSON shape +
-  a pure `@ilaunchify/ui` helper (`resolvePackagingSurfaces`) + golden tests. (No UI.)
-- **P1 — Admin model library.** Admin-app page: list/create/import `PackagingType`s by
-  category (glTF upload to R2, topology picker, 3D thumbnail). Header icon → this.
+- **P0 — Spec + typed surface model.** ✅ DONE 2026-07-01. `packages/ui/src/lib/
+  packaging-surfaces.ts` — `PackagingSurface` + `resolvePackagingSurfaces` /
+  `serializePackagingSurfaces` + helpers, JSON-first, legacy-compatible, golden test green.
+- **P1 — Admin model library.** ✅ DONE 2026-07-01 (create + status; glTF import UI is
+  P1.5). `apps/admin/.../packaging-studio` — visual grid by category, KPI strip, create
+  model (name/topology/category), surface + die-line counts via the resolver. Header icon
+  "Packaging Studio (Admin)" (Box) + sidebar entry. "Author 3D surfaces" is the disabled P2 seam.
 - **P2 — 3D authoring canvas.** Creator-app admin route mounting the three.js studio;
   define/label surfaces, set role/part/bleed, place clickable hotspots (raycast +
   CSS2DRenderer).

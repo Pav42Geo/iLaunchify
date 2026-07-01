@@ -23,7 +23,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Store, Palette } from 'lucide-react'
+import { Home, Store, Palette, Box } from 'lucide-react'
 import { cn } from '@ilaunchify/ui'
 
 // Cross-app destinations. Dev defaults match the monorepo ports
@@ -37,7 +37,7 @@ import { cn } from '@ilaunchify/ui'
 const MARKETING_BASE = process.env.NEXT_PUBLIC_MARKETING_URL ?? 'http://localhost:3010'
 
 interface TabDef {
-  key: 'home' | 'marketplace' | 'studio'
+  key: 'home' | 'marketplace' | 'studio' | 'packaging'
   label: string
   href: string
   /** Whether the link points outside this app (uses <a> instead of <Link>). */
@@ -69,7 +69,7 @@ const TABS: TabDef[] = [
   },
   {
     key: 'studio',
-    label: 'Design Studio',
+    label: 'Design Studio (Admin)',
     // Bridges to the creator Design Studio in admin template-author mode via a same-app
     // endpoint that ESTABLISHES the creator (:3000) session first in dev, so it opens
     // reliably instead of bouncing to login. Falls back to a blank surface if no
@@ -78,6 +78,15 @@ const TABS: TabDef[] = [
     external: true, // renders as <a target="_blank"> — the endpoint 302s cross-app
     isActive: () => false,
     Icon: Palette,
+  },
+  {
+    key: 'packaging',
+    label: 'Packaging Studio (Admin)',
+    // Visual packaging model library (internal admin route). 3D authoring canvas is P2.
+    href: '/packaging-studio',
+    external: false,
+    isActive: (p) => p.startsWith('/packaging-studio'),
+    Icon: Box,
   },
 ]
 

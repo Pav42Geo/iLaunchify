@@ -28,6 +28,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { Capability } from '@ilaunchify/auth'
 import {
+  Box,
   Database,
   LayoutDashboard,
   LayoutTemplate,
@@ -333,6 +334,7 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Die-lines', icon: Layout, href: '/dielines' },
         { kind: 'item', label: 'AI Generator', icon: Sparkles, href: '/ai-generator', capability: 'catalog:write' },
         { kind: 'item', label: 'AI Template Pool', icon: Sparkles, href: '/ai-generator/pool', capability: 'catalog:write' },
+        { kind: 'item', label: 'Packaging Studio', icon: Box, href: '/packaging-studio', capability: 'catalog:write' },
         { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
         { kind: 'item', label: 'Container Die-lines', icon: Boxes, href: '/asset-management/packaging-containers' },
       ],
