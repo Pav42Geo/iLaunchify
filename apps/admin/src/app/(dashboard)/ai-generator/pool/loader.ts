@@ -1,9 +1,20 @@
 // Admin generated-templates pool (AI_PACKAGING_GENERATOR §8). Lists EVERY creator
-// AI generation (READY) across the platform so admins can browse, shortlist
-// ("feature"), and promote the best into the Starter (premium) gallery. Read side
-// only; mutations live in actions.ts. Cast-guarded so it degrades before db:push.
+// AI generation (READY) so admins can BROWSE for reference and pull a design's STYLE
+// (its brief) into their own generator for inspiration.
+//
+// Creator generations are the creator's work: the admin pool is strictly READ-ONLY.
+// No featuring, promoting, publishing, or downloading of creators' actual designs.
+// Cast-guarded so it degrades before db:push.
 
 import { prisma } from '@ilaunchify/db'
+
+/** The reusable brief carried into the admin generator for "use as inspiration". */
+export interface PoolBrief {
+  descriptor?: string
+  styleTags: string[]
+  colorTags: string[]
+  elementTags: string[]
+}
 
 export interface PoolItem {
   id: string
@@ -11,20 +22,15 @@ export interface PoolItem {
   creatorName: string
   domain: string
   containerCategory: string | null
-  aspectBucket: string | null
-  favorited: boolean
-  featured: boolean
-  promoted: boolean // already saved as a premium template
-  thumbnailUrl?: string
   createdAtIso: string
+  thumbnailUrl?: string
+  brief: PoolBrief
 }
 
 export interface PoolKpis {
   total: number
   thisWeek: number
-  favorited: number
-  featured: number
-  promoted: number
+  creators: number
 }
 
 export interface PoolData {
@@ -37,16 +43,16 @@ type Row = {
   id: string
   title: string | null
   promptJson: unknown
-  favorited: boolean | null
-  featured: boolean | null
-  savedTemplateId: string | null
   containerCategory: string | null
-  aspectBucket: string | null
   createdAt: Date
   authorUserId: string
 }
 
-/** All READY creator generations, newest first (capped), + KPI roll-ups. */
+function strArr(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+}
+
+/** All READY creator generations, newest first (capped), + KPI roll-ups. Read-only. */
 export async function loadGenerationPool(): Promise<PoolData> {
   const rows = (await (
     prisma as unknown as { aiDesignGeneration: { findMany: (a: unknown) => Promise<Row[]> } }
@@ -55,22 +61,10 @@ export async function loadGenerationPool(): Promise<PoolData> {
       where: { scope: 'CREATOR', status: 'READY' },
       orderBy: { createdAt: 'desc' },
       take: 300,
-      select: {
-        id: true,
-        title: true,
-        promptJson: true,
-        favorited: true,
-        featured: true,
-        savedTemplateId: true,
-        containerCategory: true,
-        aspectBucket: true,
-        createdAt: true,
-        authorUserId: true,
-      },
+      select: { id: true, title: true, promptJson: true, containerCategory: true, createdAt: true, authorUserId: true },
     })
     .catch(() => [])) as Row[]
 
-  // Resolve author display names in one query.
   const userIds = Array.from(new Set(rows.map((r) => r.authorUserId)))
   const users = userIds.length
     ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } }).catch(() => [])
@@ -87,22 +81,21 @@ export async function loadGenerationPool(): Promise<PoolData> {
       creatorName: nameById.get(r.authorUserId) ?? 'Creator',
       domain: typeof p.domain === 'string' ? p.domain : 'FOOD',
       containerCategory: r.containerCategory,
-      aspectBucket: r.aspectBucket,
-      favorited: Boolean(r.favorited),
-      featured: Boolean(r.featured),
-      promoted: Boolean(r.savedTemplateId),
-      thumbnailUrl: undefined, // R2 variation image (fills in with persistence)
       createdAtIso: r.createdAt.toISOString(),
+      thumbnailUrl: undefined, // view-only reference (fills in with R2)
+      brief: {
+        descriptor: typeof brief.descriptor === 'string' ? brief.descriptor : undefined,
+        styleTags: strArr(brief.styleTags),
+        colorTags: strArr(brief.colorTags),
+        elementTags: strArr(brief.elementTags),
+      },
     }
   })
 
   const kpis: PoolKpis = {
     total: items.length,
     thisWeek: items.filter((i) => Date.parse(i.createdAtIso) >= weekAgo).length,
-    favorited: items.filter((i) => i.favorited).length,
-    featured: items.filter((i) => i.featured).length,
-    promoted: items.filter((i) => i.promoted).length,
+    creators: userIds.length,
   }
-  const domains = Array.from(new Set(items.map((i) => i.domain)))
-  return { items, kpis, domains }
+  return { items, kpis, domains: Array.from(new Set(items.map((i) => i.domain))) }
 }

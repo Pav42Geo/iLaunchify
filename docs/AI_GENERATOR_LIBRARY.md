@@ -53,16 +53,20 @@ Server actions: `getTemplateLibrary(scope)`, `toggleGenerationFavorite(id)`,
 `getGenerationBrief(id)`. UI: `TemplateLibrary.tsx` (grid + filters), `AiCreateWorkspace.tsx`
 (full-page Create|Library tabs); the drawer hosts the same two tabs.
 
-## Admin pool (all creators)
+## Admin pool (all creators) — READ-ONLY
 
-`/ai-generator/pool` (catalog:write) — the platform-wide view of **every** creator
-generation. KPI strip (total / this week / favorites / featured / promoted), lens filters
-(all / featured / favorited / promoted), domain filter, search (concept or creator).
-Per card the admin can **Feature** (shortlist, `featured` flag), **Promote to Starter**
-(publishes a premium `BrandTemplate` from the concept — needs a persisted image, so R2-gated),
-and **Studio** (deep-link to author a premium template from the concept). Actions:
-`setGenerationFeatured`, `promoteGenerationToStarter` (uses `getOrCreateSystemTemplatesBrand`
-+ `createBrandTemplate`). Additive `featured` column.
+**Creator generations are the creator's work.** The admin pool (`/ai-generator/pool`,
+catalog:write) is a strictly **read-only** window on every creator generation. The admin can:
+
+- **Browse** for reference (KPI strip: total / this week / creators; domain filter; search).
+- **Use as inspiration** — open the admin generator seeded with a concept's **style brief only**
+  (descriptor + style/colour/element chips, passed as URL params), producing NEW original art.
+
+The admin has **no write access** to creator generations and **cannot** feature, promote,
+publish, download, or otherwise republish a creator's actual design anywhere. There are no
+admin server actions on `AiDesignGeneration` — the pool loader is read-only, and the only
+control is the inspiration deep-link (which carries text, never the image). This is a
+deliberate IP guarantee (Pavel 2026-07-01).
 
 ## Gated on the same db:push
 

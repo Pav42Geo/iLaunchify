@@ -1,7 +1,8 @@
 // Admin — AI generated-templates pool (AI_PACKAGING_GENERATOR §8).
-// Browse EVERY creator generation, shortlist ("feature"), and promote the best into
-// the Starter (premium) gallery. Follows the locked admin surface (hero band + KPI
-// strip + filter chips + gallery). catalog:write-gated.
+// READ-ONLY window on every creator generation. Creator work stays the creator's:
+// the admin can browse for reference and pull a design's STYLE into the generator for
+// inspiration, but can never feature, promote, publish, or download creators' designs.
+// Follows the locked admin surface (hero band + KPI strip). catalog:write-gated.
 
 import { requireCapability } from '@ilaunchify/auth'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
@@ -20,7 +21,7 @@ export default async function AiPoolPage() {
       <AdminPageHeader
         eyebrow="Design Templates · AI"
         title="Generated templates pool"
-        description="Every AI concept creators have generated. Shortlist the strongest and promote them into the Starter gallery."
+        description="A read-only window on every AI concept creators have generated — browse for reference and pull a design's style into the generator for inspiration."
       />
       <PoolClient data={data} creatorUrl={creatorUrl} />
     </div>

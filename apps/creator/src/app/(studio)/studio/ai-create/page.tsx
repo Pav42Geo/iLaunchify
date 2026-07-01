@@ -47,15 +47,31 @@ const fixture: DielineTarget[] = [
 export default async function AiCreatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ productId?: string; admin?: string; dieCut?: string; domain?: string }>
+  searchParams: Promise<{
+    productId?: string
+    admin?: string
+    dieCut?: string
+    domain?: string
+    descriptor?: string
+    styles?: string
+    colors?: string
+    elements?: string
+  }>
 }) {
-  const { productId, admin, dieCut, domain } = await searchParams
+  const { productId, admin, dieCut, domain, descriptor, styles, colors, elements } = await searchParams
 
   // Admin (Design Studio → Templates) mode: generate against a die-cut, save as a library
   // template. Capability-gated — a normal creator can never reach this branch.
   if (admin) {
     await requireCapability('catalog:write')
     const data = await loadAdminAiCreateProps({ dieCutId: dieCut, domain })
+    // Optional "use as inspiration" seed from the admin pool — STYLE brief only (never a
+    // creator's actual design); the admin generates NEW original art from it.
+    const csv = (v?: string) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : [])
+    const initialBrief =
+      descriptor || styles || colors || elements
+        ? { descriptor: descriptor || undefined, styleTags: csv(styles), colorTags: csv(colors), elementTags: csv(elements) }
+        : undefined
     if (!data) {
       return (
         <div className="mx-auto max-w-5xl space-y-4 p-6">
@@ -70,7 +86,7 @@ export default async function AiCreatePage({
         <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-600">
           Admin template mode — generating for <strong>{data.productName}</strong>. Save concepts to the library from the Studio.
         </div>
-        <AiCreatePanelClient {...data.props} />
+        <AiCreatePanelClient {...data.props} initialBrief={initialBrief} />
       </div>
     )
   }
