@@ -1734,7 +1734,7 @@ function ToolDrawer({
             onSaveAsTemplate={onSaveAsTemplate}
           />
         )}
-        {tool === 'ai' && <AiCreateDrawer canvas={canvas} productId={productId} onClose={onClose} />}
+        {tool === 'ai' && <AiCreateDrawer canvas={canvas} productId={productId} dieCut={dieCut} onClose={onClose} />}
         {tool === 'brand' && (
           <BrandDrawer
             canvas={canvas}
@@ -1769,6 +1769,8 @@ function ToolDrawer({
         )}
         {tool !== 'product' &&
           tool !== 'label' &&
+          tool !== 'templates' &&
+          tool !== 'ai' &&
           tool !== 'brand' &&
           tool !== 'text' &&
           tool !== 'elements' &&

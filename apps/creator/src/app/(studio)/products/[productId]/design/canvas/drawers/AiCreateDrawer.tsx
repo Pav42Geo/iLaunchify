@@ -15,15 +15,32 @@
 
 import * as React from 'react'
 import { Sparkles, Lock, CheckCircle2, AlertTriangle, Loader2, Wand2, ArrowUpRight } from 'lucide-react'
-import { planGeneration, addImageFromUrl, type FabricCanvas, type GenerationPlan } from '@ilaunchify/ui'
+import { planGeneration, addImageFromUrl, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
 import { getAiCreateDrawerProps, generateAiConcepts } from '../../../../../studio/ai-create/actions'
-import type { AiCreatePanelProps } from '../../../../../studio/ai-create/AiCreatePanel'
+import type { AiCreatePanelProps, DielineTarget } from '../../../../../studio/ai-create/AiCreatePanel'
 
 type Props = {
   canvas: FabricCanvas | null
   productId: string
+  /** The canvas's active die-cut — the fallback surface when the product has no
+   *  confirmed PackagingDieline yet (the generator always has a die-line to target). */
+  dieCut: DieCutSpec
   onClose: () => void
+}
+
+/** Synthesise a single full-bleed target from the canvas die-cut. */
+function targetFromDieCut(dieCut: DieCutSpec): DielineTarget {
+  const layout: FrameLayout = {
+    version: 1,
+    frames: [{ id: 'creative', kind: 'IMAGERY', box: { x: 0.04, y: 0.04, w: 0.92, h: 0.92 }, required: false, source: 'PLATFORM' }],
+  }
+  return {
+    id: `diecut:${dieCut.name}`,
+    label: dieCut.name || 'This die-line',
+    layout,
+    surface: { widthMm: dieCut.widthMm || 100, heightMm: dieCut.heightMm || 150 },
+  }
 }
 
 const chipCls = (on: boolean) =>
@@ -37,7 +54,7 @@ function conceptToSource(concept: string): string {
   return c
 }
 
-export function AiCreateDrawer({ canvas, productId, onClose }: Props) {
+export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
   void onClose
   const [loading, setLoading] = React.useState(true)
   const [props, setProps] = React.useState<AiCreatePanelProps | null>(null)
@@ -68,7 +85,9 @@ export function AiCreateDrawer({ canvas, productId, onClose }: Props) {
   }, [productId])
 
   const gated = props?.tier === 'maker'
-  const target = props?.dielines[0] ?? null
+  // Prefer a confirmed product die-line; otherwise fall back to the canvas die-cut so the
+  // generator always has a surface to design (mirrors what the canvas itself renders).
+  const target = props ? props.dielines[0] ?? targetFromDieCut(dieCut) : null
   const styleOptions = props?.styleOptions ?? []
   const colorOptions = props?.colorOptions ?? []
   const elementOptions = props?.elementOptions ?? []
@@ -144,7 +163,7 @@ export function AiCreateDrawer({ canvas, productId, onClose }: Props) {
   if (!props || !target) {
     return (
       <div className="p-4 text-[12.5px] text-ink-600">
-        This product has no confirmed die-line yet. Add a packaging die-line, then generate a design here.
+        Couldn’t load this product. Try reopening the Studio.
       </div>
     )
   }
