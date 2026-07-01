@@ -500,3 +500,59 @@ export async function deleteBrandTemplate(brandId: string, templateId: string): 
   await d.delete({ where: { id: templateId } })
   return true
 }
+
+/** Owner-guarded rename: only renames a template that belongs to `brandId`.
+ *  Returns false on pre-migration / not found / wrong owner. */
+export async function renameBrandTemplate(
+  brandId: string,
+  templateId: string,
+  name: string,
+): Promise<boolean> {
+  const d = delegate()
+  if (!d) return false
+  const clean = name.trim().slice(0, 80)
+  if (!clean) return false
+  const row = await d
+    .findUnique({ where: { id: templateId }, select: { brandId: true } })
+    .catch(() => null)
+  if (!row || row.brandId !== brandId) return false
+  await d.update({ where: { id: templateId }, data: { name: clean } })
+  return true
+}
+
+/** Owner-guarded duplicate: clones a template within the SAME brand kit (copies
+ *  the layout + die-line/domain targeting; the copy is never premium). The caller
+ *  enforces the per-tier cap first. Returns the new id, or null. */
+export async function duplicateBrandTemplate(
+  brandId: string,
+  templateId: string,
+): Promise<{ id: string } | null> {
+  const d = delegate()
+  if (!d) return null
+  const row = await d
+    .findUnique({
+      where: { id: templateId },
+      select: {
+        brandId: true, name: true, canvasJson: true, thumbnailUrl: true, packagingTypeId: true,
+        colorRoles: true, domain: true, matchMode: true, targetContainerCategory: true,
+        targetTopology: true, aspectBucket: true, targetSurface: true,
+      },
+    })
+    .catch(() => null)
+  if (!row || row.brandId !== brandId) return null
+  return createBrandTemplate({
+    brandId,
+    name: `${String(row.name)} copy`.slice(0, 80),
+    canvasJson: String(row.canvasJson ?? '{}'),
+    thumbnailUrl: (row.thumbnailUrl as string | null) ?? null,
+    packagingTypeId: (row.packagingTypeId as string | null) ?? null,
+    isPremium: false,
+    colorRoles: (row.colorRoles as TemplateColorRoles | null) ?? null,
+    domain: (row.domain as string | null) ?? null,
+    matchMode: (row.matchMode as 'SHAPE_FAMILY' | 'EXACT' | null) ?? null,
+    targetContainerCategory: (row.targetContainerCategory as string | null) ?? null,
+    targetTopology: (row.targetTopology as string | null) ?? null,
+    aspectBucket: (row.aspectBucket as string | null) ?? null,
+    targetSurface: (row.targetSurface as string | null) ?? null,
+  })
+}

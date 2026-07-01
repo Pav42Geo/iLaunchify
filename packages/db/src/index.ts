@@ -246,6 +246,8 @@ export {
   countBrandTemplates,
   createBrandTemplate,
   deleteBrandTemplate,
+  renameBrandTemplate,
+  duplicateBrandTemplate,
   listPremiumTemplates,
   getPremiumTemplate,
   getOrCreateSystemTemplatesBrand,
