@@ -295,3 +295,15 @@ export {
   type CanonicalShapeOption,
   type DielineCanonicalLink,
 } from './dieline-canonical'
+
+export {
+  getAiGeneratorSettings,
+  upsertAiGeneratorSettings,
+  listAiOutputPresets,
+  upsertAiOutputPreset,
+  deleteAiOutputPreset,
+  AI_GENERATOR_SETTINGS_DEFAULTS,
+  type AiGeneratorSettingsValues,
+  type AiGeneratorSettingsPatch,
+  type AiOutputPresetRow,
+} from './ai-generator-settings'

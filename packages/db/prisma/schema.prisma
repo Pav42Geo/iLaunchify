@@ -7077,3 +7077,25 @@ model AiOutputPreset {
 
   @@index([active])
 }
+
+/// Admin-editable config backbone for the AI Packaging Generator
+/// (AI_PACKAGING_GENERATOR §7/§12/§13/§16). Singleton, like OrderSettings. Stores
+/// OVERRIDES as JSON; consumers merge them over the pure-engine defaults
+/// (tierLimits / domainPreset / resolveOutputPolicy). Additive — NEEDS Mac db push.
+model AiGeneratorSettings {
+  id String @id @default("default")
+
+  /// Per-tier generation-limit overrides: { builder: { draftCyclesPerPeriod, finalizeMpBudget, maxSingleRenderMp, storageBytes }, agency: {…} }.
+  tierLimitsJson     Json?
+  /// Per-domain creative vocab overrides: { FOOD: { styles[], colors[], elements[], promptTone, substrateHint }, … }.
+  domainVocabJson    Json?
+  /// Per-tier output-policy overrides: { builder: { allowedFormats[], maxDpi, allowCmyk, allowLayered, … }, … }.
+  outputPoliciesJson Json?
+  /// Provider tuning (model ids, per-MP cost overrides) — env holds the KEYS, this the knobs.
+  providerJson       Json?
+  /// Feature gates: { blockExportUntilCompliant, blockSaveOverStorage, makerGenerationDisabled }.
+  gatesJson          Json?
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
