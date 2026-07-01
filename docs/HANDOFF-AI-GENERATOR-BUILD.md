@@ -86,9 +86,33 @@ Flavour-family mode appears automatically for any product with ≥2 flavours.
   - `runDraftGeneration()` / `runFinalizeGeneration()` — budget-checked orchestrators that
     debit the metering ledgers (draft cycle; finalize MP + stored bytes) and NEVER call a
     provider over budget. Return a `debit` the server action persists (package stays DB-free).
-  Remaining P3 wiring (needs **`FAL_KEY` + `RECRAFT_API_KEY`** in the Integrations registry):
-  the `AiDesignGeneration` FSM server action that calls these orchestrators, persists
-  `AiGenerationUsage` / `GenerationStorageUsage`, and returns refs to `AiCreatePanel.onGenerate`.
+  The `AiDesignGeneration` FSM server action is **BUILT** —
+  `apps/creator/src/app/(studio)/studio/ai-create/actions.ts`:
+  - `generateAiConcepts(input)` — draft cycle: tier-gated, budget-checked, creates an
+    `AiDesignGeneration` row (RUNNING→READY|FAILED), debits `AiGenerationUsage.draftCyclesUsed`,
+    writes an `AI_DESIGN_GENERATED` audit row, returns concept SVG/URLs. Runs against the
+    stub today; swaps to fal/Recraft automatically when keys are present.
+  - `finalizeAiConcept(input)` — upscales the chosen concept, debits `finalizeMpUsed` +
+    `GenerationStorageUsage.kilobytesUsed`, audits `AI_DESIGN_FINALIZED`.
+  All writes cast-guarded (compile/degrade before `db:push`). Added `AiDesignGeneration`
+  to `AUDIT_ENTITY_TYPES`.
+
+  Remaining to go fully live:
+  1. **Keys** — `FAL_KEY` + `RECRAFT_API_KEY` in the Integrations registry (env). Until then
+     the stub serves; the action + metering already work.
+  2. **Panel wiring** (with the Studio-tab mount, Code's shell) — pass the server action to
+     `AiCreatePanel` as an RSC server-action prop and call it from `generate()`. Draft px
+     ≈ 1 MP preserving the die-line aspect; prompt/negative/mask come from the plan:
+     ```ts
+     const refs = await generateAiConcepts({
+       prompt: plan.prompt, negativePrompt: plan.negativePrompt, mask: plan.maskSvg,
+       widthPx, heightPx, dielineId, productTemplateId, brandId,
+       brandPalette, domain, market, complianceJson: plan.compliance, seed,
+     })
+     // refs.ok ? refs.images : []
+     ```
+  3. **R2 persistence** of `variationKeys` (currently images return inline; storage upload
+     is the one leaf left).
 - Coordinated-set + flavor-series UI; template management (product-aware matching +
   per-creator compliance re-validation).
 

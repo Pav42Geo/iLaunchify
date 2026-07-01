@@ -93,6 +93,7 @@ export const AUDIT_ENTITY_TYPES = [
   'BrandTemplate', // reusable brand design templates (docs/BRAND_KIT_PROPOSAL.md)
   'AiGeneratorSettings', // AI generator admin config (docs/AI_PACKAGING_GENERATOR.md §7/§13/§16)
   'AiOutputPreset', // admin-authored output presets (docs/AI_PACKAGING_GENERATOR.md §16)
+  'AiDesignGeneration', // a generation run — draft/finalize (docs/AI_PACKAGING_GENERATOR.md §5)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
