@@ -126,11 +126,14 @@ export function Dieline3DViewer({
     const h = Math.max(1, heightMm)
     const d = Math.max(1, depthMm && depthMm > 0 ? depthMm : Math.min(w, h) * 0.5)
     const maxDim = Math.max(w, h, d)
-    const s = 2 / maxDim // normalize so the largest side ≈ 2 units
+    const s = 1.6 / maxDim // normalize so the largest side ≈ 1.6 units (leaves fit margin)
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
-    camera.position.set(0, 1.4, 5)
+    // Slight 3/4 elevation, then LOOK AT the model's centre (origin) so it sits centred and
+    // fully framed — without lookAt the camera stared down -Z and the model hung low/clipped.
+    camera.position.set(0, 0.6, 6)
+    camera.lookAt(0, 0, 0)
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })
     // Expose a frame-capture fn for "download 3D image". preserveDrawingBuffer keeps the
