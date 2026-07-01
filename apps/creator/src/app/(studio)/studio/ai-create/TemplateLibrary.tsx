@@ -15,7 +15,7 @@
 // =============================================================================
 
 import * as React from 'react'
-import { Sparkles, Star, Wand2, ImageDown, Loader2, CheckCircle2, Search, Pencil, Check, Archive, ArchiveRestore } from 'lucide-react'
+import { Sparkles, Star, Wand2, ImageDown, Loader2, CheckCircle2, Search, Pencil, Check, Archive, ArchiveRestore, CheckSquare, Square, X } from 'lucide-react'
 import { getTemplateLibrary, toggleGenerationFavorite, renameGeneration, setGenerationArchived } from './actions'
 import { libraryItemMatchesShapes, type LibraryItem, type LibraryScope, type ShapeKey } from './library-types'
 
@@ -56,6 +56,8 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
   const [query, setQuery] = React.useState('')
   const [sort, setSort] = React.useState<SortKey>('relevant')
   const [showArchived, setShowArchived] = React.useState(false)
+  const [selectMode, setSelectMode] = React.useState(false)
+  const [selected, setSelected] = React.useState<Set<string>>(new Set())
 
   React.useEffect(() => {
     let cancelled = false
@@ -116,6 +118,34 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
     if (!res || !res.ok) setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, archived: item.archived } : x)))
   }
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function exitSelect() {
+    setSelectMode(false)
+    setSelected(new Set())
+  }
+
+  async function bulkFavorite() {
+    const ids = shown.filter((i) => selected.has(i.id) && i.source === 'GENERATION' && !i.favorited).map((i) => i.id)
+    setItems((prev) => prev.map((x) => (selected.has(x.id) ? { ...x, favorited: true } : x)))
+    await Promise.all(ids.map((id) => toggleGenerationFavorite(id).catch(() => null)))
+    exitSelect()
+  }
+
+  async function bulkArchive() {
+    const ids = shown.filter((i) => selected.has(i.id) && i.source === 'GENERATION' && !i.archived).map((i) => i.id)
+    setItems((prev) => prev.map((x) => (ids.includes(x.id) ? { ...x, archived: true } : x)))
+    await Promise.all(ids.map((id) => setGenerationArchived(id, true).catch(() => null)))
+    exitSelect()
+  }
+
   return (
     <div className="space-y-3">
       {/* Tabs */}
@@ -147,7 +177,32 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
           <option value="newest">Newest</option>
           <option value="name">Name</option>
         </select>
+        {scope !== 'starter' && (
+          <button
+            onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11.5px] font-semibold transition ${selectMode ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+          >
+            <CheckSquare className="h-3.5 w-3.5" /> Select
+          </button>
+        )}
       </div>
+
+      {/* Bulk action bar */}
+      {selectMode && (
+        <div className="flex items-center gap-2 rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-[12px]">
+          <span className="font-semibold text-pink-800">{selected.size} selected</span>
+          <span className="flex-1" />
+          <button onClick={bulkFavorite} disabled={selected.size === 0} className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 font-semibold text-ink-700 disabled:opacity-40">
+            <Star className="h-3 w-3" /> Favorite
+          </button>
+          <button onClick={bulkArchive} disabled={selected.size === 0} className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 font-semibold text-ink-700 disabled:opacity-40">
+            <Archive className="h-3 w-3" /> Archive
+          </button>
+          <button onClick={exitSelect} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-ink-500 hover:text-ink-800">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-1.5">
@@ -200,6 +255,9 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
               key={item.id}
               item={item}
               fits={libraryItemMatchesShapes(item, productShapes)}
+              selectMode={selectMode && item.source === 'GENERATION'}
+              selected={selected.has(item.id)}
+              onToggleSelect={() => toggleSelect(item.id)}
               onFav={() => toggleFav(item)}
               onRename={item.source === 'GENERATION' ? (t) => rename(item, t) : undefined}
               onArchive={item.source === 'GENERATION' ? (a) => setArchived(item, a) : undefined}
@@ -216,6 +274,9 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
 function LibraryCard({
   item,
   fits,
+  selectMode,
+  selected,
+  onToggleSelect,
   onFav,
   onRename,
   onArchive,
@@ -224,6 +285,9 @@ function LibraryCard({
 }: {
   item: LibraryItem
   fits: boolean
+  selectMode?: boolean
+  selected?: boolean
+  onToggleSelect?: () => void
   onFav: () => void
   onRename?: (title: string) => void
   onArchive?: (archived: boolean) => void
@@ -240,15 +304,23 @@ function LibraryCard({
   }
 
   return (
-    <div className="group overflow-hidden rounded-xl border border-ink-200 bg-white">
-      <div className="relative flex aspect-square items-center justify-center bg-ink-50">
+    <div className={`group overflow-hidden rounded-xl border bg-white ${selected ? 'border-pink-500 ring-1 ring-pink-300' : 'border-ink-200'}`}>
+      <div
+        className={`relative flex aspect-square items-center justify-center bg-ink-50 ${selectMode ? 'cursor-pointer' : ''}`}
+        onClick={selectMode ? onToggleSelect : undefined}
+      >
         {item.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" />
         ) : (
           <Sparkles className="h-6 w-6 text-ink-300" />
         )}
-        {item.source === 'GENERATION' && (
+        {selectMode && (
+          <span className={`absolute left-1.5 top-1.5 rounded ${selected ? 'text-pink-600' : 'text-ink-400'}`}>
+            {selected ? <CheckSquare className="h-4 w-4 fill-pink-100" /> : <Square className="h-4 w-4" />}
+          </span>
+        )}
+        {!selectMode && item.source === 'GENERATION' && (
           <button
             onClick={onFav}
             className={`absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 shadow-sm transition ${item.favorited ? 'text-pink-600' : 'text-ink-400 hover:text-ink-700'}`}
@@ -288,12 +360,12 @@ function LibraryCard({
         ) : (
           <div className="flex items-center gap-1">
             <p className="min-w-0 flex-1 truncate text-[11px] font-semibold text-ink-800">{item.title}</p>
-            {onRename && (
+            {!selectMode && onRename && (
               <button onClick={() => setEditing(true)} className="shrink-0 text-ink-300 opacity-0 transition group-hover:opacity-100 hover:text-ink-600" aria-label="Rename">
                 <Pencil className="h-3 w-3" />
               </button>
             )}
-            {onArchive && (
+            {!selectMode && onArchive && (
               <button
                 onClick={() => onArchive(!item.archived)}
                 className="shrink-0 text-ink-300 opacity-0 transition group-hover:opacity-100 hover:text-ink-600"
@@ -309,7 +381,7 @@ function LibraryCard({
           {DOMAIN_LABEL[item.domain] ?? item.domain}
           {item.containerCategory ? ` · ${item.containerCategory.replace(/_/g, ' ').toLowerCase()}` : ''}
         </p>
-        {(onInspire || onCanvas) && (
+        {!selectMode && (onInspire || onCanvas) && (
           <div className="mt-1 flex gap-1">
             {onCanvas && (
               <button onClick={onCanvas} className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-ink-900 px-2 py-1 text-[10px] font-semibold text-white hover:bg-ink-800">
