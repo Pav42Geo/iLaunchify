@@ -323,15 +323,9 @@ const APPLICATIONS: SidebarRegion = {
       icon: LayoutTemplate,
       children: [
         { kind: 'item', label: 'Design Templates', icon: LayoutTemplate, href: '/templates', capability: 'catalog:write' },
-        {
-          kind: 'item',
-          label: 'Admin Mode',
-          icon: Brush,
-          // Opens the real creator Design Studio in admin template-author mode (cross-app).
-          // Live — product-less Studio mount smoke-tested (Pavel 2026-06-23).
-          href: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/studio?adminMode=1`,
-          capability: 'catalog:write',
-        },
+        // Design Studio (Admin Mode) is reached from the top-bar Design Studio icon
+        // (→ /go/design-studio), which establishes the creator session first. The old
+        // sidebar "Admin Mode" link was removed (Pavel 2026-07-01).
         // Studio-feeding building blocks (Pavel 2026-06-23 unification) — the catalogs
         // the Design Studio consumes, gathered here from Asset Management.
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },

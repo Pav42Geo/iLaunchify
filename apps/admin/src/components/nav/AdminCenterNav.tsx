@@ -35,7 +35,6 @@ import { cn } from '@ilaunchify/ui'
 // self-contained. If we add a real cross-app URL helper later we can
 // migrate at that point.
 const MARKETING_BASE = process.env.NEXT_PUBLIC_MARKETING_URL ?? 'http://localhost:3010'
-const CREATOR_BASE = process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'
 
 interface TabDef {
   key: 'home' | 'marketplace' | 'studio'
@@ -71,10 +70,12 @@ const TABS: TabDef[] = [
   {
     key: 'studio',
     label: 'Design Studio',
-    // Opens the real creator Design Studio in admin template-author mode (Admin Mode
-    // shipped 2026-06-23). Falls back to a blank surface if no die-cuts are seeded.
-    href: `${CREATOR_BASE}/studio?adminMode=1`,
-    external: true,
+    // Bridges to the creator Design Studio in admin template-author mode via a same-app
+    // endpoint that ESTABLISHES the creator (:3000) session first in dev, so it opens
+    // reliably instead of bouncing to login. Falls back to a blank surface if no
+    // die-cuts are seeded.
+    href: '/go/design-studio',
+    external: true, // renders as <a target="_blank"> — the endpoint 302s cross-app
     isActive: () => false,
     Icon: Palette,
   },
