@@ -48,6 +48,24 @@ After `db:generate`, the cast-guarded db helpers (`getAiGeneratorSettings`,
   chip vocab (`resolveDomainOptions`). No `productId` → fixture demo fallback (placeholder art).
   Cast-guarded, so it returns usable props even pre-`db:push`.
 
+## 3b. Multi-die-line + flavour modes (live in the panel)
+`AiCreatePanel` now has three scopes, driven by props (no new deps):
+- **One die-line** — original single-surface flow.
+- **Coordinate set** (shows when >1 die-line) — `planGenerationSet`: one shared brief +
+  seed across every die-line, per-surface preview cards, **package-level** compliance
+  (a required mark only needs to appear on one surface). Jar front + circular top label,
+  box + outer carton, any multi-die-line pack.
+- **Flavour family** (shows when the optional `flavors` prop has >1 entry) —
+  `planFlavorSeries`: generate ONE master, then N flavours **derive** from it (recolour
+  the `FLAVOR_ACCENT` role + swap the flavour element), so the brand look is identical and
+  only the accent differs. Shows the locked master, the derived-flavour strip (accent
+  swatch + element cue), held-constant invariants, and any rejected specs.
+
+The fixture demo exercises all three. **Follow-up:** the real loader does not yet pass
+`flavors` — decide where per-flavour accent colours come from (add `accentHex` to
+`FlavorPreset`, or derive from the brand palette) before wiring `loadAiCreateProps` to
+populate it.
+
 ## 4. Still to build (next slices)
 - Mount `AiCreatePanel` into the **Studio → Templates** tab, passing `?productId` of the
   open product. (Studio shell is Code's hot file — coordinate; the loader + route are ready

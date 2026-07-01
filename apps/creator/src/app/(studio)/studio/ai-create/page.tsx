@@ -81,6 +81,12 @@ export default async function AiCreatePage({
         substrateLabel="kraft carton"
         domain="FOOD"
         dielines={fixture}
+        flavors={[
+          { id: 'strawberry', name: 'Strawberry', accentHex: '#E5486B', elementCue: 'sliced strawberries' },
+          { id: 'cocoa', name: 'Double Cocoa', accentHex: '#6B4423', elementCue: 'cocoa nibs' },
+          { id: 'matcha', name: 'Matcha', accentHex: '#7BA05B', elementCue: 'matcha whisk swirl' },
+          { id: 'vanilla', name: 'Vanilla Bean', accentHex: '#E7D6A8', elementCue: 'vanilla pods' },
+        ]}
         tier="agency"
         creditsRemaining={30}
       />
