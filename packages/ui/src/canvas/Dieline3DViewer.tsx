@@ -14,12 +14,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import type { BoxFace } from '../lib/surface-face'
+
+export type { BoxFace }
 
 export type DielineShapeKind = 'BOX' | 'CYLINDER' | 'FLAT'
 
 // Phase 3 — multi-panel box. Each face can carry its own die-line/surface texture, and a
 // click reports which face was hit so the host can route to that surface's 2D editor.
-export type BoxFace = 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom'
+// (BoxFace lives in ../lib/surface-face so the pure face-binding engine has no three dep.)
 export interface FaceTexture {
   svg?: string | null
   imageUrl?: string | null

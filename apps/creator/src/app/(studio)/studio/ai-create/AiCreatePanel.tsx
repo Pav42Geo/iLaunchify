@@ -23,7 +23,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge } from 'lucide-react'
-import { planGeneration, planGenerationSet, Dieline3DViewer, shapeKindForCategory, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief, type BoxFace, type FaceTexture } from '@ilaunchify/ui'
+import { planGeneration, planGenerationSet, Dieline3DViewer, shapeKindForCategory, assignSurfaceFaces, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief, type BoxFace, type FaceTexture } from '@ilaunchify/ui'
 import { planFlavorSeries, type LabelingDomain, type MarketCode, type FlavorSpec, type FlavorSeriesPlan } from '@ilaunchify/ai-design'
 import { clampOutput, formatBytes, type OutputPolicy, type OutputSettings, type OutputFormat } from '@ilaunchify/imagegen'
 
@@ -235,10 +235,12 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const setFaces = useMemo<Partial<Record<BoxFace, FaceTexture>> | null>(() => {
     const surfaces = setVariants.length > 0 ? setVariants : (setPlan?.perDieline ?? []).map((d) => ({ id: d.id, label: d.label, svg: d.plan.previewSvg }))
     if (surfaces.length === 0) return null
-    const order: BoxFace[] = ['front', 'back', 'top', 'left', 'right', 'bottom']
+    // Deterministic per-surface → face binding by die-line NAME (Front→front, Lid→top, …),
+    // collision-free, with a stable fill for unmatched surfaces. Replaces index-order.
+    const assigned = assignSurfaceFaces(surfaces.map((s) => ({ label: s.label })))
     const f: Partial<Record<BoxFace, FaceTexture>> = {}
-    surfaces.slice(0, 6).forEach((s, i) => {
-      const face = order[i]
+    surfaces.forEach((s, i) => {
+      const face = assigned[i]
       if (face) f[face] = { svg: s.svg }
     })
     return f

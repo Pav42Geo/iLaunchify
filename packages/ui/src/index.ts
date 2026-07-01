@@ -29,6 +29,7 @@ export * from './lib/lead'
 export * from './lib/pack-model'
 export * from './lib/template-match'
 export * from './lib/packaging-surfaces'
+export * from './lib/surface-face'
 export { brandThemeToCssVars } from './brand-theme'
 export * from './fonts'
 
@@ -139,7 +140,7 @@ export {
 export { parseDielineSvg, type DielineParseResult, type ParsedBox as DielineParsedBox, type ParsedFold as DielineParsedFold } from './canvas/dielineParse'
 export { parsePdfDieline, type PdfDielineResult, type PdfDielineBox } from './canvas/dielinePdf'
 export { SUBSTRATE_SWATCHES, substrateById, defaultSubstrateId, type SubstrateSwatch } from './canvas/substrates'
-export { Dieline3DViewer, shapeKindForCategory, type Dieline3DViewerProps, type DielineShapeKind, type BoxFace, type FaceTexture } from './canvas/Dieline3DViewer'
+export { Dieline3DViewer, shapeKindForCategory, type Dieline3DViewerProps, type DielineShapeKind, type FaceTexture } from './canvas/Dieline3DViewer'
 export {
   classifyFrames,
   pickSurfaceFrames,

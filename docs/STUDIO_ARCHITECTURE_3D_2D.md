@@ -106,7 +106,12 @@ Well-trodden and low-risk:
   trim-origin offset if selection lands off. Multi-panel per-surface routing is the Phase 3
   extension (needs per-surface UV binding).
 - **Phase 3:** multi-panel material groups + per-surface die-line binding, so a box maps each
-  face to its die-line and preview.
+  face to its die-line and preview. ✅ Multi-panel box + **deterministic surface→face binding**
+  (`assignSurfaceFaces` in `@ilaunchify/ui/lib/surface-face` — keyword rules Front→front,
+  Lid/Cap→top, Back/Nutrition→back, …, collision-free, stable fill; 12-check node test).
+  Wired into the AI coordinated-set 3D box (replaced the index-order heuristic). Remaining:
+  **real glTF per-surface UV binding** — texture an imported model's actual faces from bound
+  die-lines (needs a glTF material-name ↔ surface convention).
 - **Always:** prepress export comes from the vector die-line, never from the 3D texture.
 
 ## Bottom line
