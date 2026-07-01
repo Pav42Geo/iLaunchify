@@ -228,6 +228,9 @@ export default function ProtoPage() {
         </Step>
       </StepBand>
 
+      {/* ===================== TOOLS SHOWCASE ===================== */}
+      <ToolsShowcase />
+
       {/* ===================== ARCHETYPES ===================== */}
       <Reveal>
         <section className="border-y border-ink-200 bg-ink-50/50 px-6 py-24 sm:px-8">
@@ -607,6 +610,136 @@ function StudioScreen({ compact = false }: { compact?: boolean }) {
         )}
       </div>
     </Win>
+  )
+}
+
+/* ============================ tools showcase ============================ */
+// §4 of docs/LANDING_MESSAGING.md — spotlight each studio (Pacdora-style: big
+// visual + tight benefit line). Our tools are steps in launching a branded
+// product, not standalone design software. Die-line Generator = Coming soon.
+
+function ToolStatus({ soon = false }: { soon?: boolean }) {
+  if (soon) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-pill border border-warning-400/30 bg-warning-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-warning-400">
+        Coming soon
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-pill border border-neon-500/30 bg-neon-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-neon-500">
+      <span className="h-1.5 w-1.5 rounded-full bg-neon-500" /> Live now
+    </span>
+  )
+}
+
+/** Dark canvas frame that holds each tool's mockup. */
+function ToolStage({ light = false, children }: { light?: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className="relative flex h-56 items-center justify-center overflow-hidden rounded-2xl border"
+      style={
+        light
+          ? { background: '#F7F6F2', borderColor: 'rgba(255,255,255,0.10)' }
+          : { background: 'radial-gradient(120% 90% at 50% 26%, #1A1A22 0%, #0B0B10 84%)', borderColor: 'rgba(255,255,255,0.08)' }
+      }
+    >
+      <div aria-hidden className="absolute inset-0 opacity-40" style={{ backgroundImage: light ? 'none' : 'radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+      {children}
+    </div>
+  )
+}
+
+function ToolsShowcase() {
+  const cards = [
+    {
+      name: 'Design Studio',
+      soon: false,
+      benefit: 'Drop your logo, colors, and copy onto a real product. FDA Nutrition & Supplement Facts panels render live as you design.',
+      visual: (
+        <ToolStage>
+          <div className="relative flex items-center gap-3">
+            <Parallax speed={0.04}>
+              <Pouch hue="#B5FF3D" dark label="GREENS" sub="Super Greens" className="w-[112px] drop-shadow-[0_18px_30px_rgba(0,0,0,0.5)]" />
+            </Parallax>
+            <div className="scale-[0.82] origin-left drop-shadow-[0_18px_30px_rgba(0,0,0,0.5)]"><SuppFacts /></div>
+          </div>
+          <span className="absolute left-3 top-3 rounded-pill border border-neon-500/40 bg-ink-900/70 px-2.5 py-1 text-[10px] font-bold text-neon-500">● FDA panel valid</span>
+        </ToolStage>
+      ),
+    },
+    {
+      name: 'Packaging Studio',
+      soon: false,
+      benefit: 'Wrap it in retail-ready packaging — cartons, pouches, and labels — built to print.',
+      visual: (
+        <ToolStage>
+          <div className="relative flex items-end gap-2">
+            <Pouch hue="#6E8BFF" dark={false} label="HYDRATE" sub="Electrolytes" className="w-[74px] opacity-90 drop-shadow-[0_14px_24px_rgba(0,0,0,0.5)]" />
+            <Pouch hue="#FF2E63" dark={false} label="PROTEIN" sub="Whey Isolate" className="w-[104px] drop-shadow-[0_18px_30px_rgba(0,0,0,0.55)]" />
+            <Pouch hue="#C9B6FF" dark={false} label="CALM" sub="Adaptogens" className="w-[74px] opacity-90 drop-shadow-[0_14px_24px_rgba(0,0,0,0.5)]" />
+          </div>
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-pill border border-white/15 bg-ink-900/70 px-2.5 py-1 text-[10px] font-bold text-ink-200">
+            <Boxes strokeWidth={2.5} className="h-3 w-3" /> Print-ready
+          </span>
+        </ToolStage>
+      ),
+    },
+    {
+      name: 'Die-line Generator',
+      soon: true,
+      benefit: 'Auto-generate print-perfect die-lines for any pack format — bleed, safe area, and fold marks placed for you.',
+      visual: (
+        <ToolStage light>
+          <div className="h-[86%] w-[92%]"><DielineNet /></div>
+        </ToolStage>
+      ),
+    },
+  ]
+
+  return (
+    <section id="tools" className="relative overflow-hidden bg-ink-900 px-6 py-24 sm:px-8">
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.5]" style={{ background: 'radial-gradient(680px 380px at 12% -10%, rgba(255,46,99,0.18), transparent 60%), radial-gradient(640px 400px at 96% 8%, rgba(110,139,255,0.16), transparent 62%)' }} />
+      <div className="relative mx-auto max-w-[1400px]">
+        <Reveal>
+          <div className="mb-14 max-w-2xl">
+            <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-neon-500">The studios</div>
+            <h2 className="mb-4 font-display text-4xl font-bold leading-[1.02] tracking-[-0.035em] text-white sm:text-5xl">
+              Pro tools.{' '}
+              <span className="font-serif italic font-medium text-pink-400">No pro required.</span>
+            </h2>
+            <p className="text-[17px] leading-[1.6] text-ink-300">
+              The same studios our manufacturers ship real product with — in your hands, in the browser. No files, no back-and-forth with a designer.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          {cards.map((c, i) => (
+            <Reveal key={c.name} delay={i * 90}>
+              <div className="flex h-full flex-col rounded-3xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20">
+                {c.visual}
+                <div className="mt-5 flex-1 px-1 pb-1">
+                  <div className="mb-2.5 flex items-center gap-2.5">
+                    <h3 className="font-display text-[20px] font-bold tracking-[-0.02em] text-white">{c.name}</h3>
+                    <ToolStatus soon={c.soon} />
+                  </div>
+                  <p className="text-[14.5px] leading-[1.55] text-ink-300">{c.benefit}</p>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal delay={120}>
+          <div className="mt-12">
+            <Button variant="primary" size="lg" asChild>
+              <Link href="/marketplace">Start with a product <ArrowRight strokeWidth={2.5} className="h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </Reveal>
+      </div>
+    </section>
   )
 }
 
