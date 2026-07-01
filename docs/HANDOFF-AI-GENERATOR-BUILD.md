@@ -76,8 +76,19 @@ Flavour-family mode appears automatically for any product with ≥2 flavours.
     the AI panel does NOT need its own save-as-template path.
   - `onExport({ svg, dielineId, label })` — hand off to the existing label export.
   Until wired, both buttons are hidden (no dead controls).
-- P3: fal + Recraft adapters implementing `ImageGenProvider`; `AiDesignGeneration` FSM
-  wired to debit usage via the metering engine. **Needs `FAL_KEY` + `RECRAFT_API_KEY`.**
+- P3 provider layer — **BUILT** in `@ilaunchify/imagegen` (golden-tested, keyless-safe):
+  - `createStubProvider()` — deterministic, no network; the pipeline always runs.
+  - `createFalProvider()` — FLUX.1 raster + upscale over fal's REST (`Authorization: Key`);
+    ControlNet model path used when a keep-clear mask is present.
+  - `createRecraftProvider()` — vector type via `api.recraft.ai` (`style: vector_illustration`).
+  - `resolveImageGenProvider(env)` — composes fal (raster/upscale) + Recraft (vector),
+    falling back to the stub per-capability; reports `fullyReal` + `backing`.
+  - `runDraftGeneration()` / `runFinalizeGeneration()` — budget-checked orchestrators that
+    debit the metering ledgers (draft cycle; finalize MP + stored bytes) and NEVER call a
+    provider over budget. Return a `debit` the server action persists (package stays DB-free).
+  Remaining P3 wiring (needs **`FAL_KEY` + `RECRAFT_API_KEY`** in the Integrations registry):
+  the `AiDesignGeneration` FSM server action that calls these orchestrators, persists
+  `AiGenerationUsage` / `GenerationStorageUsage`, and returns refs to `AiCreatePanel.onGenerate`.
 - Coordinated-set + flavor-series UI; template management (product-aware matching +
   per-creator compliance re-validation).
 

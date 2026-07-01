@@ -47,3 +47,17 @@ export {
   PROVIDER_ENV,
   providerStatus,
 } from './provider'
+
+// P3 adapters + resolution + orchestration.
+export { createStubProvider } from './adapters/stub'
+export { createFalProvider, type FalConfig } from './adapters/fal'
+export { createRecraftProvider, type RecraftConfig } from './adapters/recraft'
+export { resolveImageGenProvider, type ResolveOptions, type ResolvedProvider } from './resolve'
+export {
+  runDraftGeneration,
+  runFinalizeGeneration,
+  type DraftGenerationInput,
+  type DraftGenerationResult,
+  type FinalizeGenerationInput,
+  type FinalizeGenerationResult,
+} from './orchestrator'
