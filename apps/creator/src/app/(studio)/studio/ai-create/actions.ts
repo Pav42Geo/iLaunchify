@@ -19,6 +19,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { loadAiCreateProps, type AiCreateData } from './loader'
 import {
   resolveImageGenProvider,
   runDraftGeneration,
@@ -28,6 +29,14 @@ import {
   type CreatorBillingTier,
 } from '@ilaunchify/imagegen'
 import type { LabelingDomain, MarketCode } from '@ilaunchify/ai-design'
+
+/** Load the in-canvas AI drawer's props for a product the caller owns (die-line set,
+ *  brand palette, domain, tier, per-domain chip vocab, credits). Thin authed wrapper
+ *  over the shared loader so the Studio drawer can fetch on open. */
+export async function getAiCreateDrawerProps(productId: string): Promise<AiCreateData | null> {
+  const user = await requireUser()
+  return loadAiCreateProps(productId, user.id)
+}
 
 function periodKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`

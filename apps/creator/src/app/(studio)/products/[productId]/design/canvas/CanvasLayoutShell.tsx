@@ -104,6 +104,7 @@ import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
 import { BrandDrawer } from './drawers/BrandDrawer'
 import { TemplatesDrawer } from './drawers/TemplatesDrawer'
+import { AiCreateDrawer } from './drawers/AiCreateDrawer'
 import { TemplateAuthorSaveDialog } from '../../../../studio/TemplateAuthorSaveDialog'
 import { saveAsBrandTemplate } from './brand-actions'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
@@ -871,8 +872,9 @@ export function CanvasLayoutShell({
   }, [])
 
   const scheduleOpen = React.useCallback((key: ToolKey) => {
-    // AI Templator navigates away rather than opening a drawer — don't hover-open it.
-    if (key === 'ai') return
+    // Admin (template-author) AI Templator navigates to the batch page — don't hover-open
+    // it. In creator mode 'ai' opens the in-canvas drawer like any other tool.
+    if (key === 'ai' && templateAuthor) return
     cancelClose()
     if (openTimerRef.current !== null) {
       window.clearTimeout(openTimerRef.current)
@@ -881,7 +883,7 @@ export function CanvasLayoutShell({
       setActiveTool(key)
       openTimerRef.current = null
     }, 60)
-  }, [cancelClose])
+  }, [cancelClose, templateAuthor])
 
   const scheduleClose = React.useCallback(() => {
     // Pinned drawer doesn't auto-close on mouseleave — only explicit
@@ -903,13 +905,13 @@ export function CanvasLayoutShell({
   function toggleTool(key: ToolKey) {
     // AI Templator opens the AI packaging generator for this product's die-line set
     // (its own full-screen studio surface), rather than a slide-out drawer.
-    if (key === 'ai') {
-      // Admin (template-author) mode → generate against the chosen die-cut + domain and
-      // save as a library template. Creator mode → generate for this product's die-lines.
-      const url = templateAuthor
-        ? `/studio/ai-create?admin=1&domain=${encodeURIComponent(templateAuthor.domain)}${templateAuthor.dieCutId ? `&dieCut=${encodeURIComponent(templateAuthor.dieCutId)}` : ''}`
-        : `/studio/ai-create?productId=${productId}`
-      window.location.assign(url)
+    // Admin (template-author) mode → navigate to the full-screen generator against the
+    // chosen die-cut + domain (product-less). Creator mode → open the in-canvas drawer
+    // (falls through to normal tool toggling below).
+    if (key === 'ai' && templateAuthor) {
+      window.location.assign(
+        `/studio/ai-create?admin=1&domain=${encodeURIComponent(templateAuthor.domain)}${templateAuthor.dieCutId ? `&dieCut=${encodeURIComponent(templateAuthor.dieCutId)}` : ''}`,
+      )
       return
     }
     // Click is decisive — cancel any pending hover schedules first.
@@ -1732,6 +1734,7 @@ function ToolDrawer({
             onSaveAsTemplate={onSaveAsTemplate}
           />
         )}
+        {tool === 'ai' && <AiCreateDrawer canvas={canvas} productId={productId} onClose={onClose} />}
         {tool === 'brand' && (
           <BrandDrawer
             canvas={canvas}
