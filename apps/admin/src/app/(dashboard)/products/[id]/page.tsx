@@ -57,6 +57,8 @@ import type {
   FlavorPresetStatus,
 } from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
+import { buildAdminDomainFacts } from './domain-facts'
+import { DomainFactsPanel } from './DomainFactsPanel'
 import {
   cn,
   resolvePackMode,
@@ -1115,6 +1117,16 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
     return Array.isArray(o) && o.length > 0
   })
 
+  // Supplement Facts / Guaranteed Analysis (base + per-flavor). Admin previously
+  // showed FOOD nutrition only; this surfaces the supplement/pet regulated panels
+  // ops needs, with the same engine as the creator PDP + partner Passport.
+  const domainFacts = buildAdminDomainFacts(
+    template.labelingType as string,
+    (template as unknown as { formulationData?: unknown }).formulationData ?? null,
+    template.flavorPresets.map((f) => ({ id: f.id, name: f.name, swatchHex: f.swatchHex })),
+    template.name,
+  )
+
   // KPI strip values
   const openReviewItems = template.reviewItems.filter((r) => !r.resolved)
   const resolvedReviewItems = template.reviewItems.filter((r) => r.resolved)
@@ -1778,6 +1790,24 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
               </ul>
             )}
           </SnapshotCard>
+
+          {/* Supplement Facts / Guaranteed Analysis — base + per-flavor switcher
+              (multi-flavor supplement + pet). Renders only for those domains that
+              carry a formulation panel; FOOD nutrition is shown separately above. */}
+          {domainFacts && (
+            <SnapshotCard
+              id="domain-facts"
+              icon={Beaker}
+              title={domainFacts.kind === 'SUPPLEMENT' ? 'Supplement Facts' : 'Guaranteed Analysis'}
+              subtitle={
+                domainFacts.flavors.length > 0
+                  ? `Base + ${domainFacts.flavors.length} per-flavor panel${domainFacts.flavors.length === 1 ? '' : 's'}`
+                  : 'Base panel'
+              }
+            >
+              <DomainFactsPanel facts={domainFacts} />
+            </SnapshotCard>
+          )}
 
           {/* Cost & Pricing — §6.4 per-variant pricing math + §Tier 1 partner
               tier note. Subscribe-and-save reminder is static for V1. */}
