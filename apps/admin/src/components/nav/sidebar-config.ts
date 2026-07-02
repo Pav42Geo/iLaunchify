@@ -83,6 +83,7 @@ import {
   Warehouse,
   Send,
   Route,
+  PlaneTakeoff,
   SlidersHorizontal,
   RotateCcw,
   Wallet,
@@ -175,9 +176,9 @@ const PRIMARY: SidebarRegion = {
       href: '/orders',
     },
     // ---- Logistics (Phase L1c — docs/LOGISTICS_AND_FULFILLMENT.md §9) --------
-    // Only built surfaces are listed (hide-until-built rule); the remaining
-    // /logistics pages (channel-plans) get added as they ship.
-    // Shipments added in Phase L1.1c; Carriers added in Phase L2b.
+    // Only built surfaces are listed (hide-until-built rule) — all §9 admin
+    // logistics surfaces have now shipped. Shipments added in Phase L1.1c;
+    // Carriers added in Phase L2b; Channel plans added in Phase L3b.
     {
       kind: 'group',
       label: 'Logistics',
@@ -186,6 +187,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Shipments', icon: Send, href: '/logistics/shipments' },
         { kind: 'item', label: 'Carriers', icon: Route, href: '/logistics/carriers' }, // Phase L2 — CarrierServiceRule matrix + integration status
         { kind: 'item', label: 'Fulfillment centers', icon: Warehouse, href: '/logistics/fulfillment-centers' },
+        { kind: 'item', label: 'Channel plans', icon: PlaneTakeoff, href: '/logistics/channel-plans' }, // Phase L3b — ChannelInboundPlan (FBA/WFS/FBT)
         { kind: 'item', label: 'Logistics gates', icon: SlidersHorizontal, href: '/logistics/settings', capability: 'platform:admin' },
       ],
     },

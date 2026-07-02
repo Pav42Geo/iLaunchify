@@ -108,14 +108,16 @@ export interface FulfillmentState {
   // SAVED_ADDRESS / NEW_ADDRESS collapse to the Creator-address card;
   // CLOSEST_WAREHOUSE / SPECIFIC_WAREHOUSE to the Fulfillment-center card;
   // HOLD_AT_MANUFACTURER keeps goods at the producing partner (StorageAgreement).
-  // CHANNEL_INBOUND is intentionally NOT selectable yet — the card renders
-  // disabled until the Phase L3 channel adapters land.
+  // CHANNEL_INBOUND (Phase L3a) ships inventory straight into a sales channel's
+  // FC network (FBA first) — selectable once the creator has a CONNECTED
+  // ChannelConnection AND every channel gate passes (server re-checked at Pay).
   shipToType:
     | 'CLOSEST_WAREHOUSE'
     | 'SPECIFIC_WAREHOUSE'
     | 'SAVED_ADDRESS'
     | 'NEW_ADDRESS'
     | 'HOLD_AT_MANUFACTURER'
+    | 'CHANNEL_INBOUND'
     | null
   // For SPECIFIC_WAREHOUSE — PartnerService.id (must be type=WAREHOUSE).
   warehousePartnerServiceId: string | null
@@ -130,6 +132,9 @@ export interface FulfillmentState {
   // STOCK_RELEASE (pallet-granularity releases). Optional so pre-L1b drafts
   // still load; the server defaults to whichever mode the partner offers.
   storageMode?: 'ON_DEMAND' | 'STOCK_RELEASE' | null
+  // For CHANNEL_INBOUND (Phase L3a) — the creator's CONNECTED
+  // ChannelConnection.id the run ships into. Optional so pre-L3 drafts load.
+  channelConnectionId?: string | null
 }
 
 export interface NewAddressInput {
@@ -223,6 +228,7 @@ export function emptyDraftState(): CheckoutDraftState {
       newAddress: null,
       saveNewAddress: false,
       storageMode: null,
+      channelConnectionId: null,
     },
     accessories: { itemIds: [] },
     viral: { requests: [] },

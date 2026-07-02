@@ -43,6 +43,7 @@ import {
   listDestinationOptions,
   listFulfillmentOptions,
   saveCreatorAddress,
+  type ChannelInboundOption,
   type DestinationOptionsPayload,
   type FulfillmentOptions,
   type HoldStorageOffer,
@@ -257,6 +258,7 @@ function cardOfShipTo(t: FulfillmentState['shipToType']): DestinationCardType | 
   if (t === 'SAVED_ADDRESS' || t === 'NEW_ADDRESS') return 'CREATOR_ADDRESS'
   if (t === 'CLOSEST_WAREHOUSE' || t === 'SPECIFIC_WAREHOUSE') return 'WAREHOUSE_PARTNER'
   if (t === 'HOLD_AT_MANUFACTURER') return 'HOLD_AT_MANUFACTURER'
+  if (t === 'CHANNEL_INBOUND') return 'CHANNEL_INBOUND'
   return null
 }
 
@@ -354,9 +356,19 @@ function ShipToPicker({
           ? 'ON_DEMAND'
           : 'STOCK_RELEASE',
       })
+    } else if (card === 'CHANNEL_INBOUND') {
+      // L3a — default to the first ELIGIBLE connection; the expanded block
+      // lets the creator switch. Server re-checks every gate at Pay.
+      onChange({
+        shipToType: 'CHANNEL_INBOUND',
+        warehousePartnerServiceId: null,
+        savedAddressId: null,
+        newAddress: null,
+        storageMode: null,
+        channelConnectionId:
+          destinations?.channels.find((c) => c.eligible)?.channelConnectionId ?? null,
+      })
     }
-    // CHANNEL_INBOUND is unreachable — the card renders disabled until the
-    // Phase L3 channel adapters land.
   }
 
   return (
@@ -420,6 +432,12 @@ function ShipToPicker({
               onChange={onChange}
               options={options}
               suggestedFc={destinations?.suggestedFc ?? null}
+            />
+          ) : selectedCard === 'CHANNEL_INBOUND' ? (
+            <ChannelInboundBlock
+              state={state}
+              onChange={onChange}
+              channels={destinations?.channels ?? []}
             />
           ) : (
             <HoldAtManufacturerBlock
@@ -723,6 +741,81 @@ function HoldAtManufacturerBlock({
           onClick={() => onChange({ storageMode: 'STOCK_RELEASE' })}
         />
       </div>
+    </div>
+  )
+}
+
+// Ship into my sales channel (Phase L3a) — one radio card per CONNECTED
+// connection. Ineligible connections render disabled with the server's
+// gate-failure copy VERBATIM. The concrete FC address is assigned by the
+// channel at inbound-plan confirmation, so no address entry happens here.
+function ChannelInboundBlock({
+  state,
+  onChange,
+  channels,
+}: {
+  state: FulfillmentState
+  onChange: (patch: Partial<FulfillmentState>) => void
+  channels: ChannelInboundOption[]
+}) {
+  if (channels.length === 0) {
+    return (
+      <p className="text-sm text-ink-500">
+        No connected sales channels yet. Link your seller account in Settings →
+        Channels first.
+      </p>
+    )
+  }
+  const pickedId = state.channelConnectionId ?? null
+  return (
+    <div className="space-y-3">
+      <div role="radiogroup" aria-label="Sales channel" className="grid gap-2 sm:grid-cols-2">
+        {channels.map((c) => {
+          const selected = pickedId === c.channelConnectionId
+          return (
+            <button
+              key={c.channelConnectionId}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={!c.eligible}
+              onClick={
+                c.eligible
+                  ? () => onChange({ channelConnectionId: c.channelConnectionId })
+                  : undefined
+              }
+              className={
+                'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ' +
+                (selected
+                  ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
+                  : c.eligible
+                    ? 'border-ink-200 bg-white hover:bg-ink-50/40'
+                    : 'cursor-not-allowed border-ink-200 bg-white opacity-60')
+              }
+            >
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-ink-900">{c.channelName}</div>
+                {c.externalAccountId && (
+                  <div className="text-[11px] font-mono text-ink-500">
+                    {c.externalAccountId}
+                  </div>
+                )}
+                {!c.eligible &&
+                  c.reasons.map((r) => (
+                    <div key={r} className="mt-1 text-[11px] leading-snug text-ink-400">
+                      {r}
+                    </div>
+                  ))}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-[11px] leading-snug text-ink-500">
+        The channel assigns its receiving fulfillment center(s) when the inbound
+        plan is confirmed — box and pallet labels are generated for your
+        manufacturer at that point.
+      </p>
     </div>
   )
 }

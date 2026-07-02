@@ -17,7 +17,13 @@
 // On webhook completion the existing @ilaunchify/payments handler flips
 // Order → PAID and createDispatches() fires routing.
 
-import { prisma, getSampleSettings, resolveOrderSettings, getLogisticsSettings, isStorageClassEnabled } from '@ilaunchify/db'
+import { prisma, getSampleSettings, resolveOrderSettings, getLogisticsSettings, isLogisticsEnabled, isStorageClassEnabled } from '@ilaunchify/db'
+import {
+  evaluateChannelInboundGates,
+  decidePlacementSplits,
+  type InboundChannel,
+  type PlacementDecision,
+} from '@ilaunchify/shipping'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 import {
   findRouting,
@@ -294,6 +300,7 @@ export async function placeOrderFromCheckoutDraft(
   //        server-re-check HOLD_AT_MANUFACTURER eligibility.
   const shipTo = await resolveShipTo({
     user,
+    productId: product.id,
     draftState: state,
     template: product.productTemplate,
   })
@@ -385,7 +392,13 @@ export async function placeOrderFromCheckoutDraft(
   //        V1 per-unit tiers. HOLD orders have no ship leg at order time
   //        (estimateFlatShipping already returns 0 for them).
   let baseShippingCents = estimateFlatShipping(qty, state.fulfillment.shipToType, orderSettings)
-  if (shipTo.data.shipToType !== 'HOLD_AT_MANUFACTURER') {
+  // CHANNEL_INBOUND carries a placeholder ship-to (the channel assigns FCs at
+  // plan confirmation) — never send it to the carrier API; the flat estimate
+  // stands until the SP-API plan resolves real destinations.
+  if (
+    shipTo.data.shipToType !== 'HOLD_AT_MANUFACTURER' &&
+    shipTo.data.shipToType !== 'CHANNEL_INBOUND'
+  ) {
     const carrierQuote = await quoteCarrierShipping({
       productId: product.id,
       quantity: qty,
@@ -467,6 +480,24 @@ export async function placeOrderFromCheckoutDraft(
   // L1b — HOLD orders attach a StorageAgreement inside the order txn; the id
   // surfaces here for the post-commit audit entry.
   let storageAgreementId: string | null = null
+  // L3a — CHANNEL_INBOUND orders attach a DRAFT ChannelInboundPlan inside the
+  // txn; the id surfaces for the post-commit audit entry. The placement-splits
+  // decision (§7.2 optimizer) is PURE, so it's computed here on V1 estimates:
+  // Amazon's minimal-split placement fee ≈ $0.30/unit; one freight leg from
+  // the shipping quote when we have one, else a $400 LTL-leg fallback; Amazon
+  // typically assigns 4 destinations under optimized splits. Real per-leg
+  // figures replace these when placement options come back from SP-API.
+  let channelInboundPlanId: string | null = null
+  const channelFreightPerDestinationCents = shippingCents > 0 ? shippingCents : 40_000
+  const channelPlacement: PlacementDecision | null =
+    shipTo.data.shipToType === 'CHANNEL_INBOUND' && shipTo.data.channelInbound
+      ? decidePlacementSplits({
+          units: qty,
+          minimalSplitFeePerUnitCents: 30,
+          freightPerDestinationCents: channelFreightPerDestinationCents,
+          optimizedDestinationCount: 4,
+        })
+      : null
 
   const order = await createOrderWithNumber((orderNumber) => prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
@@ -554,6 +585,41 @@ export async function placeOrderFromCheckoutDraft(
         },
       })
       storageAgreementId = agreement.id
+    }
+
+    // L3a — CHANNEL_INBOUND attaches a DRAFT ChannelInboundPlan (LOGISTICS §7.2).
+    // externalPlanId is 'pending-spapi' until Amazon developer credentials land:
+    // the L3b confirm flow calls createInboundPlan, writes the real inboundPlanId
+    // + channel-assigned FC addresses into destinationsJson, and flips DRAFT →
+    // CONFIRMED (manifest becomes immutable — channels fine deviations).
+    if (
+      shipTo.data.shipToType === 'CHANNEL_INBOUND' &&
+      shipTo.data.channelInbound &&
+      channelPlacement
+    ) {
+      const plan = await tx.channelInboundPlan.create({
+        data: {
+          orderId: created.id,
+          channelConnectionId: shipTo.data.channelInbound.channelConnectionId,
+          externalPlanId: 'pending-spapi',
+          placementChoice: channelPlacement.choice,
+          feesJson: {
+            source: 'V1_ESTIMATE', // stubbed pre-SP-API figures, see comment above
+            inputs: {
+              units: qty,
+              minimalSplitFeePerUnitCents: 30,
+              freightPerDestinationCents: channelFreightPerDestinationCents,
+              optimizedDestinationCount: 4,
+            },
+            decision: channelPlacement,
+            gateSnapshot: shipTo.data.channelInbound.gateSnapshot,
+            fnsku: shipTo.data.channelInbound.fnsku,
+          } as unknown as object,
+          status: 'DRAFT',
+        },
+        select: { id: true },
+      })
+      channelInboundPlanId = plan.id
     }
 
     // Consume the applied sample credit. The `status: 'AVAILABLE'` guard in the
@@ -671,6 +737,31 @@ export async function placeOrderFromCheckoutDraft(
         unitsRemaining: qty,
         feeSnapshot: shipTo.data.hold.feeSnapshot,
         referralFeeBps: orderSettings.warehouseReferralFeeBps,
+        surface: 'checkout-wizard',
+      },
+    })
+  }
+  //          L3a — ChannelInboundPlan creation is a mutating action → AuditLog
+  //          row. Logged against the Order entity: 'ChannelInboundPlan' isn't
+  //          in AUDIT_ENTITY_TYPES yet (packages/audit owns that list — same
+  //          precedent as StorageAgreement above).
+  if (channelInboundPlanId && shipTo.data.channelInbound && channelPlacement) {
+    await logAuditAs(user, {
+      entityType: 'Order',
+      entityId: order.id,
+      action: 'CHANNEL_INBOUND_PLAN_CREATED',
+      toValue: 'DRAFT',
+      payload: {
+        channelInboundPlanId,
+        channelConnectionId: shipTo.data.channelInbound.channelConnectionId,
+        channelCode: shipTo.data.channelInbound.channelCode,
+        inboundChannel: shipTo.data.channelInbound.inboundChannel,
+        externalPlanId: 'pending-spapi',
+        placementChoice: channelPlacement.choice,
+        minimalTotalCents: channelPlacement.minimalTotalCents,
+        optimizedTotalCents: channelPlacement.optimizedTotalCents,
+        fnsku: shipTo.data.channelInbound.fnsku,
+        gateSnapshot: shipTo.data.channelInbound.gateSnapshot,
         surface: 'checkout-wizard',
       },
     })
@@ -856,7 +947,7 @@ export async function placeOrderFromCheckoutDraft(
 // =============================================================================
 
 interface ShipToResolved {
-  shipToType: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER' | 'HOLD_AT_MANUFACTURER'
+  shipToType: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER' | 'HOLD_AT_MANUFACTURER' | 'CHANNEL_INBOUND'
   shipToPartnerServiceId: string | null
   contactName: string
   contactPhone: string | null
@@ -884,6 +975,22 @@ interface ShipToResolved {
     partnerServiceId: string
     scoreJson: ReturnType<typeof buildAwardLogPayload>
   }
+  /** L3a — set for CHANNEL_INBOUND orders; drives ChannelInboundPlan creation
+   *  in the order txn. gateSnapshot records what passed at placement time. */
+  channelInbound?: {
+    channelConnectionId: string
+    channelCode: string
+    inboundChannel: InboundChannel
+    fnsku: string
+    gateSnapshot: {
+      storageClass: string
+      hazmatClass: string
+      meltable: boolean
+      shelfLifeDays: number | null
+      daysUntilCheckIn: number
+      channelMinShelfLifeDays: number
+    }
+  }
 }
 
 /** The ProductTemplate slice resolveShipTo needs — owner-pinned manufacturer
@@ -894,14 +1001,20 @@ interface ShipToTemplate {
   storageClass: string
   hazmatClass: string
   labelingType: string
+  // L3a — channel-inbound gate inputs
+  meltable: boolean
+  leadTimeFirstRunDays: number | null
+  leadTimeRepeatDays: number | null
 }
 
 async function resolveShipTo({
   user,
+  productId,
   draftState,
   template,
 }: {
   user: { id: string }
+  productId: string
   draftState: CheckoutDraftState
   template: ShipToTemplate | null
 }): Promise<Result<ShipToResolved>> {
@@ -1121,6 +1234,129 @@ async function resolveShipTo({
     }
   }
 
+  if (f.shipToType === 'CHANNEL_INBOUND') {
+    // L3a — server-side re-check of EVERY gate the destination card promised
+    // (NEVER trust the client): destination gate + per-channel LogisticsSetting
+    // gate + the pure channel gates (temp / meltable window / shelf-life / DG)
+    // + FNSKU presence + connection ownership.
+    if (!f.channelConnectionId) {
+      return { ok: false, error: 'Pick which channel connection this run ships into.' }
+    }
+    // Gate 1 — destination-level admin gate (mirrors resolveDestinationOptions).
+    if (!(await isLogisticsEnabled('destination:CHANNEL_INBOUND'))) {
+      return { ok: false, error: 'Shipping directly into a sales channel is coming soon.' }
+    }
+    // Ownership fence — the connection must be THIS creator's and CONNECTED.
+    const conn = await prisma.channelConnection.findFirst({
+      where: {
+        id: f.channelConnectionId,
+        creatorUserId: user.id,
+        status: 'CONNECTED',
+        channel: { enabled: true },
+      },
+      select: {
+        id: true,
+        channel: { select: { code: true, displayName: true } },
+        productLinks: { where: { productId }, select: { fnsku: true } },
+      },
+    })
+    if (!conn) {
+      return {
+        ok: false,
+        error: 'This channel connection is unavailable — reconnect it in Settings → Channels.',
+      }
+    }
+    const inboundChannel = channelInboundForCode(conn.channel.code)
+    if (!inboundChannel) {
+      return {
+        ok: false,
+        error: `${conn.channel.displayName} has no direct inbound program — ship to a fulfillment center instead.`,
+      }
+    }
+    // Gate 2 — per-channel admin gate (flipping channel_inbound:AMAZON_FBA on
+    // later is the ONLY thing that changes; no schema/UI change needed).
+    if (!(await isLogisticsEnabled(`channel_inbound:${inboundChannel}`))) {
+      return {
+        ok: false,
+        error: `Inbound shipping into ${conn.channel.displayName} isn't enabled yet.`,
+      }
+    }
+    // Gate 3 — FNSKU must be captured before an FBA-bound run can book.
+    const fnsku = conn.productLinks[0]?.fnsku ?? null
+    if (!fnsku) {
+      return { ok: false, error: 'Add the FNSKU for this product in Settings → Channels first.' }
+    }
+    // Gate 4 — the pure channel gates, re-run with fresh server-side inputs.
+    const [shelfAgg, settingsRow] = await Promise.all([
+      template
+        ? prisma.productTemplateVariant.aggregate({
+            where: { productTemplateId: template.id },
+            _min: { shelfLifeDays: true },
+          })
+        : Promise.resolve(null),
+      prisma.orderSettings
+        .findUnique({ where: { id: 'default' }, select: { channelMinShelfLifeDays: true } })
+        .catch(() => null),
+    ])
+    const shelfLifeDays = shelfAgg?._min.shelfLifeDays ?? null
+    const channelMinShelfLifeDays = settingsRow?.channelMinShelfLifeDays ?? 105
+    // Production lead (first-run figure when set, else repeat, else the 28-day
+    // platform default) + 7-day transit fallback until real SP-API transit data.
+    const daysUntilCheckIn =
+      (template?.leadTimeFirstRunDays ?? template?.leadTimeRepeatDays ?? 28) + 7
+    const gate = evaluateChannelInboundGates({
+      channel: inboundChannel,
+      storageClass: template?.storageClass ?? 'AMBIENT',
+      hazmatClass: template?.hazmatClass ?? 'NONE',
+      meltable: template?.meltable ?? false,
+      shelfLifeDays,
+      daysUntilCheckIn,
+      channelMinShelfLifeDays,
+      checkInDate: new Date(Date.now() + daysUntilCheckIn * 24 * 60 * 60 * 1000),
+      // V1: no DG-program enrollment capture exists yet, so hazmat SKUs always
+      // fail this gate — flips when readinessJson capture lands (Phase L3b+).
+      dgProgramApproved: false,
+    })
+    if (!gate.eligible) {
+      return { ok: false, error: gate.reasons[0] ?? 'This product cannot ship into the channel.' }
+    }
+
+    // Ship-to is a PLACEHOLDER block — the channel assigns its receiving FC(s)
+    // only when the inbound plan is confirmed via SP-API; the real addresses
+    // land in ChannelInboundPlan.destinationsJson at that point, and the
+    // manifest/labels are regenerated from there. Until then the Order still
+    // needs a concrete address shape for documents + display.
+    return {
+      ok: true,
+      data: {
+        shipToType: 'CHANNEL_INBOUND',
+        shipToPartnerServiceId: null,
+        contactName: `${conn.channel.displayName} fulfillment network`,
+        contactPhone: null,
+        addressLine1: 'Assigned by channel at inbound plan confirmation',
+        addressLine2: null,
+        city: 'TBD',
+        state: null,
+        postalCode: '00000',
+        country: 'US',
+        channelInbound: {
+          channelConnectionId: conn.id,
+          channelCode: conn.channel.code,
+          inboundChannel,
+          fnsku,
+          gateSnapshot: {
+            storageClass: template?.storageClass ?? 'AMBIENT',
+            hazmatClass: template?.hazmatClass ?? 'NONE',
+            meltable: template?.meltable ?? false,
+            shelfLifeDays,
+            daysUntilCheckIn,
+            channelMinShelfLifeDays,
+          },
+        },
+      },
+    }
+  }
+
   if (f.shipToType === 'SAVED_ADDRESS') {
     if (!f.savedAddressId) return { ok: false, error: 'No saved address picked.' }
     const a = await prisma.creatorSavedAddress.findFirst({
@@ -1169,6 +1405,16 @@ async function resolveShipTo({
   return { ok: false, error: 'Pick a destination in step 4 before paying.' }
 }
 
+/** Channel.code → the shipping package's InboundChannel vocabulary. Null for
+ *  channels with no factory→FC inbound program. Duplicated from
+ *  fulfillment-actions ('use server' files can only export async actions). */
+function channelInboundForCode(code: string): InboundChannel | null {
+  if (code === 'amazon') return 'AMAZON_FBA'
+  if (code === 'walmart') return 'WALMART_WFS'
+  if (code === 'tiktok') return 'TIKTOK_FBT'
+  return null
+}
+
 function estimateFlatShipping(
   qty: number,
   shipToType: NonNullable<CheckoutDraftState['fulfillment']['shipToType']>,
@@ -1178,8 +1424,15 @@ function estimateFlatShipping(
   // L1b — HOLD orders have no ship leg at order time; storage bills monthly
   // via the StorageAgreement, not as checkout shipping.
   if (shipToType === 'HOLD_AT_MANUFACTURER') return 0
+  // Dock-delivery discount: warehouse partners AND channel FCs take palletized
+  // freight at commercial docks (CHANNEL_INBOUND quotes flat until the channel
+  // assigns concrete FC addresses at plan confirmation).
   const mode =
-    shipToType === 'CLOSEST_WAREHOUSE' || shipToType === 'SPECIFIC_WAREHOUSE' ? 0.78 : 1.0
+    shipToType === 'CLOSEST_WAREHOUSE' ||
+    shipToType === 'SPECIFIC_WAREHOUSE' ||
+    shipToType === 'CHANNEL_INBOUND'
+      ? 0.78
+      : 1.0
   // Admin-configured flat rate takes precedence; otherwise the V1 per-unit tiers.
   if (settings.flatShippingBaseCents > 0 || settings.flatShippingPerUnitCents > 0) {
     return Math.round((settings.flatShippingBaseCents + settings.flatShippingPerUnitCents * qty) * mode)

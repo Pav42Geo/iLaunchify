@@ -40,8 +40,10 @@ import {
   eligibleCarrierServices,
   shopRates,
   applyFirstLegMargin,
+  evaluateChannelInboundGates,
   type CarrierServiceRuleRow,
   type ShippingDomain,
+  type InboundChannel,
 } from '@ilaunchify/shipping'
 import { revalidatePath } from 'next/cache'
 
@@ -121,12 +123,28 @@ export interface HoldStorageOffer {
   stockReleaseAvailable: boolean
 }
 
+// Phase L3a — per-connection channel-inbound evaluation for the fourth card.
+// One entry per CONNECTED ChannelConnection on an inbound-capable channel
+// (amazon → AMAZON_FBA first; walmart/tiktok gate keys exist but their
+// adapters land Phase L4). Display data — the Pay action re-runs every gate.
+export interface ChannelInboundOption {
+  channelConnectionId: string
+  channelCode: string // Channel.code ('amazon' | 'walmart' | 'tiktok' | …)
+  channelName: string // Channel.displayName
+  externalAccountId: string | null
+  eligible: boolean
+  /** Gate-failure copy, shown VERBATIM in checkout (channel-gates.ts + FNSKU). */
+  reasons: string[]
+}
+
 export interface DestinationOptionsPayload {
   options: DestinationOption[]
   /** V1 nearest-eligible FC pick; null when no node qualifies. */
   suggestedFc: SuggestedFcOption | null
   /** Fee card for the Keep-at-manufacturer card; null unless HOLD is enabled. */
   holdOffer: HoldStorageOffer | null
+  /** L3a — per-channel inbound evaluation (empty until a channel is CONNECTED). */
+  channels: ChannelInboundOption[]
 }
 
 // -----------------------------------------------------------------------------
@@ -224,7 +242,10 @@ export async function listDestinationOptions(
         select: {
           storageClass: true,
           hazmatClass: true,
+          meltable: true,
           labelingType: true,
+          leadTimeFirstRunDays: true,
+          leadTimeRepeatDays: true,
           variants: { select: { shelfLifeDays: true } },
           manufacturerService: {
             select: {
@@ -257,11 +278,19 @@ export async function listDestinationOptions(
 
   // Cold classes are admin-gated (L1 lock) — a gated-off class means no FC can
   // receive it and the manufacturer can't hold it, whatever their capabilities.
+  // L3a: the CONNECTED connections are fetched in full (not counted) so each
+  // one can be gate-evaluated per channel below.
   const [gates, classEnabled, connectedChannels, warehouses] = await Promise.all([
     getLogisticsSettings(),
     isStorageClassEnabled(storageClass),
-    prisma.channelConnection.count({
-      where: { creatorUserId: user.id, status: 'CONNECTED' },
+    prisma.channelConnection.findMany({
+      where: { creatorUserId: user.id, status: 'CONNECTED', channel: { enabled: true } },
+      select: {
+        id: true,
+        externalAccountId: true,
+        channel: { select: { code: true, displayName: true } },
+        productLinks: { where: { productId }, select: { fnsku: true } },
+      },
     }),
     prisma.partnerService.findMany({
       where: { type: 'WAREHOUSE', status: 'ACTIVE' },
@@ -306,6 +335,47 @@ export async function listDestinationOptions(
     : { winner: null, ranked: [] }
   const eligibleWarehouseCount = selection.ranked.filter((r) => r.eligible).length
 
+  // L3a — per-channel gate evaluation (LOGISTICS §7). One option per CONNECTED
+  // connection on an inbound-capable channel: LogisticsSetting per-channel gate
+  // + pure channel gates (temp / meltable window / shelf-life / DG) + FNSKU
+  // presence. Display data — cart-actions.resolveShipTo re-runs everything.
+  const channelMinShelfLifeDays = await readChannelMinShelfLifeDays()
+  const channelOptions: ChannelInboundOption[] = connectedChannels.flatMap((conn) => {
+    const inbound = inboundChannelForCode(conn.channel.code)
+    if (!inbound) return [] // shopify/etsy/… have no factory→FC inbound program
+    const reasons: string[] = []
+    if (gates[`channel_inbound:${inbound}`] !== true) {
+      reasons.push(`Inbound shipping into ${conn.channel.displayName} isn't enabled yet.`)
+    }
+    const gate = evaluateChannelInboundGates({
+      channel: inbound,
+      storageClass,
+      hazmatClass,
+      meltable: template?.meltable ?? false,
+      shelfLifeDays,
+      daysUntilCheckIn: daysUntilChannelCheckIn(template),
+      channelMinShelfLifeDays,
+      checkInDate: new Date(Date.now() + daysUntilChannelCheckIn(template) * DAY_MS),
+      // V1: no DG-program enrollment capture exists yet — hazmat SKUs stay
+      // gated off until the readiness checklist (readinessJson) lands.
+      dgProgramApproved: false,
+    })
+    reasons.push(...gate.reasons)
+    if (!conn.productLinks[0]?.fnsku) {
+      reasons.push('Add the FNSKU for this product in Settings → Channels first.')
+    }
+    return [
+      {
+        channelConnectionId: conn.id,
+        channelCode: conn.channel.code,
+        channelName: conn.channel.displayName,
+        externalAccountId: conn.externalAccountId,
+        eligible: reasons.length === 0,
+        reasons,
+      },
+    ]
+  })
+
   const options = resolveDestinationOptions({
     product: { storageClass, hazmatClass, domain },
     manufacturer: m
@@ -324,8 +394,26 @@ export async function listDestinationOptions(
       : null,
     gates,
     eligibleWarehouseCount,
-    hasConnectedChannel: connectedChannels > 0,
+    hasConnectedChannel: connectedChannels.length > 0,
   })
+
+  // Merge the per-channel verdicts into the CHANNEL_INBOUND card: the resolver
+  // covers the destination gate / connection presence / cold-class facts; the
+  // per-channel evaluation adds meltable-window, shelf-life, DG and FNSKU. If
+  // the card survived the resolver but no connection is eligible, disable it
+  // and surface the gate failures VERBATIM as the reason.
+  const channelIdx = options.findIndex((o) => o.type === 'CHANNEL_INBOUND')
+  const channelOpt = channelIdx >= 0 ? options[channelIdx] : undefined
+  if (channelOpt?.enabled && !channelOptions.some((c) => c.eligible)) {
+    const mergedReasons = [...new Set(channelOptions.flatMap((c) => c.reasons))]
+    options[channelIdx] = {
+      type: 'CHANNEL_INBOUND',
+      enabled: false,
+      disabledReason:
+        mergedReasons.join(' ') ||
+        'None of your connected channels can receive this product right now.',
+    }
+  }
 
   const winner = selection.winner
   const suggestedFc: SuggestedFcOption | null = winner
@@ -354,7 +442,37 @@ export async function listDestinationOptions(
         }
       : null
 
-  return { ok: true, data: { options, suggestedFc, holdOffer } }
+  return { ok: true, data: { options, suggestedFc, holdOffer, channels: channelOptions } }
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** Channel.code → the shipping package's InboundChannel vocabulary. Null for
+ *  channels with no factory→FC inbound program (Shopify = the §3 FC network). */
+function inboundChannelForCode(code: string): InboundChannel | null {
+  if (code === 'amazon') return 'AMAZON_FBA'
+  if (code === 'walmart') return 'WALMART_WFS'
+  if (code === 'tiktok') return 'TIKTOK_FBT'
+  return null
+}
+
+/** Days until the run could check in at a channel FC: production lead (first-run
+ *  figure when set, else repeat, else the 28-day platform default) + 7 transit
+ *  fallback. Refined with real transit quotes when the SP-API flow lands. */
+function daysUntilChannelCheckIn(
+  template: { leadTimeFirstRunDays: number | null; leadTimeRepeatDays: number | null } | null,
+): number {
+  const lead = template?.leadTimeFirstRunDays ?? template?.leadTimeRepeatDays ?? 28
+  return lead + 7
+}
+
+/** OrderSettings.channelMinShelfLifeDays isn't surfaced by getOrderSettings()
+ *  yet — read it straight off the singleton (firstLegMarginBps pattern). */
+async function readChannelMinShelfLifeDays(): Promise<number> {
+  const row = await prisma.orderSettings
+    .findUnique({ where: { id: 'default' }, select: { channelMinShelfLifeDays: true } })
+    .catch(() => null)
+  return row?.channelMinShelfLifeDays ?? 105
 }
 
 /** Shortest declared shelf life across the template's variants; null = unknown. */
@@ -477,6 +595,7 @@ export interface EstimateShippingInput {
     | 'SAVED_ADDRESS'
     | 'NEW_ADDRESS'
     | 'HOLD_AT_MANUFACTURER'
+    | 'CHANNEL_INBOUND'
   warehousePartnerServiceId?: string | null
   savedAddressId?: string | null
   newAddressCountry?: string | null
@@ -538,9 +657,15 @@ export async function estimateShipping(
   else perUnitCents = 44
 
   // Mode adjustment — warehouse ship-to is cheaper than residential
-  // because partners have loading docks + freight discounts.
+  // because partners have loading docks + freight discounts. Channel FCs are
+  // commercial docks too (the concrete FC address is only assigned by the
+  // channel at plan confirmation, so CHANNEL_INBOUND always quotes flat here).
   let modeMultiplier = 1.0
-  if (input.shipToType === 'CLOSEST_WAREHOUSE' || input.shipToType === 'SPECIFIC_WAREHOUSE') {
+  if (
+    input.shipToType === 'CLOSEST_WAREHOUSE' ||
+    input.shipToType === 'SPECIFIC_WAREHOUSE' ||
+    input.shipToType === 'CHANNEL_INBOUND'
+  ) {
     modeMultiplier = 0.78
   }
   // International — flat surcharge until the carrier rail covers non-US lanes.
