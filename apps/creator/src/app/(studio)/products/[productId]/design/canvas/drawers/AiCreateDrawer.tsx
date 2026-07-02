@@ -18,8 +18,8 @@
 // =============================================================================
 
 import * as React from 'react'
-import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig } from 'lucide-react'
-import { addImageFromUrl, deriveTemplateTargeting, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
+import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig, ChevronLeft, ChevronRight } from 'lucide-react'
+import { applyAiConcept, deriveTemplateTargeting, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
 import { getAiCreateDrawerProps, getAiCreateDrawerPropsAdmin, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
 import { AiCreatePanel, type AiCreatePanelProps, type DielineTarget, type GenerateContext } from '../../../../../studio/ai-create/AiCreatePanel'
@@ -125,17 +125,35 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
     if (h) setPending({ svg: h.svg, label: h.label })
   }, [productId, adminDomain])
 
-  /** Drop a concept / template onto the canvas UNDER the truth-layer frames. */
+  // Swap-in-place (AI_PREVIEW_TRYON_LOOP F1): the current generation batch + which
+  // concept is applied, driving the "On canvas: Concept 2/4 ‹ ›" switcher below.
+  const [batch, setBatch] = React.useState<string[]>([])
+  const [appliedIndex, setAppliedIndex] = React.useState<number | null>(null)
+
+  /** Apply a concept / template as the design's background art — REPLACES any
+   *  previously applied AI concept (never stacks); truth-layer frames stay on top. */
   const applyToCanvas = React.useCallback(
-    async (concept: string) => {
+    async (concept: string, meta?: { variationIndex?: number | null; dielineId?: string | null }) => {
       if (!canvas) return
-      const img = await addImageFromUrl(canvas, conceptToSource(concept), { maxFraction: 0.98 })
-      if (img) {
-        ;(canvas as unknown as { sendObjectToBack?: (o: unknown) => void }).sendObjectToBack?.(img)
-        canvas.requestRenderAll()
-      }
+      await applyAiConcept(canvas, conceptToSource(concept), {
+        variationIndex: meta?.variationIndex ?? null,
+        dielineId: meta?.dielineId ?? null,
+      })
     },
     [canvas],
+  )
+
+  /** ‹ › — cycle the applied concept through the current batch, in place. */
+  const switchConcept = React.useCallback(
+    async (delta: number) => {
+      if (appliedIndex === null || batch.length < 2) return
+      const next = (appliedIndex + delta + batch.length) % batch.length
+      const svg = batch[next]
+      if (!svg) return
+      await applyToCanvas(svg, { variationIndex: next })
+      setAppliedIndex(next)
+    },
+    [appliedIndex, batch, applyToCanvas],
   )
 
   // The die-line SET the panel designs — real confirmed die-lines, else the canvas die-cut.
@@ -289,6 +307,34 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
         </div>
       )}
 
+      {/* On-canvas concept switcher — flip the applied concept through the batch
+          in place, truth layer on top. Real in-context comparison. */}
+      {tab === 'create' && appliedIndex !== null && batch.length > 1 && (
+        <div className="flex items-center justify-between rounded-lg border border-ink-200 bg-ink-50 px-2.5 py-1.5">
+          <span className="text-[11.5px] font-semibold text-ink-700">
+            On canvas: Concept {appliedIndex + 1}/{batch.length}
+          </span>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => switchConcept(-1)}
+              aria-label="Previous concept"
+              className="rounded-full border border-ink-200 bg-white p-1 text-ink-600 hover:border-ink-400 hover:text-ink-900"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => switchConcept(1)}
+              aria-label="Next concept"
+              className="rounded-full border border-ink-200 bg-white p-1 text-ink-600 hover:border-ink-400 hover:text-ink-900"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {tab === 'create' ? (
         // The full generator, in the drawer. "Use on canvas" applies to THIS canvas.
         <AiCreatePanel
@@ -303,7 +349,14 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
           dielines={dielines}
           onGenerate={onGenerate}
           onExport={onExport}
-          onEditInStudio={(r) => applyToCanvas(r.svg)}
+          onVariationsChange={(svgs) => {
+            setBatch(svgs)
+            setAppliedIndex(null)
+          }}
+          onEditInStudio={async (r) => {
+            await applyToCanvas(r.svg, { variationIndex: r.index ?? null, dielineId: r.dielineId })
+            setAppliedIndex(typeof r.index === 'number' ? r.index : null)
+          }}
         />
       ) : (
         <TemplateLibrary
@@ -311,7 +364,11 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
           domain={props.domain}
           productShapes={productShapes}
           onUseAsInspiration={handleInspire}
-          onUseOnCanvas={(item) => item.thumbnailUrl && applyToCanvas(item.thumbnailUrl)}
+          onUseOnCanvas={(item) => {
+            if (!item.thumbnailUrl) return
+            void applyToCanvas(item.thumbnailUrl)
+            setAppliedIndex(null) // library apply isn't part of the current batch
+          }}
         />
       )}
     </div>

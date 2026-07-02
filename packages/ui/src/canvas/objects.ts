@@ -29,6 +29,9 @@ export type CanvasCustomType =
   | 'aafco-panel'
   | 'drug-facts-panel'
   | 'cert-badge'
+  // AI Templator concept applied as the design's background art layer — at most ONE
+  // per canvas by contract; applyAiConcept() swaps it in place (never stacks).
+  | 'ai-concept'
 
 /**
  * Required-label-section discriminator (DS-55).
@@ -181,6 +184,80 @@ export async function addImageFromUrl(
     return img
   } catch (err) {
     console.warn('[canvas/objects] addImageFromUrl failed:', err)
+    return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AI Templator concept — swap-in-place background art (AI_PREVIEW_TRYON_LOOP F1)
+// ---------------------------------------------------------------------------
+
+/** Provenance stamped on the applied concept via `customData.aiConcept`
+ *  (customData already rides CANVAS_PROPERTIES_TO_INCLUDE, so it survives
+ *  autosave / reload / version restore). */
+export interface AiConceptMeta {
+  generationId?: string | null
+  variationIndex?: number | null
+  dielineId?: string | null
+}
+
+/** The currently applied AI concept object, if any (at most one by contract). */
+export function findAiConcept(canvas: FabricCanvas): FabricObject | null {
+  return (
+    canvas.getObjects().find((o) => (o as { customType?: string }).customType === 'ai-concept') ?? null
+  )
+}
+
+/**
+ * Apply an AI-generated concept as the design's background art — REPLACES any
+ * previously applied concept (never stacks), contain-fits the full surface
+ * (concepts are generated at the surface aspect, so this is ≈ exact fit), and
+ * sends it to the back so truth-layer frames render on top.
+ *
+ * Object coords are BASE-pixel space (DS-73.1) while the DOM canvas scales with
+ * view zoom, so surface size = getWidth()/getZoom(). The old concept is only
+ * removed after the new image loads — a failed load never leaves a blank canvas.
+ *
+ * `src` accepts an SVG data-URL or an image URL. One canvas mutation sequence →
+ * one undoable step in the canvas history.
+ */
+export async function applyAiConcept(
+  canvas: FabricCanvas,
+  src: string,
+  meta: AiConceptMeta = {},
+): Promise<FabricObject | null> {
+  try {
+    const img = await fabric.FabricImage.fromURL(src, { crossOrigin: 'anonymous' })
+    const z = canvas.getZoom() || 1
+    const cw = canvas.getWidth() / z
+    const ch = canvas.getHeight() / z
+    const iw = img.width ?? 1
+    const ih = img.height ?? 1
+    const scale = Math.min(cw / iw, ch / ih)
+    img.set({
+      left: cw / 2,
+      top: ch / 2,
+      originX: 'center',
+      originY: 'center',
+      scaleX: scale,
+      scaleY: scale,
+    })
+    img.set('customType', 'ai-concept' satisfies CanvasCustomType)
+    img.set('customData', { aiConcept: meta })
+    const existing = findAiConcept(canvas)
+    if (existing) canvas.remove(existing)
+    canvas.add(img)
+    const c = canvas as unknown as {
+      sendObjectToBack?: (o: FabricObject) => void
+      discardActiveObject?: () => void
+    }
+    c.sendObjectToBack?.(img)
+    // Background art shouldn't grab the selection — the creator is mid-compare.
+    c.discardActiveObject?.()
+    canvas.requestRenderAll()
+    return img
+  } catch (err) {
+    console.warn('[canvas/objects] applyAiConcept failed:', err)
     return null
   }
 }

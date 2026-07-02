@@ -185,10 +185,13 @@ export {
   setCanvasBackground,
   selectAllObjects,
   objectsFromSelection,
+  applyAiConcept,
+  findAiConcept,
   CANVAS_PROPERTIES_TO_INCLUDE,
   LABEL_SECTION_LABELS,
   type CanvasCustomType,
   type LabelSectionRole,
+  type AiConceptMeta,
 } from './canvas/objects'
 export { addIconFromUrl } from './canvas/graphics'
 export { renderFactsPreview, type FactsPreviewOpts } from './canvas/factsPreview'

@@ -109,9 +109,12 @@ export interface AiCreatePanelProps {
    * mode, saving as a library template via the existing template-author flow). The
    * Studio shell wires this; when absent the button is hidden.
    */
-  onEditInStudio?: (result: { svg: string; dielineId: string; label: string }) => void
+  onEditInStudio?: (result: { svg: string; dielineId: string; label: string; index?: number }) => void
   /** Export a generated concept (SVG/PDF). When absent the button is hidden. */
-  onExport?: (result: { svg: string; dielineId: string; label: string }) => void
+  onExport?: (result: { svg: string; dielineId: string; label: string; index?: number }) => void
+  /** Fires whenever the single-die-line variations batch changes (generate / re-roll /
+   *  scope switch). Lets the host (the in-canvas drawer) drive its concept switcher. */
+  onVariationsChange?: (svgs: string[]) => void
   /** Force a single-column stack (for the narrow in-canvas drawer). Full page stays 2-col. */
   stacked?: boolean
   /** Label for the primary result action (default "Edit in Studio"; the drawer uses "Use on canvas"). */
@@ -184,6 +187,12 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const setMode = multi && scope === 'set'
   const flavorMode = hasFlavors && scope === 'flavors'
   const selected = dielines.find((d) => d.id === selectedId) ?? dielines[0]
+
+  // Aspect-aware result layout (AI_PREVIEW_TRYON_LOOP F2): wide wraps (can labels) and
+  // tall labels are unreadable as 2-up tiles in the 400px drawer — go single column.
+  const surfaceAspect = selected ? selected.surface.widthMm / Math.max(1, selected.surface.heightMm) : 1
+  const wideSurface = surfaceAspect > 1.6
+  const singleColResults = wideSurface || surfaceAspect < 0.625
 
   const manualMode = brandMode === 'manual'
   // Effective brand inputs the brief + provider use.
@@ -287,7 +296,9 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     setBusy(true)
     try {
       const refs = props.onGenerate ? await props.onGenerate(plan, selected.id, genCtx) : []
-      setVariations(refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg])
+      const next = refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg]
+      setVariations(next)
+      props.onVariationsChange?.(next)
     } finally {
       setBusy(false)
     }
@@ -296,6 +307,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   function switchScope(next: 'single' | 'set' | 'flavors') {
     setScope(next)
     setVariations([])
+    props.onVariationsChange?.([])
     setSetVariants([])
     setMasterGenerated(false)
   }
@@ -571,13 +583,13 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
         ) : variations.length === 0 ? (
           <div className="rounded-2xl border border-ink-200 bg-white p-4">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-ink-500">Live preview · {selected?.label}</p>
-            <div className="mx-auto max-w-[420px] [&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: plan?.previewSvg ?? '' }} />
+            <div className={`mx-auto [&_svg]:h-auto [&_svg]:w-full ${wideSurface ? '' : 'max-w-[420px]'}`} dangerouslySetInnerHTML={{ __html: plan?.previewSvg ?? '' }} />
             <p className="mt-2 text-[11px] text-ink-400">
               Reserved (truth-layer) zones: {plan?.reservedLabels.join(', ') || 'none'} — kept clear for your real label data.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid gap-3 ${singleColResults ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {variations.map((v, i) => (
               <div key={i} className="rounded-xl border border-ink-200 bg-white p-2">
                 {threeDIdx === i && selected ? (
@@ -605,7 +617,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                     <Box className="h-3 w-3" /> {threeDIdx === i ? 'Flat' : '3D'}
                   </button>
                   <ResultActions
-                    result={{ svg: v, dielineId: selected?.id ?? '', label: selected?.label ?? '' }}
+                    result={{ svg: v, dielineId: selected?.id ?? '', label: selected?.label ?? '', index: i }}
                     onEdit={props.onEditInStudio}
                     onExport={props.onExport}
                     editLabel={props.editActionLabel}
@@ -613,7 +625,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                 </div>
               </div>
             ))}
-            <button onClick={generate} className="col-span-2 inline-flex items-center justify-center gap-1.5 rounded-full border border-ink-200 px-3 py-1.5 text-[12px] font-semibold text-ink-600 hover:bg-ink-50">
+            <button onClick={generate} className="col-span-full inline-flex items-center justify-center gap-1.5 rounded-full border border-ink-200 px-3 py-1.5 text-[12px] font-semibold text-ink-600 hover:bg-ink-50">
               <Plus className="h-3.5 w-3.5" /> Re-roll
             </button>
           </div>
@@ -991,9 +1003,9 @@ function ResultActions({
   onExport,
   editLabel = 'Edit in Studio',
 }: {
-  result: { svg: string; dielineId: string; label: string }
-  onEdit?: (r: { svg: string; dielineId: string; label: string }) => void
-  onExport?: (r: { svg: string; dielineId: string; label: string }) => void
+  result: { svg: string; dielineId: string; label: string; index?: number }
+  onEdit?: (r: { svg: string; dielineId: string; label: string; index?: number }) => void
+  onExport?: (r: { svg: string; dielineId: string; label: string; index?: number }) => void
   editLabel?: string
 }) {
   if (!onEdit && !onExport) return null
