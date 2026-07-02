@@ -195,16 +195,26 @@ edits get overwritten (logged).
 - [ ] Vitest goldens: FSMs, variant mapping, ledger math, oversell guard (pure funcs)
 - [ ] Runbook: token expiry, webhook outage → poll recovery, kill-switch procedure
 
-## 5. Open decisions for Pavel
+## 5. Decisions (LOCKED — Pavel 2026-07-02)
 
-1. On-demand auto-billing: charge creator's saved method per consumer order (proposed)
-   vs weekly invoice? Spending-cap default?
-2. Is on-demand mode tier-gated (Builder+) or open to Maker?
-3. Price authority: creator sets channel price freely (proposed — we only hint margin)
-   vs enforced floor above unit cost?
-4. Long-tail channels via unified API vendor — appetite for a vendor in the order path?
-5. Manual-confirm default ON for the first 10 channel orders (training wheels), then
-   creator may switch to full-auto — agree?
+1. **On-demand auto-billing: per consumer order.** Each imported channel order charges
+   the creator's saved payment method for the production cost automatically. Guard
+   rails: a daily spending cap (default from the admin `OrderSettings` singleton,
+   creator may lower it; orders past the cap hold at `ON_HOLD` + notify) and payment
+   failure → `ON_HOLD`, never silent drop.
+2. **On-demand mode is open to Maker** — no tier gate on the mode itself (channel
+   CONNECTION counts stay tier-capped 1/3/6 per PLATFORM_SPEC).
+3. **Creator sets channel price freely.** The Sell tab shows a margin hint against
+   unit production cost (and warns below cost) but never blocks.
+4. **Long-tail unified-API vendor: DEFERRED to C5.** Big four are native. At C5,
+   evaluate API2Cart/Rutter-class vendors against real creator demand for Etsy/Woo/
+   Wix/eBay, weighing vendor-in-the-order-path risk (outage coupling, third-party data
+   transit, generic data model) vs per-channel build cost. The adapter seam makes the
+   choice reversible.
+5. **Manual-confirm ON for each connection's first 10 channel orders** (training
+   wheels): orders hold at `READY` for creator approval; after 10 successfully
+   fulfilled, the connection offers one-click switch to full-auto (still creator-
+   toggleable both ways in settings).
 
 ## 6. Out of scope (here)
 
