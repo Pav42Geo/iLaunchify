@@ -11,6 +11,8 @@ import * as React from 'react'
 import { LayoutTemplate, Crown, Plus, Search } from 'lucide-react'
 import {
   matchTemplatesToProduct,
+  reanchorCanvasJson,
+  inferCanvasExtent,
   type FabricCanvas,
   type DieCutSpec,
   type MatchedTemplate,
@@ -125,8 +127,20 @@ export function TemplatesDrawer({
       const c = canvas as unknown as {
         loadFromJSON: (j: unknown, cb?: () => void) => void
         requestRenderAll: () => void
+        getWidth: () => number
+        getHeight: () => number
+        getZoom?: () => number
       }
-      c.loadFromJSON(JSON.parse(json) as unknown, () => c.requestRenderAll())
+      let parsed = JSON.parse(json) as import('@ilaunchify/ui').ReanchorCanvasJson
+      // Reshape R1: re-anchor the template onto THIS surface (templates don't record
+      // their authoring dims — infer from the content bbox). Same-size loads pass
+      // through ≈ unchanged; cross-size loads stop landing distorted/mispositioned.
+      const source = inferCanvasExtent(parsed)
+      if (source) {
+        const z = c.getZoom?.() || 1
+        parsed = reanchorCanvasJson(parsed, source, { widthPx: c.getWidth() / z, heightPx: c.getHeight() / z }) as typeof parsed
+      }
+      c.loadFromJSON(parsed as unknown, () => c.requestRenderAll())
       flash('Template applied — recolor it from the Brand tool.')
     } catch {
       flash('That template could not be loaded.')

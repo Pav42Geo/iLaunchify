@@ -99,7 +99,13 @@ Notes:
 - **P1 (buildable now, no provider keys):** `classifyReshape` + S1 crop + R1
   re-anchoring + the Library/Templates "Reshape" action + try-on-loop handoff +
   promptJson provenance. S2/S3 routes show "AI reshape arrives with the image
-  provider" and fall back to offering S1 crop.
+  provider" and fall back to offering S1 crop. **SHIPPED 2026-07-01** — classifier +
+  `reshapeCropSvg` (golden-tested), `reanchorCanvasJson` + `inferCanvasExtent`
+  (golden-tested; wired into every Templates-drawer load, fixing raw cross-size
+  distortion), Library-tab Reshape action with S0 direct-use unlock. Still open in
+  P1 scope: surfacing NON-matching templates in the Templates drawer (loader
+  returns matches only today) and frame-aware re-anchor plumbing (`dielineFrames`
+  → TemplatesDrawer; engine already supports frames).
 - **P2 (provider keys live):** R3a outpaint + R3b reference regen through
   `resolveImageGenProvider` (fal/Recraft take image+mask and style reference);
   `parentId` column; severity thresholds tuned on real art.
