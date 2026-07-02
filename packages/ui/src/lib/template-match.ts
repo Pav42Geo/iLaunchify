@@ -236,3 +236,107 @@ function sortGroup(a: TemplateStyleGroup, b: TemplateStyleGroup): number {
   if (au !== bu) return au ? 1 : -1
   return a.styleLabel.localeCompare(b.styleLabel)
 }
+
+// -----------------------------------------------------------------------------
+// Design Reshape — severity routing (docs/DESIGN_RESHAPE_CROSS_DIELINE.md).
+//
+// Pure classifier: given a SOURCE design's shape family and a TARGET die-line's,
+// decide how to carry the design idea across — direct apply, deterministic
+// focal crop, provider outpaint, or reference-conditioned regeneration.
+// -----------------------------------------------------------------------------
+
+export type ReshapeMethod = 'DIRECT' | 'CROP' | 'OUTPAINT' | 'REF_REGEN'
+export type ReshapeSeverity = 'S0' | 'S1' | 'S2' | 'S3'
+
+export interface ReshapeShape {
+  /** ContainerCategory value (CAN, BOX, POUCH, …) — null when unknown. */
+  containerCategory?: string | null
+  /** Aspect bucket (aspectBucketFor) — null when dimensions were unknown. */
+  aspectBucket?: AspectBucket | string | null
+}
+
+export interface ReshapeSource extends ReshapeShape {
+  /** Whether the source generation stored a reusable brief (drives the S3 gate). */
+  hasBrief?: boolean
+}
+
+export interface ReshapeTarget extends ReshapeShape {
+  /** Target renders as a multi-panel box (per-face frames) — always S3. */
+  multiPanel?: boolean
+}
+
+export interface ReshapeRoute {
+  severity: ReshapeSeverity
+  method: ReshapeMethod
+  /** Distance on the ordered aspect-bucket scale (0 when either side is unknown). */
+  bucketDelta: number
+}
+
+const BUCKET_ORDER: readonly string[] = ['WRAP', 'PANEL_WIDE', 'PANEL_SQUARE', 'PANEL_TALL', 'LONG_STRIP']
+
+/** ContainerCategory → coarse 3D shape kind. Cylindrical bodies and flat surfaces
+ *  are "unroll-compatible": at equal aspect the print rectangle is identical. */
+export function containerShapeKind(category?: string | null): 'BOX' | 'CYLINDER' | 'FLAT' {
+  switch ((category ?? '').toUpperCase()) {
+    case 'BOX':
+    case 'CARTON':
+    case 'RIGID_BOX':
+    case 'MAILER':
+    case 'CASE':
+      return 'BOX'
+    case 'CAN':
+    case 'BOTTLE':
+    case 'JAR':
+    case 'TUBE':
+    case 'TUB':
+      return 'CYLINDER'
+    default:
+      return 'FLAT'
+  }
+}
+
+/**
+ * Route a cross-die-line reshape (spec §Severity routing rules):
+ *   S0 direct   — same bucket AND unroll-compatible shape kinds (FLAT↔CYLINDER at
+ *                 equal aspect is pure unrolling — never spend AI on it).
+ *   S1 crop     — Δbucket ≤ 1 (deterministic focal cover-crop).
+ *   S2 outpaint — Δbucket ≥ 2, target not multi-panel.
+ *   S3 regen    — multi-panel BOX target, or Δbucket ≥ 2 with no stored brief.
+ * Unknown buckets classify conservatively as S1 (cheap + reviewable in the try-on loop).
+ */
+export function classifyReshape(source: ReshapeSource, target: ReshapeTarget): ReshapeRoute {
+  const si = BUCKET_ORDER.indexOf(String(source.aspectBucket ?? ''))
+  const ti = BUCKET_ORDER.indexOf(String(target.aspectBucket ?? ''))
+  const known = si >= 0 && ti >= 0
+  const bucketDelta = known ? Math.abs(si - ti) : 0
+
+  const sKind = containerShapeKind(source.containerCategory)
+  const tKind = containerShapeKind(target.containerCategory)
+  const unrollCompatible = sKind === tKind || (sKind !== 'BOX' && tKind !== 'BOX')
+
+  if (target.multiPanel) return { severity: 'S3', method: 'REF_REGEN', bucketDelta }
+  if (!known) return { severity: 'S1', method: 'CROP', bucketDelta }
+  if (bucketDelta === 0 && unrollCompatible) return { severity: 'S0', method: 'DIRECT', bucketDelta }
+  if (bucketDelta <= 1) return { severity: 'S1', method: 'CROP', bucketDelta }
+  if (source.hasBrief === false) return { severity: 'S3', method: 'REF_REGEN', bucketDelta }
+  return { severity: 'S2', method: 'OUTPAINT', bucketDelta }
+}
+
+/** XML-escape a URL for an SVG attribute. */
+function escapeAttr(v: string): string {
+  return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
+}
+
+/**
+ * Deterministic focal cover-crop (reshape rung R2): wrap the source art in an SVG
+ * sized to the TARGET surface, letting native `preserveAspectRatio="xMidYMid slice"`
+ * do the center-weighted cover-crop. Source may be raw SVG markup or an image URL /
+ * data URL. Pure string → string; render-identical everywhere SVG renders.
+ */
+export function reshapeCropSvg(source: string, targetWidthMm: number, targetHeightMm: number): string {
+  const s = source.trim()
+  const href = s.startsWith('<svg') ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}` : s
+  const w = Math.max(1, Math.round(targetWidthMm * 10) / 10)
+  const h = Math.max(1, Math.round(targetHeightMm * 10) / 10)
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${w} ${h}" width="${w}mm" height="${h}mm"><image href="${escapeAttr(href)}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/></svg>`
+}

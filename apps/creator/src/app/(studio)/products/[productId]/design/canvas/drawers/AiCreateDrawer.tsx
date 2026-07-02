@@ -19,7 +19,7 @@
 
 import * as React from 'react'
 import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig, ChevronLeft, ChevronRight } from 'lucide-react'
-import { applyAiConcept, findAiConcept, deriveTemplateTargeting, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
+import { applyAiConcept, findAiConcept, deriveTemplateTargeting, reshapeCropSvg, type ReshapeRoute, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
 import { getAiCreateDrawerProps, getAiCreateDrawerPropsAdmin, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
 import { AiCreatePanel, type AiCreatePanelProps, type DielineTarget, type GenerateContext } from '../../../../../studio/ai-create/AiCreatePanel'
@@ -229,6 +229,30 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
 
   function surfaceFor(dielineId: string) {
     return dielines.find((d) => d.id === dielineId)?.surface ?? { widthMm: 100, heightMm: 150 }
+  }
+
+  // The CURRENT canvas surface as a reshape target (DESIGN_RESHAPE_CROSS_DIELINE P1).
+  const reshapeTarget = React.useMemo(() => {
+    const t = deriveTemplateTargeting({ dieCutCategory: dieCut.category, widthMm: dieCut.widthMm, heightMm: dieCut.heightMm })
+    return { containerCategory: t.targetContainerCategory, aspectBucket: t.aspectBucket }
+  }, [dieCut])
+
+  /** Severity-routed cross-shape apply. P1 ships the deterministic legs: S1 crops via
+   *  reshapeCropSvg; S2/S3 (outpaint / reference regen) arrive with the image provider
+   *  and until then fall back to offering the crop. Reviewed like any concept — the
+   *  applied result swaps in place under the truth layer. */
+  async function handleReshape(item: { thumbnailUrl?: string; title: string }, route: ReshapeRoute) {
+    if (!item.thumbnailUrl) return
+    if (route.method !== 'CROP') {
+      const ok = window.confirm(
+        `AI reshape (${route.method === 'OUTPAINT' ? 'extend the art' : 'regenerate from this design'}) arrives with the image provider. Apply a smart crop of “${item.title}” to this die-line instead?`,
+      )
+      if (!ok) return
+    }
+    const w = dieCut.widthMm || 100
+    const h = dieCut.heightMm || 150
+    await applyToCanvas(reshapeCropSvg(item.thumbnailUrl, w, h))
+    setAppliedIndex(null)
   }
 
   async function onGenerate(plan: GenerationPlan, dielineId: string, ctx?: GenerateContext): Promise<string[]> {
@@ -441,6 +465,8 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
             void applyToCanvas(item.thumbnailUrl)
             setAppliedIndex(null) // library apply isn't part of the current batch
           }}
+          reshapeTarget={reshapeTarget}
+          onReshape={(item, route) => void handleReshape(item, route)}
         />
       )}
     </div>

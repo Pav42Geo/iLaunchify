@@ -7,15 +7,17 @@
 // family with domain / favorites / "fits this die-line" filters (the Canva/Adobe
 // pattern: rich metadata + stars, not a manual folder tree).
 //
-// Cross-die-line rule (Pavel): a template from another product is always browsable.
-//   • "Use on canvas" is enabled ONLY when its shape family matches the current
-//     die-line (and there's artwork to place) — otherwise it can't be dropped.
-//   • "Use as inspiration" is always available for your own generations: it reloads
-//     that design's brief into the generator for THIS die-line and re-creates it.
+// Cross-die-line rule (Pavel, superseded 2026-07-01 by DESIGN_RESHAPE_CROSS_DIELINE):
+//   • Shape-family match → "Use on canvas" (direct drop), as before.
+//   • Mismatch is no longer a dead end: severity-routed "Reshape" carries the design
+//     idea onto the current die-line (S0 unroll → direct; S1 → deterministic crop;
+//     S2/S3 → AI once the image provider is live). Host decides via onReshape.
+//   • "Use as inspiration" stays always-available for your own generations.
 // =============================================================================
 
 import * as React from 'react'
-import { Sparkles, Star, Wand2, ImageDown, Loader2, CheckCircle2, Search, Pencil, Check, Archive, ArchiveRestore, CheckSquare, Square, X } from 'lucide-react'
+import { Sparkles, Star, Wand2, ImageDown, Loader2, CheckCircle2, Search, Pencil, Check, Archive, ArchiveRestore, CheckSquare, Square, X, Shrink } from 'lucide-react'
+import { classifyReshape, type ReshapeRoute } from '@ilaunchify/ui'
 import { getTemplateLibrary, toggleGenerationFavorite, renameGeneration, setGenerationArchived } from './actions'
 import { libraryItemMatchesShapes, type LibraryItem, type LibraryScope, type ShapeKey } from './library-types'
 
@@ -38,6 +40,11 @@ type Props = {
   onUseAsInspiration: (item: LibraryItem) => void
   /** Place a template onto the live canvas (drawer only; needs artwork + shape match). */
   onUseOnCanvas?: (item: LibraryItem) => void
+  /** The CURRENT canvas die-line's shape — enables severity-routed cross-shape
+   *  "Reshape" on mismatched items (docs/DESIGN_RESHAPE_CROSS_DIELINE.md). */
+  reshapeTarget?: { containerCategory: string | null; aspectBucket: string | null } | null
+  /** Carry a mismatched design onto the current die-line via the routed method. */
+  onReshape?: (item: LibraryItem, route: ReshapeRoute) => void
 }
 
 const TABS: { key: LibraryScope; label: string }[] = [
@@ -46,7 +53,7 @@ const TABS: { key: LibraryScope; label: string }[] = [
   { key: 'starter', label: 'Starter gallery' },
 ]
 
-export function TemplateLibrary({ productTemplateId, domain, productShapes, onUseAsInspiration, onUseOnCanvas }: Props) {
+export function TemplateLibrary({ productTemplateId, domain, productShapes, onUseAsInspiration, onUseOnCanvas, reshapeTarget, onReshape }: Props) {
   const [scope, setScope] = React.useState<LibraryScope>(productTemplateId ? 'this-product' : 'my-library')
   const [items, setItems] = React.useState<LibraryItem[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -250,21 +257,37 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {shown.map((item) => (
-            <LibraryCard
-              key={item.id}
-              item={item}
-              fits={libraryItemMatchesShapes(item, productShapes)}
-              selectMode={selectMode && item.source === 'GENERATION'}
-              selected={selected.has(item.id)}
-              onToggleSelect={() => toggleSelect(item.id)}
-              onFav={() => toggleFav(item)}
-              onRename={item.source === 'GENERATION' ? (t) => rename(item, t) : undefined}
-              onArchive={item.source === 'GENERATION' ? (a) => setArchived(item, a) : undefined}
-              onInspire={item.hasBrief ? () => onUseAsInspiration(item) : undefined}
-              onCanvas={onUseOnCanvas && item.thumbnailUrl && libraryItemMatchesShapes(item, productShapes) ? () => onUseOnCanvas(item) : undefined}
-            />
-          ))}
+          {shown.map((item) => {
+            const fits = libraryItemMatchesShapes(item, productShapes)
+            // Cross-shape items with artwork get a severity-routed Reshape action
+            // against the CURRENT canvas die-line. S0 (pure unrolling) upgrades to a
+            // direct "Use" — same print rectangle, only the 3D preview differs.
+            const route =
+              !fits && onReshape && reshapeTarget && item.thumbnailUrl
+                ? classifyReshape(
+                    { containerCategory: item.containerCategory, aspectBucket: item.aspectBucket, hasBrief: item.hasBrief ?? false },
+                    reshapeTarget,
+                  )
+                : null
+            const direct = fits || route?.method === 'DIRECT'
+            return (
+              <LibraryCard
+                key={item.id}
+                item={item}
+                fits={fits}
+                selectMode={selectMode && item.source === 'GENERATION'}
+                selected={selected.has(item.id)}
+                onToggleSelect={() => toggleSelect(item.id)}
+                onFav={() => toggleFav(item)}
+                onRename={item.source === 'GENERATION' ? (t) => rename(item, t) : undefined}
+                onArchive={item.source === 'GENERATION' ? (a) => setArchived(item, a) : undefined}
+                onInspire={item.hasBrief ? () => onUseAsInspiration(item) : undefined}
+                onCanvas={onUseOnCanvas && item.thumbnailUrl && direct ? () => onUseOnCanvas(item) : undefined}
+                onReshape={route && route.method !== 'DIRECT' ? () => onReshape?.(item, route) : undefined}
+                reshapeMethod={route && route.method !== 'DIRECT' ? route.method : undefined}
+              />
+            )
+          })}
         </div>
       )}
     </div>
@@ -282,6 +305,8 @@ function LibraryCard({
   onArchive,
   onInspire,
   onCanvas,
+  onReshape,
+  reshapeMethod,
 }: {
   item: LibraryItem
   fits: boolean
@@ -293,6 +318,8 @@ function LibraryCard({
   onArchive?: (archived: boolean) => void
   onInspire?: () => void
   onCanvas?: () => void
+  onReshape?: () => void
+  reshapeMethod?: 'CROP' | 'OUTPAINT' | 'REF_REGEN'
 }) {
   const [editing, setEditing] = React.useState(false)
   const [draft, setDraft] = React.useState(item.title)
@@ -381,11 +408,24 @@ function LibraryCard({
           {DOMAIN_LABEL[item.domain] ?? item.domain}
           {item.containerCategory ? ` · ${item.containerCategory.replace(/_/g, ' ').toLowerCase()}` : ''}
         </p>
-        {!selectMode && (onInspire || onCanvas) && (
+        {!selectMode && (onInspire || onCanvas || onReshape) && (
           <div className="mt-1 flex gap-1">
             {onCanvas && (
               <button onClick={onCanvas} className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-ink-900 px-2 py-1 text-[10px] font-semibold text-white hover:bg-ink-800">
                 <ImageDown className="h-3 w-3" /> Use
+              </button>
+            )}
+            {onReshape && (
+              <button
+                onClick={onReshape}
+                title={
+                  reshapeMethod === 'CROP'
+                    ? 'Different shape — apply with a smart crop to this die-line'
+                    : 'Different shape — AI reshapes this design for the current die-line'
+                }
+                className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-ink-900 px-2 py-1 text-[10px] font-semibold text-white hover:bg-ink-800"
+              >
+                <Shrink className="h-3 w-3" /> Reshape{reshapeMethod === 'CROP' ? '' : ' (AI)'}
               </button>
             )}
             {onInspire && (
