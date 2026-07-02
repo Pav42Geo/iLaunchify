@@ -442,26 +442,28 @@ model FcAwardLog {            // rotation fairness memory + explainability
 
 ---
 
-## 10. Open decisions to lock (Pavel)
+## 10. Decisions — LOCKED 2026-07-02 (Pavel: L1/L2 build-ready + admin toggle; L3–L9 proceed with recommendations)
 
-| # | Decision | Recommendation |
+| # | Decision | Resolution (LOCKED) |
 |---|---|---|
-| L1 | V1 cold-chain scope | Ambient + PROTECT_HEAT live; CHILLED/FROZEN schema-ready, domain-gated OFF (DomainSetting-style toggle). Cold chain is a different partner class + carrier rail + insurance rider — earn it in V1.5/V2. |
-| L2 | Anchor 3PL | ShipBob (food-grade network, best API, lot+expiry native). Begin commercial conversation early — master-agreement terms are negotiation, not code. |
-| L3 | Parcel aggregator | EasyPost (Forge child users = exactly our hybrid billing model). Shippo is the fallback (white-label billing docs equally proven). |
-| L4 | Insurance posture | FOB Origin in ToS + opt-out shippers-interest insurance at checkout; claims via platform. Keep OFF until a testmode-verification checklist (payments-readiness pattern) passes. |
-| L5 | Who pays first-leg freight | Creator pays at checkout as a quoted line item (rate + admin-tunable margin bps in OrderSettings), not partner-absorbed. Consistent with production-fee structure. |
-| L6 | Infant formula | Confirm V1 exclusion at DISTRIBUTION level (not just label variant). |
-| L7 | Channel adapter order | FBA → WFS → FBT. (FBT's Feb-2026 mandate argues for pulling it to P1a if TikTok creators are a core segment.) |
-| L8 | FC override rights | Creator sees suggestion + can override within eligible set; admin can hard-pin. Manufacturer never chooses. |
-| L9 | Hold-at-manufacturer billing | Monthly Stripe billing on fee snapshot; platform referral fee = existing warehouseReferralFeeBps. Confirm bands. |
+| L1 | V1 cold-chain scope | **Build the full CHILLED/FROZEN functionality (schema + classifier + gates), shipped GATED OFF behind an admin toggle** (DomainSetting-style `LogisticsSetting` row per storage class, server-enforced like the domain picker). Ambient + PROTECT_HEAT enabled at launch. Admin flips cold chain ON per class once a cold FC partner + reefer rail + insurance rider are in place — no code change needed at enable time. |
+| L2 | Anchor 3PL | **ShipBob. Build the `FulfillmentConnector` + ShipBob adapter behind the same admin-toggle pattern**; Pavel starts the commercial conversation early; admin enables the connector when the agreement lands. Until then FCs run as admin-onboarded WAREHOUSE partners (V1 manual flow). |
+| L3 | Parcel aggregator | **EasyPost** (this is a vendor pick, like choosing Stripe for payments — see note below). Forge child-users match our hybrid platform-paid/BYO model exactly. Shippo is the documented fallback if terms fail. |
+| L4 | Insurance posture | **FOB Origin in ToS + opt-out shippers-interest insurance at checkout; claims via platform. OFF until a testmode-verification checklist passes** (payments-readiness pattern). |
+| L5 | Who pays first-leg freight | **Creator pays at checkout** as a quoted line item (carrier rate + admin-tunable margin bps in OrderSettings). Partner never absorbs platform-booked freight. |
+| L6 | Infant formula | **Excluded at DISTRIBUTION level in V1** (not just label variant) — checkout/routing block, consistent with the 21 CFR 106/107 regime. |
+| L7 | Channel adapter order | **FBA → WFS → FBT.** Revisit FBT priority if TikTok creators become a core segment (Feb-2026 mandate). |
+| L8 | FC override rights | **Creator sees the suggested node + can override within the eligible set; admin can hard-pin. Manufacturer never chooses.** |
+| L9 | Hold-at-manufacturer billing | **Monthly Stripe billing on the fee snapshot; platform fee = existing `warehouseReferralFeeBps`. Partner rates constrained to admin-approved bands** (defaults seeded from research anchors: $12–20/pallet/mo ambient, ~10-business-day grace). |
+
+**Cross-cutting pattern from L1/L2:** every logistics capability ships "build-ready, admin-gated" — a `LogisticsSetting` toggle table (storage classes, connectors, carriers, insurance, channels) mirroring DomainSetting. Nothing waits on code at enable time; everything waits on ops readiness.
 
 ---
 
 ## 11. Implementation plan (phased, additive)
 
 **Phase L0 — Substrate (schema + classification), ~1 sprint**
-Additive schema push (§8 enums + product/partner fields + ShipmentLeg/ShipmentDocument/CarrierAccount/CarrierServiceRule + FcAwardLog). ShipmentClassifier in new `packages/shipping`. Required-document rule table (domain × storageClass × hazmat → doc types). Backfill: existing dispatch tracking fields become a legacy path; new legs created alongside. Full stale-client incantation on handoff (db:push → db:generate → rm -rf apps/*/.next).
+Additive schema push (§8 enums + product/partner fields + ShipmentLeg/ShipmentDocument/CarrierAccount/CarrierServiceRule + FcAwardLog + **LogisticsSetting toggle table per L1/L2 lock**). ShipmentClassifier in new `packages/shipping`. Required-document rule table (domain × storageClass × hazmat → doc types). Backfill: existing dispatch tracking fields become a legacy path; new legs created alongside. Full stale-client incantation on handoff (db:push → db:generate → rm -rf apps/*/.next).
 
 **Phase L1 — Destinations + manual logistics (V1 shippable)**
 Checkout destination step (4 cards, eligibility gates). HOLD_AT_MANUFACTURER end-to-end: PartnerService storage fields + partner storage editor + StorageAgreement/StorageReleaseOrder + creator release flow + monthly billing line. FC-as-WAREHOUSE-partner: admin onboarding surface, inbound confirm queue in partner app, manifest → receiving checklist artifact. V1 node selection: Phase-1 eligibility + nearest + admin confirm. Partner ship panel: doc-upload gates, QC checklist, manual label/BOL (partner BYO), seal/coolant fields. Admin /logistics/shipments + /fulfillment-centers.
