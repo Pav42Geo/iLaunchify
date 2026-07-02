@@ -20,6 +20,21 @@ export { createStubAdapter } from './adapters/stub'
 export { resolveChannelAdapter } from './resolve'
 
 export {
+  ORDER_CHANGE_STAGES,
+  CHANGE_KINDS,
+  CHANGE_REQUEST_STATUSES,
+  changeGate,
+  availableChanges,
+  routeChange,
+  canTransitionChangeRequest,
+  type OrderChangeStage,
+  type ChangeKind,
+  type ChangeGate,
+  type ChangeRequestStatus,
+  type ChangeRouting,
+} from './change-matrix'
+
+export {
   blendedVelocity,
   reorderPoint,
   daysOfCover,
