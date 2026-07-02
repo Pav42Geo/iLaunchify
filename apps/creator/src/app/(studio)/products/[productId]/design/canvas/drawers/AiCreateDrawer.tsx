@@ -19,7 +19,7 @@
 
 import * as React from 'react'
 import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig, ChevronLeft, ChevronRight } from 'lucide-react'
-import { applyAiConcept, findAiConcept, deriveTemplateTargeting, reshapeCropSvg, planGeneration, type ReshapeRoute, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
+import { applyAiConcept, findAiConcept, deriveTemplateTargeting, reshapeCropSvg, planGeneration, classifyReshape, type ReshapeRoute, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
 import { getAiCreateDrawerProps, getAiCreateDrawerPropsAdmin, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
 import { AiCreatePanel, type AiCreatePanelProps, type DielineTarget, type GenerateContext } from '../../../../../studio/ai-create/AiCreatePanel'
@@ -261,14 +261,66 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
   }, [dieCut])
 
   const [reshaping, setReshaping] = React.useState(false)
+  // P3 batch reshape: one design carried across the WHOLE die-line set.
+  const [reshapeSet, setReshapeSet] = React.useState<{ id: string; label: string; svg: string }[] | null>(null)
+  const [reshapeSetSource, setReshapeSetSource] = React.useState<string | null>(null)
+
+  type ReshapeItem = { id: string; thumbnailUrl?: string; title: string; hasBrief?: boolean; containerCategory?: string | null; aspectBucket?: string | null }
+  type ReshapeBrief = Awaited<ReturnType<typeof getGenerationBrief>>
+
+  /** One AI reshape run for ONE target surface (OUTPAINT extends the source art;
+   *  REF_REGEN regenerates conditioned on it). Costs one draft cycle. */
+  async function reshapeGenerate(item: ReshapeItem, target: DielineTarget, route: ReshapeRoute, brief: ReshapeBrief) {
+    if (!props || !item.thumbnailUrl) return null
+    const w = target.surface.widthMm || 100
+    const h = target.surface.heightMm || 150
+    const isOutpaint = route.method === 'OUTPAINT'
+    // OUTPAINT needs the source's real pixel dims for the per-side expansion math.
+    const srcDims = isOutpaint ? await loadImageDims(item.thumbnailUrl) : null
+    const expand = srcDims ? outpaintExpansion(srcDims, w / Math.max(1, h)) : null
+    const plan = planGeneration({
+      productDescriptor: brief?.descriptor ?? item.title,
+      brandName: props.brandName,
+      brandPalette: brief?.palette?.length ? brief.palette : props.brandPalette,
+      styleTags: brief?.styleTags ?? [],
+      colorTags: brief?.colorTags ?? [],
+      elementTags: brief?.elementTags ?? [],
+      domain: props.domain,
+      market: props.market ?? 'US',
+      layout: target.layout,
+      surface: { widthMm: w, heightMm: h },
+    })
+    const { widthPx, heightPx } = draftPixels(w, h)
+    return generateAiConcepts({
+      prompt: plan.prompt,
+      negativePrompt: plan.negativePrompt,
+      mask: plan.reservedLabels.length > 0 ? plan.maskSvg : undefined,
+      widthPx,
+      heightPx,
+      dielineId: target.id,
+      productTemplateId: productTemplateId ?? undefined,
+      // The source design conditions the run — this is the reference leg.
+      brandRefUrl: item.thumbnailUrl,
+      domain: props.domain,
+      market: props.market ?? 'US',
+      complianceJson: plan.compliance as unknown as Record<string, unknown>,
+      brief: brief ?? { descriptor: item.title },
+      title: `${item.title} — ${target.label}`,
+      reshape: {
+        sourceId: item.id,
+        method: isOutpaint && expand ? 'OUTPAINT' : 'REF_REGEN',
+        ...(isOutpaint && expand ? { expand } : {}),
+      },
+      // OUTPAINT extends this exact image; REF_REGEN conditions on it (brandRefUrl).
+      ...(isOutpaint && expand ? { sourceImageUrl: item.thumbnailUrl } : {}),
+    }).catch(() => null)
+  }
 
   /** Severity-routed cross-shape apply (DESIGN_RESHAPE_CROSS_DIELINE P2).
-   *  S1 crops deterministically. S2/S3 run a real draft cycle with the SOURCE ART as
-   *  the reference image (fal IP-Adapter conditioning via brandRefUrl) — "same idea,
-   *  recomposed for this shape". S2's dedicated outpaint model is a later imagegen
-   *  upgrade (Code's leg); until then outpaint routes through reference regen too.
-   *  Results land in the drawer batch → switcher / A/B / hover review as usual. */
-  async function handleReshape(item: { id: string; thumbnailUrl?: string; title: string; hasBrief?: boolean }, route: ReshapeRoute) {
+   *  S1 crops deterministically. S2 extends the source art (outpaint); S3
+   *  regenerates conditioned on it. Results land in the drawer batch →
+   *  switcher / A/B / hover review as usual. */
+  async function handleReshape(item: ReshapeItem, route: ReshapeRoute) {
     if (!item.thumbnailUrl || !props || reshaping) return
     const w = dieCut.widthMm || 100
     const h = dieCut.heightMm || 150
@@ -288,49 +340,11 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
     if (!ok) return
     setReshaping(true)
     try {
-      // OUTPAINT needs the source's real pixel dims for the per-side expansion math.
-      const srcDims = isOutpaint ? await loadImageDims(item.thumbnailUrl) : null
-      const expand = srcDims ? outpaintExpansion(srcDims, w / Math.max(1, h)) : null
       // Brief: the stored one for own generations; synthesized from the title otherwise.
       const brief = item.hasBrief ? await getGenerationBrief(item.id).catch(() => null) : null
       const target = dielines[0] ?? targetFromDieCut(dieCut)
-      const plan = planGeneration({
-        productDescriptor: brief?.descriptor ?? item.title,
-        brandName: props.brandName,
-        brandPalette: brief?.palette?.length ? brief.palette : props.brandPalette,
-        styleTags: brief?.styleTags ?? [],
-        colorTags: brief?.colorTags ?? [],
-        elementTags: brief?.elementTags ?? [],
-        domain: props.domain,
-        market: props.market ?? 'US',
-        layout: target.layout,
-        surface: { widthMm: w, heightMm: h },
-      })
-      const { widthPx, heightPx } = draftPixels(w, h)
-      const res = await generateAiConcepts({
-        prompt: plan.prompt,
-        negativePrompt: plan.negativePrompt,
-        mask: plan.reservedLabels.length > 0 ? plan.maskSvg : undefined,
-        widthPx,
-        heightPx,
-        dielineId: target.id,
-        productTemplateId: productTemplateId ?? undefined,
-        // The source design conditions the run — this is the reference leg.
-        brandRefUrl: item.thumbnailUrl,
-        domain: props.domain,
-        market: props.market ?? 'US',
-        complianceJson: plan.compliance as unknown as Record<string, unknown>,
-        brief: brief ?? { descriptor: item.title },
-        title: `${item.title} — reshaped`,
-        reshape: {
-          sourceId: item.id,
-          method: isOutpaint && expand ? 'OUTPAINT' : 'REF_REGEN',
-          ...(isOutpaint && expand ? { expand } : {}),
-        },
-        // OUTPAINT extends this exact image; REF_REGEN conditions on it (brandRefUrl).
-        ...(isOutpaint && expand ? { sourceImageUrl: item.thumbnailUrl } : {}),
-      })
-      if (res.ok && res.images.length > 0) {
+      const res = await reshapeGenerate(item, { ...target, surface: { widthMm: w, heightMm: h } }, route, brief)
+      if (res && res.ok && res.images.length > 0) {
         setBatch(res.images)
         const first = res.images[0]!
         await applyToCanvas(first, { variationIndex: 0, dielineId: target.id })
@@ -341,6 +355,53 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
         await applyToCanvas(reshapeCropSvg(item.thumbnailUrl, w, h))
         setAppliedIndex(null)
       }
+    } finally {
+      setReshaping(false)
+    }
+  }
+
+  /** P3 batch reshape — carry ONE design across the product's WHOLE die-line set.
+   *  Each surface routes independently (crop = free; outpaint / ref-regen = one
+   *  cycle each, AI failures fall back to the crop). Results render as a
+   *  coordinated-set block for review; nothing auto-applies. */
+  async function handleReshapeToSet(item: ReshapeItem) {
+    if (!item.thumbnailUrl || !props || reshaping || dielines.length < 2) return
+    const routes = dielines.map((d, i) =>
+      classifyReshape(
+        { containerCategory: item.containerCategory ?? null, aspectBucket: item.aspectBucket ?? null, hasBrief: item.hasBrief ?? false },
+        productShapes[i] ?? { containerCategory: d.containerCategory ?? null, aspectBucket: null },
+      ),
+    )
+    const aiCount = routes.filter((r) => r.method === 'OUTPAINT' || r.method === 'REF_REGEN').length
+    const ok = window.confirm(
+      `Reshape “${item.title}” across all ${dielines.length} surfaces?` +
+        (aiCount > 0 ? ` ${aiCount} of them need AI (${aiCount} cycle${aiCount === 1 ? '' : 's'}).` : ' All deterministic — free.'),
+    )
+    if (!ok) return
+    setReshaping(true)
+    try {
+      const brief = item.hasBrief ? await getGenerationBrief(item.id).catch(() => null) : null
+      const out: { id: string; label: string; svg: string }[] = []
+      for (let i = 0; i < dielines.length; i++) {
+        const d = dielines[i]!
+        const route = routes[i]!
+        const w = d.surface.widthMm || 100
+        const h = d.surface.heightMm || 150
+        if (route.method === 'CROP' || route.method === 'DIRECT') {
+          out.push({ id: d.id, label: d.label, svg: reshapeCropSvg(item.thumbnailUrl, w, h) })
+          continue
+        }
+        // eslint-disable-next-line no-await-in-loop
+        const res = await reshapeGenerate(item, d, route, brief)
+        out.push({
+          id: d.id,
+          label: d.label,
+          svg: res && res.ok && res.images[0] ? res.images[0] : reshapeCropSvg(item.thumbnailUrl, w, h),
+        })
+      }
+      setReshapeSet(out)
+      setReshapeSetSource(item.title)
+      setTab('create')
     } finally {
       setReshaping(false)
     }
@@ -483,7 +544,59 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
 
       {reshaping && (
         <div className="flex items-center gap-2 rounded-lg border border-pink-200 bg-pink-50 px-2.5 py-1.5 text-[11.5px] text-pink-800">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reshaping with AI — generating 4 concepts…
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reshaping…
+        </div>
+      )}
+
+      {/* P3 batch reshape results — one design carried across the whole die-line set. */}
+      {tab === 'create' && reshapeSet && (
+        <div className="space-y-2 rounded-2xl border border-ink-200 bg-white p-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-500">
+              Coordinated set · from “{reshapeSetSource}”
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setReshapeSet(null)
+                setReshapeSetSource(null)
+              }}
+              aria-label="Dismiss set"
+              className="rounded p-0.5 text-ink-400 hover:text-ink-700"
+            >
+              ×
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {reshapeSet.map((r) => (
+              <div key={r.id} className="rounded-xl border border-ink-200 p-2">
+                <p className="mb-1 truncate text-[10.5px] font-semibold text-ink-500">{r.label}</p>
+                <div className="[&_svg]:h-auto [&_svg]:w-full overflow-hidden rounded" dangerouslySetInnerHTML={{ __html: r.svg.trim().startsWith('<svg') ? r.svg : `<img src="${r.svg}" alt="${r.label}" style="width:100%;height:auto"/>` }} />
+                <div className="mt-1.5 flex gap-1 text-[10.5px]">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await applyToCanvas(r.svg, { dielineId: r.id })
+                      setAppliedIndex(null)
+                    }}
+                    className="flex-1 rounded-full bg-ink-900 px-2 py-0.5 font-semibold text-white hover:bg-ink-800"
+                  >
+                    Use on canvas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadConcept(r.svg, `${reshapeSetSource ?? 'set'}-${r.label}`)}
+                    className="rounded-full border border-ink-200 px-2 py-0.5 font-semibold text-ink-600 hover:bg-ink-50"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10.5px] text-ink-400">
+            “Use on canvas” applies to the surface you're editing now — switch surfaces to place the others.
+          </p>
         </div>
       )}
 
@@ -566,6 +679,7 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
           }}
           reshapeTarget={reshapeTarget}
           onReshape={(item, route) => void handleReshape(item, route)}
+          onReshapeToSet={dielines.length > 1 ? (item) => void handleReshapeToSet(item) : undefined}
         />
       )}
     </div>

@@ -123,6 +123,11 @@ Notes:
 - **P3:** per-face BOX targeting (reuse the glTF surface→face binding work), batch
   reshape (one design → the product's whole die-line SET → coordinated-set preview),
   saliency-based focal crop, reshape-quality scoring.
+  **Batch reshape SHIPPED 2026-07-02:** Library "Set" action (products with >1
+  die-lines) routes every surface independently — crops free, AI legs one cycle
+  each with an upfront cycle-count confirm, failures fall back to the crop —
+  and renders a dismissible coordinated-set block (per-surface Use-on-canvas +
+  download). Per-face BOX, saliency crop, and quality scoring remain open.
 
 ## Ownership
 

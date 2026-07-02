@@ -45,6 +45,9 @@ type Props = {
   reshapeTarget?: { containerCategory: string | null; aspectBucket: string | null } | null
   /** Carry a mismatched design onto the current die-line via the routed method. */
   onReshape?: (item: LibraryItem, route: ReshapeRoute) => void
+  /** P3 batch reshape — carry the design across the product's WHOLE die-line set.
+   *  Host passes this only when the product has >1 surfaces. */
+  onReshapeToSet?: (item: LibraryItem) => void
 }
 
 const TABS: { key: LibraryScope; label: string }[] = [
@@ -53,7 +56,7 @@ const TABS: { key: LibraryScope; label: string }[] = [
   { key: 'starter', label: 'Starter gallery' },
 ]
 
-export function TemplateLibrary({ productTemplateId, domain, productShapes, onUseAsInspiration, onUseOnCanvas, reshapeTarget, onReshape }: Props) {
+export function TemplateLibrary({ productTemplateId, domain, productShapes, onUseAsInspiration, onUseOnCanvas, reshapeTarget, onReshape, onReshapeToSet }: Props) {
   const [scope, setScope] = React.useState<LibraryScope>(productTemplateId ? 'this-product' : 'my-library')
   const [items, setItems] = React.useState<LibraryItem[]>([])
   const [loading, setLoading] = React.useState(true)
@@ -285,6 +288,7 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
                 onCanvas={onUseOnCanvas && item.thumbnailUrl && direct ? () => onUseOnCanvas(item) : undefined}
                 onReshape={route && route.method !== 'DIRECT' ? () => onReshape?.(item, route) : undefined}
                 reshapeMethod={route && route.method !== 'DIRECT' ? route.method : undefined}
+                onReshapeToSet={onReshapeToSet && item.thumbnailUrl ? () => onReshapeToSet(item) : undefined}
               />
             )
           })}
@@ -307,6 +311,7 @@ function LibraryCard({
   onCanvas,
   onReshape,
   reshapeMethod,
+  onReshapeToSet,
 }: {
   item: LibraryItem
   fits: boolean
@@ -320,6 +325,7 @@ function LibraryCard({
   onCanvas?: () => void
   onReshape?: () => void
   reshapeMethod?: 'CROP' | 'OUTPAINT' | 'REF_REGEN'
+  onReshapeToSet?: () => void
 }) {
   const [editing, setEditing] = React.useState(false)
   const [draft, setDraft] = React.useState(item.title)
@@ -408,7 +414,7 @@ function LibraryCard({
           {DOMAIN_LABEL[item.domain] ?? item.domain}
           {item.containerCategory ? ` · ${item.containerCategory.replace(/_/g, ' ').toLowerCase()}` : ''}
         </p>
-        {!selectMode && (onInspire || onCanvas || onReshape) && (
+        {!selectMode && (onInspire || onCanvas || onReshape || onReshapeToSet) && (
           <div className="mt-1 flex gap-1">
             {onCanvas && (
               <button onClick={onCanvas} className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-ink-900 px-2 py-1 text-[10px] font-semibold text-white hover:bg-ink-800">
@@ -431,6 +437,15 @@ function LibraryCard({
             {onInspire && (
               <button onClick={onInspire} className="inline-flex flex-1 items-center justify-center gap-1 rounded-full border border-ink-200 px-2 py-1 text-[10px] font-semibold text-ink-600 hover:bg-ink-50">
                 <Wand2 className="h-3 w-3" /> Inspire
+              </button>
+            )}
+            {onReshapeToSet && (
+              <button
+                onClick={onReshapeToSet}
+                title="Carry this design across ALL of the product's surfaces (coordinated set)"
+                className="inline-flex flex-1 items-center justify-center gap-1 rounded-full border border-ink-200 px-2 py-1 text-[10px] font-semibold text-ink-600 hover:bg-ink-50"
+              >
+                <Shrink className="h-3 w-3" /> Set
               </button>
             )}
           </div>
