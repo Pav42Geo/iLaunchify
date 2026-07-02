@@ -29,6 +29,16 @@ export const AUDIT_ENTITY_TYPES = [
   'LogisticsSetting', // Logistics gate on/off admin settings (Phase L1, 2026-07-02)
   'StorageAgreement', // Hold-at-manufacturer storage agreements (Phase L1, 2026-07-02)
   'ShipmentLeg', // Platform-booked shipment legs (Phase L1, 2026-07-02)
+  // Phase L2/L3 (2026-07-02). NOTE: earlier L2/L3 writes logged these under
+  // 'User'/'Product'/'Order'/'Partner' with real row ids in the payload (the
+  // types below didn't exist yet) — those rows stay valid; new writes should
+  // use the dedicated types.
+  'CarrierAccount', // EasyPost child / BYO carrier accounts (Phase L2)
+  'CarrierServiceRule', // Carrier eligibility matrix rows (Phase L2)
+  'StorageReleaseOrder', // Stock releases out of hold-at-manufacturer (Phase L1.2)
+  'ChannelConnection', // Creator sales-channel connections (Phase L3)
+  'ChannelProductLink', // Channel-scoped product identifiers incl. FNSKU (Phase L3)
+  'ChannelInboundPlan', // Factory→channel-FC inbound plans (Phase L3)
   'Order',
   'OrderDispatch',
   'Charge',
