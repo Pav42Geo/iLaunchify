@@ -30,6 +30,7 @@ export * from './lib/pack-model'
 export * from './lib/template-match'
 export * from './lib/packaging-surfaces'
 export * from './lib/surface-face'
+export * from './lib/gltf-surface-binding'
 export { brandThemeToCssVars } from './brand-theme'
 export * from './fonts'
 
