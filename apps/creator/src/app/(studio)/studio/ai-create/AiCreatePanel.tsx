@@ -59,6 +59,9 @@ export interface GenerateContext {
   output?: OutputSettings
   /** Raw brief so a saved generation can be RE-RUN ("use as inspiration") on another die-line. */
   brief?: { descriptor?: string; styleTags?: string[]; colorTags?: string[]; elementTags?: string[] }
+  /** Provider seed hint — "More like this" derives it from the chosen concept so the
+   *  riff stays in that concept's neighbourhood (providers that ignore seeds still work). */
+  seed?: number
 }
 
 /** A previously saved / finalized concept, for the "My templates" grid. */
@@ -167,9 +170,14 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const [colors, setColors] = useState<string[]>(props.initialBrief?.colorTags ?? [])
   const [elements, setElements] = useState<string[]>(props.initialBrief?.elementTags ?? [])
   const [variations, setVariations] = useState<string[]>([])
-  // Which concept index is showing its 3D wrap (null = all flat). Concept SVGs are
-  // wrapped onto the die-line's shape via Dieline3DViewer — see the AI design on the pack.
-  const [threeDIdx, setThreeDIdx] = useState<number | null>(null)
+  // Per-card view override (F2). Shaped die-lines (BOX/CYLINDER) default to the 3D
+  // wrap — see the AI design ON the pack; FLAT surfaces default to the flat tile.
+  // An entry flips card i to the non-default view.
+  const [viewOverrides, setViewOverrides] = useState<Record<number, boolean>>({})
+  // "More like this" (F3): one level of riff history — the batch we riffed FROM and
+  // which concept seeded the riff, for the breadcrumb + "back to first batch".
+  const [prevBatch, setPrevBatch] = useState<string[] | null>(null)
+  const [riffSource, setRiffSource] = useState<number | null>(null)
   const [setVariants, setSetVariants] = useState<{ id: string; label: string; svg: string }[]>([])
   const [masterGenerated, setMasterGenerated] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -193,6 +201,11 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const surfaceAspect = selected ? selected.surface.widthMm / Math.max(1, selected.surface.heightMm) : 1
   const wideSurface = surfaceAspect > 1.6
   const singleColResults = wideSurface || surfaceAspect < 0.625
+
+  // F2 — 3D-first results: shaped die-lines default each result card to the 3D wrap.
+  const selectedShape = shapeKindForCategory(selected?.containerCategory)
+  const default3D = selectedShape !== 'FLAT'
+  const show3D = (i: number) => (viewOverrides[i] ? !default3D : default3D)
 
   const manualMode = brandMode === 'manual'
   // Effective brand inputs the brief + provider use.
@@ -298,10 +311,41 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
       const refs = props.onGenerate ? await props.onGenerate(plan, selected.id, genCtx) : []
       const next = refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg]
       setVariations(next)
+      setViewOverrides({})
+      // A fresh generate starts a new lineage — drop any riff history.
+      setPrevBatch(null)
+      setRiffSource(null)
       props.onVariationsChange?.(next)
     } finally {
       setBusy(false)
     }
+  }
+
+  /** F3 — riff on ONE concept: re-run the draft cycle seeded from it, keeping the
+   *  outgoing batch one level deep so the creator can step back. Costs one cycle. */
+  async function moreLikeThis(i: number) {
+    if (!plan || !selected || busy) return
+    setBusy(true)
+    try {
+      const refs = props.onGenerate ? await props.onGenerate(plan, selected.id, { ...genCtx, seed: i + 1 }) : []
+      const next = refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg]
+      setPrevBatch(variations)
+      setRiffSource(i)
+      setVariations(next)
+      setViewOverrides({})
+      props.onVariationsChange?.(next)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function backToPreviousBatch() {
+    if (!prevBatch) return
+    setVariations(prevBatch)
+    props.onVariationsChange?.(prevBatch)
+    setPrevBatch(null)
+    setRiffSource(null)
+    setViewOverrides({})
   }
 
   function switchScope(next: 'single' | 'set' | 'flavors') {
@@ -310,6 +354,9 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     props.onVariationsChange?.([])
     setSetVariants([])
     setMasterGenerated(false)
+    setViewOverrides({})
+    setPrevBatch(null)
+    setRiffSource(null)
   }
 
   return (
@@ -590,12 +637,20 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
           </div>
         ) : (
           <div className={`grid gap-3 ${singleColResults ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            {riffSource !== null && (
+              <div className="col-span-full flex items-center justify-between rounded-lg bg-ink-50 px-2.5 py-1.5 text-[11px]">
+                <span className="font-semibold text-ink-600">Riffing on Concept {riffSource + 1}</span>
+                <button type="button" onClick={backToPreviousBatch} className="font-semibold text-pink-700 hover:underline">
+                  Back to first batch
+                </button>
+              </div>
+            )}
             {variations.map((v, i) => (
               <div key={i} className="rounded-xl border border-ink-200 bg-white p-2">
-                {threeDIdx === i && selected ? (
+                {show3D(i) && selected ? (
                   <div className="h-[220px] overflow-hidden rounded-lg bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#f1f0ec)]">
                     <Dieline3DViewer
-                      shape={shapeKindForCategory(selected.containerCategory)}
+                      shape={selectedShape}
                       widthMm={selected.surface.widthMm}
                       heightMm={selected.surface.heightMm}
                       textureSvg={v}
@@ -607,15 +662,28 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                   <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: v }} />
                 )}
                 <div className="mt-1.5 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setThreeDIdx((cur) => (cur === i ? null : i))}
-                    aria-pressed={threeDIdx === i}
-                    title="Preview this concept in 3D"
-                    className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${threeDIdx === i ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 text-ink-500 hover:border-ink-400'}`}
-                  >
-                    <Box className="h-3 w-3" /> {threeDIdx === i ? 'Flat' : '3D'}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setViewOverrides((o) => ({ ...o, [i]: !o[i] }))}
+                      aria-pressed={show3D(i)}
+                      title={show3D(i) ? 'Show the flat print surface' : 'Preview this concept in 3D'}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${show3D(i) ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 text-ink-500 hover:border-ink-400'}`}
+                    >
+                      <Box className="h-3 w-3" /> {show3D(i) ? 'Flat' : '3D'}
+                    </button>
+                    {props.onGenerate && !gated && (
+                      <button
+                        type="button"
+                        onClick={() => moreLikeThis(i)}
+                        disabled={busy}
+                        title="Generate 4 more in this direction (costs 1 cycle)"
+                        className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2 py-0.5 text-[10px] font-semibold text-ink-500 transition hover:border-ink-400 disabled:opacity-50"
+                      >
+                        <Sparkles className="h-3 w-3" /> More like this
+                      </button>
+                    )}
+                  </div>
                   <ResultActions
                     result={{ svg: v, dielineId: selected?.id ?? '', label: selected?.label ?? '', index: i }}
                     onEdit={props.onEditInStudio}

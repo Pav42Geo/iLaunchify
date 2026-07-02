@@ -194,6 +194,7 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
         market: props.market ?? 'US',
         complianceJson: plan.compliance as unknown as Record<string, unknown>,
         brief: ctx?.brief,
+        seed: ctx?.seed,
       })
       return res.ok ? res.images : []
     } catch {
