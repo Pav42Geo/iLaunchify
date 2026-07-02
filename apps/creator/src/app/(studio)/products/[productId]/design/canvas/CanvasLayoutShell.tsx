@@ -873,9 +873,6 @@ export function CanvasLayoutShell({
   }, [])
 
   const scheduleOpen = React.useCallback((key: ToolKey) => {
-    // Admin (template-author) AI Templator navigates to the batch page — don't hover-open
-    // it. In creator mode 'ai' opens the in-canvas drawer like any other tool.
-    if (key === 'ai' && templateAuthor) return
     cancelClose()
     if (openTimerRef.current !== null) {
       window.clearTimeout(openTimerRef.current)
@@ -884,7 +881,7 @@ export function CanvasLayoutShell({
       setActiveTool(key)
       openTimerRef.current = null
     }, 60)
-  }, [cancelClose, templateAuthor])
+  }, [cancelClose])
 
   const scheduleClose = React.useCallback(() => {
     // Pinned drawer doesn't auto-close on mouseleave — only explicit
@@ -904,17 +901,9 @@ export function CanvasLayoutShell({
   React.useEffect(() => clearTimers, [clearTimers])
 
   function toggleTool(key: ToolKey) {
-    // AI Templator opens the AI packaging generator for this product's die-line set
-    // (its own full-screen studio surface), rather than a slide-out drawer.
-    // Admin (template-author) mode → navigate to the full-screen generator against the
-    // chosen die-cut + domain (product-less). Creator mode → open the in-canvas drawer
-    // (falls through to normal tool toggling below).
-    if (key === 'ai' && templateAuthor) {
-      window.location.assign(
-        `/studio/ai-create?admin=1&domain=${encodeURIComponent(templateAuthor.domain)}${templateAuthor.dieCutId ? `&dieCut=${encodeURIComponent(templateAuthor.dieCutId)}` : ''}`,
-      )
-      return
-    }
+    // 'ai' opens the in-canvas AI Templator drawer in BOTH modes — creator (product
+    // die-line set) and admin template-author (chosen die-cut + domain, product-less).
+    // The drawer's "Full view" link reaches the full-screen generator when needed.
     // Click is decisive — cancel any pending hover schedules first.
     clearTimers()
     // Always defer to the rail tool over the font drawer (DS-66f).
@@ -1071,6 +1060,7 @@ export function CanvasLayoutShell({
               creatorTier={creatorTier}
               onSaveAsTemplate={onSaveTemplateClick}
               finishes={finishes}
+              templateAuthor={templateAuthor}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1621,6 +1611,7 @@ function ToolDrawer({
   creatorTier,
   onSaveAsTemplate,
   finishes,
+  templateAuthor,
   onClose,
 }: {
   tool: ToolKey
@@ -1656,6 +1647,8 @@ function ToolDrawer({
   creatorTier: TierKey
   onSaveAsTemplate: () => void
   finishes: StudioFinish[]
+  /** Admin template-author mode — the AI drawer loads product-less against this die-cut + domain. */
+  templateAuthor: { domain: string; container: string | null; aspectBucket: string | null; dieCutId?: string | null } | null
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -1739,7 +1732,15 @@ function ToolDrawer({
             onSaveAsTemplate={onSaveAsTemplate}
           />
         )}
-        {tool === 'ai' && <AiCreateDrawer canvas={canvas} productId={productId} dieCut={dieCut} onClose={onClose} />}
+        {tool === 'ai' && (
+          <AiCreateDrawer
+            canvas={canvas}
+            productId={productId}
+            dieCut={dieCut}
+            admin={templateAuthor ? { domain: templateAuthor.domain, dieCutId: templateAuthor.dieCutId ?? null } : null}
+            onClose={onClose}
+          />
+        )}
         {tool === 'brand' && (
           <BrandDrawer
             canvas={canvas}

@@ -12,13 +12,16 @@
 //     frames (Facts / ingredients / barcode stay crisp on top).
 //   • Library → "Use" places a matching-shape template onto the canvas; "Inspire"
 //     reloads a saved design's brief into Create for THIS die-line and re-creates it.
+//
+// Admin (template-author) mode: the SAME drawer + panel, loaded product-less via
+// getAiCreateDrawerPropsAdmin against the chosen die-cut + domain (unmetered tier).
 // =============================================================================
 
 import * as React from 'react'
 import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig } from 'lucide-react'
 import { addImageFromUrl, deriveTemplateTargeting, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
-import { getAiCreateDrawerProps, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
+import { getAiCreateDrawerProps, getAiCreateDrawerPropsAdmin, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
 import { AiCreatePanel, type AiCreatePanelProps, type DielineTarget, type GenerateContext } from '../../../../../studio/ai-create/AiCreatePanel'
 import { TemplateLibrary } from '../../../../../studio/ai-create/TemplateLibrary'
 import { readAiConceptHandoff, clearAiConceptHandoff } from '../../../../../studio/ai-create/handoff'
@@ -30,6 +33,9 @@ type Props = {
   /** The canvas's active die-cut — the fallback surface when the product has no
    *  confirmed PackagingDieline yet (the generator always has a die-line to target). */
   dieCut: DieCutSpec
+  /** Admin (template-author) mode — product-less: load props against the chosen
+   *  die-cut + domain instead of a product. Same enhanced panel, unmetered tier. */
+  admin?: { domain: string; dieCutId?: string | null } | null
   onClose: () => void
 }
 
@@ -78,7 +84,7 @@ function downloadConcept(svgOrUrl: string, label: string): void {
   a.remove()
 }
 
-export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
+export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClose }: Props) {
   void onClose
   const [loading, setLoading] = React.useState(true)
   const [props, setProps] = React.useState<AiCreatePanelProps | null>(null)
@@ -89,10 +95,17 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
   // A concept handed over from the full-page generator's "Edit in Studio" (same-origin).
   const [pending, setPending] = React.useState<{ svg: string; label: string } | null>(null)
 
+  // Depend on the admin PRIMITIVES (domain / dieCutId), not the object identity —
+  // the parent may re-create the object per render and this must not refetch.
+  const adminDomain = admin?.domain ?? null
+  const adminDieCutId = admin?.dieCutId ?? null
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
-    getAiCreateDrawerProps(productId)
+    const load = adminDomain
+      ? getAiCreateDrawerPropsAdmin({ dieCutId: adminDieCutId, domain: adminDomain })
+      : getAiCreateDrawerProps(productId)
+    load
       .then((data) => {
         if (cancelled || !data) return
         setProps(data.props)
@@ -102,13 +115,15 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
     return () => {
       cancelled = true
     }
-  }, [productId])
+  }, [productId, adminDomain, adminDieCutId])
 
   // Pick up a concept handed over from the full-page generator (survives the navigation).
+  // Admin mode is product-less — no handoff to read.
   React.useEffect(() => {
+    if (adminDomain) return
     const h = readAiConceptHandoff(productId)
     if (h) setPending({ svg: h.svg, label: h.label })
-  }, [productId])
+  }, [productId, adminDomain])
 
   /** Drop a concept / template onto the canvas UNDER the truth-layer frames. */
   const applyToCanvas = React.useCallback(
@@ -205,8 +220,18 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
   }
 
   if (!props) {
-    return <div className="p-4 text-[12.5px] text-ink-600">Couldn’t load this product. Try reopening the Studio.</div>
+    return (
+      <div className="p-4 text-[12.5px] text-ink-600">
+        {adminDomain
+          ? 'No die-cuts are available yet. Seed the die-cut library, then generate a template.'
+          : 'Couldn’t load this product. Try reopening the Studio.'}
+      </div>
+    )
   }
+
+  const fullViewHref = adminDomain
+    ? `/studio/ai-create?admin=1&domain=${encodeURIComponent(adminDomain)}${adminDieCutId ? `&dieCut=${encodeURIComponent(adminDieCutId)}` : ''}`
+    : `/studio/ai-create?productId=${productId}`
 
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-4">
@@ -214,7 +239,7 @@ export function AiCreateDrawer({ canvas, productId, dieCut, onClose }: Props) {
         <Wand2 className="h-4 w-4 text-pink-600" />
         <h3 className="text-[13px] font-bold text-ink-900">AI Templator</h3>
         <a
-          href={`/studio/ai-create?productId=${productId}`}
+          href={fullViewHref}
           className="ml-auto inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-ink-400 hover:text-ink-900"
           title="Open the full-screen generator"
         >

@@ -17,9 +17,9 @@
 // =============================================================================
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser, getCreatorTier } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier, requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { loadAiCreateProps, loadGenerationLibrary, loadStarterGallery, type AiCreateData } from './loader'
+import { loadAiCreateProps, loadAdminAiCreateProps, loadGenerationLibrary, loadStarterGallery, type AiCreateData } from './loader'
 import type { LibraryItem, LibraryScope } from './library-types'
 import {
   resolveImageGenProvider,
@@ -40,12 +40,27 @@ export async function getAiCreateDrawerProps(productId: string): Promise<AiCreat
   return loadAiCreateProps(productId, user.id)
 }
 
+/** Admin (template-author) variant of the drawer props — product-less, targets a chosen
+ *  die-cut + domain, unmetered admin tier. Lets the in-canvas AI drawer open in Admin Mode
+ *  with the SAME enhanced AiCreatePanel the creator gets. catalog:write-gated. */
+export async function getAiCreateDrawerPropsAdmin(input: { dieCutId?: string | null; domain?: string }): Promise<AiCreateData | null> {
+  await requireCapability('catalog:write')
+  return loadAdminAiCreateProps({ dieCutId: input.dieCutId ?? undefined, domain: input.domain })
+}
+
 function periodKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 function meteredTier(tier: string): CreatorBillingTier {
   return (['builder', 'agency'] as const).includes(tier as never) ? (tier as CreatorBillingTier) : tier === 'admin' ? 'agency' : 'maker'
+}
+
+/** Effective tier for metering: admins (template-author mode) bill as 'admin' →
+ *  agency caps, regardless of any CreatorProfile; creators use their real tier. */
+async function callerTier(user: { id: string; role?: string }): Promise<string> {
+  if (user.role === 'ADMIN') return 'admin'
+  return getCreatorTier(user.id).catch(() => 'maker' as const)
 }
 
 // --- cast-guarded delegates (compile + degrade before the schema is pushed) ---
@@ -118,7 +133,7 @@ export type GenerateConceptsResult =
 /** Draft cycle. Returns concept images (SVG markup or URLs) for the panel to preview. */
 export async function generateAiConcepts(input: GenerateConceptsInput): Promise<GenerateConceptsResult> {
   const user = await requireUser()
-  const tierKey = await getCreatorTier(user.id).catch(() => 'maker' as const)
+  const tierKey = await callerTier(user)
   const tier = meteredTier(tierKey)
   const limits = tierLimits(tier)
   if (limits.draftCyclesPerPeriod <= 0) {
@@ -230,7 +245,7 @@ export type FinalizeConceptResult =
 /** Finalize (print-res). Debits finalize megapixels + stored bytes; flips the row READY. */
 export async function finalizeAiConcept(input: FinalizeConceptInput): Promise<FinalizeConceptResult> {
   const user = await requireUser()
-  const tierKey = await getCreatorTier(user.id).catch(() => 'maker' as const)
+  const tierKey = await callerTier(user)
   const tier = meteredTier(tierKey)
   const limits = tierLimits(tier)
   if (limits.draftCyclesPerPeriod <= 0) return { ok: false, error: 'AI Create is available on Builder and Agency plans.' }
