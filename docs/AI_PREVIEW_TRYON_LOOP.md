@@ -107,10 +107,10 @@ every change as usual.
 
 ## Phasing
 
-- **P1** — F1 click-to-swap + switcher, F2 aspect-aware layout. No new seams.
-- **P2** — F2 3D-by-default, F3 More-like-this.
-- **P3** — F1 hover try-on (needs history-suspend from Code), A/B pin (pin one candidate,
-  flip the other), lightbox zoom.
+- **P1** — F1 click-to-swap + switcher, F2 aspect-aware layout. No new seams. **SHIPPED 2026-07-01.**
+- **P2** — F2 3D-by-default, F3 More-like-this. **SHIPPED 2026-07-01.**
+- **P3** — F1 hover try-on (needs `withHistorySuspended` from Code), A/B pin (pin one
+  candidate, flip the other), lightbox zoom. **PENDING** — blocked on the Code seam.
 
 ## Out of scope
 
