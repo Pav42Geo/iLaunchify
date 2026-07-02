@@ -6,8 +6,9 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, Loader2, CheckCircle2, AlertTriangle, PauseCircle, Clock } from 'lucide-react'
+import { RefreshCw, Loader2, CheckCircle2, AlertTriangle, PauseCircle, Clock, Factory } from 'lucide-react'
 import { importOrdersForAllConnections, approveChannelOrder } from './ingest'
+import { routeChannelOrderToProduction, fulfillChannelOrder, cancelChannelOrder } from './route-actions'
 
 export interface ChannelOrderRow {
   id: string
@@ -68,7 +69,51 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
     setBusyId(id)
     try {
       const res = await approveChannelOrder(id)
-      flash(res.ok ? 'Order approved — it routes with the next production run.' : res.error ?? 'Could not approve.')
+      flash(res.ok ? 'Order approved — hit “Route & pay” to send it to production.' : res.error ?? 'Could not approve.')
+      router.refresh()
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function fulfill(id: string) {
+    const carrier = window.prompt('Carrier (e.g. USPS, UPS):')
+    if (carrier === null) return
+    const trackingNumber = window.prompt('Tracking number:')
+    if (trackingNumber === null) return
+    setBusyId(id)
+    try {
+      const res = await fulfillChannelOrder({ channelOrderId: id, carrier, trackingNumber })
+      flash(res.ok ? 'Fulfilled — tracking pushed to the channel, stock updated.' : res.error)
+      router.refresh()
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function cancel(id: string) {
+    const reason = window.prompt('Cancel this channel order? Optional reason:')
+    if (reason === null) return
+    setBusyId(id)
+    try {
+      const res = await cancelChannelOrder(id, reason || undefined)
+      flash(res.ok ? 'Cancelled — reserved stock released.' : res.error)
+      router.refresh()
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function route(id: string) {
+    setBusyId(id)
+    try {
+      const res = await routeChannelOrderToProduction(id)
+      if (!res.ok) {
+        flash(res.error)
+      } else {
+        flash('Routed to production — complete payment in the opened tab.')
+        if (res.checkoutUrl) window.open(res.checkoutUrl, '_blank', 'noopener')
+      }
       router.refresh()
     } finally {
       setBusyId(null)
@@ -146,14 +191,44 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
               </p>
             )}
 
-            {o.status === 'READY' && o.manualConfirmRequired && (
-              <div className="mt-2.5">
+            {(o.status === 'READY' || o.status === 'ROUTED' || o.status === 'IN_FULFILLMENT') && (
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {o.status === 'READY' && o.manualConfirmRequired ? (
+                  <button
+                    onClick={() => void approve(o.id)}
+                    disabled={busyId === o.id}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+                  >
+                    {busyId === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Approve for production
+                  </button>
+                ) : (
+                  <>
+                    {o.status === 'READY' && (
+                      <button
+                        onClick={() => void route(o.id)}
+                        disabled={busyId === o.id}
+                        title="On-demand: creates the production order and opens payment"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+                      >
+                        {busyId === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Factory className="h-3 w-3" />} Route &amp; pay
+                      </button>
+                    )}
+                    <button
+                      onClick={() => void fulfill(o.id)}
+                      disabled={busyId === o.id}
+                      title="From stock: enter tracking — pushes to the channel + updates inventory"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 px-3 py-1.5 text-[11.5px] font-semibold text-ink-800 hover:bg-ink-50 disabled:opacity-50"
+                    >
+                      Mark fulfilled (self-ship)
+                    </button>
+                  </>
+                )}
                 <button
-                  onClick={() => void approve(o.id)}
+                  onClick={() => void cancel(o.id)}
                   disabled={busyId === o.id}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 px-3 py-1.5 text-[11.5px] font-semibold text-ink-500 hover:border-ink-400 hover:text-ink-800 disabled:opacity-50"
                 >
-                  {busyId === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Approve for production
+                  Cancel
                 </button>
               </div>
             )}

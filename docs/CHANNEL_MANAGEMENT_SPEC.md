@@ -304,18 +304,28 @@ offers a change the stage forbids):
       after decline/suspend); partner `/on-demand` review queue (enable w/ optional
       daily capacity, decline w/ note, suspend kill-switch); enablement state
       surfaced on the Sell card; ingest gate consumes it
-- [ ] **C2.2:** On-demand routing — READY + approved ChannelOrder → create-order
-      pipeline (`origin: CHANNEL`), auto-billing w/ OrderSettings spending cap,
-      dispatch tagging, consumer ship-to on manifest, notifications
+- [~] **C2.2 (C2.2a shipped 2026-07-02):** "Route & pay" — READY+approved
+      ChannelOrder → production Order(s) per product via createOrderWithNumber
+      (PENDING_PAYMENT, consumer ship-to on the order, ORIGIN: CHANNEL notes,
+      pinned manufacturer) + Stripe Checkout session on the EXISTING billing rail
+      (5% fee); ChannelOrder → ROUTED w/ productionOrderId; session failure →
+      NEEDS_ATTENTION w/ reason (stale PENDING_PAYMENT swept by auto-cancel).
+      REMAINING C2.2b: off-session auto-charge (saved method + OrderSettings
+      daily cap — gated on STRIPE_TESTMODE_VERIFICATION), DIRECT_CONSUMER
+      ship-to enum (logistics sign-off), dispatch tagging surface on the partner
+      side, notifications.
 - [~] **C2.4 (mostly shipped 2026-07-02):** pure inventory ledger math in
       `@ilaunchify/channels` (applyLedgerEntry invariants + replayLedger
       reconciliation — golden-tested); delivery-received intake (Sell-surface
       "Record delivery", V1 manual — logistics automates later); go-live gates
       ENFORCED on push (on-demand → enablement check + MADE_TO_ORDER inventory;
       bulk → available>0 + derived qty push, else PUSHED with reason);
-      reservation written on READY bulk orders at ingest. REMAINING: self-ship
-      fulfillment flow (mark fulfilled + tracking → pushback + SALE conversion),
-      RELEASE on cancel, oversell zero-push on conflict.
+      reservation written on READY bulk orders at ingest;
+      **fulfillment tail shipped 2026-07-02:** self-ship "Mark fulfilled" (tracking →
+      adapter pushFulfillment → reservations convert to CHANNEL_SALE ledger entries,
+      invariant-checked, drift reconciled via replayLedger not blocking) + Cancel
+      (RELEASE of this order's reservations via ledger provenance). REMAINING:
+      oversell zero-push on conflict (needs the C1 inventory-push loop).
 
 ### Phase C3 — TikTok Shop adapter
 - [ ] Partner Center app + OAuth2 + products/orders/fulfillment mapping to the seam
