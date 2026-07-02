@@ -294,6 +294,9 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
         <AiCreatePanel
           key={briefKey}
           {...props}
+          // No "My templates" grid in the drawer — saved designs live in the
+          // Library tab (This product / My library) right next to it.
+          savedConcepts={undefined}
           stacked
           editActionLabel="Use on canvas"
           initialBrief={initialBrief}
