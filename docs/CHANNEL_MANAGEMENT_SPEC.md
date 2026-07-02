@@ -184,6 +184,38 @@ changeover, `@ilaunchify/orders`) and **we see incoming production orders in fli
 - Admin: OrderSettings knobs (processing buffer, default safety days, target
   days-of-cover default 45 per the 30–60 industry sweet spot).
 
+### 3.5b Auto-reorder (creator opt-in, added 2026-07-02)
+
+**Research:** the universal pattern across Amazon and the IMS field is *policy-based
+auto-replenishment with an approval spine*. Amazon's Auto-Replenishment (AWD→FBA)
+executes automatically off a configured inventory policy + ordering schedule + MOQ +
+vendor lead times; Cin7 drops reorder-point breaches into a Reorder module that
+auto-generates POs, with a org-level toggle for whether POs REQUIRE approval before
+authorization; the standard flow everywhere is "PO is created → you approve → it goes
+to the vendor", with full-auto as the earned upgrade. Nobody reputable defaults to
+silently spending money.
+
+**`AutoReorderPolicy` (per creator × product, opt-in):**
+- Trigger: alert-ladder `LOW` (default — i.e. the computed reorder point) or a custom
+  minimum-units threshold.
+- Quantity: `SUGGESTED` (dynamic — the §3.5a engine, MOQ/pack-rounded, onOrder-aware)
+  or `FIXED` n units.
+- **Mode CONFIRM (default):** trigger auto-creates a DRAFT production order +
+  notification with one-click submit; reminder before the reorder-by date passes.
+- **Mode FULL_AUTO (earned opt-in):** offered only after ≥1 successful CONFIRM cycle
+  (mirrors the manual-confirm training wheels); submits + charges the saved method
+  (rides the C2.2 auto-billing machinery + daily cap) and always notifies after the
+  fact with a one-click cancel window while the order sits in PENDING_ACCEPT.
+- **Guardrails (all policies):** monthly auto-spend cap; price-change guard (unit
+  cost snapshot at enrollment — any change pauses the policy + notifies rather than
+  charging a different price); anti-stacking is FREE — suggestedReorderQty already
+  subtracts onOrder, so an in-flight auto-order suppresses the next trigger to 0;
+  pause/resume anytime; policy pauses itself after any payment failure.
+- **Admin:** global auto-reorder kill-switch + defaults in OrderSettings; every
+  trigger/submit/pause audited.
+- **Dependency:** FULL_AUTO requires C2.2's billing rail; CONFIRM mode only needs
+  draft-order creation and can ship with C6.
+
 ### 3.5 Cross-cutting rules
 
 - Money boundary unchanged: consumer payment lives on the channel; iLaunchify bills the
@@ -287,6 +319,12 @@ changeover, `@ilaunchify/orders`) and **we see incoming production orders in fli
 - [ ] Admin OrderSettings knobs: processing buffer, safety days default, target
       days-of-cover (default 45); creator per-product overrides
 - [ ] Coordinate with logistics /inventory surface (shared pool, no duplicate truth)
+- [ ] `AutoReorderPolicy` schema (additive) + policy evaluation in the daily
+      recompute (trigger → CONFIRM draft order + notify; anti-stacking via onOrder)
+- [ ] Policy management UI on the inventory panel (enroll, mode, qty, caps,
+      pause/resume) + price-change guard snapshot
+- [ ] FULL_AUTO mode behind the C2.2 billing rail (earned opt-in, cancel window,
+      pause-on-payment-failure) + admin kill-switch/defaults in OrderSettings
 
 ### Cross-cutting (runs through every phase)
 - [ ] Rate-limit + retry + timeout policy per adapter (SyncEvent-logged)
