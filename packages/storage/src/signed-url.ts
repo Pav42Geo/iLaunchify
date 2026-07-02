@@ -4,11 +4,14 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { getR2Client, getR2Config } from './r2-client'
+import { isLocalStorageMode, localReadUrl } from './local'
 
 export async function getSignedReadUrl(
   key: string,
   options: { expiresInSeconds?: number } = {},
 ): Promise<string> {
+  // Dev fallback: serve from the creator app's dev-storage route (no expiry).
+  if (isLocalStorageMode()) return localReadUrl(key)
   const cfg = getR2Config()
   const client = getR2Client()
   const command = new GetObjectCommand({ Bucket: cfg.bucket, Key: key })

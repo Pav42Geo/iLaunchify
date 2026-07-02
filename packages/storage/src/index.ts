@@ -20,6 +20,8 @@ export {
 } from './upload'
 export { getSignedReadUrl } from './signed-url'
 export { pingR2, type R2PingResult } from './health'
+// Local-disk DEV fallback (no R2 keys, non-production) — see ./local.
+export { isR2Configured, isLocalStorageMode, readFileLocal, localStorageDir } from './local'
 export {
   partnerFileKey,
   brandAssetKey,

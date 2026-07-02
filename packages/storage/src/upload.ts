@@ -3,6 +3,7 @@
 
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getR2Client, getR2Config } from './r2-client'
+import { isLocalStorageMode, uploadFileLocal, deleteFileLocal } from './local'
 
 export interface UploadInput {
   key: string                       // generated via partnerFileKey() or similar
@@ -21,6 +22,11 @@ export interface UploadResult {
 }
 
 export async function uploadFile(input: UploadInput): Promise<UploadResult> {
+  // Dev fallback: no R2 keys + not production → write to .dev-storage on disk.
+  // R2 takes over automatically the moment the env vars appear (see ./local).
+  if (isLocalStorageMode()) {
+    return uploadFileLocal({ key: input.key, body: input.body, contentType: input.contentType })
+  }
   const cfg = getR2Config()
   const client = getR2Client()
 
@@ -47,6 +53,9 @@ export async function uploadFile(input: UploadInput): Promise<UploadResult> {
  * Delete a file by key. Idempotent — succeeds even if the object is already gone.
  */
 export async function deleteFile(key: string): Promise<void> {
+  if (isLocalStorageMode()) {
+    return deleteFileLocal(key)
+  }
   const cfg = getR2Config()
   const client = getR2Client()
   await client.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }))

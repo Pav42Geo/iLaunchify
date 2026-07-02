@@ -74,3 +74,4 @@ pnpm-debug.log*
 # Never commit it — it stays local to Pavel's machine for reference only.
 FOD-reference/
 .fuse_hidden*
+.dev-storage/
