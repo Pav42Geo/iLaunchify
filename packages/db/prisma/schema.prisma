@@ -720,6 +720,10 @@ model CreatorProfile {
   displayName              String
   bio                      String?
   audienceSizeBand         String? // "10K-100K", "100K-1M", "1M+"
+  // Logistics L0 — AAFCO pet-food state registrations (docs/LOGISTICS_AND_FULFILLMENT.md §1).
+  // Pet-food products may only route to ship-to states in this list (2-letter codes).
+  // Empty = no states registered yet; the routing gate surfaces "register in state X".
+  petFoodRegisteredStates  String[]
   // V1: 5-step onboarding stepper progress per docs/CREATOR_ONBOARDING.md.
   // Shape: { welcomeSeen, currentStep, completedSteps[], declaredTargetMarketIds[],
   //         step1CompletedAt, step2CompletedAt, ... } — mirrors the Partner pattern.
@@ -1094,6 +1098,29 @@ model PartnerService {
   coPackerAssignments              ProductTemplatePackaging[]        @relation("CoPackerAssignment")
   // Slice C9 — prepress output preferences (source of truth for export bundles).
   printOutputSpec                  PartnerPrintOutputSpec?
+  // ---- Logistics L0 — storage + fulfillment capabilities (typed, drives matching
+  // like Phase G3; docs/LOGISTICS_AND_FULFILLMENT.md §3–4). Meaningful on
+  // type=WAREHOUSE (FC node) and on producing services that offer storage.
+  offersStorage                    Boolean                           @default(false)
+  storageClasses                   String[] // StorageClass values the facility can hold (AMBIENT/PROTECT_HEAT/CHILLED/FROZEN)
+  hazmatAccepted                   String[] // HazmatClass values accepted (SDS on file required before receipt)
+  storageBillingUnit               StorageBillingUnit?
+  storageRateCents                 Int? // per billing unit per month; admin-approved bands
+  storageFreeGraceDays             Int? // business days free after production delivery (industry norm ~10)
+  storageMinMonthlyCents           Int?
+  pickFeeCents                     Int? // per-pick fee for ON_DEMAND parcels
+  packFeeCents                     Int?
+  canShipParcel                    Boolean                           @default(false) // co-mans often do freight only — the usual ON_DEMAND disqualifier
+  maxDwellDays                     Int? // partner aging policy for stored stock
+  onDemandEnabled                  Boolean                           @default(false) // ship-on-demand offered (supplement-manufacturer practice)
+  fcCertifications                 String[] // FDA_REGISTERED / GMP / SQF / GFSI — hard FC-eligibility filters
+  weeklyPalletCapacity             Int? // receiving capacity for FC selection Phase 1
+  facilityLat                      Float? // node coordinates for nearest-eligible selection
+  facilityLng                      Float?
+  receivingSpecJson                Json? // FC receiving requirements (appointment rules, pallet spec, label placement)
+  // Logistics L0 back-relations
+  storageAgreements                StorageAgreement[]
+  fcAwards                         FcAwardLog[]
   partner                          Partner                           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
@@ -2320,6 +2347,9 @@ model Order {
   productionSubscription   ProductionSubscription? @relation("OrdersFromSubscription", fields: [productionSubscriptionId], references: [id])
   items                    OrderItem[]
   dispatches               OrderDispatch[]
+  // Logistics L0 back-relations
+  storageAgreements        StorageAgreement[]
+  channelInboundPlans      ChannelInboundPlan[]
   charge                   Charge?
   refunds                  Refund[]
   cancellationRequests     CancellationRequest[]
@@ -2426,6 +2456,25 @@ model OrderSettings {
   autoApproveCreatorCancelBeforeRouting Boolean @default(true) // auto-approve creator cancel before the order routes
   disputeWindowDays                    Int     @default(14) // days after delivery a creator can open a dispute
 
+  // ---- Logistics L0 (docs/LOGISTICS_AND_FULFILLMENT.md §5–8; admin-tunable) ----
+  // FC-selection scoring weights (raw magnitudes; scorer renormalizes — same
+  // pattern as the partner-match weights above). V1 uses Phase-1 eligibility +
+  // nearest; weights activate with the Phase-2 scorer (≥3 eligible nodes).
+  fcCostWeightPct         Int @default(35) // first-leg freight + storage + outbound zone profile
+  fcDistanceWeightPct     Int @default(15) // origin→node distance proxy
+  fcSlaWeightPct          Int @default(15)
+  fcCapacityWeightPct     Int @default(15) // load-leveling (node utilization)
+  fcRotationWeightPct     Int @default(10) // fairness pressure (recent award share)
+  fcStorageMatchWeightPct Int @default(10) // prefer exact storage-class match
+  fcRotationBandPct       Int @default(5) // round-robin inside this % of best score
+  // Carrier selection
+  parcelToLtlCartonCutover Int     @default(8) // ~6–10 cartons: palletizing beats parcel
+  autoInsureThresholdCents Int? // auto-attach shippers-interest insurance at/above; null = off (L4: off until verified)
+  frozenParcelMonWedOnly   Boolean @default(true) // frozen parcels never ship into a weekend
+  firstLegMarginBps        Int     @default(0) // platform margin on platform-booked freight (L5: creator pays at checkout)
+  // Channel gates
+  channelMinShelfLifeDays  Int     @default(105) // Amazon practical check-in floor; per-channel × category overrides later
+
   updatedAt   DateTime @updatedAt
   updatedById String?
 }
@@ -2466,6 +2515,9 @@ model OrderSettingsOverride {
 enum OrderShipToType {
   CREATOR_ADDRESS // goods ship to the creator's own warehouse / address
   WAREHOUSE_PARTNER // goods ship to a connected WAREHOUSE partner service
+  // Logistics L0 (docs/LOGISTICS_AND_FULFILLMENT.md §2, locked 2026-07-02):
+  HOLD_AT_MANUFACTURER // goods stay at the producing partner; ship-on-demand / stock-release via StorageAgreement
+  CHANNEL_INBOUND // direct into a sales-channel FC (FBA / WFS / FBT) via ChannelInboundPlan
 }
 
 // Order cancellation — partner-requested path (PLATFORM_SPEC §B.4, locked
@@ -2674,6 +2726,11 @@ model OrderDispatch {
   order                    Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderItem                OrderItem?             @relation(fields: [orderItemId], references: [id])
   partnerService           PartnerService         @relation(fields: [partnerServiceId], references: [id])
+  // Logistics L0 — physical shipment legs + gated shipping documents. The legacy
+  // trackingCarrier/trackingNumber fields above remain the partner-BYO fast path;
+  // platform-booked shipments create ShipmentLeg rows (docs/LOGISTICS_AND_FULFILLMENT.md §6).
+  shipmentLegs             ShipmentLeg[]
+  shipmentDocuments        ShipmentDocument[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 
@@ -3337,6 +3394,11 @@ model ProductTemplate {
   storageClass               StorageClass                  @default(AMBIENT)
   storageTempMinF            Int?
   storageTempMaxF            Int?
+  // Logistics L0 — hazmat + meltable flags (docs/LOGISTICS_AND_FULFILLMENT.md §1).
+  // hazmatClass is a HARD carrier/FC/channel filter (LQ cosmetics ⇒ ground-only,
+  // SDS required); meltable drives seasonal gates (FBA window Oct 16–Apr 14).
+  hazmatClass                HazmatClass                   @default(NONE)
+  meltable                   Boolean                       @default(false)
   // Finished-good country of origin (ISO-3166-1 alpha-2). Seeded from
   // PartnerProductDefaults.countryOfOrigin → default facility country →
   // Partner.country; override per product. Customs + label + DPP-ready.
@@ -4057,6 +4119,8 @@ model ChannelConnection {
   channel           Channel                 @relation(fields: [channelId], references: [id], onDelete: Cascade)
   creator           User                    @relation("CreatorChannelConnections", fields: [creatorUserId], references: [id], onDelete: Cascade)
   productLinks      ChannelProductLink[]
+  // Logistics L0 — factory→channel-FC inbound plans (FBA/WFS/FBT)
+  inboundPlans      ChannelInboundPlan[]
 
   @@unique([channelId, creatorUserId]) // one connection per (channel, creator)
 }
@@ -4079,6 +4143,11 @@ model ChannelProductLink {
   productId           String
   externalListingId   String // Shopify product_id, Amazon ASIN, etc.
   externalUrl         String? // direct link to the listing
+  // Logistics L0 — channel-scoped FULFILLMENT identifiers (docs/LOGISTICS_AND_FULFILLMENT.md §7).
+  // FNSKU is seller-scoped (per creator's Amazon account), which is why it lives here
+  // and NOT on Product. Best practice: composite the FNSKU into the die-line in Studio.
+  fnsku               String? // Amazon FBA fulfillment-network SKU
+  externalVariantId   String? // channel variant id (variant-level link per CHANNEL_MANAGEMENT_SPEC)
   status              ChannelProductLinkStatus @default(ACTIVE)
   lastPushedAt        DateTime?
   createdAt           DateTime                 @default(now())
@@ -4735,6 +4804,9 @@ model PackagingType {
   // DIETARY_SUPPLEMENT / PET_PRODUCT / OTC / COSMETIC). Empty = all domains.
   // Scopes the marketplace packaging filter + the partner picker. Admin-managed.
   applicableLabelingTypes String[]
+  // Logistics L0 — parcel-handling class. GLASS requires partner attestation of an
+  // ISTA-3A-equivalent tested pack-out (docs/LOGISTICS_AND_FULFILLMENT.md §1).
+  fragilityClass     FragilityClass             @default(FLEXIBLE)
   defaultDimensions  Json? // { lengthMm, widthMm, heightMm }
   defaultSurfaces    Json? // [{ name, defaultBleedMm }]
   status             PackagingTypeStatus        @default(ACTIVE)
@@ -5613,6 +5685,10 @@ enum FeeBasis {
 
 enum StorageClass {
   AMBIENT
+  // Logistics L0 — "meltable"/heat-sensitive class (<~75–80°F product: chocolate,
+  // gummies, softgels, probiotics, lipstick). A SHIPPING-seasonal class more than a
+  // storage temp: drives insulated pack-outs, Mon–Wed ship rules, FBA meltable window.
+  PROTECT_HEAT
   CHILLED
   FROZEN
 }
@@ -7153,4 +7229,318 @@ model AiGeneratorSettings {
 
   updatedAt   DateTime @updatedAt
   updatedById String?
+}
+
+// =============================================================================
+// LOGISTICS & FULFILLMENT — L0 substrate (docs/LOGISTICS_AND_FULFILLMENT.md,
+// decisions L1–L9 LOCKED 2026-07-02). Everything ships "build-ready, admin-gated"
+// via LogisticsSetting. Additive — NEEDS Mac db push.
+// =============================================================================
+
+/// Hard carrier/FC/channel filter — never traded for cost (§1, §6).
+enum HazmatClass {
+  NONE
+  LQ_FLAMMABLE // Class 3 retail-size (perfume UN1266, nail polish UN1263, tinctures) — Limited Quantity, GROUND ONLY
+  AEROSOL_2_1 // UN1950 aerosols (dry shampoo, hairspray) — LQ ground; FBA Dangerous Goods program
+  DRY_ICE_AIR // frozen parcel with dry ice on an air leg (UN1845 Class 9 marking + net kg)
+}
+
+/// Parcel-handling class per PackagingType (§1.6). GLASS ⇒ ISTA-3A-equivalent attestation.
+enum FragilityClass {
+  FLEXIBLE // pouches, sachets
+  RIGID // cans, HDPE bottles, cartons
+  GLASS // jars, droppers, amber bottles
+}
+
+enum ShipmentMode {
+  PARCEL // ≤150 lb/package (UPS/FedEx limits)
+  LTL // 1–14 pallets
+  FTL // full trailer / reefer FTL
+}
+
+enum CoolantType {
+  NONE
+  GEL_PACK // refrigerated parcel (PCM/gel)
+  DRY_ICE // the only viable frozen parcel coolant (UN1845)
+}
+
+/// Storage billing unit for HOLD_AT_MANUFACTURER / FC storage offers (§4).
+enum StorageBillingUnit {
+  PALLET_MONTH // co-packer norm ($12–20 ambient)
+  CUFT_MONTH // Printful-style ($0.70/cu ft)
+}
+
+/// Leg FSM — includes the async freight states (reefer quotes take hours and run
+/// on lane schedules; §6.1). Transitions via FSM helper + AuditLog, never inline.
+enum ShipmentLegStatus {
+  PLANNED
+  QUOTE_REQUESTED // async freight only
+  QUOTED
+  BOOKED
+  PICKUP_SCHEDULED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  EXCEPTION // carrier exception / temp excursion / rejected at receiving
+  CANCELLED
+}
+
+enum CarrierAccountType {
+  PLATFORM_CHILD // EasyPost Forge child user — platform pays, marks up, recharges (L3/L5)
+  BYO_PARCEL // partner's own UPS/FedEx credentials attached to their child user
+  PLATFORM_LTL // platform-held ShipEngine LTL connections
+  PLATFORM_BROKER // reefer/FTL broker account (Loadsmart) — V2, gated
+}
+
+enum StorageMode {
+  ON_DEMAND // partner picks/packs a parcel per end-channel order (supplement practice)
+  STOCK_RELEASE // pallet-granularity releases to creator / FC / channel
+}
+
+enum StorageAgreementStatus {
+  ACTIVE
+  RELEASING
+  CLOSED
+}
+
+enum StorageReleaseStatus {
+  REQUESTED
+  PICKING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ChannelInboundPlanStatus {
+  DRAFT
+  CONFIRMED // manifest becomes immutable — channels fine plan-vs-actual deviations
+  SHIPPED
+  CHECKED_IN
+  RECONCILED // received-vs-expected settled
+  CANCELLED
+}
+
+/// Shipping documents. Required set is keyed off domain × storageClass × hazmat
+/// (rule table in @ilaunchify/shipping); dispatch cannot flip to SHIPPED while a
+/// required doc is missing (§1.1 platform-responsibility split).
+enum ShipDocType {
+  BOL
+  PACKING_SLIP
+  COA // certificate of analysis — required food/pet/baby/supplements
+  SDS // safety data sheet — required for any HazmatClass ≠ NONE
+  TEMP_LOGGER // data-logger file for CHILLED/FROZEN legs (delivery evidence)
+  WASHOUT_CERT // food-grade trailer washout (reefer freight)
+  LABEL_FILE // generated shipping/case labels (GS1-128, dry-ice, LQ)
+  CHANNEL_BOX_LABEL // FBA box ID / WFS box / FBT carton labels
+  CHANNEL_PALLET_LABEL
+  QC_PHOTO // pre-departure QC checklist evidence
+  INSURANCE_CERT
+}
+
+/// "Build-ready, admin-gated" toggle backbone (L1/L2 lock, DomainSetting pattern —
+/// server-enforced). Keys: "storage_class:CHILLED", "storage_class:FROZEN",
+/// "connector:shipbob", "carrier:easypost", "carrier:shipengine_ltl",
+/// "carrier:broker_reefer", "insurance", "channel_inbound:AMAZON_FBA", …
+/// Enabling is an ops decision; no code change at enable time.
+model LogisticsSetting {
+  key         String   @id
+  enabled     Boolean  @default(false)
+  note        String? // admin ops note ("waiting on ShipBob master agreement")
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
+/// One physical movement of goods for a dispatch. The partner-BYO fast path may
+/// keep using OrderDispatch.trackingCarrier/trackingNumber; every platform-booked
+/// shipment gets a leg row. A dispatch can have multiple legs (V2 splits).
+model ShipmentLeg {
+  id                   String             @id @default(cuid())
+  orderDispatchId      String
+  mode                 ShipmentMode
+  status               ShipmentLegStatus  @default(PLANNED)
+  // Carrier + booking
+  carrierAccountId     String? // CarrierAccount that bought the label/booking (soft FK)
+  carrierName          String? // "FedEx" | "XPO" | "Loadsmart:<carrier>"
+  serviceLevel         String? // "GROUND" | "2DAY" | reefer lane ref
+  // FSMA written temp spec transmitted to the carrier on TCS bookings (§1.1)
+  tempSpecMinF         Int?
+  tempSpecMaxF         Int?
+  coolantType          CoolantType        @default(NONE)
+  dryIceNetWeightGrams Int? // drives UN1845 air marking + ≤2.5 kg air threshold
+  // Physical
+  packagesJson         Json? // [{ lengthIn, widthIn, heightIn, weightLb, dryIceGrams? }]
+  palletCount          Int?
+  freightClass         String? // NMFC (LTL only)
+  // Artifacts + custody
+  labelAssetId         String? // purchased label / BOL PDF (Asset soft FK)
+  bolNumber            String?
+  sealNumber           String? // trailer seal recorded at loading; receiver confirms intact
+  trackingNumber       String?
+  trackingStatus       String? // last webhook status verbatim
+  // Money (rated vs billed; carrier adjustments re-billed per contract)
+  ratedCostCents       Int?
+  billedCostCents      Int?
+  declaredValueCents   Int?
+  insured              Boolean            @default(false)
+  // Addresses snapshotted at booking (legal reproducibility)
+  shipFromJson         Json?
+  shipToJson           Json?
+  // Timeline
+  quoteRequestedAt     DateTime? // async freight
+  quotedAt             DateTime?
+  scheduledPickupAt    DateTime?
+  shippedAt            DateTime?
+  deliveredAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  // Relations
+  orderDispatch        OrderDispatch      @relation(fields: [orderDispatchId], references: [id], onDelete: Cascade)
+  documents            ShipmentDocument[]
+
+  @@index([orderDispatchId])
+  @@index([status])
+  @@index([trackingNumber])
+}
+
+/// Uploaded/generated shipping document. Required-doc rules live in
+/// @ilaunchify/shipping and are enforced in the dispatch FSM (no SHIPPED without
+/// required docs). lotNumbers ties COAs to lots → <24h consignee-level recall trace.
+model ShipmentDocument {
+  id                  String        @id @default(cuid())
+  orderDispatchId     String
+  shipmentLegId       String?
+  type                ShipDocType
+  assetId             String // existing asset storage (soft FK, consistent w/ bundleAssetId)
+  lotNumbers          String[] // lots this doc covers (COA ↔ lot linkage)
+  uploadedByPartnerId String?
+  verifiedAt          DateTime?
+  verifiedById        String? // admin reviewer
+  createdAt           DateTime      @default(now())
+  // Relations
+  orderDispatch       OrderDispatch @relation(fields: [orderDispatchId], references: [id], onDelete: Cascade)
+  shipmentLeg         ShipmentLeg?  @relation(fields: [shipmentLegId], references: [id])
+
+  @@index([orderDispatchId, type])
+}
+
+/// Carrier account registry. externalRef points at the provider-side object
+/// (EasyPost Forge child-user id, ShipEngine connection id) — NEVER raw keys
+/// (integrations-registry rule: env holds keys, DB holds status/refs).
+model CarrierAccount {
+  id          String             @id @default(cuid())
+  partnerId   String? // null = platform-owned account (soft FK to Partner)
+  type        CarrierAccountType
+  provider    String // "easypost" | "shipengine" | "loadsmart"
+  externalRef String
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([partnerId, active])
+}
+
+/// Carrier eligibility matrix + fallback ordering (§6.2 Stage 2/3). DB-driven
+/// condition rows, not a rules DSL. Hard filters first; priority orders the
+/// fallback chain within an eligible set. Seeded by seed-logistics.ts.
+model CarrierServiceRule {
+  id                 String         @id @default(cuid())
+  carrier            String // "UPS" | "FedEx" | "ShipEngineLTL" | "LoadsmartReefer"
+  serviceLevel       String // "GROUND" | "2DAY" | "LTL_DRY" | "REEFER_LTL" …
+  modes              ShipmentMode[]
+  storageClasses     String[] // StorageClass values this service may carry
+  hazmatAllowed      String[] // HazmatClass values (empty = NONE only)
+  maxWeightLb        Int?
+  maxTransitDays     Int? // frozen parcel ⇒ ≤2
+  groundOnly         Boolean        @default(false) // LQ flammables
+  seasonalWindowJson Json? // { meltablePause: {...}, frozenShipDays: ["MON","TUE","WED"] }
+  priority           Int            @default(100) // lower = tried first in the fallback chain
+  active             Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([active, priority])
+}
+
+/// HOLD_AT_MANUFACTURER agreement (§4). Fee schedule SNAPSHOTTED at agreement
+/// time (operational-trust principle: legal reproducibility). Monthly Stripe
+/// billing line; platform fee = OrderSettings.warehouseReferralFeeBps (L9).
+model StorageAgreement {
+  id               String                 @id @default(cuid())
+  orderId          String
+  partnerServiceId String
+  mode             StorageMode
+  status           StorageAgreementStatus @default(ACTIVE)
+  feeSnapshotJson  Json // { billingUnit, rateCents, graceDays, minMonthlyCents, pickFeeCents, packFeeCents, referralFeeBps }
+  startedAt        DateTime // = production delivered-to-storage
+  endedAt          DateTime?
+  unitsRemaining   Int
+  palletsRemaining Int?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  // Relations
+  order            Order                  @relation(fields: [orderId], references: [id])
+  partnerService   PartnerService         @relation(fields: [partnerServiceId], references: [id])
+  releases         StorageReleaseOrder[]
+
+  @@index([partnerServiceId, status])
+  @@index([orderId])
+}
+
+/// A creator-triggered chunk shipped out of stored stock (STOCK_RELEASE), or a
+/// per-channel-order parcel (ON_DEMAND). FEFO on lot selection.
+model StorageReleaseOrder {
+  id                 String               @id @default(cuid())
+  storageAgreementId String
+  destinationType    OrderShipToType // CREATOR_ADDRESS / WAREHOUSE_PARTNER / CHANNEL_INBOUND
+  destinationJson    Json? // resolved address / node / plan ref
+  quantity           Int
+  shipmentLegId      String? // soft FK — the leg that carried it
+  status             StorageReleaseStatus @default(REQUESTED)
+  requestedById      String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  // Relations
+  storageAgreement   StorageAgreement     @relation(fields: [storageAgreementId], references: [id], onDelete: Cascade)
+
+  @@index([storageAgreementId, status])
+}
+
+/// Factory → channel-FC inbound plan (§7): FBA inbound plan / WFS shipping plan /
+/// FBT IBR. Manifest is IMMUTABLE once status=CONFIRMED (channels fine deviations).
+model ChannelInboundPlan {
+  id                  String                   @id @default(cuid())
+  orderId             String
+  channelConnectionId String
+  externalPlanId      String // inboundPlanId / WFS plan / IBR id
+  externalShipmentIds String[]
+  placementChoice     String? // "MINIMAL_SPLITS" | "OPTIMIZED_SPLITS"
+  feesJson            Json? // placement-fee snapshot backing the optimizer decision
+  destinationsJson    Json? // channel-assigned FC addresses
+  labelAssetIds       String[] // box/pallet label PDFs routed to the partner
+  appointmentAt       DateTime?
+  status              ChannelInboundPlanStatus @default(DRAFT)
+  reconciliationJson  Json? // received-vs-expected at check-in
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  // Relations
+  order               Order                    @relation(fields: [orderId], references: [id])
+  channelConnection   ChannelConnection        @relation(fields: [channelConnectionId], references: [id])
+
+  @@index([orderId])
+  @@index([channelConnectionId, status])
+}
+
+/// FC-selection decision log (§5 Phase 3): rotation fairness memory + award
+/// explainability for partners ("why did NJ get this order?").
+model FcAwardLog {
+  id               String         @id @default(cuid())
+  partnerServiceId String
+  orderId          String // soft FK
+  scoreJson        Json // { candidates: [{nodeId, score, factors}], winner, bandPct }
+  awardedAt        DateTime       @default(now())
+  // Relations
+  partnerService   PartnerService @relation(fields: [partnerServiceId], references: [id])
+
+  @@index([partnerServiceId, awardedAt])
 }
