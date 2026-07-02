@@ -138,6 +138,52 @@ edits get overwritten (logged).
   ChannelSyncEvent log (admin-v2 surface pattern); ChannelOrder oversight list;
   OnDemandEnablement oversight; per-channel kill switch (disable ingest on incident).
 
+### 3.5a Inventory transparency & replenishment intelligence (added 2026-07-02)
+
+**The question:** many channels, ONE inventory — how does a creator see everything and
+never run dry? Research (reorder-point science: ROP = velocity × lead time + safety
+stock, recalculated daily; Amazon's Restock dashboard pattern: days-of-supply +
+recommended qty + recommended date, 30–60 days sweet spot; Cin7/Katana: per-location
+reorder points + low-stock alerts) maps onto us with TWO advantages no generic IMS
+has: **we know the real manufacturer lead time** (per-flavor lead engine incl.
+changeover, `@ilaunchify/orders`) and **we see incoming production orders in flight**
+— merchants elsewhere hand-enter both.
+
+**Model (per product × variant × storage location — per-location ROPs are best practice):**
+- `velocity` — units/day from ChannelOrderLine history (blend 7-day and 30-day,
+  weighted recent; recompute daily, and on every ingest).
+- `leadDays` — effectiveProductLead(product) + admin processing buffer
+  (OrderSettings). Later: observed variance from actual order history (per-partner
+  reliability), feeding safety stock.
+- `safetyStock` — V1: configurable days-of-cover × velocity (admin default,
+  creator-overridable per product). V2: z × σ_demand × √leadDays (service-level).
+- `reorderPoint = velocity × leadDays + safetyStock`
+- `onOrder` — units in in-flight production orders for this product (we KNOW this).
+- `daysOfCover = availableToSell / velocity`; `projectedStockoutDate` derived.
+- `suggestedReorderQty = targetDaysOfCover × velocity − available − onOrder`,
+  rounded UP to MOQ / pack-size constraints (configurator knows them).
+
+**Alert ladder (state, not spam — one transition = one notification):**
+- `HEALTHY` → `LOW` when available ≤ reorderPoint → notify + badge:
+  "Reorder by ⟨date⟩ to stay in stock" (date = stockoutDate − leadDays).
+- `LOW` → `CRITICAL` when daysOfCover < leadDays → "A reorder placed today still
+  leaves a ⟨n⟩-day gap" + mitigation offers: expedite note to partner, or (if
+  OnDemandEnablement=ENABLED) switch the listing to on-demand as a stopgap.
+- `STOCKOUT` at 0 → all channel listings pushed to 0 automatically (oversell guard),
+  optional auto-pause toggle.
+- Every alert deep-links to a prefilled reorder checkout.
+
+**Transparency surfaces (the ledger IS the audit trail — expose it):**
+- Creator per-product inventory panel: pool by location, reserved with per-channel-
+  order provenance, incoming production orders w/ ETA, per-channel last-pushed qty +
+  live/paused state, full ledger timeline, projected stockout date, ROP line on a
+  simple stock-over-time sparkline.
+- Dashboard widget: products by urgency (CRITICAL first) with days-of-cover.
+- Coordinates with the logistics /inventory surface (multi-location view) — channel
+  intelligence AUGMENTS it, single pool model shared; no duplicate stock truth.
+- Admin: OrderSettings knobs (processing buffer, default safety days, target
+  days-of-cover default 45 per the 30–60 industry sweet spot).
+
 ### 3.5 Cross-cutting rules
 
 - Money boundary unchanged: consumer payment lives on the channel; iLaunchify bills the
@@ -226,6 +272,21 @@ edits get overwritten (logged).
       - **eBay** — Sell API suite (OAuth2), listing policies (fulfillment/payment/
         return policy objects) must exist before listing push
 - [ ] PLATFORM_SPEC tier-cap table update: Agency "All 6" → "All supported channels"
+
+### Phase C6 — Inventory intelligence & transparency (§3.5a)
+- [ ] Pure replenishment math in `@ilaunchify/channels` (velocity blend, ROP,
+      safety stock, suggested qty w/ MOQ rounding, alert-state machine) — golden-tested
+- [ ] Velocity + onOrder aggregation (ChannelOrderLine history + in-flight orders)
+- [ ] Daily recompute job + recompute-on-ingest; alert transitions → notifications
+      (email + in-app), one notification per state transition
+- [ ] Creator per-product inventory panel (pool by location, reserved provenance,
+      incoming w/ ETA, per-channel pushed qty, ledger timeline, stockout projection)
+- [ ] Dashboard urgency widget (CRITICAL-first, days-of-cover)
+- [ ] Prefilled reorder deep-link (suggested qty → checkout); CRITICAL mitigations
+      (expedite note; on-demand stopgap switch when enablement exists)
+- [ ] Admin OrderSettings knobs: processing buffer, safety days default, target
+      days-of-cover (default 45); creator per-product overrides
+- [ ] Coordinate with logistics /inventory surface (shared pool, no duplicate truth)
 
 ### Cross-cutting (runs through every phase)
 - [ ] Rate-limit + retry + timeout policy per adapter (SyncEvent-logged)
