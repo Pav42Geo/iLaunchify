@@ -12,7 +12,7 @@
 // { images: [{ url, width, height, content_type }] }.
 // =============================================================================
 
-import type { ImageGenProvider, ImageRef, PanelGenRequest, UpscaleRequest } from '../provider'
+import type { ImageGenProvider, ImageRef, PanelGenRequest, UpscaleRequest, OutpaintRequest } from '../provider'
 
 export interface FalConfig {
   apiKey: string
@@ -24,6 +24,8 @@ export interface FalConfig {
   controlnetModel?: string
   /** Upscale model path. */
   upscaleModel?: string
+  /** Outpaint (border-extend) model path — Reshape R3a. */
+  outpaintModel?: string
   /** Injected for tests; defaults to global fetch. */
   fetchImpl?: typeof fetch
 }
@@ -33,6 +35,7 @@ const DEFAULTS = {
   model: 'fal-ai/flux/dev',
   controlnetModel: 'fal-ai/flux-control-lora-canny',
   upscaleModel: 'fal-ai/clarity-upscaler',
+  outpaintModel: 'fal-ai/flux-2-pro/outpaint',
 }
 
 /** Nearest fal `image_size` keyword for an aspect ratio (fal accepts these or {width,height}). */
@@ -72,6 +75,7 @@ export function createFalProvider(config: FalConfig): ImageGenProvider {
     model: config.model ?? DEFAULTS.model,
     controlnetModel: config.controlnetModel ?? DEFAULTS.controlnetModel,
     upscaleModel: config.upscaleModel ?? DEFAULTS.upscaleModel,
+    outpaintModel: config.outpaintModel ?? DEFAULTS.outpaintModel,
     fetchImpl: config.fetchImpl ?? fetch,
   }
   return {
@@ -103,6 +107,21 @@ export function createFalProvider(config: FalConfig): ImageGenProvider {
       const resp = await callFal(cfg, cfg.upscaleModel, { image_url: src })
       const out = toRefs(resp, req.image.width, req.image.height)[0]
       return out ?? req.image
+    },
+    // Reshape R3a — border-extend via flux-2-pro/outpaint. Contract verified
+    // 2026-07-02: image_url (URL or data URI) + expand_{top,bottom,left,right}
+    // ints → { images: [{url, width, height}] }. One image per call.
+    async outpaint(req: OutpaintRequest): Promise<ImageRef[]> {
+      const resp = await callFal(cfg, cfg.outpaintModel, {
+        image_url: req.imageUrl,
+        expand_top: Math.max(0, Math.round(req.expandTop)),
+        expand_bottom: Math.max(0, Math.round(req.expandBottom)),
+        expand_left: Math.max(0, Math.round(req.expandLeft)),
+        expand_right: Math.max(0, Math.round(req.expandRight)),
+        output_format: 'png',
+        enable_safety_checker: true,
+      })
+      return toRefs(resp, 0, 0)
     },
   }
 }

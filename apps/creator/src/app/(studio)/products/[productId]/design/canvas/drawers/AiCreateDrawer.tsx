@@ -68,6 +68,29 @@ function draftPixels(widthMm: number, heightMm: number): { widthPx: number; heig
   return { widthPx: Math.round(h * ratio), heightPx: h }
 }
 
+/** Measure an image's natural pixel dimensions in the browser (for outpaint math). */
+function loadImageDims(src: string): Promise<{ w: number; h: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(null)
+    const img = new window.Image()
+    img.onload = () => resolve(img.naturalWidth > 0 ? { w: img.naturalWidth, h: img.naturalHeight } : null)
+    img.onerror = () => resolve(null)
+    img.src = src
+  })
+}
+
+/** Per-side pixel expansion turning a source image's aspect into the target's
+ *  (split evenly; only one axis ever grows). */
+function outpaintExpansion(src: { w: number; h: number }, targetAspect: number): { top: number; bottom: number; left: number; right: number } {
+  const srcAspect = src.w / Math.max(1, src.h)
+  if (targetAspect > srcAspect) {
+    const dx = Math.max(0, Math.round((src.h * targetAspect - src.w) / 2))
+    return { top: 0, bottom: 0, left: dx, right: dx }
+  }
+  const dy = Math.max(0, Math.round((src.w / Math.max(0.01, targetAspect) - src.h) / 2))
+  return { top: dy, bottom: dy, left: 0, right: 0 }
+}
+
 /** Trigger a browser download of an SVG string or an image URL. */
 function downloadConcept(svgOrUrl: string, label: string): void {
   if (typeof window === 'undefined') return
@@ -256,10 +279,18 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
       return
     }
 
-    const ok = window.confirm(`Reshape “${item.title}” with AI for this die-line? Generates 4 concepts (1 cycle).`)
+    const isOutpaint = route.method === 'OUTPAINT'
+    const ok = window.confirm(
+      isOutpaint
+        ? `Reshape “${item.title}” with AI? The art is EXTENDED to this die-line's shape — original pixels untouched (1 cycle).`
+        : `Reshape “${item.title}” with AI for this die-line? Generates 4 concepts (1 cycle).`,
+    )
     if (!ok) return
     setReshaping(true)
     try {
+      // OUTPAINT needs the source's real pixel dims for the per-side expansion math.
+      const srcDims = isOutpaint ? await loadImageDims(item.thumbnailUrl) : null
+      const expand = srcDims ? outpaintExpansion(srcDims, w / Math.max(1, h)) : null
       // Brief: the stored one for own generations; synthesized from the title otherwise.
       const brief = item.hasBrief ? await getGenerationBrief(item.id).catch(() => null) : null
       const target = dielines[0] ?? targetFromDieCut(dieCut)
@@ -291,7 +322,13 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
         complianceJson: plan.compliance as unknown as Record<string, unknown>,
         brief: brief ?? { descriptor: item.title },
         title: `${item.title} — reshaped`,
-        reshape: { sourceId: item.id, method: route.method },
+        reshape: {
+          sourceId: item.id,
+          method: isOutpaint && expand ? 'OUTPAINT' : 'REF_REGEN',
+          ...(isOutpaint && expand ? { expand } : {}),
+        },
+        // OUTPAINT extends this exact image; REF_REGEN conditions on it (brandRefUrl).
+        ...(isOutpaint && expand ? { sourceImageUrl: item.thumbnailUrl } : {}),
       })
       if (res.ok && res.images.length > 0) {
         setBatch(res.images)

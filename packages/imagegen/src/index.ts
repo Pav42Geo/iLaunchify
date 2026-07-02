@@ -42,6 +42,7 @@ export {
   type PanelGenRequest,
   type VectorTypeRequest,
   type UpscaleRequest,
+  type OutpaintRequest,
   type ImageGenProvider,
   type ProviderStatus,
   PROVIDER_ENV,
@@ -55,9 +56,11 @@ export { createRecraftProvider, type RecraftConfig } from './adapters/recraft'
 export { resolveImageGenProvider, type ResolveOptions, type ResolvedProvider } from './resolve'
 export {
   runDraftGeneration,
+  runOutpaintGeneration,
   runFinalizeGeneration,
   type DraftGenerationInput,
   type DraftGenerationResult,
+  type OutpaintGenerationInput,
   type FinalizeGenerationInput,
   type FinalizeGenerationResult,
 } from './orchestrator'

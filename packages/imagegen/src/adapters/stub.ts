@@ -7,7 +7,7 @@
 // tile; vector requests as a tiny SVG). Same input → same output.
 // =============================================================================
 
-import type { ImageGenProvider, ImageRef, PanelGenRequest, VectorTypeRequest, UpscaleRequest } from '../provider'
+import type { ImageGenProvider, ImageRef, PanelGenRequest, VectorTypeRequest, UpscaleRequest, OutpaintRequest } from '../provider'
 
 /** djb2 → a stable pastel hex from any seed string, so stubs look varied but reproducible. */
 function stubColor(seed: string): string {
@@ -48,6 +48,21 @@ export function createStubProvider(): ImageGenProvider {
         height: req.heightPx,
         svg: placeholderSvg(req.widthPx, req.heightPx, 'type', req.prompt),
       }
+    },
+    async outpaint(req: OutpaintRequest): Promise<ImageRef[]> {
+      // Stub "outpaint": embed the source at a nominal 1000px base inside an SVG
+      // canvas grown by the requested per-side amounts, extension zones tinted.
+      // Deterministic + offline; real border synthesis is the fal leg.
+      const BASE = 1000
+      const w = BASE + Math.max(0, req.expandLeft) + Math.max(0, req.expandRight)
+      const h = BASE + Math.max(0, req.expandTop) + Math.max(0, req.expandBottom)
+      const fill = stubColor(req.imageUrl)
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+        `<rect width="${w}" height="${h}" fill="${fill}"/>` +
+        `<image href="${req.imageUrl.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}" x="${Math.max(0, req.expandLeft)}" y="${Math.max(0, req.expandTop)}" width="${BASE}" height="${BASE}" preserveAspectRatio="xMidYMid meet"/>` +
+        `</svg>`
+      return [{ kind: 'raster', width: w, height: h, svg }]
     },
     async upscale(req: UpscaleRequest): Promise<ImageRef> {
       // Stub "upscale" just re-reports the ref at the target megapixel dimensions.

@@ -11,7 +11,7 @@
 // GenerationStorageUsage. Pure control flow → unit-testable with the stub provider.
 // =============================================================================
 
-import type { ImageGenProvider, ImageRef, PanelGenRequest } from './provider'
+import type { ImageGenProvider, ImageRef, PanelGenRequest, OutpaintRequest } from './provider'
 import {
   type TierGenerationLimits,
   panelMegapixels,
@@ -44,6 +44,31 @@ export async function runDraftGeneration(input: DraftGenerationInput): Promise<D
     return { ok: false, reason: 'Draft budget exhausted for this period.', images: [], debit: { draftCycles: 0 } }
   }
   const images = await input.provider.generatePanels(input.request)
+  if (images.length === 0) {
+    return { ok: false, reason: 'Provider returned no images.', images: [], debit: { draftCycles: 0 } }
+  }
+  return { ok: true, images, debit: { draftCycles: 1 } }
+}
+
+export interface OutpaintGenerationInput {
+  provider: ImageGenProvider
+  limits: TierGenerationLimits
+  usedCycles: number
+  request: OutpaintRequest
+}
+
+/** Reshape R3a (DESIGN_RESHAPE_CROSS_DIELINE): border-extend the source art to the
+ *  target aspect. Same budget semantics as a draft cycle — checked FIRST, debits
+ *  one cycle on success. Providers without outpaint report a clean reason. */
+export async function runOutpaintGeneration(input: OutpaintGenerationInput): Promise<DraftGenerationResult> {
+  const budget = canStartDraft(input.usedCycles, input.limits)
+  if (!budget.ok) {
+    return { ok: false, reason: 'Draft budget exhausted for this period.', images: [], debit: { draftCycles: 0 } }
+  }
+  if (!input.provider.outpaint) {
+    return { ok: false, reason: 'Outpaint is not supported by the configured provider.', images: [], debit: { draftCycles: 0 } }
+  }
+  const images = await input.provider.outpaint(input.request)
   if (images.length === 0) {
     return { ok: false, reason: 'Provider returned no images.', images: [], debit: { draftCycles: 0 } }
   }

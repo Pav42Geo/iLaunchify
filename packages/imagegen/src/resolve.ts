@@ -8,7 +8,7 @@
 // hard-coded or stored in the DB.
 // =============================================================================
 
-import type { ImageGenProvider, PanelGenRequest, VectorTypeRequest, UpscaleRequest, ImageRef } from './provider'
+import type { ImageGenProvider, PanelGenRequest, VectorTypeRequest, UpscaleRequest, OutpaintRequest, ImageRef } from './provider'
 import { PROVIDER_ENV } from './provider'
 import { createStubProvider } from './adapters/stub'
 import { createFalProvider, type FalConfig } from './adapters/fal'
@@ -60,6 +60,10 @@ export function resolveImageGenProvider(env: Record<string, string | undefined>,
     async upscale(req: UpscaleRequest): Promise<ImageRef> {
       const p = fal?.upscale ? fal : stub
       return p.upscale!(req)
+    },
+    async outpaint(req: OutpaintRequest): Promise<ImageRef[]> {
+      const p = fal?.outpaint ? fal : stub
+      return p.outpaint!(req)
     },
   }
 }

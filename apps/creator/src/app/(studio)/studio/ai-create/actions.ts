@@ -24,6 +24,7 @@ import type { LibraryItem, LibraryScope } from './library-types'
 import {
   resolveImageGenProvider,
   runDraftGeneration,
+  runOutpaintGeneration,
   runFinalizeGeneration,
   tierLimits,
   estimateStoredTemplateBytes,
@@ -125,9 +126,17 @@ export interface GenerateConceptsInput {
   /** Creator-facing title (defaults from the descriptor). */
   title?: string
   /** Reshape provenance (DESIGN_RESHAPE_CROSS_DIELINE): which design this run was
-   *  reshaped FROM and by which routed method. Stored in promptJson (P1); the
-   *  parentId column lands with the P2 schema slice. */
-  reshape?: { sourceId?: string | null; method: 'OUTPAINT' | 'REF_REGEN'; sourceBucket?: string | null; targetBucket?: string | null }
+   *  reshaped FROM, by which routed method, and — for OUTPAINT — the per-side
+   *  pixel expansion the client computed from the source image's real dimensions. */
+  reshape?: {
+    sourceId?: string | null
+    method: 'OUTPAINT' | 'REF_REGEN'
+    sourceBucket?: string | null
+    targetBucket?: string | null
+    expand?: { top: number; bottom: number; left: number; right: number }
+  }
+  /** The source artwork for OUTPAINT reshapes (URL or data URI). */
+  sourceImageUrl?: string
 }
 
 /** Resolve a die-line's shape family (container + aspect) for library filtering + the
@@ -197,30 +206,48 @@ export async function generateAiConcepts(input: GenerateConceptsInput): Promise<
         title,
         containerCategory: shape.containerCategory,
         aspectBucket: shape.aspectBucket,
+        // Reshape lineage (P2). Cast-guarded delegate: before `parentId` lands via
+        // db:push this create fails harmlessly (gen = null, generation continues).
+        ...(input.reshape?.sourceId ? { parentId: input.reshape.sourceId } : {}),
       },
     })
     .catch(() => null)
 
+  // Reshape R3a: OUTPAINT extends the SOURCE ART to the new aspect (original
+  // pixels untouched — strongest brand fidelity); everything else is a draft run.
+  const outpaintReq =
+    input.reshape?.method === 'OUTPAINT' && input.sourceImageUrl && input.reshape.expand
+      ? {
+          imageUrl: toImageSource(input.sourceImageUrl)!,
+          expandTop: input.reshape.expand.top,
+          expandBottom: input.reshape.expand.bottom,
+          expandLeft: input.reshape.expand.left,
+          expandRight: input.reshape.expand.right,
+        }
+      : null
+
   let result: Awaited<ReturnType<typeof runDraftGeneration>>
   try {
     result = await withTimeout(
-      runDraftGeneration({
-        provider,
-        limits,
-        usedCycles,
-        request: {
-          prompt: input.prompt,
-          negativePrompt: input.negativePrompt,
-          mask: toImageSource(input.mask),
-          widthPx: input.widthPx,
-          heightPx: input.heightPx,
-          n,
-          brandRefUrl: toImageSource(input.brandRefUrl),
-          palette: input.brandPalette,
-          seed: input.seed,
-        },
-      }),
-      'Draft generation',
+      outpaintReq
+        ? runOutpaintGeneration({ provider, limits, usedCycles, request: outpaintReq })
+        : runDraftGeneration({
+            provider,
+            limits,
+            usedCycles,
+            request: {
+              prompt: input.prompt,
+              negativePrompt: input.negativePrompt,
+              mask: toImageSource(input.mask),
+              widthPx: input.widthPx,
+              heightPx: input.heightPx,
+              n,
+              brandRefUrl: toImageSource(input.brandRefUrl),
+              palette: input.brandPalette,
+              seed: input.seed,
+            },
+          }),
+      outpaintReq ? 'Outpaint' : 'Draft generation',
     )
   } catch (err) {
     // Provider throw / timeout — log the real cause server-side, fail the row, and

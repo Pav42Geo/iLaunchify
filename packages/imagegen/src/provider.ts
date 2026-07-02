@@ -51,6 +51,18 @@ export interface UpscaleRequest {
   targetMegapixels: number
 }
 
+/** Reshape R3a (DESIGN_RESHAPE_CROSS_DIELINE): extend an image beyond its borders
+ *  by per-side pixel amounts — the model paints a coherent scene extension.
+ *  (fal contract: flux-2-pro/outpaint — image_url + expand_top/bottom/left/right.) */
+export interface OutpaintRequest {
+  /** Source image — URL or data URI. */
+  imageUrl: string
+  expandTop: number
+  expandBottom: number
+  expandLeft: number
+  expandRight: number
+}
+
 /** The seam every adapter implements. Optional methods degrade gracefully. */
 export interface ImageGenProvider {
   /** Stable id, e.g. 'fal-flux-controlnet'. */
@@ -58,6 +70,7 @@ export interface ImageGenProvider {
   generatePanels(req: PanelGenRequest): Promise<ImageRef[]>
   generateVectorType?(req: VectorTypeRequest): Promise<ImageRef>
   upscale?(req: UpscaleRequest): Promise<ImageRef>
+  outpaint?(req: OutpaintRequest): Promise<ImageRef[]>
 }
 
 /** Which env keys each capability needs — surfaced by the Integrations registry. */

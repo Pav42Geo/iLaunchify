@@ -109,14 +109,17 @@ Notes:
 - **P2 (provider keys live):** R3a outpaint + R3b reference regen through
   `resolveImageGenProvider` (fal/Recraft take image+mask and style reference);
   `parentId` column; severity thresholds tuned on real art.
-  **PARTIALLY SHIPPED 2026-07-01** (keys live): S2/S3 both run a real draft cycle
-  with the source art as the reference image (fal IP-Adapter via the existing
-  `brandRefUrl` seam — zero imagegen changes), stored brief reused when present,
-  `promptJson.reshape` provenance written, results land in the drawer batch →
-  switcher/A/B/hover review; provider failure falls back to the deterministic crop.
-  Remaining P2: dedicated outpaint model in `@ilaunchify/imagegen` (Code's leg —
-  S2 currently rides the reference-regen path) + the `parentId` column + threshold
-  tuning on real art.
+  **SHIPPED 2026-07-02** (threshold tuning on real art remains open):
+  - S3 REF_REGEN — real draft cycle with the source art as the reference image
+    (fal IP-Adapter via the existing `brandRefUrl` seam); stored brief reused.
+  - S2 OUTPAINT — dedicated `provider.outpaint` seam + fal adapter against
+    `fal-ai/flux-2-pro/outpaint` (contract verified: image_url +
+    expand_{top,bottom,left,right} → images[]); client measures the source's real
+    pixel dims and computes the per-side expansion; `runOutpaintGeneration`
+    budget-checks + debits one cycle; stub provider has a deterministic offline leg.
+  - Lineage: `AiDesignGeneration.parentId` (additive, indexed) written on reshape
+    runs; method + expansion in `promptJson.reshape`. Provider failure still falls
+    back to the deterministic crop; results land in the drawer batch → try-on review.
 - **P3:** per-face BOX targeting (reuse the glTF surface→face binding work), batch
   reshape (one design → the product's whole die-line SET → coordinated-set preview),
   saliency-based focal crop, reshape-quality scoring.
