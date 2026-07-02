@@ -102,10 +102,10 @@ Notes:
   provider" and fall back to offering S1 crop. **SHIPPED 2026-07-01** — classifier +
   `reshapeCropSvg` (golden-tested), `reanchorCanvasJson` + `inferCanvasExtent`
   (golden-tested; wired into every Templates-drawer load, fixing raw cross-size
-  distortion), Library-tab Reshape action with S0 direct-use unlock. Still open in
-  P1 scope: surfacing NON-matching templates in the Templates drawer (loader
-  returns matches only today) and frame-aware re-anchor plumbing (`dielineFrames`
-  → TemplatesDrawer; engine already supports frames).
+  distortion), Library-tab Reshape action with S0 direct-use unlock, Templates
+  drawer "Other shapes — reshape to fit" section (non-matching candidates,
+  severity-badged), and frame-aware re-anchoring (resolved die-line FrameLayout
+  plumbed through the shell → TemplatesDrawer → reanchorCanvasJson). P1 fully done.
 - **P2 (provider keys live):** R3a outpaint + R3b reference regen through
   `resolveImageGenProvider` (fal/Recraft take image+mask and style reference);
   `parentId` column; severity thresholds tuned on real art.

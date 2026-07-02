@@ -8,14 +8,19 @@
 // happens from the Brand tool afterwards.
 
 import * as React from 'react'
-import { LayoutTemplate, Crown, Plus, Search } from 'lucide-react'
+import { LayoutTemplate, Crown, Plus, Search, Shrink } from 'lucide-react'
 import {
   matchTemplatesToProduct,
   reanchorCanvasJson,
   inferCanvasExtent,
+  classifyReshape,
+  aspectBucketFor,
   type FabricCanvas,
   type DieCutSpec,
   type MatchedTemplate,
+  type MatchableTemplate,
+  type ReshapeRoute,
+  type FrameLayout,
 } from '@ilaunchify/ui'
 import {
   loadStudioTemplateLibrary,
@@ -33,6 +38,9 @@ interface Props {
   domain: string
   /** The current die-line surface being designed. */
   dieCut: DieCutSpec
+  /** The product's resolved die-line FrameLayout — makes template re-anchoring
+   *  frame-aware (logo → LOGO frame, SoI → its frame…). Null = proportional only. */
+  frames?: FrameLayout | null
   /** Agency tier — unlocks the premium library. */
   canPremium?: boolean
   onSaveAsTemplate?: () => void
@@ -47,10 +55,14 @@ export function TemplatesDrawer({
   productId,
   domain,
   dieCut,
+  frames = null,
   canPremium = false,
   onSaveAsTemplate,
 }: Props) {
   const [matched, setMatched] = React.useState<MatchedTemplate[]>([])
+  // Cross-shape candidates (DESIGN_RESHAPE_CROSS_DIELINE): domain-correct templates
+  // whose shape family does NOT fit — offered via severity-routed "Reshape".
+  const [others, setOthers] = React.useState<Array<{ template: MatchableTemplate; route: ReshapeRoute }>>([])
   // ids of admin REGULAR-library templates (system brand) — apply via their own loader.
   const [regularIds, setRegularIds] = React.useState<Set<string>>(new Set())
   const [surfaceLabel, setSurfaceLabel] = React.useState(dieCut.name)
@@ -77,18 +89,37 @@ export function TemplatesDrawer({
       if (cancelled) return
       if (!lib) {
         setMatched([])
+        setOthers([])
         setLoading(false)
         return
       }
       setRegularIds(new Set(lib.regular.map((t) => t.id)))
-      const sections = matchTemplatesToProduct([lib.component], domain, [
-        ...lib.premium,
-        ...lib.regular,
-        ...lib.own,
-      ])
+      const candidates = [...lib.premium, ...lib.regular, ...lib.own]
+      const sections = matchTemplatesToProduct([lib.component], domain, candidates)
       const section = sections[0]
+      const matchedTemplates = section ? section.groups.flatMap((g) => g.templates) : []
       setSurfaceLabel(section?.label ?? dieCut.name)
-      setMatched(section ? section.groups.flatMap((g) => g.templates) : [])
+      setMatched(matchedTemplates)
+
+      // Cross-shape leftovers → severity-routed Reshape (mismatch is not a dead end).
+      // S0 (pure unrolling) never lands here — the matcher's family gate is stricter
+      // than the classifier, so classify each leftover against THIS surface.
+      const matchedIds = new Set(matchedTemplates.map((t) => t.id))
+      const surfaceShape = {
+        containerCategory: lib.component.containerCategory,
+        aspectBucket: aspectBucketFor(dieCut.widthMm, dieCut.heightMm),
+      }
+      setOthers(
+        candidates
+          .filter((t) => !matchedIds.has(t.id) && (!t.domain || t.domain === domain))
+          .map((t) => ({
+            template: t,
+            route: classifyReshape(
+              { containerCategory: t.targetContainerCategory, aspectBucket: t.aspectBucket, hasBrief: false },
+              surfaceShape,
+            ),
+          })),
+      )
       setLoading(false)
     })
     return () => {
@@ -138,7 +169,7 @@ export function TemplatesDrawer({
       const source = inferCanvasExtent(parsed)
       if (source) {
         const z = c.getZoom?.() || 1
-        parsed = reanchorCanvasJson(parsed, source, { widthPx: c.getWidth() / z, heightPx: c.getHeight() / z }) as typeof parsed
+        parsed = reanchorCanvasJson(parsed, source, { widthPx: c.getWidth() / z, heightPx: c.getHeight() / z, frames }) as typeof parsed
       }
       c.loadFromJSON(parsed as unknown, () => c.requestRenderAll())
       flash('Template applied — recolor it from the Brand tool.')
@@ -147,8 +178,12 @@ export function TemplatesDrawer({
     }
   }
 
-  async function apply(t: MatchedTemplate) {
-    const ok = window.confirm(`Start from “${t.name}”? This replaces your current design.`)
+  async function apply(t: MatchableTemplate, reshape?: ReshapeRoute) {
+    const ok = window.confirm(
+      reshape
+        ? `Reshape “${t.name}” to fit ${surfaceLabel}? Elements re-anchor to this die-line${reshape.method !== 'CROP' && reshape.method !== 'DIRECT' ? ' (full AI reshape arrives with the image provider)' : ''}. This replaces your current design.`
+        : `Start from “${t.name}”? This replaces your current design.`,
+    )
     if (!ok) return
     const res = t.isPremium
       ? await getStudioPremiumTemplateJson(t.id)
@@ -212,7 +247,7 @@ export function TemplatesDrawer({
         <p className="text-[11px] text-ink-500">Loading templates…</p>
       ) : matched.length === 0 ? (
         <p className="rounded-lg border border-dashed border-ink-200 px-3 py-6 text-center text-[11.5px] text-ink-500">
-          No templates fit this die-line yet. Start from a blank canvas, or check back as the library grows.
+          No templates fit this die-line yet.{others.length > 0 ? ' Reshape one from another shape below, or start blank.' : ' Start from a blank canvas, or check back as the library grows.'}
         </p>
       ) : visible.length === 0 ? (
         <p className="text-[11px] text-ink-500">Nothing matches that filter.</p>
@@ -243,6 +278,46 @@ export function TemplatesDrawer({
             </button>
           ))}
         </div>
+      )}
+
+      {/* Other shapes — severity-routed Reshape (DESIGN_RESHAPE_CROSS_DIELINE).
+          Mismatched shape families are offered, not hidden: elements re-anchor
+          via reanchorCanvasJson on load; AI art legs land with the provider. */}
+      {!loading && others.length > 0 && (
+        <details className="rounded-lg border border-ink-200">
+          <summary className="cursor-pointer select-none px-3 py-2 text-[11.5px] font-semibold text-ink-700 hover:bg-ink-50">
+            <Shrink className="mr-1 inline h-3 w-3" /> Other shapes — reshape to fit ({others.length})
+          </summary>
+          <div className="grid grid-cols-2 gap-2 p-2">
+            {others.map(({ template: t, route }) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => apply(t, route)}
+                disabled={!canvas}
+                className="group relative overflow-hidden rounded-md border border-ink-200 bg-white text-left transition-all hover:border-pink-300 hover:shadow-sm disabled:opacity-50"
+              >
+                <span className="absolute left-1 top-1 z-10 rounded bg-pink-600/90 px-1 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-white">
+                  Reshape{route.method === 'CROP' || route.method === 'DIRECT' ? '' : ' · AI'}
+                </span>
+                {t.isPremium && (
+                  <span className="absolute right-1 top-1 z-10 flex items-center gap-0.5 rounded bg-ink-900/80 px-1 py-0.5 text-[8.5px] font-bold uppercase tracking-wide text-white">
+                    <Crown className="h-2.5 w-2.5" /> Pro
+                  </span>
+                )}
+                <div className="flex aspect-[4/3] items-center justify-center overflow-hidden bg-ink-50">
+                  {t.thumbnailUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={t.thumbnailUrl} alt={t.name} className="h-full w-full object-contain" />
+                  ) : (
+                    <LayoutTemplate className="h-5 w-5 text-ink-300" />
+                  )}
+                </div>
+                <div className="truncate px-2 py-1.5 text-[11.5px] font-medium text-ink-800">{t.name}</div>
+              </button>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   )

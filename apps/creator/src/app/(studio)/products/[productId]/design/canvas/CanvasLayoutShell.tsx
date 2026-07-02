@@ -48,6 +48,7 @@ import {
   SavedIndicator,
   snapshotCanvasAsPng,
   CANVAS_PROPERTIES_TO_INCLUDE,
+  type FrameLayout,
   type SnapshotItem,
 } from '@ilaunchify/ui'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
@@ -1061,6 +1062,7 @@ export function CanvasLayoutShell({
               onSaveAsTemplate={onSaveTemplateClick}
               finishes={finishes}
               templateAuthor={templateAuthor}
+              dielineFrameLayout={frameLayout}
               onClose={closeDrawer}
             />
           ) : null}
@@ -1612,6 +1614,7 @@ function ToolDrawer({
   onSaveAsTemplate,
   finishes,
   templateAuthor,
+  dielineFrameLayout,
   onClose,
 }: {
   tool: ToolKey
@@ -1649,6 +1652,8 @@ function ToolDrawer({
   finishes: StudioFinish[]
   /** Admin template-author mode — the AI drawer loads product-less against this die-cut + domain. */
   templateAuthor: { domain: string; container: string | null; aspectBucket: string | null; dieCutId?: string | null } | null
+  /** Resolved die-line FrameLayout — frame-aware template re-anchoring (Reshape R1). */
+  dielineFrameLayout: FrameLayout | null
   onClose: () => void
 }) {
   // canvas is the live Fabric instance — drawers that need it (Text /
@@ -1728,6 +1733,7 @@ function ToolDrawer({
             productId={productId}
             domain={labelingType}
             dieCut={dieCut}
+            frames={dielineFrameLayout}
             canPremium={canRecolorTemplate(creatorTier)}
             onSaveAsTemplate={onSaveAsTemplate}
           />

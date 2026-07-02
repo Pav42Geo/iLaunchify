@@ -48,7 +48,7 @@ const TGT = { widthPx: 800, heightPx: 300 }
 // --- role-tagged object re-anchors into its target frame ---
 {
   const frames: ReanchorFrameLayout = {
-    frames: [{ id: 'logo', kind: 'LOGO', box: { x: 0.75, y: 0.1, w: 0.2, h: 0.2 }, required: false, source: 'PLATFORM' }],
+    frames: [{ kind: 'LOGO', box: { x: 0.75, y: 0.1, w: 0.2, h: 0.2 } }],
   }
   const json = {
     objects: [{ type: 'image', left: 200, top: 300, width: 200, height: 100, scaleX: 1, scaleY: 1, originX: 'center', originY: 'center', customType: 'brand-logo' }],
@@ -63,7 +63,7 @@ const TGT = { widthPx: 800, heightPx: 300 }
 // --- customRole objects map via role → frame kind ---
 {
   const frames: ReanchorFrameLayout = {
-    frames: [{ id: 'soi', kind: 'STATEMENT_OF_IDENTITY', box: { x: 0, y: 0.8, w: 0.5, h: 0.2 }, required: true, source: 'PLATFORM' }],
+    frames: [{ kind: 'STATEMENT_OF_IDENTITY', box: { x: 0, y: 0.8, w: 0.5, h: 0.2 } }],
   }
   const json = {
     objects: [{ type: 'i-text', left: 10, top: 10, width: 100, height: 20, scaleX: 1, scaleY: 1, originX: 'left', originY: 'top', customRole: 'statement-of-identity' }],

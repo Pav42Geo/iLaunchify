@@ -21,7 +21,6 @@
 export interface ReanchorFrame {
   kind: string
   box: { x: number; y: number; w: number; h: number }
-  [key: string]: unknown
 }
 
 /** Structural subset of FrameLayout (assignable from it). */
