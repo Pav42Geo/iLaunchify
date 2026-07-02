@@ -19,7 +19,7 @@
 
 import * as React from 'react'
 import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig, ChevronLeft, ChevronRight } from 'lucide-react'
-import { applyAiConcept, findAiConcept, deriveTemplateTargeting, reshapeCropSvg, type ReshapeRoute, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
+import { applyAiConcept, findAiConcept, deriveTemplateTargeting, reshapeCropSvg, planGeneration, type ReshapeRoute, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
 import { getAiCreateDrawerProps, getAiCreateDrawerPropsAdmin, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
 import { AiCreatePanel, type AiCreatePanelProps, type DielineTarget, type GenerateContext } from '../../../../../studio/ai-create/AiCreatePanel'
@@ -237,22 +237,76 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
     return { containerCategory: t.targetContainerCategory, aspectBucket: t.aspectBucket }
   }, [dieCut])
 
-  /** Severity-routed cross-shape apply. P1 ships the deterministic legs: S1 crops via
-   *  reshapeCropSvg; S2/S3 (outpaint / reference regen) arrive with the image provider
-   *  and until then fall back to offering the crop. Reviewed like any concept — the
-   *  applied result swaps in place under the truth layer. */
-  async function handleReshape(item: { thumbnailUrl?: string; title: string }, route: ReshapeRoute) {
-    if (!item.thumbnailUrl) return
-    if (route.method !== 'CROP') {
-      const ok = window.confirm(
-        `AI reshape (${route.method === 'OUTPAINT' ? 'extend the art' : 'regenerate from this design'}) arrives with the image provider. Apply a smart crop of “${item.title}” to this die-line instead?`,
-      )
-      if (!ok) return
-    }
+  const [reshaping, setReshaping] = React.useState(false)
+
+  /** Severity-routed cross-shape apply (DESIGN_RESHAPE_CROSS_DIELINE P2).
+   *  S1 crops deterministically. S2/S3 run a real draft cycle with the SOURCE ART as
+   *  the reference image (fal IP-Adapter conditioning via brandRefUrl) — "same idea,
+   *  recomposed for this shape". S2's dedicated outpaint model is a later imagegen
+   *  upgrade (Code's leg); until then outpaint routes through reference regen too.
+   *  Results land in the drawer batch → switcher / A/B / hover review as usual. */
+  async function handleReshape(item: { id: string; thumbnailUrl?: string; title: string; hasBrief?: boolean }, route: ReshapeRoute) {
+    if (!item.thumbnailUrl || !props || reshaping) return
     const w = dieCut.widthMm || 100
     const h = dieCut.heightMm || 150
-    await applyToCanvas(reshapeCropSvg(item.thumbnailUrl, w, h))
-    setAppliedIndex(null)
+
+    if (route.method === 'CROP' || route.method === 'DIRECT') {
+      await applyToCanvas(reshapeCropSvg(item.thumbnailUrl, w, h))
+      setAppliedIndex(null)
+      return
+    }
+
+    const ok = window.confirm(`Reshape “${item.title}” with AI for this die-line? Generates 4 concepts (1 cycle).`)
+    if (!ok) return
+    setReshaping(true)
+    try {
+      // Brief: the stored one for own generations; synthesized from the title otherwise.
+      const brief = item.hasBrief ? await getGenerationBrief(item.id).catch(() => null) : null
+      const target = dielines[0] ?? targetFromDieCut(dieCut)
+      const plan = planGeneration({
+        productDescriptor: brief?.descriptor ?? item.title,
+        brandName: props.brandName,
+        brandPalette: brief?.palette?.length ? brief.palette : props.brandPalette,
+        styleTags: brief?.styleTags ?? [],
+        colorTags: brief?.colorTags ?? [],
+        elementTags: brief?.elementTags ?? [],
+        domain: props.domain,
+        market: props.market ?? 'US',
+        layout: target.layout,
+        surface: { widthMm: w, heightMm: h },
+      })
+      const { widthPx, heightPx } = draftPixels(w, h)
+      const res = await generateAiConcepts({
+        prompt: plan.prompt,
+        negativePrompt: plan.negativePrompt,
+        mask: plan.maskSvg,
+        widthPx,
+        heightPx,
+        dielineId: target.id,
+        productTemplateId: productTemplateId ?? undefined,
+        // The source design conditions the run — this is the reference leg.
+        brandRefUrl: item.thumbnailUrl,
+        domain: props.domain,
+        market: props.market ?? 'US',
+        complianceJson: plan.compliance as unknown as Record<string, unknown>,
+        brief: brief ?? { descriptor: item.title },
+        title: `${item.title} — reshaped`,
+        reshape: { sourceId: item.id, method: route.method },
+      })
+      if (res.ok && res.images.length > 0) {
+        setBatch(res.images)
+        const first = res.images[0]!
+        await applyToCanvas(first, { variationIndex: 0, dielineId: target.id })
+        setAppliedIndex(0)
+        setTab('create')
+      } else {
+        // Provider hiccup → deterministic crop so the creator still gets a result.
+        await applyToCanvas(reshapeCropSvg(item.thumbnailUrl, w, h))
+        setAppliedIndex(null)
+      }
+    } finally {
+      setReshaping(false)
+    }
   }
 
   async function onGenerate(plan: GenerationPlan, dielineId: string, ctx?: GenerateContext): Promise<string[]> {
@@ -385,6 +439,12 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
               Dismiss
             </button>
           </div>
+        </div>
+      )}
+
+      {reshaping && (
+        <div className="flex items-center gap-2 rounded-lg border border-pink-200 bg-pink-50 px-2.5 py-1.5 text-[11.5px] text-pink-800">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reshaping with AI — generating 4 concepts…
         </div>
       )}
 

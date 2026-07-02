@@ -223,13 +223,19 @@ export async function loadStudioTemplateLibrary(input: {
   }
 }): Promise<StudioTemplateLibrary | null> {
   const user = await requireUser()
-  const product = await prisma.product.findFirst({
-    where: { id: input.productId, brand: { creatorProfile: { userId: user.id } } },
-    select: { id: true, variant: { select: { packagingTypeId: true } } },
-  })
-  if (!product) return null
+  // Admin (template-author) parity: the Studio's admin mode is product-less
+  // (productId 'template-author'), so the ownership lookup can't apply — admins
+  // browse the library against the raw surface instead of a product's packaging.
+  const isAdmin = user.role === 'ADMIN'
+  const product = isAdmin
+    ? null
+    : await prisma.product.findFirst({
+        where: { id: input.productId, brand: { creatorProfile: { userId: user.id } } },
+        select: { id: true, variant: { select: { packagingTypeId: true } } },
+      })
+  if (!product && !isAdmin) return null
 
-  const packagingTypeId = input.surface.packagingTypeId ?? product.variant?.packagingTypeId ?? null
+  const packagingTypeId = input.surface.packagingTypeId ?? product?.variant?.packagingTypeId ?? null
   let containerCategory: string | null = null
   if (packagingTypeId) {
     const pt = await prisma.packagingType.findUnique({
@@ -248,8 +254,9 @@ export async function loadStudioTemplateLibrary(input: {
     heightMm: input.surface.heightMm,
   }
 
-  const tier = await getCreatorTier(user.id)
   // Premium library is Agency-gated; the regular library is open to all tiers.
+  // Admins see everything (they author the premium library).
+  const tier = isAdmin ? ('agency' as const) : await getCreatorTier(user.id)
   const premium = canRecolorTemplate(tier) ? await listMatchablePremiumTemplates(input.domain) : []
   const regular = await listMatchableRegularLibraryTemplates(input.domain)
 
@@ -280,7 +287,8 @@ export async function getStudioPremiumTemplateJson(
   templateId: string,
 ): Promise<BrandTemplateJsonResult> {
   const user = await requireUser()
-  const tier = await getCreatorTier(user.id)
+  // Admins bypass the Agency gate — they author/curate the premium library.
+  const tier = user.role === 'ADMIN' ? ('agency' as const) : await getCreatorTier(user.id)
   if (!canRecolorTemplate(tier)) return { ok: false, error: 'Premium templates are an Agency feature.' }
   const tpl = await getPremiumTemplate(templateId)
   if (!tpl || !tpl.canvasJson) return { ok: false, error: 'Template not found.' }

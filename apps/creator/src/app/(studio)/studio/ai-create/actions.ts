@@ -104,6 +104,10 @@ export interface GenerateConceptsInput {
   brief?: { descriptor?: string; styleTags?: string[]; colorTags?: string[]; elementTags?: string[] }
   /** Creator-facing title (defaults from the descriptor). */
   title?: string
+  /** Reshape provenance (DESIGN_RESHAPE_CROSS_DIELINE): which design this run was
+   *  reshaped FROM and by which routed method. Stored in promptJson (P1); the
+   *  parentId column lands with the P2 schema slice. */
+  reshape?: { sourceId?: string | null; method: 'OUTPAINT' | 'REF_REGEN'; sourceBucket?: string | null; targetBucket?: string | null }
 }
 
 /** Resolve a die-line's shape family (container + aspect) for library filtering + the
@@ -166,6 +170,7 @@ export async function generateAiConcepts(input: GenerateConceptsInput): Promise<
           market: input.market ?? 'US',
           palette: input.brandPalette ?? [],
           brief: input.brief ?? null,
+          reshape: input.reshape ?? null,
         },
         provider: provider.backing.raster,
         complianceJson: input.complianceJson ?? undefined,
