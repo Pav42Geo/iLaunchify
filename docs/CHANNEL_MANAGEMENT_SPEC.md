@@ -216,6 +216,49 @@ silently spending money.
 - **Dependency:** FULL_AUTO requires C2.2's billing rail; CONFIRM mode only needs
   draft-order creation and can ship with C6.
 
+### 3.5c Reorder & order change management (added 2026-07-02)
+
+**Research:** supply chains formalize this as the EDI 860 (buyer change request) /
+EDI 865 (seller acknowledgment) pair — buyer proposes quantity/schedule/destination
+changes, seller accepts or counters, iterating to agreement; changes are rejected
+once the order enters the shipping window. Printful's consumer-grade version: free
+self-serve edits until fulfillment starts, address-only changes during fulfillment,
+carrier-level redirect (fees, best-effort) after ship. We adopt the same shape.
+
+**Stage-gated change matrix** (drives which controls even render — the UI never
+offers a change the stage forbids):
+
+| Change | PENDING_ACCEPT | ACCEPTED (pre-prod) | PRODUCING | READY | SHIPPED+ |
+|---|---|---|---|---|---|
+| Quantity | free (re-prices) | partner consent | locked → "order more" | locked | locked |
+| Ship-to destination | free | free | partner consent + re-validate | partner consent + re-rate | carrier redirect (logistics, best-effort) |
+| Timing / hold at partner | free | free | partner consent | offer HOLD_AT_MANUFACTURER if the partner supports it | — |
+| Design / flavors | free | partner consent | locked | locked | locked |
+| Cancel | free (existing auto-cancel) | per cancellation-policy | per policy (fees) | per policy | no |
+
+**Mechanism — `OrderChangeRequest` (the 860/865 pattern on our rails):**
+- In the FREE window: applies instantly, re-runs pricing + lead-time + logistics
+  validation (temp class, carrier eligibility, FC routing per the logistics spec),
+  shows the creator the new ETA/price BEFORE confirm. No partner friction.
+- In the CONSENT window: creator files the request with an auto-computed **impact
+  preview** (price delta, lead-time delta, shipping re-rate); partner gets an
+  accept/decline card in their Orders surface; nothing mutates until acceptance;
+  request + decision audited with snapshots. Declines carry a note.
+- Every applied change re-schedules downstream truth: new ETA recalculated from the
+  lead engine, inventory `onOrder` projections update, replenishment alerts recompute
+  — so the reorder still "lands on time at the right place" after any edit.
+
+**Auto-reorder made editable by construction:**
+- Policy edits (destination, qty mode, caps, schedule) apply to FUTURE triggers
+  immediately — the policy is data, not a contract.
+- CONFIRM-mode drafts are fully editable inline before submit (the draft spine is
+  exactly the free-edit window).
+- FULL_AUTO orders enjoy the same PENDING_ACCEPT free window: the post-submit
+  notification's cancel/edit window IS the free stage.
+- **Saved destinations (address book):** creator-managed list (home, each FC,
+  partner storage) with a per-product/per-policy default — changing where reorders
+  land is a dropdown, not a form.
+
 ### 3.5 Cross-cutting rules
 
 - Money boundary unchanged: consumer payment lives on the channel; iLaunchify bills the
@@ -325,6 +368,12 @@ silently spending money.
       pause/resume) + price-change guard snapshot
 - [ ] FULL_AUTO mode behind the C2.2 billing rail (earned opt-in, cancel window,
       pause-on-payment-failure) + admin kill-switch/defaults in OrderSettings
+- [ ] §3.5c change management: `OrderChangeRequest` schema (additive) + stage-gate
+      matrix helper (pure, golden-tested) + free-window instant apply w/ re-validation
+- [ ] Consent-window flow: impact preview (price/lead/shipping deltas), partner
+      accept/decline card in the Orders surface, snapshot + audit
+- [ ] Saved destinations address book + per-product/policy default destination
+- [ ] Downstream recompute on applied changes (ETA, onOrder, replenishment alerts)
 
 ### Cross-cutting (runs through every phase)
 - [ ] Rate-limit + retry + timeout policy per adapter (SyncEvent-logged)
