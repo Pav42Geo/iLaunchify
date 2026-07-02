@@ -26,6 +26,9 @@ export const AUDIT_ENTITY_TYPES = [
   'OrderSettings', // Order-policy admin settings (2026-06-11)
   'IngredientSourceConfig', // Ingredient data-source admin settings (2026-06-11)
   'DomainSetting', // Product-domain on/off admin settings (2026-06-14)
+  'LogisticsSetting', // Logistics gate on/off admin settings (Phase L1, 2026-07-02)
+  'StorageAgreement', // Hold-at-manufacturer storage agreements (Phase L1, 2026-07-02)
+  'ShipmentLeg', // Platform-booked shipment legs (Phase L1, 2026-07-02)
   'Order',
   'OrderDispatch',
   'Charge',

@@ -112,3 +112,19 @@ export type {
   ExportBundleManifest,
   BuildManifestInput,
 } from './exportBundle'
+// Phase L1 — logistics destinations + V1 FC selection (docs/LOGISTICS_AND_FULFILLMENT.md)
+export { resolveDestinationOptions } from './destination-options'
+export type {
+  DestinationType,
+  DestinationOption,
+  DestinationContext,
+  DestinationProductInput,
+  ManufacturerStorageInput,
+} from './destination-options'
+export {
+  rankFulfillmentCenters,
+  selectNearestEligibleFc,
+  buildAwardLogPayload,
+  haversineMiles,
+} from './fc-selector'
+export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'

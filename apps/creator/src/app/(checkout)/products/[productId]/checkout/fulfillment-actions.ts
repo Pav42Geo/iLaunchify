@@ -16,9 +16,23 @@
 //   Returns shippingCents. V1 is a tiered flat-rate placeholder keyed off
 //   ship-to type + quantity band. Real carrier integration (USPS / UPS /
 //   FedEx) lands later — leaving forward-marker hooks for the rate lookup.
+//
+// listDestinationOptions(productId) — Phase L1b
+//   The four-destination-card payload (docs/LOGISTICS_AND_FULFILLMENT.md §2/§9):
+//   which destination types are offered (and the disabled copy when not), the
+//   platform-suggested fulfillment center (V1 nearest-eligible to the pinned
+//   manufacturer), and the hold-at-manufacturer storage fee card. The Pay
+//   action re-runs the same eligibility server-side — this is display data,
+//   never the enforcement point.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getLogisticsSettings, isStorageClassEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import {
+  resolveDestinationOptions,
+  selectNearestEligibleFc,
+  type DestinationOption,
+  type FcCandidate,
+} from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -69,6 +83,40 @@ export interface NewAddressInput {
   state?: string
   postalCode: string
   country?: string
+}
+
+// Phase L1b — four-destination payload shapes. DestinationOption itself comes
+// from @ilaunchify/orders (the same pure resolver the Pay action re-runs).
+export type { DestinationOption } from '@ilaunchify/orders'
+
+export interface SuggestedFcOption {
+  partnerServiceId: string // PartnerService.id (type=WAREHOUSE)
+  partnerName: string
+  city: string | null
+  state: string | null
+  distanceMiles: number | null // null when either side lacks coordinates
+  /** One-line "why this node" copy, shown verbatim next to the suggestion. */
+  rationale: string
+}
+
+export interface HoldStorageOffer {
+  billingUnit: 'PALLET_MONTH' | 'CUFT_MONTH' | null
+  rateCents: number | null // per billing unit per month
+  freeGraceDays: number | null // business days free after production delivery
+  pickFeeCents: number | null // per-order pick fee (ON_DEMAND)
+  packFeeCents: number | null
+  /** ON_DEMAND needs onDemandEnabled + canShipParcel on the partner service. */
+  onDemandAvailable: boolean
+  /** STOCK_RELEASE only needs storage — freight-capable partners qualify. */
+  stockReleaseAvailable: boolean
+}
+
+export interface DestinationOptionsPayload {
+  options: DestinationOption[]
+  /** V1 nearest-eligible FC pick; null when no node qualifies. */
+  suggestedFc: SuggestedFcOption | null
+  /** Fee card for the Keep-at-manufacturer card; null unless HOLD is enabled. */
+  holdOffer: HoldStorageOffer | null
 }
 
 // -----------------------------------------------------------------------------
@@ -145,6 +193,176 @@ export async function listFulfillmentOptions(
       })),
     },
   }
+}
+
+// -----------------------------------------------------------------------------
+// LIST DESTINATION OPTIONS — Phase L1b four-destination cards
+// -----------------------------------------------------------------------------
+
+export async function listDestinationOptions(
+  productId: string,
+): Promise<Result<DestinationOptionsPayload>> {
+  const { user, error } = await authorize(productId)
+  if (error) return { ok: false, error }
+
+  // Product flags + the pinned manufacturer's storage capability (routing is
+  // owner-pinned — the producing service is fixed on the ProductTemplate).
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      productTemplate: {
+        select: {
+          storageClass: true,
+          hazmatClass: true,
+          labelingType: true,
+          variants: { select: { shelfLifeDays: true } },
+          manufacturerService: {
+            select: {
+              id: true,
+              status: true,
+              offersStorage: true,
+              onDemandEnabled: true,
+              canShipParcel: true,
+              storageClasses: true,
+              maxDwellDays: true,
+              storageBillingUnit: true,
+              storageRateCents: true,
+              storageFreeGraceDays: true,
+              pickFeeCents: true,
+              packFeeCents: true,
+              facilityLat: true,
+              facilityLng: true,
+              partner: { select: { state: true } },
+            },
+          },
+        },
+      },
+    },
+  })
+  const template = product?.productTemplate ?? null
+  const storageClass: string = template?.storageClass ?? 'AMBIENT'
+  const hazmatClass: string = template?.hazmatClass ?? 'NONE'
+  const domain: string = template?.labelingType ?? 'FOOD'
+  const shelfLifeDays = minShelfLifeDays(template?.variants ?? [])
+
+  // Cold classes are admin-gated (L1 lock) — a gated-off class means no FC can
+  // receive it and the manufacturer can't hold it, whatever their capabilities.
+  const [gates, classEnabled, connectedChannels, warehouses] = await Promise.all([
+    getLogisticsSettings(),
+    isStorageClassEnabled(storageClass),
+    prisma.channelConnection.count({
+      where: { creatorUserId: user.id, status: 'CONNECTED' },
+    }),
+    prisma.partnerService.findMany({
+      where: { type: 'WAREHOUSE', status: 'ACTIVE' },
+      select: {
+        id: true,
+        storageClasses: true,
+        hazmatAccepted: true,
+        fcCertifications: true,
+        weeklyPalletCapacity: true,
+        facilityLat: true,
+        facilityLng: true,
+        partner: { select: { companyName: true, city: true, state: true } },
+      },
+    }),
+  ])
+
+  // V1 FC pick — Phase-1 hard eligibility + nearest to the manufacturer
+  // (docs/LOGISTICS_AND_FULFILLMENT.md §5; scorer/rotation arrive V1.5).
+  const candidates: FcCandidate[] = warehouses.map((w) => ({
+    partnerServiceId: w.id,
+    partnerName: w.partner.companyName,
+    city: w.partner.city,
+    state: w.partner.state,
+    storageClasses: w.storageClasses,
+    hazmatAccepted: w.hazmatAccepted,
+    fcCertifications: w.fcCertifications,
+    weeklyPalletCapacity: w.weeklyPalletCapacity,
+    facilityLat: w.facilityLat,
+    facilityLng: w.facilityLng,
+  }))
+  const m = template?.manufacturerService ?? null
+  const selection = classEnabled
+    ? selectNearestEligibleFc(candidates, {
+        storageClass,
+        hazmatClass,
+        domain,
+        pallets: 0, // unknown at this point — skip the capacity filter
+        originLat: m?.facilityLat ?? null,
+        originLng: m?.facilityLng ?? null,
+        originState: m?.partner.state ?? null,
+      })
+    : { winner: null, ranked: [] }
+  const eligibleWarehouseCount = selection.ranked.filter((r) => r.eligible).length
+
+  const options = resolveDestinationOptions({
+    product: { storageClass, hazmatClass, domain },
+    manufacturer: m
+      ? {
+          offersStorage: m.offersStorage,
+          onDemandEnabled: m.onDemandEnabled,
+          canShipParcel: m.canShipParcel,
+          // A gated-off cold class reads as "cannot store this temperature
+          // class" — same server-enforced outcome the Pay action reproduces.
+          storageClasses: classEnabled
+            ? m.storageClasses
+            : m.storageClasses.filter((c) => c !== storageClass),
+          maxDwellDays: m.maxDwellDays,
+          productShelfLifeDays: shelfLifeDays,
+        }
+      : null,
+    gates,
+    eligibleWarehouseCount,
+    hasConnectedChannel: connectedChannels > 0,
+  })
+
+  const winner = selection.winner
+  const suggestedFc: SuggestedFcOption | null = winner
+    ? {
+        partnerServiceId: winner.candidate.partnerServiceId,
+        partnerName: winner.candidate.partnerName,
+        city: winner.candidate.city,
+        state: winner.candidate.state,
+        distanceMiles: winner.distanceMiles,
+        rationale: fcRationale(domain, winner.distanceMiles),
+      }
+    : null
+
+  const holdEnabled =
+    options.find((o) => o.type === 'HOLD_AT_MANUFACTURER')?.enabled === true
+  const holdOffer: HoldStorageOffer | null =
+    holdEnabled && m
+      ? {
+          billingUnit: m.storageBillingUnit,
+          rateCents: m.storageRateCents,
+          freeGraceDays: m.storageFreeGraceDays,
+          pickFeeCents: m.pickFeeCents,
+          packFeeCents: m.packFeeCents,
+          onDemandAvailable: m.onDemandEnabled && m.canShipParcel,
+          stockReleaseAvailable: true,
+        }
+      : null
+
+  return { ok: true, data: { options, suggestedFc, holdOffer } }
+}
+
+/** Shortest declared shelf life across the template's variants; null = unknown. */
+function minShelfLifeDays(variants: Array<{ shelfLifeDays: number | null }>): number | null {
+  let min: number | null = null
+  for (const v of variants) {
+    if (v.shelfLifeDays != null && (min === null || v.shelfLifeDays < min)) min = v.shelfLifeDays
+  }
+  return min
+}
+
+const FC_FOOD_DOMAINS = ['FOOD', 'DIETARY_SUPPLEMENT', 'PET_PRODUCT']
+
+function fcRationale(domain: string, distanceMiles: number | null): string {
+  const grade = FC_FOOD_DOMAINS.includes(domain) ? 'food-grade ' : ''
+  return distanceMiles !== null
+    ? `Closest ${grade}fulfillment center to your manufacturer`
+    : `Nearest eligible ${grade}fulfillment center to your manufacturer (matched by state)`
 }
 
 // PartnerService.capabilities is freeform JSON pre-G3-style. We surface
@@ -238,6 +456,7 @@ export interface EstimateShippingInput {
     | 'SPECIFIC_WAREHOUSE'
     | 'SAVED_ADDRESS'
     | 'NEW_ADDRESS'
+    | 'HOLD_AT_MANUFACTURER'
   warehousePartnerServiceId?: string | null
   savedAddressId?: string | null
   newAddressCountry?: string | null
@@ -256,6 +475,12 @@ export async function estimateShipping(
   // tiered per-unit cost that gets cheaper at higher quantities.
   const qty = Math.max(0, Math.floor(input.quantity || 0))
   if (qty === 0) return { ok: true, data: { shippingCents: 0, leadTimeBusinessDays: 0 } }
+
+  // HOLD_AT_MANUFACTURER — goods never leave the producer's dock at order
+  // time; storage bills monthly via the StorageAgreement, not as shipping.
+  if (input.shipToType === 'HOLD_AT_MANUFACTURER') {
+    return { ok: true, data: { shippingCents: 0, leadTimeBusinessDays: 0 } }
+  }
 
   // Tier per-unit rate (cents).
   let perUnitCents: number

@@ -1,0 +1,122 @@
+import { requireCapability } from '@ilaunchify/auth'
+import { prisma, LOGISTICS_GATE_KEYS } from '@ilaunchify/db'
+import { AdminPageHeader } from '@/components/AdminPageHeader'
+import { GateTogglesClient, type GateRow } from './GateTogglesClient'
+
+export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Logistics gates — Admin' }
+
+// Admin logistics gate console (Phase L1c). The "build-ready, admin-gated"
+// backbone from docs/LOGISTICS_AND_FULFILLMENT.md §10 (L1/L2 lock): every
+// logistics capability ships gated OFF behind a LogisticsSetting row
+// (DomainSetting pattern, server-enforced). Flipping a gate is an ops
+// decision — no code change at enable time. Rows are merged over the
+// canonical LOGISTICS_GATE_KEYS list so a key renders even before its DB row
+// exists (toggling creates it).
+
+const GATE_META: Record<string, { label: string; group: string; description: string }> = {
+  'storage_class:CHILLED': {
+    label: 'Chilled storage class',
+    group: 'Cold chain',
+    description:
+      'Refrigerated (32–40°F) products end-to-end. Enable once a cold FC partner, reefer rail and insurance rider are in place (L1 lock).',
+  },
+  'storage_class:FROZEN': {
+    label: 'Frozen storage class',
+    group: 'Cold chain',
+    description:
+      'Frozen (≤0°F) products end-to-end — Lineage-class FCs, dry-ice parcel, frozen reefer. Same readiness bar as chilled.',
+  },
+  'connector:shipbob': {
+    label: 'ShipBob connector',
+    group: 'Connector',
+    description:
+      'Anchor-3PL FulfillmentConnector (WRO inbound, inventory webhooks). Enable when the master commercial agreement lands (L2 lock).',
+  },
+  'carrier:easypost': {
+    label: 'EasyPost parcel rail',
+    group: 'Carrier',
+    description:
+      'Platform-provided parcel via EasyPost Forge child accounts + BYO attach. Until enabled, partners ship BYO with manual tracking entry.',
+  },
+  'carrier:shipengine_ltl': {
+    label: 'ShipEngine dry LTL',
+    group: 'Carrier',
+    description: 'Platform-booked dry LTL freight (quote → pickup → auto-BOL → tracking).',
+  },
+  'carrier:broker_reefer': {
+    label: 'Reefer freight broker',
+    group: 'Carrier',
+    description:
+      'Async broker-booked reefer LTL/FTL (Loadsmart-first). Requires the FSMA written duty-assignment clause in partner contracts.',
+  },
+  insurance: {
+    label: 'Shipping insurance',
+    group: 'Insurance',
+    description:
+      'Opt-out shippers-interest insurance at checkout + claims workflow. OFF until the testmode-verification checklist passes (L4 lock — payments-readiness pattern).',
+  },
+  'channel_inbound:AMAZON_FBA': {
+    label: 'Amazon FBA inbound',
+    group: 'Channel',
+    description:
+      'Ship production runs straight into FBA (covers MCF → Shopify fulfillment too). First channel adapter (L7 lock: FBA → WFS → FBT).',
+  },
+  'channel_inbound:WALMART_WFS': {
+    label: 'Walmart WFS inbound',
+    group: 'Channel',
+    description: 'Walmart Fulfillment Services inbound plans (GTIN-only labeling, no temp-controlled products).',
+  },
+  'channel_inbound:TIKTOK_FBT': {
+    label: 'TikTok FBT inbound',
+    group: 'Channel',
+    description: 'Fulfilled-by-TikTok inbound requests (mandatory for TikTok Shop US self-ship since Feb 2026).',
+  },
+  'destination:HOLD_AT_MANUFACTURER': {
+    label: 'Hold at manufacturer',
+    group: 'Destination',
+    description:
+      'Checkout destination: goods stay at the producing partner (ship-on-demand / stock release) under a StorageAgreement with monthly billing.',
+  },
+  'destination:CHANNEL_INBOUND': {
+    label: 'Channel inbound destination',
+    group: 'Destination',
+    description:
+      'Checkout destination: ship directly into a connected sales-channel FC. Needs at least one enabled channel adapter above.',
+  },
+}
+
+export default async function LogisticsSettingsPage() {
+  await requireCapability('platform:admin')
+
+  const dbRows = await prisma.logisticsSetting.findMany()
+  const byKey = new Map(dbRows.map((r) => [r.key, r]))
+
+  const rows: GateRow[] = LOGISTICS_GATE_KEYS.map((key) => {
+    const db = byKey.get(key)
+    const meta = GATE_META[key] ?? { label: key, group: 'Other', description: '' }
+    return {
+      key,
+      label: meta.label,
+      group: meta.group,
+      description: meta.description,
+      enabled: db?.enabled ?? false,
+      note: db?.note ?? null,
+      updatedAtLabel: db
+        ? db.updatedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+        : null,
+    }
+  })
+
+  return (
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Logistics · Settings"
+        title="Logistics gates"
+        description="Every logistics capability ships build-ready but gated OFF (L1/L2 lock). Flip a gate when the ops prerequisites are met — the change is server-enforced immediately, no deploy needed. Use the note to track what each gate is waiting on."
+      />
+
+      <GateTogglesClient rows={rows} />
+    </div>
+  )
+}

@@ -104,11 +104,18 @@ export interface SubscriptionState {
 }
 
 export interface FulfillmentState {
+  // Phase L1b — four-destination model (docs/LOGISTICS_AND_FULFILLMENT.md §2).
+  // SAVED_ADDRESS / NEW_ADDRESS collapse to the Creator-address card;
+  // CLOSEST_WAREHOUSE / SPECIFIC_WAREHOUSE to the Fulfillment-center card;
+  // HOLD_AT_MANUFACTURER keeps goods at the producing partner (StorageAgreement).
+  // CHANNEL_INBOUND is intentionally NOT selectable yet — the card renders
+  // disabled until the Phase L3 channel adapters land.
   shipToType:
     | 'CLOSEST_WAREHOUSE'
     | 'SPECIFIC_WAREHOUSE'
     | 'SAVED_ADDRESS'
     | 'NEW_ADDRESS'
+    | 'HOLD_AT_MANUFACTURER'
     | null
   // For SPECIFIC_WAREHOUSE — PartnerService.id (must be type=WAREHOUSE).
   warehousePartnerServiceId: string | null
@@ -118,6 +125,11 @@ export interface FulfillmentState {
   newAddress: NewAddressInput | null
   // Did the creator tick "save this address for future orders"?
   saveNewAddress: boolean
+  // For HOLD_AT_MANUFACTURER — ON_DEMAND (partner picks/packs parcels per
+  // end-channel order; requires onDemandEnabled + canShipParcel) or
+  // STOCK_RELEASE (pallet-granularity releases). Optional so pre-L1b drafts
+  // still load; the server defaults to whichever mode the partner offers.
+  storageMode?: 'ON_DEMAND' | 'STOCK_RELEASE' | null
 }
 
 export interface NewAddressInput {
@@ -210,6 +222,7 @@ export function emptyDraftState(): CheckoutDraftState {
       savedAddressId: null,
       newAddress: null,
       saveNewAddress: false,
+      storageMode: null,
     },
     accessories: { itemIds: [] },
     viral: { requests: [] },

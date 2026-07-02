@@ -80,6 +80,8 @@ import {
   Gift,
   DollarSign,
   Truck,
+  Warehouse,
+  SlidersHorizontal,
   RotateCcw,
   Wallet,
   Landmark,
@@ -169,6 +171,19 @@ const PRIMARY: SidebarRegion = {
       label: 'Orders',
       icon: ShoppingBag,
       href: '/orders',
+    },
+    // ---- Logistics (Phase L1c — docs/LOGISTICS_AND_FULFILLMENT.md §9) --------
+    // Only the two built surfaces are listed (hide-until-built rule); the
+    // remaining /logistics pages (shipments, carriers, channel-plans) get
+    // added as they ship.
+    {
+      kind: 'group',
+      label: 'Logistics',
+      icon: Truck,
+      children: [
+        { kind: 'item', label: 'Fulfillment centers', icon: Warehouse, href: '/logistics/fulfillment-centers' },
+        { kind: 'item', label: 'Logistics gates', icon: SlidersHorizontal, href: '/logistics/settings', capability: 'platform:admin' },
+      ],
     },
     // ---- formerly under Manage — promoted to top-level (Pavel 2026-06-01) ----
     {

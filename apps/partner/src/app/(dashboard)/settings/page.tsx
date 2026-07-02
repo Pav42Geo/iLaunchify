@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   FileText,
   SlidersHorizontal,
+  Warehouse,
 } from 'lucide-react'
 import { prisma, getBillingProfile } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
@@ -150,6 +151,17 @@ export default async function SettingsPage() {
           href="/settings/product-defaults"
           cta="Set product defaults"
           description="Facility, lead times, MOQ, fulfillment and storage applied to every new product — so a teammate only fills what changes per product."
+        />
+      </Section>
+
+      {/* Fulfillment */}
+      <Section title="Fulfillment">
+        <SettingCard
+          icon={<Warehouse className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Storage & fulfillment"
+          href="/settings/storage"
+          cta="Set storage offering"
+          description="Offer finished-goods storage at your facility — storage classes, monthly rates within admin-approved bands, and ship-on-demand."
         />
       </Section>
 

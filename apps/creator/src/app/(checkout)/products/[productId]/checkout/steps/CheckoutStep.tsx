@@ -17,12 +17,15 @@ import { useEffect, useId, useState, useTransition } from 'react'
 import {
   AlertOctagon,
   CheckCircle2,
+  ChevronDown,
   CreditCard,
+  Factory,
   Home,
   Loader2,
   Lock,
   Plus,
   Star,
+  Store,
   Truck,
   Warehouse,
 } from 'lucide-react'
@@ -37,10 +40,14 @@ import type {
 } from '../types'
 import {
   estimateShipping,
+  listDestinationOptions,
   listFulfillmentOptions,
   saveCreatorAddress,
+  type DestinationOptionsPayload,
   type FulfillmentOptions,
+  type HoldStorageOffer,
   type SavedAddressOption,
+  type SuggestedFcOption,
   type WarehouseOption,
 } from '../fulfillment-actions'
 
@@ -64,15 +71,23 @@ export function CheckoutStep({
   onShippingEstimate,
 }: Props) {
   const [options, setOptions] = useState<FulfillmentOptions | null>(null)
+  // L1b — the four-destination-card payload (eligibility + disabled copy +
+  // suggested FC + hold-at-manufacturer fee card). Display data only; the
+  // Pay action re-runs the same eligibility server-side.
+  const [destinations, setDestinations] = useState<DestinationOptionsPayload | null>(null)
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     setLoadingOptions(true)
-    listFulfillmentOptions(productId).then((result) => {
+    Promise.all([
+      listFulfillmentOptions(productId),
+      listDestinationOptions(productId),
+    ]).then(([fulfillment, destination]) => {
       if (cancelled) return
-      if (result.ok) setOptions(result.data)
+      if (fulfillment.ok) setOptions(fulfillment.data)
+      if (destination.ok) setDestinations(destination.data)
       setLoadingOptions(false)
     })
     return () => {
@@ -142,6 +157,7 @@ export function CheckoutStep({
             state={draft.fulfillment}
             onChange={onFulfillmentChange}
             options={options}
+            destinations={destinations}
             loading={loadingOptions}
             productId={productId}
             onSavedNewAddress={() => setReloadKey((k) => k + 1)}
@@ -224,13 +240,31 @@ function Section({
 }
 
 // =============================================================================
-// ShipToPicker — compact Amazon-style 4-mode picker
+// ShipToPicker — L1b four-destination cards (LOGISTICS_AND_FULFILLMENT §2/§9):
+// Creator address · Fulfillment center · Keep at manufacturer · Sales channel.
+// Disabled cards show the server-provided reason and are non-clickable; the
+// Pay action re-checks eligibility server-side either way.
 // =============================================================================
+
+type DestinationCardType =
+  | 'CREATOR_ADDRESS'
+  | 'WAREHOUSE_PARTNER'
+  | 'HOLD_AT_MANUFACTURER'
+  | 'CHANNEL_INBOUND'
+
+/** Which destination card a (finer-grained) shipToType belongs to. */
+function cardOfShipTo(t: FulfillmentState['shipToType']): DestinationCardType | null {
+  if (t === 'SAVED_ADDRESS' || t === 'NEW_ADDRESS') return 'CREATOR_ADDRESS'
+  if (t === 'CLOSEST_WAREHOUSE' || t === 'SPECIFIC_WAREHOUSE') return 'WAREHOUSE_PARTNER'
+  if (t === 'HOLD_AT_MANUFACTURER') return 'HOLD_AT_MANUFACTURER'
+  return null
+}
 
 function ShipToPicker({
   state,
   onChange,
   options,
+  destinations,
   loading,
   productId,
   onSavedNewAddress,
@@ -238,110 +272,160 @@ function ShipToPicker({
   state: FulfillmentState
   onChange: (patch: Partial<FulfillmentState>) => void
   options: FulfillmentOptions | null
+  destinations: DestinationOptionsPayload | null
   loading: boolean
   productId: string
   onSavedNewAddress: () => void
 }) {
-  const modes: Array<{
-    key: NonNullable<FulfillmentState['shipToType']>
+  const cards: Array<{
+    type: DestinationCardType
     label: string
     hint: string
     icon: React.ComponentType<{ className?: string }>
   }> = [
     {
-      key: 'SAVED_ADDRESS',
-      label: 'Saved address',
-      hint: 'Use a destination you keep on file.',
-      icon: Star,
-    },
-    {
-      key: 'NEW_ADDRESS',
-      label: 'New address',
-      hint: 'One-off destination — optionally save for next time.',
+      type: 'CREATOR_ADDRESS',
+      label: 'My address',
+      hint: 'Ship to a saved or new address you control.',
       icon: Home,
     },
     {
-      key: 'CLOSEST_WAREHOUSE',
-      label: 'Closest warehouse partner',
-      hint: 'Auto-pick the nearest 3PL — cheapest shipping.',
+      type: 'WAREHOUSE_PARTNER',
+      label: 'Fulfillment center',
+      hint: 'We pick the best center and route your run there.',
       icon: Warehouse,
     },
     {
-      key: 'SPECIFIC_WAREHOUSE',
-      label: 'Specific warehouse partner',
-      hint: 'Choose from the list of active warehouses.',
-      icon: Warehouse,
+      type: 'HOLD_AT_MANUFACTURER',
+      label: 'Keep at manufacturer',
+      hint: 'Store the finished run at the producer and ship on demand.',
+      icon: Factory,
+    },
+    {
+      type: 'CHANNEL_INBOUND',
+      label: 'Ship into my sales channel',
+      hint: 'Send inventory straight into Amazon, Walmart, or TikTok.',
+      icon: Store,
     },
   ]
+
+  const selectedCard = cardOfShipTo(state.shipToType)
+
+  // Server eligibility per card. While the payload loads (or on failure) the
+  // two pre-L1b cards keep working and the new cards stay off — the server
+  // re-checks at Pay regardless.
+  function optionFor(type: DestinationCardType): {
+    enabled: boolean
+    disabledReason: string | null
+  } {
+    const server = destinations?.options.find((o) => o.type === type)
+    if (server) return { enabled: server.enabled, disabledReason: server.disabledReason }
+    if (type === 'CREATOR_ADDRESS' || type === 'WAREHOUSE_PARTNER') {
+      return { enabled: true, disabledReason: null }
+    }
+    return { enabled: false, disabledReason: null }
+  }
+
+  function selectCard(card: DestinationCardType) {
+    if (card === selectedCard) return
+    if (card === 'CREATOR_ADDRESS') {
+      onChange({
+        shipToType: 'SAVED_ADDRESS',
+        warehousePartnerServiceId: null,
+        newAddress: null,
+        storageMode: null,
+      })
+    } else if (card === 'WAREHOUSE_PARTNER') {
+      onChange({
+        shipToType: 'CLOSEST_WAREHOUSE',
+        warehousePartnerServiceId: null,
+        savedAddressId: null,
+        newAddress: null,
+        storageMode: null,
+      })
+    } else if (card === 'HOLD_AT_MANUFACTURER') {
+      onChange({
+        shipToType: 'HOLD_AT_MANUFACTURER',
+        warehousePartnerServiceId: null,
+        savedAddressId: null,
+        newAddress: null,
+        // Default to whichever mode the partner actually offers.
+        storageMode: destinations?.holdOffer?.onDemandAvailable
+          ? 'ON_DEMAND'
+          : 'STOCK_RELEASE',
+      })
+    }
+    // CHANNEL_INBOUND is unreachable — the card renders disabled until the
+    // Phase L3 channel adapters land.
+  }
 
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-2">
-        {modes.map((m) => {
-          const selected = state.shipToType === m.key
-          const Icon = m.icon
+        {cards.map((c) => {
+          const { enabled, disabledReason } = optionFor(c.type)
+          const selected = selectedCard === c.type
+          const Icon = c.icon
           return (
             <button
-              key={m.key}
+              key={c.type}
               type="button"
-              onClick={() =>
-                onChange({
-                  shipToType: m.key,
-                  warehousePartnerServiceId:
-                    m.key === 'SPECIFIC_WAREHOUSE'
-                      ? state.warehousePartnerServiceId
-                      : null,
-                  savedAddressId:
-                    m.key === 'SAVED_ADDRESS' ? state.savedAddressId : null,
-                  newAddress: m.key === 'NEW_ADDRESS' ? state.newAddress : null,
-                })
-              }
+              disabled={!enabled}
+              aria-disabled={!enabled}
+              onClick={enabled ? () => selectCard(c.type) : undefined}
               className={
                 'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ' +
                 (selected
                   ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
-                  : 'border-ink-200 bg-white hover:bg-ink-50/40')
+                  : enabled
+                    ? 'border-ink-200 bg-white hover:bg-ink-50/40'
+                    : 'cursor-not-allowed border-ink-200 bg-white opacity-60')
               }
             >
               <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
               <div className="min-w-0">
                 <div className="text-[13px] font-semibold text-ink-900">
-                  {m.label}
+                  {c.label}
                 </div>
                 <div className="text-[11.5px] leading-snug text-ink-500">
-                  {m.hint}
+                  {c.hint}
                 </div>
+                {!enabled && disabledReason && (
+                  <div className="mt-1 text-[11px] leading-snug text-ink-400">
+                    {disabledReason}
+                  </div>
+                )}
               </div>
             </button>
           )
         })}
       </div>
 
-      {/* Expanded block for the selected mode */}
-      {state.shipToType && (
+      {/* Expanded block for the selected destination card */}
+      {selectedCard && (
         <div className="rounded-xl border border-ink-100 bg-ink-50/40 p-4">
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin text-ink-400" />
-          ) : state.shipToType === 'CLOSEST_WAREHOUSE' ? (
-            <ClosestWarehouseBlock options={options} />
-          ) : state.shipToType === 'SPECIFIC_WAREHOUSE' ? (
-            <SpecificWarehouseBlock
-              options={options}
-              pickedId={state.warehousePartnerServiceId}
-              onPick={(id) => onChange({ warehousePartnerServiceId: id })}
-            />
-          ) : state.shipToType === 'SAVED_ADDRESS' ? (
-            <SavedAddressBlock
-              options={options}
-              pickedId={state.savedAddressId}
-              onPick={(id) => onChange({ savedAddressId: id })}
-            />
-          ) : (
-            <NewAddressBlock
+          ) : selectedCard === 'CREATOR_ADDRESS' ? (
+            <CreatorAddressBlock
               productId={productId}
               state={state}
               onChange={onChange}
-              onSaved={onSavedNewAddress}
+              options={options}
+              onSavedNewAddress={onSavedNewAddress}
+            />
+          ) : selectedCard === 'WAREHOUSE_PARTNER' ? (
+            <FulfillmentCenterBlock
+              state={state}
+              onChange={onChange}
+              options={options}
+              suggestedFc={destinations?.suggestedFc ?? null}
+            />
+          ) : (
+            <HoldAtManufacturerBlock
+              state={state}
+              onChange={onChange}
+              offer={destinations?.holdOffer ?? null}
             />
           )}
         </div>
@@ -403,34 +487,298 @@ function PaymentSummary() {
 }
 
 // =============================================================================
-// Sub-blocks reused from the old FulfillmentStep
+// Sub-blocks — one per destination card (SavedAddress / NewAddress /
+// SpecificWarehouse blocks reused from the old FulfillmentStep)
 // =============================================================================
 
-function ClosestWarehouseBlock({ options }: { options: FulfillmentOptions | null }) {
-  const first = options?.warehouses[0]
-  if (!first) {
+// Creator address — SAVED_ADDRESS / NEW_ADDRESS live under one card.
+function CreatorAddressBlock({
+  productId,
+  state,
+  onChange,
+  options,
+  onSavedNewAddress,
+}: {
+  productId: string
+  state: FulfillmentState
+  onChange: (patch: Partial<FulfillmentState>) => void
+  options: FulfillmentOptions | null
+  onSavedNewAddress: () => void
+}) {
+  const mode = state.shipToType === 'NEW_ADDRESS' ? 'NEW_ADDRESS' : 'SAVED_ADDRESS'
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2" role="tablist" aria-label="Address source">
+        <SubModePill
+          active={mode === 'SAVED_ADDRESS'}
+          label="Saved address"
+          onClick={() => onChange({ shipToType: 'SAVED_ADDRESS', newAddress: null })}
+        />
+        <SubModePill
+          active={mode === 'NEW_ADDRESS'}
+          label="New address"
+          onClick={() => onChange({ shipToType: 'NEW_ADDRESS', savedAddressId: null })}
+        />
+      </div>
+      {mode === 'SAVED_ADDRESS' ? (
+        <SavedAddressBlock
+          options={options}
+          pickedId={state.savedAddressId}
+          onPick={(id) => onChange({ savedAddressId: id })}
+        />
+      ) : (
+        <NewAddressBlock
+          productId={productId}
+          state={state}
+          onChange={onChange}
+          onSaved={onSavedNewAddress}
+        />
+      )}
+    </div>
+  )
+}
+
+function SubModePill({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={
+        'rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ' +
+        (active
+          ? 'bg-ink-900 text-white'
+          : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-50/40')
+      }
+    >
+      {label}
+    </button>
+  )
+}
+
+// Fulfillment center — suggested node up front (L8: creator sees the pick +
+// rationale and can override within the eligible set); the specific-warehouse
+// picker sits behind a disclosure.
+function FulfillmentCenterBlock({
+  state,
+  onChange,
+  options,
+  suggestedFc,
+}: {
+  state: FulfillmentState
+  onChange: (patch: Partial<FulfillmentState>) => void
+  options: FulfillmentOptions | null
+  suggestedFc: SuggestedFcOption | null
+}) {
+  const choosingOther = state.shipToType === 'SPECIFIC_WAREHOUSE'
+  if (!suggestedFc && (options?.warehouses.length ?? 0) === 0) {
     return (
       <p className="text-sm text-ink-500">
-        No active warehouse partners yet. Pick &ldquo;Saved address&rdquo; or
-        &ldquo;New address&rdquo; while we onboard 3PLs in your region.
+        No active fulfillment centers yet. Pick &ldquo;My address&rdquo; while
+        we onboard 3PLs in your region.
       </p>
     )
   }
   return (
-    <div className="space-y-1 text-sm">
-      <div className="flex items-center gap-2">
-        <CheckCircle2 className="h-3.5 w-3.5 text-success-700" />
-        <span className="text-ink-800">
-          Routing to <strong>{first.partnerName}</strong>
-          {first.city && ` in ${first.city}${first.state ? `, ${first.state}` : ''}`}
-        </span>
-      </div>
-      <p className="text-[11.5px] text-ink-500">
-        Real proximity scoring ships in V1.5; for now we pick the first active
-        warehouse to keep you moving.
-      </p>
+    <div className="space-y-3">
+      {suggestedFc ? (
+        <div className="space-y-1 text-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 text-success-700" />
+            <span className="text-ink-800">
+              We suggest <strong>{suggestedFc.partnerName}</strong> —{' '}
+              {suggestedFc.rationale}
+            </span>
+          </div>
+          <p className="text-[11.5px] text-ink-500">
+            {suggestedFc.city &&
+              `${suggestedFc.city}${suggestedFc.state ? `, ${suggestedFc.state}` : ''}`}
+            {suggestedFc.distanceMiles !== null &&
+              ` · ~${suggestedFc.distanceMiles} mi from your manufacturer`}
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm text-ink-500">
+          We&rsquo;ll route to the best available center once your order is
+          placed.
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={() =>
+          choosingOther
+            ? onChange({ shipToType: 'CLOSEST_WAREHOUSE', warehousePartnerServiceId: null })
+            : onChange({ shipToType: 'SPECIFIC_WAREHOUSE' })
+        }
+        className="inline-flex items-center gap-1 text-[12px] font-semibold text-pink-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+      >
+        <ChevronDown
+          className={
+            'h-3.5 w-3.5 transition-transform ' + (choosingOther ? 'rotate-180' : '')
+          }
+        />
+        {choosingOther ? 'Use the suggested center' : 'Choose a different center'}
+      </button>
+
+      {choosingOther && (
+        <SpecificWarehouseBlock
+          options={options}
+          pickedId={state.warehousePartnerServiceId}
+          onPick={(id) => onChange({ warehousePartnerServiceId: id })}
+        />
+      )}
     </div>
   )
+}
+
+// Keep at manufacturer — fee card (snapshot of the partner's current storage
+// terms) + ON_DEMAND / STOCK_RELEASE mode radio.
+function HoldAtManufacturerBlock({
+  state,
+  onChange,
+  offer,
+}: {
+  state: FulfillmentState
+  onChange: (patch: Partial<FulfillmentState>) => void
+  offer: HoldStorageOffer | null
+}) {
+  if (!offer) {
+    return (
+      <p className="text-sm text-ink-500">
+        Storage terms unavailable — refresh the page and try again.
+      </p>
+    )
+  }
+  const mode =
+    state.storageMode ?? (offer.onDemandAvailable ? 'ON_DEMAND' : 'STOCK_RELEASE')
+  return (
+    <div className="space-y-3">
+      {/* Fee card — these exact terms are snapshotted onto the StorageAgreement */}
+      <div className="rounded-xl border border-ink-200 bg-white p-4">
+        <div className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
+          Storage terms
+        </div>
+        <dl className="mt-2 space-y-1 text-[12.5px]">
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-500">Storage rate</dt>
+            <dd className="font-semibold text-ink-900">{formatStorageRate(offer)}</dd>
+          </div>
+          {offer.freeGraceDays != null && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-500">Free grace period</dt>
+              <dd className="font-semibold text-ink-900">
+                {offer.freeGraceDays} business days after production
+              </dd>
+            </div>
+          )}
+          {mode === 'ON_DEMAND' && offer.pickFeeCents != null && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-500">Pick fee</dt>
+              <dd className="font-semibold text-ink-900">
+                {usd(offer.pickFeeCents)} per order
+              </dd>
+            </div>
+          )}
+          {mode === 'ON_DEMAND' && offer.packFeeCents != null && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-500">Pack fee</dt>
+              <dd className="font-semibold text-ink-900">
+                {usd(offer.packFeeCents)} per order
+              </dd>
+            </div>
+          )}
+        </dl>
+        <p className="mt-2 text-[11px] leading-snug text-ink-500">
+          Billed monthly once the run lands in storage. Rates are locked when
+          you place this order.
+        </p>
+      </div>
+
+      {/* Mode radio */}
+      <div role="radiogroup" aria-label="Storage mode" className="grid gap-2 sm:grid-cols-2">
+        <StorageModeCard
+          label="Ship on demand"
+          hint="The manufacturer picks, packs, and parcels each order as it comes in."
+          selected={mode === 'ON_DEMAND'}
+          disabled={!offer.onDemandAvailable}
+          disabledReason="This manufacturer can't ship parcels on demand."
+          onClick={() => onChange({ storageMode: 'ON_DEMAND' })}
+        />
+        <StorageModeCard
+          label="Stock release"
+          hint="Stored as pallets — release chunks to an address or center when you need them."
+          selected={mode === 'STOCK_RELEASE'}
+          disabled={!offer.stockReleaseAvailable}
+          disabledReason="Stock release is not offered by this manufacturer."
+          onClick={() => onChange({ storageMode: 'STOCK_RELEASE' })}
+        />
+      </div>
+    </div>
+  )
+}
+
+function StorageModeCard({
+  label,
+  hint,
+  selected,
+  disabled,
+  disabledReason,
+  onClick,
+}: {
+  label: string
+  hint: string
+  selected: boolean
+  disabled: boolean
+  disabledReason: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      disabled={disabled}
+      onClick={disabled ? undefined : onClick}
+      className={
+        'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ' +
+        (selected
+          ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
+          : disabled
+            ? 'cursor-not-allowed border-ink-200 bg-white opacity-60'
+            : 'border-ink-200 bg-white hover:bg-ink-50/40')
+      }
+    >
+      <div className="min-w-0">
+        <div className="text-[13px] font-semibold text-ink-900">{label}</div>
+        <div className="text-[11.5px] leading-snug text-ink-500">{hint}</div>
+        {disabled && (
+          <div className="mt-1 text-[11px] leading-snug text-ink-400">
+            {disabledReason}
+          </div>
+        )}
+      </div>
+    </button>
+  )
+}
+
+function usd(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`
+}
+
+function formatStorageRate(offer: HoldStorageOffer): string {
+  if (offer.rateCents == null) return 'Set at agreement'
+  const unit = offer.billingUnit === 'CUFT_MONTH' ? 'cu ft / month' : 'pallet / month'
+  return `${usd(offer.rateCents)} per ${unit}`
 }
 
 function SpecificWarehouseBlock({

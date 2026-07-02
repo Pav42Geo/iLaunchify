@@ -17,9 +17,19 @@
 // On webhook completion the existing @ilaunchify/payments handler flips
 // Order → PAID and createDispatches() fires routing.
 
-import { prisma, getSampleSettings, resolveOrderSettings } from '@ilaunchify/db'
+import { prisma, getSampleSettings, resolveOrderSettings, getLogisticsSettings, isStorageClassEnabled } from '@ilaunchify/db'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
-import { findRouting, estimateDispatchCosts, applySampleCredit, createOrderWithNumber, type SampleCreditEntry } from '@ilaunchify/orders'
+import {
+  findRouting,
+  estimateDispatchCosts,
+  applySampleCredit,
+  createOrderWithNumber,
+  resolveDestinationOptions,
+  selectNearestEligibleFc,
+  buildAwardLogPayload,
+  type FcCandidate,
+  type SampleCreditEntry,
+} from '@ilaunchify/orders'
 import {
   createCheckoutSession,
   createProductionSubscription,
@@ -278,7 +288,14 @@ export async function placeOrderFromCheckoutDraft(
   }
 
   // --- 3. Resolve ship-to + warehouse-partner ID -----------------------------
-  const shipTo = await resolveShipTo({ user, draftState: state })
+  //        L1b passes the template so the resolver can (a) run the V1
+  //        nearest-eligible FC pick from the pinned manufacturer and (b)
+  //        server-re-check HOLD_AT_MANUFACTURER eligibility.
+  const shipTo = await resolveShipTo({
+    user,
+    draftState: state,
+    template: product.productTemplate,
+  })
   if (!shipTo.ok) return { ok: false, error: shipTo.error }
 
   // --- 4. Find routing (existing @ilaunchify/orders) -------------------------
@@ -424,6 +441,10 @@ export async function placeOrderFromCheckoutDraft(
   })
   const lockedDesignVersionId = lockedDesign?.versions[0]?.id ?? null
 
+  // L1b — HOLD orders attach a StorageAgreement inside the order txn; the id
+  // surfaces here for the post-commit audit entry.
+  let storageAgreementId: string | null = null
+
   const order = await createOrderWithNumber((orderNumber) => prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       // orderNumber post-dates the generated client (cast-guarded). The @unique
@@ -486,6 +507,30 @@ export async function placeOrderFromCheckoutDraft(
           soiSnapshot: f.soiSnapshot,
         })),
       })
+    }
+
+    // L1b — HOLD_AT_MANUFACTURER attaches a StorageAgreement (LOGISTICS §4).
+    // V1 simplification: startedAt = order time. V1.1 moves the storage-clock
+    // start to the dispatch DELIVERED hook — the clock legally starts when the
+    // finished run lands in storage, and the free grace days count from there.
+    // Fee schedule is snapshotted at agreement time (legal reproducibility —
+    // the partner can reprice later without touching live agreements).
+    if (shipTo.data.shipToType === 'HOLD_AT_MANUFACTURER' && shipTo.data.hold) {
+      const agreement = await tx.storageAgreement.create({
+        data: {
+          orderId: created.id,
+          partnerServiceId: shipTo.data.hold.partnerServiceId,
+          mode: shipTo.data.hold.mode,
+          status: 'ACTIVE',
+          startedAt: new Date(),
+          unitsRemaining: qty,
+          feeSnapshotJson: {
+            ...shipTo.data.hold.feeSnapshot,
+            referralFeeBps: orderSettings.warehouseReferralFeeBps,
+          } as unknown as object,
+        },
+      })
+      storageAgreementId = agreement.id
     }
 
     // Consume the applied sample credit. The `status: 'AVAILABLE'` guard in the
@@ -571,6 +616,42 @@ export async function placeOrderFromCheckoutDraft(
         : {}),
     },
   })
+
+  // --- 11.aa L1b — FC award trail + StorageAgreement audit --------------------
+  //          FcAwardLog needs the real orderId, so it lands post-commit.
+  //          Best-effort: the explainability trail must never fail an
+  //          already-created order.
+  if (shipTo.data.fcAward) {
+    await prisma.fcAwardLog
+      .create({
+        data: {
+          partnerServiceId: shipTo.data.fcAward.partnerServiceId,
+          orderId: order.id,
+          scoreJson: shipTo.data.fcAward.scoreJson as unknown as object,
+        },
+      })
+      .catch(() => {/* rotation-fairness trail only — never blocks the order */})
+  }
+  //          StorageAgreement creation is a mutating action → AuditLog row.
+  //          Logged against the Order entity: 'StorageAgreement' isn't in
+  //          AUDIT_ENTITY_TYPES yet (packages/audit owns that list — L1c).
+  if (storageAgreementId && shipTo.data.hold) {
+    await logAuditAs(user, {
+      entityType: 'Order',
+      entityId: order.id,
+      action: 'STORAGE_AGREEMENT_CREATED',
+      toValue: 'ACTIVE',
+      payload: {
+        storageAgreementId,
+        partnerServiceId: shipTo.data.hold.partnerServiceId,
+        mode: shipTo.data.hold.mode,
+        unitsRemaining: qty,
+        feeSnapshot: shipTo.data.hold.feeSnapshot,
+        referralFeeBps: orderSettings.warehouseReferralFeeBps,
+        surface: 'checkout-wizard',
+      },
+    })
+  }
 
   // --- 11.a Per-flavor labels Phase 4 — snapshot each flavor's working design
   //          onto its OrderItemFlavor so production carries the right per-flavor
@@ -752,7 +833,7 @@ export async function placeOrderFromCheckoutDraft(
 // =============================================================================
 
 interface ShipToResolved {
-  shipToType: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER'
+  shipToType: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER' | 'HOLD_AT_MANUFACTURER'
   shipToPartnerServiceId: string | null
   contactName: string
   contactPhone: string | null
@@ -762,25 +843,125 @@ interface ShipToResolved {
   state: string | null
   postalCode: string
   country: string
+  /** L1b — set for HOLD orders; drives StorageAgreement creation in the txn. */
+  hold?: {
+    partnerServiceId: string
+    mode: 'ON_DEMAND' | 'STOCK_RELEASE'
+    feeSnapshot: {
+      billingUnit: string | null
+      rateCents: number | null
+      graceDays: number | null
+      minMonthlyCents: number | null
+      pickFeeCents: number | null
+      packFeeCents: number | null
+    }
+  }
+  /** L1b — V1 nearest-eligible FC award; written to FcAwardLog post-commit. */
+  fcAward?: {
+    partnerServiceId: string
+    scoreJson: ReturnType<typeof buildAwardLogPayload>
+  }
+}
+
+/** The ProductTemplate slice resolveShipTo needs — owner-pinned manufacturer
+ *  + the L0 logistics flags. Structural, so the full Prisma row satisfies it. */
+interface ShipToTemplate {
+  id: string
+  manufacturerServiceId: string | null
+  storageClass: string
+  hazmatClass: string
+  labelingType: string
 }
 
 async function resolveShipTo({
   user,
   draftState,
+  template,
 }: {
   user: { id: string }
   draftState: CheckoutDraftState
+  template: ShipToTemplate | null
 }): Promise<Result<ShipToResolved>> {
   const f = draftState.fulfillment
 
   if (f.shipToType === 'CLOSEST_WAREHOUSE' || f.shipToType === 'SPECIFIC_WAREHOUSE') {
     let warehouseId = f.warehousePartnerServiceId
+    let fcAward: ShipToResolved['fcAward']
     if (!warehouseId && f.shipToType === 'CLOSEST_WAREHOUSE') {
-      const closest = await prisma.partnerService.findFirst({
-        where: { type: 'WAREHOUSE', status: 'ACTIVE' },
-        select: { id: true },
+      // L1b — V1 FC selection: Phase-1 hard eligibility + nearest to the
+      // pinned manufacturer (docs/LOGISTICS_AND_FULFILLMENT.md §5). Cold
+      // classes are admin-gated (L1 lock) and re-checked server-side here.
+      const storageClass = template?.storageClass ?? 'AMBIENT'
+      if (!(await isStorageClassEnabled(storageClass))) {
+        return {
+          ok: false,
+          error: 'No cold-storage fulfillment center is available yet for this product.',
+        }
+      }
+      const [origin, warehouses] = await Promise.all([
+        template?.manufacturerServiceId
+          ? prisma.partnerService.findUnique({
+              where: { id: template.manufacturerServiceId },
+              select: {
+                facilityLat: true,
+                facilityLng: true,
+                partner: { select: { state: true } },
+              },
+            })
+          : Promise.resolve(null),
+        prisma.partnerService.findMany({
+          where: { type: 'WAREHOUSE', status: 'ACTIVE' },
+          select: {
+            id: true,
+            storageClasses: true,
+            hazmatAccepted: true,
+            fcCertifications: true,
+            weeklyPalletCapacity: true,
+            facilityLat: true,
+            facilityLng: true,
+            partner: { select: { companyName: true, city: true, state: true } },
+          },
+        }),
+      ])
+      const candidates: FcCandidate[] = warehouses.map((w) => ({
+        partnerServiceId: w.id,
+        partnerName: w.partner.companyName,
+        city: w.partner.city,
+        state: w.partner.state,
+        storageClasses: w.storageClasses,
+        hazmatAccepted: w.hazmatAccepted,
+        fcCertifications: w.fcCertifications,
+        weeklyPalletCapacity: w.weeklyPalletCapacity,
+        facilityLat: w.facilityLat,
+        facilityLng: w.facilityLng,
+      }))
+      const selection = selectNearestEligibleFc(candidates, {
+        storageClass,
+        hazmatClass: template?.hazmatClass ?? 'NONE',
+        domain: template?.labelingType ?? 'FOOD',
+        pallets: 0, // pallet count unknown pre-manifest — skip the capacity filter
+        originLat: origin?.facilityLat ?? null,
+        originLng: origin?.facilityLng ?? null,
+        originState: origin?.partner.state ?? null,
       })
-      warehouseId = closest?.id ?? null
+      if (selection.winner) {
+        warehouseId = selection.winner.candidate.partnerServiceId
+        fcAward = {
+          partnerServiceId: warehouseId,
+          scoreJson: buildAwardLogPayload(selection),
+        }
+      }
+      if (!warehouseId) {
+        // Legacy fallback — first ACTIVE warehouse keeps the order moving when
+        // no node carries the typed L0 eligibility fields yet (pre-L0 rows
+        // have empty storageClasses and rank ineligible). No award log: the
+        // fallback is not an algorithmic pick.
+        const closest = await prisma.partnerService.findFirst({
+          where: { type: 'WAREHOUSE', status: 'ACTIVE' },
+          select: { id: true },
+        })
+        warehouseId = closest?.id ?? null
+      }
     }
     if (!warehouseId) return { ok: false, error: 'No eligible warehouse partner.' }
     const warehouse = await prisma.partnerService.findFirst({
@@ -801,6 +982,118 @@ async function resolveShipTo({
         state: warehouse.partner.state,
         postalCode: warehouse.partner.postalCode ?? '00000',
         country: warehouse.partner.country,
+        ...(fcAward ? { fcAward } : {}),
+      },
+    }
+  }
+
+  if (f.shipToType === 'HOLD_AT_MANUFACTURER') {
+    // L1b — server-side re-check of everything the destination card promised
+    // (NEVER trust the client). Runs the same pure resolver the card payload
+    // came from: admin gate (destination:HOLD_AT_MANUFACTURER), partner
+    // offersStorage, storage-class fit (incl. the cold-class admin gate),
+    // shelf-life vs the partner's dwell policy.
+    const svc = template?.manufacturerServiceId
+      ? await prisma.partnerService.findFirst({
+          where: { id: template.manufacturerServiceId, status: 'ACTIVE' },
+          select: {
+            id: true,
+            offersStorage: true,
+            onDemandEnabled: true,
+            canShipParcel: true,
+            storageClasses: true,
+            maxDwellDays: true,
+            storageBillingUnit: true,
+            storageRateCents: true,
+            storageFreeGraceDays: true,
+            storageMinMonthlyCents: true,
+            pickFeeCents: true,
+            packFeeCents: true,
+            partner: true,
+          },
+        })
+      : null
+    const storageClass = template?.storageClass ?? 'AMBIENT'
+    const [gates, classEnabled, shelf] = await Promise.all([
+      getLogisticsSettings(),
+      isStorageClassEnabled(storageClass),
+      template
+        ? prisma.productTemplateVariant.aggregate({
+            where: { productTemplateId: template.id },
+            _min: { shelfLifeDays: true },
+          })
+        : Promise.resolve(null),
+    ])
+    const holdOption = resolveDestinationOptions({
+      product: {
+        storageClass,
+        hazmatClass: template?.hazmatClass ?? 'NONE',
+        domain: template?.labelingType ?? 'FOOD',
+      },
+      manufacturer: svc
+        ? {
+            offersStorage: svc.offersStorage,
+            onDemandEnabled: svc.onDemandEnabled,
+            canShipParcel: svc.canShipParcel,
+            // A gated-off cold class reads as "cannot store this temperature
+            // class" — same construction listDestinationOptions uses.
+            storageClasses: classEnabled
+              ? svc.storageClasses
+              : svc.storageClasses.filter((c) => c !== storageClass),
+            maxDwellDays: svc.maxDwellDays,
+            productShelfLifeDays: shelf?._min.shelfLifeDays ?? null,
+          }
+        : null,
+      gates,
+      // Only the HOLD option is read below — the other cards' inputs are moot.
+      eligibleWarehouseCount: 0,
+      hasConnectedChannel: false,
+    }).find((o) => o.type === 'HOLD_AT_MANUFACTURER')
+    if (!svc || holdOption?.enabled !== true) {
+      return {
+        ok: false,
+        error: holdOption?.disabledReason ?? 'Storage at the manufacturer is not available yet.',
+      }
+    }
+
+    // Storage mode — validate against capability; default to what's offered.
+    const onDemandAvailable = svc.onDemandEnabled && svc.canShipParcel
+    if (f.storageMode === 'ON_DEMAND' && !onDemandAvailable) {
+      return {
+        ok: false,
+        error: 'This manufacturer cannot ship parcels on demand — choose stock release instead.',
+      }
+    }
+    const mode: 'ON_DEMAND' | 'STOCK_RELEASE' =
+      f.storageMode ?? (onDemandAvailable ? 'ON_DEMAND' : 'STOCK_RELEASE')
+
+    // Ship-to = the producing partner's own address (the goods never move;
+    // the manifest still needs a concrete address block for documents).
+    return {
+      ok: true,
+      data: {
+        shipToType: 'HOLD_AT_MANUFACTURER',
+        shipToPartnerServiceId: svc.id,
+        contactName: svc.partner.companyName,
+        contactPhone: svc.partner.contactPhone,
+        addressLine1: svc.partner.addressLine1 ?? 'Address on file',
+        addressLine2: svc.partner.addressLine2,
+        city: svc.partner.city ?? 'Unknown',
+        state: svc.partner.state,
+        postalCode: svc.partner.postalCode ?? '00000',
+        country: svc.partner.country,
+        hold: {
+          partnerServiceId: svc.id,
+          mode,
+          feeSnapshot: {
+            billingUnit: svc.storageBillingUnit,
+            rateCents: svc.storageRateCents,
+            graceDays: svc.storageFreeGraceDays,
+            minMonthlyCents: svc.storageMinMonthlyCents,
+            pickFeeCents: svc.pickFeeCents,
+            packFeeCents: svc.packFeeCents,
+          },
+        },
       },
     }
   }
@@ -859,6 +1152,9 @@ function estimateFlatShipping(
   settings: { flatShippingBaseCents: number; flatShippingPerUnitCents: number },
 ): number {
   if (qty <= 0) return 0
+  // L1b — HOLD orders have no ship leg at order time; storage bills monthly
+  // via the StorageAgreement, not as checkout shipping.
+  if (shipToType === 'HOLD_AT_MANUFACTURER') return 0
   const mode =
     shipToType === 'CLOSEST_WAREHOUSE' || shipToType === 'SPECIFIC_WAREHOUSE' ? 0.78 : 1.0
   // Admin-configured flat rate takes precedence; otherwise the V1 per-unit tiers.

@@ -220,6 +220,13 @@ export {
   type DomainKey,
 } from './domain-settings'
 export {
+  getLogisticsSettings,
+  isLogisticsEnabled,
+  isStorageClassEnabled,
+  LOGISTICS_GATE_KEYS,
+  type LogisticsGateKey,
+} from './logistics-settings'
+export {
   getBillingProfile,
   upsertBillingProfile,
   BILLING_PROFILE_EMPTY,
