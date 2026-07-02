@@ -8,9 +8,11 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, Button } from '@ilaunchify/ui'
+import { Card, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
 import Link from 'next/link'
-import { ArrowLeft, Truck, Plug, ExternalLink, CheckCircle2 } from 'lucide-react'
+import { ArrowLeft, Truck } from 'lucide-react'
+import { loadSellData } from './actions'
+import { SellChannels } from './SellChannels'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Publish — iLaunchify' }
@@ -27,7 +29,7 @@ export default async function PublishStubPage({
   })
   if (!product) notFound()
 
-  const [latestOrder, channels, existingLinks] = await Promise.all([
+  const [latestOrder, sellData] = await Promise.all([
     prisma.order.findFirst({
       where: {
         creatorUserId: user.id,
@@ -35,17 +37,9 @@ export default async function PublishStubPage({
       },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.channel.findMany({
-      where: { enabled: true },
-      orderBy: { displayName: 'asc' },
-    }),
-    prisma.channelProductLink.findMany({
-      where: { productId: product.id },
-      include: { channel: true },
-    }),
+    loadSellData(product.id),
   ])
 
-  const linkedChannelIds = new Set(existingLinks.map((l) => l.channelId))
   const isDelivered = latestOrder?.status === 'DELIVERED'
 
   return (
@@ -76,8 +70,8 @@ export default async function PublishStubPage({
                   Order <span className="font-mono">#{latestOrder.id.slice(-8)}</span> ·{' '}
                   <span className="font-medium">{latestOrder.status}</span>
                   {isDelivered
-                    ? '. Goods at your warehouse — ready to list.'
-                    : '. Push-to-channel unlocks at DELIVERED.'}
+                    ? '. Goods delivered — from-stock listings can go live.'
+                    : '. From-stock listings go live at DELIVERED; on-demand listings can push right away.'}
                 </>
               ) : (
                 <>
@@ -97,70 +91,13 @@ export default async function PublishStubPage({
         </CardHeader>
       </Card>
 
-      {channels.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">No channels available</CardTitle>
-            <CardDescription>
-              Admin hasn't enabled any channels yet. Check back later.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-ink-700">
-            Available channels
-          </h2>
-          {channels.map((c) => {
-            const isLinked = linkedChannelIds.has(c.id)
-            const canConnect = c.oauthConfigured
-            return (
-              <Card key={c.id}>
-                <CardHeader className="flex-row items-center justify-between space-y-0">
-                  <div className="flex items-center gap-3">
-                    <Plug className="h-5 w-5 shrink-0 text-ink-400" />
-                    <div>
-                      <CardTitle className="text-base">{c.displayName}</CardTitle>
-                      <CardDescription>
-                        {isLinked
-                          ? 'Listed'
-                          : canConnect
-                          ? 'Ready to connect'
-                          : 'OAuth credentials not configured yet'}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isLinked && (
-                      <CheckCircle2 className="h-5 w-5 text-success-600" aria-label="Listed" />
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled
-                      title={
-                        !isDelivered
-                          ? 'Available once your production order is delivered'
-                          : !canConnect
-                          ? 'Admin needs to configure OAuth credentials for this channel'
-                          : 'V1.1 — OAuth flow lands soon'
-                      }
-                    >
-                      {isLinked ? 'Update listing' : 'Connect'}{' '}
-                      <ExternalLink className="ml-1 inline h-3 w-3" />
-                    </Button>
-                  </div>
-                </CardHeader>
-              </Card>
-            )
-          })}
-          <p className="text-ui-caption text-ink-500">
-            All connect / push actions become live in V1.1 once each channel's OAuth credentials
-            are wired up by admin. The listing model + admin enable/disable is live now so
-            creators can plan their channel strategy.
-          </p>
-        </div>
-      )}
+      {/* Sell section (CHANNEL_MANAGEMENT_SPEC §3.4, C0): mode + price + push per
+          CONNECTED channel. Mode rules (on-demand enablement, bulk go-live gate)
+          are enforced at order time (C2); the cards explain them inline. */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-ink-700">Sell on your channels</h2>
+        <SellChannels productId={product.id} initial={sellData ?? { productName: product.name, unitCostCents: product.priceCents, flavors: [], channels: [] }} />
+      </div>
     </div>
   )
 }
