@@ -88,7 +88,10 @@ export function createFalProvider(config: FalConfig): ImageGenProvider {
         ...(req.seed !== undefined ? { seed: req.seed } : {}),
         ...(req.negativePrompt ? { negative_prompt: req.negativePrompt } : {}),
         // Structure lock + brand conditioning when supported by the chosen model.
-        ...(usesMask ? { control_image_url: req.mask, image_url: req.mask } : {}),
+        // flux-control-lora-canny requires `control_lora_image_url` (422 "Field
+        // required" otherwise — 2026-07-01); the legacy field names ride along for
+        // other control/inpaint model paths.
+        ...(usesMask ? { control_lora_image_url: req.mask, control_image_url: req.mask, image_url: req.mask } : {}),
         ...(req.brandRefUrl ? { ip_adapter_image_url: req.brandRefUrl } : {}),
       }
       const resp = await callFal(cfg, usesMask ? cfg.controlnetModel : cfg.model, body)

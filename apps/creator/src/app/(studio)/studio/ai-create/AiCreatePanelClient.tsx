@@ -62,27 +62,26 @@ export function AiCreatePanelClient(props: Props) {
   async function onGenerate(plan: GenerationPlan, dielineId: string, ctx?: GenerateContext): Promise<string[]> {
     const surface = surfaceFor(dielineId)
     const { widthPx, heightPx } = draftPixels(surface.widthMm, surface.heightMm)
-    try {
-      const res = await generateAiConcepts({
-        prompt: plan.prompt,
-        negativePrompt: plan.negativePrompt,
-        mask: plan.maskSvg,
-        widthPx,
-        heightPx,
-        dielineId,
-        productTemplateId: productTemplateId ?? undefined,
-        brandPalette: ctx?.palette ?? panelProps.brandPalette,
-        brandRefUrl: ctx?.brandRefUrl,
-        domain: panelProps.domain,
-        market: panelProps.market ?? 'US',
-        complianceJson: plan.compliance as unknown as Record<string, unknown>,
-        brief: ctx?.brief,
-        seed: ctx?.seed,
-      })
-      return res.ok ? res.images : []
-    } catch {
-      return []
-    }
+    // Failures THROW with the server's real error text — the panel surfaces it.
+    const res = await generateAiConcepts({
+      prompt: plan.prompt,
+      negativePrompt: plan.negativePrompt,
+      // Full-bleed surfaces (no reserved zones) take the plain text-to-image path.
+      mask: plan.reservedLabels.length > 0 ? plan.maskSvg : undefined,
+      widthPx,
+      heightPx,
+      dielineId,
+      productTemplateId: productTemplateId ?? undefined,
+      brandPalette: ctx?.palette ?? panelProps.brandPalette,
+      brandRefUrl: ctx?.brandRefUrl,
+      domain: panelProps.domain,
+      market: panelProps.market ?? 'US',
+      complianceJson: plan.compliance as unknown as Record<string, unknown>,
+      brief: ctx?.brief,
+      seed: ctx?.seed,
+    })
+    if (!res.ok) throw new Error(res.error)
+    return res.images
   }
 
   async function onExport(result: { svg: string; dielineId: string; label: string }): Promise<void> {

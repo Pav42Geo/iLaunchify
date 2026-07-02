@@ -288,10 +288,17 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     brief: { descriptor, styleTags: styles, colorTags: colors, elementTags: elements },
   }
 
+  /** onGenerate throws with the server's real error text — normalize for display. */
+  function genErrorMessage(err: unknown): string {
+    const m = err instanceof Error ? err.message : ''
+    return m ? `Generation failed: ${m}` : 'Generation failed — the image provider returned nothing. Try again.'
+  }
+
   async function generate() {
     if (setMode) {
       if (!setPlan) return
       setBusy(true)
+      setGenError(null)
       try {
         const out: { id: string; label: string; svg: string }[] = []
         for (const d of setPlan.perDieline) {
@@ -299,6 +306,8 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
           out.push({ id: d.id, label: d.label, svg: refs[0] ?? d.plan.previewSvg })
         }
         setSetVariants(out)
+      } catch (err) {
+        setGenError(genErrorMessage(err))
       } finally {
         setBusy(false)
       }
@@ -307,9 +316,12 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     if (flavorMode) {
       if (!plan || !selected) return
       setBusy(true)
+      setGenError(null)
       try {
         if (props.onGenerate) await props.onGenerate(plan, selected.id, genCtx)
         setMasterGenerated(true)
+      } catch (err) {
+        setGenError(genErrorMessage(err))
       } finally {
         setBusy(false)
       }
@@ -324,7 +336,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
       // masquerade placeholder composites as results. (No provider = demo mode,
       // where the deterministic previews ARE the point.)
       if (props.onGenerate && refs.length === 0) {
-        setGenError('Generation failed — the image provider returned nothing. Check the dev-server logs (fal/Recraft) and try again.')
+        setGenError(genErrorMessage(null))
         return
       }
       const next = refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg]
@@ -335,6 +347,8 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
       setPrevBatch(null)
       setRiffSource(null)
       props.onVariationsChange?.(next)
+    } catch (err) {
+      setGenError(genErrorMessage(err))
     } finally {
       setBusy(false)
     }
@@ -349,7 +363,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     try {
       const refs = props.onGenerate ? await props.onGenerate(plan, selected.id, { ...genCtx, seed: i + 1 }) : []
       if (props.onGenerate && refs.length === 0) {
-        setGenError('Riff failed — the image provider returned nothing. Check the dev-server logs and try again.')
+        setGenError(genErrorMessage(null))
         return
       }
       const next = refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg]
@@ -359,6 +373,8 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
       setViewOverrides({})
       setLightboxIdx(null)
       props.onVariationsChange?.(next)
+    } catch (err) {
+      setGenError(genErrorMessage(err))
     } finally {
       setBusy(false)
     }

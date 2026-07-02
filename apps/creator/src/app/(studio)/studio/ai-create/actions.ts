@@ -231,6 +231,7 @@ export async function generateAiConcepts(input: GenerateConceptsInput): Promise<
   }
 
   if (!result.ok) {
+    console.error('[ai-create] draft generation returned no result:', result.reason, { provider: provider.id, tier, usedCycles })
     if (gen) await genDelegate()?.update({ where: { id: gen.id }, data: { status: 'FAILED' } }).catch(() => {})
     return { ok: false, error: result.reason ?? 'Generation failed.' }
   }

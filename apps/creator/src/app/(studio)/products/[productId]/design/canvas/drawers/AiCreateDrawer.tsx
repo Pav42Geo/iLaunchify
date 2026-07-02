@@ -279,7 +279,7 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
       const res = await generateAiConcepts({
         prompt: plan.prompt,
         negativePrompt: plan.negativePrompt,
-        mask: plan.maskSvg,
+        mask: plan.reservedLabels.length > 0 ? plan.maskSvg : undefined,
         widthPx,
         heightPx,
         dielineId: target.id,
@@ -313,27 +313,29 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
     if (!props) return []
     const s = surfaceFor(dielineId)
     const { widthPx, heightPx } = draftPixels(s.widthMm, s.heightMm)
-    try {
-      const res = await generateAiConcepts({
-        prompt: plan.prompt,
-        negativePrompt: plan.negativePrompt,
-        mask: plan.maskSvg,
-        widthPx,
-        heightPx,
-        dielineId,
-        productTemplateId: productTemplateId ?? undefined,
-        brandPalette: ctx?.palette ?? props.brandPalette,
-        brandRefUrl: ctx?.brandRefUrl,
-        domain: props.domain,
-        market: props.market ?? 'US',
-        complianceJson: plan.compliance as unknown as Record<string, unknown>,
-        brief: ctx?.brief,
-        seed: ctx?.seed,
-      })
-      return res.ok ? res.images : []
-    } catch {
-      return []
-    }
+    // Failures THROW with the server's real error text — the panel catches and
+    // surfaces it (a silent [] hid the provider's actual complaint).
+    const res = await generateAiConcepts({
+      prompt: plan.prompt,
+      negativePrompt: plan.negativePrompt,
+      // Only send the keep-clear mask when there ARE reserved zones — a full-bleed
+      // surface (admin template-author) should take the plain text-to-image path,
+      // not the ControlNet structure-lock model.
+      mask: plan.reservedLabels.length > 0 ? plan.maskSvg : undefined,
+      widthPx,
+      heightPx,
+      dielineId,
+      productTemplateId: productTemplateId ?? undefined,
+      brandPalette: ctx?.palette ?? props.brandPalette,
+      brandRefUrl: ctx?.brandRefUrl,
+      domain: props.domain,
+      market: props.market ?? 'US',
+      complianceJson: plan.compliance as unknown as Record<string, unknown>,
+      brief: ctx?.brief,
+      seed: ctx?.seed,
+    })
+    if (!res.ok) throw new Error(res.error)
+    return res.images
   }
 
   async function onExport(result: { svg: string; dielineId: string; label: string }): Promise<void> {
