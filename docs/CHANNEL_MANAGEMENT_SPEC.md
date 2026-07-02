@@ -4,8 +4,10 @@
 
 ## 1. The job
 
-Creators sell on channels they already own (Shopify, TikTok Shop, Amazon, Walmart, Etsy,
-WooCommerce). iLaunchify is the production side (B2B; end buyers never touch us — LOCKED).
+Creators sell on channels they already own. **Supported roster (LOCKED 2026-07-02, 10):**
+Shopify, TikTok Shop, Amazon, Walmart (the "big four", native-first) + Etsy, WooCommerce,
+Wix, Squarespace, BigCommerce, eBay (the "long-tail six", committed coverage — see C5).
+iLaunchify is the production side (B2B; end buyers never touch us — LOCKED).
 Channel management is the bridge: **push finished products out** (listings, images, prices,
 inventory) and **pull consumer orders in**, route them to partners, and push fulfillment
 truth (tracking) back. Two commercial modes drive everything:
@@ -183,10 +185,27 @@ edits get overwritten (logged).
 - [ ] FBA/MCF hook: when creator stocks at Amazon, fulfillment delegates to MCF
       (joint with the logistics workstream — FC location type 'AMAZON_FBA')
 
-### Phase C5 — Walmart + long-tail
+### Phase C5 — Walmart + the long-tail six (COMMITTED coverage)
 - [ ] Walmart Marketplace adapter (15-min token handling)
-- [ ] Evaluate unified-API adapter (API2Cart/Rutter) for Etsy/Woo/Wix long-tail behind
-      the same seam; decide per cost + creator demand
+- [ ] **Long-tail six — Etsy, WooCommerce, Wix, Squarespace, BigCommerce, eBay** are
+      committed roster (Pavel 2026-07-02). Decide the HOW at C5 start: native adapters
+      vs ONE unified-API-backed adapter (API2Cart/Rutter-class) behind the same seam —
+      with six channels committed, the vendor option's economics improve materially;
+      the seam keeps the choice reversible per channel.
+- [ ] Seed the 4 missing Channel registry rows (wix, squarespace, bigcommerce, ebay —
+      schema seed currently lists 6 codes) + logos; enabled=false until adapter lands
+- [ ] Per-channel nuances to handle whichever path wins:
+      - **Etsy** — production-partner DISCLOSURE rules (Etsy requires declaring the
+        manufacturer for maker-designed goods; surface the pinned manufacturer as the
+        creator's production partner in listing metadata + creator guidance)
+      - **WooCommerce** — self-hosted: per-store REST keys (no central app store),
+        version drift across stores, webhook reliability varies → poll fallback matters
+      - **Wix / Squarespace** — app-market OAuth apps; Squarespace API surface is the
+        narrowest (inventory/orders yes, rich listing management limited)
+      - **BigCommerce** — per-store API accounts, solid webhooks
+      - **eBay** — Sell API suite (OAuth2), listing policies (fulfillment/payment/
+        return policy objects) must exist before listing push
+- [ ] PLATFORM_SPEC tier-cap table update: Agency "All 6" → "All supported channels"
 
 ### Cross-cutting (runs through every phase)
 - [ ] Rate-limit + retry + timeout policy per adapter (SyncEvent-logged)
@@ -206,11 +225,12 @@ edits get overwritten (logged).
    CONNECTION counts stay tier-capped 1/3/6 per PLATFORM_SPEC).
 3. **Creator sets channel price freely.** The Sell tab shows a margin hint against
    unit production cost (and warns below cost) but never blocks.
-4. **Long-tail unified-API vendor: DEFERRED to C5.** Big four are native. At C5,
-   evaluate API2Cart/Rutter-class vendors against real creator demand for Etsy/Woo/
-   Wix/eBay, weighing vendor-in-the-order-path risk (outage coupling, third-party data
-   transit, generic data model) vs per-channel build cost. The adapter seam makes the
-   choice reversible.
+4. **Long-tail six COMMITTED (amended 2026-07-02):** Etsy, WooCommerce, Wix,
+   Squarespace, BigCommerce, eBay are in-roster — coverage is a WHEN/HOW question,
+   not a whether. Big four stay native. The native-vs-unified-API implementation
+   choice for the six is made at C5 start, weighing vendor-in-the-order-path risk
+   (outage coupling, third-party data transit, generic data model) vs six native
+   builds' cost. The adapter seam makes it reversible per channel.
 5. **Manual-confirm ON for each connection's first 10 channel orders** (training
    wheels): orders hold at `READY` for creator approval; after 10 successfully
    fulfilled, the connection offers one-click switch to full-auto (still creator-
