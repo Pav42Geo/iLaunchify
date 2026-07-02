@@ -30,6 +30,7 @@ import { ProductionManifestView } from '@ilaunchify/ui'
 import { ChangeRequestCard } from './ChangeRequestCard'
 import { DisputeResponsePanel } from './DisputeResponsePanel'
 import { ShipRequirementsCard, type ShipDocRowView, type UploadedShipDoc } from './ShipRequirementsCard'
+import { StorageReleasesCard, type StorageReleaseView } from './StorageReleasesCard'
 import { getDispatchShippingContext } from './ship-requirements'
 import { SHIP_DOC_LABELS, PARTNER_UPLOADED_DOC_TYPES } from '@ilaunchify/shipping'
 import type { ProductionManifest } from '@ilaunchify/orders'
@@ -143,6 +144,27 @@ export default async function DispatchDetailPage({
   const qcPhotos: UploadedShipDoc[] = shippingCtx
     ? shippingCtx.documents.filter((d) => d.type === 'QC_PHOTO').map(toUploadedDoc)
     : []
+
+  // ---- Phase L1.2a — storage releases (HOLD_AT_MANUFACTURER) ---------------
+  // The card renders only when this dispatch belongs to the STORING service —
+  // enforced by the partnerServiceId match in the query (a co-dispatched
+  // printer never sees the storage queue), on top of the ownership guard the
+  // dispatch query already ran.
+  const storageAgreement =
+    dispatch.order.shipToType === 'HOLD_AT_MANUFACTURER'
+      ? await prisma.storageAgreement.findFirst({
+          where: { orderId: dispatch.order.id, partnerServiceId: dispatch.partnerServiceId },
+          include: { releases: { orderBy: { createdAt: 'desc' } } },
+        })
+      : null
+  const storageReleases: StorageReleaseView[] = (storageAgreement?.releases ?? []).map((r) => ({
+    id: r.id,
+    status: r.status,
+    quantity: r.quantity,
+    destinationSummary: summarizeReleaseDestination(r.destinationJson),
+    tracking: summarizeReleaseTracking(r.destinationJson),
+    requestedAt: r.createdAt.toISOString(),
+  }))
 
   // ---- Production-stage tracker -------------------------------------------
   // Drive "done" purely from the per-state timestamps so a skipped QC still
@@ -303,6 +325,17 @@ export default async function DispatchDetailPage({
               checklist={shippingCtx.checklist.map((i) => ({ key: i.key, label: i.label }))}
               canUpload={canUploadShipDocs}
               canDelete={canDeleteShipDocs}
+            />
+          )}
+
+          {/* Storage releases — HOLD_AT_MANUFACTURER release queue (L1.2a) */}
+          {storageAgreement && (
+            <StorageReleasesCard
+              dispatchId={dispatch.id}
+              mode={storageAgreement.mode}
+              agreementStatus={storageAgreement.status}
+              unitsRemaining={storageAgreement.unitsRemaining}
+              releases={storageReleases}
             />
           )}
 
@@ -539,4 +572,36 @@ function fmtDate(d: Date): string {
 
 function fmtShort(d: Date): string {
   return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+// ---------------------------------------------------------------------------
+// Phase L1.2a — defensive destinationJson readers. The column is Json (written
+// creator-side as an address snapshot; releases-actions.ts merges tracking in
+// at SHIPPED) — never trust its shape at read time.
+// ---------------------------------------------------------------------------
+
+function summarizeReleaseDestination(v: unknown): string {
+  if (typeof v !== 'object' || v === null) return 'Creator address'
+  const o = v as Record<string, unknown>
+  const str = (k: string): string | null =>
+    typeof o[k] === 'string' && (o[k] as string).trim() ? (o[k] as string) : null
+  const contact = str('contactName')
+  const line1 = str('addressLine1')
+  const city = str('city')
+  const state = str('state')
+  const postal = str('postalCode')
+  const place = [line1, [city, state].filter(Boolean).join(', '), postal].filter(Boolean).join(' · ')
+  if (!contact && !place) return 'Creator address'
+  return [contact, place].filter(Boolean).join(' — ')
+}
+
+function summarizeReleaseTracking(v: unknown): string | null {
+  if (typeof v !== 'object' || v === null) return null
+  const t = (v as Record<string, unknown>).tracking
+  if (typeof t !== 'object' || t === null) return null
+  const o = t as Record<string, unknown>
+  const carrier = typeof o.carrier === 'string' ? o.carrier : null
+  const number = typeof o.number === 'string' ? o.number : null
+  if (!carrier && !number) return null
+  return [carrier, number].filter(Boolean).join(' · ')
 }

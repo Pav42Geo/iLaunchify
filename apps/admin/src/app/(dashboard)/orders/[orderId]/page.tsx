@@ -35,12 +35,18 @@ import {
   Calendar,
   Hash,
   ArrowRightLeft,
+  Route,
+  Warehouse,
 } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { ResolveDisputeControls } from './ResolveDisputeControls'
 import { cn, ProductionManifestView } from '@ilaunchify/ui'
 import type { ProductionManifest } from '@ilaunchify/orders'
+import { computeStorageAccrual, type StorageFeeSnapshot } from '@ilaunchify/shipping'
+import { rankWarehousesForOrder, type FcRankingContext } from './logistics-data'
+import { FcOverrideControls, type FcOverrideOption } from './FcOverrideControls'
+import { CloseStorageAgreementControls } from './CloseStorageAgreementControls'
 
 export const dynamic = 'force-dynamic'
 
@@ -224,6 +230,35 @@ export default async function AdminOrderDetail({ params }: PageProps) {
     })
     .catch(() => null)
 
+  // L1.2b — logistics panels (docs/LOGISTICS_AND_FULFILLMENT.md §5/§9/L8).
+  // Fulfillment routing recomputes live eligibility for the override select;
+  // storage agreements carry their frozen fee snapshot for the accrual math.
+  const isWarehouseOrder = order.shipToType === 'WAREHOUSE_PARTNER'
+  const isHoldOrder = order.shipToType === 'HOLD_AT_MANUFACTURER'
+  const [fcAwardLog, fcRanking, storageAgreements] = await Promise.all([
+    isWarehouseOrder
+      ? prisma.fcAwardLog.findFirst({
+          where: { orderId },
+          orderBy: { awardedAt: 'desc' },
+          select: { id: true, partnerServiceId: true, scoreJson: true, awardedAt: true },
+        })
+      : Promise.resolve(null),
+    isWarehouseOrder ? rankWarehousesForOrder(orderId) : Promise.resolve(null),
+    isHoldOrder
+      ? prisma.storageAgreement.findMany({
+          where: { orderId },
+          include: {
+            partnerService: { include: { partner: true } },
+            releases: { orderBy: { createdAt: 'asc' } },
+          },
+          orderBy: { createdAt: 'asc' },
+        })
+      : Promise.resolve([]),
+  ])
+  const goodsMoving = order.dispatches.some((d) =>
+    ['SHIPPED', 'IN_TRANSIT', 'DELIVERED'].includes(d.status),
+  )
+
   const statusTone =
     STATUS_TONE[order.status] ?? STATUS_TONE.CANCELLED ?? {
       bg: 'bg-ink-100 text-ink-700 border-ink-200',
@@ -354,6 +389,21 @@ export default async function AdminOrderDetail({ params }: PageProps) {
           )}
           {order.refunds.length > 0 && <RefundsCard refunds={order.refunds} />}
           <ShipToCard order={order} />
+          {isWarehouseOrder && fcRanking && (
+            <FulfillmentRoutingCard
+              orderId={order.id}
+              currentPartnerServiceId={order.shipToPartnerServiceId}
+              currentPartnerName={order.shipToPartnerService?.partner.companyName ?? null}
+              currentCity={order.shipToCity}
+              currentState={order.shipToState}
+              awardLog={fcAwardLog}
+              ranking={fcRanking}
+              goodsMoving={goodsMoving}
+            />
+          )}
+          {isHoldOrder && (
+            <StorageAgreementCard orderId={order.id} agreements={storageAgreements} />
+          )}
           {order.internalNotes && (
             <NotesCard notes={order.internalNotes} />
           )}
@@ -811,6 +861,444 @@ function NotesCard({ notes }: { notes: string }) {
       <p className="whitespace-pre-wrap rounded-lg border border-warning-100 bg-warning-50/60 p-3 text-[12.5px] text-ink-800">
         {notes}
       </p>
+    </Card>
+  )
+}
+
+// =============================================================================
+// L1.2b — LOGISTICS CARDS (docs/LOGISTICS_AND_FULFILLMENT.md §5 + §9 + L8)
+// =============================================================================
+
+/** FcAwardLog.scoreJson, parsed defensively (shape owned by buildAwardLogPayload;
+ *  override rows add {override, reason, adminId}). Legacy/foreign JSON → null. */
+interface AwardScore {
+  algorithm: string | null
+  winner: string | null
+  override: boolean
+  reason: string | null
+  candidates: Array<{
+    partnerServiceId: string
+    eligible: boolean
+    exclusionReason: string | null
+    distanceMiles: number | null
+  }>
+}
+
+function parseAwardScore(json: unknown): AwardScore | null {
+  if (typeof json !== 'object' || json === null || Array.isArray(json)) return null
+  const o = json as Record<string, unknown>
+  if (!Array.isArray(o.candidates)) return null
+  const candidates: AwardScore['candidates'] = []
+  for (const raw of o.candidates) {
+    if (typeof raw !== 'object' || raw === null) continue
+    const c = raw as Record<string, unknown>
+    if (typeof c.partnerServiceId !== 'string') continue
+    candidates.push({
+      partnerServiceId: c.partnerServiceId,
+      eligible: c.eligible === true,
+      exclusionReason: typeof c.exclusionReason === 'string' ? c.exclusionReason : null,
+      distanceMiles: typeof c.distanceMiles === 'number' ? c.distanceMiles : null,
+    })
+  }
+  return {
+    algorithm: typeof o.algorithm === 'string' ? o.algorithm : null,
+    winner: typeof o.winner === 'string' ? o.winner : null,
+    override: o.override === true,
+    reason: typeof o.reason === 'string' ? o.reason : null,
+    candidates,
+  }
+}
+
+function FulfillmentRoutingCard({
+  orderId,
+  currentPartnerServiceId,
+  currentPartnerName,
+  currentCity,
+  currentState,
+  awardLog,
+  ranking,
+  goodsMoving,
+}: {
+  orderId: string
+  currentPartnerServiceId: string | null
+  currentPartnerName: string | null
+  currentCity: string
+  currentState: string | null
+  awardLog: { id: string; partnerServiceId: string; scoreJson: unknown; awardedAt: Date } | null
+  ranking: FcRankingContext
+  goodsMoving: boolean
+}) {
+  const score = awardLog ? parseAwardScore(awardLog.scoreJson) : null
+  // FC display names: live ranked candidates first; fall back to the id for
+  // nodes that have since been deactivated (award-log history outlives them).
+  const nameById = new Map<string, string>()
+  for (const r of ranking.ranked) {
+    const where = [r.candidate.city, r.candidate.state].filter(Boolean).join(', ')
+    nameById.set(
+      r.candidate.partnerServiceId,
+      where ? `${r.candidate.partnerName} — ${where}` : r.candidate.partnerName,
+    )
+  }
+  if (currentPartnerServiceId && currentPartnerName && !nameById.has(currentPartnerServiceId)) {
+    nameById.set(currentPartnerServiceId, currentPartnerName)
+  }
+  const fcName = (id: string) => nameById.get(id) ?? `${id.slice(0, 10)}…`
+
+  const options: FcOverrideOption[] = ranking.ranked.map((r) => ({
+    partnerServiceId: r.candidate.partnerServiceId,
+    label: fcName(r.candidate.partnerServiceId),
+    eligible: r.eligible,
+    exclusionReason: r.exclusionReason,
+    distanceMiles: r.distanceMiles,
+  }))
+
+  return (
+    <Card
+      icon={Route}
+      title="Fulfillment routing"
+      subtitle={
+        currentPartnerName
+          ? `Current FC · ${currentPartnerName}`
+          : 'No fulfillment center assigned'
+      }
+    >
+      <dl className="divide-y divide-ink-100">
+        <Row label="Fulfillment center">
+          <span className="font-medium">{currentPartnerName ?? '—'}</span>
+        </Row>
+        <Row label="Location">
+          {[currentCity, currentState].filter(Boolean).join(', ') || '—'}
+        </Row>
+        <Row label="Eligibility basis">
+          <span className="text-[11px] uppercase tracking-wider text-ink-700">
+            {ranking.input.storageClass} · hazmat {ranking.input.hazmatClass}
+            {!ranking.hasTemplate && ' · defaults (no template binding)'}
+          </span>
+        </Row>
+      </dl>
+
+      {/* Decision rationale — the latest FcAwardLog rendered candidate-by-candidate. */}
+      <div className="mt-3">
+        <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
+          <FileText className="h-3 w-3" aria-hidden="true" />
+          Decision rationale
+        </p>
+        {awardLog && score ? (
+          <div className="mt-2">
+            <p className="text-[11.5px] text-ink-600">
+              {score.override ? 'Admin override' : (score.algorithm ?? 'Awarded').replace(/_/g, ' ').toLowerCase()}
+              {' · '}
+              {new Date(awardLog.awardedAt).toLocaleString()}
+              {score.winner && (
+                <>
+                  {' · winner: '}
+                  <span className="font-medium text-ink-900">{fcName(score.winner)}</span>
+                </>
+              )}
+            </p>
+            {score.reason && (
+              <p className="mt-1 rounded-lg border border-warning-100 bg-warning-50/60 px-2.5 py-1.5 text-[12px] text-ink-800">
+                Reason: {score.reason}
+              </p>
+            )}
+            {score.candidates.length > 0 && (
+              <div className="mt-2 overflow-hidden rounded-xl border border-ink-100">
+                <table className="w-full text-[12px]">
+                  <thead className="bg-ink-50/70 text-[10.5px] uppercase tracking-[0.06em] text-ink-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold">Candidate</th>
+                      <th className="px-3 py-2 text-left font-semibold">Eligible</th>
+                      <th className="px-3 py-2 text-right font-semibold">Distance</th>
+                      <th className="px-3 py-2 text-left font-semibold">Exclusion</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-ink-100">
+                    {score.candidates.map((c) => (
+                      <tr key={c.partnerServiceId} className={c.partnerServiceId === score.winner ? 'bg-pink-50/40' : undefined}>
+                        <td className="px-3 py-2 font-medium text-ink-900">
+                          {fcName(c.partnerServiceId)}
+                          {c.partnerServiceId === score.winner && (
+                            <span className="ml-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-pink-700">winner</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {c.eligible ? (
+                            <span className="text-success-700">Yes</span>
+                          ) : (
+                            <span className="text-danger-700">No</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-700">
+                          {c.distanceMiles !== null ? `${c.distanceMiles.toLocaleString()} mi` : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-ink-600">{c.exclusionReason ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="mt-2 rounded-lg border border-dashed border-ink-200 bg-ink-50/40 p-3 text-[12.5px] text-ink-500">
+            No award log for this order — the fulfillment center was selected before award
+            logging existed, or was a legacy fallback pick.
+          </p>
+        )}
+      </div>
+
+      {/* L8 — admin hard-pin. Live eligibility annotated per node; the server
+          action re-validates and blocks once goods are moving. */}
+      <div className="mt-4 border-t border-ink-100 pt-3">
+        {options.length === 0 ? (
+          <Empty label="No ACTIVE warehouse partners to pin." />
+        ) : (
+          <FcOverrideControls
+            orderId={orderId}
+            currentPartnerServiceId={currentPartnerServiceId}
+            goodsMoving={goodsMoving}
+            options={options}
+          />
+        )}
+      </div>
+    </Card>
+  )
+}
+
+const STORAGE_TONE: Record<string, { bg: string; dot: string; label: string }> = {
+  ACTIVE: { bg: 'bg-success-50 text-success-700 border-success-200', dot: 'bg-success-500', label: 'Active' },
+  RELEASING: { bg: 'bg-info-50 text-info-800 border-info-200', dot: 'bg-info-500', label: 'Releasing' },
+  CLOSED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', dot: 'bg-ink-400', label: 'Closed' },
+}
+
+const RELEASE_TONE: Record<string, { bg: string; label: string }> = {
+  REQUESTED: { bg: 'bg-warning-50 text-warning-800 border-warning-200', label: 'Requested' },
+  PICKING: { bg: 'bg-pink-50 text-pink-700 border-pink-200', label: 'Picking' },
+  SHIPPED: { bg: 'bg-info-50 text-info-800 border-info-200', label: 'Shipped' },
+  DELIVERED: { bg: 'bg-success-50 text-success-700 border-success-200', label: 'Delivered' },
+  CANCELLED: { bg: 'bg-ink-100 text-ink-700 border-ink-200', label: 'Cancelled' },
+}
+
+/** StorageAgreement.feeSnapshotJson → StorageFeeSnapshot, defensively. The
+ *  snapshot was frozen at agreement time (legal reproducibility); missing or
+ *  malformed JSON renders an "accrual unavailable" note instead of throwing. */
+function parseFeeSnapshot(json: unknown): StorageFeeSnapshot | null {
+  if (typeof json !== 'object' || json === null || Array.isArray(json)) return null
+  const o = json as Record<string, unknown>
+  const num = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null
+  const rateCents = num(o.rateCents)
+  if (rateCents === null) return null
+  return {
+    billingUnit: o.billingUnit === 'CUFT_MONTH' ? 'CUFT_MONTH' : 'PALLET_MONTH',
+    rateCents,
+    graceDays: num(o.graceDays) ?? 0,
+    minMonthlyCents: num(o.minMonthlyCents) ?? 0,
+    pickFeeCents: num(o.pickFeeCents) ?? 0,
+    packFeeCents: num(o.packFeeCents) ?? 0,
+    referralFeeBps: num(o.referralFeeBps) ?? 0,
+  }
+}
+
+function StorageAgreementCard({
+  orderId,
+  agreements,
+}: {
+  orderId: string
+  agreements: Array<{
+    id: string
+    mode: string
+    status: string
+    unitsRemaining: number
+    palletsRemaining: number | null
+    startedAt: Date
+    endedAt: Date | null
+    feeSnapshotJson: unknown
+    partnerService: { partner: { companyName: string } }
+    releases: Array<{
+      id: string
+      destinationType: string
+      quantity: number
+      status: string
+      createdAt: Date
+    }>
+  }>
+}) {
+  return (
+    <Card
+      icon={Warehouse}
+      title="Storage agreement"
+      subtitle={
+        agreements.length === 0
+          ? 'Hold at manufacturer'
+          : `Hold at manufacturer · ${agreements[0]?.partnerService.partner.companyName ?? ''}`
+      }
+    >
+      {agreements.length === 0 ? (
+        <Empty label="No storage agreement recorded for this hold-at-manufacturer order." />
+      ) : (
+        <div className="space-y-4">
+          {agreements.map((a) => {
+            const tone =
+              STORAGE_TONE[a.status] ?? {
+                bg: 'bg-ink-100 text-ink-700 border-ink-200',
+                dot: 'bg-ink-400',
+                label: a.status,
+              }
+            const snapshot = parseFeeSnapshot(a.feeSnapshotJson)
+            // Billable units: pallets on hand when tracked; the V1 floor is one
+            // billing unit (per-unit granularity lands with the release flow —
+            // minMonthly dominates small holds anyway).
+            const billableUnits = a.palletsRemaining ?? 1
+            // Picks (ON_DEMAND) accrue pick+pack fees once the parcel leaves.
+            const pickCount =
+              a.mode === 'ON_DEMAND'
+                ? a.releases.filter((r) => r.status === 'SHIPPED' || r.status === 'DELIVERED').length
+                : 0
+            const accrual = snapshot
+              ? computeStorageAccrual({
+                  snapshot,
+                  startedAt: a.startedAt,
+                  asOf: a.endedAt ?? new Date(),
+                  billableUnits,
+                  pickCount,
+                })
+              : null
+            return (
+              <div key={a.id} className="rounded-xl border border-ink-200 bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-display text-[15px] font-semibold text-ink-900">
+                    {a.partnerService.partner.companyName}
+                  </p>
+                  <span
+                    className={cn(
+                      'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wider',
+                      tone.bg,
+                    )}
+                  >
+                    <span className={cn('inline-block h-1.5 w-1.5 rounded-full', tone.dot)} />
+                    {tone.label}
+                  </span>
+                </div>
+
+                <dl className="mt-2 divide-y divide-ink-100">
+                  <Row label="Mode">
+                    {a.mode === 'ON_DEMAND' ? 'On-demand pick/pack' : 'Stock release'}
+                  </Row>
+                  <Row label="Units remaining">
+                    <span className="tabular-nums">{a.unitsRemaining.toLocaleString()}</span>
+                  </Row>
+                  {a.palletsRemaining !== null && (
+                    <Row label="Pallets remaining">
+                      <span className="tabular-nums">{a.palletsRemaining.toLocaleString()}</span>
+                    </Row>
+                  )}
+                  <Row label="Started">{new Date(a.startedAt).toLocaleDateString()}</Row>
+                  {accrual && (
+                    <Row label="Grace ends">
+                      {accrual.graceEndsOn.toLocaleDateString()}
+                    </Row>
+                  )}
+                  {a.endedAt && <Row label="Ended">{new Date(a.endedAt).toLocaleDateString()}</Row>}
+                </dl>
+
+                {/* Accrued charges — pure math off the frozen fee snapshot. */}
+                <div className="mt-3 rounded-lg border border-ink-100 bg-ink-50/40 p-3">
+                  <p className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
+                    Accrued charges
+                  </p>
+                  {accrual ? (
+                    <>
+                      <dl className="mt-1 divide-y divide-ink-100">
+                        <Row label="Months accrued">
+                          <span className="tabular-nums">{accrual.monthsAccrued}</span>
+                        </Row>
+                        <Row label="Storage">
+                          <span className="tabular-nums">{formatCurrency(accrual.storageCents)}</span>
+                        </Row>
+                        {accrual.pickPackCents > 0 && (
+                          <Row label={`Pick/pack (${pickCount})`}>
+                            <span className="tabular-nums">{formatCurrency(accrual.pickPackCents)}</span>
+                          </Row>
+                        )}
+                        <Row label="Total">
+                          <span className="font-semibold tabular-nums">{formatCurrency(accrual.totalCents)}</span>
+                        </Row>
+                        <Row label="Platform fee">
+                          <span className="tabular-nums text-success-700">
+                            {formatCurrency(accrual.platformFeeCents)}
+                          </span>
+                        </Row>
+                      </dl>
+                      <p className="mt-1.5 text-[11px] italic text-ink-500">
+                        estimated — billing execution pending payments verification
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-[12px] text-ink-500">
+                      Fee snapshot missing or unreadable — accrual unavailable.
+                    </p>
+                  )}
+                </div>
+
+                {/* Release history */}
+                <div className="mt-3">
+                  <p className="text-[12px] font-bold uppercase tracking-wider text-ink-700">
+                    Releases
+                  </p>
+                  {a.releases.length === 0 ? (
+                    <p className="mt-1 text-[12px] text-ink-500">No releases yet.</p>
+                  ) : (
+                    <ul className="mt-1.5 space-y-1.5">
+                      {a.releases.map((r) => {
+                        const rTone =
+                          RELEASE_TONE[r.status] ?? {
+                            bg: 'bg-ink-100 text-ink-700 border-ink-200',
+                            label: r.status,
+                          }
+                        return (
+                          <li
+                            key={r.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ink-100 bg-white px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-[12.5px] font-medium text-ink-900">
+                                {r.quantity.toLocaleString()} units ·{' '}
+                                <span className="text-[11.5px] font-normal text-ink-600">
+                                  {r.destinationType.replace(/_/g, ' ').toLowerCase()}
+                                </span>
+                              </p>
+                              <p className="mt-0.5 text-[10.5px] tabular-nums text-ink-500">
+                                {new Date(r.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                'inline-flex shrink-0 items-center rounded-full border px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wider',
+                                rTone.bg,
+                              )}
+                            >
+                              {rTone.label}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                {a.status !== 'CLOSED' && (
+                  <CloseStorageAgreementControls
+                    orderId={orderId}
+                    agreementId={a.id}
+                    unitsRemaining={a.unitsRemaining}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </Card>
   )
 }

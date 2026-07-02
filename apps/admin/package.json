@@ -22,6 +22,7 @@
     "@ilaunchify/orders": "workspace:*",
     "@ilaunchify/payments": "workspace:*",
     "@ilaunchify/plans": "workspace:*",
+    "@ilaunchify/shipping": "workspace:*",
     "@ilaunchify/storage": "workspace:*",
     "@ilaunchify/support": "workspace:*",
     "@ilaunchify/types": "workspace:*",

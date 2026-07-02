@@ -44,6 +44,8 @@ import { AdjustOrderButton } from './AdjustOrderButton'
 import { CancelOrderButton } from './CancelOrderButton'
 import { DisputeOrderButton } from './DisputeOrderButton'
 import { DelayApprovalPrompt } from './DelayApprovalPrompt'
+import { StoredStockPanel } from './StoredStockPanel'
+import { getStoragePanelData } from './storage-panel-data'
 
 export const dynamic = 'force-dynamic'
 
@@ -217,6 +219,14 @@ export default async function OrderDetailPage({
       Date.now() - order.deliveredAt.getTime() <=
         orderSettings.disputeWindowDays * 24 * 60 * 60 * 1000)
 
+  // Phase L1.2a — HOLD_AT_MANUFACTURER orders carry a StorageAgreement; the
+  // panel data (agreement + accrual + release history + default address) is
+  // assembled server-side and handed to the client panel pre-serialized.
+  const storagePanel =
+    order.shipToType === 'HOLD_AT_MANUFACTURER'
+      ? await getStoragePanelData(order.id, user.id)
+      : null
+
   return (
     <div className="space-y-6">
       {/* Cream header band — mirrors R10 list-card header */}
@@ -282,6 +292,7 @@ export default async function OrderDetailPage({
 
       {/* Two-column body — dispatch timeline left, sticky rail right */}
       <div className="grid gap-6 lg:grid-cols-[1fr,340px]">
+        <div className="min-w-0 space-y-6">
         <section className="min-w-0 space-y-3">
           <h2 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-700">
             Partner gates
@@ -326,6 +337,11 @@ export default async function OrderDetailPage({
             })
           )}
         </section>
+
+        {/* Phase L1.2a — stored-inventory panel + Release stock flow for
+            HOLD_AT_MANUFACTURER orders (LOGISTICS_AND_FULFILLMENT §4/§9). */}
+        {storagePanel && <StoredStockPanel data={storagePanel} />}
+        </div>
 
         {/* Sticky right rail — totals + contextual actions */}
         <aside className="space-y-3 lg:sticky lg:top-[88px] lg:self-start">
