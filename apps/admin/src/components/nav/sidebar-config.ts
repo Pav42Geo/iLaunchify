@@ -332,6 +332,9 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
         { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
         { kind: 'item', label: 'Die-lines', icon: Layout, href: '/dielines' },
+        // Die-line CURATION is a canvas surface in the Design Studio (creator app) — opened
+        // via the /go bridge which establishes the creator session first (Pavel 2026-07-01).
+        { kind: 'item', label: 'Die-line Curation', icon: Brush, href: '/go/dieline-studio', capability: 'catalog:write' },
         { kind: 'item', label: 'AI Generator', icon: Sparkles, href: '/ai-generator', capability: 'catalog:write' },
         { kind: 'item', label: 'AI Template Pool', icon: Sparkles, href: '/ai-generator/pool', capability: 'catalog:write' },
         { kind: 'item', label: 'Packaging Studio', icon: Box, href: '/packaging-studio', capability: 'catalog:write' },
