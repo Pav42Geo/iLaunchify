@@ -19,7 +19,7 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 const TSC = 'node_modules/.bin/tsc'
-const PKGS = ['packages/orders/src', 'packages/payments/src', 'packages/nutrition/src', 'packages/ui/src/lib']
+const PKGS = ['packages/orders/src', 'packages/payments/src', 'packages/nutrition/src', 'packages/ui/src/lib', 'packages/shipping/src']
 
 // ── minimal vitest shim ───────────────────────────────────────────────────────
 let pass = 0

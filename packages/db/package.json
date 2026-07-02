@@ -23,6 +23,7 @@
     "seed:variety-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-variety-demo.ts",
     "seed:packing-types": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/run-packing-types.ts",
     "seed:packaging-forms": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-packaging-forms.ts",
+    "seed:logistics": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-logistics.ts",
     "backfill:flavor-recipes":     "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-flavor-recipes.ts",
     "backfill:flavor-recipes:apply": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-flavor-recipes.ts --apply",
     "format":         "prisma format",
