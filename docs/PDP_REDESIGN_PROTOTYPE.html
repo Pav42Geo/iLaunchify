@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iLaunchify — Product detail page redesign (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF2E63; --pink-700:#C71350; --pink-50:#FFE9F0; --pink-100:#FFB3CC;
+    --ink-900:#18181A; --ink-800:#232327; --ink-700:#33343C; --ink-600:#474954;
+    --ink-500:#6B6D78; --ink-400:#9A9CA6; --ink-300:#CBCCD3; --ink-200:#E0E1E5;
+    --ink-100:#EEEFF1; --ink-50:#F8F8F9; --green:#1D9E75; --green-50:#E1F5EE; --green-700:#0F6E56;
+    --sans:'Inter',system-ui,sans-serif; --display:'Bricolage Grotesque','Inter',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);color:var(--ink-900);background:#fff;-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 24px 80px}
+  .topbar{border-bottom:1px solid var(--ink-200);position:sticky;top:0;background:#fff;z-index:20}
+  .topbar .row{max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;gap:20px}
+  .logo{font-family:var(--display);font-weight:800;font-size:21px;display:flex;align-items:center;gap:8px}
+  .logo .mark{width:24px;height:24px;border-radius:6px;background:var(--pink)}
+  .navlink{font-size:13px;color:var(--ink-600)}
+  .crumb{font-size:12.5px;color:var(--ink-500);margin:14px 0 18px}
+  .crumb a{color:var(--ink-500);text-decoration:none}
+
+  /* DESKTOP: 3 zones — gallery · identity · configure box.
+     TABLET/MOBILE: stacks to one column (the layout you liked). */
+  .hero{display:grid;grid-template-columns:1.15fr 1fr 340px;gap:26px;align-items:start}
+  @media(max-width:1000px){.hero{grid-template-columns:1fr}.box{position:static}}
+  .identity{display:flex;flex-direction:column}
+  .certstrip{display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:11px 0;margin:2px 0 14px;border-top:1px solid var(--ink-100);border-bottom:1px solid var(--ink-100)}
+  .cs{display:flex;flex-direction:column;align-items:center;gap:4px;width:60px;text-align:center}
+  .cs .b{width:40px;height:40px;border-radius:11px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;font-size:19px}
+  .cs .t{font-size:10px;color:var(--ink-600);line-height:1.2}
+  .trust-eb{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--green);display:flex;align-items:center;gap:5px}
+  .gallery{display:flex;gap:10px}
+  .thumbs{display:flex;flex-direction:column;gap:8px}
+  .thumb{width:56px;height:56px;border-radius:10px;border:1px solid var(--ink-200);cursor:pointer;overflow:hidden;display:grid;place-items:center;font-size:22px}
+  .thumb.on{border:2px solid var(--ink-900)}
+  .main-img{flex:1;aspect-ratio:1;border-radius:16px;border:1px solid var(--ink-200);display:grid;place-items:center;font-size:96px;
+    background:radial-gradient(120% 130% at 50% 0%, #FFE0EC, #FFB3CC 60%, #FF7FA8)}
+  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-500)}
+  .title{font-family:var(--display);font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:6px 0 8px}
+  .rating{font-size:13px;color:var(--ink-500);margin-bottom:12px}
+  .star{color:var(--pink)}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{font-size:12px;font-weight:500;border:1px solid var(--ink-200);background:var(--ink-50);color:var(--ink-600);border-radius:999px;padding:3px 11px}
+  .lead{font-size:14px;color:var(--ink-700);line-height:1.6;margin-bottom:16px;max-width:54ch}
+  .facts{display:flex;gap:0;border:1px solid var(--ink-200);border-radius:12px;overflow:hidden}
+  .fact{flex:1;padding:11px 14px;border-left:1px solid var(--ink-100)}
+  .fact:first-child{border-left:0}
+  .fact .l{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-500)}
+  .fact .v{font-size:15px;font-weight:700;margin-top:3px}
+  .fact .v.pink{color:var(--pink-700)}
+
+  /* configure box */
+  .box{border:2px solid var(--pink);border-radius:16px;padding:18px;position:sticky;top:80px;display:flex;flex-direction:column;gap:13px;background:#fff}
+  .box .eb{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--pink-700)}
+  .field-l{font-size:12px;font-weight:600;color:var(--ink-700);margin-bottom:6px}
+  .swatches{display:flex;gap:8px}
+  .sw{width:30px;height:30px;border-radius:999px;cursor:pointer;border:1px solid var(--ink-200)}
+  .sw.on{border:2px solid var(--ink-900);box-shadow:0 0 0 2px #fff inset}
+  .pills{display:flex;gap:7px;flex-wrap:wrap}
+  .pill-opt{font-size:13px;border:1px solid var(--ink-200);border-radius:9px;padding:6px 13px;cursor:pointer;color:var(--ink-700)}
+  .pill-opt.on{border-color:var(--ink-900);color:var(--ink-900);font-weight:600}
+  .sel{width:100%;border:1px solid var(--ink-200);border-radius:9px;padding:9px 11px;font:inherit;font-size:13px;background:#fff}
+  .qty{display:flex;align-items:center;gap:0;border:1px solid var(--ink-200);border-radius:9px;width:fit-content;overflow:hidden}
+  .qty button{width:34px;height:34px;border:0;background:#fff;font-size:18px;cursor:pointer;color:var(--ink-700)}
+  .qty input{width:56px;border:0;text-align:center;font:inherit;font-size:14px;font-weight:600}
+  .priceline{display:flex;align-items:baseline;justify-content:space-between;border-top:1px solid var(--ink-100);padding-top:12px}
+  .price{font-family:var(--display);font-size:26px;font-weight:800;letter-spacing:-.01em}
+  .price small{font-size:13px;font-weight:500;color:var(--ink-500)}
+  .tierlink{font-size:12.5px;color:var(--pink-700);font-weight:600;cursor:pointer}
+  .earn{background:var(--green-50);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--green-700)}
+  .earn b{color:#085041}
+  .ship{font-size:12.5px;color:var(--ink-500);display:flex;align-items:center;gap:6px}
+  .btn{border-radius:999px;padding:11px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--ink-200);background:#fff;color:var(--ink-800)}
+  .btn.primary{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+  .btn.sm{padding:8px;font-size:12.5px}
+  .btn-row{display:flex;gap:8px}
+  .btn-row .btn{flex:1}
+
+  /* tabs */
+  .tabs{margin-top:46px;border:1px solid var(--ink-200);border-radius:16px;overflow:hidden}
+  .tabbar{display:flex;border-bottom:1px solid var(--ink-200);background:var(--ink-50)}
+  .tab{padding:13px 20px;font-size:14px;font-weight:600;color:var(--ink-500);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+  .tab.on{color:var(--ink-900);border-bottom-color:var(--pink);background:#fff}
+  .panel{padding:24px;display:none}
+  .panel.on{display:block}
+  .h2{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.015em;margin-bottom:12px;display:flex;align-items:center;gap:9px}
+  .h2 .ic{width:28px;height:28px;border-radius:8px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;font-size:14px}
+  .two{display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:start}
+  @media(max-width:760px){.two{grid-template-columns:1fr}}
+  .ing{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--ink-200);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:13.5px}
+  .ing .sub{font-size:12px;color:var(--ink-500)}
+  .ing .act{font-size:12.5px;color:var(--pink-700);font-weight:600;cursor:pointer}
+  .ing.add{color:var(--ink-600);border-style:dashed}
+  .nfp{border:1px solid var(--ink-200);border-radius:12px;padding:14px;background:#fff}
+  .nfp-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .badge{font-size:10.5px;font-weight:600;background:var(--pink-50);color:var(--pink-700);border-radius:999px;padding:2px 9px}
+  .nf-rule{height:8px;background:var(--ink-900);margin:4px 0}
+  .nf-rule.thin{height:1px;background:var(--ink-300)}
+  .nf-row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+  .preview-btn{margin-top:10px;width:100%;border:1px solid var(--ink-200);border-radius:9px;padding:8px;text-align:center;font-size:12.5px;color:var(--ink-700);cursor:pointer;background:var(--ink-50)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-500);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--ink-200)}
+  td{padding:9px 10px;border-bottom:1px solid var(--ink-50)}
+  .certs{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .cert{width:74px;text-align:center}
+  .cert .badge-img{width:54px;height:54px;border-radius:14px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;font-size:24px;margin:0 auto 5px}
+  .cert .nm{font-size:11px;color:var(--ink-600);line-height:1.3}
+  .note{font-size:13px;color:var(--ink-600);background:var(--ink-50);border:1px solid var(--ink-200);border-radius:10px;padding:11px 13px;line-height:1.55}
+  .defgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 22px}
+  .def .l{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-500)}
+  .def .v{font-size:14px;font-weight:600;margin-top:3px}
+
+  /* related */
+  .rel-h{font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em;margin:48px 0 18px}
+  .rel{display:flex;gap:14px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+  .rel::-webkit-scrollbar{display:none}
+  .pcard{flex:0 0 calc((100% - 56px)/5);min-width:170px;border:1px solid var(--ink-200);border-radius:16px;overflow:hidden}
+  .pcard .img{aspect-ratio:4/3;display:grid;place-items:center;font-size:34px}
+  .pcard .bd{padding:11px 12px}
+  .pcard .eb{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-500)}
+  .pcard .nm{font-size:15px;font-weight:700;margin:3px 0 8px;line-height:1.2}
+  .pcard .ft{display:flex;justify-content:space-between;border-top:1px solid var(--ink-100);padding-top:8px}
+  .pcard .ft .v{font-size:15px;font-weight:700}
+  .pcard .ft .v.pk{color:var(--pink-700)}
+  .pcard .ft .l{font-size:10.5px;font-weight:600;text-transform:uppercase;color:var(--ink-500)}
+
+  /* drawer + modal */
+  .scrim{position:fixed;inset:0;background:rgba(24,24,26,.45);opacity:0;pointer-events:none;transition:.2s;z-index:40}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:92vw;background:#fff;transform:translateX(100%);transition:.25s ease;z-index:50;padding:22px;overflow-y:auto;box-shadow:-12px 0 40px rgba(0,0,0,.12)}
+  .drawer.on{transform:translateX(0)}
+  .drawer-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .drawer-h .t{font-family:var(--display);font-size:18px;font-weight:700}
+  .x{font-size:22px;color:var(--ink-400);cursor:pointer;line-height:1}
+  .modal{position:fixed;inset:0;display:grid;place-items:center;z-index:60;opacity:0;pointer-events:none;transition:.2s}
+  .modal.on{opacity:1;pointer-events:auto}
+  .modal .card{background:#fff;border-radius:16px;padding:20px;max-width:360px;border:1px solid var(--ink-200);box-shadow:0 20px 60px rgba(0,0,0,.2)}
+
+  /* flavor cards */
+  .flavs{display:flex;gap:8px;flex-wrap:wrap}
+  .flav{border:1px solid var(--ink-200);border-radius:10px;padding:8px 11px;cursor:pointer;min-width:92px}
+  .flav.on{border:2px solid var(--ink-900)}
+  .flav .fn{font-size:13px;font-weight:600}
+  .flav .fp{font-size:12px;color:var(--ink-600);margin-top:2px}
+  .flav .fp .was{color:var(--ink-400);text-decoration:line-through;font-size:11px}
+  /* accordion */
+  .acc{border:1px solid var(--ink-200);border-radius:12px;margin-top:18px;overflow:hidden}
+  .acc-row{border-top:1px solid var(--ink-100)}
+  .acc-row:first-child{border-top:0}
+  .acc-h{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;font-size:14px;font-weight:600}
+  .acc-h .chev{color:var(--ink-400);transition:.15s}
+  .acc-row.open .chev{transform:rotate(180deg)}
+  .acc-b{display:none;padding:0 14px 13px;font-size:13px;color:var(--ink-600);line-height:1.6}
+  .acc-row.open .acc-b{display:block}
+  /* subscribe + ship + tooltip */
+  .subcard{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--ink-200);border-radius:12px;padding:11px 13px;cursor:pointer}
+  .subcard input{margin-top:3px}
+  .subcard .t{display:block;font-size:13px;font-weight:600}
+  .subcard .d{display:block;font-size:12px;color:var(--ink-500);margin-top:2px}
+  .shipto{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-600)}
+  .shipto .ch{color:var(--pink-700);font-weight:600;cursor:pointer;font-size:12px}
+  .tip{position:relative;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-500);cursor:help;width:fit-content}
+  .tip .pop{display:none;position:absolute;bottom:130%;left:0;width:240px;background:#fff;border:1px solid var(--ink-200);border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--ink-700);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:5;line-height:1.5}
+  .tip:hover .pop{display:block}
+  /* business card */
+  .zone3{align-self:start}
+  .bizcard{border-radius:14px;padding:16px;margin-top:16px;background:var(--ink-900);color:#fff}
+  .bizcard .bz{font-family:var(--display);font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
+  .bizcard .bz .dot{width:9px;height:9px;border-radius:999px;background:#B5FF3D}
+  .bizcard p{font-size:12.5px;color:var(--ink-300);margin:8px 0 12px;line-height:1.5}
+  .bizcard .cta{display:inline-block;background:#B5FF3D;color:var(--ink-900);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="row">
+  <span class="logo"><span class="mark"></span>iLaunchify</span>
+  <span class="navlink">Energy &amp; Performance</span><span class="navlink">Wellness</span><span class="navlink">Beauty</span>
+</div></div>
+
+<div class="wrap">
+  <div class="crumb"><a>Marketplace</a> › <a>Supplements</a> › Collagen Berry Drink</div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <!-- ZONE 1 · gallery (hero image follows the selected package) -->
+    <div class="gallery">
+      <div class="thumbs">
+        <div class="thumb on" onclick="setImg(this,'🥤')">🥤</div>
+        <div class="thumb" onclick="setImg(this,'📦')">📦</div>
+        <div class="thumb" onclick="setImg(this,'🧴')">🧴</div>
+        <div class="thumb" onclick="setImg(this,'🫐')">🫐</div>
+      </div>
+      <div class="main-img" id="mainimg">🥤</div>
+    </div>
+
+    <!-- ZONE 2 · product identity + trust (top-aligned, next to gallery) -->
+    <div class="identity">
+      <div class="eyebrow">Supplements</div>
+      <div class="title">Collagen Berry Drink</div>
+      <div class="rating"><span class="star">★★★★★</span> 4.8 · 36 launches · 28-day lead time</div>
+
+      <div class="trust-eb">✓ Verified &amp; certified</div>
+      <div class="certstrip">
+        <div class="cs"><div class="b">✔</div><div class="t">GMP</div></div>
+        <div class="cs"><div class="b">🌱</div><div class="t">Vegan</div></div>
+        <div class="cs"><div class="b">🌾</div><div class="t">Gluten-free</div></div>
+        <div class="cs"><div class="b">🧪</div><div class="t">Lab tested</div></div>
+        <div class="cs"><div class="b">🇺🇸</div><div class="t">Made in USA</div></div>
+      </div>
+
+      <div class="chips">
+        <span class="chip">Vegan</span><span class="chip">Sugar-free</span><span class="chip">Collagen</span>
+      </div>
+      <p class="lead">A ready-to-mix berry collagen drink with marine peptides and vitamin C. Private-label it, swap the flavor and actives, and launch under your own brand.</p>
+      <div class="facts">
+        <div class="fact"><div class="l">Format</div><div class="v">Powder</div></div>
+        <div class="fact"><div class="l">MOQ</div><div class="v">500</div></div>
+        <div class="fact"><div class="l">Lead</div><div class="v">28d</div></div>
+        <div class="fact"><div class="l">From</div><div class="v pink">$1.80</div></div>
+      </div>
+
+      <!-- Accordion · additional info (collapsed by default) -->
+      <div class="acc">
+        <div class="acc-row open"><div class="acc-h" onclick="acc(this)">Ingredients <span class="chev">▾</span></div><div class="acc-b">Marine collagen peptides, natural mixed-berry flavor, citric acid, stevia leaf extract, sea salt. <a style="color:var(--pink-700)">See full label →</a></div></div>
+        <div class="acc-row"><div class="acc-h" onclick="acc(this)">Allergens <span class="chev">▾</span></div><div class="acc-b">No major allergens. Made in a facility that also processes milk and soy.</div></div>
+        <div class="acc-row"><div class="acc-h" onclick="acc(this)">Dimensions &amp; weight <span class="chev">▾</span></div><div class="acc-b">Stick-pack carton 14 × 9 × 6 cm · gross 420 g · 30 sticks / carton.</div></div>
+        <div class="acc-row"><div class="acc-h" onclick="acc(this)">Shelf life &amp; storage <span class="chev">▾</span></div><div class="acc-b">24 months, shelf-stable. Store cool and dry; no refrigeration required.</div></div>
+        <div class="acc-row"><div class="acc-h" onclick="acc(this)">Shipping &amp; returns <span class="chev">▾</span></div><div class="acc-b">Produced to order, ~28-day lead. Made-to-order runs are non-returnable; defective units are remade or refunded.</div></div>
+      </div>
+    </div>
+
+    <!-- ZONE 3 · configure box + business card -->
+    <div class="zone3">
+      <div class="box">
+        <div class="eb">Configure &amp; launch</div>
+        <div>
+          <div class="field-l">Flavor — different flavors can price differently</div>
+          <div class="flavs">
+            <div class="flav on" data-p="1.80"><div class="fn">Chocolate</div><div class="fp">$1.80</div></div>
+            <div class="flav" data-p="1.95"><div class="fn">Strawberry</div><div class="fp">$1.95</div></div>
+            <div class="flav" data-p="1.80"><div class="fn">Vanilla</div><div class="fp">$1.80</div></div>
+            <div class="flav" data-p="2.10"><div class="fn">Matcha</div><div class="fp">$2.10 <span class="was">$2.40</span></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="field-l">Size</div>
+          <div class="pills"><span class="pill-opt on">Single serve</span><span class="pill-opt">30-serving tub</span></div>
+        </div>
+        <div>
+          <div class="field-l">Packaging — changes the hero image</div>
+          <select class="sel" id="pkg" onchange="pkgImg()">
+            <option data-img="🥤">Carton — 12-pack</option>
+            <option data-img="📦">Stick pack — 30 ct carton</option>
+            <option data-img="🧴">Pouch — resealable</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-l">Quantity</div>
+          <div class="qty"><button onclick="q(-100)">−</button><input id="qn" value="500"><button onclick="q(100)">+</button></div>
+        </div>
+        <div class="priceline">
+          <div class="price"><span id="px">$1.80</span><small> / unit</small></div>
+          <span class="tierlink" onclick="openModal('tier')">See tier pricing →</span>
+        </div>
+        <div class="earn">You earn <b>$3.20 / unit</b> at your Builder plan rate</div>
+        <div class="btn primary">Launch this product</div>
+        <div class="btn-row">
+          <div class="btn sm" onclick="openDrawer()">Order a sample →</div>
+          <div class="btn sm" onclick="gotoRecipe()">Customize recipe →</div>
+        </div>
+
+        <label class="subcard">
+          <input type="checkbox">
+          <span><span class="t">Subscribe &amp; save 5%</span><span class="d">Set up recurring production — pause or cancel anytime.</span></span>
+        </label>
+        <div class="shipto">📍 Ships to United States · est. 28 days <span class="ch">change</span></div>
+        <div class="tip">ⓘ Production &amp; returns
+          <span class="pop">Made to order. Once production starts a run can't be cancelled; defective units are remade or refunded. See full policy.</span>
+        </div>
+      </div>
+
+      <!-- iLaunchify Business promo -->
+      <div class="bizcard">
+        <div class="bz"><span class="dot"></span> iLaunchify Business</div>
+        <p>Launching a line, not a one-off? Get volume production rates, priority slots, and a dedicated partner who runs the operation with you.</p>
+        <span class="cta">Talk to our team →</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tabbar">
+      <div class="tab on" data-t="overview" onclick="tab('overview')">Overview</div>
+      <div class="tab" data-t="recipe" onclick="tab('recipe')">Recipe &amp; nutrition</div>
+      <div class="tab" data-t="packaging" onclick="tab('packaging')">Packaging</div>
+      <div class="tab" data-t="compliance" onclick="tab('compliance')">Compliance &amp; certificates</div>
+    </div>
+
+    <div class="panel on" data-p="overview">
+      <div class="h2"><span class="ic">≡</span> About this product</div>
+      <p class="lead" style="max-width:70ch">Marine collagen peptides (10g) with a natural mixed-berry flavor and added vitamin C. Cold-water soluble, no added sugar. Manufactured in an FDA-registered, GMP-certified facility. Customize the flavor system and actives, then launch under your brand with your own label.</p>
+      <div class="defgrid" style="margin-top:18px">
+        <div class="def"><div class="l">Serving</div><div class="v">1 stick (12g)</div></div>
+        <div class="def"><div class="l">Protein</div><div class="v">10 g</div></div>
+        <div class="def"><div class="l">Added sugar</div><div class="v">0 g</div></div>
+        <div class="def"><div class="l">Shelf life</div><div class="v">24 months</div></div>
+        <div class="def"><div class="l">Country of origin</div><div class="v">United States</div></div>
+        <div class="def"><div class="l">Manufacturing</div><div class="v">Blend &amp; fill</div></div>
+      </div>
+    </div>
+
+    <div class="panel" data-p="recipe">
+      <div class="h2"><span class="ic">⚗</span> Recipe &amp; nutrition</div>
+      <div class="two">
+        <div>
+          <div class="eyebrow" style="margin-bottom:9px">Base recipe — swap or add</div>
+          <div class="ing"><span><b>Marine collagen peptides</b><div class="sub">10 g · protein</div></span><span class="act">Swap ▾</span></div>
+          <div class="ing"><span><b>Mixed berry flavor</b><div class="sub">natural flavor</div></span><span class="act">Swap ▾</span></div>
+          <div class="ing"><span><b>Citric acid</b><div class="sub">acidulant</div></span><span class="act">Swap ▾</span></div>
+          <div class="ing add"><span>+ Add vitamin C (90 mg)</span><span>+$0.04</span></div>
+          <div class="ing add"><span>+ Add hyaluronic acid</span><span>+$0.09</span></div>
+        </div>
+        <div class="nfp">
+          <div class="nfp-h"><b style="font-size:14px">Nutrition Facts</b><span class="badge">live</span></div>
+          <div class="nf-rule"></div>
+          <div class="nf-row" style="font-weight:700"><span>Calories</span><span>90</span></div>
+          <div class="nf-rule thin"></div>
+          <div class="nf-row"><span>Protein</span><span>10 g</span></div>
+          <div class="nf-row"><span>Total sugars</span><span>0 g</span></div>
+          <div class="nf-row"><span>Vitamin C</span><span>90 mg</span></div>
+          <div class="nf-rule thin"></div>
+          <div class="nf-row" style="font-size:11.5px;color:var(--ink-500)"><span>Contains</span><span>No major allergens</span></div>
+          <div class="preview-btn" onclick="openModal('label')">Preview full label ⤢</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" data-p="packaging">
+      <div class="h2"><span class="ic">▦</span> Packaging &amp; specs</div>
+      <table>
+        <thead><tr><th>Pack</th><th>Units</th><th>Box (cm)</th><th>Gross</th><th>Ti × Hi</th></tr></thead>
+        <tbody>
+          <tr><td>Stick pack carton</td><td>30</td><td>14 × 9 × 6</td><td>420 g</td><td>12 × 8</td></tr>
+          <tr><td>Resealable pouch</td><td>1</td><td>20 × 13 × 4</td><td>360 g</td><td>16 × 10</td></tr>
+        </tbody>
+      </table>
+      <div class="note" style="margin-top:16px">Substrate: PET / foil laminate · Outer carton: SBS folding carton. Die-lines are prepared during the order.</div>
+    </div>
+
+    <div class="panel" data-p="compliance">
+      <div class="h2"><span class="ic">✓</span> Compliance &amp; certificates</div>
+      <div class="certs">
+        <div class="cert"><div class="badge-img">✔</div><div class="nm">GMP Certified</div></div>
+        <div class="cert"><div class="badge-img">🌱</div><div class="nm">Vegan</div></div>
+        <div class="cert"><div class="badge-img">🌾</div><div class="nm">Gluten-free</div></div>
+        <div class="cert"><div class="badge-img">🧪</div><div class="nm">Lab tested</div></div>
+      </div>
+      <div class="note">Supplement Facts panel and label claims are reviewed against 21 CFR 101 before production. Final artwork is verified at the prepress step.</div>
+    </div>
+  </div>
+
+  <!-- RELATED -->
+  <div class="rel-h">You might also like</div>
+  <div class="rel">
+    <div class="pcard"><div class="img" style="background:radial-gradient(120% 130% at 50% 0%,#FFF6C2,#FFE074 60%,#F5C842)">🍋</div><div class="bd"><div class="eb">Beverages</div><div class="nm">Sparkling Water Variety</div><div class="ft"><div><div class="v">1000</div><div class="l">MOQ</div></div><div style="text-align:right"><div class="v pk">$1.20</div><div class="l">/unit</div></div></div></div></div>
+    <div class="pcard"><div class="img" style="background:radial-gradient(120% 130% at 50% 0%,#D6F5E4,#9CE6BB 60%,#6BD198)">🍵</div><div class="bd"><div class="eb">Wellness</div><div class="nm">Daily Greens Sachets</div><div class="ft"><div><div class="v">500</div><div class="l">MOQ</div></div><div style="text-align:right"><div class="v pk">$1.10</div><div class="l">/unit</div></div></div></div></div>
+    <div class="pcard"><div class="img" style="background:radial-gradient(120% 130% at 50% 0%,#FFDFD2,#FFB5A0 60%,#FF8A6C)">🍫</div><div class="bd"><div class="eb">Snacks</div><div class="nm">Almond Cocoa Bar</div><div class="ft"><div><div class="v">500</div><div class="l">MOQ</div></div><div style="text-align:right"><div class="v pk">$1.80</div><div class="l">/unit</div></div></div></div></div>
+    <div class="pcard"><div class="img" style="background:radial-gradient(120% 130% at 50% 0%,#EEE6FF,#C9B6FF 60%,#A48CFF)">💊</div><div class="bd"><div class="eb">Supplements</div><div class="nm">Sleep Gummies</div><div class="ft"><div><div class="v">750</div><div class="l">MOQ</div></div><div style="text-align:right"><div class="v pk">$2.10</div><div class="l">/unit</div></div></div></div></div>
+    <div class="pcard"><div class="img" style="background:radial-gradient(120% 130% at 50% 0%,#D1F2FF,#8DE0FF 60%,#5BC5F0)">🥥</div><div class="bd"><div class="eb">Beverages</div><div class="nm">Adaptogen Tonic</div><div class="ft"><div><div class="v">1000</div><div class="l">MOQ</div></div><div style="text-align:right"><div class="v pk">$1.80</div><div class="l">/unit</div></div></div></div></div>
+  </div>
+</div>
+
+<!-- SAMPLE DRAWER -->
+<div class="scrim" id="scrim" onclick="closeAll()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-h"><span class="t">Order a sample</span><span class="x" onclick="closeAll()">✕</span></div>
+  <div class="pills" style="margin-bottom:14px"><span class="pill-opt on">Unbranded</span><span class="pill-opt">Branded</span></div>
+  <p style="font-size:13px;color:var(--ink-600);margin-bottom:14px">Try the product before a full run. Branded samples need your label uploaded.</p>
+  <div class="defgrid" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
+    <div class="def"><div class="l">Units</div><div class="v">3</div></div>
+    <div class="def"><div class="l">Sample cost</div><div class="v">$14.00</div></div>
+    <div class="def"><div class="l">Credit</div><div class="v">Toward 1st order</div></div>
+    <div class="def"><div class="l">Ships in</div><div class="v">7 days</div></div>
+  </div>
+  <div class="btn primary">Request sample</div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="modal-label" onclick="closeAll()">
+  <div class="card" onclick="event.stopPropagation()">
+    <div class="drawer-h"><span class="t" style="font-size:16px">Supplement Facts</span><span class="x" onclick="closeAll()">✕</span></div>
+    <div class="nf-rule"></div>
+    <div class="nf-row" style="font-size:12px;color:var(--ink-500)"><span>Serving size</span><span>1 stick (12g)</span></div>
+    <div class="nf-rule thin"></div>
+    <div class="nf-row" style="font-weight:700"><span>Calories</span><span>90</span></div>
+    <div class="nf-rule thin"></div>
+    <div class="nf-row"><span>Marine collagen</span><span>10 g</span></div>
+    <div class="nf-row"><span>Vitamin C</span><span>90 mg · 100% DV</span></div>
+    <div class="nf-row"><span>Total sugars</span><span>0 g</span></div>
+    <p style="font-size:11px;color:var(--ink-500);margin-top:10px">Computed from the live recipe. Updates as you swap ingredients.</p>
+  </div>
+</div>
+<div class="modal" id="modal-tier" onclick="closeAll()">
+  <div class="card" onclick="event.stopPropagation()">
+    <div class="drawer-h"><span class="t" style="font-size:16px">Price by volume</span><span class="x" onclick="closeAll()">✕</span></div>
+    <table><thead><tr><th>Quantity</th><th>Cost / unit</th><th>You earn</th></tr></thead><tbody>
+      <tr><td>500–2,499</td><td>$1.80</td><td>$3.20</td></tr>
+      <tr><td>2,500–9,999</td><td>$1.55</td><td>$3.45</td></tr>
+      <tr><td>10,000+</td><td>$1.32</td><td>$3.68</td></tr>
+    </tbody></table>
+  </div>
+</div>
+
+<script>
+  function tab(t){
+    document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.dataset.t===t));
+    document.querySelectorAll('.panel').forEach(e=>e.classList.toggle('on',e.dataset.p===t));
+  }
+  function gotoRecipe(){ tab('recipe'); document.querySelector('.tabs').scrollIntoView({behavior:'smooth'}); }
+  function q(d){ var i=document.getElementById('qn'); i.value=Math.max(0,(parseInt(i.value||'0',10))+d); }
+  function openDrawer(){ document.getElementById('drawer').classList.add('on'); document.getElementById('scrim').classList.add('on'); }
+  function openModal(id){ document.getElementById('modal-'+id).classList.add('on'); document.getElementById('scrim').classList.add('on'); }
+  function closeAll(){ document.querySelectorAll('.drawer,.modal,.scrim').forEach(e=>e.classList.remove('on')); }
+  // flavor cards → active + price update
+  document.querySelectorAll('.flav').forEach(f=>f.onclick=()=>{
+    document.querySelectorAll('.flav').forEach(x=>x.classList.remove('on'));
+    f.classList.add('on');
+    document.getElementById('px').textContent='$'+parseFloat(f.dataset.p).toFixed(2);
+  });
+  // size pills
+  document.querySelectorAll('.pills').forEach(p=>p.querySelectorAll('.pill-opt').forEach(o=>o.onclick=()=>{p.querySelectorAll('.pill-opt').forEach(x=>x.classList.remove('on'));o.classList.add('on')}));
+  // gallery: thumbnail → main image
+  function setImg(t,emoji){ document.querySelectorAll('.thumb').forEach(x=>x.classList.remove('on')); t.classList.add('on'); document.getElementById('mainimg').textContent=emoji; }
+  window.setImg=setImg;
+  // packaging select → hero image follows the chosen package
+  function pkgImg(){ var s=document.getElementById('pkg'); var emoji=s.options[s.selectedIndex].dataset.img||'🥤'; document.getElementById('mainimg').textContent=emoji;
+    document.querySelectorAll('.thumb').forEach(x=>{x.classList.toggle('on', x.textContent.trim()===emoji)}); }
+  window.pkgImg=pkgImg;
+  // accordion
+  function acc(h){ h.parentElement.classList.toggle('open'); }
+  window.acc=acc;
+</script>
+</body>
+</html>

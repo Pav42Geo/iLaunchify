@@ -185,6 +185,16 @@ authoring studio UI + surface-authoring/hotspot tooling + the header entry.
   projected onto the model, drag-rotate + zoom, and a **"Place marker"** raycast mode that
   sets the selected surface's 3D `hotspot.anchor`. (Refinements to eyeball: glTF-import
   models + exact per-mesh borders come with P1.5.)
+- **Die-line curation lives in the Design Studio, NOT here.** ✅ DONE 2026-07-01 (Pavel's
+  call): die-line curation + manage-by-category is a CANVAS (Fabric) concern, so it is a
+  Design-Studio surface at creator `/studio/dielines` — not in this three.js Packaging
+  Studio. It groups every die-line BY CATEGORY (packaging containerCategory) with search +
+  status filter; "Curate" opens the shared `DielineFrameEditor` in place; top bar carries
+  "Mark verified" (ADMIN_VERIFIED). Reached via admin `/go/dieline-studio` bridge +
+  sidebar "Die-line Curation" (Design Studio group). Actions: `getDielineEditorData`,
+  `saveDielineFrames`, `markDielineVerified`, `setDielineStatus`. The admin `/dielines`
+  ops/review table stays for triage.
+
 - **2D mockup / preview image import.** ✅ DONE 2026-07-01. Admins can import a 2D
   mockup/photo per package (studio Library drawer → "Import image"). Reuses
   `PackagingType.model3dThumbKey` as the preview image (**no migration**);

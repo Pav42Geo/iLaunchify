@@ -120,9 +120,9 @@ The real work = flip the 🟡 and ⬜ rows that belong in the **creator UI**:
 - [x] 6.1 Saved-templates grid — reads real READY `AiDesignGeneration` rows (thumbnails fill in when R2 keys resolve)
 - [x] 6.2 Storage bar (shared with the meters)
 
-**Priority E — drawer parity** ✅ shipped (2026-07-01)
-- [x] Brand identity (kit/manual), Output section, Usage meters, Saved grid now render in the in-canvas drawer, reusing the exported panel sections (single source, no duplication). Brand ref + effective palette thread into the real `generateAiConcepts` call.
-- [ ] 5.2–5.3 Coordinated set / flavour family still live only on the full page (reached from the drawer's "Batch" link) — multi-surface, intentionally not crammed into the 400px drawer.
+**Priority E — drawer parity** ✅ shipped + upgraded (2026-07-01)
+- [x] The drawer now renders the **whole `AiCreatePanel`** (`stacked` single-column), so it has full parity: brand identity, output, meters, saved grid, real generation.
+- [x] 5.2–5.3 Coordinated set / flavour family **now in the drawer too** (the panel's scope toggle). The concept action is relabeled **"Use on canvas"** (applies under the truth layer); Export finalizes + downloads. "Full view" link opens the full-screen route.
 
 **Full-page real generation** ✅ shipped (2026-07-01)
 - [x] `AiCreatePanelClient` wraps the panel and adapts `generateAiConcepts` to `onGenerate` (maps die-line → ~1 MP draft px; threads brand ref + palette + output). Product + admin branches now generate for real (stub today; fal/Recraft on keys). Demo harness stays preview-only.
