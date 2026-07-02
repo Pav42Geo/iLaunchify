@@ -40,6 +40,7 @@ export const AUDIT_ENTITY_TYPES = [
   'ChannelProductLink', // Channel-scoped product identifiers incl. FNSKU (Phase L3)
   'ChannelInboundPlan', // Factory→channel-FC inbound plans (Phase L3)
   'ChannelOrder', // Imported consumer orders (CHANNEL_MANAGEMENT_SPEC C2)
+  'OnDemandEnablement', // Manufacturer approval to accept on-demand orders (C2.3)
   'Order',
   'OrderDispatch',
   'Charge',

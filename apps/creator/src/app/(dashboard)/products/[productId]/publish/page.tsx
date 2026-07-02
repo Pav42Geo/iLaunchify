@@ -96,7 +96,18 @@ export default async function PublishStubPage({
           are enforced at order time (C2); the cards explain them inline. */}
       <div className="space-y-3">
         <h2 className="text-sm font-bold uppercase tracking-wide text-ink-700">Sell on your channels</h2>
-        <SellChannels productId={product.id} initial={sellData ?? { productName: product.name, unitCostCents: product.priceCents, flavors: [], channels: [] }} />
+        <SellChannels
+          productId={product.id}
+          initial={
+            sellData ?? {
+              productName: product.name,
+              unitCostCents: product.priceCents,
+              flavors: [],
+              channels: [],
+              onDemand: { status: 'NONE', hasManufacturer: false, partnerNote: null },
+            }
+          }
+        />
       </div>
     </div>
   )

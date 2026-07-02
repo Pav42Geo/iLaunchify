@@ -7,8 +7,8 @@
 // delivered stock is received (C2). Push runs the adapter seam (stub in dev).
 
 import * as React from 'react'
-import { UploadCloud, Loader2, ExternalLink, AlertTriangle, Factory, Boxes } from 'lucide-react'
-import { configureListing, pushListing, loadSellData, type SellData, type SellChannelRow } from './actions'
+import { UploadCloud, Loader2, ExternalLink, AlertTriangle, Factory, Boxes, CheckCircle2, Clock } from 'lucide-react'
+import { configureListing, pushListing, loadSellData, requestOnDemandEnablement, type SellData, type SellChannelRow } from './actions'
 
 const STATE_BADGE: Record<string, string> = {
   DRAFT: 'bg-ink-100 text-ink-600',
@@ -49,6 +49,24 @@ export function SellChannels({ productId, initial }: { productId: string; initia
       {notice && (
         <div className="rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-[12.5px] font-medium text-pink-900">{notice}</div>
       )}
+
+      {/* On-demand enablement (LOCKED gate #1) — one agreement per product,
+          shared by every channel selling it on-demand. */}
+      <OnDemandGate
+        state={data.onDemand}
+        busy={busy === '__enablement__'}
+        onRequest={async () => {
+          setBusy('__enablement__')
+          try {
+            const res = await requestOnDemandEnablement(productId)
+            flash(res.ok ? 'Request sent — your manufacturer will review the branding.' : res.error)
+            if (res.ok) await refresh()
+          } finally {
+            setBusy(null)
+          }
+        }}
+      />
+
       {data.channels.map((row) => (
         <SellChannelCard
           key={row.code}
@@ -204,6 +222,50 @@ function SellChannelCard({
           </a>
         )}
       </div>
+    </div>
+  )
+}
+
+function OnDemandGate({
+  state,
+  busy,
+  onRequest,
+}: {
+  state: SellData['onDemand']
+  busy: boolean
+  onRequest: () => Promise<void>
+}) {
+  if (state.status === 'ENABLED') {
+    return (
+      <p className="flex items-center gap-1.5 rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-[12px] text-success-800">
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> On-demand enabled by your manufacturer — consumer orders route to
+        production automatically.
+      </p>
+    )
+  }
+  if (state.status === 'REQUESTED' || state.status === 'PARTNER_REVIEW') {
+    return (
+      <p className="flex items-center gap-1.5 rounded-lg border border-info-200 bg-info-50 px-3 py-2 text-[12px] text-info-800">
+        <Clock className="h-3.5 w-3.5 shrink-0" /> On-demand request pending — your manufacturer is reviewing the branding.
+      </p>
+    )
+  }
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-3 py-2">
+      <p className="text-[12px] text-ink-600">
+        <span className="font-semibold text-ink-800">On-demand needs manufacturer sign-off</span>
+        {state.status === 'DECLINED' && state.partnerNote ? ` — declined: “${state.partnerNote}”` : state.status === 'SUSPENDED' ? ' — currently paused by the manufacturer' : ' — one-time branding review'}
+        {!state.hasManufacturer && ' (no pinned manufacturer yet)'}
+      </p>
+      <button
+        type="button"
+        onClick={() => void onRequest()}
+        disabled={busy || !state.hasManufacturer}
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Factory className="h-3 w-3" />}
+        {state.status === 'DECLINED' || state.status === 'SUSPENDED' ? 'Request again' : 'Request enablement'}
+      </button>
     </div>
   )
 }

@@ -18,6 +18,7 @@ import {
   Gift,
   Printer,
   PackageOpen,
+  Zap,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -32,6 +33,7 @@ interface NavItem {
 const FULL_NAV: NavItem[] = [
   { href: '/dashboard',       label: 'Dashboard',       icon: BarChart3 },
   { href: '/orders',          label: 'Orders',          icon: Inbox },
+  { href: '/on-demand',       label: 'On-demand',       icon: Zap },
   // '/inbound' is inserted after Orders at render time — only for partners
   // with a WAREHOUSE service (Phase L1.1c inbound receiving queue).
   { href: '/products',        label: 'Products',        icon: Package },

@@ -95,6 +95,10 @@ export interface SellData {
   unitCostCents: number
   flavors: Array<{ id: string; name: string }>
   channels: SellChannelRow[]
+  /** On-demand gate state for THIS product (LOCKED gate #1): the pinned
+   *  manufacturer's enablement. 'NONE' = never requested; null manufacturer =
+   *  product has no pinned manufacturer yet (can't request). */
+  onDemand: { status: string; hasManufacturer: boolean; partnerNote: string | null }
 }
 
 /** Everything the Sell section needs: connected channels + per-channel listing state. */
@@ -102,9 +106,24 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
   const user = await requireUser()
   const product = await prisma.product.findFirst({
     where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
-    select: { id: true, name: true, priceCents: true, productTemplateId: true },
+    select: {
+      id: true,
+      name: true,
+      priceCents: true,
+      productTemplateId: true,
+      productTemplate: { select: { manufacturerServiceId: true } },
+    },
   })
   if (!product) return null
+
+  const manufacturerServiceId = product.productTemplate?.manufacturerServiceId ?? null
+  const enablement = await (
+    prisma as unknown as {
+      onDemandEnablement?: { findFirst: (a: unknown) => Promise<{ status: string; partnerNote: string | null } | null> }
+    }
+  ).onDemandEnablement
+    ?.findFirst({ where: { creatorUserId: user.id, productId }, select: { status: true, partnerNote: true } })
+    .catch(() => null)
 
   const [connections, links, flavors] = await Promise.all([
     prisma.channelConnection.findMany({
@@ -126,6 +145,11 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
     productName: product.name,
     unitCostCents: product.priceCents,
     flavors,
+    onDemand: {
+      status: enablement?.status ?? 'NONE',
+      hasManufacturer: !!manufacturerServiceId,
+      partnerNote: enablement?.partnerNote ?? null,
+    },
     channels: connections.map((conn) => {
       const l = linkByChannel.get(conn.channelId) as
         | ((typeof links)[number] & { mode?: string; price?: unknown; publishState?: string; lastError?: string | null })
@@ -207,6 +231,57 @@ export async function configureListing(input: {
     payload: { channel: input.channelCode, mode: input.mode, price },
   })
   return { ok: true }
+}
+
+/** Ask the pinned manufacturer to enable on-demand for this product (LOCKED
+ *  gate #1). Freezes a light branding snapshot; the partner reviews in their
+ *  On-demand queue. Re-requesting after DECLINED/SUSPENDED resets to REQUESTED. */
+export async function requestOnDemandEnablement(productId: string): Promise<SellActionResult> {
+  const user = await requireUser()
+  const product = await prisma.product.findFirst({
+    where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
+    select: { id: true, name: true, productTemplate: { select: { manufacturerServiceId: true } } },
+  })
+  if (!product) return { ok: false, error: 'Product not found.' }
+  const manufacturerServiceId = product.productTemplate?.manufacturerServiceId
+  if (!manufacturerServiceId) return { ok: false, error: 'This product has no pinned manufacturer yet.' }
+
+  const delegate = (
+    prisma as unknown as {
+      onDemandEnablement?: { upsert: (a: unknown) => Promise<{ id: string }> }
+    }
+  ).onDemandEnablement
+  if (!delegate) return { ok: false, error: 'On-demand tables not migrated yet — run db:push.' }
+
+  try {
+    const row = await delegate.upsert({
+      where: {
+        creatorUserId_productId_manufacturerServiceId: {
+          creatorUserId: user.id,
+          productId: product.id,
+          manufacturerServiceId,
+        },
+      },
+      create: {
+        creatorUserId: user.id,
+        productId: product.id,
+        manufacturerServiceId,
+        status: 'REQUESTED',
+        brandingSnapshotJson: { note: product.name, requestedAt: new Date().toISOString() },
+      },
+      update: { status: 'REQUESTED', decidedAt: null },
+    })
+    await logAuditAs(user, {
+      entityType: 'OnDemandEnablement',
+      entityId: row.id,
+      action: 'ON_DEMAND_REQUESTED',
+      payload: { productId: product.id, manufacturerServiceId },
+    })
+    return { ok: true }
+  } catch (err) {
+    console.error('[channels] on-demand request failed:', err)
+    return { ok: false, error: 'Could not send the request — try again.' }
+  }
 }
 
 /** Push the configured listing to the channel via the adapter seam; write the

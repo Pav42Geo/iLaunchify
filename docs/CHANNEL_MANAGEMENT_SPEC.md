@@ -173,13 +173,22 @@ edits get overwritten (logged).
 - [ ] Env keys → Integrations registry rows; `oauthConfigured` derived
 
 ### Phase C2 — Modes + routing (the business core)
-- [ ] `OnDemandEnablement` FSM + partner review queue UI + creator request flow
-- [ ] On-demand: ChannelOrder → create-order pipeline (`origin: CHANNEL`), auto-billing
-      w/ spending cap, dispatch tagging, consumer ship-to on manifest
-- [ ] Bulk: InventoryPool + ledger + delivery-received intake (creator confirm UI) +
-      go-live gate + reservation on sale + oversell guard (push 0)
-- [ ] Creator channel-orders inbox (needs-attention / on-hold / manual-confirm)
-- [ ] Bulk self-ship flow (mark fulfilled + tracking input → pushback)
+- [x] **C2.1 (2026-07-02):** order ingest engine — adapter pull → idempotent import
+      (raw payload = legal snapshot) → variant-link mapping (connection-scoped) →
+      `evaluateReadiness` verdict persisted with reason → sync events + audit;
+      creator channel-orders inbox (`/channels/orders`): status chips, Sync now,
+      manual-confirm approve queue
+- [x] **C2.3 (2026-07-02):** `OnDemandEnablement` flow — creator requests from the
+      Sell surface (pinned-manufacturer resolution, branding snapshot, re-request
+      after decline/suspend); partner `/on-demand` review queue (enable w/ optional
+      daily capacity, decline w/ note, suspend kill-switch); enablement state
+      surfaced on the Sell card; ingest gate consumes it
+- [ ] **C2.2:** On-demand routing — READY + approved ChannelOrder → create-order
+      pipeline (`origin: CHANNEL`), auto-billing w/ OrderSettings spending cap,
+      dispatch tagging, consumer ship-to on manifest, notifications
+- [ ] **C2.4:** Bulk — delivery-received intake (creator confirm UI) + go-live gate
+      enforcement on publish + reservation on sale + oversell guard (push 0) +
+      self-ship flow (mark fulfilled + tracking → pushback)
 
 ### Phase C3 — TikTok Shop adapter
 - [ ] Partner Center app + OAuth2 + products/orders/fulfillment mapping to the seam
