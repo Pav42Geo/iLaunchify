@@ -31,7 +31,7 @@ import {
 } from '@ilaunchify/db'
 import {
   requireUser,
-  getCreatorTier,
+  getEffectiveCreatorTier,
   canUploadCustomFonts,
   canUseColorHarmony,
   brandLimits,
@@ -471,7 +471,7 @@ export async function generateAndSaveBrandPalette(input: {
   const { user, error } = await authorizeBrandAccess(input.brandId)
   if (error || !user) return { ok: false, error: error ?? 'Not authorized.' }
 
-  const tier = await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   if (input.method !== 'AUTO' && !canUseColorHarmony(tier)) {
     return {
       ok: false,
@@ -551,7 +551,7 @@ export async function uploadBrandFont(
   const brandId = String(formData.get('brandId') ?? '')
 
   // Tier gate — custom font upload is a Builder+ advanced feature.
-  const tier = await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   if (!canUploadCustomFonts(tier)) {
     return {
       ok: false,

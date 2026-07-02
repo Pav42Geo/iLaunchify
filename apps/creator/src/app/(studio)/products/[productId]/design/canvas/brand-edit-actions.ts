@@ -19,7 +19,7 @@ import {
 } from '@ilaunchify/db'
 import {
   requireUser,
-  getCreatorTier,
+  getEffectiveCreatorTier,
   brandLimits,
   canUploadCustomFonts,
   canUseColorHarmony,
@@ -186,7 +186,7 @@ export async function loadStudioBrandKitEditor(
     family: f.family,
     webUrl: f.webAssetId ? customUrlById.get(f.webAssetId) ?? null : null,
   }))
-  const tier = await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
 
   // Slice 4 — text styles + the font option list (catalog families + custom refs).
   const ROLES = new Set(['HEADING', 'SUBHEADING', 'BODY'])
@@ -261,7 +261,7 @@ export async function addFontToBrandKit(
   fontRef: string,
 ): Promise<{ ok: true; brandName: string } | { ok: false; error: string }> {
   const user = await requireUser()
-  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  if (user.role !== 'CREATOR' && user.role !== 'ADMIN') return { ok: false, error: 'Sign in as a creator.' }
   if (!isKnownFontFamily(fontRef)) return { ok: false, error: 'That font is not available.' }
 
   const brand = await prisma.brand.findFirst({
@@ -301,7 +301,7 @@ export async function setBrandRoleFont(
   fontRef: string,
 ): Promise<{ ok: true; brandName: string; roleLabel: string } | { ok: false; error: string }> {
   const user = await requireUser()
-  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  if (user.role !== 'CREATOR' && user.role !== 'ADMIN') return { ok: false, error: 'Sign in as a creator.' }
   if (!isKnownFontFamily(fontRef)) return { ok: false, error: 'That font is not available.' }
 
   const brand = await prisma.brand.findFirst({
@@ -333,11 +333,30 @@ export async function quickCreateBrandKit(
   rawName: string,
 ): Promise<{ ok: true; brandId: string; name: string } | { ok: false; error: string }> {
   const user = await requireUser()
-  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
-  const profile = await prisma.creatorProfile.findUnique({
+  if (user.role !== 'CREATOR' && user.role !== 'ADMIN') return { ok: false, error: 'Sign in as a creator.' }
+  // Admins get a CreatorProfile auto-provisioned on first kit creation — their
+  // Admin-Mode kits are ordinary Brand rows THEY own (audit-clean, never a shared
+  // account). The tier stays default; gates use getEffectiveCreatorTier (unlimited).
+  let profile = await prisma.creatorProfile.findUnique({
     where: { userId: user.id },
     select: { id: true },
   })
+  if (!profile && user.role === 'ADMIN') {
+    const u = user as { id: string; email?: string | null; name?: string | null }
+    const base =
+      (u.email?.split('@')[0] ?? 'admin').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 28) || 'admin'
+    let handle = `admin-${base}`
+    let n = 1
+    // eslint-disable-next-line no-await-in-loop
+    while (await prisma.creatorProfile.findUnique({ where: { handle }, select: { id: true } })) {
+      handle = `admin-${base}-${n++}`.slice(0, 40)
+    }
+    profile = await prisma.creatorProfile.create({
+      data: { userId: user.id, handle, displayName: u.name ?? u.email ?? 'Admin' },
+      select: { id: true },
+    })
+    await logAuditAs(user, { entityType: 'CreatorProfile', entityId: profile.id, action: 'CREATOR_PROFILE_CREATED', payload: { reason: 'admin-mode brand kit' } })
+  }
   if (!profile) return { ok: false, error: 'Your creator profile is missing.' }
 
   const name = rawName.trim()
@@ -346,7 +365,7 @@ export async function quickCreateBrandKit(
   }
 
   // Tier cap (Maker 1 / Builder 3 / Agency unlimited).
-  const tier = await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   const cap = brandLimits(tier).kits
   if (Number.isFinite(cap)) {
     const count = await prisma.brand.count({ where: { creatorProfileId: profile.id } })
@@ -399,7 +418,7 @@ export async function pinAssetToBrand(
   kind: BrandAssetKind = 'IMAGE',
 ): Promise<{ ok: true; brandAssetId: string | null } | { ok: false; error: string }> {
   const user = await requireUser()
-  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  if (user.role !== 'CREATOR' && user.role !== 'ADMIN') return { ok: false, error: 'Sign in as a creator.' }
   if (!(await ownsBrand(user.id, brandId))) {
     return { ok: false, error: 'That brand kit is not on your account.' }
   }
@@ -420,7 +439,7 @@ export async function unpinBrandAsset(
   brandAssetId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await requireUser()
-  if (user.role !== 'CREATOR') return { ok: false, error: 'Sign in as a creator.' }
+  if (user.role !== 'CREATOR' && user.role !== 'ADMIN') return { ok: false, error: 'Sign in as a creator.' }
   if (!(await ownsBrand(user.id, brandId))) {
     return { ok: false, error: 'That brand kit is not on your account.' }
   }

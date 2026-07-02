@@ -51,6 +51,7 @@ export {
   TIER_RANK,
   TIERS,
   getCreatorTier,
+  getEffectiveCreatorTier,
   hasTier,
   nextTier,
   normalizeTier,

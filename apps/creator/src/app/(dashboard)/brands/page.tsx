@@ -6,7 +6,7 @@
 
 import Link from 'next/link'
 import { Plus, ArrowRight, Lock, Palette } from 'lucide-react'
-import { requireUser, getCreatorTier, brandLimits, nextTier } from '@ilaunchify/auth'
+import { requireUser, getEffectiveCreatorTier, brandLimits, nextTier } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { EmptyState } from '@ilaunchify/ui'
 import { resolveAssetReadUrl } from '@/lib/asset-url'
@@ -21,7 +21,7 @@ export default async function BrandsHubPage() {
     select: { id: true },
   })
 
-  const tier = await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   const cap = brandLimits(tier).kits
   const capLabel = Number.isFinite(cap) ? String(cap) : 'Unlimited'
   const up = nextTier(tier)

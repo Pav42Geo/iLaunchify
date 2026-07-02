@@ -11,7 +11,7 @@ import {
   duplicateBrandTemplate,
   countBrandTemplates,
 } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
+import { requireUser, getEffectiveCreatorTier, brandLimits } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -82,7 +82,7 @@ export async function duplicateBrandTemplateAction(
   if (!user) return { ok: false, error: 'That brand kit is not on your account.' }
 
   // Enforce the per-tier template cap before creating the copy.
-  const [tier, used] = await Promise.all([getCreatorTier(user.id), countBrandTemplates(brandId)])
+  const [tier, used] = await Promise.all([getEffectiveCreatorTier(user), countBrandTemplates(brandId)])
   const cap = brandLimits(tier).templatesPerKit
   if (Number.isFinite(cap) && used >= cap) {
     return { ok: false, error: `You've reached your template limit (${cap}) for this kit.` }

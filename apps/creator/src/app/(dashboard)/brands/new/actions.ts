@@ -17,7 +17,7 @@
 //   5. /dashboard + /brands paths revalidated
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, brandLimits } from '@ilaunchify/auth'
+import { requireUser, getEffectiveCreatorTier, brandLimits } from '@ilaunchify/auth'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
 import { revalidatePath } from 'next/cache'
 
@@ -50,7 +50,7 @@ export async function createBrand(formData: FormData): Promise<CreateBrandResult
   // -------- Tier gate: brand-kit count (docs/BRAND_KIT_PROPOSAL.md) --------
   // Maker 1 / Builder 3 / Agency unlimited. Counts the creator's existing kits and
   // blocks creation past the cap with an upgrade-flavored message.
-  const tier = await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   const kitCap = brandLimits(tier).kits
   if (Number.isFinite(kitCap)) {
     const existingKits = await prisma.brand.count({ where: { creatorProfileId: profile.id } })

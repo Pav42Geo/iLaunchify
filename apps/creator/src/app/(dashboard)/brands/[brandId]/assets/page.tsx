@@ -14,7 +14,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma, listBrandTemplates, listBrandFonts, listBrandTextStyles, listBrandPalettes } from '@ilaunchify/db'
-import { requireUser, getCreatorTier, brandLimits, canUploadCustomFonts, canUseColorHarmony, canExtractPalette } from '@ilaunchify/auth'
+import { requireUser, getEffectiveCreatorTier, brandLimits, canUploadCustomFonts, canUseColorHarmony, canExtractPalette } from '@ilaunchify/auth'
 import { brandFontCatalog, CUSTOM_FONT_PREFIX } from '@ilaunchify/ui'
 import { ArrowLeft } from 'lucide-react'
 import { resolveAssetReadUrl } from '@/lib/asset-url'
@@ -77,7 +77,7 @@ export default async function BrandAssetsPage({ params }: PageProps) {
   // Brand templates + the per-tier cap (docs/BRAND_KIT_PROPOSAL.md).
   const [templates, tier] = await Promise.all([
     listBrandTemplates(brand.id),
-    getCreatorTier(user.id),
+    getEffectiveCreatorTier(user),
   ])
   const templateCap = brandLimits(tier).templatesPerKit
 

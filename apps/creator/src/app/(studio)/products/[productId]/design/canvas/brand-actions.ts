@@ -5,7 +5,7 @@
 // the "Save as template" menu action. Every read/write is ownership-scoped: only
 // brands where creatorProfile.userId === session user.
 
-import { requireUser, getCreatorTier, brandLimits, canRecolorTemplate } from '@ilaunchify/auth'
+import { requireUser, getEffectiveCreatorTier, brandLimits, canRecolorTemplate } from '@ilaunchify/auth'
 import {
   prisma,
   listBrandTemplates,
@@ -119,7 +119,7 @@ export async function saveAsBrandTemplate(input: {
   })
   if (!brand) return { ok: false, error: 'Brand kit not found.' }
 
-  const tier = await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   const cap = brandLimits(tier).templatesPerKit
   const count = await countBrandTemplates(input.brandId)
   if (count >= cap) {
@@ -153,7 +153,7 @@ export async function saveAsBrandTemplate(input: {
 /** The premium library, for the Agency gallery. Empty for non-Agency tiers. */
 export async function listStudioPremiumTemplates(): Promise<PremiumTemplateValues[]> {
   const user = await requireUser()
-  const tier = await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   if (!canRecolorTemplate(tier)) return []
   return listPremiumTemplates()
 }
@@ -256,7 +256,7 @@ export async function loadStudioTemplateLibrary(input: {
 
   // Premium library is Agency-gated; the regular library is open to all tiers.
   // Admins see everything (they author the premium library).
-  const tier = isAdmin ? ('agency' as const) : await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   const premium = canRecolorTemplate(tier) ? await listMatchablePremiumTemplates(input.domain) : []
   const regular = await listMatchableRegularLibraryTemplates(input.domain)
 
@@ -288,7 +288,7 @@ export async function getStudioPremiumTemplateJson(
 ): Promise<BrandTemplateJsonResult> {
   const user = await requireUser()
   // Admins bypass the Agency gate — they author/curate the premium library.
-  const tier = user.role === 'ADMIN' ? ('agency' as const) : await getCreatorTier(user.id)
+  const tier = await getEffectiveCreatorTier(user)
   if (!canRecolorTemplate(tier)) return { ok: false, error: 'Premium templates are an Agency feature.' }
   const tpl = await getPremiumTemplate(templateId)
   if (!tpl || !tpl.canvasJson) return { ok: false, error: 'Template not found.' }

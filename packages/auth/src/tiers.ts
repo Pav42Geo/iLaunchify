@@ -169,3 +169,14 @@ export async function getCreatorTier(userId: string): Promise<TierKey> {
   })
   return normalizeTier(profile?.subscriptionTier ?? null)
 }
+
+/**
+ * Tier used at LIMIT / FEATURE gates: admins act with Agency-level (unlimited)
+ * Brand Kit + generation limits regardless of any CreatorProfile (Pavel
+ * 2026-07-01 — Admin Mode authors platform content; never upsell an admin).
+ * Everyone else resolves their real subscription tier.
+ */
+export async function getEffectiveCreatorTier(user: { id: string; role?: string | null }): Promise<TierKey> {
+  if (user.role === 'ADMIN') return 'agency'
+  return getCreatorTier(user.id)
+}
