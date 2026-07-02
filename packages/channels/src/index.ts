@@ -20,6 +20,22 @@ export { createStubAdapter } from './adapters/stub'
 export { resolveChannelAdapter } from './resolve'
 
 export {
+  blendedVelocity,
+  reorderPoint,
+  daysOfCover,
+  projectedStockoutDate,
+  reorderByDate,
+  suggestedReorderQty,
+  stockAlertState,
+  shouldNotify,
+  type StockAlertState,
+  type VelocityInput,
+  type ReorderPointInput,
+  type SuggestedQtyInput,
+  type AlertInput,
+} from './replenishment'
+
+export {
   applyLedgerEntry,
   availableToSell,
   canReserve,
