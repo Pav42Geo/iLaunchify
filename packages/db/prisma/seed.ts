@@ -699,6 +699,11 @@ async function main() {
     { code: 'etsy',        displayName: 'Etsy' },
     { code: 'walmart',     displayName: 'Walmart Marketplace' },
     { code: 'tiktok',      displayName: 'TikTok Shop' },
+    // Long-tail roster completion (CHANNEL_MANAGEMENT_SPEC — LOCKED at 10, Pavel 2026-07-02)
+    { code: 'wix',         displayName: 'Wix Stores' },
+    { code: 'squarespace', displayName: 'Squarespace Commerce' },
+    { code: 'bigcommerce', displayName: 'BigCommerce' },
+    { code: 'ebay',        displayName: 'eBay' },
   ]
   for (const s of channelSeeds) {
     await prisma.channel.upsert({

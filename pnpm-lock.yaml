@@ -171,6 +171,9 @@ importers:
       '@ilaunchify/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@ilaunchify/channels':
+        specifier: workspace:*
+        version: link:../../packages/channels
       '@ilaunchify/compliance-client':
         specifier: workspace:*
         version: link:../../packages/compliance-client
@@ -582,6 +585,12 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  packages/channels:
     devDependencies:
       typescript:
         specifier: ^5.6.3

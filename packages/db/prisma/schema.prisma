@@ -4108,6 +4108,11 @@ model ChannelConnection {
   // OAuth tokens (V1.1+) — referenced by handle, not stored raw here
   accessTokenRef    String? // pointer to secret store
   refreshTokenRef   String?
+  // Webhook signature secret (CHANNEL_MANAGEMENT_SPEC §3.1) — ref, never raw.
+  webhookSecretRef  String?
+  // Per-connection settings: auto-import, manual-confirm override, price rounding,
+  // channel-specific ids (Shopify location, eBay policy ids…). Shape per adapter.
+  settings          Json?
   scopes            String[]                @default([])
   status            ChannelConnectionStatus @default(NOT_CONNECTED)
   connectedAt       DateTime?
@@ -4121,6 +4126,8 @@ model ChannelConnection {
   productLinks      ChannelProductLink[]
   // Logistics L0 — factory→channel-FC inbound plans (FBA/WFS/FBT)
   inboundPlans      ChannelInboundPlan[]
+  // Channel management C0 — imported consumer orders (CHANNEL_MANAGEMENT_SPEC §3.2)
+  channelOrders     ChannelOrder[]
 
   @@unique([channelId, creatorUserId]) // one connection per (channel, creator)
 }
@@ -4149,6 +4156,14 @@ model ChannelProductLink {
   fnsku               String? // Amazon FBA fulfillment-network SKU
   externalVariantId   String? // channel variant id (variant-level link per CHANNEL_MANAGEMENT_SPEC)
   status              ChannelProductLinkStatus @default(ACTIVE)
+  // --- CHANNEL_MANAGEMENT_SPEC §3.2 (C0) ---
+  // ON_DEMAND = consumer order triggers a production order (OnDemandEnablement-
+  // gated); BULK = sells from delivered InventoryPool stock (go-live gated).
+  mode                ChannelListingMode       @default(ON_DEMAND)
+  price               Decimal?                 @db.Decimal(10, 2)
+  currency            String                   @default("USD")
+  publishState        ChannelPublishState      @default(DRAFT)
+  lastError           String?
   lastPushedAt        DateTime?
   createdAt           DateTime                 @default(now())
   updatedAt           DateTime                 @updatedAt
@@ -4156,6 +4171,7 @@ model ChannelProductLink {
   channel             Channel                  @relation(fields: [channelId], references: [id])
   channelConnection   ChannelConnection        @relation(fields: [channelConnectionId], references: [id], onDelete: Cascade)
   product             Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantLinks        ChannelVariantLink[]
 
   @@unique([channelId, productId]) // one link per (channel, product)
   @@index([channelConnectionId])
@@ -4165,6 +4181,214 @@ enum ChannelProductLinkStatus {
   ACTIVE // listing live on the channel
   ARCHIVED // unpublished from the channel
   ERROR // last push failed
+}
+
+// =============================================================================
+// CHANNEL MANAGEMENT C0 (docs/CHANNEL_MANAGEMENT_SPEC.md §3.2) — additive.
+// Variant-level listing links, imported consumer orders (FSM in
+// @ilaunchify/channels), the two LOCKED mode gates (OnDemandEnablement for
+// on-demand; InventoryPool go-live gate for bulk), and the sync-event log.
+// New models follow the uuid() + soft-FK conventions (AiDesignGeneration style).
+// =============================================================================
+
+enum ChannelListingMode {
+  ON_DEMAND // consumer order → production order (per-order auto-billing, LOCKED #1)
+  BULK // sells from delivered stock (InventoryPool)
+}
+
+enum ChannelPublishState {
+  DRAFT // configured, not pushed
+  PUSHED // exists on the channel, not sellable yet
+  LIVE // sellable (bulk: pool > 0 gate passed)
+  PAUSED // creator paused sales
+  ERROR // last push/update failed (see lastError)
+}
+
+/// The mapping ATOM: one external channel variant ↔ one platform variant
+/// (product × flavor preset × pack). Order lines join on externalVariantId.
+model ChannelVariantLink {
+  id                   String   @id @default(uuid())
+  channelProductLinkId String
+  externalVariantId    String
+  productId            String // soft FK → Product
+  flavorPresetId       String   @default("base") // soft FK → FlavorPreset; 'base' = no flavor
+  packKey              String   @default("unit") // pack option key; 'unit' = single
+  /// Canonical `${productId}:${flavorPresetId}:${packKey}` (variantKey() in @ilaunchify/channels).
+  variantKey           String
+  sku                  String?
+  gtin                 String?
+  price                Decimal? @db.Decimal(10, 2)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  channelProductLink   ChannelProductLink @relation(fields: [channelProductLinkId], references: [id], onDelete: Cascade)
+
+  @@unique([channelProductLinkId, variantKey])
+  @@index([externalVariantId])
+}
+
+enum ChannelOrderStatus {
+  IMPORTED
+  MAPPED
+  READY
+  ROUTED
+  IN_FULFILLMENT
+  FULFILLED
+  CLOSED
+  ON_HOLD
+  NEEDS_ATTENTION
+  CANCELLED
+}
+
+/// A consumer order imported from a creator's channel. rawPayload is the
+/// immutable legal snapshot (operational-trust rule); status transitions ONLY
+/// through the @ilaunchify/channels FSM helper + audit.
+model ChannelOrder {
+  id                    String             @id @default(uuid())
+  channelConnectionId   String
+  externalOrderId       String
+  status                ChannelOrderStatus @default(IMPORTED)
+  statusReason          String? // why ON_HOLD / NEEDS_ATTENTION
+  financialStatus       String // PAID | PENDING | REFUNDED | OTHER (adapter-normalized)
+  currency              String             @default("USD")
+  totalPrice            Decimal            @db.Decimal(10, 2)
+  placedAt              DateTime
+  rawPayload            Json // verbatim provider payload — never mutated
+  shipToJson            Json? // consumer ship-to (PII-scoped; feeds the dispatch manifest)
+  /// Soft FK → the production Order created for on-demand legs (origin: CHANNEL).
+  productionOrderId     String?
+  manualConfirmRequired Boolean            @default(false) // LOCKED #5 training wheels
+  fulfilledAt           DateTime?
+  closedAt              DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  connection            ChannelConnection  @relation(fields: [channelConnectionId], references: [id], onDelete: Cascade)
+  lines                 ChannelOrderLine[]
+
+  @@unique([channelConnectionId, externalOrderId]) // idempotent ingest
+  @@index([status])
+  @@index([channelConnectionId, placedAt])
+}
+
+model ChannelOrderLine {
+  id                   String       @id @default(uuid())
+  channelOrderId       String
+  externalLineId       String
+  externalVariantId    String
+  /// Resolved mapping (null = unmapped → order sits at NEEDS_ATTENTION).
+  channelVariantLinkId String?
+  quantity             Int
+  unitPrice            Decimal      @db.Decimal(10, 2)
+  title                String?
+  channelOrder         ChannelOrder @relation(fields: [channelOrderId], references: [id], onDelete: Cascade)
+
+  @@index([channelOrderId])
+}
+
+enum OnDemandEnablementStatus {
+  REQUESTED // creator asked
+  PARTNER_REVIEW // manufacturer reviewing branding snapshot
+  ENABLED // on-demand orders may route (the LOCKED gate)
+  DECLINED
+  SUSPENDED // partner or admin paused it
+}
+
+/// LOCKED gate #1: a manufacturer's standing agreement to accept on-demand
+/// production orders for ONE creator product with the approved branding.
+/// brandingSnapshotJson freezes what was approved (design version, die-line,
+/// unit price) for legal reproducibility.
+model OnDemandEnablement {
+  id                    String                   @id @default(uuid())
+  creatorUserId         String // soft FK → User
+  productId             String // soft FK → Product
+  manufacturerServiceId String // soft FK → PartnerService (owner-pinned manufacturer)
+  status                OnDemandEnablementStatus @default(REQUESTED)
+  brandingSnapshotJson  Json?
+  partnerNote           String?
+  /// Optional partner throughput cap (units/day) — caps on-demand inventory pushes.
+  capacityPerDay        Int?
+  decidedAt             DateTime?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@unique([creatorUserId, productId, manufacturerServiceId])
+  @@index([manufacturerServiceId, status])
+}
+
+enum InventoryLedgerKind {
+  DELIVERY_RECEIVED // bulk batch confirmed received (+)
+  CHANNEL_SALE // fulfilled channel order (−)
+  RESERVATION // sale reserved awaiting fulfillment (reserved +)
+  RELEASE // reservation released (cancel) (reserved −)
+  ADJUSTMENT // manual creator/admin correction (±, audited)
+}
+
+/// LOCKED gate #2 substrate: bulk available-to-sell per creator × variant ×
+/// storage location. availableToSell = quantityOnHand − quantityReserved;
+/// channel inventory pushes DERIVE from this — never hand-set.
+/// storageLocationKind matches the logistics spec's ship-to/location types.
+model InventoryPool {
+  id                  String            @id @default(uuid())
+  creatorUserId       String // soft FK → User
+  productId           String // soft FK → Product
+  flavorPresetId      String            @default("base")
+  packKey             String            @default("unit")
+  storageLocationKind String // CREATOR | FULFILLMENT_CENTER | PARTNER_STORAGE | AMAZON_FBA
+  storageLocationRef  String            @default("") // FC / partner id when applicable
+  quantityOnHand      Int               @default(0)
+  quantityReserved    Int               @default(0)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  ledger              InventoryLedger[]
+
+  @@unique([creatorUserId, productId, flavorPresetId, packKey, storageLocationKind, storageLocationRef])
+  @@index([creatorUserId, productId])
+}
+
+/// Append-only movement log — the pool quantities are DERIVED state; the
+/// ledger is the truth (reconcilable, auditable).
+model InventoryLedger {
+  id             String              @id @default(uuid())
+  poolId         String
+  kind           InventoryLedgerKind
+  /// Signed effect on quantityOnHand (DELIVERY/SALE/ADJUSTMENT) or on
+  /// quantityReserved (RESERVATION/RELEASE) — helper-enforced, never inline.
+  delta          Int
+  channelOrderId String? // soft FK — sale/reservation provenance
+  note           String?
+  actorUserId    String? // soft FK — who adjusted (ADJUSTMENT)
+  createdAt      DateTime            @default(now())
+  pool           InventoryPool       @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([poolId, createdAt])
+}
+
+enum ChannelSyncDirection {
+  PUSH // platform → channel
+  PULL // scheduled poll
+  WEBHOOK // channel → platform
+}
+
+enum ChannelSyncOutcome {
+  OK
+  ERROR
+  RETRY
+}
+
+/// Observability log for every adapter interaction (admin surface + incident
+/// debugging). High-volume: soft connection FK, digest not payload.
+model ChannelSyncEvent {
+  id                  String               @id @default(uuid())
+  channelConnectionId String // soft FK → ChannelConnection
+  direction           ChannelSyncDirection
+  topic               String // 'listing.push' | 'order.import' | 'inventory.push' | 'fulfillment.push' | …
+  outcome             ChannelSyncOutcome
+  detail              String? // error text / summary
+  payloadDigest       String? // sha256 — raw payloads live only on ChannelOrder
+  retryCount          Int                  @default(0)
+  createdAt           DateTime             @default(now())
+
+  @@index([channelConnectionId, createdAt])
+  @@index([outcome, createdAt])
 }
 
 // =============================================================================

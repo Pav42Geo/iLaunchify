@@ -57,6 +57,8 @@ export {
   normalizeTier,
   brandLimits,
   BRAND_LIMITS,
+  channelConnectionLimit,
+  CHANNEL_CONNECTION_LIMITS,
   advancedBrandFeatures,
   ADVANCED_BRAND_FEATURES,
   canUploadCustomFonts,

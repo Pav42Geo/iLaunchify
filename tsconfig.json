@@ -36,7 +36,8 @@
       "@ilaunchify/nutrition": ["./packages/nutrition/src"],
       "@ilaunchify/support": ["./packages/support/src"],
       "@ilaunchify/ai-design": ["./packages/ai-design/src"],
-      "@ilaunchify/imagegen": ["./packages/imagegen/src"]
+      "@ilaunchify/imagegen": ["./packages/imagegen/src"],
+      "@ilaunchify/channels": ["./packages/channels/src"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],

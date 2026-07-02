@@ -106,6 +106,22 @@ export function brandLimits(tier: TierKey): BrandLimits {
   return BRAND_LIMITS[tier]
 }
 
+/**
+ * Sales-channel CONNECTION caps per tier (PLATFORM_SPEC §Tier 1; roster locked
+ * at 10 channels, docs/CHANNEL_MANAGEMENT_SPEC.md). Only the number of
+ * connected channels is gated — on-demand mode itself is open to Maker
+ * (LOCKED decision #2, Pavel 2026-07-02). `Infinity` = all supported channels.
+ */
+export const CHANNEL_CONNECTION_LIMITS: Record<TierKey, number> = {
+  maker: 1,
+  builder: 3,
+  agency: Infinity,
+}
+
+export function channelConnectionLimit(tier: TierKey): number {
+  return CHANNEL_CONNECTION_LIMITS[tier]
+}
+
 // ---------------------------------------------------------------------------
 // Advanced Brand Kit features (Brand Kit V2 — Pavel 2026-06-22).
 //
