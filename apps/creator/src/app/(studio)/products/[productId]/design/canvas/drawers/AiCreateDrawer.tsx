@@ -19,7 +19,7 @@
 
 import * as React from 'react'
 import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig, ChevronLeft, ChevronRight } from 'lucide-react'
-import { applyAiConcept, deriveTemplateTargeting, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
+import { applyAiConcept, findAiConcept, deriveTemplateTargeting, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
 import { getAiCreateDrawerProps, getAiCreateDrawerPropsAdmin, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
 import { AiCreatePanel, type AiCreatePanelProps, type DielineTarget, type GenerateContext } from '../../../../../studio/ai-create/AiCreatePanel'
@@ -129,12 +129,19 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
   // concept is applied, driving the "On canvas: Concept 2/4 ‹ ›" switcher below.
   const [batch, setBatch] = React.useState<string[]>([])
   const [appliedIndex, setAppliedIndex] = React.useState<number | null>(null)
+  // P3 A/B pin: the pinned reference concept + the "other side" of the last A/B flip.
+  const [pinnedIndex, setPinnedIndex] = React.useState<number | null>(null)
+  const abOtherRef = React.useRef<number | null>(null)
+  // P3 hover try-on: the committed src to restore on mouseleave (null = no hover active).
+  const hoverRestoreRef = React.useRef<string | null>(null)
 
   /** Apply a concept / template as the design's background art — REPLACES any
    *  previously applied AI concept (never stacks); truth-layer frames stay on top. */
   const applyToCanvas = React.useCallback(
     async (concept: string, meta?: { variationIndex?: number | null; dielineId?: string | null }) => {
       if (!canvas) return
+      // A real apply supersedes any in-flight hover preview.
+      hoverRestoreRef.current = null
       await applyAiConcept(canvas, conceptToSource(concept), {
         variationIndex: meta?.variationIndex ?? null,
         dielineId: meta?.dielineId ?? null,
@@ -142,6 +149,42 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
     },
     [canvas],
   )
+
+  /** P3 hover try-on — temporarily swap the APPLIED concept's image source.
+   *  fabric's setSrc fires no object:added/modified/removed, so the canvas history
+   *  and autosave never see the preview; only a click commits (via applyToCanvas).
+   *  No-op until a first concept is applied. Concepts are same-batch data URLs, so
+   *  loads are effectively instant (out-of-order resolution is not a practical risk). */
+  const previewConcept = React.useCallback(
+    async (svg: string | null) => {
+      if (!canvas) return
+      const obj = findAiConcept(canvas) as unknown as {
+        setSrc?: (src: string, opts?: { crossOrigin?: string }) => Promise<unknown>
+        getSrc?: () => string
+      } | null
+      if (!obj || typeof obj.setSrc !== 'function') return
+      if (svg) {
+        if (hoverRestoreRef.current === null) hoverRestoreRef.current = obj.getSrc?.() ?? null
+        if (hoverRestoreRef.current === null) return
+        await obj.setSrc(conceptToSource(svg), { crossOrigin: 'anonymous' })
+        canvas.requestRenderAll()
+      } else {
+        const restore = hoverRestoreRef.current
+        if (restore === null) return
+        hoverRestoreRef.current = null
+        await obj.setSrc(restore, { crossOrigin: 'anonymous' })
+        canvas.requestRenderAll()
+      }
+    },
+    [canvas],
+  )
+
+  // Drawer closed mid-hover → put the committed concept back.
+  React.useEffect(() => {
+    return () => {
+      void previewConcept(null)
+    }
+  }, [previewConcept])
 
   /** ‹ › — cycle the applied concept through the current batch, in place. */
   const switchConcept = React.useCallback(
@@ -155,6 +198,19 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
     },
     [appliedIndex, batch, applyToCanvas],
   )
+
+  /** P3 A/B — flip the canvas between the pinned concept and the other side of the
+   *  last flip. First click: current applied becomes the "other"; pinned goes on. */
+  const toggleAB = React.useCallback(async () => {
+    if (pinnedIndex === null || appliedIndex === null) return
+    const target = appliedIndex !== pinnedIndex ? pinnedIndex : abOtherRef.current
+    if (target === null) return
+    const svg = batch[target]
+    if (!svg) return
+    if (appliedIndex !== pinnedIndex) abOtherRef.current = appliedIndex
+    await applyToCanvas(svg, { variationIndex: target })
+    setAppliedIndex(target)
+  }, [pinnedIndex, appliedIndex, batch, applyToCanvas])
 
   // The die-line SET the panel designs — real confirmed die-lines, else the canvas die-cut.
   const dielines = React.useMemo<DielineTarget[]>(
@@ -316,6 +372,16 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
             On canvas: Concept {appliedIndex + 1}/{batch.length}
           </span>
           <div className="flex gap-1">
+            {pinnedIndex !== null && (appliedIndex !== pinnedIndex || abOtherRef.current !== null) && (
+              <button
+                type="button"
+                onClick={() => void toggleAB()}
+                title={`Flip between pinned Concept ${pinnedIndex + 1} and the other side`}
+                className="rounded-full border border-pink-300 bg-pink-50 px-2 py-0.5 text-[10.5px] font-bold text-pink-700 hover:bg-pink-100"
+              >
+                A/B
+              </button>
+            )}
             <button
               type="button"
               onClick={() => switchConcept(-1)}
@@ -353,11 +419,16 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
           onVariationsChange={(svgs) => {
             setBatch(svgs)
             setAppliedIndex(null)
+            setPinnedIndex(null)
+            abOtherRef.current = null
           }}
           onEditInStudio={async (r) => {
             await applyToCanvas(r.svg, { variationIndex: r.index ?? null, dielineId: r.dielineId })
             setAppliedIndex(typeof r.index === 'number' ? r.index : null)
           }}
+          onPreviewVariation={(svg) => void previewConcept(svg)}
+          pinnedIndex={pinnedIndex}
+          onTogglePin={(i) => setPinnedIndex((p) => (p === i ? null : i))}
         />
       ) : (
         <TemplateLibrary

@@ -109,8 +109,13 @@ every change as usual.
 
 - **P1** — F1 click-to-swap + switcher, F2 aspect-aware layout. No new seams. **SHIPPED 2026-07-01.**
 - **P2** — F2 3D-by-default, F3 More-like-this. **SHIPPED 2026-07-01.**
-- **P3** — F1 hover try-on (needs `withHistorySuspended` from Code), A/B pin (pin one
-  candidate, flip the other), lightbox zoom. **PENDING** — blocked on the Code seam.
+- **P3** — F1 hover try-on, A/B pin (pin one candidate, flip the other), lightbox zoom.
+  **SHIPPED 2026-07-01.** The `withHistorySuspended` seam from Code turned out
+  unnecessary: hover previews swap the applied concept's image source via fabric
+  `setSrc`, which fires none of object:added/modified/removed — so useCanvasHistory and
+  useAutoSave never observe the preview. Hover activates once a first concept is applied;
+  A/B flips are real (undoable) applies; the lightbox is a full-viewport overlay with
+  Esc / arrow-key navigation.
 
 ## Out of scope
 

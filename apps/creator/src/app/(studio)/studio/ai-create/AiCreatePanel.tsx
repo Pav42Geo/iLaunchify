@@ -21,8 +21,8 @@
 // Maker explores everything and is steered to the premium template library.
 // =============================================================================
 
-import { useMemo, useRef, useState } from 'react'
-import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge, Pin, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { planGeneration, planGenerationSet, Dieline3DViewer, shapeKindForCategory, assignSurfaceFaces, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief, type BoxFace, type FaceTexture } from '@ilaunchify/ui'
 import { planFlavorSeries, type LabelingDomain, type MarketCode, type FlavorSpec, type FlavorSeriesPlan } from '@ilaunchify/ai-design'
 import { clampOutput, formatBytes, type OutputPolicy, type OutputSettings, type OutputFormat } from '@ilaunchify/imagegen'
@@ -118,6 +118,12 @@ export interface AiCreatePanelProps {
   /** Fires whenever the single-die-line variations batch changes (generate / re-roll /
    *  scope switch). Lets the host (the in-canvas drawer) drive its concept switcher. */
   onVariationsChange?: (svgs: string[]) => void
+  /** P3 hover try-on: mouseenter a result card → (svg, index); mouseleave → (null, null).
+   *  The in-canvas drawer previews the hovered concept on the applied object via setSrc. */
+  onPreviewVariation?: (svg: string | null, index: number | null) => void
+  /** P3 A/B pin — controlled by the host. When provided, each result card shows a pin. */
+  pinnedIndex?: number | null
+  onTogglePin?: (index: number) => void
   /** Force a single-column stack (for the narrow in-canvas drawer). Full page stays 2-col. */
   stacked?: boolean
   /** Label for the primary result action (default "Edit in Studio"; the drawer uses "Use on canvas"). */
@@ -178,6 +184,8 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   // which concept seeded the riff, for the breadcrumb + "back to first batch".
   const [prevBatch, setPrevBatch] = useState<string[] | null>(null)
   const [riffSource, setRiffSource] = useState<number | null>(null)
+  // P3 lightbox — which concept is open large (null = closed).
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const [setVariants, setSetVariants] = useState<{ id: string; label: string; svg: string }[]>([])
   const [masterGenerated, setMasterGenerated] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -312,6 +320,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
       const next = refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg]
       setVariations(next)
       setViewOverrides({})
+      setLightboxIdx(null)
       // A fresh generate starts a new lineage — drop any riff history.
       setPrevBatch(null)
       setRiffSource(null)
@@ -333,6 +342,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
       setRiffSource(i)
       setVariations(next)
       setViewOverrides({})
+      setLightboxIdx(null)
       props.onVariationsChange?.(next)
     } finally {
       setBusy(false)
@@ -346,6 +356,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     setPrevBatch(null)
     setRiffSource(null)
     setViewOverrides({})
+    setLightboxIdx(null)
   }
 
   function switchScope(next: 'single' | 'set' | 'flavors') {
@@ -357,6 +368,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     setViewOverrides({})
     setPrevBatch(null)
     setRiffSource(null)
+    setLightboxIdx(null)
   }
 
   return (
@@ -646,7 +658,12 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
               </div>
             )}
             {variations.map((v, i) => (
-              <div key={i} className="rounded-xl border border-ink-200 bg-white p-2">
+              <div
+                key={i}
+                className={`rounded-xl border bg-white p-2 ${props.pinnedIndex === i ? 'border-pink-400 ring-1 ring-pink-200' : 'border-ink-200'}`}
+                onMouseEnter={props.onPreviewVariation ? () => props.onPreviewVariation?.(v, i) : undefined}
+                onMouseLeave={props.onPreviewVariation ? () => props.onPreviewVariation?.(null, null) : undefined}
+              >
                 {show3D(i) && selected ? (
                   <div className="h-[220px] overflow-hidden rounded-lg bg-[radial-gradient(120%_120%_at_50%_0%,#fff,#f1f0ec)]">
                     <Dieline3DViewer
@@ -683,6 +700,25 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                         <Sparkles className="h-3 w-3" /> More like this
                       </button>
                     )}
+                    {props.onTogglePin && (
+                      <button
+                        type="button"
+                        onClick={() => props.onTogglePin?.(i)}
+                        aria-pressed={props.pinnedIndex === i}
+                        title={props.pinnedIndex === i ? 'Unpin' : 'Pin for A/B compare'}
+                        className={`inline-flex items-center rounded-full border p-1 transition ${props.pinnedIndex === i ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 text-ink-400 hover:border-ink-400 hover:text-ink-600'}`}
+                      >
+                        <Pin className="h-3 w-3" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setLightboxIdx(i)}
+                      title="View large"
+                      className="inline-flex items-center rounded-full border border-ink-200 p-1 text-ink-400 transition hover:border-ink-400 hover:text-ink-600"
+                    >
+                      <Maximize2 className="h-3 w-3" />
+                    </button>
                   </div>
                   <ResultActions
                     result={{ svg: v, dielineId: selected?.id ?? '', label: selected?.label ?? '', index: i }}
@@ -702,6 +738,127 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
         {props.savedConcepts && (
           <SavedTemplatesGrid concepts={props.savedConcepts} storageUsed={props.usage?.storageBytesUsed} storageCap={props.usage?.storageBytesCap} />
         )}
+      </div>
+
+      {/* P3 lightbox — one concept large, ‹ › to flip, act without leaving it. */}
+      {lightboxIdx !== null && variations[lightboxIdx] && (
+        <ConceptLightbox
+          svg={variations[lightboxIdx]!}
+          index={lightboxIdx}
+          count={variations.length}
+          dielineId={selected?.id ?? ''}
+          label={selected?.label ?? ''}
+          onNav={(d) => setLightboxIdx((cur) => (cur === null ? null : (cur + d + variations.length) % variations.length))}
+          onClose={() => setLightboxIdx(null)}
+          onEdit={props.onEditInStudio}
+          onExport={props.onExport}
+          editLabel={props.editActionLabel}
+        />
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Concept lightbox (P3) — full-viewport overlay; Esc closes, arrows navigate.
+// ---------------------------------------------------------------------------
+
+function ConceptLightbox({
+  svg,
+  index,
+  count,
+  dielineId,
+  label,
+  onNav,
+  onClose,
+  onEdit,
+  onExport,
+  editLabel,
+}: {
+  svg: string
+  index: number
+  count: number
+  dielineId: string
+  label: string
+  onNav: (delta: number) => void
+  onClose: () => void
+  onEdit?: (r: { svg: string; dielineId: string; label: string; index?: number }) => void
+  onExport?: (r: { svg: string; dielineId: string; label: string; index?: number }) => void
+  editLabel?: string
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+      else if (e.key === 'ArrowLeft') onNav(-1)
+      else if (e.key === 'ArrowRight') onNav(1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose, onNav])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Concept ${index + 1} of ${count}`}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-950/70 p-6"
+      onClick={onClose}
+    >
+      <div className="flex max-h-full w-full max-w-3xl flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between text-white">
+          <p className="text-[13px] font-semibold">
+            Concept {index + 1}/{count} · {label}
+          </p>
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 hover:bg-white/10">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="relative overflow-auto rounded-2xl bg-white p-3">
+          <div className="[&_svg]:h-auto [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => onNav(-1)}
+              aria-label="Previous concept"
+              className="rounded-full border border-white/30 p-1.5 text-white hover:bg-white/10"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onNav(1)}
+              aria-label="Next concept"
+              className="rounded-full border border-white/30 p-1.5 text-white hover:bg-white/10"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex gap-1.5">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onEdit({ svg, dielineId, label, index })
+                  onClose()
+                }}
+                className="rounded-full bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-100"
+              >
+                {editLabel ?? 'Edit in Studio'}
+              </button>
+            )}
+            {onExport && (
+              <button
+                type="button"
+                onClick={() => onExport({ svg, dielineId, label, index })}
+                className="rounded-full border border-white/30 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-white/10"
+              >
+                Export
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
