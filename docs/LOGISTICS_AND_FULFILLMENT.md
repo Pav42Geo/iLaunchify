@@ -1,6 +1,16 @@
 # Logistics & Fulfillment — Research + Functional Spec + Implementation Plan
 
-**Status:** DRAFT for Pavel review · 2026-07-02 (Cowork)
+**Status:** LOCKED + BUILT · decisions L1–L9 locked 2026-07-02 · Phases L0–L4a shipped 2026-07-02 (Cowork)
+
+> **Build status (2026-07-02):** everything buildable without third parties is SHIPPED and admin-gated OFF:
+> schema substrate (L0) · 4-destination checkout + hold-at-manufacturer lifecycle + FC network + V1 selector (L1) ·
+> doc-gated ship panel + inbound queue + admin shipments (L1.1) · storage accrual + stock releases + admin FC override (L1.2) ·
+> EasyPost rail + tracking webhooks + checkout quotes + admin carriers (L2) · channel gates + FNSKU capture + CHANNEL_INBOUND + admin channel-plans, SP-API stubbed (L3) ·
+> V1.5 weighted FC scorer + rotation band + creator /inventory (L4a).
+> **Blocked externally:** Amazon SP-API dev approval → OAuth + live plan confirmation · EasyPost account/env → flip `carrier:easypost` ·
+> ShipBob master agreement → FulfillmentConnector (L4) · insurance verification (docs/SHIPPING_INSURANCE_VERIFICATION.md) → flip `insurance` ·
+> WFS/FBT adapters (L4, need seller API credentials). FNSKU-in-dieline = Code's zone (docs/HANDOFF-TO-CODE-fnsku-in-dieline.md).
+> **Enable anything:** admin → Logistics → Gates (LogisticsSetting; server-enforced; zero code at enable time).
 **Depends on:** ROUTING_BINDING_MODEL.md (owner-pinned manufacturing, D1–D5 LOCKED), PRODUCTION_ORCHESTRATION.md (workflow graph, V1 Mode 1), PLATFORM_SPEC.md (warehouse economics phasing), MULTI_PARTNER_APPROVAL_WORKFLOW.md (dispatch acceptance).
 **Scope:** the SHIP leg of every production order — manufacturer/co-packer/print-provider → final destination — plus fulfillment-center network, carrier management, channel inbound (Amazon/Walmart/TikTok), and hold-at-manufacturer on-demand fulfillment. US-only V1 (Markets model is schema-ready for CA/EU).
 

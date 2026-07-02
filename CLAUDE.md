@@ -28,7 +28,8 @@ Cross-app links require `marketingUrl()` / `creatorUrl()` / `partnerUrl()` helpe
 - `packages/payments` — Stripe Connect + Subscriptions
 - `packages/marketplace` — `suggestNiches()` engine + `recordNicheAssignment()`
 - `packages/notifications` — dispatcher + Resend
-- `packages/orders` — order routing + manifest generation
+- `packages/orders` — order routing + manifest generation + FC selection (fc-selector V1 nearest, fc-scorer V1.5 weighted + rotation band)
+- `packages/shipping` — logistics substrate (built 2026-07-02): shipment classifier, carrier eligibility + rate shop, EasyPost gateway (DI'd http — tests network-free), dispatch doc gates, receiving checklists, cold-pack + storage-accrual math, channel-inbound gates. Prisma-free by design; pure suites run in run-vitest-suites.mjs.
 - `packages/compliance` — FDA rule packs + label validator (Python service)
 
 ## Database
@@ -128,6 +129,7 @@ Larger specs in `docs/`:
 - `PLATFORM_SPEC.md` — tiers, fees, FSMs
 - `MARKETPLACE_DESIGN.md` — 4-layer taxonomy detail
 - `PRODUCTION_ORCHESTRATION.md` — multi-partner workflow graph
+- `LOGISTICS_AND_FULFILLMENT.md` — LOCKED L1–L9 + BUILT L0–L4a (2026-07-02) · 4 ship-to types (incl. HOLD_AT_MANUFACTURER + CHANNEL_INBOUND), FC network + scorer, EasyPost rail, channel gates. Everything admin-gated via LogisticsSetting (admin → Logistics → Gates); temp class + hazmat are HARD filters, never weights. SP-API/ShipBob/insurance blocked on external accounts. FNSKU-in-dieline = Studio = Code's zone (HANDOFF-TO-CODE-fnsku-in-dieline.md).
 - `MULTI_PARTNER_APPROVAL_WORKFLOW.md` — H1 spec
 - `MANUFACTURER_PRODUCT_BUILDER.md` — partner editor card spec
 - `DESIGN_SYSTEM.md` — full tokens + components

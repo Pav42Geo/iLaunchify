@@ -84,3 +84,5 @@ cp "$LATEST"/*.md .claude/memory/
 - `clarify-audience-before-building-customer-facing-flows.md` — confirm buyer/owner before checkout work
 - `check-existing-work-before-building.md` — audit code+memory before new surfaces
 - `ilaunchify-operational-philosophy-v1.md` — operational trust > margin
+
+- `ilaunchify-logistics-built.md` — logistics LOCKED+BUILT L0–L4a (2026-07-02): 4 ship-to types, packages/shipping, FC scorer, gates pattern, invariants, external blockers. Read before ANY logistics-shaped work.
