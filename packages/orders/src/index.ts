@@ -128,3 +128,5 @@ export {
   haversineMiles,
 } from './fc-selector'
 export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'
+export { scoreAndSelectFc, buildScoredAwardPayload } from './fc-scorer'
+export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry } from './fc-scorer'

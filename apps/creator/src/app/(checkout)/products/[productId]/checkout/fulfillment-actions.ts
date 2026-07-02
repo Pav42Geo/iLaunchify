@@ -17,21 +17,24 @@
 //   ship-to type + quantity band. Real carrier integration (USPS / UPS /
 //   FedEx) lands later — leaving forward-marker hooks for the rate lookup.
 //
-// listDestinationOptions(productId) — Phase L1b
+// listDestinationOptions(productId) — Phase L1b (+L4a scored suggestion)
 //   The four-destination-card payload (docs/LOGISTICS_AND_FULFILLMENT.md §2/§9):
 //   which destination types are offered (and the disabled copy when not), the
-//   platform-suggested fulfillment center (V1 nearest-eligible to the pinned
-//   manufacturer), and the hold-at-manufacturer storage fee card. The Pay
-//   action re-runs the same eligibility server-side — this is display data,
-//   never the enforcement point.
+//   platform-suggested fulfillment center (L4a weighted-band scorer; falls
+//   back to V1 nearest-eligible below 3 eligible nodes), and the
+//   hold-at-manufacturer storage fee card. The Pay action re-runs the same
+//   eligibility server-side — this is display data, never the enforcement point.
 
 import { prisma, getLogisticsSettings, isLogisticsEnabled, isStorageClassEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import {
   resolveDestinationOptions,
-  selectNearestEligibleFc,
+  scoreAndSelectFc,
   type DestinationOption,
   type FcCandidate,
+  type FcScoreResult,
+  type FcScoringWeights,
+  type FcAwardHistoryEntry,
 } from '@ilaunchify/orders'
 import {
   EasyPostParcelGateway,
@@ -307,8 +310,11 @@ export async function listDestinationOptions(
     }),
   ])
 
-  // V1 FC pick — Phase-1 hard eligibility + nearest to the manufacturer
-  // (docs/LOGISTICS_AND_FULFILLMENT.md §5; scorer/rotation arrive V1.5).
+  // L4a FC pick — Phase-2 weighted scoring + Phase-3 rotation band
+  // (docs/LOGISTICS_AND_FULFILLMENT.md §5). The scorer internally falls back
+  // to V1 nearest-eligible below 3 eligible nodes; `algorithm` on the result
+  // tells the rationale line which path ran. Display data — the Pay action
+  // (cart-actions.resolveShipTo) re-runs the same selection server-side.
   const candidates: FcCandidate[] = warehouses.map((w) => ({
     partnerServiceId: w.id,
     partnerName: w.partner.companyName,
@@ -322,8 +328,20 @@ export async function listDestinationOptions(
     facilityLng: w.facilityLng,
   }))
   const m = template?.manufacturerService ?? null
-  const selection = classEnabled
-    ? selectNearestEligibleFc(candidates, {
+  let selection: FcScoreResult = {
+    winner: null,
+    scored: [],
+    rotationApplied: false,
+    algorithm: 'V1_NEAREST_ELIGIBLE',
+  }
+  if (classEnabled) {
+    const [weights, awardHistory] = await Promise.all([
+      readFcScoringWeights(),
+      readFcAwardHistory(candidates.map((c) => c.partnerServiceId)),
+    ])
+    selection = scoreAndSelectFc(
+      candidates,
+      {
         storageClass,
         hazmatClass,
         domain,
@@ -331,9 +349,15 @@ export async function listDestinationOptions(
         originLat: m?.facilityLat ?? null,
         originLng: m?.facilityLng ?? null,
         originState: m?.partner.state ?? null,
-      })
-    : { winner: null, ranked: [] }
-  const eligibleWarehouseCount = selection.ranked.filter((r) => r.eligible).length
+      },
+      {
+        weights,
+        history: awardHistory.history,
+        totalRecentAwards: awardHistory.totalRecentAwards,
+      },
+    )
+  }
+  const eligibleWarehouseCount = selection.scored.filter((s) => s.ranked.eligible).length
 
   // L3a — per-channel gate evaluation (LOGISTICS §7). One option per CONNECTED
   // connection on an inbound-capable channel: LogisticsSetting per-channel gate
@@ -418,12 +442,17 @@ export async function listDestinationOptions(
   const winner = selection.winner
   const suggestedFc: SuggestedFcOption | null = winner
     ? {
-        partnerServiceId: winner.candidate.partnerServiceId,
-        partnerName: winner.candidate.partnerName,
-        city: winner.candidate.city,
-        state: winner.candidate.state,
-        distanceMiles: winner.distanceMiles,
-        rationale: fcRationale(domain, winner.distanceMiles),
+        partnerServiceId: winner.ranked.candidate.partnerServiceId,
+        partnerName: winner.ranked.candidate.partnerName,
+        city: winner.ranked.candidate.city,
+        state: winner.ranked.candidate.state,
+        distanceMiles: winner.ranked.distanceMiles,
+        rationale: fcRationale(
+          domain,
+          winner.ranked.distanceMiles,
+          selection.algorithm,
+          eligibleWarehouseCount,
+        ),
       }
     : null
 
@@ -486,11 +515,104 @@ function minShelfLifeDays(variants: Array<{ shelfLifeDays: number | null }>): nu
 
 const FC_FOOD_DOMAINS = ['FOOD', 'DIETARY_SUPPLEMENT', 'PET_PRODUCT']
 
-function fcRationale(domain: string, distanceMiles: number | null): string {
+/** One-line "why this node" copy. V1 nearest-eligible → "closest eligible";
+ *  the L4a weighted band → the scored-selection explanation. */
+function fcRationale(
+  domain: string,
+  distanceMiles: number | null,
+  algorithm: FcScoreResult['algorithm'],
+  eligibleCount: number,
+): string {
   const grade = FC_FOOD_DOMAINS.includes(domain) ? 'food-grade ' : ''
+  if (algorithm === 'V15_WEIGHTED_BAND') {
+    return `Best score across ${eligibleCount} eligible ${grade}centers (cost, distance, capacity, rotation)`
+  }
   return distanceMiles !== null
-    ? `Closest ${grade}fulfillment center to your manufacturer`
-    : `Nearest eligible ${grade}fulfillment center to your manufacturer (matched by state)`
+    ? `Closest eligible ${grade}fulfillment center to your manufacturer`
+    : `Closest eligible ${grade}fulfillment center to your manufacturer (matched by state)`
+}
+
+// -----------------------------------------------------------------------------
+// L4a — FC scoring inputs (weights + award history). Duplicated in
+// cart-actions.ts ('use server' files can only export async actions, and these
+// must never be client-invokable endpoints).
+// -----------------------------------------------------------------------------
+
+/** Spec §5 starting weights — used when the singleton row / fields are missing. */
+const FC_WEIGHT_DEFAULTS: FcScoringWeights = {
+  costWeightPct: 35,
+  distanceWeightPct: 15,
+  slaWeightPct: 15,
+  capacityWeightPct: 15,
+  rotationWeightPct: 10,
+  storageMatchWeightPct: 10,
+  rotationBandPct: 5,
+}
+
+/** OrderSettings.fc*WeightPct aren't surfaced by getOrderSettings() yet — read
+ *  them straight off the singleton (channelMinShelfLifeDays pattern). */
+async function readFcScoringWeights(): Promise<FcScoringWeights> {
+  const row = await prisma.orderSettings
+    .findUnique({
+      where: { id: 'default' },
+      select: {
+        fcCostWeightPct: true,
+        fcDistanceWeightPct: true,
+        fcSlaWeightPct: true,
+        fcCapacityWeightPct: true,
+        fcRotationWeightPct: true,
+        fcStorageMatchWeightPct: true,
+        fcRotationBandPct: true,
+      },
+    })
+    .catch(() => null)
+  return {
+    costWeightPct: row?.fcCostWeightPct ?? FC_WEIGHT_DEFAULTS.costWeightPct,
+    distanceWeightPct: row?.fcDistanceWeightPct ?? FC_WEIGHT_DEFAULTS.distanceWeightPct,
+    slaWeightPct: row?.fcSlaWeightPct ?? FC_WEIGHT_DEFAULTS.slaWeightPct,
+    capacityWeightPct: row?.fcCapacityWeightPct ?? FC_WEIGHT_DEFAULTS.capacityWeightPct,
+    rotationWeightPct: row?.fcRotationWeightPct ?? FC_WEIGHT_DEFAULTS.rotationWeightPct,
+    storageMatchWeightPct:
+      row?.fcStorageMatchWeightPct ?? FC_WEIGHT_DEFAULTS.storageMatchWeightPct,
+    rotationBandPct: row?.fcRotationBandPct ?? FC_WEIGHT_DEFAULTS.rotationBandPct,
+  }
+}
+
+const FC_AWARD_HISTORY_DAYS = 90
+
+/** FcAwardLog rows for the candidate nodes over the last 90 days, grouped into
+ *  the scorer's {awardCount, lastAwardedAt} shape. Best-effort: an empty
+ *  history just means the rotation dimension renormalizes away. */
+async function readFcAwardHistory(
+  partnerServiceIds: string[],
+): Promise<{ history: Record<string, FcAwardHistoryEntry>; totalRecentAwards: number }> {
+  if (partnerServiceIds.length === 0) return { history: {}, totalRecentAwards: 0 }
+  const since = new Date(Date.now() - FC_AWARD_HISTORY_DAYS * 24 * 60 * 60 * 1000)
+  const rows = await prisma.fcAwardLog
+    .groupBy({
+      by: ['partnerServiceId'],
+      where: { partnerServiceId: { in: partnerServiceIds }, awardedAt: { gte: since } },
+      _count: { _all: true },
+      _max: { awardedAt: true },
+    })
+    .catch(
+      () =>
+        [] as Array<{
+          partnerServiceId: string
+          _count: { _all: number }
+          _max: { awardedAt: Date | null }
+        }>,
+    )
+  const history: Record<string, FcAwardHistoryEntry> = {}
+  let totalRecentAwards = 0
+  for (const r of rows) {
+    history[r.partnerServiceId] = {
+      awardCount: r._count._all,
+      lastAwardedAt: r._max.awardedAt ?? null,
+    }
+    totalRecentAwards += r._count._all
+  }
+  return { history, totalRecentAwards }
 }
 
 // PartnerService.capabilities is freeform JSON pre-G3-style. We surface

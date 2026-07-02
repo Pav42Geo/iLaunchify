@@ -31,9 +31,11 @@ import {
   applySampleCredit,
   createOrderWithNumber,
   resolveDestinationOptions,
-  selectNearestEligibleFc,
-  buildAwardLogPayload,
+  scoreAndSelectFc,
+  buildScoredAwardPayload,
   type FcCandidate,
+  type FcScoringWeights,
+  type FcAwardHistoryEntry,
   type SampleCreditEntry,
 } from '@ilaunchify/orders'
 import {
@@ -295,9 +297,10 @@ export async function placeOrderFromCheckoutDraft(
   }
 
   // --- 3. Resolve ship-to + warehouse-partner ID -----------------------------
-  //        L1b passes the template so the resolver can (a) run the V1
-  //        nearest-eligible FC pick from the pinned manufacturer and (b)
-  //        server-re-check HOLD_AT_MANUFACTURER eligibility.
+  //        L1b passes the template so the resolver can (a) run the scored FC
+  //        pick from the pinned manufacturer (L4a weighted band, V1 nearest-
+  //        eligible below 3 nodes) and (b) server-re-check
+  //        HOLD_AT_MANUFACTURER eligibility.
   const shipTo = await resolveShipTo({
     user,
     productId: product.id,
@@ -970,10 +973,12 @@ interface ShipToResolved {
       packFeeCents: number | null
     }
   }
-  /** L1b — V1 nearest-eligible FC award; written to FcAwardLog post-commit. */
+  /** L4a — scored FC award (V1.5 weighted band; the scorer itself falls back
+   *  to V1 nearest-eligible below 3 eligible nodes — `algorithm` in the payload
+   *  records which ran). Written to FcAwardLog post-commit. */
   fcAward?: {
     partnerServiceId: string
-    scoreJson: ReturnType<typeof buildAwardLogPayload>
+    scoreJson: ReturnType<typeof buildScoredAwardPayload>
   }
   /** L3a — set for CHANNEL_INBOUND orders; drives ChannelInboundPlan creation
    *  in the order txn. gateSnapshot records what passed at placement time. */
@@ -1024,9 +1029,13 @@ async function resolveShipTo({
     let warehouseId = f.warehousePartnerServiceId
     let fcAward: ShipToResolved['fcAward']
     if (!warehouseId && f.shipToType === 'CLOSEST_WAREHOUSE') {
-      // L1b — V1 FC selection: Phase-1 hard eligibility + nearest to the
-      // pinned manufacturer (docs/LOGISTICS_AND_FULFILLMENT.md §5). Cold
-      // classes are admin-gated (L1 lock) and re-checked server-side here.
+      // L4a — FC selection Phases 2–3: weighted scoring + rotation inside the
+      // indifference band (docs/LOGISTICS_AND_FULFILLMENT.md §5). The scorer
+      // internally falls back to V1 nearest-eligible below 3 eligible nodes;
+      // scoreJson.algorithm records which path ran. Weights are admin-tunable
+      // on the OrderSettings singleton; FcAwardLog history (last 90 days)
+      // feeds the rotation-fairness dimension. Cold classes stay admin-gated
+      // (L1 lock) and are re-checked server-side here.
       const storageClass = template?.storageClass ?? 'AMBIENT'
       if (!(await isStorageClassEnabled(storageClass))) {
         return {
@@ -1071,20 +1080,32 @@ async function resolveShipTo({
         facilityLat: w.facilityLat,
         facilityLng: w.facilityLng,
       }))
-      const selection = selectNearestEligibleFc(candidates, {
-        storageClass,
-        hazmatClass: template?.hazmatClass ?? 'NONE',
-        domain: template?.labelingType ?? 'FOOD',
-        pallets: 0, // pallet count unknown pre-manifest — skip the capacity filter
-        originLat: origin?.facilityLat ?? null,
-        originLng: origin?.facilityLng ?? null,
-        originState: origin?.partner.state ?? null,
-      })
+      const [weights, awardHistory] = await Promise.all([
+        readFcScoringWeights(),
+        readFcAwardHistory(candidates.map((c) => c.partnerServiceId)),
+      ])
+      const selection = scoreAndSelectFc(
+        candidates,
+        {
+          storageClass,
+          hazmatClass: template?.hazmatClass ?? 'NONE',
+          domain: template?.labelingType ?? 'FOOD',
+          pallets: 0, // pallet count unknown pre-manifest — skip the capacity filter
+          originLat: origin?.facilityLat ?? null,
+          originLng: origin?.facilityLng ?? null,
+          originState: origin?.partner.state ?? null,
+        },
+        {
+          weights,
+          history: awardHistory.history,
+          totalRecentAwards: awardHistory.totalRecentAwards,
+        },
+      )
       if (selection.winner) {
-        warehouseId = selection.winner.candidate.partnerServiceId
+        warehouseId = selection.winner.ranked.candidate.partnerServiceId
         fcAward = {
           partnerServiceId: warehouseId,
-          scoreJson: buildAwardLogPayload(selection),
+          scoreJson: buildScoredAwardPayload(selection),
         }
       }
       if (!warehouseId) {
@@ -1413,6 +1434,89 @@ function channelInboundForCode(code: string): InboundChannel | null {
   if (code === 'walmart') return 'WALMART_WFS'
   if (code === 'tiktok') return 'TIKTOK_FBT'
   return null
+}
+
+// -----------------------------------------------------------------------------
+// L4a — FC scoring inputs (weights + award history). Duplicated in
+// fulfillment-actions.ts ('use server' files can only export async actions,
+// and these must never be client-invokable endpoints).
+// -----------------------------------------------------------------------------
+
+/** Spec §5 starting weights — used when the singleton row / fields are missing. */
+const FC_WEIGHT_DEFAULTS: FcScoringWeights = {
+  costWeightPct: 35,
+  distanceWeightPct: 15,
+  slaWeightPct: 15,
+  capacityWeightPct: 15,
+  rotationWeightPct: 10,
+  storageMatchWeightPct: 10,
+  rotationBandPct: 5,
+}
+
+/** OrderSettings.fc*WeightPct aren't surfaced by getOrderSettings() yet — read
+ *  them straight off the singleton (channelMinShelfLifeDays pattern). */
+async function readFcScoringWeights(): Promise<FcScoringWeights> {
+  const row = await prisma.orderSettings
+    .findUnique({
+      where: { id: 'default' },
+      select: {
+        fcCostWeightPct: true,
+        fcDistanceWeightPct: true,
+        fcSlaWeightPct: true,
+        fcCapacityWeightPct: true,
+        fcRotationWeightPct: true,
+        fcStorageMatchWeightPct: true,
+        fcRotationBandPct: true,
+      },
+    })
+    .catch(() => null)
+  return {
+    costWeightPct: row?.fcCostWeightPct ?? FC_WEIGHT_DEFAULTS.costWeightPct,
+    distanceWeightPct: row?.fcDistanceWeightPct ?? FC_WEIGHT_DEFAULTS.distanceWeightPct,
+    slaWeightPct: row?.fcSlaWeightPct ?? FC_WEIGHT_DEFAULTS.slaWeightPct,
+    capacityWeightPct: row?.fcCapacityWeightPct ?? FC_WEIGHT_DEFAULTS.capacityWeightPct,
+    rotationWeightPct: row?.fcRotationWeightPct ?? FC_WEIGHT_DEFAULTS.rotationWeightPct,
+    storageMatchWeightPct:
+      row?.fcStorageMatchWeightPct ?? FC_WEIGHT_DEFAULTS.storageMatchWeightPct,
+    rotationBandPct: row?.fcRotationBandPct ?? FC_WEIGHT_DEFAULTS.rotationBandPct,
+  }
+}
+
+const FC_AWARD_HISTORY_DAYS = 90
+
+/** FcAwardLog rows for the candidate nodes over the last 90 days, grouped into
+ *  the scorer's {awardCount, lastAwardedAt} shape. Best-effort: an empty
+ *  history just means the rotation dimension renormalizes away. */
+async function readFcAwardHistory(
+  partnerServiceIds: string[],
+): Promise<{ history: Record<string, FcAwardHistoryEntry>; totalRecentAwards: number }> {
+  if (partnerServiceIds.length === 0) return { history: {}, totalRecentAwards: 0 }
+  const since = new Date(Date.now() - FC_AWARD_HISTORY_DAYS * 24 * 60 * 60 * 1000)
+  const rows = await prisma.fcAwardLog
+    .groupBy({
+      by: ['partnerServiceId'],
+      where: { partnerServiceId: { in: partnerServiceIds }, awardedAt: { gte: since } },
+      _count: { _all: true },
+      _max: { awardedAt: true },
+    })
+    .catch(
+      () =>
+        [] as Array<{
+          partnerServiceId: string
+          _count: { _all: number }
+          _max: { awardedAt: Date | null }
+        }>,
+    )
+  const history: Record<string, FcAwardHistoryEntry> = {}
+  let totalRecentAwards = 0
+  for (const r of rows) {
+    history[r.partnerServiceId] = {
+      awardCount: r._count._all,
+      lastAwardedAt: r._max.awardedAt ?? null,
+    }
+    totalRecentAwards += r._count._all
+  }
+  return { history, totalRecentAwards }
 }
 
 function estimateFlatShipping(
