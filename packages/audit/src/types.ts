@@ -41,6 +41,7 @@ export const AUDIT_ENTITY_TYPES = [
   'ChannelInboundPlan', // Factory→channel-FC inbound plans (Phase L3)
   'ChannelOrder', // Imported consumer orders (CHANNEL_MANAGEMENT_SPEC C2)
   'OnDemandEnablement', // Manufacturer approval to accept on-demand orders (C2.3)
+  'InventoryPool', // Bulk available-to-sell pools + ledger movements (C2.4)
   'Order',
   'OrderDispatch',
   'Charge',

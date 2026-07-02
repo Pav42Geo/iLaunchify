@@ -22,6 +22,7 @@ import {
   resolveChannelAdapter,
   evaluateReadiness,
   manualConfirmActive,
+  applyLedgerEntry,
   type ChannelCode,
   type ExternalOrder,
   type OrderLineReadiness,
@@ -190,6 +191,45 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
       if (status === 'READY') summary.ready += 1
       else if (status === 'ON_HOLD') summary.onHold += 1
       else if (status === 'NEEDS_ATTENTION') summary.needsAttention += 1
+
+      // BULK lines on a READY order RESERVE stock immediately (gate #2) — the
+      // reservation converts to a CHANNEL_SALE at fulfillment, or RELEASEs on
+      // cancel. Pure invariants via applyLedgerEntry; pool + ledger cast-guarded.
+      if (status === 'READY') {
+        for (let i = 0; i < ext.lines.length; i++) {
+          const l = ext.lines[i]!
+          const link = byExt.get(l.externalVariantId)
+          const mode = (link?.channelProductLink as { mode?: string } | undefined)?.mode
+          if (!link || mode !== 'BULK') continue
+          const pool = await d('inventoryPool')
+            ?.findFirst?.({
+              where: { creatorUserId: user.id, productId: String(link.productId) },
+              select: { id: true, quantityOnHand: true, quantityReserved: true },
+            })
+            .catch(() => null)
+          if (!pool) continue
+          const verdictR = applyLedgerEntry(
+            { onHand: Number(pool.quantityOnHand ?? 0), reserved: Number(pool.quantityReserved ?? 0) },
+            'RESERVATION',
+            l.quantity,
+          )
+          if (!verdictR.ok) continue // readiness already guarded; race → order stays READY, fulfillment re-checks
+          await d('inventoryPool')
+            ?.update?.({ where: { id: String(pool.id) }, data: { quantityReserved: verdictR.next.reserved } })
+            .catch(() => {})
+          await d('inventoryLedger')
+            ?.create?.({
+              data: {
+                poolId: String(pool.id),
+                kind: 'RESERVATION',
+                delta: l.quantity,
+                channelOrderId: String(created.id),
+                note: `channel order ${ext.externalOrderId}`,
+              },
+            })
+            .catch(() => {})
+        }
+      }
 
       await logAuditAs(user, {
         entityType: 'ChannelOrder',

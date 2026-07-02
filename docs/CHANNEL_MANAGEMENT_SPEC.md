@@ -186,9 +186,15 @@ edits get overwritten (logged).
 - [ ] **C2.2:** On-demand routing — READY + approved ChannelOrder → create-order
       pipeline (`origin: CHANNEL`), auto-billing w/ OrderSettings spending cap,
       dispatch tagging, consumer ship-to on manifest, notifications
-- [ ] **C2.4:** Bulk — delivery-received intake (creator confirm UI) + go-live gate
-      enforcement on publish + reservation on sale + oversell guard (push 0) +
-      self-ship flow (mark fulfilled + tracking → pushback)
+- [~] **C2.4 (mostly shipped 2026-07-02):** pure inventory ledger math in
+      `@ilaunchify/channels` (applyLedgerEntry invariants + replayLedger
+      reconciliation — golden-tested); delivery-received intake (Sell-surface
+      "Record delivery", V1 manual — logistics automates later); go-live gates
+      ENFORCED on push (on-demand → enablement check + MADE_TO_ORDER inventory;
+      bulk → available>0 + derived qty push, else PUSHED with reason);
+      reservation written on READY bulk orders at ingest. REMAINING: self-ship
+      fulfillment flow (mark fulfilled + tracking → pushback + SALE conversion),
+      RELEASE on cancel, oversell zero-push on conflict.
 
 ### Phase C3 — TikTok Shop adapter
 - [ ] Partner Center app + OAuth2 + products/orders/fulfillment mapping to the seam

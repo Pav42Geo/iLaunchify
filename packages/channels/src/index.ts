@@ -20,6 +20,16 @@ export { createStubAdapter } from './adapters/stub'
 export { resolveChannelAdapter } from './resolve'
 
 export {
+  applyLedgerEntry,
+  availableToSell,
+  canReserve,
+  replayLedger,
+  type LedgerKind,
+  type PoolState,
+  type ApplyResult,
+} from './inventory'
+
+export {
   CHANNEL_ORDER_STATUSES,
   type ChannelOrderStatus,
   canTransition,

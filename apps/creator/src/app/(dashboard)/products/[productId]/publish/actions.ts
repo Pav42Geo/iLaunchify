@@ -3,7 +3,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { resolveChannelAdapter, variantKey, type ChannelCode, type ListingVariantInput } from '@ilaunchify/channels'
+import { resolveChannelAdapter, variantKey, applyLedgerEntry, type ChannelCode, type ListingVariantInput } from '@ilaunchify/channels'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -99,6 +99,8 @@ export interface SellData {
    *  manufacturer's enablement. 'NONE' = never requested; null manufacturer =
    *  product has no pinned manufacturer yet (can't request). */
   onDemand: { status: string; hasManufacturer: boolean; partnerNote: string | null }
+  /** Bulk stock (gate #2): the CREATOR-location pool for this product. */
+  stock: { onHand: number; reserved: number; available: number }
 }
 
 /** Everything the Sell section needs: connected channels + per-channel listing state. */
@@ -150,6 +152,21 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
       hasManufacturer: !!manufacturerServiceId,
       partnerNote: enablement?.partnerNote ?? null,
     },
+    stock: await (async () => {
+      const pool = await (
+        prisma as unknown as {
+          inventoryPool?: { findFirst: (a: unknown) => Promise<{ quantityOnHand: number; quantityReserved: number } | null> }
+        }
+      ).inventoryPool
+        ?.findFirst({
+          where: { creatorUserId: user.id, productId, storageLocationKind: 'CREATOR' },
+          select: { quantityOnHand: true, quantityReserved: true },
+        })
+        .catch(() => null)
+      const onHand = Number(pool?.quantityOnHand ?? 0)
+      const reserved = Number(pool?.quantityReserved ?? 0)
+      return { onHand, reserved, available: Math.max(0, onHand - reserved) }
+    })(),
     channels: connections.map((conn) => {
       const l = linkByChannel.get(conn.channelId) as
         | ((typeof links)[number] & { mode?: string; price?: unknown; publishState?: string; lastError?: string | null })
@@ -231,6 +248,65 @@ export async function configureListing(input: {
     payload: { channel: input.channelCode, mode: input.mode, price },
   })
   return { ok: true }
+}
+
+/** Record a received bulk delivery into the inventory pool (C2.4 intake).
+ *  V1 manual entry; the logistics workstream automates this from delivery
+ *  confirmations later. Pure invariants via applyLedgerEntry; audited. */
+export async function receiveDelivery(input: { productId: string; quantity: number }): Promise<SellActionResult> {
+  const user = await requireUser()
+  const qty = Math.floor(Number(input.quantity))
+  if (!Number.isFinite(qty) || qty <= 0) return { ok: false, error: 'Enter a positive quantity.' }
+  const product = await prisma.product.findFirst({
+    where: { id: input.productId, brand: { creatorProfile: { userId: user.id } } },
+    select: { id: true },
+  })
+  if (!product) return { ok: false, error: 'Product not found.' }
+
+  const poolDelegate = (
+    prisma as unknown as {
+      inventoryPool?: {
+        findFirst: (a: unknown) => Promise<{ id: string; quantityOnHand: number; quantityReserved: number } | null>
+        create: (a: unknown) => Promise<{ id: string }>
+        update: (a: unknown) => Promise<unknown>
+      }
+      inventoryLedger?: { create: (a: unknown) => Promise<unknown> }
+    }
+  )
+  if (!poolDelegate.inventoryPool) return { ok: false, error: 'Inventory tables not migrated yet — run db:push.' }
+
+  try {
+    let pool = await poolDelegate.inventoryPool.findFirst({
+      where: { creatorUserId: user.id, productId: product.id, storageLocationKind: 'CREATOR' },
+      select: { id: true, quantityOnHand: true, quantityReserved: true },
+    })
+    if (!pool) {
+      const created = await poolDelegate.inventoryPool.create({
+        data: { creatorUserId: user.id, productId: product.id, storageLocationKind: 'CREATOR' },
+      })
+      pool = { id: created.id, quantityOnHand: 0, quantityReserved: 0 }
+    }
+    const applied = applyLedgerEntry(
+      { onHand: Number(pool.quantityOnHand), reserved: Number(pool.quantityReserved) },
+      'DELIVERY_RECEIVED',
+      qty,
+    )
+    if (!applied.ok) return { ok: false, error: applied.reason }
+    await poolDelegate.inventoryPool.update({ where: { id: pool.id }, data: { quantityOnHand: applied.next.onHand } })
+    await poolDelegate.inventoryLedger?.create({
+      data: { poolId: pool.id, kind: 'DELIVERY_RECEIVED', delta: qty, actorUserId: user.id, note: 'manual intake (Sell surface)' },
+    })
+    await logAuditAs(user, {
+      entityType: 'InventoryPool',
+      entityId: pool.id,
+      action: 'INVENTORY_DELIVERY_RECEIVED',
+      payload: { productId: product.id, quantity: qty },
+    })
+    return { ok: true }
+  } catch (err) {
+    console.error('[channels] receiveDelivery failed:', err)
+    return { ok: false, error: 'Could not record the delivery.' }
+  }
 }
 
 /** Ask the pinned manufacturer to enable on-demand for this product (LOCKED
@@ -332,14 +408,58 @@ export async function pushListing(input: { productId: string; channelCode: strin
       },
     )
 
+    // Go-live gates (spec §3.3): ON_DEMAND needs the manufacturer's enablement;
+    // BULK needs received stock (available = onHand − reserved). Failing a gate
+    // isn't an error — the listing sits at PUSHED with the reason recorded.
+    const mode = (link.mode as 'ON_DEMAND' | 'BULK') ?? 'ON_DEMAND'
+    let live = false
+    let gateNote: string | null = null
+    if (mode === 'ON_DEMAND') {
+      const en = await (
+        prisma as unknown as { onDemandEnablement?: { findFirst: (a: unknown) => Promise<{ status: string } | null> } }
+      ).onDemandEnablement
+        ?.findFirst({ where: { creatorUserId: user.id, productId: product.id }, select: { status: true } })
+        .catch(() => null)
+      live = en?.status === 'ENABLED'
+      if (!live) gateNote = 'Awaiting manufacturer on-demand enablement.'
+    } else {
+      const pool = await (
+        prisma as unknown as {
+          inventoryPool?: { findFirst: (a: unknown) => Promise<{ quantityOnHand: number; quantityReserved: number } | null> }
+        }
+      ).inventoryPool
+        ?.findFirst({
+          where: { creatorUserId: user.id, productId: product.id },
+          select: { quantityOnHand: true, quantityReserved: true },
+        })
+        .catch(() => null)
+      const available = pool ? Math.max(0, Number(pool.quantityOnHand) - Number(pool.quantityReserved)) : 0
+      live = available > 0
+      if (live) {
+        // Push the derived available-to-sell to the channel (never hand-set).
+        for (const extId of Object.values(external.variantIds)) {
+          await adapter
+            .setInventory({ connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: { accessToken: 'stub' } }, extId, available)
+            .catch(() => {})
+        }
+      } else gateNote = 'Goes live once delivered stock is received.'
+    }
+    if (live && mode === 'ON_DEMAND') {
+      for (const extId of Object.values(external.variantIds)) {
+        await adapter
+          .setInventory({ connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: { accessToken: 'stub' } }, extId, 'MADE_TO_ORDER')
+          .catch(() => {})
+      }
+    }
+
     try {
       await prisma.channelProductLink.update({
         where: { id: link.id },
         data: {
           externalListingId: external.externalListingId,
           externalUrl: external.externalUrl ?? null,
-          publishState: 'PUSHED',
-          lastError: null,
+          publishState: live ? 'LIVE' : 'PUSHED',
+          lastError: gateNote,
           lastPushedAt: new Date(),
         } as object,
       })

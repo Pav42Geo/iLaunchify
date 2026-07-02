@@ -8,7 +8,7 @@
 
 import * as React from 'react'
 import { UploadCloud, Loader2, ExternalLink, AlertTriangle, Factory, Boxes, CheckCircle2, Clock } from 'lucide-react'
-import { configureListing, pushListing, loadSellData, requestOnDemandEnablement, type SellData, type SellChannelRow } from './actions'
+import { configureListing, pushListing, loadSellData, requestOnDemandEnablement, receiveDelivery, type SellData, type SellChannelRow } from './actions'
 
 const STATE_BADGE: Record<string, string> = {
   DRAFT: 'bg-ink-100 text-ink-600',
@@ -60,6 +60,22 @@ export function SellChannels({ productId, initial }: { productId: string; initia
           try {
             const res = await requestOnDemandEnablement(productId)
             flash(res.ok ? 'Request sent — your manufacturer will review the branding.' : res.error)
+            if (res.ok) await refresh()
+          } finally {
+            setBusy(null)
+          }
+        }}
+      />
+
+      {/* Bulk stock (gate #2) — from-stock listings go live only when available > 0. */}
+      <StockBar
+        stock={data.stock}
+        busy={busy === '__stock__'}
+        onReceive={async (qty) => {
+          setBusy('__stock__')
+          try {
+            const res = await receiveDelivery({ productId, quantity: qty })
+            flash(res.ok ? `Recorded ${qty} unit${qty === 1 ? '' : 's'} received.` : res.error)
             if (res.ok) await refresh()
           } finally {
             setBusy(null)
@@ -266,6 +282,51 @@ function OnDemandGate({
         {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Factory className="h-3 w-3" />}
         {state.status === 'DECLINED' || state.status === 'SUSPENDED' ? 'Request again' : 'Request enablement'}
       </button>
+    </div>
+  )
+}
+
+function StockBar({
+  stock,
+  busy,
+  onReceive,
+}: {
+  stock: SellData['stock']
+  busy: boolean
+  onReceive: (qty: number) => Promise<void>
+}) {
+  const [qty, setQty] = React.useState('')
+  const n = Math.floor(Number(qty))
+  const valid = Number.isFinite(n) && n > 0
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-3 py-2">
+      <p className="text-[12px] text-ink-600">
+        <Boxes className="mr-1 inline h-3.5 w-3.5 text-ink-400" />
+        <span className="font-semibold text-ink-800">{stock.available}</span> available to sell
+        {stock.reserved > 0 && <> · {stock.reserved} reserved</>}
+        {stock.onHand === 0 && ' — from-stock listings go live once a delivery is recorded'}
+      </p>
+      <div className="flex items-center gap-1.5">
+        <input
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+          inputMode="numeric"
+          placeholder="Qty"
+          className="w-20 rounded-lg border border-ink-200 px-2 py-1 text-[12px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+        />
+        <button
+          type="button"
+          onClick={async () => {
+            if (!valid) return
+            await onReceive(n)
+            setQty('')
+          }}
+          disabled={busy || !valid}
+          className="inline-flex items-center gap-1 rounded-full border border-ink-300 px-3 py-1 text-[11.5px] font-semibold text-ink-800 hover:bg-white disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : null} Record delivery
+        </button>
+      </div>
     </div>
   )
 }

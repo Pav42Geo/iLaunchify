@@ -105,6 +105,7 @@ export default async function PublishStubPage({
               flavors: [],
               channels: [],
               onDemand: { status: 'NONE', hasManufacturer: false, partnerNote: null },
+              stock: { onHand: 0, reserved: 0, available: 0 },
             }
           }
         />
