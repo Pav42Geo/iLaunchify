@@ -199,10 +199,13 @@ export function BrandDrawer({
       const type = o.type as string | undefined
       const isText = type === 'textbox' || type === 'i-text' || type === 'text'
       const locked = o.selectable === false || o.evented === false
-      const set = o.set as ((p: Record<string, unknown>) => void) | undefined
-      if (!isText || locked || !set) continue
-      if (fontFamily) set({ fontFamily })
-      if (color) set({ fill: color })
+      // Call set THROUGH the object — detaching it (const set = o.set) loses
+      // `this` and crashes inside Fabric ("reading 'constructor'").
+      const hasSet = typeof o.set === 'function'
+      if (!isText || locked || !hasSet) continue
+      const target = o as unknown as { set: (p: Record<string, unknown>) => void }
+      if (fontFamily) target.set({ fontFamily })
+      if (color) target.set({ fill: color })
       touched++
     }
     c.requestRenderAll()
