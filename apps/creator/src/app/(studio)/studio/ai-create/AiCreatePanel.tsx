@@ -186,6 +186,8 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   const [riffSource, setRiffSource] = useState<number | null>(null)
   // P3 lightbox — which concept is open large (null = closed).
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
+  // Live-provider failures surface here instead of silently showing placeholder tiles.
+  const [genError, setGenError] = useState<string | null>(null)
   const [setVariants, setSetVariants] = useState<{ id: string; label: string; svg: string }[]>([])
   const [masterGenerated, setMasterGenerated] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -315,8 +317,16 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     }
     if (!plan || !selected) return
     setBusy(true)
+    setGenError(null)
     try {
       const refs = props.onGenerate ? await props.onGenerate(plan, selected.id, genCtx) : []
+      // Live provider wired but nothing came back → surface the failure; don't
+      // masquerade placeholder composites as results. (No provider = demo mode,
+      // where the deterministic previews ARE the point.)
+      if (props.onGenerate && refs.length === 0) {
+        setGenError('Generation failed — the image provider returned nothing. Check the dev-server logs (fal/Recraft) and try again.')
+        return
+      }
       const next = refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg]
       setVariations(next)
       setViewOverrides({})
@@ -335,8 +345,13 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
   async function moreLikeThis(i: number) {
     if (!plan || !selected || busy) return
     setBusy(true)
+    setGenError(null)
     try {
       const refs = props.onGenerate ? await props.onGenerate(plan, selected.id, { ...genCtx, seed: i + 1 }) : []
+      if (props.onGenerate && refs.length === 0) {
+        setGenError('Riff failed — the image provider returned nothing. Check the dev-server logs and try again.')
+        return
+      }
       const next = refs.length > 0 ? refs : [plan.previewSvg, plan.previewSvg, plan.previewSvg, plan.previewSvg]
       setPrevBatch(variations)
       setRiffSource(i)
@@ -369,6 +384,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     setPrevBatch(null)
     setRiffSource(null)
     setLightboxIdx(null)
+    setGenError(null)
   }
 
   return (
@@ -543,6 +559,12 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
         )}
         {!gated && !props.onGenerate && (
           <p className="text-[11px] text-ink-400">Preview shows the deterministic composite. Connect an image provider to generate real art (P3).</p>
+        )}
+        {genError && (
+          <div className="flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[11.5px] text-warning-800">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{genError}</span>
+          </div>
         )}
       </div>
 

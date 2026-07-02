@@ -52,6 +52,26 @@ function periodKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+// Never let a hanging provider pin the Studio's Generate button — the fal adapter's
+// fetch has no abort, so cap the call here and surface a real error instead.
+const PROVIDER_TIMEOUT_MS = 55_000
+function withTimeout<T>(p: Promise<T>, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${PROVIDER_TIMEOUT_MS / 1000}s`)), PROVIDER_TIMEOUT_MS),
+    ),
+  ])
+}
+
+/** Providers take URLs / data URIs for image inputs — raw SVG markup won't do.
+ *  planGeneration's maskSvg (and SVG concepts used as reshape references) encode here. */
+function toImageSource(v?: string): string | undefined {
+  if (!v) return undefined
+  const s = v.trim()
+  return s.startsWith('<svg') ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}` : s
+}
+
 function meteredTier(tier: string): CreatorBillingTier {
   return (['builder', 'agency'] as const).includes(tier as never) ? (tier as CreatorBillingTier) : tier === 'admin' ? 'agency' : 'maker'
 }
@@ -181,22 +201,34 @@ export async function generateAiConcepts(input: GenerateConceptsInput): Promise<
     })
     .catch(() => null)
 
-  const result = await runDraftGeneration({
-    provider,
-    limits,
-    usedCycles,
-    request: {
-      prompt: input.prompt,
-      negativePrompt: input.negativePrompt,
-      mask: input.mask,
-      widthPx: input.widthPx,
-      heightPx: input.heightPx,
-      n,
-      brandRefUrl: input.brandRefUrl,
-      palette: input.brandPalette,
-      seed: input.seed,
-    },
-  })
+  let result: Awaited<ReturnType<typeof runDraftGeneration>>
+  try {
+    result = await withTimeout(
+      runDraftGeneration({
+        provider,
+        limits,
+        usedCycles,
+        request: {
+          prompt: input.prompt,
+          negativePrompt: input.negativePrompt,
+          mask: toImageSource(input.mask),
+          widthPx: input.widthPx,
+          heightPx: input.heightPx,
+          n,
+          brandRefUrl: toImageSource(input.brandRefUrl),
+          palette: input.brandPalette,
+          seed: input.seed,
+        },
+      }),
+      'Draft generation',
+    )
+  } catch (err) {
+    // Provider throw / timeout — log the real cause server-side, fail the row, and
+    // return a caller-visible error (the panel surfaces it; nothing hangs).
+    console.error('[ai-create] draft generation failed:', err)
+    if (gen) await genDelegate()?.update({ where: { id: gen.id }, data: { status: 'FAILED' } }).catch(() => {})
+    return { ok: false, error: err instanceof Error ? err.message : 'Generation failed.' }
+  }
 
   if (!result.ok) {
     if (gen) await genDelegate()?.update({ where: { id: gen.id }, data: { status: 'FAILED' } }).catch(() => {})
@@ -262,18 +294,27 @@ export async function finalizeAiConcept(input: FinalizeConceptInput): Promise<Fi
   const usedBytes = (storage?.kilobytesUsed ?? 0) * 1024
 
   const provider = resolveImageGenProvider(process.env as Record<string, string | undefined>)
-  const result = await runFinalizeGeneration({
-    provider,
-    limits,
-    usedMp,
-    usedBytes,
-    draft: { kind: input.concept.svg ? 'vector' : 'raster', svg: input.concept.svg, url: input.concept.url, width: input.concept.width, height: input.concept.height },
-    widthMm: input.widthMm,
-    heightMm: input.heightMm,
-    dpi: input.dpi,
-    svgBytes: input.svgBytes,
-    thumbBytes: input.thumbBytes,
-  })
+  let result: Awaited<ReturnType<typeof runFinalizeGeneration>>
+  try {
+    result = await withTimeout(
+      runFinalizeGeneration({
+        provider,
+        limits,
+        usedMp,
+        usedBytes,
+        draft: { kind: input.concept.svg ? 'vector' : 'raster', svg: input.concept.svg, url: input.concept.url, width: input.concept.width, height: input.concept.height },
+        widthMm: input.widthMm,
+        heightMm: input.heightMm,
+        dpi: input.dpi,
+        svgBytes: input.svgBytes,
+        thumbBytes: input.thumbBytes,
+      }),
+      'Finalize',
+    )
+  } catch (err) {
+    console.error('[ai-create] finalize failed:', err)
+    return { ok: false, error: err instanceof Error ? err.message : 'Finalize failed.' }
+  }
 
   if (!result.ok) return { ok: false, error: result.reason ?? 'Finalize failed.' }
 
