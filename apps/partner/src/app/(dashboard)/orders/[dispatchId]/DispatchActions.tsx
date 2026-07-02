@@ -20,6 +20,7 @@ import {
   requestCancellation,
   type FlaggedField,
 } from './actions'
+import { BuyLabelPanel } from './BuyLabelPanel'
 
 // Phase L1.1b — server-computed shipping-gate summary (page.tsx derives it via
 // getDispatchShippingContext). The ShipPanel renders the block/allow state and
@@ -32,6 +33,9 @@ export interface ShipPanelShippingData {
   storageClass: string
   /** ShipmentMode — freight (LTL/FTL) reveals the trailer-seal field. */
   mode: string
+  /** Phase L2a — server-computed: EasyPost gate on + env key present + doc
+      gate passes. Reveals the "Buy label with iLaunchify shipping" flow. */
+  platformLabelEnabled?: boolean
 }
 
 interface Props {
@@ -899,6 +903,17 @@ function ShipPanel({
             </ul>
             <p className="mt-1">Upload them in the Shipping requirements card first.</p>
           </div>
+        )}
+        {/* Phase L2a — platform label purchase; prefills carrier + tracking
+            below on success. The partner still confirms the shipment. */}
+        {shipping?.platformLabelEnabled && !blocked && (
+          <BuyLabelPanel
+            dispatchId={dispatchId}
+            onPurchased={(label) => {
+              setCarrier(label.carrier)
+              setTracking(label.trackingNumber)
+            }}
+          />
         )}
         <div className="space-y-1.5">
           <Label htmlFor="carrier">Carrier</Label>

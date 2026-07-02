@@ -46,6 +46,7 @@ import {
 } from '@ilaunchify/ui'
 import type { CheckoutDraftState } from './types'
 import { checkProductRestrictions } from './restriction-actions'
+import { quoteCarrierShipping } from './fulfillment-actions'
 import { loadProductLabelCompliance } from '@/lib/dieline-compliance'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -375,9 +376,31 @@ export async function placeOrderFromCheckoutDraft(
   const creatorTier = await getCreatorTier(user.id)
   const orderSettings = await resolveOrderSettings({ creatorTier })
 
-  // --- 6. Shipping (admin-tunable flat rate; free over an optional threshold).
-  //        Falls back to the V1 per-unit tiers when no flat rate is configured.
-  const baseShippingCents = estimateFlatShipping(qty, state.fulfillment.shipToType, orderSettings)
+  // --- 6. Shipping — Phase L2 / L5: try the SAME live carrier quote the Step-4
+  //        estimate used (rate + OrderSettings.firstLegMarginBps margin) against
+  //        the resolved concrete ship-to, so the number the creator saw is the
+  //        number that books. quoteCarrierShipping returns null on ANY failure
+  //        (gate off, no key, non-US / placeholder address, gateway timeout, no
+  //        eligible rate) → fall back silently to the admin-tunable flat rate /
+  //        V1 per-unit tiers. HOLD orders have no ship leg at order time
+  //        (estimateFlatShipping already returns 0 for them).
+  let baseShippingCents = estimateFlatShipping(qty, state.fulfillment.shipToType, orderSettings)
+  if (shipTo.data.shipToType !== 'HOLD_AT_MANUFACTURER') {
+    const carrierQuote = await quoteCarrierShipping({
+      productId: product.id,
+      quantity: qty,
+      destination: {
+        name: shipTo.data.contactName,
+        street1: shipTo.data.addressLine1,
+        street2: shipTo.data.addressLine2,
+        city: shipTo.data.city,
+        state: shipTo.data.state,
+        zip: shipTo.data.postalCode,
+        country: shipTo.data.country,
+      },
+    })
+    if (carrierQuote) baseShippingCents = carrierQuote.shippingCents
+  }
   const freeThreshold = orderSettings.freeShippingThresholdCents
   const shippingCents =
     freeThreshold != null && productionTotalCents >= freeThreshold ? 0 : baseShippingCents

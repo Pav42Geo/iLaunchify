@@ -82,6 +82,7 @@ import {
   Truck,
   Warehouse,
   Send,
+  Route,
   SlidersHorizontal,
   RotateCcw,
   Wallet,
@@ -175,14 +176,15 @@ const PRIMARY: SidebarRegion = {
     },
     // ---- Logistics (Phase L1c — docs/LOGISTICS_AND_FULFILLMENT.md §9) --------
     // Only built surfaces are listed (hide-until-built rule); the remaining
-    // /logistics pages (carriers, channel-plans) get added as they ship.
-    // Shipments added in Phase L1.1c.
+    // /logistics pages (channel-plans) get added as they ship.
+    // Shipments added in Phase L1.1c; Carriers added in Phase L2b.
     {
       kind: 'group',
       label: 'Logistics',
       icon: Truck,
       children: [
         { kind: 'item', label: 'Shipments', icon: Send, href: '/logistics/shipments' },
+        { kind: 'item', label: 'Carriers', icon: Route, href: '/logistics/carriers' }, // Phase L2 — CarrierServiceRule matrix + integration status
         { kind: 'item', label: 'Fulfillment centers', icon: Warehouse, href: '/logistics/fulfillment-centers' },
         { kind: 'item', label: 'Logistics gates', icon: SlidersHorizontal, href: '/logistics/settings', capability: 'platform:admin' },
       ],

@@ -25,7 +25,7 @@
 //   action re-runs the same eligibility server-side — this is display data,
 //   never the enforcement point.
 
-import { prisma, getLogisticsSettings, isStorageClassEnabled } from '@ilaunchify/db'
+import { prisma, getLogisticsSettings, isLogisticsEnabled, isStorageClassEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import {
   resolveDestinationOptions,
@@ -33,6 +33,16 @@ import {
   type DestinationOption,
   type FcCandidate,
 } from '@ilaunchify/orders'
+import {
+  EasyPostParcelGateway,
+  createFetchEasyPostHttp,
+  classifyShipment,
+  eligibleCarrierServices,
+  shopRates,
+  applyFirstLegMargin,
+  type CarrierServiceRuleRow,
+  type ShippingDomain,
+} from '@ilaunchify/shipping'
 import { revalidatePath } from 'next/cache'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -446,8 +456,18 @@ export async function saveCreatorAddress(input: {
 }
 
 // -----------------------------------------------------------------------------
-// ESTIMATE SHIPPING — V1 flat-rate placeholder
+// ESTIMATE SHIPPING — Phase L2 live carrier quote (L5) with flat-rate fallback
 // -----------------------------------------------------------------------------
+//
+// L5 (docs/LOGISTICS_AND_FULFILLMENT.md §10): the creator pays first-leg
+// freight at checkout as a quoted line item — carrier rate + admin-tunable
+// margin (OrderSettings.firstLegMarginBps). The live path runs only when the
+// EasyPost rail is admin-enabled (LogisticsSetting `carrier:easypost`), the
+// EASYPOST_API_KEY env is present, AND the destination resolves to a concrete
+// US address (saved address / warehouse partner address). ANY failure — gate
+// off, no key, unresolvable address, gateway error/timeout, no eligible rate —
+// falls back silently to the V1 flat logic. `quoteSource` tells the UI which
+// path produced the number.
 
 export interface EstimateShippingInput {
   productId: string
@@ -463,25 +483,53 @@ export interface EstimateShippingInput {
   quantity: number
 }
 
+export interface EstimateShippingResult {
+  shippingCents: number
+  leadTimeBusinessDays: number
+  /** 'carrier' = live EasyPost rate + margin (L5) · 'flat' = V1 rate-card. */
+  quoteSource: 'carrier' | 'flat'
+}
+
 export async function estimateShipping(
   input: EstimateShippingInput,
-): Promise<Result<{ shippingCents: number; leadTimeBusinessDays: number }>> {
-  const { error } = await authorize(input.productId)
+): Promise<Result<EstimateShippingResult>> {
+  const { user, error } = await authorize(input.productId)
   if (error) return { ok: false, error }
 
-  // V1 rate-card. Real carrier integration (Shippo / EasyPost) lands V1.5+.
-  // Forward marker: a real estimator reads partner-of-origin + ship-to
-  // ZIP + per-unit weight to produce a rate. We approximate with a
-  // tiered per-unit cost that gets cheaper at higher quantities.
   const qty = Math.max(0, Math.floor(input.quantity || 0))
-  if (qty === 0) return { ok: true, data: { shippingCents: 0, leadTimeBusinessDays: 0 } }
+  if (qty === 0) {
+    return { ok: true, data: { shippingCents: 0, leadTimeBusinessDays: 0, quoteSource: 'flat' } }
+  }
 
   // HOLD_AT_MANUFACTURER — goods never leave the producer's dock at order
   // time; storage bills monthly via the StorageAgreement, not as shipping.
   if (input.shipToType === 'HOLD_AT_MANUFACTURER') {
-    return { ok: true, data: { shippingCents: 0, leadTimeBusinessDays: 0 } }
+    return { ok: true, data: { shippingCents: 0, leadTimeBusinessDays: 0, quoteSource: 'flat' } }
   }
 
+  // ---- Live carrier quote (Phase L2 / L5) -----------------------------------
+  const destination = await resolveQuoteDestination(user.id, input)
+  if (destination) {
+    const quote = await quoteCarrierShipping({
+      productId: input.productId,
+      quantity: qty,
+      destination,
+    })
+    if (quote) {
+      const fallbackLead =
+        input.shipToType === 'CLOSEST_WAREHOUSE' || input.shipToType === 'SPECIFIC_WAREHOUSE' ? 3 : 5
+      return {
+        ok: true,
+        data: {
+          shippingCents: quote.shippingCents,
+          leadTimeBusinessDays: quote.transitDays ?? fallbackLead,
+          quoteSource: 'carrier',
+        },
+      }
+    }
+  }
+
+  // ---- Flat fallback — V1 rate-card (unchanged) ------------------------------
   // Tier per-unit rate (cents).
   let perUnitCents: number
   if (qty < 100) perUnitCents = 95
@@ -495,7 +543,7 @@ export async function estimateShipping(
   if (input.shipToType === 'CLOSEST_WAREHOUSE' || input.shipToType === 'SPECIFIC_WAREHOUSE') {
     modeMultiplier = 0.78
   }
-  // International — flat surcharge until V1.5 carrier integration lands.
+  // International — flat surcharge until the carrier rail covers non-US lanes.
   if (input.newAddressCountry && input.newAddressCountry !== 'US') {
     modeMultiplier = 2.1
   }
@@ -506,5 +554,273 @@ export async function estimateShipping(
       ? 3
       : 5
 
-  return { ok: true, data: { shippingCents, leadTimeBusinessDays } }
+  return { ok: true, data: { shippingCents, leadTimeBusinessDays, quoteSource: 'flat' } }
+}
+
+// -----------------------------------------------------------------------------
+// CARRIER QUOTE HELPER — shared with cart-actions.ts (order placement uses the
+// same quote path so the number the creator saw is the number that books).
+// -----------------------------------------------------------------------------
+
+export interface CarrierQuoteDestination {
+  name: string
+  street1: string
+  street2?: string | null
+  city: string
+  state?: string | null
+  zip: string
+  country: string
+}
+
+export interface CarrierQuoteResult {
+  /** Carrier rate + OrderSettings.firstLegMarginBps margin (L5), integer cents. */
+  shippingCents: number
+  carrier: string
+  service: string
+  transitDays: number | null
+}
+
+/** Keep checkout snappy — the gateway call is raced against this timeout. */
+const CARRIER_QUOTE_TIMEOUT_MS = 5_000
+
+const US_ZIP_RE = /^\d{5}(-\d{4})?$/
+
+/**
+ * Attempt a live EasyPost parcel quote for one order (Phase L2, decision L5).
+ * Returns null on ANY failure or ineligibility — callers fall back to the flat
+ * rate silently. Exported from a 'use server' file (= an invokable endpoint),
+ * so it runs the same creator-ownership fence as every action in this file.
+ */
+export async function quoteCarrierShipping(input: {
+  productId: string
+  quantity: number
+  destination: CarrierQuoteDestination
+}): Promise<CarrierQuoteResult | null> {
+  try {
+    const { error } = await authorize(input.productId)
+    if (error) return null
+
+    // Gates: env key first (cheap), then the admin LogisticsSetting toggle.
+    // Key comes from env only — integrations-registry rule, never the DB.
+    const apiKey = process.env.EASYPOST_API_KEY
+    if (!apiKey) return null
+    if (!(await isLogisticsEnabled('carrier:easypost'))) return null
+
+    // US-only + sanity — placeholder partner addresses ('Address on file' /
+    // '00000') must never reach the carrier API.
+    const dest = input.destination
+    if (dest.country !== 'US') return null
+    if (!US_ZIP_RE.test(dest.zip) || dest.zip.startsWith('00000')) return null
+    if (!dest.street1.trim() || dest.street1 === 'Address on file' || !dest.city.trim()) return null
+
+    // Origin = the pinned manufacturer's address (routing is owner-pinned —
+    // the producing service is fixed on the ProductTemplate).
+    const product = await prisma.product.findUnique({
+      where: { id: input.productId },
+      select: {
+        productTemplate: {
+          select: {
+            storageClass: true,
+            hazmatClass: true,
+            meltable: true,
+            labelingType: true,
+            manufacturerService: {
+              select: {
+                partner: {
+                  select: {
+                    companyName: true,
+                    contactPhone: true,
+                    addressLine1: true,
+                    addressLine2: true,
+                    city: true,
+                    state: true,
+                    postalCode: true,
+                    country: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+    const template = product?.productTemplate ?? null
+    const origin = template?.manufacturerService?.partner ?? null
+    if (!template || !origin?.addressLine1 || !origin.city || !origin.postalCode) return null
+    if (origin.country !== 'US' || !US_ZIP_RE.test(origin.postalCode)) return null
+
+    // V1 representative parcel — PLACEHOLDER until case-pack dims exist on the
+    // template/packaging: 12"×12"×12", weight scales with quantity clamped to
+    // 5–50 lb. ONE parcel only — this is a checkout ESTIMATE, not the booked
+    // manifest, so we deliberately do NOT multiply the rate by carton count.
+    const qty = Math.max(1, Math.floor(input.quantity))
+    const parcel = {
+      lengthIn: 12,
+      widthIn: 12,
+      heightIn: 12,
+      weightLb: Math.min(50, Math.max(5, qty * 0.5)),
+    }
+
+    // Stage 1 — classify (prisma enum values mirror the shipping unions 1:1).
+    const shipment = classifyShipment({
+      domain: toShippingDomain(template.labelingType),
+      storageClass: template.storageClass,
+      hazmatClass: template.hazmatClass,
+      meltable: template.meltable,
+      cartons: [parcel],
+    })
+    // One representative carton always classifies PARCEL, but keep the guard —
+    // the EasyPost rail is parcel-only (LTL = ShipEngine, behind its own flag).
+    if (shipment.mode !== 'PARCEL') return null
+
+    // Stage 2 — eligibility matrix over ACTIVE CarrierServiceRule rows.
+    const ruleRows = await prisma.carrierServiceRule.findMany({ where: { active: true } })
+    const rules: CarrierServiceRuleRow[] = ruleRows.map((r) => ({
+      id: r.id,
+      carrier: r.carrier,
+      serviceLevel: r.serviceLevel,
+      modes: r.modes,
+      storageClasses: r.storageClasses,
+      hazmatAllowed: r.hazmatAllowed,
+      maxWeightLb: r.maxWeightLb,
+      maxTransitDays: r.maxTransitDays,
+      groundOnly: r.groundOnly,
+      seasonalWindowJson: r.seasonalWindowJson,
+      priority: r.priority,
+      active: r.active,
+    }))
+    const eligible = eligibleCarrierServices(rules, shipment, {
+      meltable: template.meltable,
+      plannedShipDate: new Date(),
+    })
+    if (eligible.length === 0) return null
+
+    // Stage 3 — live rate-shop, raced against a 5s timeout so checkout never
+    // hangs on the carrier API. The gateway promise carries its own .catch so
+    // a late rejection after the timeout can't surface as unhandled.
+    const gateway = new EasyPostParcelGateway(createFetchEasyPostHttp(), apiKey)
+    const ratePromise = gateway
+      .rate({
+        from: {
+          name: origin.companyName,
+          phone: origin.contactPhone,
+          street1: origin.addressLine1,
+          street2: origin.addressLine2,
+          city: origin.city,
+          state: origin.state,
+          zip: origin.postalCode,
+          country: origin.country,
+        },
+        to: {
+          name: dest.name,
+          street1: dest.street1,
+          street2: dest.street2 ?? null,
+          city: dest.city,
+          state: dest.state ?? null,
+          zip: dest.zip,
+          country: dest.country,
+        },
+        parcels: [parcel],
+      })
+      .catch(() => null)
+    const rated = await Promise.race([
+      ratePromise,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), CARRIER_QUOTE_TIMEOUT_MS)),
+    ])
+    if (!rated) return null
+
+    const shopped = shopRates(rated.quotes, eligible, shipment)
+    if (!shopped.chosen) return null
+
+    // L5 — creator pays rate + admin-tunable margin. firstLegMarginBps lives
+    // on the OrderSettings singleton (not surfaced by getOrderSettings() yet).
+    const settings = await prisma.orderSettings
+      .findUnique({ where: { id: 'default' }, select: { firstLegMarginBps: true } })
+      .catch(() => null)
+    const marginBps = settings?.firstLegMarginBps ?? 0
+
+    return {
+      shippingCents: applyFirstLegMargin(shopped.chosen.rateCents, marginBps),
+      carrier: shopped.chosen.carrier,
+      service: shopped.chosen.service,
+      transitDays: shopped.chosen.transitDays,
+    }
+  } catch {
+    // ANY failure ⇒ null ⇒ the caller books the flat rate, silently.
+    return null
+  }
+}
+
+/** LabelingType → ShippingDomain (same vocabulary; OTC has no shipping domain,
+ *  and the classifier doesn't branch on domain today — default to FOOD). */
+function toShippingDomain(labelingType: string): ShippingDomain {
+  const known: readonly string[] = [
+    'FOOD',
+    'BEVERAGE',
+    'DIETARY_SUPPLEMENT',
+    'PET_PRODUCT',
+    'BABY_NUTRITION',
+    'COSMETIC',
+  ]
+  return known.includes(labelingType) ? (labelingType as ShippingDomain) : 'FOOD'
+}
+
+/**
+ * Resolve the estimate input to a concrete quoteable address. Only saved
+ * addresses and a PICKED warehouse resolve — NEW_ADDRESS carries just a
+ * country in this input (unchanged for backward compatibility), and
+ * CLOSEST_WAREHOUSE without a pick has no node yet. Both fall back to flat.
+ */
+async function resolveQuoteDestination(
+  userId: string,
+  input: EstimateShippingInput,
+): Promise<CarrierQuoteDestination | null> {
+  if (input.shipToType === 'SAVED_ADDRESS' && input.savedAddressId) {
+    const a = await prisma.creatorSavedAddress.findFirst({
+      where: { id: input.savedAddressId, creatorUserId: userId },
+    })
+    if (!a) return null
+    return {
+      name: a.contactName,
+      street1: a.addressLine1,
+      street2: a.addressLine2,
+      city: a.city,
+      state: a.state,
+      zip: a.postalCode,
+      country: a.country,
+    }
+  }
+  if (
+    (input.shipToType === 'SPECIFIC_WAREHOUSE' || input.shipToType === 'CLOSEST_WAREHOUSE') &&
+    input.warehousePartnerServiceId
+  ) {
+    const w = await prisma.partnerService.findFirst({
+      where: { id: input.warehousePartnerServiceId, type: 'WAREHOUSE', status: 'ACTIVE' },
+      select: {
+        partner: {
+          select: {
+            companyName: true,
+            addressLine1: true,
+            addressLine2: true,
+            city: true,
+            state: true,
+            postalCode: true,
+            country: true,
+          },
+        },
+      },
+    })
+    const p = w?.partner
+    if (!p?.addressLine1 || !p.city || !p.postalCode) return null
+    return {
+      name: p.companyName,
+      street1: p.addressLine1,
+      street2: p.addressLine2,
+      city: p.city,
+      state: p.state,
+      zip: p.postalCode,
+      country: p.country,
+    }
+  }
+  return null
 }

@@ -6,7 +6,7 @@
 // event timeline, and a tracking panel. The action rail (DispatchActions),
 // change-request card and production manifest are unchanged.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, isLogisticsEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -144,6 +144,17 @@ export default async function DispatchDetailPage({
   const qcPhotos: UploadedShipDoc[] = shippingCtx
     ? shippingCtx.documents.filter((d) => d.type === 'QC_PHOTO').map(toUploadedDoc)
     : []
+
+  // ---- Phase L2a — platform label purchase gate ----------------------------
+  // Visible only when the EasyPost rail is admin-enabled AND the env key is
+  // configured (presence checked HERE server-side — the key itself never
+  // reaches the client) AND the doc gate passes. label-actions.ts re-checks
+  // all of this server-side on every call; this boolean is UX only.
+  const platformLabelEnabled =
+    dispatch.status === 'READY' &&
+    shippingCtx?.gate.canShip === true &&
+    Boolean(process.env.EASYPOST_API_KEY) &&
+    (await isLogisticsEnabled('carrier:easypost'))
 
   // ---- Phase L1.2a — storage releases (HOLD_AT_MANUFACTURER) ---------------
   // The card renders only when this dispatch belongs to the STORING service —
@@ -403,6 +414,7 @@ export default async function DispatchDetailPage({
                     // the product's cold-chain fields on a label shipment.
                     storageClass: shippingCtx.docGateApplies ? shippingCtx.storageClass : 'AMBIENT',
                     mode: shippingCtx.mode,
+                    platformLabelEnabled,
                   }
                 : undefined
             }

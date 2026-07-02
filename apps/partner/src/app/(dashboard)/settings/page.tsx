@@ -8,6 +8,7 @@ import {
   FileText,
   SlidersHorizontal,
   Warehouse,
+  Truck,
 } from 'lucide-react'
 import { prisma, getBillingProfile } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
@@ -162,6 +163,13 @@ export default async function SettingsPage() {
           href="/settings/storage"
           cta="Set storage offering"
           description="Offer finished-goods storage at your facility — storage classes, monthly rates within admin-approved bands, and ship-on-demand."
+        />
+        <SettingCard
+          icon={<Truck className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Carrier & shipping"
+          href="/settings/shipping"
+          cta="Set up carriers"
+          description="Buy discounted parcel labels through iLaunchify shipping, or connect your own negotiated carrier account for dispatch labels."
         />
       </Section>
 
