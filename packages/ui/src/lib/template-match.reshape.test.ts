@@ -8,7 +8,7 @@
  *   node /tmp/reshape/template-match.reshape.test.js
  * Also executed by scripts/run-vitest-suites.mjs.
  */
-import { classifyReshape, containerShapeKind, reshapeCropSvg, aspectBucketFor } from './template-match'
+import { classifyReshape, containerShapeKind, reshapeCropSvg, reshapeFidelity, aspectBucketFor } from './template-match'
 
 let failures = 0
 function assert(cond: boolean, msg: string) {
@@ -91,6 +91,36 @@ assert(containerShapeKind(null) === 'FLAT', 'null → FLAT')
   const out = reshapeCropSvg('<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>', 120, 40)
   assert(out.includes('data:image/svg+xml;charset=utf-8,'), 'raw SVG source embeds as a data URL')
   assert(out.includes('viewBox="0 0 120 40"'), 'raw SVG crop carries target viewBox')
+}
+
+// --- focal crop (P3): explicit cover window keeps the focal point in frame ---
+{
+  // Source 3:1 wide, target 1:1 (100×100). Cover render: 300×100. Focal at x=0.9
+  // wants center 270 → clamped to max offset 200.
+  const out = reshapeCropSvg('https://cdn.example.com/wide.png', 100, 100, { sourceAspect: 3, focal: { x: 0.9, y: 0.5 } })
+  assert(out.includes('preserveAspectRatio="none"'), 'focal crop uses an explicit window (no PAR alignment)')
+  assert(out.includes('width="300"') && out.includes('x="-200"'), 'focal x=0.9 on 3:1→1:1 clamps to the right edge (offset 200)')
+}
+{
+  // Focal at dead center reproduces the centered window: offset (300-100)/2 = 100.
+  const out = reshapeCropSvg('https://cdn.example.com/wide.png', 100, 100, { sourceAspect: 3, focal: { x: 0.5, y: 0.5 } })
+  assert(out.includes('x="-100"'), 'centered focal reproduces the center crop window')
+}
+{
+  // No focal info → unchanged legacy center-slice behavior.
+  const out = reshapeCropSvg('https://cdn.example.com/art.png', 100, 150)
+  assert(out.includes('preserveAspectRatio="xMidYMid slice"'), 'without focal info the center slice is preserved')
+}
+
+// --- reshape fidelity (P3): honest survival indicator per method ---
+{
+  assert(reshapeFidelity('DIRECT').score === 100 && reshapeFidelity('DIRECT').label === 'exact', 'DIRECT → 100 exact')
+  const crop = reshapeFidelity('CROP', 3, 1) // 3:1 → 1:1 cover keeps 1/3 of the art
+  assert(crop.score === 33 && crop.label === 'cropped', 'CROP 3:1→1:1 → 33 cropped')
+  const ext = reshapeFidelity('OUTPAINT', 1, 2) // extended canvas: original is half the output
+  assert(ext.score === 50 && ext.label === 'extended', 'OUTPAINT 1:1→2:1 → 50 extended')
+  assert(reshapeFidelity('REF_REGEN', 1, 1).label === 'reinterpreted', 'REF_REGEN → reinterpreted')
+  assert(reshapeFidelity('CROP').score === 100, 'unknown aspects degrade to method-only signal')
 }
 
 // --- driving example: 4×12in can wrap (304.8 × 101.6 mm) buckets as WRAP ---

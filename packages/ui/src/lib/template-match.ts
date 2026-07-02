@@ -329,14 +329,69 @@ function escapeAttr(v: string): string {
 
 /**
  * Deterministic focal cover-crop (reshape rung R2): wrap the source art in an SVG
- * sized to the TARGET surface, letting native `preserveAspectRatio="xMidYMid slice"`
- * do the center-weighted cover-crop. Source may be raw SVG markup or an image URL /
- * data URL. Pure string → string; render-identical everywhere SVG renders.
+ * sized to the TARGET surface. Default is a center cover-crop via native
+ * `preserveAspectRatio="xMidYMid slice"`. When the caller knows the source aspect
+ * AND a focal point (saliency detection — see the Studio drawer's detectFocalPoint),
+ * the crop window is computed explicitly so the focal point stays in frame:
+ * `focal` is the normalized (0..1) point to keep centered where possible.
+ * Pure string → string; render-identical everywhere SVG renders.
  */
-export function reshapeCropSvg(source: string, targetWidthMm: number, targetHeightMm: number): string {
+export function reshapeCropSvg(
+  source: string,
+  targetWidthMm: number,
+  targetHeightMm: number,
+  opts?: { sourceAspect?: number; focal?: { x: number; y: number } },
+): string {
   const s = source.trim()
   const href = s.startsWith('<svg') ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}` : s
   const w = Math.max(1, Math.round(targetWidthMm * 10) / 10)
   const h = Math.max(1, Math.round(targetHeightMm * 10) / 10)
+
+  const srcAspect = opts?.sourceAspect
+  const focal = opts?.focal
+  if (srcAspect && srcAspect > 0 && focal) {
+    // Explicit cover window: render the source at cover scale (no distortion —
+    // the rect matches the source aspect exactly), offset so the focal point sits
+    // as close to the target center as the overflow allows.
+    const targetAspect = w / h
+    const rw = srcAspect >= targetAspect ? h * srcAspect : w
+    const rh = srcAspect >= targetAspect ? h : w / srcAspect
+    const fx = Math.min(1, Math.max(0, focal.x))
+    const fy = Math.min(1, Math.max(0, focal.y))
+    const ox = Math.min(Math.max(fx * rw - w / 2, 0), Math.max(0, rw - w))
+    const oy = Math.min(Math.max(fy * rh - h / 2, 0), Math.max(0, rh - h))
+    const r = (v: number) => Math.round(v * 100) / 100
+    return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${w} ${h}" width="${w}mm" height="${h}mm"><image href="${escapeAttr(href)}" x="${r(-ox)}" y="${r(-oy)}" width="${r(rw)}" height="${r(rh)}" preserveAspectRatio="none"/></svg>`
+  }
+
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${w} ${h}" width="${w}mm" height="${h}mm"><image href="${escapeAttr(href)}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/></svg>`
+}
+
+/**
+ * Reshape fidelity (P3 quality scoring) — an HONEST, deterministic indicator of
+ * how much of the original design survives the routed method:
+ *   DIRECT    → 100, 'exact'          (same print rectangle)
+ *   CROP      → retained area share,  'cropped'       (cover-crop loses overflow)
+ *   OUTPAINT  → original-pixel share, 'extended'      (original intact, borders new)
+ *   REF_REGEN → 0,   'reinterpreted'  (new art in the same style — no pixel fidelity)
+ * Aspects default to 1 when unknown (score degrades to a method-only signal).
+ */
+export function reshapeFidelity(
+  method: ReshapeMethod,
+  sourceAspect?: number | null,
+  targetAspect?: number | null,
+): { score: number; label: 'exact' | 'cropped' | 'extended' | 'reinterpreted' } {
+  const a = sourceAspect && sourceAspect > 0 ? sourceAspect : 1
+  const b = targetAspect && targetAspect > 0 ? targetAspect : 1
+  const ratio = Math.min(a, b) / Math.max(a, b) // shared-area share for cover/extend
+  switch (method) {
+    case 'DIRECT':
+      return { score: 100, label: 'exact' }
+    case 'CROP':
+      return { score: Math.round(ratio * 100), label: 'cropped' }
+    case 'OUTPAINT':
+      return { score: Math.round(ratio * 100), label: 'extended' }
+    case 'REF_REGEN':
+      return { score: 0, label: 'reinterpreted' }
+  }
 }

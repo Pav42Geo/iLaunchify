@@ -123,11 +123,22 @@ Notes:
 - **P3:** per-face BOX targeting (reuse the glTF surface→face binding work), batch
   reshape (one design → the product's whole die-line SET → coordinated-set preview),
   saliency-based focal crop, reshape-quality scoring.
-  **Batch reshape SHIPPED 2026-07-02:** Library "Set" action (products with >1
-  die-lines) routes every surface independently — crops free, AI legs one cycle
-  each with an upfront cycle-count confirm, failures fall back to the crop —
-  and renders a dismissible coordinated-set block (per-surface Use-on-canvas +
-  download). Per-face BOX, saliency crop, and quality scoring remain open.
+  **SHIPPED 2026-07-02** (P3 complete except the Code leg):
+  - Batch reshape — Library "Set" action (products with >1 die-lines) routes every
+    surface independently: crops free, AI legs one cycle each with an upfront
+    cycle-count confirm, failures fall back to the crop; dismissible
+    coordinated-set review block (per-surface Use-on-canvas + download).
+  - Saliency focal crop — `detectFocalPoint` (gradient-energy centroid, 32×32
+    downsample, CORS-safe null → center) feeds `reshapeCropSvg`'s explicit crop
+    window (`sourceAspect` + `focal`), golden-tested clamping math.
+  - Fidelity scoring — `reshapeFidelity(method, srcAspect, tgtAspect)` →
+    exact 100 / cropped N% / extended N% / reinterpreted; badged on set cards
+    with honest tooltips. Golden-tested.
+  - **Per-face BOX targeting — HANDOFF TO CODE:** map a reshaped set's surfaces
+    onto a multi-panel box's faces using the glTF surface→face binding
+    (`assignSurfaceFaces`, commits a1435893/66bec197); the classifier already
+    routes multi-panel targets to S3 and the set block gives per-surface art —
+    Code owns wiring art→face in the 3D preview + per-face frame layouts.
 
 ## Ownership
 

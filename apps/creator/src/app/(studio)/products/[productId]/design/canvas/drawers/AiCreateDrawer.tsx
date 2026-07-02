@@ -19,7 +19,7 @@
 
 import * as React from 'react'
 import { Loader2, Wand2, ArrowUpRight, Sparkles, LibraryBig, ChevronLeft, ChevronRight } from 'lucide-react'
-import { applyAiConcept, findAiConcept, deriveTemplateTargeting, reshapeCropSvg, planGeneration, classifyReshape, type ReshapeRoute, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
+import { applyAiConcept, findAiConcept, deriveTemplateTargeting, reshapeCropSvg, reshapeFidelity, planGeneration, classifyReshape, type ReshapeRoute, type FabricCanvas, type FrameLayout, type GenerationPlan, type DieCutSpec } from '@ilaunchify/ui'
 import type { LabelingType } from '@ilaunchify/db'
 import { getAiCreateDrawerProps, getAiCreateDrawerPropsAdmin, generateAiConcepts, finalizeAiConcept, getGenerationBrief } from '../../../../../studio/ai-create/actions'
 import { AiCreatePanel, type AiCreatePanelProps, type DielineTarget, type GenerateContext } from '../../../../../studio/ai-create/AiCreatePanel'
@@ -77,6 +77,49 @@ function loadImageDims(src: string): Promise<{ w: number; h: number } | null> {
     img.onerror = () => resolve(null)
     img.src = src
   })
+}
+
+/** Cheap saliency (P3 focal crop): gradient-energy centroid over a 32×32
+ *  downsample — busy/detailed regions pull the crop window toward them. Returns
+ *  the normalized focal point, or null (load failure, CORS-tainted canvas, SSR)
+ *  in which case crops fall back to the center window. */
+async function detectFocalPoint(src: string): Promise<{ x: number; y: number } | null> {
+  if (typeof document === 'undefined') return null
+  try {
+    const img = new window.Image()
+    img.crossOrigin = 'anonymous'
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res()
+      img.onerror = () => rej(new Error('image load failed'))
+      img.src = src
+    })
+    const N = 32
+    const c = document.createElement('canvas')
+    c.width = N
+    c.height = N
+    const ctx = c.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(img, 0, 0, N, N)
+    const data = ctx.getImageData(0, 0, N, N).data
+    const lum = new Float32Array(N * N)
+    for (let i = 0; i < N * N; i++) lum[i] = 0.299 * data[i * 4]! + 0.587 * data[i * 4 + 1]! + 0.114 * data[i * 4 + 2]!
+    let sum = 0
+    let sx = 0
+    let sy = 0
+    for (let y = 1; y < N - 1; y++) {
+      for (let x = 1; x < N - 1; x++) {
+        const i = y * N + x
+        const e = Math.abs(lum[i + 1]! - lum[i - 1]!) + Math.abs(lum[i + N]! - lum[i - N]!)
+        sum += e
+        sx += e * x
+        sy += e * y
+      }
+    }
+    if (sum <= 0) return null
+    return { x: sx / sum / (N - 1), y: sy / sum / (N - 1) }
+  } catch {
+    return null
+  }
 }
 
 /** Per-side pixel expansion turning a source image's aspect into the target's
@@ -262,7 +305,9 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
 
   const [reshaping, setReshaping] = React.useState(false)
   // P3 batch reshape: one design carried across the WHOLE die-line set.
-  const [reshapeSet, setReshapeSet] = React.useState<{ id: string; label: string; svg: string }[] | null>(null)
+  const [reshapeSet, setReshapeSet] = React.useState<
+    { id: string; label: string; svg: string; fidelity: { score: number; label: string } }[] | null
+  >(null)
   const [reshapeSetSource, setReshapeSetSource] = React.useState<string | null>(null)
 
   type ReshapeItem = { id: string; thumbnailUrl?: string; title: string; hasBrief?: boolean; containerCategory?: string | null; aspectBucket?: string | null }
@@ -326,7 +371,10 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
     const h = dieCut.heightMm || 150
 
     if (route.method === 'CROP' || route.method === 'DIRECT') {
-      await applyToCanvas(reshapeCropSvg(item.thumbnailUrl, w, h))
+      // Saliency-aware crop (P3): keep the busiest region in frame; center fallback.
+      const [dims, focal] = await Promise.all([loadImageDims(item.thumbnailUrl), detectFocalPoint(item.thumbnailUrl)])
+      const opts = dims && focal ? { sourceAspect: dims.w / Math.max(1, dims.h), focal } : undefined
+      await applyToCanvas(reshapeCropSvg(item.thumbnailUrl, w, h, opts))
       setAppliedIndex(null)
       return
     }
@@ -381,22 +429,29 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
     setReshaping(true)
     try {
       const brief = item.hasBrief ? await getGenerationBrief(item.id).catch(() => null) : null
-      const out: { id: string; label: string; svg: string }[] = []
+      // Source dims + saliency once for all crop legs (P3 focal crop + fidelity).
+      const [dims, focal] = await Promise.all([loadImageDims(item.thumbnailUrl), detectFocalPoint(item.thumbnailUrl)])
+      const srcAspect = dims ? dims.w / Math.max(1, dims.h) : null
+      const cropOpts = dims && focal ? { sourceAspect: dims.w / Math.max(1, dims.h), focal } : undefined
+      const out: NonNullable<typeof reshapeSet> = []
       for (let i = 0; i < dielines.length; i++) {
         const d = dielines[i]!
         const route = routes[i]!
         const w = d.surface.widthMm || 100
         const h = d.surface.heightMm || 150
+        const fidelity = reshapeFidelity(route.method, srcAspect, w / Math.max(1, h))
         if (route.method === 'CROP' || route.method === 'DIRECT') {
-          out.push({ id: d.id, label: d.label, svg: reshapeCropSvg(item.thumbnailUrl, w, h) })
+          out.push({ id: d.id, label: d.label, svg: reshapeCropSvg(item.thumbnailUrl, w, h, cropOpts), fidelity })
           continue
         }
         // eslint-disable-next-line no-await-in-loop
         const res = await reshapeGenerate(item, d, route, brief)
+        const aiOk = res && res.ok && res.images[0]
         out.push({
           id: d.id,
           label: d.label,
-          svg: res && res.ok && res.images[0] ? res.images[0] : reshapeCropSvg(item.thumbnailUrl, w, h),
+          svg: aiOk ? res.images[0]! : reshapeCropSvg(item.thumbnailUrl, w, h, cropOpts),
+          fidelity: aiOk ? fidelity : reshapeFidelity('CROP', srcAspect, w / Math.max(1, h)),
         })
       }
       setReshapeSet(out)
@@ -570,7 +625,19 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
           <div className="grid grid-cols-2 gap-2">
             {reshapeSet.map((r) => (
               <div key={r.id} className="rounded-xl border border-ink-200 p-2">
-                <p className="mb-1 truncate text-[10.5px] font-semibold text-ink-500">{r.label}</p>
+                <div className="mb-1 flex items-center justify-between gap-1">
+                  <p className="min-w-0 truncate text-[10.5px] font-semibold text-ink-500">{r.label}</p>
+                  <span
+                    title={
+                      r.fidelity.label === 'reinterpreted'
+                        ? 'New art generated in the same style — no pixel fidelity'
+                        : `${r.fidelity.score}% of the original art survives`
+                    }
+                    className={`shrink-0 rounded px-1 py-0.5 text-[8.5px] font-bold uppercase tracking-wide ${r.fidelity.label === 'exact' ? 'bg-success-50 text-success-700' : r.fidelity.label === 'reinterpreted' ? 'bg-pink-50 text-pink-700' : 'bg-ink-100 text-ink-600'}`}
+                  >
+                    {r.fidelity.label === 'exact' ? 'exact' : r.fidelity.label === 'reinterpreted' ? 'restyle' : `${r.fidelity.label} ${r.fidelity.score}%`}
+                  </span>
+                </div>
                 <div className="[&_svg]:h-auto [&_svg]:w-full overflow-hidden rounded" dangerouslySetInnerHTML={{ __html: r.svg.trim().startsWith('<svg') ? r.svg : `<img src="${r.svg}" alt="${r.label}" style="width:100%;height:auto"/>` }} />
                 <div className="mt-1.5 flex gap-1 text-[10.5px]">
                   <button
