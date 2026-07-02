@@ -19,11 +19,19 @@ export default async function ChannelsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-ui-title">Channels</h1>
-        <p className="mt-1 text-sm text-ink-500">
-          {channels.length} registered · {enabledCount} enabled · {oauthReadyCount} with OAuth credentials configured
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-ui-title">Channels</h1>
+          <p className="mt-1 text-sm text-ink-500">
+            {channels.length} registered · {enabledCount} enabled · {oauthReadyCount} with OAuth credentials configured
+          </p>
+        </div>
+        <a
+          href="/channels/connections"
+          className="shrink-0 rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50"
+        >
+          Connections &amp; sync →
+        </a>
       </div>
 
       <Card className="border-warning-200 bg-warning-50/40">

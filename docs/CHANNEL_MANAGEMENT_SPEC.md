@@ -150,14 +150,19 @@ edits get overwritten (logged).
 
 ## 4. Implementation phases + scope checklist
 
-### Phase C0 — Foundation (no external keys needed)
-- [ ] `@ilaunchify/channels` package: `ChannelAdapter` type + deterministic stub adapter
-- [ ] Schema additions §3.2 (all additive) + `pnpm db:push` + seed 6 Channel rows check
-- [ ] `ChannelOrder` FSM helper + audit wiring (packages/orders or channels)
-- [ ] Creator `/channels` hub page (connect buttons stub-wired, health cards)
-- [ ] Product "Sell" tab shell: mode select, price input, push (stub), variant map view
-- [ ] Admin: connections list + ChannelSyncEvent log (admin-v2 pattern)
-- [ ] Notifications: channel-order events into `@ilaunchify/notifications`
+### Phase C0 — Foundation (no external keys needed) — **SHIPPED 2026-07-02**
+- [x] `@ilaunchify/channels` package: `ChannelAdapter` type + deterministic stub adapter
+      + `resolveChannelAdapter` (stub in dev, null in prod) + FSM goldens in the suite
+- [x] Schema additions §3.2 (all additive) + 10-channel seed (`pnpm db:push` on Pavel)
+- [x] `ChannelOrder` FSM helper (`evaluateReadiness` encodes both LOCKED gates +
+      spending cap + manual-confirm training wheels) — pure, golden-tested
+- [x] Creator `/channels` hub (stub connect end-to-end, tier caps 1/3/all, audited)
+- [x] Product Sell surface (upgraded /publish): mode + price w/ margin hint + push
+      through the seam; variant links written; sync events logged; cast-guarded pre-push
+- [x] Admin: /channels/connections — KPI strip, status chips, connections table,
+      recent sync-event log; linked from the registry
+- [→] Notifications: MOVED to C2 — channel-order events only exist once ingest lands;
+      nothing to notify about in C0
 
 ### Phase C1 — Shopify end-to-end (first real adapter)
 - [ ] Shopify public app (Dev Dashboard) + OAuth flow + token-ref storage + least scopes
