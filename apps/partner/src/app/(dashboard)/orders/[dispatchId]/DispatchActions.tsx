@@ -21,13 +21,27 @@ import {
   type FlaggedField,
 } from './actions'
 
+// Phase L1.1b — server-computed shipping-gate summary (page.tsx derives it via
+// getDispatchShippingContext). The ShipPanel renders the block/allow state and
+// seal/coolant capture; the shipDispatch action re-runs the gate server-side.
+export interface ShipPanelShippingData {
+  canShip: boolean
+  missingDocLabels: string[]
+  /** StorageClass — CHILLED/FROZEN reveal the coolant fields (data-driven;
+      cold classes are admin-gated, so in practice these appear once flipped). */
+  storageClass: string
+  /** ShipmentMode — freight (LTL/FTL) reveals the trailer-seal field. */
+  mode: string
+}
+
 interface Props {
   dispatchId: string
   status: string
   type: 'PRODUCT' | 'LABEL' | 'COPACKING'
+  shipping?: ShipPanelShippingData
 }
 
-export function DispatchActions({ dispatchId, status, type }: Props) {
+export function DispatchActions({ dispatchId, status, type, shipping }: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
 
@@ -142,7 +156,7 @@ export function DispatchActions({ dispatchId, status, type }: Props) {
   }
 
   if (status === 'READY') {
-    return <ShipPanel dispatchId={dispatchId} />
+    return <ShipPanel dispatchId={dispatchId} shipping={shipping} />
   }
 
   // B6 — Tracking carriers usually flip a SHIPPED parcel through an
@@ -809,16 +823,54 @@ function WithdrawPanel({
   )
 }
 
-function ShipPanel({ dispatchId }: { dispatchId: string }) {
+// =============================================================================
+// Ship panel — L1.1b document-gated mark-shipped (BYO tracking stays the V1
+// path; platform label/BOL purchase arrives with Phase L2). The gate summary
+// comes precomputed from the server; shipDispatch re-runs it server-side, so
+// the disabled button here is UX, not enforcement.
+// =============================================================================
+
+function ShipPanel({
+  dispatchId,
+  shipping,
+}: {
+  dispatchId: string
+  shipping?: ShipPanelShippingData
+}) {
   const router = useRouter()
   const [carrier, setCarrier] = useState('')
   const [tracking, setTracking] = useState('')
+  const [seal, setSeal] = useState('')
+  const [coolant, setCoolant] = useState<'NONE' | 'GEL_PACK' | 'DRY_ICE'>('NONE')
+  const [dryIceGrams, setDryIceGrams] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const blocked = shipping ? !shipping.canShip : false
+  // Trailer seal is a freight artifact (recorded on the BOL) — hidden on parcel.
+  const showSeal = shipping ? shipping.mode !== 'PARCEL' : false
+  // Coolant capture only makes sense on cold-chain legs. Rendered data-driven:
+  // CHILLED/FROZEN storage classes are admin-gated (LogisticsSetting), so these
+  // fields appear automatically once the cold gates flip.
+  const showCoolant = shipping
+    ? shipping.storageClass === 'CHILLED' || shipping.storageClass === 'FROZEN'
+    : false
+
   async function handleShip() {
+    const grams = dryIceGrams.trim() ? Number(dryIceGrams) : undefined
+    if (grams !== undefined && (!Number.isInteger(grams) || grams <= 0)) {
+      toast.error('Dry-ice net weight must be a positive whole number of grams.')
+      return
+    }
     setBusy(true)
     try {
-      const r = await shipDispatch({ dispatchId, trackingCarrier: carrier, trackingNumber: tracking })
+      const r = await shipDispatch({
+        dispatchId,
+        trackingCarrier: carrier,
+        trackingNumber: tracking,
+        sealNumber: showSeal ? seal.trim() || undefined : undefined,
+        coolantType: showCoolant ? coolant : undefined,
+        dryIceNetWeightGrams: showCoolant && coolant === 'DRY_ICE' ? grams : undefined,
+      })
       if (!r.ok) {
         toast.error(r.error ?? 'Failed')
         return
@@ -837,6 +889,17 @@ function ShipPanel({ dispatchId }: { dispatchId: string }) {
         <CardDescription>Tracking optional but recommended.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
+        {blocked && (
+          <div className="rounded-md border border-warning-200 bg-warning-50 px-3 py-2 text-[12px] text-warning-800">
+            <p className="font-semibold">Required shipping documents missing:</p>
+            <ul className="mt-1 list-inside list-disc">
+              {shipping?.missingDocLabels.map((label) => (
+                <li key={label}>{label}</li>
+              ))}
+            </ul>
+            <p className="mt-1">Upload them in the Shipping requirements card first.</p>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="carrier">Carrier</Label>
           <Input id="carrier" placeholder="USPS, UPS, FedEx…" value={carrier} onChange={(e) => setCarrier(e.target.value)} />
@@ -845,7 +908,52 @@ function ShipPanel({ dispatchId }: { dispatchId: string }) {
           <Label htmlFor="tracking">Tracking #</Label>
           <Input id="tracking" value={tracking} onChange={(e) => setTracking(e.target.value)} />
         </div>
-        <Button className="w-full" onClick={handleShip} disabled={busy}>
+        {showSeal && (
+          <div className="space-y-1.5">
+            <Label htmlFor="sealNumber">Trailer seal #</Label>
+            <Input
+              id="sealNumber"
+              value={seal}
+              onChange={(e) => setSeal(e.target.value)}
+              placeholder="Seal number recorded on the BOL"
+            />
+          </div>
+        )}
+        {showCoolant && (
+          <>
+            <div className="space-y-1.5">
+              <Label>Coolant</Label>
+              <Select value={coolant} onValueChange={(v) => setCoolant(v as 'NONE' | 'GEL_PACK' | 'DRY_ICE')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">None</SelectItem>
+                  <SelectItem value="GEL_PACK">Gel packs</SelectItem>
+                  <SelectItem value="DRY_ICE">Dry ice</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {coolant === 'DRY_ICE' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="dryIceGrams">Dry-ice net weight (grams)</Label>
+                <Input
+                  id="dryIceGrams"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={dryIceGrams}
+                  onChange={(e) => setDryIceGrams(e.target.value)}
+                  placeholder="e.g. 2000"
+                />
+                <p className="text-[10.5px] text-ink-500">
+                  Drives the UN1845 marking — required on any dry-ice leg.
+                </p>
+              </div>
+            )}
+          </>
+        )}
+        <Button className="w-full" onClick={handleShip} disabled={busy || blocked}>
           Confirm shipment
         </Button>
       </CardContent>

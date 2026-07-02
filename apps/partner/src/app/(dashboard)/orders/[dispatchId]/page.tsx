@@ -29,6 +29,9 @@ import { DispatchActions } from './DispatchActions'
 import { ProductionManifestView } from '@ilaunchify/ui'
 import { ChangeRequestCard } from './ChangeRequestCard'
 import { DisputeResponsePanel } from './DisputeResponsePanel'
+import { ShipRequirementsCard, type ShipDocRowView, type UploadedShipDoc } from './ShipRequirementsCard'
+import { getDispatchShippingContext } from './ship-requirements'
+import { SHIP_DOC_LABELS, PARTNER_UPLOADED_DOC_TYPES } from '@ilaunchify/shipping'
 import type { ProductionManifest } from '@ilaunchify/orders'
 
 export const dynamic = 'force-dynamic'
@@ -98,6 +101,48 @@ export default async function DispatchDetailPage({
   const item = dispatch.order.items[0]
   const pill = STATUS_PILL[dispatch.status] ?? { label: dispatch.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
   const isProduct = dispatch.type === 'PRODUCT'
+
+  // ---- Phase L1.1b — shipping requirements + doc gate ----------------------
+  // Computed once server-side and shared with the action rail; the shipDispatch
+  // action re-runs the same gate (never trust the client). Only relevant once
+  // the dispatch is accepted and until it's delivered.
+  const SHIP_CONTEXT_STATUSES = new Set([
+    'ACCEPTED',
+    'PRODUCING',
+    'QUALITY_CHECK',
+    'READY',
+    'SHIPPED',
+    'IN_TRANSIT',
+    'DELIVERED',
+  ])
+  const shippingCtx = SHIP_CONTEXT_STATUSES.has(dispatch.status)
+    ? await getDispatchShippingContext(dispatch.id)
+    : null
+
+  const canUploadShipDocs = shippingCtx !== null
+  // Evidence lock — no deletes once the goods have physically shipped.
+  const canDeleteShipDocs =
+    shippingCtx !== null && !['SHIPPED', 'IN_TRANSIT', 'DELIVERED'].includes(dispatch.status)
+
+  const toUploadedDoc = (d: NonNullable<typeof shippingCtx>['documents'][number]): UploadedShipDoc => ({
+    id: d.id,
+    filename: d.filename ?? 'document',
+    url: `/api/ship-doc/${d.assetId}`,
+    lotNumbers: d.lotNumbers,
+    uploadedAt: d.createdAt.toISOString(),
+  })
+  const shipDocRows: ShipDocRowView[] = shippingCtx
+    ? shippingCtx.gate.required.map((type) => ({
+        type,
+        label: SHIP_DOC_LABELS[type],
+        gating: PARTNER_UPLOADED_DOC_TYPES.includes(type),
+        requiresLotNumbers: type === 'COA',
+        uploaded: shippingCtx.documents.filter((d) => d.type === type).map(toUploadedDoc),
+      }))
+    : []
+  const qcPhotos: UploadedShipDoc[] = shippingCtx
+    ? shippingCtx.documents.filter((d) => d.type === 'QC_PHOTO').map(toUploadedDoc)
+    : []
 
   // ---- Production-stage tracker -------------------------------------------
   // Drive "done" purely from the per-state timestamps so a skipped QC still
@@ -246,6 +291,21 @@ export default async function DispatchDetailPage({
             </p>
           </section>
 
+          {/* Shipping requirements — doc gate + pre-departure QC (L1.1b) */}
+          {shippingCtx && (
+            <ShipRequirementsCard
+              dispatchId={dispatch.id}
+              docGateApplies={shippingCtx.docGateApplies}
+              canShip={shippingCtx.gate.canShip}
+              missingLabels={shippingCtx.gate.missing.map((t) => SHIP_DOC_LABELS[t])}
+              rows={shipDocRows}
+              qcPhotos={qcPhotos}
+              checklist={shippingCtx.checklist.map((i) => ({ key: i.key, label: i.label }))}
+              canUpload={canUploadShipDocs}
+              canDelete={canDeleteShipDocs}
+            />
+          )}
+
           {/* Tracking (only once carrier/tracking present) */}
           {(dispatch.trackingCarrier || dispatch.trackingNumber) && (
             <section className="rounded-2xl border border-ink-200 bg-white p-5">
@@ -297,7 +357,23 @@ export default async function DispatchDetailPage({
 
         {/* Action rail */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <DispatchActions dispatchId={dispatch.id} status={dispatch.status} type={dispatch.type} />
+          <DispatchActions
+            dispatchId={dispatch.id}
+            status={dispatch.status}
+            type={dispatch.type}
+            shipping={
+              shippingCtx
+                ? {
+                    canShip: shippingCtx.gate.canShip,
+                    missingDocLabels: shippingCtx.gate.missing.map((t) => SHIP_DOC_LABELS[t]),
+                    // LABEL dispatches ship printed stock ambient — never show
+                    // the product's cold-chain fields on a label shipment.
+                    storageClass: shippingCtx.docGateApplies ? shippingCtx.storageClass : 'AMBIENT',
+                    mode: shippingCtx.mode,
+                  }
+                : undefined
+            }
+          />
         </div>
       </div>
     </div>

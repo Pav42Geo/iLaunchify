@@ -81,6 +81,7 @@ import {
   DollarSign,
   Truck,
   Warehouse,
+  Send,
   SlidersHorizontal,
   RotateCcw,
   Wallet,
@@ -173,14 +174,15 @@ const PRIMARY: SidebarRegion = {
       href: '/orders',
     },
     // ---- Logistics (Phase L1c — docs/LOGISTICS_AND_FULFILLMENT.md §9) --------
-    // Only the two built surfaces are listed (hide-until-built rule); the
-    // remaining /logistics pages (shipments, carriers, channel-plans) get
-    // added as they ship.
+    // Only built surfaces are listed (hide-until-built rule); the remaining
+    // /logistics pages (carriers, channel-plans) get added as they ship.
+    // Shipments added in Phase L1.1c.
     {
       kind: 'group',
       label: 'Logistics',
       icon: Truck,
       children: [
+        { kind: 'item', label: 'Shipments', icon: Send, href: '/logistics/shipments' },
         { kind: 'item', label: 'Fulfillment centers', icon: Warehouse, href: '/logistics/fulfillment-centers' },
         { kind: 'item', label: 'Logistics gates', icon: SlidersHorizontal, href: '/logistics/settings', capability: 'platform:admin' },
       ],

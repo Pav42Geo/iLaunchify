@@ -407,6 +407,9 @@ importers:
       '@ilaunchify/plans':
         specifier: workspace:*
         version: link:../../packages/plans
+      '@ilaunchify/shipping':
+        specifier: workspace:*
+        version: link:../../packages/shipping
       '@ilaunchify/storage':
         specifier: workspace:*
         version: link:../../packages/storage

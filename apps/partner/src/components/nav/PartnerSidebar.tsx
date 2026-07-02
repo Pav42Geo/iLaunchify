@@ -17,6 +17,7 @@ import {
   Package,
   Gift,
   Printer,
+  PackageOpen,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -31,6 +32,8 @@ interface NavItem {
 const FULL_NAV: NavItem[] = [
   { href: '/dashboard',       label: 'Dashboard',       icon: BarChart3 },
   { href: '/orders',          label: 'Orders',          icon: Inbox },
+  // '/inbound' is inserted after Orders at render time — only for partners
+  // with a WAREHOUSE service (Phase L1.1c inbound receiving queue).
   { href: '/products',        label: 'Products',        icon: Package },
   { href: '/services',        label: 'Services',        icon: Wrench },
   { href: '/packaging',       label: 'Packaging',       icon: Box },
@@ -51,9 +54,15 @@ const RESTRICTED_NAV: NavItem[] = [
   { href: '/help',            label: 'Help',            icon: LifeBuoy },
 ]
 
+// Inbound receiving queue — only partners operating a WAREHOUSE service see it
+// (the /inbound route redirects everyone else; gate mirrors the layout query).
+const INBOUND_NAV_ITEM: NavItem = { href: '/inbound', label: 'Inbound', icon: PackageOpen }
+
 interface PartnerSidebarProps {
   status: PartnerStatus
   restricted: boolean
+  /** True when the partner has a WAREHOUSE service — shows the Inbound entry. */
+  hasWarehouseService?: boolean
 }
 
 function statusBadge(status: PartnerStatus): {
@@ -79,9 +88,13 @@ function statusBadge(status: PartnerStatus): {
 
 const STORAGE_KEY = 'ilf-partner-sidebar-collapsed'
 
-export function PartnerSidebar({ status, restricted }: PartnerSidebarProps) {
+export function PartnerSidebar({ status, restricted, hasWarehouseService }: PartnerSidebarProps) {
   const pathname = usePathname()
-  const nav = restricted ? RESTRICTED_NAV : FULL_NAV
+  const nav = restricted
+    ? RESTRICTED_NAV
+    : hasWarehouseService
+      ? FULL_NAV.flatMap((item) => (item.href === '/orders' ? [item, INBOUND_NAV_ITEM] : [item]))
+      : FULL_NAV
   const badge = statusBadge(status)
 
   const [collapsed, setCollapsed] = useState(false)

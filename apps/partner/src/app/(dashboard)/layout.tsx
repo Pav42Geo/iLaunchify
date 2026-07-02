@@ -88,6 +88,14 @@ export default async function PartnerDashboardLayout({ children }: { children: R
   // INTEGRATION_ENHANCED get the full nav.
   const restricted = !['ACTIVE', 'INTEGRATION_ENHANCED'].includes(partner.status)
 
+  // Phase L1.1c — warehouse partners get the Inbound receiving entry. Checked
+  // per-request like status so admin-added services show up without re-login.
+  const warehouseServiceCount = restricted
+    ? 0
+    : await prisma.partnerService.count({
+        where: { partnerId: partner.id, type: 'WAREHOUSE' },
+      })
+
   return (
     <div className="flex h-screen flex-col">
       <PartnerTopbar user={user} companyName={partner.companyName} />
@@ -96,7 +104,11 @@ export default async function PartnerDashboardLayout({ children }: { children: R
             padding via a body.gb-active class (mount-scoped, so it reverts on
             navigation). data-* hooks let it target these without per-route
             layout logic — the shared layout doesn't re-run on client nav. */}
-        <PartnerSidebar status={partner.status} restricted={restricted} />
+        <PartnerSidebar
+          status={partner.status}
+          restricted={restricted}
+          hasWarehouseService={warehouseServiceCount > 0}
+        />
         <main data-partner-shell-main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50 p-6">
           <div data-partner-shell-content className="mx-auto max-w-6xl">{children}</div>
         </main>
