@@ -122,6 +122,12 @@ interface TemplateData {
   CREATOR_PROOF_AWAITING: { orderId: string; orderRef: string; version: number; partnerName?: string }
   PROOF_APPROVED: { dispatchId: string; orderRef: string; version: number }
   PROOF_REJECTED: { dispatchId: string; orderRef: string; version: number; annotation?: string }
+  // C6.3 channel inventory (CHANNEL_MANAGEMENT_SPEC §3.5a). The alert engine
+  // currently precomputes title/body and writes the Notification row directly
+  // (channels/inventory/alerts.ts, pending its templates-handoff TODO) — this
+  // entry keeps the TemplateData index total and carries the copy through
+  // whenever it migrates to dispatchNotification.
+  CREATOR_STOCK_ALERT: { title?: string; body?: string; productName?: string; alertState?: string }
 }
 
 function fmtSection(sectionType: string): string {
@@ -494,6 +500,14 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `${d.docLabel} expires in ${d.daysLeft} day${d.daysLeft === 1 ? '' : 's'}`,
         body: 'Upload a renewed document before it lapses — expired documents suspend the capabilities they back.',
         link: d.href,
+      }
+    }
+    case 'CREATOR_STOCK_ALERT': {
+      const d = data as TemplateData['CREATOR_STOCK_ALERT']
+      return {
+        title: d.title ?? `Stock alert${d.productName ? ` · ${d.productName}` : ''}`,
+        body: d.body ?? 'A channel inventory pool changed alert state — review your stock levels.',
+        link: '/channels/inventory',
       }
     }
     case 'CREATOR_PROOF_AWAITING': {
