@@ -9,7 +9,7 @@ import { prisma } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { assertOrderTransition } from '@ilaunchify/orders'
+import { assertOrderTransition, createReprintDispatch } from '@ilaunchify/orders'
 import { executeOrderRefund } from '@ilaunchify/payments'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
@@ -171,6 +171,118 @@ export async function resolveOrderDispute({
       audience: 'creator',
     })
   }
+  revalidatePath(`/orders/${dispute.orderId}`)
+  revalidatePath('/orders')
+  return { ok: true }
+}
+
+// Resolve a LABEL-dispatch dispute with the "reprint" outcome (PARTNER_ROLE_ACCOUNTS
+// §3.3.C): spin up a fresh LABEL dispatch cloned from the disputed one, link the two
+// via the audit payload, close the dispute RESOLVED, and notify printer + creator.
+// The printer ping fires inside createReprintDispatch; the creator ping rides the
+// existing dispute-resolved event here.
+export async function resolveDisputeWithReprint({
+  disputeId,
+  dispatchId,
+  resolution,
+  costCents,
+}: {
+  disputeId: string
+  /** The disputed LABEL dispatch to reprint. */
+  dispatchId: string
+  resolution?: string
+  /** Reprint cost; 0 = goodwill reprint (default). */
+  costCents?: number
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+
+  const disputeModel = (
+    prisma as unknown as {
+      orderDispute: {
+        findUnique: (a: unknown) => Promise<{ id: string; status: string; orderId: string } | null>
+      }
+    }
+  ).orderDispute
+
+  const dispute = await disputeModel.findUnique({
+    where: { id: disputeId },
+    select: { id: true, status: true, orderId: true },
+  })
+  if (!dispute) return { ok: false, error: 'Dispute not found.' }
+  if (dispute.status !== 'OPEN' && dispute.status !== 'UNDER_REVIEW') {
+    return { ok: false, error: `Already ${dispute.status.toLowerCase()}.` }
+  }
+
+  // The dispatch must be a LABEL leg ON this dispute's order — guard against a
+  // stale/foreign id from the client.
+  const dispatch = await prisma.orderDispatch.findUnique({
+    where: { id: dispatchId },
+    select: { id: true, type: true, orderId: true },
+  })
+  if (!dispatch || dispatch.orderId !== dispute.orderId) {
+    return { ok: false, error: 'Dispatch not found on this order.' }
+  }
+  if (dispatch.type !== 'LABEL') {
+    return { ok: false, error: 'Reprint applies only to LABEL (print) dispatches.' }
+  }
+
+  // Create the reprint (also notifies the printer). Do this before closing the
+  // dispute so a failure leaves the dispute open for another attempt.
+  const reprint = await createReprintDispatch({ originalDispatchId: dispatchId, costCents })
+  if (!reprint.ok) return { ok: false, error: reprint.error }
+
+  const order = await prisma.order.findUnique({
+    where: { id: dispute.orderId },
+    select: { status: true, creatorUserId: true },
+  })
+
+  await prisma.$transaction(async (tx) => {
+    await (
+      tx as unknown as { orderDispute: { update: (a: unknown) => Promise<unknown> } }
+    ).orderDispute.update({
+      where: { id: dispute.id },
+      data: {
+        status: 'RESOLVED',
+        resolution: resolution?.trim() || `Reprint issued (dispatch ${reprint.dispatchId}).`,
+        reviewedById: admin.id,
+        reviewedAt: new Date(),
+      },
+    })
+    if (order?.status === 'DISPUTED') {
+      assertOrderTransition('DISPUTED', 'COMPLETED')
+      await tx.order.update({
+        where: { id: dispute.orderId },
+        data: { status: 'COMPLETED' },
+      })
+    }
+  })
+
+  // The reprint↔original↔dispute linkage lives here, in the audit payload.
+  await logAuditAs(admin, {
+    entityType: 'OrderDispatch',
+    entityId: reprint.dispatchId,
+    action: 'DISPATCH_REPRINT_CREATED',
+    payload: {
+      orderId: dispute.orderId,
+      disputeId: dispute.id,
+      originalDispatchId: dispatchId,
+      reprintDispatchId: reprint.dispatchId,
+      manifestVersion: reprint.manifestVersion,
+      costCents: Math.max(0, Math.round(costCents ?? 0)),
+    },
+  })
+
+  // Notify the creator the dispute is resolved (reprint underway) — same event
+  // path as resolveOrderDispute. Best-effort.
+  if (reprint.creatorUserId) {
+    await dispatchNotification({
+      userId: reprint.creatorUserId,
+      event: 'CREATOR_ORDER_DISPUTE_RESOLVED' as unknown as NotificationEvent,
+      data: { orderId: dispute.orderId, decision: 'RESOLVED', outcome: 'reprint' },
+      audience: 'creator',
+    })
+  }
+
   revalidatePath(`/orders/${dispute.orderId}`)
   revalidatePath('/orders')
   return { ok: true }

@@ -305,7 +305,16 @@ export default async function AdminOrderDetail({ params }: PageProps) {
               Awaiting the partner&apos;s response — they&apos;ve been notified.
             </p>
           )}
-          <ResolveDisputeControls disputeId={openDispute.id} orderTotalCents={order.totalCents} />
+          <ResolveDisputeControls
+            disputeId={openDispute.id}
+            orderTotalCents={order.totalCents}
+            labelDispatches={order.dispatches
+              .filter((d) => d.type === 'LABEL')
+              .map((d) => ({
+                id: d.id,
+                label: `${d.partnerService.partner.companyName ?? 'Printer'} · v${d.manifestVersion} · ${String(d.status).replace(/_/g, ' ').toLowerCase()}`,
+              }))}
+          />
         </section>
       )}
 

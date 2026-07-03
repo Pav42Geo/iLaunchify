@@ -38,6 +38,11 @@ export type {
 } from './dispatch-planner'
 export type { RoutingResult, RoutingFailure } from './routing'
 export { previewManufacturerMatches } from './routing'
+export { createReprintDispatch } from './reprint-dispatch'
+export type {
+  CreateReprintDispatchParams,
+  CreateReprintDispatchResult,
+} from './reprint-dispatch'
 // Per-flavor recipe lead (LOCKED 2026-06-30 — global floor + changeover). Feeds the order manifest.
 export { effectiveFlavorLeadDays, resolveOrderLeadDays } from './multi-flavor-lead'
 export type { RoutingPreviewResult, RoutingPreviewCandidate } from './routing'

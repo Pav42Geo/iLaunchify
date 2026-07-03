@@ -166,6 +166,7 @@ export const AUDIT_ACTIONS = [
   'DISPATCH_SHIPPED',
   'DISPATCH_DELIVERED',
   'DISPATCH_AUTO_CANCEL',
+  'DISPATCH_REPRINT_CREATED', // admin resolved a LABEL dispute → reprint dispatch
   'ORDER_AUTO_CANCEL_UNPAID',
   // Product template lifecycle (admin review queue, #133)
   'PRODUCT_TEMPLATE_CREATE',
