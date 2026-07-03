@@ -1,5 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/tier-dunning", "schedule": "0 8 * * *" }
+    { "path": "/api/cron/tier-dunning", "schedule": "0 8 * * *" },
+    { "path": "/api/cron/stock-alerts", "schedule": "0 7 * * *" }
   ]
 }

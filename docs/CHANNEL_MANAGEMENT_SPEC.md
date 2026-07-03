@@ -235,9 +235,15 @@ pre-push never regresses other settings). `InventoryPool.alertState` persists th
 last computed state; `recomputeStockAlert(creatorUserId, productId)` (creator
 app, never-throws) recomputes at every ledger-touching mutation — ingest
 reservation, fulfillment CHANNEL_SALE, cancel RELEASE, delivery intake — and
-notifies once per TRANSITION via shouldNotify. Notifications are IN_APP rows
-(event CREATOR_STOCK_ALERT) written directly for now; the email template case in
-packages/notifications is pending the templates.ts handoff from Code (proof loop).
+notifies once per TRANSITION via shouldNotify. Notifications go through
+`dispatchNotification` (event CREATOR_STOCK_ALERT; template case in
+packages/notifications), so preferences/quiet-hours/email fan-out apply.
+
+**C6.4 BUILT 2026-07-02 — daily sweep:** `/api/cron/stock-alerts` (creator app,
+CRON_SECRET auth, vercel.json daily 07:00) recomputes every pool's alert state —
+catches TIME-driven drift (stock sits still, velocity keeps running) that the
+mutation hooks can't see. Dedupes creator×product, SWEEP_CAP 2000 safety valve,
+idempotent because shouldNotify only fires on transitions.
 
 ### 3.5b Auto-reorder (creator opt-in, added 2026-07-02)
 
