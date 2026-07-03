@@ -98,7 +98,7 @@ interface TemplateData {
   }
   // Cancellation / dispute review outcomes
   CREATOR_ORDER_CANCELLED: { orderId: string; refundCents?: number }
-  CREATOR_ORDER_DISPUTE_RESOLVED: { orderId: string; decision: 'RESOLVED' | 'REJECTED' }
+  CREATOR_ORDER_DISPUTE_RESOLVED: { orderId: string; decision: 'RESOLVED' | 'REJECTED'; outcome?: 'reprint' }
   PARTNER_CANCELLATION_REVIEWED: { orderId: string; decision: 'APPROVED' | 'DENIED' }
   // W2-SUP — support ticketing. `href` is recipient-correct (admin → /support,
   // requester → /help); the service computes it so the host resolves per audience.
@@ -391,6 +391,15 @@ export function renderTemplate<E extends NotificationEvent>(
     }
     case 'CREATOR_ORDER_DISPUTE_RESOLVED': {
       const d = data as TemplateData['CREATOR_ORDER_DISPUTE_RESOLVED']
+      // P3 reprint outcome (Code's createReprintDispatch passes outcome:'reprint')
+      // — same event, reprint-specific copy. No new enum value needed.
+      if (d.outcome === 'reprint') {
+        return {
+          title: `Reprint on the way · order #${d.orderId.slice(-8)}`,
+          body: 'We reviewed your report and resolved it in your favor — your print partner is producing a corrected run at no charge. Track it on the order.',
+          link: `/orders/${d.orderId}`,
+        }
+      }
       return {
         title: `Your dispute on order #${d.orderId.slice(-8)} was ${d.decision.toLowerCase()}`,
         body:
