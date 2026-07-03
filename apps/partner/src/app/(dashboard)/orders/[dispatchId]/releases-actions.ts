@@ -25,6 +25,16 @@ import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
 
+// P1 (docs/PARTNER_ROLE_ACCOUNTS.md §3.1) — these actions are now shared by
+// TWO surfaces: the dispatch detail (HOLD_AT_MANUFACTURER storing partner) and
+// the FC /outbound queue. dispatchId may be empty when invoked from /outbound;
+// refresh both surfaces either way.
+function revalidateReleaseSurfaces(dispatchId: string) {
+  if (dispatchId) revalidatePath(`/orders/${dispatchId}`)
+  revalidatePath('/outbound')
+  revalidatePath('/inventory')
+}
+
 // Partner-ownership guard — same walk as loadOwnedDispatch in ./actions.ts,
 // but rooted at the release: release → agreement → partnerService → partner →
 // userId (tenant isolation, threat #1). A release on another partner's
@@ -71,7 +81,7 @@ export async function startReleasePicking({
     },
   })
 
-  revalidatePath(`/orders/${dispatchId}`)
+  revalidateReleaseSurfaces(dispatchId)
   return { ok: true }
 }
 
@@ -161,7 +171,7 @@ export async function shipStorageRelease({
     },
   })
 
-  revalidatePath(`/orders/${dispatchId}`)
+  revalidateReleaseSurfaces(dispatchId)
   return { ok: true }
 }
 
@@ -199,6 +209,6 @@ export async function deliverStorageRelease({
     },
   })
 
-  revalidatePath(`/orders/${dispatchId}`)
+  revalidateReleaseSurfaces(dispatchId)
   return { ok: true }
 }

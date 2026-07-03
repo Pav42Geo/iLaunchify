@@ -25,6 +25,8 @@ import {
   Gift,
   Printer,
   PackageOpen,
+  Boxes,
+  Send,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
@@ -55,6 +57,8 @@ export interface PartnerNavItem {
 const NAV_DASHBOARD: PartnerNavItem = { href: '/dashboard', label: 'Dashboard', icon: BarChart3 }
 const NAV_ORDERS: PartnerNavItem = { href: '/orders', label: 'Orders', icon: Inbox }
 const NAV_INBOUND: PartnerNavItem = { href: '/inbound', label: 'Inbound', icon: PackageOpen }
+const NAV_INVENTORY: PartnerNavItem = { href: '/inventory', label: 'Inventory', icon: Boxes }
+const NAV_OUTBOUND: PartnerNavItem = { href: '/outbound', label: 'Outbound', icon: Send }
 const NAV_ON_DEMAND: PartnerNavItem = { href: '/on-demand', label: 'On-demand', icon: Zap }
 const NAV_PRODUCTS: PartnerNavItem = { href: '/products', label: 'Products', icon: Package }
 const NAV_SERVICES: PartnerNavItem = { href: '/services', label: 'Services', icon: Wrench }
@@ -89,7 +93,7 @@ export function roleNavFor(serviceTypes: readonly string[]): PartnerNavItem[] {
   const fulfillment = has('WAREHOUSE')
 
   const nav: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS]
-  if (fulfillment) nav.push(NAV_INBOUND)
+  if (fulfillment) nav.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
   if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)
   nav.push(NAV_SERVICES)
   if (producing) nav.push(NAV_PACKAGING)

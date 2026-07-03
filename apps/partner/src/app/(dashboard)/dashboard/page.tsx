@@ -139,10 +139,12 @@ export default async function ProviderDashboardHome() {
   ])
 
   // FC skin — inbound shipments awaiting receipt confirmation (mirrors the
-  // /inbound ownership rule: ship-to service, never dispatch.partnerServiceId).
-  const inboundExpected =
+  // /inbound ownership rule: ship-to service, never dispatch.partnerServiceId)
+  // + storage releases awaiting pick (P1 outbound queue; also covers
+  // HOLD_AT_MANUFACTURER storing manufacturers).
+  const [inboundExpected, releasesAwaitingPick] = await Promise.all([
     warehouseServiceIds.length > 0
-      ? await prisma.orderDispatch.count({
+      ? prisma.orderDispatch.count({
           where: {
             status: { in: ['SHIPPED', 'IN_TRANSIT'] },
             order: {
@@ -151,7 +153,16 @@ export default async function ProviderDashboardHome() {
             },
           },
         })
-      : 0
+      : Promise.resolve(0),
+    serviceIds.length
+      ? prisma.storageReleaseOrder.count({
+          where: {
+            status: 'REQUESTED',
+            storageAgreement: { partnerServiceId: { in: serviceIds } },
+          },
+        })
+      : Promise.resolve(0),
+  ])
 
   // ---- Dispatch metrics ----
   const dCount = (sts: string[]) => dispatches.filter((d) => sts.includes(d.status as string)).length
@@ -199,6 +210,18 @@ export default async function ProviderDashboardHome() {
             icon: <PackageOpen className="h-4 w-4" aria-hidden="true" />,
             tone: 'warning' as const,
             primaryAction: { label: 'Receive', href: '/inbound', tone: 'pink' as const },
+          },
+        ]
+      : []),
+    ...(releasesAwaitingPick > 0
+      ? [
+          {
+            id: 'releases-awaiting',
+            label: `Pick stock releases · ${releasesAwaitingPick} waiting`,
+            sublabel: 'Creator-requested releases out of stored stock',
+            icon: <PackageOpen className="h-4 w-4" aria-hidden="true" />,
+            tone: 'warning' as const,
+            primaryAction: { label: 'Open queue', href: '/outbound', tone: 'pink' as const },
           },
         ]
       : []),
