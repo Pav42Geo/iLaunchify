@@ -359,9 +359,14 @@ offers a change the stage forbids):
 - [ ] PLATFORM_SPEC tier-cap table update: Agency "All 6" → "All supported channels"
 
 ### Phase C6 — Inventory intelligence & transparency (§3.5a)
-- [ ] Pure replenishment math in `@ilaunchify/channels` (velocity blend, ROP,
-      safety stock, suggested qty w/ MOQ rounding, alert-state machine) — golden-tested
-- [ ] Velocity + onOrder aggregation (ChannelOrderLine history + in-flight orders)
+- [x] Pure replenishment math in `@ilaunchify/channels` (velocity blend, ROP,
+      safety stock, suggested qty w/ MOQ rounding, alert-state machine) — golden-
+      tested (C6.1, 2026-07-02)
+- [x] Velocity + onOrder aggregation + `/channels/inventory` surface (C6.2,
+      2026-07-02): urgency-sorted table — state badge, available (+reserved),
+      in-production, sales/day, days-of-cover vs lead, reorder-by date (red when
+      past), suggested qty, Reorder link; leadDays = template REPEAT-run lead +
+      processing buffer; V1 knobs inline (OrderSettings wiring pending)
 - [ ] Daily recompute job + recompute-on-ingest; alert transitions → notifications
       (email + in-app), one notification per state transition
 - [ ] Creator per-product inventory panel (pool by location, reserved provenance,

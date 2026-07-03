@@ -21,12 +21,20 @@ export default async function ChannelsPage() {
             tab; consumer orders flow into your Orders inbox and route to production automatically.
           </p>
         </div>
-        <a
-          href="/channels/orders"
-          className="shrink-0 rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50"
-        >
-          Channel orders →
-        </a>
+        <div className="flex shrink-0 gap-2">
+          <a
+            href="/channels/inventory"
+            className="rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50"
+          >
+            Stock &amp; replenishment
+          </a>
+          <a
+            href="/channels/orders"
+            className="rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50"
+          >
+            Channel orders →
+          </a>
+        </div>
       </div>
       <ChannelsHubClient initial={data} />
     </div>
