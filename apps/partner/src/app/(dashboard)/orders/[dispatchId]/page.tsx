@@ -30,6 +30,8 @@ import { ProductionManifestView } from '@ilaunchify/ui'
 import { ChangeRequestCard } from './ChangeRequestCard'
 import { DisputeResponsePanel } from './DisputeResponsePanel'
 import { ShipRequirementsCard, type ShipDocRowView, type UploadedShipDoc } from './ShipRequirementsCard'
+import { PrintJobCard, type PrintOutputSpecView } from './PrintJobCard'
+import { WorkOrderCard, type ComponentLegView } from './WorkOrderCard'
 import { StorageReleasesCard, type StorageReleaseView } from './StorageReleasesCard'
 import { getDispatchShippingContext } from './ship-requirements'
 import { SHIP_DOC_LABELS, PARTNER_UPLOADED_DOC_TYPES } from '@ilaunchify/shipping'
@@ -102,6 +104,64 @@ export default async function DispatchDetailPage({
   const item = dispatch.order.items[0]
   const pill = STATUS_PILL[dispatch.status] ?? { label: dispatch.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
   const isProduct = dispatch.type === 'PRODUCT'
+  const isLabel = dispatch.type === 'LABEL'
+  const isCopack = (dispatch.type as string) === 'COPACKING'
+
+  // ---- P2 role skins (docs/PARTNER_ROLE_ACCOUNTS.md §3.2/§3.3) -------------
+  // LABEL → print contract + artwork gate; COPACKING → component readiness
+  // from the sibling legs of the same order's workflow graph.
+  const printSpec: PrintOutputSpecView | null = isLabel
+    ? await prisma.partnerPrintOutputSpec
+        .findUnique({
+          where: { partnerServiceId: dispatch.partnerServiceId },
+          select: {
+            preferredFileFormat: true,
+            colorSpace: true,
+            iccProfile: true,
+            tacLimitPct: true,
+            spotColorsAccepted: true,
+            minDpi: true,
+            bleedMm: true,
+            fontPolicy: true,
+            dielineDeliveryFormat: true,
+            dielineLayerName: true,
+          },
+        })
+        .then((s) =>
+          s
+            ? {
+                ...s,
+                preferredFileFormat: s.preferredFileFormat as string,
+                colorSpace: s.colorSpace as string,
+                fontPolicy: s.fontPolicy as string,
+                dielineDeliveryFormat: s.dielineDeliveryFormat as string,
+                bleedMm: String(s.bleedMm),
+              }
+            : null,
+        )
+    : null
+  const componentLegs: ComponentLegView[] = isCopack
+    ? (
+        await prisma.orderDispatch.findMany({
+          where: { orderId: dispatch.order.id, id: { not: dispatch.id } },
+          select: { id: true, type: true, status: true, shippedAt: true, deliveredAt: true },
+          orderBy: { createdAt: 'asc' },
+        })
+      ).map((d) => ({
+        id: d.id,
+        type: d.type as string,
+        status: d.status as string,
+        shippedAt: d.shippedAt?.toISOString() ?? null,
+        deliveredAt: d.deliveredAt?.toISOString() ?? null,
+      }))
+    : []
+
+  const eyebrow = isCopack
+    ? 'Co-packing · Work order'
+    : isLabel
+      ? 'Print production · Print job'
+      : 'Manufacturing · Production dispatch'
+  const titleFallback = isCopack ? 'Work order' : isLabel ? 'Print job' : 'Production dispatch'
 
   // ---- Phase L1.1b — shipping requirements + doc gate ----------------------
   // Computed once server-side and shared with the action rail; the shipDispatch
@@ -182,8 +242,18 @@ export default async function DispatchDetailPage({
   // lights up as the batch passed through to READY.
   const stages: { key: string; label: string; at: Date | null; icon: LucideIcon }[] = [
     { key: 'accepted', label: 'Accepted', at: dispatch.acceptedAt, icon: ClipboardCheck },
-    { key: 'producing', label: 'In production', at: dispatch.productionStartedAt, icon: Factory },
-    { key: 'qc', label: 'Quality check', at: dispatch.qualityCheckStartedAt, icon: FlaskConical },
+    {
+      key: 'producing',
+      label: isLabel ? 'Printing' : isCopack ? 'Filling & assembly' : 'In production',
+      at: dispatch.productionStartedAt,
+      icon: Factory,
+    },
+    {
+      key: 'qc',
+      label: isLabel ? 'Finishing & QC' : 'Quality check',
+      at: dispatch.qualityCheckStartedAt,
+      icon: FlaskConical,
+    },
     { key: 'ready', label: 'Ready to ship', at: dispatch.readyAt, icon: PackageCheck },
     { key: 'shipped', label: 'Shipped', at: dispatch.shippedAt, icon: Truck },
     { key: 'delivered', label: 'Delivered', at: dispatch.deliveredAt, icon: MapPin },
@@ -208,10 +278,10 @@ export default async function DispatchDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · {isProduct ? 'Production' : 'Label print'} dispatch
+              {eyebrow}
             </p>
             <h1 className="mt-1 flex flex-wrap items-center gap-3 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              {item?.product.name ?? (isProduct ? 'Production dispatch' : 'Label print dispatch')}
+              {item?.product.name ?? titleFallback}
               <span className={`inline-flex items-center rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider ${pill.cls}`}>
                 {pill.label}
               </span>
@@ -287,6 +357,10 @@ export default async function DispatchDetailPage({
               existingResponse={openDispute.partnerResponse}
             />
           )}
+
+          {/* P2 role skins — print contract / component readiness */}
+          {isLabel && <PrintJobCard spec={printSpec} status={dispatch.status} />}
+          {isCopack && <WorkOrderCard components={componentLegs} />}
 
           {/* Product + payout */}
           <section className="rounded-2xl border border-ink-200 bg-white p-5">
