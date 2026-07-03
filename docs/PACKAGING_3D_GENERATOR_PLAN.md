@@ -1,76 +1,90 @@
-# In-house 3D Packaging Generator — build plan
+# In-house 3D Packaging Generator + Mockup Library — build plan
 
-**Status:** PLAN for discussion (2026-07-03). Triggered by Pacdora's response that they **no longer offer API integration** → `PACDORA_EVALUATION.md` §7.4 resolves to **BUILD**.
-**Goal:** the Pacdora experience, adapted to us — creator's flat 2D design → **high-realism 3D mockup**, live in Studio and as checkout/marketing-grade renders — while keeping our locked architecture: **die-line = print master, 3D = derived preview, FDA marks deterministic** (`STUDIO_ARCHITECTURE_3D_2D.md`), and **AI never the production-accurate checkout preview** (`MOCKUP_STRATEGY.md`).
-**Substrate inventory:** `docs/3D_GENERATOR_SUBSTRATE_INVENTORY.md` (compiled 2026-07-03).
+**Status:** PLAN v2 (2026-07-03, updated same day with Pavel's sourcing concept + 3 locked decisions). Triggered by Pacdora's response that they **no longer offer API integration** → `PACDORA_EVALUATION.md` §7.4 resolves to **BUILD**.
+**Goal:** the Pacdora experience *inverted*. Pacdora starts from a pre-built model library; **we have no pre-built 3D library and don't want one**. Our models are generated from what partners already give us: **photos + die-lines of their real packaging** (labels, sticker labels, wraps, boxes, cans, pouches…). Real sizes come from the die-line, appearance from the photo. Output: high-realism 3D mockups with real-size die-line placeholder surfaces + generated 2D beauty-shot mockups — with **minimal admin work**.
+Locked architecture still governs: **die-line = print master, 3D = derived preview, FDA marks deterministic** (`STUDIO_ARCHITECTURE_3D_2D.md`); **AI never the production-accurate checkout preview** (`MOCKUP_STRATEGY.md`).
+**Substrate inventory:** `docs/3D_GENERATOR_SUBSTRATE_INVENTORY.md`.
 
 ---
 
-## 1. What "Pacdora-like" actually decomposes into
+## 0. LOCKED decisions (Pavel 2026-07-03)
 
-Pacdora = four capabilities. We already own most of the hard, differentiated parts:
+1. **Packaging Studio (admin mode) owns ALL mockup production.** Partner photo + die-line intake → 3D generation → materials → standard renders → premium scene composer, one pipeline, one surface. Design Studio (creator) only *consumes* the library. (Matches die-line Curator already living in Packaging Studio, C9.g.)
+2. **Creators CAN AI-generate scene mockups** at finalize time — clearly **labeled marketing-only**, never the production-accurate checkout preview. Reuses the AI try-on loop + rate limiter.
+3. **All mockups FREE at launch** (standard + premium 2D/3D). Schema carries an `isPremium` flag + tier hooks so gating later is a toggle, not a build.
+4. (Direction) **Generating from partner imagery is in-scope** — AI image-to-3D drafting is an admin-side accelerant, always admin-verified against die-line dims before ACTIVE.
+
+## 1. The sourcing pipeline (inverse-Pacdora) — the admin-relief core
+
+```
+Partner uploads (already collected today)          Auto job (new)                                Admin (Packaging Studio, admin mode)
+├─ white-label product photos (Layer A)   →   1. classify → StructuralPackType (6)      →   Review queue card:
+└─ die-line files (PartnerFile)           →   2. normalize die-line (exists)                 ✓ approve geometry/size
+                                              3. REAL dims from die-line → geometry          ✓ tweak material preset
+                                              4. surfaces = real-size die-line placeholders  ✓ pick hero angle
+                                              5. material preset guess from photo            → PUBLISH to library
+                                              6. standard renders (4–6 angles, neutral)
+```
+
+Admin never models anything. The default path is **approve, not author** — same ritual as the partner RAMP queue. Manual overrides (re-draw quad, swap material, upload curated glTF, AI-draft geometry from photo for odd shapes) are exceptions, not the flow.
+
+## 2. What "Pacdora-like" decomposes into
 
 | Capability | Pacdora | Us today | Gap |
 |---|---|---|---|
-| 1. Geometry (model of the container) | 500+ template library | Parametric BOX/CYLINDER/FLAT in `Dieline3DViewer` + glTF path (`model3dKey` + surface binding, unit-tested) | Parametric engine for all 6 StructuralPackTypes; fold-from-net for cartons |
-| 2. Design binding (flat art → surfaces) | UV-mapped templates | Fabric canvas → CanvasTexture live 3D (`LivePreview3DDock`), die-line frames, surface↔face binding | Per-panel UV mapping from normalizedSvg; glTF texture swap verification |
-| 3. Realism (materials + lighting) | PBR + studio lighting | Basic three.js materials | **The visible gap**: substrate PBR presets, HDRI, shadows/AO |
-| 4. Output (renders, scenes, animation) | PNG/video/scenes | PNG capture exists (viewer) | Checkout-grade path-traced render → Asset; scene presets |
+| 1. Geometry | 500+ pre-built library | Parametric BOX/CYLINDER/FLAT in `Dieline3DViewer` + glTF path (`model3dKey` + tested surface binding) | Parametric engine for all 6 StructuralPackTypes; fold-from-net; **intake auto-pipeline** |
+| 2. Design binding | UV-mapped templates | Fabric canvas → CanvasTexture live 3D (`LivePreview3DDock`), die-line frames, surface↔face binding | Per-panel UV from normalizedSvg; glTF texture swap verification |
+| 3. Realism | PBR + studio lighting | Basic three.js materials | **The visible gap**: substrate PBR presets, HDRI, shadows/AO |
+| 4. Output | PNG/video/scenes, credits | PNG capture exists | Render→Asset pipeline; **mockup library**; scene composer; video (deferred) |
 
-So this is NOT a from-zero build. It's (a) a realism upgrade, (b) a parametric+fold geometry engine, (c) a render pipeline.
-
-## 2. Architecture — three layers, one new package
+## 3. Architecture — three layers, one new package
 
 New pure package **`packages/packaging-3d`** (Prisma-free, DI'd like `packages/shipping`; pure suites in run-vitest-suites.mjs):
 
-```
-[Geometry source]        [Binding]                  [Realism + output]
- A. Parametric engine →   surface ↔ UV region →      PBR material presets (per PackagingMaterial)
- B. Fold-from-net     →   Fabric CanvasTexture →     HDRI studio envs + contact shadows
- C. Curated glTF      →   deterministic FDA marks →  real-time preview (WebGL) 
-                                                     + path-traced still render → Asset
-```
+- **Geometry sources, priority order:**
+  - **A. Parametric primitives** — real dims from the die-line/PackagingType → generated geometry with per-surface UVs. Covers the 6 StructuralPackTypes = bulk of CPG.
+  - **B. Fold-from-net** — folding cartons/corrugate: `normalizedSvg` cut/crease → **FOLD format** → fold solver → folded mesh + per-panel UVs. Adapt MIT-licensed [Origami Simulator](https://github.com/amandaghassaei/OrigamiSimulator) + [FOLD spec](https://github.com/edemaine/fold). `dielineParse.ts` already separates cut vs crease.
+  - **C. glTF** — already supported. Admin-curated; AI image-to-3D ([Tripo](https://www.tripo3d.ai/api)/Meshy) drafts from partner photos for odd shapes, admin-verified (locked §0.4).
+- **Binding:** creator Fabric canvas → CanvasTexture per surface (exists); die-line panel ↔ UV region mapping; deterministic FDA marks composited as vector layer (exists).
+- **Realism + output:** PBR presets keyed to `PackagingMaterial` (matte/gloss laminate, soft-touch, kraft, metal, glass, shrink film — admin-tunable) + HDRI studio envs (Poly Haven CC0) + contact shadows. Real-time = WebGL PBR in the dock. Checkout/marketing stills = in-browser progressive path tracing ([three-gpu-pathtracer](https://github.com/gkjohnson/three-gpu-pathtracer)) → `Asset`. No server GPU in V1.5.
 
-**Geometry sources, in priority order:**
-- **A. Parametric primitives** — dims from PackagingType → generated geometry with correct per-surface UVs. Covers the 6 StructuralPackTypes (jar, can, bottle, pouch, tube, box) = the bulk of CPG SKUs. Deterministic, cheap, no assets needed.
-- **B. Fold-from-net** — for folding cartons/corrugate: `normalizedSvg` cut/crease layers → **FOLD format** → fold solver → folded mesh with per-panel UVs. Adapt the MIT-licensed [Origami Simulator](https://github.com/amandaghassaei/OrigamiSimulator) approach + [FOLD spec](https://github.com/edemaine/fold) (three.js-native, proven). Our die-line parse (`dielineParse.ts`) already separates cut vs crease.
-- **C. Curated glTF** — already supported (Model3DSource, material→surface resolver). Admin curation queue for complex/long-tail shapes. Optional accelerant: AI image-to-3D ([Tripo API](https://www.tripo3d.ai/api) / Meshy) drafts a glTF from the partner's white-label photo → **admin verifies against real dims before ACTIVE** (open decision §6.1).
+## 4. The Mockup Library (new model)
 
-**Realism layer (the "wow" gap):**
-- Substrate **PBR presets keyed to `PackagingMaterial`** (G3 typed capabilities): matte/gloss laminate, soft-touch, kraft, metal can, glass jar, shrink film — roughness/metalness/clearcoat/normal params, admin-tunable.
-- **HDRI studio environments** (Poly Haven, CC0) + camera presets + contact shadow/AO.
-- **Real-time** = three.js WebGL PBR in the existing dock (good-enough live preview).
-- **Checkout/marketing-grade** = progressive path tracing **in-browser** via [three-gpu-pathtracer](https://github.com/gkjohnson/three-gpu-pathtracer) (renders in seconds client-side, zero server GPU cost) → saved as `Asset` on DesignVersion/OrderItem. Server-side headless render farm deferred until volume justifies it.
+- **`MockupAsset`** (additive): packagingTypeId, kind (`STANDARD_RENDER` | `SCENE_2D` | `SCENE_3D_VIDEO` | `AI_SCENE`), sourceKind (`GENERATED` | `ADMIN_SCENE` | `CREATOR_AI`), assetId, cameraPreset, sceneRef?, **isPremium** (all false at launch, §0.3), status DRAFT→ACTIVE.
+- **Free tier at launch = everything**: standard neutral renders (auto-generated) + admin scene mockups (juice-can-with-tropical-splash class) + videos when they land.
+- **Scene composer** (Packaging Studio admin mode): pick generated 3D model → choose scene template (background, props, lighting) or AI background → path-traced render → publish to library. AI backgrounds allowed — the *product* in frame is the true render; only the scene is generated (consistent with the locked AI principle).
+- **Creator flow (Design Studio, finalize/pre-checkout):** design done → "Mockups" panel on the product → browse library renders of *their own design* (composited live) → pick/save favorites → optionally **AI-generate a scene** (labeled marketing-only, rate-limited) → checkout preview itself stays the production-accurate render (locked).
 
-## 3. Phases
+## 5. Phases
 
 | Phase | Scope | Effort | Ships |
 |---|---|---|---|
-| **G1 — Realism upgrade** | PBR presets per PackagingMaterial + HDRI + shadows in Packaging3DView + LivePreview3DDock; verify glTF texture swap in-browser | ~5–8d | Immediately visible quality jump on everything that already renders |
-| **G2 — Render pipeline** | three-gpu-pathtracer "Generate mockup" → PNG Asset (Studio + checkout preview + creator marketing download); camera/scene presets | ~4–6d | Layer-C renders replace CSS MockupModal shapes |
-| **G3 — Parametric engine** | All 6 StructuralPackTypes parametric with per-surface UVs, dims from PackagingType; replaces BOX/CYLINDER/FLAT fallback | ~6–8d | Every packaging type gets a real 3D mockup with zero admin asset work |
-| **G4 — Fold-from-net** | normalizedSvg → FOLD → fold solver → folded carton mesh + per-panel UVs; fold animation as a bonus | ~8–12d (hardest) | Cartons/corrugate photoreal + the fold animation moment |
-| **G5 — Curation + long-tail** | Admin glTF curation queue in Studio (C9.g pattern); optional Tripo/Meshy admin-side drafting; scene/background library | ~5d + API key | Long-tail shapes without hand-modeling |
+| **G1 — Realism upgrade** | PBR presets per PackagingMaterial + HDRI + shadows in Packaging3DView + LivePreview3DDock; verify glTF texture swap | ~5–8d | Visible quality jump on everything that already renders |
+| **G2 — Render pipeline + library substrate** | three-gpu-pathtracer render → PNG Asset; `MockupAsset` model + creator "Mockups" panel (browse + save) | ~6–8d | Layer-C renders replace CSS MockupModal; library exists |
+| **G3 — Parametric engine + intake auto-pipeline** | 6 StructuralPackTypes parametric from die-line dims; §1 auto job + admin review queue in Packaging Studio | ~8–10d | Partner upload → approved 3D mockup with near-zero admin work |
+| **G4 — Fold-from-net** | normalizedSvg → FOLD → folded carton mesh + per-panel UVs; fold animation bonus | ~8–12d (hardest) | Cartons/corrugate photoreal |
+| **G5 — Scene composer + creator AI scenes** | Admin scene templates + AI backgrounds; creator AI scene generation (labeled, rate-limited); glTF curation queue + Tripo/Meshy drafting | ~7–10d + API keys | The "awesome mockups" tier — still all free (§0.3) |
+| **G6 — Video + premium toggle** (deferred) | 3D turntable/fold videos; flip `isPremium` gating via lookupPlanFeature() when monetization decided | — | V2 |
 
-Sequencing note: **G1+G2 first** — they deliver the Pacdora "feel" on existing geometry in ~2 weeks. G3/G4 widen coverage. V1 checkout keeps the 2D photo-mask (LOCKED); 3D renders slot in as the Layer-C upgrade when G2 lands (suggested V1.5, no longer V2-blocked since the external dependency is gone).
+Sequencing: **G1+G2 first** (~2–3 wks) delivers the Pacdora feel on existing geometry. G3 is the admin-relief payoff. V1 checkout keeps the 2D photo-mask (LOCKED); suggested landing = V1.5 since the external blocker is gone.
 
-## 4. What we explicitly do NOT build
+## 6. What we explicitly do NOT build
 
-- No Pacdora-style public template marketplace — our library is PackagingType-driven.
-- No AI-generated geometry straight to creators — AI drafts are admin-curated only (locked principle: checkout preview must faithfully represent the physical product).
+- No pre-built/licensed 3D template marketplace — geometry comes from partner die-lines + photos.
+- No AI geometry straight to creators — AI drafts are admin-verified only.
 - No server GPU render farm in V1.5 — in-browser path tracing first.
-- No video renders / configurators until stills prove demand.
+- No monetization machinery at launch — `isPremium` flag only (§0.3).
 
-## 5. Reuse map (already built, zero rework)
+## 7. Reuse map (zero rework)
 
-`Dieline3DViewer` (raycasting, PNG capture) · `LivePreview3DDock` (CanvasTexture live design) · `gltf-surface-binding.ts` + `surface-face.ts` (deterministic, tested) · `dielineSvg.ts` / `dielineParse.ts` (cut/crease separation) · `packaging-surfaces.ts` resolver · schema: `Model3DSource`, `PackagingType.model3d*`, `PackagingDieline`, MockupTemplate substrate.
+`Dieline3DViewer` · `LivePreview3DDock` · `gltf-surface-binding.ts` + `surface-face.ts` · `dielineSvg.ts` / `dielineParse.ts` · `packaging-surfaces.ts` · MockupTemplate substrate + PrintAreaEditor (2D masks stay as V1 + photo fallback) · AI try-on loop + rate limiter · RAMP-queue review pattern · schema: `Model3DSource`, `PackagingType.model3d*`, `PackagingDieline`.
 
-## 6. Open decisions (Pavel)
+## 8. Remaining open decisions
 
-1. **AI image-to-3D as admin accelerant** (G5) — allowed under the "AI never production-accurate" principle if admin verifies dims before ACTIVE? Or geometry stays hand-curated?
-2. **Sequencing** — pull G1+G2 into V1.5 (recommended; external blocker gone) or keep all 3D in V2?
-3. **Render budget** — target quality/time for the path-traced still (e.g., ≤10s on mid hardware)?
-4. **Asset licensing** — CC0 (Poly Haven) HDRIs/materials only, or budget for licensed studio sets?
+1. **Sequencing** — pull G1+G2 into V1.5 (recommended) or keep all 3D in V2?
+2. **Render budget** — target quality/time for path-traced stills (e.g. ≤10s mid hardware)?
+3. **Asset licensing** — CC0 only (Poly Haven) or budget for licensed studio scene sets?
+4. **Creator AI scene limits** — per-day cap / per-product cap for the free-at-launch period?
 
 ---
 *Supersedes the Pacdora-gated 3D path in `MOCKUP_STRATEGY.md` §V2 and `PACDORA_EVALUATION.md` (RESOLVED 2026-07-03).*
