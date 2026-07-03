@@ -219,11 +219,13 @@ export default async function OrderDetailPage({
       Date.now() - order.deliveredAt.getTime() <=
         orderSettings.disputeWindowDays * 24 * 60 * 60 * 1000)
 
-  // Phase L1.2a — HOLD_AT_MANUFACTURER orders carry a StorageAgreement; the
-  // panel data (agreement + accrual + release history + default address) is
-  // assembled server-side and handed to the client panel pre-serialized.
+  // Phase L1.2a — stored orders carry a StorageAgreement; the panel data
+  // (agreement + accrual + release history + default address) is assembled
+  // server-side and handed to the client panel pre-serialized. P1 extends the
+  // panel to FC-held stock (WAREHOUSE_PARTNER) — same agreement + release FSM,
+  // worked from the FC's /outbound queue (docs/PARTNER_ROLE_ACCOUNTS.md §3.1.C).
   const storagePanel =
-    order.shipToType === 'HOLD_AT_MANUFACTURER'
+    order.shipToType === 'HOLD_AT_MANUFACTURER' || order.shipToType === 'WAREHOUSE_PARTNER'
       ? await getStoragePanelData(order.id, user.id)
       : null
 

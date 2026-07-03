@@ -47,8 +47,12 @@ export async function createStorageRelease({
     select: { id: true, shipToType: true },
   })
   if (!order) return { ok: false, error: 'Order not found.' }
-  if (order.shipToType !== 'HOLD_AT_MANUFACTURER') {
-    return { ok: false, error: 'This order is not stored at the manufacturer.' }
+  // P1 (docs/PARTNER_ROLE_ACCOUNTS.md §3.1.C): releases now cover BOTH storage
+  // homes — HOLD_AT_MANUFACTURER and FC-held (WAREHOUSE_PARTNER) stock. The
+  // storing partner works either from their /outbound queue; the FSM,
+  // balance rules and address snapshot are identical.
+  if (order.shipToType !== 'HOLD_AT_MANUFACTURER' && order.shipToType !== 'WAREHOUSE_PARTNER') {
+    return { ok: false, error: 'This order has no stored stock to release.' }
   }
 
   const agreement = await prisma.storageAgreement.findFirst({

@@ -171,6 +171,13 @@ export default async function SettingsPage() {
           cta="Set up carriers"
           description="Buy discounted parcel labels through iLaunchify shipping, or connect your own negotiated carrier account for dispatch labels."
         />
+        <SettingCard
+          icon={<Warehouse className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Receiving & availability"
+          href="/settings/fulfillment"
+          cta="Set receiving spec"
+          description="Fulfillment Center facilities: receiving requirements (appointments, pallet spec, label placement) and blackout dates that pause routing."
+        />
       </Section>
 
       {/* Preferences */}

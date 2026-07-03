@@ -27,6 +27,7 @@ import {
   PackageOpen,
   Boxes,
   Send,
+  Receipt,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
@@ -59,6 +60,7 @@ const NAV_ORDERS: PartnerNavItem = { href: '/orders', label: 'Orders', icon: Inb
 const NAV_INBOUND: PartnerNavItem = { href: '/inbound', label: 'Inbound', icon: PackageOpen }
 const NAV_INVENTORY: PartnerNavItem = { href: '/inventory', label: 'Inventory', icon: Boxes }
 const NAV_OUTBOUND: PartnerNavItem = { href: '/outbound', label: 'Outbound', icon: Send }
+const NAV_BILLING: PartnerNavItem = { href: '/billing', label: 'Storage billing', icon: Receipt }
 const NAV_ON_DEMAND: PartnerNavItem = { href: '/on-demand', label: 'On-demand', icon: Zap }
 const NAV_PRODUCTS: PartnerNavItem = { href: '/products', label: 'Products', icon: Package }
 const NAV_SERVICES: PartnerNavItem = { href: '/services', label: 'Services', icon: Wrench }
@@ -99,7 +101,9 @@ export function roleNavFor(serviceTypes: readonly string[]): PartnerNavItem[] {
   if (producing) nav.push(NAV_PACKAGING)
   if (prepress) nav.push(NAV_PRINT_SPEC)
   if (producing) nav.push(NAV_ACCESSORIES)
-  nav.push(NAV_CERTIFICATIONS, NAV_PAYMENTS, NAV_SETTINGS)
+  nav.push(NAV_CERTIFICATIONS, NAV_PAYMENTS)
+  if (fulfillment) nav.push(NAV_BILLING)
+  nav.push(NAV_SETTINGS)
   return nav
 }
 

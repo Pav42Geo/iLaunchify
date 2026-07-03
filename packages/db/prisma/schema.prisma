@@ -1121,11 +1121,31 @@ model PartnerService {
   // Logistics L0 back-relations
   storageAgreements                StorageAgreement[]
   fcAwards                         FcAwardLog[]
+  // Partner Role Accounts P1 (docs/PARTNER_ROLE_ACCOUNTS.md §3.1.E) —
+  // partner-declared unavailability windows; FC selection + dispatch routing
+  // treat them as capacity = 0 (wired into fc-scorer in a later slice).
+  blackoutDates                    PartnerBlackoutDate[]
   partner                          Partner                           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
 
   @@unique([partnerId, type]) // one service per type per partner
+}
+
+/// Partner-declared unavailability window (vacation, maintenance, peak
+/// embargo). Applies per service; date-only semantics (whole days).
+model PartnerBlackoutDate {
+  id               String         @id @default(cuid())
+  partnerServiceId String
+  startsOn         DateTime
+  endsOn           DateTime
+  reason           String?
+  createdById      String // soft FK → User
+  createdAt        DateTime       @default(now())
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+
+  @@index([partnerServiceId, startsOn])
 }
 
 model PartnerClawback {
