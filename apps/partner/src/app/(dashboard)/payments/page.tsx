@@ -6,7 +6,7 @@
 // on the payouts table. Data sources + math unchanged.
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import Link from 'next/link'
 import { DollarSign, ArrowDownToLine, AlertCircle, ArrowUpDown, type LucideIcon } from 'lucide-react'
@@ -53,14 +53,23 @@ export default async function PaymentsPage({
 
   const user = await requireUser()
   if (user.role !== 'PARTNER') return null
-  const partner = await prisma.partner.findUnique({ where: { userId: user.id } })
+  // P3 §2: payments is a commercial surface — org admins only. Transfers and
+  // the Connect account live on the FOUNDER's user row, so resolve it via the
+  // org rather than the acting user (a teammate admin sees the org's money).
+  const access = await requirePartnerAdminAccess(user.id)
+  if (!access) return null
+  const partner = await prisma.partner.findUnique({
+    where: { id: access.partnerId },
+    select: { id: true, userId: true },
+  })
   if (!partner) return null
+  const founderUserId = partner.userId
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
   const [transfers, clawbacks, transfers30d] = await Promise.all([
     prisma.transfer.findMany({
-      where: { destinationUserId: user.id },
+      where: { destinationUserId: founderUserId },
       orderBy: { createdAt: 'desc' },
       take: 100,
       include: { charge: { select: { orderId: true } } },
@@ -72,7 +81,7 @@ export default async function PaymentsPage({
       include: { refund: true, dispute: true },
     }),
     prisma.transfer.findMany({
-      where: { destinationUserId: user.id, createdAt: { gte: thirtyDaysAgo } },
+      where: { destinationUserId: founderUserId, createdAt: { gte: thirtyDaysAgo } },
       select: { amountCents: true, status: true },
     }),
   ])
@@ -83,7 +92,7 @@ export default async function PaymentsPage({
   const clawedBackCents = clawbacks.reduce((a, c) => a + c.amountCents, 0)
 
   const stripeConnected = await prisma.user.findUnique({
-    where: { id: user.id },
+    where: { id: founderUserId },
     select: { stripeAccountId: true, stripeAccountStatus: true },
   })
   const stripeActive = !!stripeConnected?.stripeAccountId && stripeConnected.stripeAccountStatus === 'ACTIVE'
@@ -100,15 +109,27 @@ export default async function PaymentsPage({
     <div className="space-y-6">
       {/* Cream hero + KPI strip */}
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Manufacturing · Payments
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Payments
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-600">
-          Your earnings, payouts, and refund debits. Money moves through Stripe Connect.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
+              Partner · Payments
+            </p>
+            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+              Payments
+            </h1>
+            <p className="mt-1 text-[13px] text-ink-600">
+              Your earnings, payouts, and refund debits. Money moves through Stripe Connect.
+            </p>
+          </div>
+          {stripeActive && (
+            <a
+              href="/api/stripe-express"
+              className="inline-flex flex-none items-center rounded-full border border-ink-200 bg-white px-4 py-2 text-[12.5px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            >
+              Open Stripe dashboard ↗
+            </a>
+          )}
+        </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Kpi label="Earned · 30 days" value={fmtCents(earned30dCents)} icon={DollarSign} tone="pink" />

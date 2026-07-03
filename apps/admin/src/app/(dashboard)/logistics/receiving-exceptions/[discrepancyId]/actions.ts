@@ -13,7 +13,7 @@ import { prisma } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { dispatchNotification } from '@ilaunchify/notifications'
+import { dispatchToPartnerService } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -46,7 +46,7 @@ export async function updateDiscrepancyStatus({
           order: {
             select: {
               orderNumber: true,
-              shipToPartnerService: { select: { partner: { select: { userId: true } } } },
+              shipToPartnerServiceId: true,
             },
           },
         },
@@ -85,13 +85,13 @@ export async function updateDiscrepancyStatus({
   })
 
   if (toStatus === 'RESOLVED') {
-    const fcUserId = row.orderDispatch.order.shipToPartnerService?.partner.userId
+    const fcServiceId = row.orderDispatch.order.shipToPartnerServiceId
     const orderRef = row.orderDispatch.order.orderNumber ?? `#${row.orderDispatch.orderId.slice(-8)}`
-    if (fcUserId) {
-      // Best-effort — the dispatcher never throws. Creator-facing outcome
-      // surfaces on the order timeline (P1) rather than a direct notification.
-      await dispatchNotification({
-        userId: fcUserId,
+    if (fcServiceId) {
+      // Operational → FC service members + org admins (P3 §6.3). Best-effort —
+      // the dispatcher never throws. Creator-facing outcome surfaces on the
+      // order timeline rather than a direct notification.
+      await dispatchToPartnerService(fcServiceId, {
         // Cast until `pnpm db:generate` picks up the P0 enum additions.
         event: 'RECEIVING_DISCREPANCY_RESOLVED' as NotificationEvent,
         data: { orderRef, resolutionNote: note ?? undefined, href: '/inbound?tab=history' },

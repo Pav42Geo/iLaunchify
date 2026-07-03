@@ -21,7 +21,7 @@
 
 import { prisma, docTrackFor } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
-import { dispatchNotification } from '@ilaunchify/notifications'
+import { dispatchNotification, dispatchToPartnerService, dispatchToPartnerAdmins } from '@ilaunchify/notifications'
 import { logSystemAudit } from '@ilaunchify/audit'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
@@ -186,18 +186,15 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
       },
     })
 
-    const sends: Promise<void>[] = []
-    if (file.partner.userId) {
-      sends.push(
-        dispatchNotification({
-          userId: file.partner.userId,
-          // Cast until `pnpm db:generate` picks up the P0 enum additions.
-          event: 'DOC_EXPIRED' as NotificationEvent,
-          data: { docLabel, suspendedCapability: suspendedLabel, href: '/my-application' },
-          audience: 'partner',
-        }),
-      )
-    }
+    const sends: Promise<unknown>[] = []
+    // Commercial event → org admins (P3 §6.3 role routing).
+    sends.push(
+      dispatchToPartnerAdmins(file.partner.id, {
+        event: 'DOC_EXPIRED' as NotificationEvent,
+        data: { docLabel, suspendedCapability: suspendedLabel, href: '/my-application' },
+        audience: 'partner',
+      }),
+    )
     for (const admin of adminUsers) {
       sends.push(
         dispatchNotification({
@@ -248,8 +245,7 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
     }
     await prisma.partnerFile.update({ where: { id: file.id }, data: stamps })
 
-    await dispatchNotification({
-      userId: file.partner.userId,
+    await dispatchToPartnerAdmins(file.partner.id, {
       event: 'DOC_EXPIRING_SOON' as NotificationEvent,
       data: {
         docLabel: DOC_KIND_LABEL[file.kind as string] ?? 'Compliance document',
@@ -286,15 +282,12 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
     if (windowMs <= 0) continue
     const consumed = (now.getTime() - d.createdAt.getTime()) / windowMs
     if (consumed < 0.5) continue
-    const userId = d.partnerService.partner.userId
-    if (!userId) continue
-
     await prisma.orderDispatch.update({
       where: { id: d.id },
       data: { slaAtRiskNotifiedAt: now },
     })
-    await dispatchNotification({
-      userId,
+    // Operational event → service members + org admins (P3 §6.3).
+    await dispatchToPartnerService(d.partnerServiceId, {
       event: 'DISPATCH_SLA_AT_RISK' as NotificationEvent,
       data: {
         dispatchId: d.id,
@@ -323,21 +316,21 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
       order: {
         select: {
           orderNumber: true,
-          shipToPartnerService: { select: { partner: { select: { userId: true } } } },
+          shipToPartnerServiceId: true,
         },
       },
     },
   })
 
   for (const d of unconfirmed) {
-    const fcUserId = d.order.shipToPartnerService?.partner.userId
-    if (!fcUserId) continue
+    const fcServiceId = d.order.shipToPartnerServiceId
+    if (!fcServiceId) continue
     await prisma.orderDispatch.update({
       where: { id: d.id },
       data: { inboundUnconfirmedNotifiedAt: now },
     })
-    await dispatchNotification({
-      userId: fcUserId,
+    // Operational → FC service members + org admins (P3 §6.3).
+    await dispatchToPartnerService(fcServiceId, {
       event: 'INBOUND_DELIVERED_UNCONFIRMED' as NotificationEvent,
       data: {
         dispatchId: d.id,
@@ -399,8 +392,8 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
       storageAgreement: {
         select: {
           orderId: true,
+          partnerServiceId: true,
           order: { select: { orderNumber: true } },
-          partnerService: { select: { partner: { select: { userId: true } } } },
         },
       },
     },
@@ -411,19 +404,16 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
       r.storageAgreement.order.orderNumber ?? `#${r.storageAgreement.orderId.slice(-8)}`
 
     if (!r.slaNotifiedAt) {
-      const partnerUserId = r.storageAgreement.partnerService.partner.userId
       await prisma.storageReleaseOrder.update({
         where: { id: r.id },
         data: { slaNotifiedAt: now },
       })
-      if (partnerUserId) {
-        await dispatchNotification({
-          userId: partnerUserId,
-          event: 'RELEASE_SHIP_SLA_AT_RISK' as NotificationEvent,
-          data: { orderRef, daysWaiting },
-          audience: 'partner',
-        })
-      }
+      // Operational → storing-service members + org admins (P3 §6.3).
+      await dispatchToPartnerService(r.storageAgreement.partnerServiceId, {
+        event: 'RELEASE_SHIP_SLA_AT_RISK' as NotificationEvent,
+        data: { orderRef, daysWaiting },
+        audience: 'partner',
+      })
       result.releaseSlaNotices++
     }
 

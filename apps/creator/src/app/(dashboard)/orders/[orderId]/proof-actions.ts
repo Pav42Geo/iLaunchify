@@ -9,7 +9,7 @@ import { prisma } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { dispatchNotification } from '@ilaunchify/notifications'
+import { dispatchToPartnerService } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -36,8 +36,8 @@ export async function decideProofRound({
         select: {
           id: true,
           orderId: true,
+          partnerServiceId: true,
           order: { select: { orderNumber: true } },
-          partnerService: { select: { partner: { select: { userId: true } } } },
         },
       },
     },
@@ -77,12 +77,11 @@ export async function decideProofRound({
     },
   })
 
-  const partnerUserId = round.orderDispatch.partnerService.partner.userId
-  if (partnerUserId) {
+  {
     const orderRef =
       round.orderDispatch.order.orderNumber ?? `#${round.orderDispatch.orderId.slice(-8)}`
-    await dispatchNotification({
-      userId: partnerUserId,
+    // Operational → print-service members + org admins (P3 §6.3).
+    await dispatchToPartnerService(round.orderDispatch.partnerServiceId, {
       // Cast until `pnpm db:generate` picks up the P2 enum additions.
       event: (approve ? 'PROOF_APPROVED' : 'PROOF_REJECTED') as NotificationEvent,
       data: {

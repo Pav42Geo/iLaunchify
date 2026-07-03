@@ -37,6 +37,17 @@ export interface PartnerAccess {
  * partner affiliation at all. Never throws on missing membership — the
  * founder path lazily creates its membership row (idempotent upsert).
  */
+// lastActiveAt stamping — throttled to one write per window so the dashboard
+// layout's per-request call doesn't hammer the row (§2.2 shared metadata).
+const LAST_ACTIVE_THROTTLE_MS = 15 * 60 * 1000
+
+function stampLastActive(membershipId: string, lastActiveAt: Date | null) {
+  if (lastActiveAt && Date.now() - lastActiveAt.getTime() < LAST_ACTIVE_THROTTLE_MS) return
+  void prisma.partnerMembership
+    .update({ where: { id: membershipId }, data: { lastActiveAt: new Date() } })
+    .catch(() => {}) // fire-and-forget; presence data is best-effort
+}
+
 export async function getPartnerAccess(userId: string): Promise<PartnerAccess | null> {
   // Path 1 — founder of record.
   const founded = await prisma.partner.findUnique({
@@ -49,8 +60,9 @@ export async function getPartnerAccess(userId: string): Promise<PartnerAccess | 
       where: { partnerId_userId: { partnerId: founded.id, userId } },
       create: { partnerId: founded.id, userId, isAdmin: true },
       update: { isAdmin: true, removedAt: null }, // founder can't be soft-removed
-      select: { id: true },
+      select: { id: true, lastActiveAt: true },
     })
+    stampLastActive(membership.id, membership.lastActiveAt)
     return {
       partnerId: founded.id,
       isFounder: true,
@@ -70,6 +82,7 @@ export async function getPartnerAccess(userId: string): Promise<PartnerAccess | 
       id: true,
       partnerId: true,
       isAdmin: true,
+      lastActiveAt: true,
       partner: { select: { services: { select: { id: true } } } },
       serviceMemberships: {
         where: { removedAt: null },
@@ -78,6 +91,7 @@ export async function getPartnerAccess(userId: string): Promise<PartnerAccess | 
     },
   })
   if (!membership) return null
+  stampLastActive(membership.id, membership.lastActiveAt)
 
   const serviceRoles: Record<string, string[]> = {}
   for (const sm of membership.serviceMemberships) {

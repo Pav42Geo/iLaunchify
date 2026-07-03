@@ -35,3 +35,10 @@ export {
 export { sendTransactionalEmail, type SendEmailResult } from './email'
 // Daily digest for P2-severity events (dispatched with digest:true).
 export { runNotificationDigest, type DigestResult } from './digest'
+// P3 role-routed recipients (docs/PARTNER_ROLE_ACCOUNTS.md §6.3).
+export {
+  partnerServiceRecipients,
+  partnerOrgAdminRecipients,
+  dispatchToPartnerService,
+  dispatchToPartnerAdmins,
+} from './recipients'
