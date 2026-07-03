@@ -220,9 +220,72 @@ async function main() {
     console.log(`✓ Created FC inbound order: ${order.id}`)
   }
 
-  console.log('\nFC dry run ready →')
+  // ---------------------------------------------------------------------------
+  // 3. Print job in proof-loop entry state (P2 D3 — first order for the
+  //    creator×printer pair, dispatch ACCEPTED → proof required before READY).
+  // ---------------------------------------------------------------------------
+  const labelService = await prisma.partnerService.findFirst({
+    where: { type: 'LABEL_PRINTING', status: 'ACTIVE' },
+  })
+  if (!labelService) {
+    console.log('• No ACTIVE LABEL_PRINTING service — skipping proof-loop order (run main seed).')
+  } else {
+    const proofSlug = 'demo-order-proof-loop'
+    const existingProof = await prisma.order.findFirst({
+      where: { brandId: brand.id, internalNotes: proofSlug },
+    })
+    if (existingProof) {
+      console.log(`• Proof-loop order already exists: ${existingProof.id}`)
+    } else {
+      const subtotalP = 96000
+      const orderP = await prisma.order.create({
+        data: {
+          orderNumber: seedOrderNumber(),
+          brandId: brand.id,
+          creatorUserId: creator.id,
+          internalNotes: proofSlug,
+          status: 'IN_FULFILLMENT',
+          aggregateApprovalStatus: 'FULLY_ACCEPTED',
+          subtotalCents: subtotalP,
+          shippingCents: 12000,
+          taxCents: 8400,
+          totalCents: subtotalP + 12000 + 8400,
+          manufacturerServiceId: mfgService.id,
+          printProviderServiceId: labelService.id,
+          shipToType: 'CREATOR_ADDRESS',
+          shipToContactName: 'Sample Creator',
+          shipToAddressLine1: '123 Wild Roots Way',
+          shipToCity: 'Columbus',
+          shipToState: 'OH',
+          shipToPostalCode: '43215',
+          shipToCountry: 'US',
+          paidAt: new Date(Date.now() - 3 * DAY),
+          items: {
+            create: { productId: product.id, quantity: 300, unitPriceCents: 320, totalCents: subtotalP },
+          },
+          dispatches: {
+            create: [
+              {
+                type: 'LABEL',
+                partnerServiceId: labelService.id,
+                status: 'ACCEPTED', // proof upload unlocks; READY gated on approval (D3)
+                acceptDeadlineAt: new Date(Date.now() - 2 * DAY),
+                acceptedAt: new Date(Date.now() - 2 * DAY),
+                costCents: 42000,
+                manifestVersion: 1,
+                acceptedManifestVersion: 1,
+              },
+            ],
+          },
+        } as Parameters<typeof prisma.order.create>[0]['data'],
+      })
+      console.log(`✓ Created proof-loop print order: ${orderP.id}`)
+    }
+  }
+
+  console.log('\nDry run ready →')
   console.log('  1. Log in to the partner app (3002) as fc-dryrun@ilaunchify.dev (dev login)')
-  console.log('  2. Follow docs/FC_DRY_RUN.md from step 3 (Inbound queue)')
+  console.log('  2. Follow docs/GO_LIVE_ACCEPTANCE.md (supersedes FC_DRY_RUN.md steps)')
 }
 
 main()
