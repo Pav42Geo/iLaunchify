@@ -15,6 +15,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { SERVICE_TYPE_LABEL, type PartnerServiceType } from '@/lib/role-skins'
 import { loadInventory, loadFefoLots } from './inventory-data'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Inventory — Partners' }
@@ -42,8 +43,8 @@ export default async function InventoryPage({
   // Surface guard: storage-holding partners only (WAREHOUSE service, or any
   // agreement history from HOLD_AT_MANUFACTURER).
   const [warehouseCount, agreementCount] = await Promise.all([
-    prisma.partnerService.count({ where: { type: 'WAREHOUSE', partner: { userId: user.id } } }),
-    prisma.storageAgreement.count({ where: { partnerService: { partner: { userId: user.id } } } }),
+    prisma.partnerService.count({ where: { type: 'WAREHOUSE', AND: [serviceOwnedBy(user.id)] } }),
+    prisma.storageAgreement.count({ where: { partnerService: serviceOwnedBy(user.id) } }),
   ])
   if (warehouseCount === 0 && agreementCount === 0) redirect('/dashboard')
 

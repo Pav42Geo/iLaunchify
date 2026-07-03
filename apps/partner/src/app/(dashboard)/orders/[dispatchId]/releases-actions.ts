@@ -22,6 +22,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -43,7 +44,7 @@ async function loadOwnedRelease(userId: string, releaseId: string) {
   return prisma.storageReleaseOrder.findFirst({
     where: {
       id: releaseId,
-      storageAgreement: { partnerService: { partner: { userId } } },
+      storageAgreement: { partnerService: serviceOwnedBy(userId) },
     },
     include: { storageAgreement: true },
   })

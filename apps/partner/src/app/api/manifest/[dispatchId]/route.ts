@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ export async function GET(
   }
 
   const dispatch = await prisma.orderDispatch.findFirst({
-    where: { id: dispatchId, partnerService: { partner: { userId: user.id } } },
+    where: { id: dispatchId, partnerService: serviceOwnedBy(user.id) },
     select: { id: true, finishManifestJson: true },
   })
   if (!dispatch || !dispatch.finishManifestJson) {

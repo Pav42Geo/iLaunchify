@@ -39,6 +39,7 @@ import { StorageReleasesCard, type StorageReleaseView } from './StorageReleasesC
 import { getDispatchShippingContext } from './ship-requirements'
 import { SHIP_DOC_LABELS, PARTNER_UPLOADED_DOC_TYPES } from '@ilaunchify/shipping'
 import type { ProductionManifest } from '@ilaunchify/orders'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,7 +70,7 @@ export default async function DispatchDetailPage({
   const dispatch = await prisma.orderDispatch.findFirst({
     where: {
       id: (await params).dispatchId,
-      partnerService: { partner: { userId: user.id } },
+      partnerService: serviceOwnedBy(user.id),
     },
     include: {
       order: {

@@ -33,6 +33,8 @@ interface PartnerSidebarProps {
   restricted: boolean
   /** The partner's ServiceType values (strings — RSC-boundary safe); drives the role-skinned nav. */
   serviceTypes?: string[]
+  /** Org-wide admin (founder or isAdmin membership) — commercial nav items. */
+  isOrgAdmin?: boolean
 }
 
 function statusBadge(status: PartnerStatus): {
@@ -58,9 +60,9 @@ function statusBadge(status: PartnerStatus): {
 
 const STORAGE_KEY = 'ilf-partner-sidebar-collapsed'
 
-export function PartnerSidebar({ status, restricted, serviceTypes }: PartnerSidebarProps) {
+export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin }: PartnerSidebarProps) {
   const pathname = usePathname()
-  const nav = restricted ? RESTRICTED_NAV : roleNavFor(serviceTypes ?? [])
+  const nav = restricted ? RESTRICTED_NAV : roleNavFor(serviceTypes ?? [], { isOrgAdmin })
   const badge = statusBadge(status)
 
   const [collapsed, setCollapsed] = useState(false)

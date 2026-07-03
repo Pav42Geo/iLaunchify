@@ -76,3 +76,6 @@ export type {
   SetCreatorTierResult,
   TierWriteActor,
 } from './tier-writes'
+
+// P3 multi-seat partner access (docs/PRINT_PRODUCTION_WORKFLOW.md §2.2)
+export { getPartnerAccess, requirePartnerAdminAccess, type PartnerAccess } from './partner-access'

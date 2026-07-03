@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { OrderRowActions } from './OrderRowActions'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — Partners' }
@@ -84,33 +85,31 @@ export default async function OrdersPage({
   const view: ViewMode = sp.view === 'table' ? 'table' : 'cards' // Partner default: cards (mirror creator)
 
   const user = await requireUser()
-  const partner = await prisma.partner.findUnique({
-    where: { userId: user.id },
+  // P3 multi-seat: dispatch inbox scoped to the services THIS USER may work
+  // (admins = all of the org's services; members = their granted services).
+  const services = await prisma.partnerService.findMany({
+    where: { AND: [serviceOwnedBy(user.id)] },
     include: {
-      services: {
+      dispatches: {
         include: {
-          dispatches: {
+          order: {
             include: {
-              order: {
-                include: {
-                  brand: true,
-                  items: {
-                    take: 1,
-                    include: { product: { select: { name: true, primaryImageAssetId: true } } },
-                  },
-                },
+              brand: true,
+              items: {
+                take: 1,
+                include: { product: { select: { name: true, primaryImageAssetId: true } } },
               },
             },
-            orderBy: { createdAt: 'desc' },
-            take: 50,
           },
         },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
       },
     },
   })
-  if (!partner) return null
+  if (services.length === 0) return null
 
-  const all = partner.services.flatMap((s) =>
+  const all = services.flatMap((s) =>
     s.dispatches.map((d) => ({ ...d, serviceType: s.type })),
   )
   const countFor = (t: Exclude<Tab, 'all'>) => all.filter((d) => TAB_STATUSES[t].includes(d.status as string)).length

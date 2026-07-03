@@ -11,6 +11,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -41,7 +42,7 @@ export async function recordProductionLot({
   const user = await requireUser()
 
   const dispatch = await prisma.orderDispatch.findFirst({
-    where: { id: dispatchId, partnerService: { partner: { userId: user.id } } },
+    where: { id: dispatchId, partnerService: serviceOwnedBy(user.id) },
     select: { id: true, type: true, status: true, orderId: true },
   })
   if (!dispatch) return { ok: false, error: 'Dispatch not found' }

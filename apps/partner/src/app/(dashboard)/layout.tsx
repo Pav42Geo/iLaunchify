@@ -15,6 +15,7 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { getActingPartner } from '@/lib/partner-context'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { PartnerSidebar } from '@/components/nav/PartnerSidebar'
@@ -45,12 +46,12 @@ export default async function PartnerDashboardLayout({ children }: { children: R
   const user = await requireUser()
   if (user.role !== 'PARTNER') redirect('/login?error=unauthorized')
 
-  const partner = await prisma.partner.findUnique({
-    where: { userId: user.id },
-    select: { id: true, status: true, companyName: true, onboardingProgress: true },
-  })
-
-  if (!partner) redirect('/onboarding')
+  // P3 multi-seat: resolve the acting partner via membership (founder OR
+  // teammate) — getPartnerAccess also lazily backfills the founder's
+  // membership row, which the serviceOwnedBy() query fragments rely on.
+  const acting = await getActingPartner(user.id)
+  if (!acting) redirect('/onboarding')
+  const { partner, access } = acting
 
   // Where are we now? We use the pathname to avoid loops — if the partner
   // is already on /onboarding/welcome or /onboarding/status, the layout
@@ -89,17 +90,20 @@ export default async function PartnerDashboardLayout({ children }: { children: R
   const restricted = !['ACTIVE', 'INTEGRATION_ENHANCED'].includes(partner.status)
 
   // Role-skinned nav (docs/PARTNER_ROLE_ACCOUNTS.md §2) — the sidebar resolves
-  // its items from the partner's ServiceTypes. Checked per-request like status
-  // so admin-added services show up without re-login. Strings only across the
-  // RSC boundary (icons resolve inside the client component).
+  // its items from the ServiceTypes THIS USER may work (admins/founders = all;
+  // scoped members = their granted services only). Checked per-request so
+  // admin-added services + membership changes show up without re-login.
+  // Strings only across the RSC boundary (icons resolve in the client).
   const serviceTypes = restricted
     ? []
-    : (
-        await prisma.partnerService.findMany({
-          where: { partnerId: partner.id },
-          select: { type: true },
-        })
-      ).map((s) => s.type as string)
+    : access.serviceIds.length > 0
+      ? (
+          await prisma.partnerService.findMany({
+            where: { id: { in: access.serviceIds } },
+            select: { type: true },
+          })
+        ).map((s) => s.type as string)
+      : []
 
   return (
     <div className="flex h-screen flex-col">
@@ -113,6 +117,7 @@ export default async function PartnerDashboardLayout({ children }: { children: R
           status={partner.status}
           restricted={restricted}
           serviceTypes={serviceTypes}
+          isOrgAdmin={access.isAdmin}
         />
         <main data-partner-shell-main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50 p-6">
           <div data-partner-shell-content className="mx-auto max-w-6xl">{children}</div>

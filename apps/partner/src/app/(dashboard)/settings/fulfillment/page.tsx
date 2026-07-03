@@ -4,7 +4,7 @@
 
 import { redirect } from 'next/navigation'
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { FulfillmentSettingsForm, type BlackoutRow } from './FulfillmentSettingsForm'
 import type { ReceivingSpecInput } from './actions'
 
@@ -13,10 +13,13 @@ export const metadata = { title: 'Fulfillment settings — Partners' }
 
 export default async function FulfillmentSettingsPage() {
   const user = await requireUser()
+  // P3 §2: facility config is org-admin only.
+  const access = await requirePartnerAdminAccess(user.id)
+  if (!access) redirect('/settings')
   // P2 — blackout windows apply to every service; the receiving-spec editor
   // renders only for WAREHOUSE services (the form hides it otherwise).
   const services = await prisma.partnerService.findMany({
-    where: { partner: { userId: user.id } },
+    where: { partnerId: access.partnerId },
     orderBy: { type: 'asc' },
     select: {
       id: true,

@@ -9,6 +9,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { buildReceivingChecklist, type ChecklistItem, type HazmatClass, type ShipmentMode, type StorageClass } from '@ilaunchify/shipping'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const INBOUND_EXPECTED_STATUSES = ['SHIPPED', 'IN_TRANSIT'] as const
 export const INBOUND_HISTORY_STATUSES = ['DELIVERED'] as const
@@ -44,7 +45,7 @@ export interface InboundRow {
 /** WAREHOUSE service ids owned by this partner user (empty = no inbound surface). */
 export async function getOwnedWarehouseServiceIds(userId: string): Promise<string[]> {
   const services = await prisma.partnerService.findMany({
-    where: { type: 'WAREHOUSE', partner: { userId } },
+    where: { type: 'WAREHOUSE', AND: [serviceOwnedBy(userId)] },
     select: { id: true },
   })
   return services.map((s) => s.id)
@@ -184,7 +185,7 @@ export async function loadInboundDetail(
       id: dispatchId,
       order: {
         shipToType: 'WAREHOUSE_PARTNER',
-        shipToPartnerService: { type: 'WAREHOUSE', partner: { userId } },
+        shipToPartnerService: { type: 'WAREHOUSE', AND: [serviceOwnedBy(userId)] },
       },
     },
     select: DISPATCH_SELECT,

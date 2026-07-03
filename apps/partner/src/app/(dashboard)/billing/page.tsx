@@ -14,7 +14,7 @@ import { Receipt, Boxes, PackageSearch, Percent } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@ilaunchify/ui'
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { computeStorageAccrual, type StorageFeeSnapshot } from '@ilaunchify/shipping'
 
 export const dynamic = 'force-dynamic'
@@ -52,14 +52,17 @@ function usd(cents: number | null): string {
 
 export default async function BillingPage() {
   const user = await requireUser()
+  // P3 §2: billing is a commercial surface — org admins only, org-scoped.
+  const access = await requirePartnerAdminAccess(user.id)
+  if (!access) redirect('/dashboard')
   const [warehouseCount, agreementCount] = await Promise.all([
-    prisma.partnerService.count({ where: { type: 'WAREHOUSE', partner: { userId: user.id } } }),
-    prisma.storageAgreement.count({ where: { partnerService: { partner: { userId: user.id } } } }),
+    prisma.partnerService.count({ where: { type: 'WAREHOUSE', partnerId: access.partnerId } }),
+    prisma.storageAgreement.count({ where: { partnerService: { partnerId: access.partnerId } } }),
   ])
   if (warehouseCount === 0 && agreementCount === 0) redirect('/dashboard')
 
   const agreements = await prisma.storageAgreement.findMany({
-    where: { partnerService: { partner: { userId: user.id } } },
+    where: { partnerService: { partnerId: access.partnerId } },
     orderBy: [{ status: 'asc' }, { startedAt: 'asc' }],
     take: 200,
     select: {

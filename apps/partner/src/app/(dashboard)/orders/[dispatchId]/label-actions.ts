@@ -35,6 +35,7 @@ import {
 } from '@ilaunchify/shipping'
 import { revalidatePath } from 'next/cache'
 import { getDispatchShippingContext } from './ship-requirements'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 // -----------------------------------------------------------------------------
 // Types (all JSON-serializable — these cross the server-action boundary)
@@ -83,7 +84,7 @@ export type BuyLabelResult =
     exports only server actions, so the helper can't be re-exported from there). */
 async function loadOwnedDispatch(userId: string, dispatchId: string) {
   return prisma.orderDispatch.findFirst({
-    where: { id: dispatchId, partnerService: { partner: { userId } } },
+    where: { id: dispatchId, partnerService: serviceOwnedBy(userId) },
     include: { order: true, partnerService: { include: { partner: true } } },
   })
 }

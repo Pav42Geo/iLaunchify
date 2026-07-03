@@ -7,6 +7,7 @@ import { getEffectivePreferences } from '@ilaunchify/notifications'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
 import { PreferencesForm } from './PreferencesForm'
 import { rolePrefix } from '@/lib/role-skins'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Notification preferences — Partner' }
@@ -40,7 +41,7 @@ export default async function NotificationPreferencesPage() {
       select: { quietHoursStartUtc: true, quietHoursEndUtc: true },
     }),
     prisma.partnerService.findMany({
-      where: { partner: { userId: user.id } },
+      where: { AND: [serviceOwnedBy(user.id)] },
       select: { type: true },
     }),
   ])

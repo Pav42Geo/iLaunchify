@@ -633,6 +633,7 @@ model User {
   auditLogs                    AuditLog[]                   @relation("AuditLogActor")
   verifiedSections             PartnerVerificationSection[] @relation("VerificationSectionVerifier")
   uploadedFiles                PartnerFile[]                @relation("PartnerFileUploader")
+  partnerMemberships           PartnerMembership[]          @relation("PartnerMemberships") // P3 team
   notifications                Notification[]
   notificationPreferences      NotificationPreference[]
   creatorOrders                Order[]                      @relation("CreatorOrders")
@@ -954,8 +955,98 @@ model Partner {
   certificateTypeRequests CertificateTypeRequest[]      @relation("PartnerCertTypeRequests") // C1
   documents               PartnerDocument[]             @relation("PartnerDocuments") // C6
   facilities              PartnerFacility[]             @relation("PartnerFacilities")
+  // P3 multi-seat team (docs/PRINT_PRODUCTION_WORKFLOW.md §2.2, D1 LOCKED).
+  // NOTE deviation from the spec draft: Partner.userId KEEPS @unique as the
+  // founder-of-record pointer — teammates join via memberships, so removing
+  // the constraint buys nothing and would break every findUnique guard.
+  memberships             PartnerMembership[]
+  invites                 PartnerInvite[]
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
+}
+
+// =============================================================================
+// PARTNER TEAM (P3 — docs/PRINT_PRODUCTION_WORKFLOW.md §2.1–2.7, D1 LOCKED)
+// =============================================================================
+
+enum PartnerServiceRole {
+  PARTNER_PREPRESS
+  PARTNER_PRODUCTION
+}
+
+enum PartnerInviteStatus {
+  PENDING
+  CONSUMED
+  REVOKED
+  EXPIRED
+}
+
+/// Org-wide membership: who belongs to the Partner organization at all.
+/// Founders get a row lazily (getPartnerAccess backfill) with isAdmin=true.
+model PartnerMembership {
+  id                String   @id @default(cuid())
+  partnerId         String
+  userId            String
+  isAdmin           Boolean  @default(false) // org-wide PARTNER_ADMIN
+  invitedByUserId   String? // null only for the founder
+  invitedAt         DateTime?
+  acceptedAt        DateTime @default(now())
+  removedAt         DateTime? // soft-remove; audit log preserved
+  removedByUserId   String?
+  removedReason     String?
+  lastActiveAt      DateTime?
+  twoFactorEnrolled Boolean  @default(false)
+
+  partner            Partner                    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  user               User                       @relation("PartnerMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  serviceMemberships PartnerServiceMembership[]
+
+  @@unique([partnerId, userId])
+  @@index([partnerId, removedAt])
+  @@index([userId, removedAt])
+}
+
+/// Service-scoped work roles: ties a human to a specific PartnerService.
+/// A polymath holds several rows; a service can have several users (§2.7 —
+/// equal memberships, no seniority).
+model PartnerServiceMembership {
+  id                  String               @id @default(cuid())
+  partnerMembershipId String
+  partnerServiceId    String
+  roles               PartnerServiceRole[]
+  removedAt           DateTime?
+  removedByUserId     String?
+  removedReason       String?
+  createdAt           DateTime             @default(now())
+
+  partnerMembership PartnerMembership @relation(fields: [partnerMembershipId], references: [id], onDelete: Cascade)
+  partnerService    PartnerService    @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerMembershipId, partnerServiceId])
+  @@index([partnerServiceId, removedAt])
+}
+
+/// Invite carries both scopes — what to grant on accept. 14-day expiry.
+model PartnerInvite {
+  id               String              @id @default(cuid())
+  partnerId        String
+  invitedByUserId  String // must be org admin (or founder) at invite time
+  emailAddress     String
+  grantAdmin       Boolean             @default(false)
+  serviceGrants    Json // [{ serviceId, roles: ['PARTNER_PREPRESS', ...] }]
+  token            String              @unique
+  tokenExpiresAt   DateTime
+  status           PartnerInviteStatus @default(PENDING)
+  consumedAt       DateTime?
+  consumedByUserId String?
+  revokedAt        DateTime?
+  revokedByUserId  String?
+  createdAt        DateTime            @default(now())
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([emailAddress, status])
+  @@index([partnerId, status])
 }
 
 // Manufacturing plant / facility (turnkey builder, 2026-06-08). The facility's
@@ -1125,6 +1216,7 @@ model PartnerService {
   // partner-declared unavailability windows; FC selection + dispatch routing
   // treat them as capacity = 0 (wired into fc-scorer in a later slice).
   blackoutDates                    PartnerBlackoutDate[]
+  serviceMemberships               PartnerServiceMembership[] // P3 team (service-scoped roles)
   partner                          Partner                           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt

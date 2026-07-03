@@ -180,6 +180,17 @@ export default async function SettingsPage() {
         />
       </Section>
 
+      {/* Team */}
+      <Section title="Team">
+        <SettingCard
+          icon={<ShieldCheck className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Team members"
+          href="/settings/team"
+          cta="Manage team"
+          description="Invite teammates with scoped roles — org admins, prepress, production. Non-admins see only the services you grant. Unlocks once your company is active."
+        />
+      </Section>
+
       {/* Preferences */}
       <Section title="Preferences">
         <SettingCard

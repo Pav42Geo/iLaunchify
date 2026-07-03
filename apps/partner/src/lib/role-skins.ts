@@ -84,7 +84,11 @@ const NAV_SETTINGS: PartnerNavItem = { href: '/settings', label: 'Settings', ico
  * - Empty service list (legacy rows predating PartnerService backfill) falls
  *   back to the FULL union so nothing a partner relied on disappears.
  */
-export function roleNavFor(serviceTypes: readonly string[]): PartnerNavItem[] {
+export function roleNavFor(
+  serviceTypes: readonly string[],
+  opts: { isOrgAdmin?: boolean } = {},
+): PartnerNavItem[] {
+  const isOrgAdmin = opts.isOrgAdmin ?? true // founders/back-compat default
   const effective: readonly string[] =
     serviceTypes.length > 0
       ? serviceTypes
@@ -94,15 +98,20 @@ export function roleNavFor(serviceTypes: readonly string[]): PartnerNavItem[] {
   const prepress = has('MANUFACTURING') || has('COPACKING') || has('LABEL_PRINTING')
   const fulfillment = has('WAREHOUSE')
 
+  // P3 §2 role scoping: non-admin members get the OPERATIONAL surfaces of
+  // their services; commercial + catalog surfaces (products, packaging,
+  // pricing, payments, billing) are org-admin only.
   const nav: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS]
   if (fulfillment) nav.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
-  if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)
-  nav.push(NAV_SERVICES)
-  if (producing) nav.push(NAV_PACKAGING)
-  if (prepress) nav.push(NAV_PRINT_SPEC)
-  if (producing) nav.push(NAV_ACCESSORIES)
-  nav.push(NAV_CERTIFICATIONS, NAV_PAYMENTS)
-  if (fulfillment) nav.push(NAV_BILLING)
+  if (isOrgAdmin) {
+    if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)
+    nav.push(NAV_SERVICES)
+    if (producing) nav.push(NAV_PACKAGING)
+    if (prepress) nav.push(NAV_PRINT_SPEC)
+    if (producing) nav.push(NAV_ACCESSORIES)
+    nav.push(NAV_CERTIFICATIONS, NAV_PAYMENTS)
+    if (fulfillment) nav.push(NAV_BILLING)
+  }
   nav.push(NAV_SETTINGS)
   return nav
 }

@@ -24,6 +24,7 @@ import { logAuditAs } from '@ilaunchify/audit'
 import { assertDispatchTransition } from '@ilaunchify/orders'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -56,7 +57,7 @@ export async function confirmInboundReceipt({
       id: dispatchId,
       order: {
         shipToType: 'WAREHOUSE_PARTNER',
-        shipToPartnerService: { type: 'WAREHOUSE', partner: { userId: user.id } },
+        shipToPartnerService: { type: 'WAREHOUSE', AND: [serviceOwnedBy(user.id)] },
       },
     },
     select: {

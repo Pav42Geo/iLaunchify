@@ -23,6 +23,7 @@ import {
 import { revalidatePath } from 'next/cache'
 import { getDispatchShippingContext } from './ship-requirements'
 import {
+import { serviceOwnedBy } from '@/lib/partner-context'
   notifyDispatchAccepted,
   notifyChangesRequested,
   notifyDeclined,
@@ -33,7 +34,7 @@ type Result = { ok: true } | { ok: false; error: string }
 
 async function loadOwnedDispatch(userId: string, dispatchId: string) {
   return prisma.orderDispatch.findFirst({
-    where: { id: dispatchId, partnerService: { partner: { userId } } },
+    where: { id: dispatchId, partnerService: serviceOwnedBy(userId) },
     include: { order: true, partnerService: { include: { partner: true } } },
   })
 }
@@ -399,7 +400,7 @@ export async function respondToOrderDispute({
 
   // Confirm this partner is actually assigned to the disputed order.
   const owned = await prisma.orderDispatch.findFirst({
-    where: { orderId: dispute.orderId, partnerService: { partner: { userId: user.id } } },
+    where: { orderId: dispute.orderId, partnerService: serviceOwnedBy(user.id) },
     select: { id: true },
   })
   if (!owned) return { ok: false, error: 'You are not assigned to this order.' }
@@ -846,7 +847,7 @@ export async function deleteShipmentDocument({
 
   // Ownership via the dispatch's partner — same tenant guard as loadOwnedDispatch.
   const doc = await prisma.shipmentDocument.findFirst({
-    where: { id: documentId, orderDispatch: { partnerService: { partner: { userId: user.id } } } },
+    where: { id: documentId, orderDispatch: { partnerService: serviceOwnedBy(user.id) } },
     include: { orderDispatch: { select: { id: true, orderId: true, status: true } } },
   })
   if (!doc) return { ok: false, error: 'Document not found' }

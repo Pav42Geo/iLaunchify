@@ -6,15 +6,17 @@
 // writes an AuditLog row.
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
 
 async function loadOwnedWarehouseService(userId: string, serviceId: string) {
+  const access = await requirePartnerAdminAccess(userId) // org config = admin-only (P3 §2)
+  if (!access) return null
   return prisma.partnerService.findFirst({
-    where: { id: serviceId, type: 'WAREHOUSE', partner: { userId } },
+    where: { id: serviceId, type: 'WAREHOUSE', partnerId: access.partnerId },
     select: { id: true, receivingSpecJson: true },
   })
 }
@@ -23,8 +25,10 @@ async function loadOwnedWarehouseService(userId: string, serviceId: string) {
 // co-packer line maintenance, FC closure); only the receiving spec stays
 // WAREHOUSE-specific.
 async function loadOwnedService(userId: string, serviceId: string) {
+  const access = await requirePartnerAdminAccess(userId) // org config = admin-only (P3 §2)
+  if (!access) return null
   return prisma.partnerService.findFirst({
-    where: { id: serviceId, partner: { userId } },
+    where: { id: serviceId, partnerId: access.partnerId },
     select: { id: true, type: true },
   })
 }
@@ -123,8 +127,10 @@ export async function addBlackoutDate({
 
 export async function removeBlackoutDate({ blackoutId }: { blackoutId: string }): Promise<Result> {
   const user = await requireUser()
+  const access = await requirePartnerAdminAccess(user.id)
+  if (!access) return { ok: false, error: 'Only organization admins can manage availability.' }
   const row = await prisma.partnerBlackoutDate.findFirst({
-    where: { id: blackoutId, partnerService: { partner: { userId: user.id } } },
+    where: { id: blackoutId, partnerService: { partnerId: access.partnerId } },
     select: { id: true, partnerServiceId: true, startsOn: true, endsOn: true },
   })
   if (!row) return { ok: false, error: 'Blackout window not found' }

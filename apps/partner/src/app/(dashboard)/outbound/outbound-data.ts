@@ -8,6 +8,7 @@
 // and are shared by both surfaces.
 
 import { prisma } from '@ilaunchify/db'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export type OutboundTab = 'queue' | 'shipped' | 'history'
 
@@ -64,7 +65,7 @@ export async function loadOutboundRows(userId: string, tab: OutboundTab): Promis
   const releases = await prisma.storageReleaseOrder.findMany({
     where: {
       status: { in: OUTBOUND_TAB_STATUSES[tab] as never },
-      storageAgreement: { partnerService: { partner: { userId } } },
+      storageAgreement: { partnerService: serviceOwnedBy(userId) },
     },
     orderBy: { createdAt: tab === 'queue' ? 'asc' : 'desc' }, // oldest requests first
     take: 100,
@@ -137,7 +138,7 @@ export async function loadOutboundRows(userId: string, tab: OutboundTab): Promis
 }
 
 export async function countOutbound(userId: string) {
-  const base = { storageAgreement: { partnerService: { partner: { userId } } } }
+  const base = { storageAgreement: { partnerService: serviceOwnedBy(userId) } }
   const [requested, picking, shipped, delivered] = await Promise.all([
     prisma.storageReleaseOrder.count({ where: { ...base, status: 'REQUESTED' } }),
     prisma.storageReleaseOrder.count({ where: { ...base, status: 'PICKING' } }),

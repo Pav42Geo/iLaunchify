@@ -11,7 +11,7 @@
 //   Row 3 — recent dispatches (span 7) + payout activity (span 5)
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import {
   cn,
   KpiWidget,
@@ -66,10 +66,17 @@ function weeklyDollarBuckets(rows: { createdAt: Date; amountCents: number }[], w
 
 export default async function ProviderDashboardHome() {
   const user = await requireUser()
+  // P3 multi-seat: resolve via membership (founder or teammate); the cockpit
+  // shows only the services THIS USER may work.
+  const access = await getPartnerAccess(user.id)
+  if (!access) return null
   const partner = await prisma.partner.findUnique({
-    where: { userId: user.id },
+    where: { id: access.partnerId },
     include: {
-      services: { select: { id: true, type: true } },
+      services: {
+        where: { id: { in: access.serviceIds } },
+        select: { id: true, type: true },
+      },
       certificateInstances: {
         select: {
           id: true,
@@ -84,9 +91,9 @@ export default async function ProviderDashboardHome() {
   const serviceIds = partner.services.map((s) => s.id)
 
   // Role skin (docs/PARTNER_ROLE_ACCOUNTS.md §2) — copy, quick actions and the
-  // FC inbound queue all derive from the partner's service types.
+  // FC inbound queue all derive from this user's workable service types.
   const serviceTypes = partner.services.map((s) => s.type as string)
-  const isManufacturer = serviceTypes.includes('MANUFACTURING')
+  const isManufacturer = serviceTypes.includes('MANUFACTURING') && access.isAdmin
   const warehouseServiceIds = partner.services
     .filter((s) => (s.type as string) === 'WAREHOUSE')
     .map((s) => s.id)

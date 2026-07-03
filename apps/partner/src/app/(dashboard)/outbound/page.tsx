@@ -16,6 +16,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { ReleaseRowActions } from './ReleaseRowActions'
 import { countOutbound, loadOutboundRows, type OutboundTab } from './outbound-data'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Outbound — Partners' }
@@ -49,8 +50,8 @@ export default async function OutboundPage({
 
   const user = await requireUser()
   const [warehouseCount, agreementCount] = await Promise.all([
-    prisma.partnerService.count({ where: { type: 'WAREHOUSE', partner: { userId: user.id } } }),
-    prisma.storageAgreement.count({ where: { partnerService: { partner: { userId: user.id } } } }),
+    prisma.partnerService.count({ where: { type: 'WAREHOUSE', AND: [serviceOwnedBy(user.id)] } }),
+    prisma.storageAgreement.count({ where: { partnerService: serviceOwnedBy(user.id) } }),
   ])
   if (warehouseCount === 0 && agreementCount === 0) redirect('/dashboard')
 

@@ -12,6 +12,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { computeStorageAccrual, type StorageFeeSnapshot } from '@ilaunchify/shipping'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 export interface InventoryRow {
   agreementId: string
@@ -57,7 +58,7 @@ export async function loadInventory(userId: string, tab: 'active' | 'closed') {
   const agreements = await prisma.storageAgreement.findMany({
     where: {
       status: { in: statuses as never },
-      partnerService: { partner: { userId } },
+      partnerService: serviceOwnedBy(userId),
     },
     orderBy: { startedAt: 'asc' },
     take: 200,
@@ -135,7 +136,7 @@ export async function loadFefoLots(userId: string): Promise<FefoLot[]> {
             storageAgreements: {
               some: {
                 status: { in: ['ACTIVE', 'RELEASING'] },
-                partnerService: { partner: { userId } },
+                partnerService: serviceOwnedBy(userId),
               },
             },
           },

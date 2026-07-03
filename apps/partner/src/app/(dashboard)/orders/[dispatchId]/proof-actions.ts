@@ -13,6 +13,7 @@ import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { uploadFile, partnerFileKey } from '@ilaunchify/storage'
 import { revalidatePath } from 'next/cache'
+import { serviceOwnedBy } from '@/lib/partner-context'
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -51,7 +52,7 @@ export async function uploadProofRound(formData: FormData): Promise<Result> {
   const file = formData.get('file')
 
   const dispatch = await prisma.orderDispatch.findFirst({
-    where: { id: dispatchId, partnerService: { partner: { userId: user.id } } },
+    where: { id: dispatchId, partnerService: serviceOwnedBy(user.id) },
     select: {
       id: true,
       type: true,
