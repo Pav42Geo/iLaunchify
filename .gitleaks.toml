@@ -16,3 +16,10 @@ paths = [
   # Generated Prisma migrations contain long identifiers, never secrets.
   '''packages/db/prisma/migrations/''',
 ]
+regexes = [
+  # False positive: a slash-delimited API-endpoint list in a spec doc
+  # (Walmart "items/inventory/orders/price groups", CHANNEL_MANAGEMENT_SPEC.md)
+  # trips the generic-api-key entropy rule. Surgical — this exact string only,
+  # so a real secret anywhere (incl. that doc) is still caught.
+  '''items/inventory/orders/price''',
+]

@@ -74,3 +74,6 @@ pnpm-debug.log*
 # Never commit it — it stays local to Pavel's machine for reference only.
 FOD-reference/
 .fuse_hidden*
+
+# Local dev asset storage (uploaded brand logos etc. — never committed)
+.dev-storage/
