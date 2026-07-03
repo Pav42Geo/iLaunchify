@@ -94,6 +94,30 @@ export async function routeChannelOrderToProduction(channelOrderId: string): Pro
     return { ok: false, error: 'The channel order has no complete consumer ship-to address.' }
   }
 
+  // MONEY-PATH GUARD (review 2026-07-02): one Checkout session pays ONE order.
+  // Multi-product channel orders would strand orders 2..n unpaid — V1 routes
+  // single-product orders only; multi-product splitting lands with C2.2b.
+  if (qtyByProduct.size > 1) {
+    return {
+      ok: false,
+      error: 'This order spans multiple products — per-product routing for mixed orders arrives with auto-billing. Contact support to split it.',
+    }
+  }
+
+  // CONCURRENCY GUARD: atomically claim the order (READY + unrouted → ROUTED)
+  // so a double-click can't create duplicate production orders. If anything
+  // below fails, we release the claim back to READY.
+  const claimed = (await (
+    prisma as unknown as { channelOrder: { updateMany: (a: unknown) => Promise<{ count: number }> } }
+  ).channelOrder.updateMany({
+    where: { id: row.id, status: 'READY', productionOrderId: null },
+    data: { status: 'ROUTED', statusReason: 'Routing…' },
+  })) as { count: number }
+  if (claimed.count !== 1) return { ok: false, error: 'This order is already being routed.' }
+  const releaseClaim = async (reason: string) => {
+    await od.update?.({ where: { id: row.id }, data: { status: 'READY', statusReason: reason } }).catch(() => {})
+  }
+
   // One production order per product (dispatch model is per-order/per-service).
   const orderIds: string[] = []
   let firstCheckoutUrl: string | null = null
@@ -109,9 +133,15 @@ export async function routeChannelOrderToProduction(channelOrderId: string): Pro
         productTemplate: { select: { manufacturerServiceId: true } },
       },
     })
-    if (!product) return { ok: false, error: 'Product not found for a mapped line.' }
+    if (!product) {
+      await releaseClaim('Routing failed: product not found for a mapped line.')
+      return { ok: false, error: 'Product not found for a mapped line.' }
+    }
     const manufacturerServiceId = product.productTemplate?.manufacturerServiceId
-    if (!manufacturerServiceId) return { ok: false, error: `${product.name} has no pinned manufacturer.` }
+    if (!manufacturerServiceId) {
+      await releaseClaim(`Routing failed: ${product.name} has no pinned manufacturer.`)
+      return { ok: false, error: `${product.name} has no pinned manufacturer.` }
+    }
 
     const subtotalCents = product.priceCents * qty
     const totalCents = subtotalCents // shipping/tax legs land with the logistics rail
@@ -170,11 +200,14 @@ export async function routeChannelOrderToProduction(channelOrderId: string): Pro
         firstCheckoutUrl = session.url
       } catch (err) {
         console.error('[channels] checkout session failed:', err)
-        await od.update({
-          where: { id: row.id },
-          data: { status: 'NEEDS_ATTENTION', statusReason: 'Payment session could not be created — check Stripe configuration, then retry routing.' },
-        })
-        return { ok: false, error: 'Production order created, but the payment session failed — check Stripe configuration and retry from the inbox.' }
+        // Self-healing failure (review 2026-07-02): cancel the just-created
+        // PENDING_PAYMENT order(s) and release the claim so "Route & pay" can be
+        // retried cleanly — no stranded orders, no duplicate risk.
+        for (const oid of orderIds) {
+          await prisma.order.update({ where: { id: oid }, data: { status: 'CANCELLED' } as never }).catch(() => {})
+        }
+        await releaseClaim('Payment session failed — check Stripe configuration and retry.')
+        return { ok: false, error: 'Payment session failed — check Stripe configuration and hit Route & pay again.' }
       }
     }
   }
