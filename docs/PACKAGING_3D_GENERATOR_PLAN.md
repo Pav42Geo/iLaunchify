@@ -9,7 +9,7 @@ Locked architecture still governs: **die-line = print master, 3D = derived previ
 
 ## 0. LOCKED decisions (Pavel 2026-07-03)
 
-1. **Packaging Studio (admin mode) owns ALL mockup production.** Partner photo + die-line intake → 3D generation → materials → standard renders → premium scene composer, one pipeline, one surface. Design Studio (creator) only *consumes* the library. (Matches die-line Curator already living in Packaging Studio, C9.g.)
+1. **Packaging Studio (admin mode) owns ALL mockup *production* (the library of surfaces/geometry/scenes).** Partner photo + die-line intake → 3D generation → materials → standard renders → premium scene composer, one pipeline, one surface. (Matches die-line Curator already living in Packaging Studio, C9.g.) **AMENDED 2026-07-03 (Pavel):** "creator only *consumes*" is superseded — the creator now has a **first-class side** of the mockup job (see §9). Admin still *produces* the shared library; the creator *personalizes* it (their design pre-composited), *contributes* their own mockup bases, and *publishes* channel-ready images to their connected stores. Two sides of one job, not one.
 2. **Creators CAN AI-generate scene mockups** at finalize time — clearly **labeled marketing-only**, never the production-accurate checkout preview. Reuses the AI try-on loop + rate limiter.
 3. ~~All mockups free at launch~~ **SUPERSEDED same day → tier-gated at launch (Pavel):**
    - **Maker:** free **in-app preview only** — browse the library, see their design on the 3D/scene mockups; **no downloads**.
@@ -19,6 +19,14 @@ Locked architecture still governs: **die-line = print master, 3D = derived previ
    - All gates via `lookupPlanFeature()` (PlanFeature rows, db-driven, non-code); `isPremium` + download flags on MockupAsset.
 4. (Direction) **Generating from partner imagery is in-scope** — AI image-to-3D drafting is an admin-side accelerant, always admin-verified against die-line dims before ACTIVE.
 5. **Three intake lanes, one pipeline** (Pavel 2026-07-03): (a) partner uploads photos + die-lines; (b) admin uploads a **source 2D image** himself → same auto-generation pipeline; (c) admin uploads **ready-to-use 2D and 3D mockups** directly. All land in the same library, organized by **packaging type, category, size** (+ style tags).
+
+6. **The creator has a first-class side of the mockup job** (Pavel 2026-07-03). Admin *produces* the library; the creator *personalizes / contributes / publishes*. The two sides share one substrate (`MockupAsset` + the packaging-3d engine), differ only in surface and permissions. Build the admin side first (already planned), then the creator side (new §9) reusing every piece.
+
+7. **Design-aware on open — no "apply" step** (Pavel 2026-07-03). When the creator opens the Mockup Library, **every mockup already wears their current design**, composited live. They browse *their own product*, not blank templates. This is the Kittl/Smartmockups/Pacdora convention (live wrap / AI auto-place / real-time 3D). Implementation = the creator's Fabric canvas → CanvasTexture per surface (exists) rendered against each library geometry/quad; nothing to "apply."
+
+8. **The Mockup Library lives on a Preview screen *after* the Design Studio** (Pavel 2026-07-03). New creator step between design and checkout: **Design Studio → Preview (Mockups) → Checkout**. Today the design-aware mockup is a modal *inside* the canvas (`MockupModal`); it graduates to a dedicated Preview surface hosting the full library, favorites, export, and publish. The **production-accurate checkout preview stays a separate, free, deterministic render** (locked) — the Preview screen's beauty shots never replace it.
+
+9. **Creators publish channel-ready mockups straight to their connected channels** (Pavel 2026-07-03). From the Preview screen the creator selects renders → exports **per-channel compliant image sets** → pushes them into the product listing gallery on Shopify / TikTok Shop / Etsy / Amazon / Walmart via the existing **ChannelAdapter** seam (see docs/CHANNEL_MANAGEMENT_SPEC.md). Mirror Printify's Mockup-Library publish flow: pick which sync, order them, star a primary, map per-variant, **field-scoped re-sync** (image-only by default, never clobber channel SEO/pricing). Research: docs/MOCKUP_LIBRARY_UX_RESEARCH.md.
 
 ## 1. The sourcing pipeline (inverse-Pacdora) — the admin-relief core
 
@@ -91,13 +99,16 @@ New pure package **`packages/packaging-3d`** (Prisma-free, DI'd like `packages/s
 | Phase | Scope | Effort | Ships |
 |---|---|---|---|
 | **G1 — Realism upgrade** | PBR presets per PackagingMaterial + HDRI + shadows in Packaging3DView + LivePreview3DDock; verify glTF texture swap | ~5–8d | Visible quality jump on everything that already renders |
-| **G2 — Render pipeline + library substrate** | three-gpu-pathtracer render → PNG Asset; `MockupAsset` model + creator "Mockups" panel (browse + save) | ~6–8d | Layer-C renders replace CSS MockupModal; library exists |
+| **G2 — Render pipeline + library substrate** | three-gpu-pathtracer render → PNG Asset; `MockupAsset` model (admin-produced library) | ~6–8d | Layer-C renders replace CSS MockupModal; library exists |
+| **G2b — Creator Preview → Mockup Library surface** (see §9) | Graduate `MockupModal` into a dedicated **Preview step** after Design Studio; **design pre-composited on every mockup on open** (§0.7); grid + multi-select + favorites; tier gates (`mockupLicense`) + license-at-download | ~6–8d | The creator UX Pavel asked for — browse *their* product on the library, save favorites, export |
 | **G3 — Parametric engine + intake auto-pipeline** | 6 StructuralPackTypes parametric from die-line dims; §1 auto job + admin review queue in Packaging Studio | ~8–10d | Partner upload → approved 3D mockup with near-zero admin work |
+| **G3b — Creator-uploaded mockup bases** (see §9.3) | Creator uploads own product photo → **4-corner print-area warp** (reuses `printAreaQuad` + `matrix3dForQuad`); private, reusable, design-aware | ~4–6d | Beats Mediamodifier's PSD-only path; own-photo mockups |
 | **G4 — Fold-from-net** | normalizedSvg → FOLD → folded carton mesh + per-panel UVs; fold animation bonus | ~8–12d (hardest) | Cartons/corrugate photoreal |
-| **G5 — Scene composer + creator AI scenes** | Admin scene templates + AI backgrounds; creator AI scene generation (labeled, rate-limited); glTF curation queue + Tripo/Meshy drafting | ~7–10d + API keys | The "awesome mockups" tier — still all free (§0.3) |
+| **G5 — Scene composer + creator AI scenes** | Admin scene templates + AI backgrounds; creator AI scene generation (labeled, rate-limited); glTF curation queue + Tripo/Meshy drafting | ~7–10d + API keys | The "awesome mockups" tier (tier-gated per §0.3) |
+| **G7 — Publish-to-channel** (see §9.4) | Per-channel **compliant export presets** + main-image legality guardrail; push into listing gallery via **ChannelAdapter**; order/star-primary/per-variant map; field-scoped re-sync | ~8–10d | Creator publishes channel-ready mockups straight to Shopify/TikTok/Etsy/Amazon/Walmart |
 | **G6 — Video** (deferred) | 3D turntable/fold videos (Builder/Agency) | — | V2 |
 
-Sequencing (LOCKED 2026-07-03): **G1+G2 land in V1.5** (~2–3 wks) — delivers the Pacdora feel on existing geometry, **including the tier gates** (preview free / downloads + premium Builder-Agency, PlanFeature rows ship with G2). G3–G5 follow. V1 checkout keeps the 2D photo-mask (LOCKED).
+Sequencing (LOCKED 2026-07-03): **G1+G2+G2b land in V1.5** (~3 wks) — delivers the Pacdora feel *and* the creator Preview surface with design-aware library, **including the tier gates** (preview free / downloads + premium Builder-Agency, PlanFeature rows ship with G2b). G3/G3b then G7 (channel publish) follow; G4–G5 as scheduled. V1 checkout keeps the 2D photo-mask (LOCKED).
 
 ## 6. What we explicitly do NOT build
 
@@ -119,5 +130,63 @@ Sequencing (LOCKED 2026-07-03): **G1+G2 land in V1.5** (~2–3 wks) — delivers
 
 Remaining open: creator AI scene caps per tier (quota numbers = PlanFeature rows, decide at G5 build time).
 
+## 9. The creator side — Preview → Mockup → Publish (Pavel 2026-07-03)
+
+New locked scope (§0.6–0.9). Full UX research + citations: **docs/MOCKUP_LIBRARY_UX_RESEARCH.md**. This is the *creator* half of the mockup job; the admin half (§1–§4) produces the shared library, this half personalizes/contributes/publishes it. Reuses the same `MockupAsset` substrate + packaging-3d engine — no parallel stack.
+
+**Flow:** `Design Studio → **Preview (Mockups)** → Checkout`. The Preview step is a **mandatory checkpoint** immediately after the Design Studio (LOCKED 2026-07-03, Pavel) — but **selecting/adding mockups is optional**: the creator may pass through without curating. The platform **always auto-wraps the product onto ≥1 default mockup** regardless (§9.7), so a beauty thumbnail always exists.
+
+### 9.1 Design-aware library on open (§0.7 — the headline)
+The instant the creator lands on Preview, the grid **already shows their current design on every mockup** — no "apply." Mechanism = existing creator Fabric canvas → `CanvasTexture` per surface, rendered against each library item's geometry/quad (the `LivePreview3DDock` + `MockupModal` pipeline, promoted to a full surface). Design edits upstream re-compose the whole grid. This is the Kittl "edit once, all mockups update" / Smartmockups AI-auto-place / Pacdora real-time-3D convention.
+
+### 9.2 Preview surface UX (must-haves, from research §6)
+- **Visual grid, comparison-first**: large thumbnails, hierarchy + whitespace; the design already on each. Two-axis browse (packaging type × category/size + style tags) shared with the admin library.
+- **Multi-select + Select-all + Shift-range + favorites/star** (Polaris resource-list); ≤2 promoted bulk actions ("Export images", "Publish to store"), rest in overflow; paginate past 50.
+- **Never-blank / never-false-empty**: progress indicator while renders compose; first-run empty state teaches + one CTA.
+- **Progressive disclosure**: pick / export / publish up front; size/format/channel-mapping behind "Advanced."
+- **Tier gates (§0.3)**: Maker = in-app preview only (no download); Builder = downloads (PERSONAL); Agency = COMMERCIAL. Full watermarked preview of premium/scene mockups + corner badge; upgrade prompt at the download friction point; **license line stated at the download moment**.
+- **WYSIWYG trust**: exported image == preview; AI/marketing-only renders labelled distinctly from the production-accurate checkout preview (which stays free + deterministic).
+
+### 9.3 Creator-uploaded mockup bases (G3b)
+Creator uploads their **own product photo** → drags a **4-corner print area** → their design warps onto it (reuses `StudioMockup.printAreaQuad` + `matrix3dForQuad`, already in `MockupModal`). Private + reusable per creator; design-aware like the rest. Optional AI background-removal helper (not a gate). Research finding: **no major competitor exposes an in-browser 4-corner/displacement editor** — this is a leapfrog, and cheap because the substrate exists.
+
+### 9.4 Publish-to-channel (G7) — mirror Printify, gated by a publish state model
+- **Per-channel compliant export presets** (the differentiator — nobody bakes these): auto-produce a compliant image set per connected channel from the channel spec table in the research doc (Amazon 1:1 ≥1600 pure-white RGB255 product≥85%; Shopify 2048²; Etsy ≥2000 <1MB no-transparency; TikTok 1:1 white main; Walmart 2200² seamless-white; etc.).
+- **Main-image legality guardrail**: on Amazon/TikTok/Walmart the *first* image must be plain-white product-only — auto-steer a clean studio render into position 1 and mark lifestyle/scene renders as supplementary. No competitor does channel-aware primary selection.
+- **Publish flow** (Printify pattern): select which renders sync → drag-order → **star primary** → **map per-variant** (auto-map flavor presets → Shopify variants) → push into the listing gallery via **ChannelAdapter** (docs/CHANNEL_MANAGEMENT_SPEC.md). Shopify mechanics: `fileCreate`/`stagedUploadsCreate` → poll `READY` → attach to product → variant `mediaSrc` points at product media → `productReorderMedia` (position 0 = featured).
+- **Field-scoped re-sync**: image-only by default; never clobber channel-side title/description/price/tags; **warn when a new variant would publish imageless** (Printify's lesson).
+- **AI-disclosure**: write IPTC `DigitalSourceType` on AI scenes (Google Merchant) + carry the marketing-only label through export.
+
+#### 9.4.1 Publish state model (LOCKED 2026-07-03, Pavel) — publishing is never auto-immediate
+The creator controls *when* and *where*, because on-demand vs bulk changes the timing calculus. Model a **`ChannelPublication`** (additive) per (product × channel) with an FSM — never publish silently on save:
+
+- **States:** `DRAFT` → `HELD` → `SCHEDULED` → `PUBLISHED` → `UNPUBLISHED` (and back to `DRAFT`/`PUBLISHED` on edits). Every transition writes AuditLog + goes through an FSM helper (never inline).
+- **DRAFT** — images selected/exported but nothing pushed. Default state.
+- **HELD** — creator explicitly holds. **Bulk orders with lead time**: publish should *not* fire immediately; the creator can **hold until the order is delivered**, then publish. Wire an optional trigger `publishOn = ON_ORDER_DELIVERED` so the publication auto-advances HELD → PUBLISHED when the linked order reaches the delivered/fulfilled state (hooks the order FSM, not a manual reminder). Also allow a plain scheduled datetime.
+- **SCHEDULED** — a future datetime or the order-delivered trigger is armed.
+- **PUBLISHED / UNPUBLISHED** — live on the channel / pulled back. **Unpublish** removes or hides the listing images via the same ChannelAdapter (per-field, image-scoped) — a first-class action, not a delete.
+- **Channel targeting:** publish to **one selected connected channel, several, or bulk-publish to all** the creator's connected+tracked channels. State is **per channel** (a product can be PUBLISHED on Shopify while HELD on TikTok). Reuse the connected-channel registry from CHANNEL_MANAGEMENT_SPEC.
+- **First adapter target:** **Shopify** (cleanest media API, no white-bg rule) — the publish-state model + per-channel fan-out is channel-generic from day one so TikTok/Etsy/Amazon/Walmart adapters slot in behind the same FSM.
+
+### 9.5 Reuse (creator side adds almost no new substrate)
+`MockupModal` + `StudioMockup`/`printAreaQuad`/`matrix3dForQuad` · `LivePreview3DDock` CanvasTexture pipeline · `MockupAsset` (shared) · packaging-3d engine (G1–G4) · `lookupPlanFeature()` tier gates · AI try-on loop + rate limiter (creator AI scenes) · **ChannelAdapter** seam + connected-channel registry (channel publish) · `saveDesignMockupRender` render-chain.
+
+### 9.7 Default mockup + revisit-anytime from the product page (LOCKED 2026-07-03, Pavel)
+- **Always-on default mockup:** even if the creator skips curating on the Preview step, the platform auto-generates **at least one mockup of the product wrapped in the design** and stores it as the product's **canonical thumbnail** — used across the creator **product list, order list, and channel listing** so nothing is ever thumbnail-less. Default pick = a clean studio render on the product's primary surface (also the channel-legal main-image candidate, §9.4).
+- **Revisit from the product page:** each product on the creator's product page carries a **"Revise mockups" affordance** (a suggested/creative-idea prompt + button) that opens a **modal mockup gallery** — the same design-aware library — so the creator can add/swap/re-curate mockups **any time before publishing to channels**, decoupled from the one-time linear flow. This modal is the pre-publish gateway: curate here, then hand off to the §9.4 publish state model.
+
+### 9.6 Zone / ownership note
+The Preview surface + `MockupModal`/`LivePreview3DDock` live in the **creator Design Studio canvas = Code's historical single-writer zone**. G2b/G3b/G7 must be brokered single-writer-per-file with Code before build (pre-flight item). Cowork owns the packaging-3d engine + admin library; the creator canvas seam is coordinated.
+
+## 10. Creator-side decisions — RESOLVED (Pavel 2026-07-03)
+1. **Preview screen** — ✅ LOCKED: **mandatory checkpoint** right after Design Studio; **curating mockups is optional**; platform always produces a default wrapped thumbnail (§9.7); a "Revise mockups" modal on the product page lets the creator re-curate any time before publish.
+2. **Creator-uploaded mockup bases (G3b)** — ✅ LOCKED: **Builder + Agency**. Maker uses the platform library only.
+3. **Publish-to-channel (G7)** — ✅ LOCKED: not a single "first channel + immediate push" — a **publish state model** (DRAFT/HELD/SCHEDULED/PUBLISHED/UNPUBLISHED, §9.4.1) with **hold-until-order-delivered** trigger, **per-channel state**, and **select-one / several / bulk** publish across connected channels. **Shopify** is the first adapter; the FSM is channel-generic.
+4. **"Commercial use" definition** — ✅ LOCKED: publishing to the creator's **own live sales channel = COMMERCIAL use → Agency tier**. Builder's PERSONAL license = internal/proofing/export only, not channel publish. (Resolves the pre-flight license-ladder question too.)
+
+Remaining open:
+- **AI scenes on the Preview screen** — same rate limiter + caps as the AI try-on loop, or a separate quota? (G5 build-time PlanFeature.)
+- **Bulk-order "hold until delivered" default** — should HELD→PUBLISHED-on-delivery be the *default* for bulk orders (opt-out), or always creator-initiated? (Decide at G7 build.)
+
 ---
-*Supersedes the Pacdora-gated 3D path in `MOCKUP_STRATEGY.md` §V2 and `PACDORA_EVALUATION.md` (RESOLVED 2026-07-03).*
+*Supersedes the Pacdora-gated 3D path in `MOCKUP_STRATEGY.md` §V2 and `PACDORA_EVALUATION.md` (RESOLVED 2026-07-03). Creator-side scope (§9) added 2026-07-03; research in `MOCKUP_LIBRARY_UX_RESEARCH.md`.*

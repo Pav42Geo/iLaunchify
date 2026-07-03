@@ -26,6 +26,16 @@
 - [ ] G2.5 AuditLog on publish/download (`MOCKUP_*` actions); checkout preview stays free-for-all path
 - [ ] G2.6 Replace CSS `MockupModal` shapes with real renders
 
+## G2b — Creator Preview → Mockup Library surface (~6–8d · plan §9) — Code-zone, broker first
+
+- [ ] G2b.1 Graduate `MockupModal` into a **mandatory Preview step** after Design Studio (curating optional); route + shell; also expose a **"Revise mockups" modal gallery from the product page** (revisit any time before publish, §9.7)
+- [ ] G2b.1b **Always-on default mockup**: auto-wrap product on ≥1 mockup as the canonical **thumbnail** across product list / order list / channel main-image candidate (§9.7)
+- [ ] G2b.2 **Design-aware on open** (§0.7): render the current Fabric design (CanvasTexture per surface) onto every library `MockupAsset` — no "apply" step; re-compose on upstream design edits
+- [ ] G2b.3 Grid UX: large-thumbnail grid, multi-select (checkbox + Select-all + Shift-range), favorite/star, two-axis browse (packaging type × category/size + style tags), paginate 50
+- [ ] G2b.4 Tier gates here: `mockupLicense` PlanFeature `PREVIEW_ONLY|PERSONAL|COMMERCIAL` (Maker/Builder/Agency), watermarked premium preview + corner badge, license line at download; AuditLog `MOCKUP_*`
+- [ ] G2b.5 Empty/loading states (never false-empty; progress while composing); progressive disclosure (pick/export up front, size/format behind Advanced)
+- [ ] G2b.6 Checkout production-accurate preview stays a separate free deterministic render (locked) — Preview beauty shots never replace it
+
 ## G3 — Parametric engine + intake auto-pipeline (~8–10d)
 
 - [ ] G3.1 Parametric generators for all 6 StructuralPackTypes, dims from die-line/PackagingType, per-surface UVs — pure + golden-file tests
@@ -33,6 +43,25 @@
 - [ ] G3.3 Admin review queue in Packaging Studio admin mode (approve/tweak/publish — RAMP-queue ritual)
 - [ ] G3.4 Admin uploader modal per plan §1.1 (lanes 2–3: file-kind detect, in-modal dieline/glTF preview, intent switch, inline PackagingType create, dims+unit scale check, attribution, guardrails)
 - [ ] G3.5 Library taxonomy filters (packaging type → category → size → styleTags), URL-driven per admin surface pattern
+
+## G3b — Creator-uploaded mockup bases (~4–6d · plan §9.3) — Code-zone, broker first
+
+- [ ] G3b.1 Creator upload own product photo → **4-corner print-area warp** (reuse `StudioMockup.printAreaQuad` + `matrix3dForQuad`); private + reusable per creator
+- [ ] G3b.2 Own-photo mockups are design-aware (creator design composites into the quad live), listed alongside platform library
+- [ ] G3b.3 Optional AI background-removal helper (not a gate); white-label / resolution guardrails; content-hash dedupe
+- [ ] G3b.4 Tier gate for own-photo mockups (open decision §10.2)
+
+## G7 — Publish-to-channel (~8–10d · plan §9.4) — Code-zone (ChannelAdapter), broker first · Agency-gated (own-channel = COMMERCIAL)
+
+- [ ] G7.0 **`ChannelPublication` FSM** (additive): DRAFT/HELD/SCHEDULED/PUBLISHED/UNPUBLISHED, **per (product × channel)**; FSM helper + AuditLog every transition (never inline)
+- [ ] G7.0b **Hold-until-delivered trigger** `publishOn = ON_ORDER_DELIVERED` (+ scheduled datetime): auto-advance HELD→PUBLISHED off the order FSM delivered state; for bulk orders w/ lead time
+- [ ] G7.0c **Channel targeting**: publish one / several / **bulk** across the creator's connected+tracked channels; state is per-channel; **Unpublish** = first-class image-scoped pull-back via ChannelAdapter
+- [ ] G7.1 **Per-channel compliant export presets** from the spec table (Amazon/Shopify/Etsy/TikTok/Walmart/Google/Meta) — sizes, aspect, bg, format, max-size
+- [ ] G7.2 **Main-image legality guardrail**: auto-steer a clean studio render to position 1 for Amazon/TikTok/Walmart; mark scenes supplementary
+- [ ] G7.3 Publish flow (Printify pattern): select renders → drag-order → star primary → map per-variant (auto-map flavor presets → variants) → push via **ChannelAdapter**
+- [ ] G7.4 Shopify mechanics (first adapter): `fileCreate`/`stagedUploadsCreate` → poll `READY` → attach → variant `mediaSrc` → `productReorderMedia` (pos 0 = featured)
+- [ ] G7.5 **Field-scoped re-sync** (image-only default; never clobber SEO/price/tags); warn on imageless new variant; AuditLog on publish
+- [ ] G7.6 AI-disclosure: IPTC `DigitalSourceType` on AI scenes + carry marketing-only label through export
 
 ## G4 — Fold-from-net (~8–12d, hardest — spike first)
 
