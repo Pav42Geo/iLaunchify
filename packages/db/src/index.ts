@@ -314,3 +314,10 @@ export {
   type AiGeneratorSettingsPatch,
   type AiOutputPresetRow,
 } from './ai-generator-settings'
+
+export {
+  PARTNER_DOC_TRACK,
+  docTrackFor,
+  type DocRequirement,
+  type DocRequirementLevel,
+} from './partner-doc-tracks'

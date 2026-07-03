@@ -17,6 +17,7 @@ export interface ExistingFile {
   originalFilename: string
   sizeBytes: number
   uploadedAt: Date | string
+  expiresAt?: Date | string | null
 }
 
 interface FileUploadSlotProps {
@@ -26,6 +27,10 @@ interface FileUploadSlotProps {
   kind: PartnerFileKind
   existingFiles: ExistingFile[]
   required?: boolean
+  /** CONDITIONAL requirement note (docs/PARTNER_ROLE_ACCOUNTS.md §4.1). */
+  conditionNote?: string
+  /** Expiring document — capture the printed expiry date with the upload. */
+  expiring?: boolean
 }
 
 const ACCEPT = '.pdf,image/png,image/jpeg,image/webp'
@@ -43,13 +48,20 @@ export function FileUploadSlot({
   kind,
   existingFiles,
   required,
+  conditionNote,
+  expiring,
 }: FileUploadSlotProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isPending, startTransition] = useTransition()
   const [dragOver, setDragOver] = useState(false)
+  const [expiresAt, setExpiresAt] = useState('')
 
   function handleSelectFiles(files: FileList | null) {
     if (!files || files.length === 0) return
+    if (expiring && expiresAt.trim() === '') {
+      toast.error('Enter the document’s expiry date first — we track renewals for you.')
+      return
+    }
     // Upload sequentially to keep server load + audit log readable
     startTransition(async () => {
       for (const file of Array.from(files)) {
@@ -57,6 +69,7 @@ export function FileUploadSlot({
         fd.set('file', file)
         fd.set('sectionType', sectionType)
         fd.set('kind', kind)
+        if (expiring && expiresAt.trim() !== '') fd.set('expiresAt', expiresAt.trim())
         const res = await uploadPartnerDocument(fd)
         if (!res.ok) {
           toast.error(`${file.name}: ${res.error}`)
@@ -87,15 +100,37 @@ export function FileUploadSlot({
                 Required
               </span>
             )}
+            {!required && conditionNote && (
+              <span className="rounded bg-warning-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-warning-700">
+                If applicable
+              </span>
+            )}
           </div>
           {description && (
             <p className="mt-0.5 text-ui-caption text-ink-500">{description}</p>
+          )}
+          {conditionNote && (
+            <p className="mt-0.5 text-ui-caption text-warning-700">{conditionNote}</p>
           )}
         </div>
         <span className="shrink-0 text-ui-caption text-ink-400">
           {existingFiles.length} file{existingFiles.length === 1 ? '' : 's'}
         </span>
       </div>
+
+      {expiring && (
+        <label className="mb-3 flex flex-wrap items-center gap-2 text-ui-caption text-ink-700">
+          Document expiry date
+          <input
+            type="date"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+            disabled={isPending}
+            className="h-8 rounded-md border border-ink-200 bg-white px-2 text-[12.5px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+          />
+          <span className="text-ink-400">— we remind you at 60 / 30 / 7 days before it lapses</span>
+        </label>
+      )}
 
       <div
         onDragOver={(e) => {
@@ -158,6 +193,14 @@ export function FileUploadSlot({
                   <div className="text-ui-caption text-ink-500">
                     {formatBytes(file.sizeBytes)} ·{' '}
                     {new Date(file.uploadedAt).toLocaleDateString()}
+                    {file.expiresAt && (
+                      <>
+                        {' · '}
+                        <span className={new Date(file.expiresAt) < new Date() ? 'font-medium text-danger-600' : ''}>
+                          expires {new Date(file.expiresAt).toLocaleDateString()}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

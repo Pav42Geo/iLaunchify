@@ -7,7 +7,7 @@
 // not just metadata. Overall status is derived; activation/suspension
 // remain explicit on the partner detail page.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, docTrackFor } from '@ilaunchify/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@ilaunchify/ui'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -26,6 +26,7 @@ import {
   CommercialContext,
 } from './SectionContext'
 import { CertificationsReview, type CertInstanceRow } from './CertificationsReview'
+import { DocTrackChecklist } from './DocTrackChecklist'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import type { PartnerFile, VerificationSectionType } from '@ilaunchify/db'
 
@@ -198,6 +199,20 @@ export default async function VerificationPage({ params }: PageProps) {
               {/* Context preview — surfaces the Phase 2 data the admin is verifying */}
               {type === 'BUSINESS' && <BusinessContext partner={partner} />}
               {type === 'FACILITY' && <CapabilitiesContext services={partner.services} />}
+              {/* P0 §4.1 — role document track vs uploads (context for review) */}
+              {type === 'DOCUMENTS' && (
+                <DocTrackChecklist
+                  track={docTrackFor(partner.services.map((s) => s.type as string))}
+                  files={partner.files.map((f) => ({
+                    id: f.id,
+                    sectionType: f.sectionType as string,
+                    kind: f.kind as string,
+                    originalFilename: f.originalFilename,
+                    uploadedAt: f.uploadedAt,
+                    expiresAt: f.expiresAt ?? null,
+                  }))}
+                />
+              )}
               {type === 'OPERATIONAL_STANDARDS' && (
                 <CommercialContext
                   contract={partner.commercialTerms?.contractTerms ?? null}

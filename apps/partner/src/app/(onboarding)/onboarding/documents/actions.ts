@@ -38,6 +38,17 @@ export async function uploadPartnerDocument(formData: FormData): Promise<UploadR
   const file = formData.get('file')
   const sectionType = formData.get('sectionType') as VerificationSectionType | null
   const kind = formData.get('kind') as PartnerFileKind | null
+  // Expiry Engine (docs/PARTNER_ROLE_ACCOUNTS.md §4.1 / §6.4) — expiring doc
+  // kinds (COI, food-safety certs) send their printed expiry date so the
+  // partner-ops cron can remind at 60/30/7 and flag lapses.
+  const expiresAtRaw = (formData.get('expiresAt') as string | null)?.trim() || null
+  let expiresAt: Date | null = null
+  if (expiresAtRaw) {
+    expiresAt = new Date(expiresAtRaw)
+    if (Number.isNaN(expiresAt.getTime())) {
+      return { ok: false, error: 'Expiry date is not a valid date.' }
+    }
+  }
 
   if (!(file instanceof File)) return { ok: false, error: 'No file provided' }
   if (!sectionType) return { ok: false, error: 'Missing sectionType' }
@@ -97,6 +108,7 @@ export async function uploadPartnerDocument(formData: FormData): Promise<UploadR
       contentType: file.type,
       sizeBytes: uploadResult.sizeBytes,
       uploadedById: user.id,
+      expiresAt,
     },
   })
 
@@ -110,6 +122,7 @@ export async function uploadPartnerDocument(formData: FormData): Promise<UploadR
       sectionType,
       filename: file.name,
       sizeBytes: uploadResult.sizeBytes,
+      expiresAt: expiresAt?.toISOString() ?? null,
     },
   })
 
