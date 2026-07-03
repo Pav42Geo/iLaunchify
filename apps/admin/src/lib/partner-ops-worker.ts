@@ -273,7 +273,7 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
       id: true,
       createdAt: true,
       acceptDeadlineAt: true,
-      partnerService: { select: { partner: { select: { userId: true } } } },
+      partnerServiceId: true,
     },
   })
 

@@ -240,8 +240,8 @@ export default async function PartnerDetail({ params }: PageProps) {
   const [activationAudit, firstDelivered] = await Promise.all([
     prisma.auditLog.findFirst({
       where: { entityType: 'Partner', entityId: partner.id, action: 'PARTNER_ACTIVATE' },
-      orderBy: { createdAt: 'asc' },
-      select: { createdAt: true },
+      orderBy: { at: 'asc' }, // AuditLog's timestamp column is `at`
+      select: { at: true },
     }),
     serviceIds.length === 0
       ? Promise.resolve(null)
@@ -256,7 +256,7 @@ export default async function PartnerDetail({ params }: PageProps) {
       ? Math.max(
           0,
           Math.round(
-            (firstDelivered.deliveredAt.getTime() - activationAudit.createdAt.getTime()) /
+            (firstDelivered.deliveredAt.getTime() - activationAudit.at.getTime()) /
               (24 * 60 * 60 * 1000),
           ),
         )
