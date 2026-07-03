@@ -33,3 +33,5 @@ export {
 } from './email-html'
 // One-off transactional email to an arbitrary address (e.g. admin invites).
 export { sendTransactionalEmail, type SendEmailResult } from './email'
+// Daily digest for P2-severity events (dispatched with digest:true).
+export { runNotificationDigest, type DigestResult } from './digest'

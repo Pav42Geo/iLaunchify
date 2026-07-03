@@ -233,6 +233,34 @@ export default async function PartnerDetail({ params }: PageProps) {
           take: 20,
         })
 
+  // Time-to-first-order (docs/PARTNER_ROLE_ACCOUNTS.md §4.3) — activation
+  // (earliest PARTNER_ACTIVATE audit row) → first DELIVERED dispatch. The
+  // onboarding KPI: every waiting day between those two stamps is churn risk.
+  const [activationAudit, firstDelivered] = await Promise.all([
+    prisma.auditLog.findFirst({
+      where: { entityType: 'Partner', entityId: partner.id, action: 'PARTNER_ACTIVATE' },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    }),
+    serviceIds.length === 0
+      ? Promise.resolve(null)
+      : prisma.orderDispatch.findFirst({
+          where: { partnerServiceId: { in: serviceIds }, status: 'DELIVERED' },
+          orderBy: { deliveredAt: 'asc' },
+          select: { deliveredAt: true },
+        }),
+  ])
+  const timeToFirstOrderDays =
+    activationAudit && firstDelivered?.deliveredAt
+      ? Math.max(
+          0,
+          Math.round(
+            (firstDelivered.deliveredAt.getTime() - activationAudit.createdAt.getTime()) /
+              (24 * 60 * 60 * 1000),
+          ),
+        )
+      : null
+
   // Aggregate stats for the quick-stats card
   const [orderAgg, lastDispatch, totalRevenue, leadTimeAgg] = await Promise.all([
     serviceIds.length === 0
@@ -413,6 +441,16 @@ export default async function PartnerDetail({ params }: PageProps) {
               <StatRow
                 label="Avg lead time"
                 value={leadTimeAgg != null ? `${leadTimeAgg.toFixed(1)} d` : '—'}
+              />
+              <StatRow
+                label="Time to first order"
+                value={
+                  timeToFirstOrderDays != null
+                    ? `${timeToFirstOrderDays} d`
+                    : activationAudit
+                      ? 'no completed order yet'
+                      : '—'
+                }
               />
               <StatRow
                 label="Last activity"

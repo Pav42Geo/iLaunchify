@@ -257,6 +257,9 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
         href: '/my-application',
       },
       audience: 'partner',
+      // §6.1 severity: 60/30-day reminders are P2 → daily digest; the 7-day
+      // reminder is P1 → realtime email.
+      digest: left > 7,
     })
     result.docThresholdNotices++
   }

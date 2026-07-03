@@ -17,6 +17,12 @@ export interface DispatchInput {
   // Affects which app-host the email links point to. Phase H4 added
   // 'creator' so workflow events route to the creator app (3000).
   audience?: 'admin' | 'partner' | 'creator'
+  // P2-severity batching (docs/PARTNER_ROLE_ACCOUNTS.md §6.1): when true, the
+  // EMAIL row is written but NOT sent — the daily digest cron
+  // (runNotificationDigest) bundles all tagged rows into one summary email.
+  // IN_APP delivery is unaffected. Callers decide per-send (e.g. a 60-day doc
+  // reminder digests; the 7-day one goes realtime).
+  digest?: boolean
 }
 
 let resendClient: Resend | null = null
@@ -94,9 +100,13 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
               title: template.title,
               body: template.body,
               link: template.link,
-              payload: input.data as never,
+              // digest:true tags the row for the daily digest cron — it stays
+              // emailSentAt=null until the digest bundles + stamps it.
+              payload: (input.digest ? { ...input.data, digest: true } : input.data) as never,
             },
           })
+
+          if (input.digest) return // digest cron owns the send
 
           if (inQuiet || !resend || !from) {
             // Skip the actual send; row remains with emailSentAt=null

@@ -157,6 +157,8 @@ const PRIMARY: SidebarRegion = {
       children: [
         { kind: 'item', label: 'Leads', icon: Inbox, href: '/leads', badgeKey: 'leads.pending' },
         { kind: 'item', label: 'Partner verification', icon: ShieldCheck, href: '/partners', badgeKey: 'partners.pending' },
+        // D4 RAMP — new partners' first-3-dispatch confirmations (PARTNER_ROLE_ACCOUNTS §4.3)
+        { kind: 'item', label: 'Partner ramp', icon: BadgeCheck, href: '/partners/ramp', capability: 'partners:approve' },
         { kind: 'item', label: 'Cert instance reviews', icon: Award, href: '/certificate-types', badgeKey: 'certs.pending' },
         { kind: 'item', label: 'Cert type requests', icon: ScrollText, href: '/certificate-requests' },
         { kind: 'item', label: 'Ingredient queue', icon: FlaskConical, href: '/ingredients', badgeKey: 'ingredients.pending' },

@@ -2767,6 +2767,11 @@ model OrderDispatch {
   slaAtRiskNotifiedAt      DateTime? // DISPATCH_SLA_AT_RISK sent (~50% of accept window)
   inboundUnconfirmedNotifiedAt DateTime? // INBOUND_DELIVERED_UNCONFIRMED sent to the FC
   inboundUnconfirmedEscalatedAt DateTime? // 2nd stage — admins alerted, receipt still missing
+  // D4 RAMP (docs/PARTNER_ROLE_ACCOUNTS.md §4.3): a new partner's first 3
+  // completed dispatches get a manual admin confirmation before the partner
+  // is considered fully ramped. Stamped from the admin ramp queue.
+  rampConfirmedAt          DateTime?
+  rampConfirmedById        String? // soft FK → admin User
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 
