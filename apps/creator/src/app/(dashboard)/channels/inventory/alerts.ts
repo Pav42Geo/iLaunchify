@@ -7,15 +7,15 @@
 // recovery to HEALTHY once, lateral moves never).
 //
 // Knobs come from admin OrderSettings (§3.4a philosophy: everything tunable).
-// NOTE: notifications are written as IN_APP Notification rows directly for now —
-// packages/notifications/templates.ts is Code's hot file today (proof loop).
-// TODO(templates handoff): move to dispatchNotification + a CREATOR_STOCK_ALERT
-// template case so the alert also goes out by email.
+// Notifications go through dispatchNotification (event: CREATOR_STOCK_ALERT), so
+// the alert picks up preference/quiet-hours/email fan-out for free — see the
+// template case in packages/notifications/src/templates.ts.
 //
 // Every read/write is cast-guarded and the whole helper never throws — an alert
 // must never break the money/inventory mutation it piggybacks on.
 
 import { prisma, getOrderSettings } from '@ilaunchify/db'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import {
   blendedVelocity,
   reorderPoint,
@@ -148,18 +148,12 @@ export async function recomputeStockAlert(creatorUserId: string, productId: stri
         onOrder,
       }),
     })
-    await d('notification')
-      ?.create?.({
-        data: {
-          userId: creatorUserId,
-          event: 'CREATOR_STOCK_ALERT',
-          channel: 'IN_APP',
-          title: copy.title,
-          body: copy.body,
-          link: '/channels/inventory',
-        },
-      })
-      .catch(() => {}) // enum value pre-db:push → skip silently
+    await dispatchNotification({
+      userId: creatorUserId,
+      event: 'CREATOR_STOCK_ALERT',
+      audience: 'creator',
+      data: { title: copy.title, body: copy.body, productName: product.name, alertState: next },
+    })
   } catch {
     // Never let an alert failure surface into the calling mutation.
   }
