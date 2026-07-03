@@ -258,6 +258,11 @@ export async function resolveDisputeWithReprint({
   })
 
   // The reprint↔original↔dispute linkage lives here, in the audit payload.
+  // `reprintOfDispatchId` intentionally mirrors the first-class self-relation
+  // column Cowork adds with P3 partner scorecards (defect-rate counting needs it
+  // queryable). Keep the key name exact: the P3 backfill is mechanical —
+  //   UPDATE OrderDispatch SET reprintOfDispatchId = payload->>'reprintOfDispatchId'
+  //   WHERE id = <entityId>  (rows where action = 'DISPATCH_REPRINT_CREATED').
   await logAuditAs(admin, {
     entityType: 'OrderDispatch',
     entityId: reprint.dispatchId,
@@ -265,7 +270,7 @@ export async function resolveDisputeWithReprint({
     payload: {
       orderId: dispute.orderId,
       disputeId: dispute.id,
-      originalDispatchId: dispatchId,
+      reprintOfDispatchId: dispatchId,
       reprintDispatchId: reprint.dispatchId,
       manifestVersion: reprint.manifestVersion,
       costCents: Math.max(0, Math.round(costCents ?? 0)),
