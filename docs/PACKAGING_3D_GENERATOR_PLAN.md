@@ -11,7 +11,12 @@ Locked architecture still governs: **die-line = print master, 3D = derived previ
 
 1. **Packaging Studio (admin mode) owns ALL mockup production.** Partner photo + die-line intake → 3D generation → materials → standard renders → premium scene composer, one pipeline, one surface. Design Studio (creator) only *consumes* the library. (Matches die-line Curator already living in Packaging Studio, C9.g.)
 2. **Creators CAN AI-generate scene mockups** at finalize time — clearly **labeled marketing-only**, never the production-accurate checkout preview. Reuses the AI try-on loop + rate limiter.
-3. **All mockups FREE at launch** (standard + premium 2D/3D). Schema carries an `isPremium` flag + tier hooks so gating later is a toggle, not a build.
+3. ~~All mockups free at launch~~ **SUPERSEDED same day → tier-gated at launch (Pavel):**
+   - **Maker:** free **in-app preview only** — browse the library, see their design on the 3D/scene mockups; **no downloads**.
+   - **Builder:** mockup downloads + premium 2D/3D scene mockups + AI scenes — **non-commercial/internal use license**.
+   - **Agency:** everything Builder has + **commercial-use license** (ads, channel listings, client work) + (later) videos.
+   - The **production-accurate checkout preview stays free for all tiers** — it's a platform function (the creator must see what they're buying), not a monetized mockup.
+   - All gates via `lookupPlanFeature()` (PlanFeature rows, db-driven, non-code); `isPremium` + download flags on MockupAsset.
 4. (Direction) **Generating from partner imagery is in-scope** — AI image-to-3D drafting is an admin-side accelerant, always admin-verified against die-line dims before ACTIVE.
 5. **Three intake lanes, one pipeline** (Pavel 2026-07-03): (a) partner uploads photos + die-lines; (b) admin uploads a **source 2D image** himself → same auto-generation pipeline; (c) admin uploads **ready-to-use 2D and 3D mockups** directly. All land in the same library, organized by **packaging type, category, size** (+ style tags).
 
@@ -75,9 +80,9 @@ New pure package **`packages/packaging-3d`** (Prisma-free, DI'd like `packages/s
 
 ## 4. The Mockup Library (new model)
 
-- **`MockupAsset`** (additive): packagingTypeId, kind (`STANDARD_RENDER` | `SCENE_2D` | `SCENE_3D_VIDEO` | `AI_SCENE`), sourceKind (`GENERATED` | `ADMIN_SCENE` | `ADMIN_READY_2D` | `ADMIN_READY_3D` | `CREATOR_AI`), assetId, cameraPreset, sceneRef?, `designAware` bool (can the creator's design wrap onto it — false for unbindable ready-mades), **isPremium** (all false at launch, §0.3), status DRAFT→ACTIVE.
+- **`MockupAsset`** (additive): packagingTypeId, kind (`STANDARD_RENDER` | `SCENE_2D` | `SCENE_3D_VIDEO` | `AI_SCENE`), sourceKind (`GENERATED` | `ADMIN_SCENE` | `ADMIN_READY_2D` | `ADMIN_READY_3D` | `CREATOR_AI`), assetId, cameraPreset, sceneRef?, `designAware` bool (can the creator's design wrap onto it — false for unbindable ready-mades), **isPremium** + download gating per §0.3 tier model, status DRAFT→ACTIVE.
 - **Organization/browse taxonomy** (admin library + creator panel share it): **packaging type** (structural, 6 types) → **product category** (13 locked) → **size** (dims from the die-line/PackagingType; explicit dims for lane-3 ready-mades) → style tags (reuse DesignLibraryItem styleTags pattern). Filters URL-driven like every admin list surface.
-- **Free tier at launch = everything**: standard neutral renders (auto-generated) + admin scene mockups (juice-can-with-tropical-splash class) + videos when they land.
+- **Access (§0.3 tier model):** Maker previews everything in-app (standard renders + scene mockups with their design composited) but downloads nothing; Builder/Agency download renders + get premium scenes/AI scenes (+ videos in V2). Checkout-accurate preview free for all.
 - **Scene composer** (Packaging Studio admin mode): pick generated 3D model → choose scene template (background, props, lighting) or AI background → path-traced render → publish to library. AI backgrounds allowed — the *product* in frame is the true render; only the scene is generated (consistent with the locked AI principle).
 - **Creator flow (Design Studio, finalize/pre-checkout):** design done → "Mockups" panel on the product → browse library renders of *their own design* (composited live) → pick/save favorites → optionally **AI-generate a scene** (labeled marketing-only, rate-limited) → checkout preview itself stays the production-accurate render (locked).
 
@@ -90,9 +95,9 @@ New pure package **`packages/packaging-3d`** (Prisma-free, DI'd like `packages/s
 | **G3 — Parametric engine + intake auto-pipeline** | 6 StructuralPackTypes parametric from die-line dims; §1 auto job + admin review queue in Packaging Studio | ~8–10d | Partner upload → approved 3D mockup with near-zero admin work |
 | **G4 — Fold-from-net** | normalizedSvg → FOLD → folded carton mesh + per-panel UVs; fold animation bonus | ~8–12d (hardest) | Cartons/corrugate photoreal |
 | **G5 — Scene composer + creator AI scenes** | Admin scene templates + AI backgrounds; creator AI scene generation (labeled, rate-limited); glTF curation queue + Tripo/Meshy drafting | ~7–10d + API keys | The "awesome mockups" tier — still all free (§0.3) |
-| **G6 — Video + premium toggle** (deferred) | 3D turntable/fold videos; flip `isPremium` gating via lookupPlanFeature() when monetization decided | — | V2 |
+| **G6 — Video** (deferred) | 3D turntable/fold videos (Builder/Agency) | — | V2 |
 
-Sequencing: **G1+G2 first** (~2–3 wks) delivers the Pacdora feel on existing geometry. G3 is the admin-relief payoff. V1 checkout keeps the 2D photo-mask (LOCKED); suggested landing = V1.5 since the external blocker is gone.
+Sequencing (LOCKED 2026-07-03): **G1+G2 land in V1.5** (~2–3 wks) — delivers the Pacdora feel on existing geometry, **including the tier gates** (preview free / downloads + premium Builder-Agency, PlanFeature rows ship with G2). G3–G5 follow. V1 checkout keeps the 2D photo-mask (LOCKED).
 
 ## 6. What we explicitly do NOT build
 
@@ -105,12 +110,14 @@ Sequencing: **G1+G2 first** (~2–3 wks) delivers the Pacdora feel on existing g
 
 `Dieline3DViewer` · `LivePreview3DDock` · `gltf-surface-binding.ts` + `surface-face.ts` · `dielineSvg.ts` / `dielineParse.ts` · `packaging-surfaces.ts` · MockupTemplate substrate + PrintAreaEditor (2D masks stay as V1 + photo fallback) · AI try-on loop + rate limiter · RAMP-queue review pattern · schema: `Model3DSource`, `PackagingType.model3d*`, `PackagingDieline`.
 
-## 8. Remaining open decisions
+## 8. Open decisions — RESOLVED (Pavel 2026-07-03)
 
-1. **Sequencing** — pull G1+G2 into V1.5 (recommended) or keep all 3D in V2?
-2. **Render budget** — target quality/time for path-traced stills (e.g. ≤10s mid hardware)?
-3. **Asset licensing** — CC0 only (Poly Haven) or budget for licensed studio scene sets?
-4. **Creator AI scene limits** — per-day cap / per-product cap for the free-at-launch period?
+1. **Sequencing** — ✅ LOCKED: **G1+G2 pull into V1.5**; G3–G5 follow, G6 (video) V2.
+2. **Render budget** — ✅ LOCKED: **≤10s path-traced still on mid hardware** (progressive preview shows immediately, refines to final).
+3. **Asset licensing + downloads** — ✅ LOCKED: **CC0 assets only** (Poly Haven; no licensed-set budget). License ladder: **Maker = preview-only in-app, no downloads; Builder = downloads, non-commercial; Agency = commercial use** (Pavel 2026-07-03). Encode as `mockupLicense` PlanFeature: `PREVIEW_ONLY | PERSONAL | COMMERCIAL`; downloads watermark-free only where licensed; surface the license line in the download dialog.
+4. **Monetization** — ✅ LOCKED (supersedes §0.3 v1): **NOT free at launch** — premium mockups + downloads are Builder/Agency features via `lookupPlanFeature()`. Maker keeps free preview.
+
+Remaining open: creator AI scene caps per tier (quota numbers = PlanFeature rows, decide at G5 build time).
 
 ---
 *Supersedes the Pacdora-gated 3D path in `MOCKUP_STRATEGY.md` §V2 and `PACDORA_EVALUATION.md` (RESOLVED 2026-07-03).*

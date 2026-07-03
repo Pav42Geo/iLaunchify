@@ -72,7 +72,7 @@
 | **Autosave + version history** | ✅ SHIPPED 2026-06-19 | — | Ring buffer (10 auto + pinned), restore per-surface (base design scoped) |
 | **3D preview** | Dieline3DViewer (display-only, no edit) | — | Substrate + model3dKey schema ready |
 | **AI compliance scan** | Hidden field validator | Expand to visible fields | Deterministic vector marks (FDA/AAFCO compliance) |
-| **Multi-surface mockup** | 2D photo-mask (admin-drawn region) | Library browseable | V2: 3D via in-house generator (Pacdora API withdrawn 2026-07-03) |
+| **Multi-surface mockup** | 2D photo-mask (admin-drawn region) | Library browseable | **V1.5: G1+G2 of in-house generator (LOCKED 2026-07-03)**; G3–G5 follow, video V2 |
 
 **Design Studio timeline (PLATFORM_SPEC Tier 4):**
 - Weeks 4–7 (V1): Path A + B + multi-surface + AI scan (added 2026-05-19, +6 days effort)
@@ -81,7 +81,7 @@
 **Mockup strategy (LOCKED MOCKUP_STRATEGY.md):**
 - **V1:** Admin uploads white-label product photo → draws print region (4-point quad) → creator artwork warps to region (2D mask)
 - **V1.5:** Admin-curated mockup library (browseable by packaging type + style tags)
-- **V2:** 3D mockups via in-house 3D packaging generator (Pacdora withdrew API offering 2026-07-03 → BUILD path per PACDORA_EVALUATION §7.4; plan in PACKAGING_3D_GENERATOR_PLAN.md)
+- **V1.5:** 3D mockups via in-house generator, G1 realism + G2 render/library pulled into V1.5 (LOCKED 2026-07-03); tier-gated: Maker preview-only, Builder/Agency downloads + premium scenes. G3–G5 follow; video V2. Plan: PACKAGING_3D_GENERATOR_PLAN.md (Pacdora withdrew API → BUILD)
 
 **Die-line normalization (LOCKED):**
 - Two artifacts: immutable `PartnerFile` (partner upload) + platform `normalizedSvg` (computed)
@@ -662,7 +662,7 @@ Three partner types share **one homogeneous portal chassis** with role-specific 
 | **Pet food / baby food rule packs** | Only if persona research validates | V2+ |
 | **Marketplace creator-to-creator discovery** | Requires traffic; organic growth loop | V2+ |
 | **Affiliate program** | Deferred post-V1; organic-first strategy | V2+ |
-| **3D mockups — in-house generator** | Pacdora withdrew API offering (2026-07-03) → BUILD: parametric primitives + die-line parse + fold-from-net | V2+ |
+| **3D mockups — in-house generator** | Pacdora withdrew API (2026-07-03) → BUILD; G1+G2 LOCKED into V1.5, G3–G5 next, video V2 | V1.5 → V2 |
 | **Custom rate cards** | Premier partners negotiate per-creator pricing | V1.5+ |
 | **Print geographic routing** | Commodity leg optimization; blocked on V2 pooling | V2+ |
 | **PREPRESS/PRODUCTION behavioral split** | Roles captured in memberships; enforcement joins Code's print-workflow gates | Code + P3 (future) |
