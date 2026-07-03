@@ -24,6 +24,7 @@ export type IntegrationCategory =
   | 'AI'
   | 'Data APIs'
   | 'Logistics'
+  | 'Sales Channels'
   | 'Monitoring'
   | 'Platform Core'
   | 'Internal Services'
@@ -351,7 +352,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     vendor: 'Amazon',
     category: 'Logistics',
     description:
-      'Creator OAuth + inbound plans + FBA box labels + MCF. Blocked on our developer-application approval; checkout/plan scaffolding already live. Gate: channel_inbound:AMAZON_FBA.',
+      'Creator OAuth + inbound plans + FBA box labels + MCF. Blocked on our developer-application approval; checkout/plan scaffolding already live. Gate: channel_inbound:AMAZON_FBA. SAME app credentials also power the C4 selling-side adapter (listings + orders).',
     docsUrl: 'https://developer-docs.amazon.com/sp-api/',
     dashboardUrl: 'https://sellercentral.amazon.com/sellingpartner/developerconsole',
     lifecycle: 'planned',
@@ -368,7 +369,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     name: 'Walmart Marketplace (WFS)',
     vendor: 'Walmart',
     category: 'Logistics',
-    description: 'WFS inbound plans + box labels (Phase L4). GTIN-only labeling. Gate: channel_inbound:WALMART_WFS.',
+    description: 'WFS inbound plans + box labels (Phase L4). GTIN-only labeling. Gate: channel_inbound:WALMART_WFS. SAME credentials also power the C5 selling-side adapter (items/inventory/orders; 15-min token refresh).',
     docsUrl: 'https://developer.walmart.com',
     lifecycle: 'planned',
     gateKey: 'channel_inbound:WALMART_WFS',
@@ -383,7 +384,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     name: 'TikTok Shop (FBT)',
     vendor: 'TikTok',
     category: 'Logistics',
-    description: 'FBT inbound requests + carton labels (Phase L4; FBT near-mandatory since 2026-02-25). Gate: channel_inbound:TIKTOK_FBT.',
+    description: 'FBT inbound requests + carton labels (Phase L4; FBT near-mandatory since 2026-02-25). Gate: channel_inbound:TIKTOK_FBT. SAME app key/secret also power the C3 selling-side adapter (Seller API: products/orders/fulfillment).',
     docsUrl: 'https://partner.tiktokshop.com',
     lifecycle: 'planned',
     gateKey: 'channel_inbound:TIKTOK_FBT',
@@ -391,6 +392,120 @@ export const INTEGRATIONS: IntegrationDef[] = [
     envVars: [
       { name: 'TIKTOK_SHOP_APP_KEY', kind: 'config', required: false },
       { name: 'TIKTOK_SHOP_APP_SECRET', kind: 'secret', required: false },
+    ],
+  },
+  // ---------------------------------------------------------------------------
+  // Sales Channels (docs/CHANNEL_MANAGEMENT_SPEC.md) — selling-side adapter keys.
+  // Presence of a channel's platform keys is what flips Channel.oauthConfigured
+  // (creator Connect buttons leave the dev stub). TikTok / Amazon / Walmart
+  // selling reuses the SAME app credentials as their Logistics inbound rows above
+  // (one app per vendor) — no duplicate env vars.
+  // ---------------------------------------------------------------------------
+  {
+    key: 'shopify',
+    name: 'Shopify (sales channel)',
+    vendor: 'Shopify',
+    category: 'Sales Channels',
+    description:
+      'C1 — the FIRST real channel adapter: OAuth connect, listing push, order webhooks + poll, inventory + fulfillment sync. Create the public app in the Shopify Dev Dashboard (dev.shopify.com), least scopes: read_orders, write_products, write_merchant_managed_fulfillment_orders, read_inventory/write_inventory.',
+    docsUrl: 'https://shopify.dev/docs/api/admin-graphql',
+    dashboardUrl: 'https://dev.shopify.com',
+    lifecycle: 'planned',
+    appLinks: [
+      { label: 'Channels registry', href: '/channels' },
+      { label: 'Connections & sync', href: '/channels/connections' },
+    ],
+    envVars: [
+      { name: 'SHOPIFY_APP_CLIENT_ID', kind: 'config', required: false, note: 'Public app client id — presence lights up the creator Connect button' },
+      { name: 'SHOPIFY_APP_CLIENT_SECRET', kind: 'secret', required: false, note: 'Also signs webhook HMAC verification' },
+      { name: 'SHOPIFY_APP_URL', kind: 'public', required: false, note: 'OAuth redirect base (defaults to NEXT_PUBLIC_CREATOR_URL)' },
+    ],
+  },
+  {
+    key: 'etsy',
+    name: 'Etsy (sales channel)',
+    vendor: 'Etsy',
+    category: 'Sales Channels',
+    description:
+      'C5 long-tail. Open API v3, OAuth 2.0. NOTE: Etsy requires production-partner disclosure on maker listings — the adapter surfaces the pinned manufacturer in listing metadata.',
+    docsUrl: 'https://developers.etsy.com/documentation/',
+    lifecycle: 'planned',
+    appLinks: [{ label: 'Channels registry', href: '/channels' }],
+    envVars: [
+      { name: 'ETSY_APP_KEYSTRING', kind: 'config', required: false },
+      { name: 'ETSY_APP_SHARED_SECRET', kind: 'secret', required: false },
+    ],
+  },
+  {
+    key: 'ebay',
+    name: 'eBay (sales channel)',
+    vendor: 'eBay',
+    category: 'Sales Channels',
+    description:
+      'C5 long-tail. Sell API suite, OAuth 2.0. Listing push requires fulfillment/payment/return policy objects to exist on the seller account first.',
+    docsUrl: 'https://developer.ebay.com/develop/apis',
+    lifecycle: 'planned',
+    appLinks: [{ label: 'Channels registry', href: '/channels' }],
+    envVars: [
+      { name: 'EBAY_CLIENT_ID', kind: 'config', required: false },
+      { name: 'EBAY_CLIENT_SECRET', kind: 'secret', required: false },
+      { name: 'EBAY_RU_NAME', kind: 'config', required: false, note: 'eBay OAuth redirect-url name' },
+    ],
+  },
+  {
+    key: 'wix',
+    name: 'Wix Stores (sales channel)',
+    vendor: 'Wix',
+    category: 'Sales Channels',
+    description: 'C5 long-tail. Wix app-market OAuth app (Stores + Orders APIs).',
+    docsUrl: 'https://dev.wix.com/docs',
+    lifecycle: 'planned',
+    appLinks: [{ label: 'Channels registry', href: '/channels' }],
+    envVars: [
+      { name: 'WIX_APP_ID', kind: 'config', required: false },
+      { name: 'WIX_APP_SECRET', kind: 'secret', required: false },
+    ],
+  },
+  {
+    key: 'squarespace',
+    name: 'Squarespace Commerce (sales channel)',
+    vendor: 'Squarespace',
+    category: 'Sales Channels',
+    description:
+      'C5 long-tail. Narrowest API surface of the roster (orders + inventory solid; rich listing management limited) — expect a reduced adapter.',
+    docsUrl: 'https://developers.squarespace.com/commerce-apis/overview',
+    lifecycle: 'planned',
+    appLinks: [{ label: 'Channels registry', href: '/channels' }],
+    envVars: [
+      { name: 'SQUARESPACE_CLIENT_ID', kind: 'config', required: false },
+      { name: 'SQUARESPACE_CLIENT_SECRET', kind: 'secret', required: false },
+    ],
+  },
+  {
+    key: 'woocommerce',
+    name: 'WooCommerce (sales channel)',
+    vendor: 'Automattic',
+    category: 'Sales Channels',
+    description:
+      'C5 long-tail. SELF-HOSTED: no platform-level app — creators enter per-store REST consumer key/secret at connect time (stored as connection secrets, not env). Version drift across stores; poll fallback matters. No env vars by design.',
+    docsUrl: 'https://woocommerce.github.io/woocommerce-rest-api-docs/',
+    lifecycle: 'planned',
+    appLinks: [{ label: 'Channels registry', href: '/channels' }],
+    envVars: [],
+  },
+  {
+    key: 'bigcommerce',
+    name: 'BigCommerce (sales channel)',
+    vendor: 'BigCommerce',
+    category: 'Sales Channels',
+    description:
+      'C5 long-tail. Per-store API accounts entered at connect time (connection secrets) OR a platform app — decided with the C5 native-vs-unified call. Solid webhooks.',
+    docsUrl: 'https://developer.bigcommerce.com/docs',
+    lifecycle: 'planned',
+    appLinks: [{ label: 'Channels registry', href: '/channels' }],
+    envVars: [
+      { name: 'BIGCOMMERCE_APP_CLIENT_ID', kind: 'config', required: false, note: 'Only if the platform-app path wins at C5' },
+      { name: 'BIGCOMMERCE_APP_CLIENT_SECRET', kind: 'secret', required: false },
     ],
   },
   {
@@ -505,6 +620,7 @@ export const CATEGORY_ORDER: IntegrationCategory[] = [
   'AI',
   'Data APIs',
   'Logistics',
+  'Sales Channels',
   'Monitoring',
   'Internal Services',
   'Platform Core',
