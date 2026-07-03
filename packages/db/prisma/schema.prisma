@@ -2864,6 +2864,13 @@ model OrderDispatch {
   // is considered fully ramped. Stamped from the admin ramp queue.
   rampConfirmedAt          DateTime?
   rampConfirmedById        String? // soft FK → admin User
+  // P3 scorecards — first-class reprint linkage (agreed with Code 2026-07-02:
+  // audit rows carried it first; this column makes defect-rate counting
+  // queryable. Code's createReprintDispatch sets it; historical rows backfill
+  // from DISPATCH_REPRINT_CREATED audit payloads).
+  reprintOfDispatchId      String?
+  reprintOf                OrderDispatch?  @relation("DispatchReprints", fields: [reprintOfDispatchId], references: [id])
+  reprints                 OrderDispatch[] @relation("DispatchReprints")
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 

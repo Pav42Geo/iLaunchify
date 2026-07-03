@@ -64,6 +64,7 @@ import { PartnerTierPill } from './PartnerTierPill'
 import { ServiceToggleButton } from './ServiceToggleButton'
 import { computeOverallStatus, SECTION_LABEL, ALL_SECTIONS } from '@/lib/verification'
 import { STATUS_LABEL as PARTNER_STATUS_LABEL } from '@/lib/partner-fsm'
+import { PartnerScorecard } from './PartnerScorecard'
 
 export const dynamic = 'force-dynamic'
 
@@ -261,6 +262,58 @@ export default async function PartnerDetail({ params }: PageProps) {
         )
       : null
 
+  // P3 scorecard (§7.6) — read-only quality metrics across this partner's
+  // producing dispatches. One query pass; cast-guarded fields tolerate a
+  // pre-regen client.
+  const [scoreCounts, discrepancyCount, reprintCount, yieldLots] = await Promise.all([
+    serviceIds.length === 0
+      ? Promise.resolve([] as Array<{ status: string; _count: { _all: number } }>)
+      : prisma.orderDispatch.groupBy({
+          by: ['status'],
+          where: { partnerServiceId: { in: serviceIds } },
+          _count: { _all: true },
+        }),
+    serviceIds.length === 0
+      ? Promise.resolve(0)
+      : prisma.receivingDiscrepancy.count({
+          where: { orderDispatch: { partnerServiceId: { in: serviceIds } } },
+        }),
+    serviceIds.length === 0
+      ? Promise.resolve(0)
+      : prisma.orderDispatch.count({
+          where: {
+            partnerServiceId: { in: serviceIds },
+            reprintOfDispatchId: { not: null },
+          } as never, // column post-dates the generated client until db:push
+        }).catch(() => 0),
+    serviceIds.length === 0
+      ? Promise.resolve([] as Array<{ unitsProduced: number; unitsExpected: number | null }>)
+      : prisma.productionLot.findMany({
+          where: { orderDispatch: { partnerServiceId: { in: serviceIds } }, unitsExpected: { not: null } },
+          select: { unitsProduced: true, unitsExpected: true },
+          take: 200,
+        }),
+  ])
+  const countStatus = (s: string) => scoreCounts.find((g) => g.status === s)?._count._all ?? 0
+  const deliveredCount = countStatus('DELIVERED')
+  const declinedish = countStatus('DECLINED') + countStatus('TIMED_OUT')
+  const acceptedish =
+    scoreCounts.reduce((a, g) => a + g._count._all, 0) - declinedish - countStatus('PENDING_ACCEPT')
+  const qcFailures = countStatus('FAILED_QC')
+  const yieldPcts = yieldLots
+    .filter((l) => (l.unitsExpected ?? 0) > 0)
+    .map((l) => (l.unitsProduced / (l.unitsExpected as number)) * 100)
+  const scorecard = {
+    delivered: deliveredCount,
+    acceptRatePct:
+      acceptedish + declinedish > 0 ? (acceptedish / (acceptedish + declinedish)) * 100 : null,
+    qcFailures,
+    discrepancies: discrepancyCount,
+    reprints: reprintCount,
+    avgYieldPct:
+      yieldPcts.length > 0 ? yieldPcts.reduce((a, b) => a + b, 0) / yieldPcts.length : null,
+  }
+
   // Aggregate stats for the quick-stats card
   const [orderAgg, lastDispatch, totalRevenue, leadTimeAgg] = await Promise.all([
     serviceIds.length === 0
@@ -422,6 +475,8 @@ export default async function PartnerDetail({ params }: PageProps) {
             overall={overall}
             statusChangedAt={partner.statusChangedAt}
           />
+
+          <PartnerScorecard data={scorecard} />
 
           <Card icon={Sparkles} title="Partner tier" subtitle="Display only · no behavioral binding V1" compact>
             <PartnerTierPill
