@@ -20,12 +20,21 @@ export interface BlackoutRow {
   reason: string | null
 }
 
+const SERVICE_HEADING: Record<string, string> = {
+  WAREHOUSE: 'Fulfillment Center service',
+  MANUFACTURING: 'Manufacturing service',
+  COPACKING: 'Co-packing service',
+  LABEL_PRINTING: 'Print production service',
+}
+
 export function FulfillmentSettingsForm({
   serviceId,
+  serviceType,
   initialSpec,
   blackouts,
 }: {
   serviceId: string
+  serviceType: string
   initialSpec: Partial<ReceivingSpecInput>
   blackouts: BlackoutRow[]
 }) {
@@ -61,9 +70,15 @@ export function FulfillmentSettingsForm({
   const inputCls =
     'mt-1 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200'
 
+  const isWarehouse = serviceType === 'WAREHOUSE'
+
   return (
     <div className="space-y-6">
-      {/* Receiving spec */}
+      <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-ink-500">
+        {SERVICE_HEADING[serviceType] ?? serviceType}
+      </p>
+      {/* Receiving spec — WAREHOUSE only */}
+      {isWarehouse && (
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <header className="border-b border-ink-200 bg-[var(--bg-hero)] px-5 py-3">
           <h2 className="font-display text-[15px] font-semibold text-ink-900">Receiving requirements</h2>
@@ -147,6 +162,7 @@ export function FulfillmentSettingsForm({
           </div>
         </div>
       </section>
+      )}
 
       {/* Blackout dates */}
       <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">

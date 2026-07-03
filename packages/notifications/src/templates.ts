@@ -118,6 +118,10 @@ interface TemplateData {
   DOC_EXPIRING_SOON: { docLabel: string; daysLeft: number; href: string }
   DOC_EXPIRED: { docLabel: string; suspendedCapability?: string; href: string }
   RELEASE_SHIP_SLA_AT_RISK: { orderRef: string; daysWaiting: number }
+  // P2 proof loop (D3)
+  CREATOR_PROOF_AWAITING: { orderId: string; orderRef: string; version: number; partnerName?: string }
+  PROOF_APPROVED: { dispatchId: string; orderRef: string; version: number }
+  PROOF_REJECTED: { dispatchId: string; orderRef: string; version: number; annotation?: string }
 }
 
 function fmtSection(sectionType: string): string {
@@ -490,6 +494,32 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `${d.docLabel} expires in ${d.daysLeft} day${d.daysLeft === 1 ? '' : 's'}`,
         body: 'Upload a renewed document before it lapses — expired documents suspend the capabilities they back.',
         link: d.href,
+      }
+    }
+    case 'CREATOR_PROOF_AWAITING': {
+      const d = data as TemplateData['CREATOR_PROOF_AWAITING']
+      return {
+        title: `Print proof v${d.version} awaiting your approval · ${d.orderRef}`,
+        body: 'Your print partner uploaded a pre-production proof. Production is paused until you approve it — review and approve or request changes.',
+        link: `/orders/${d.orderId}`,
+      }
+    }
+    case 'PROOF_APPROVED': {
+      const d = data as TemplateData['PROOF_APPROVED']
+      return {
+        title: `Proof v${d.version} approved · ${d.orderRef}`,
+        body: 'The creator approved your proof — you can proceed to production and mark the job ready.',
+        link: `/orders/${d.dispatchId}`,
+      }
+    }
+    case 'PROOF_REJECTED': {
+      const d = data as TemplateData['PROOF_REJECTED']
+      return {
+        title: `Proof v${d.version} rejected · ${d.orderRef}`,
+        body: d.annotation
+          ? `Creator note: "${d.annotation.slice(0, 200)}" — upload a corrected proof.`
+          : 'The creator requested changes — upload a corrected proof.',
+        link: `/orders/${d.dispatchId}`,
       }
     }
     case 'RELEASE_SHIP_SLA_AT_RISK': {

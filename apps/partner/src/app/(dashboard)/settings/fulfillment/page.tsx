@@ -13,10 +13,14 @@ export const metadata = { title: 'Fulfillment settings — Partners' }
 
 export default async function FulfillmentSettingsPage() {
   const user = await requireUser()
+  // P2 — blackout windows apply to every service; the receiving-spec editor
+  // renders only for WAREHOUSE services (the form hides it otherwise).
   const services = await prisma.partnerService.findMany({
-    where: { type: 'WAREHOUSE', partner: { userId: user.id } },
+    where: { partner: { userId: user.id } },
+    orderBy: { type: 'asc' },
     select: {
       id: true,
+      type: true,
       receivingSpecJson: true,
       blackoutDates: {
         where: { endsOn: { gte: new Date() } },
@@ -57,6 +61,7 @@ export default async function FulfillmentSettingsPage() {
           <FulfillmentSettingsForm
             key={s.id}
             serviceId={s.id}
+            serviceType={s.type as string}
             initialSpec={spec}
             blackouts={blackouts}
           />

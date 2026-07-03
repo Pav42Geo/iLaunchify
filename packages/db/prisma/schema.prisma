@@ -2468,6 +2468,11 @@ model OrderSettings {
   freeShippingThresholdCents Int? // free shipping at/above this subtotal; null = never
   defaultMoq                 Int  @default(100) // default minimum order quantity (was DEFAULT_MOQ)
 
+  // ---- Channel replenishment (CHANNEL_MANAGEMENT_SPEC §3.5a; admin-tunable) ----
+  channelProcessingBufferDays Int @default(3) // days added on top of manufacturer lead (receiving/processing)
+  channelSafetyStockDays      Int @default(7) // safety stock expressed as days of cover
+  channelTargetDaysOfCover    Int @default(45) // suggested reorder qty targets this many days of cover
+
   // ---- Cancellations & refunds (policy; consumers land as the flows ship) ----
   creatorCancelWindowHours             Int     @default(24) // creator self-cancel window after placing
   cancellationFeeBps                   Int     @default(0) // fee retained on a cancel past the free window
@@ -2755,6 +2760,9 @@ model OrderDispatch {
   // FC receiving: one receipt per dispatch + first-class discrepancy records.
   inboundReceipt           InboundReceipt?
   receivingDiscrepancies   ReceivingDiscrepancy[]
+  // P2 — proof loop (LABEL) + lot traceability (PRODUCT/COPACKING)
+  proofRounds              ProofRound[]
+  productionLots           ProductionLot[]
   // P0 §6.2 cron dedupe stamps (same pattern as acceptReminderSentAt above):
   slaAtRiskNotifiedAt      DateTime? // DISPATCH_SLA_AT_RISK sent (~50% of accept window)
   inboundUnconfirmedNotifiedAt DateTime? // INBOUND_DELIVERED_UNCONFIRMED sent to the FC
@@ -4070,6 +4078,12 @@ enum NotificationEvent {
   DOC_EXPIRING_SOON // partner document (COI etc.) inside the T-60/30/7 reminder window
   DOC_EXPIRED // document lapsed → affected capability suspended
   RELEASE_SHIP_SLA_AT_RISK // storage release waiting too long in REQUESTED/PICKING
+  // P2 proof loop (D3)
+  CREATOR_PROOF_AWAITING // printer uploaded a proof — creator must approve/reject
+  PROOF_APPROVED // creator approved → printer may proceed to READY
+  PROOF_REJECTED // creator rejected with annotation → printer uploads next round
+  // C6.3 — channel inventory intelligence (CHANNEL_MANAGEMENT_SPEC §3.5a)
+  CREATOR_STOCK_ALERT // stock alert state ESCALATED (LOW/CRITICAL/STOCKOUT) or recovered to HEALTHY
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -4394,6 +4408,10 @@ model InventoryPool {
   storageLocationRef  String            @default("") // FC / partner id when applicable
   quantityOnHand      Int               @default(0)
   quantityReserved    Int               @default(0)
+  /// Last computed stock-alert state (HEALTHY | LOW | CRITICAL | STOCKOUT) —
+  /// stored so notifications fire once per TRANSITION (shouldNotify), never
+  /// per recompute. Recomputed at every ledger-touching mutation (C6.3).
+  alertState          String            @default("HEALTHY")
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   ledger              InventoryLedger[]
@@ -7747,6 +7765,59 @@ model InboundReceiptLine {
 
   @@index([receiptId])
   @@index([lotNumber]) // recall trace: lot → receipts → dispatch → order
+}
+
+enum ProofRoundStatus {
+  PENDING // uploaded, awaiting creator decision
+  APPROVED
+  REJECTED
+}
+
+/// P2 proof loop (docs/PARTNER_ROLE_ACCOUNTS.md §3.3.B, D3 LOCKED): versioned
+/// pre-production proofs on LABEL dispatches. OFF by default; REQUIRED
+/// automatically on the FIRST order per creator×printer pair (computed
+/// server-side, no flag). When required, the latest round must be APPROVED
+/// before the printer can mark the job READY. Approval is recorded and locked
+/// (rounds are immutable; a rejection spawns the next version).
+model ProofRound {
+  id              String           @id @default(cuid())
+  orderDispatchId String
+  version         Int // 1, 2, … per dispatch
+  assetId         String // soft FK → uploaded proof file (R2, ship-doc pattern)
+  filename        String
+  status          ProofRoundStatus @default(PENDING)
+  annotation      String? // creator's note on approve/reject
+  decidedById     String? // soft FK → creator user
+  decidedAt       DateTime?
+  uploadedById    String // soft FK → partner user
+  createdAt       DateTime         @default(now())
+
+  orderDispatch OrderDispatch @relation(fields: [orderDispatchId], references: [id], onDelete: Cascade)
+
+  @@unique([orderDispatchId, version])
+  @@index([orderDispatchId, status])
+}
+
+/// P2 lot traceability (docs/PARTNER_ROLE_ACCOUNTS.md §3.2.B): the producing
+/// partner's output-lot record — output lot ↔ input ingredient lots + yield.
+/// Complements ShipmentDocument (COA files ↔ lot linkage) with the STRUCTURED
+/// mapping a recall trace needs. One or more per producing dispatch.
+model ProductionLot {
+  id                 String    @id @default(cuid())
+  orderDispatchId    String
+  lotNumber          String
+  expiryAt           DateTime?
+  unitsProduced      Int
+  unitsExpected      Int? // yield reporting: expected vs actual
+  scrapReason        String?
+  ingredientLotsJson Json? // [{ ingredientName, supplierLot }] — recall trace input side
+  recordedById       String // soft FK → partner user
+  createdAt          DateTime  @default(now())
+
+  orderDispatch OrderDispatch @relation(fields: [orderDispatchId], references: [id], onDelete: Cascade)
+
+  @@index([orderDispatchId])
+  @@index([lotNumber]) // recall trace: lot → dispatch → order → destinations
 }
 
 enum ReceivingDiscrepancyStatus {

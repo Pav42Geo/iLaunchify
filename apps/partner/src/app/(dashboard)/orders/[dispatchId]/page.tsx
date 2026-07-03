@@ -32,6 +32,9 @@ import { DisputeResponsePanel } from './DisputeResponsePanel'
 import { ShipRequirementsCard, type ShipDocRowView, type UploadedShipDoc } from './ShipRequirementsCard'
 import { PrintJobCard, type PrintOutputSpecView } from './PrintJobCard'
 import { WorkOrderCard, type ComponentLegView } from './WorkOrderCard'
+import { ProofPanel, type ProofRoundView } from './ProofPanel'
+import { isProofRequired } from './proof-actions'
+import { ProductionLotsCard, type ProductionLotView } from './ProductionLotsCard'
 import { StorageReleasesCard, type StorageReleaseView } from './StorageReleasesCard'
 import { getDispatchShippingContext } from './ship-requirements'
 import { SHIP_DOC_LABELS, PARTNER_UPLOADED_DOC_TYPES } from '@ilaunchify/shipping'
@@ -155,6 +158,76 @@ export default async function DispatchDetailPage({
         deliveredAt: d.deliveredAt?.toISOString() ?? null,
       }))
     : []
+
+  // P2 proof loop (D3) — rounds + requirement for LABEL jobs.
+  const proofRounds: ProofRoundView[] = isLabel
+    ? (
+        await prisma.proofRound.findMany({
+          where: { orderDispatchId: dispatch.id },
+          orderBy: { version: 'desc' },
+          select: {
+            id: true,
+            version: true,
+            filename: true,
+            status: true,
+            annotation: true,
+            createdAt: true,
+            decidedAt: true,
+            assetId: true,
+          },
+        })
+      ).map((r) => ({
+        id: r.id,
+        version: r.version,
+        filename: r.filename,
+        status: r.status as string,
+        annotation: r.annotation,
+        createdAt: r.createdAt.toISOString(),
+        decidedAt: r.decidedAt?.toISOString() ?? null,
+        url: `/api/ship-doc/${r.assetId}`, // proofs are PartnerFiles — same guarded route
+      }))
+    : []
+  const proofRequired = isLabel
+    ? await isProofRequired({
+        id: dispatch.id,
+        type: dispatch.type as string,
+        partnerServiceId: dispatch.partnerServiceId,
+        order: { creatorUserId: dispatch.order.creatorUserId },
+      })
+    : false
+  const proofCanUpload = ['ACCEPTED', 'PRODUCING', 'QUALITY_CHECK'].includes(dispatch.status)
+
+  // P2 lot traceability — output-lot records on producing dispatches (§3.2.B).
+  const productionLots: ProductionLotView[] = !isLabel
+    ? (
+        await prisma.productionLot.findMany({
+          where: { orderDispatchId: dispatch.id },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            lotNumber: true,
+            expiryAt: true,
+            unitsProduced: true,
+            unitsExpected: true,
+            scrapReason: true,
+            ingredientLotsJson: true,
+          },
+        })
+      ).map((l) => ({
+        id: l.id,
+        lotNumber: l.lotNumber,
+        expiryAt: l.expiryAt?.toISOString() ?? null,
+        unitsProduced: l.unitsProduced,
+        unitsExpected: l.unitsExpected,
+        scrapReason: l.scrapReason,
+        ingredientLots: Array.isArray(l.ingredientLotsJson)
+          ? (l.ingredientLotsJson as { ingredientName: string; supplierLot: string }[])
+          : [],
+      }))
+    : []
+  const canRecordLots =
+    !isLabel &&
+    ['PRODUCING', 'QUALITY_CHECK', 'READY', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED'].includes(dispatch.status)
 
   const eyebrow = isCopack
     ? 'Co-packing · Work order'
@@ -360,7 +433,18 @@ export default async function DispatchDetailPage({
 
           {/* P2 role skins — print contract / component readiness */}
           {isLabel && <PrintJobCard spec={printSpec} status={dispatch.status} />}
+          {isLabel && (proofRequired || proofRounds.length > 0) && (
+            <ProofPanel
+              dispatchId={dispatch.id}
+              required={proofRequired}
+              rounds={proofRounds}
+              canUpload={proofCanUpload}
+            />
+          )}
           {isCopack && <WorkOrderCard components={componentLegs} />}
+          {!isLabel && (canRecordLots || productionLots.length > 0) && (
+            <ProductionLotsCard dispatchId={dispatch.id} lots={productionLots} canRecord={canRecordLots} />
+          )}
 
           {/* Product + payout */}
           <section className="rounded-2xl border border-ink-200 bg-white p-5">

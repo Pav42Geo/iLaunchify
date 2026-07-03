@@ -46,6 +46,7 @@ import { DisputeOrderButton } from './DisputeOrderButton'
 import { DelayApprovalPrompt } from './DelayApprovalPrompt'
 import { StoredStockPanel } from './StoredStockPanel'
 import { getStoragePanelData } from './storage-panel-data'
+import { ProofApprovalPanel, type CreatorProofRoundView } from './ProofApprovalPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -229,6 +230,29 @@ export default async function OrderDetailPage({
       ? await getStoragePanelData(order.id, user.id)
       : null
 
+  // P2 proof loop (D3) — proof rounds across this order's print job(s).
+  const proofRounds: CreatorProofRoundView[] = (
+    await prisma.proofRound.findMany({
+      where: { orderDispatch: { orderId: order.id } },
+      orderBy: { version: 'desc' },
+      select: {
+        id: true,
+        version: true,
+        filename: true,
+        status: true,
+        annotation: true,
+        createdAt: true,
+      },
+    })
+  ).map((r) => ({
+    id: r.id,
+    version: r.version,
+    filename: r.filename,
+    status: r.status as string,
+    annotation: r.annotation,
+    createdAt: r.createdAt.toISOString(),
+  }))
+
   return (
     <div className="space-y-6">
       {/* Cream header band — mirrors R10 list-card header */}
@@ -339,6 +363,9 @@ export default async function OrderDetailPage({
             })
           )}
         </section>
+
+        {/* P2 proof loop (D3) — print-proof approval, when the print job has rounds */}
+        {proofRounds.length > 0 && <ProofApprovalPanel rounds={proofRounds} />}
 
         {/* Phase L1.2a — stored-inventory panel + Release stock flow for
             HOLD_AT_MANUFACTURER orders (LOGISTICS_AND_FULFILLMENT §4/§9). */}

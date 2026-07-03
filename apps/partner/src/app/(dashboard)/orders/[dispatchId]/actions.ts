@@ -495,6 +495,34 @@ export async function markReady({ dispatchId }: { dispatchId: string }): Promise
   if (dispatch.status !== 'PRODUCING' && dispatch.status !== 'QUALITY_CHECK') {
     return { ok: false, error: `Cannot mark ready from ${dispatch.status}` }
   }
+
+  // P2 proof gate (D3 LOCKED — docs/PARTNER_ROLE_ACCOUNTS.md §3.3.B): on a
+  // LABEL job where proofs are required (first order per creator×printer),
+  // the latest proof round must be APPROVED before READY. Server-side gate —
+  // the panel's disabled button is UX only.
+  if (dispatch.type === 'LABEL') {
+    const { isProofRequired } = await import('./proof-actions')
+    const required = await isProofRequired({
+      id: dispatch.id,
+      type: dispatch.type as string,
+      partnerServiceId: dispatch.partnerServiceId,
+      order: { creatorUserId: dispatch.order.creatorUserId },
+    })
+    if (required) {
+      const approved = await prisma.proofRound.findFirst({
+        where: { orderDispatchId: dispatch.id, status: 'APPROVED' },
+        orderBy: { version: 'desc' },
+        select: { id: true },
+      })
+      if (!approved) {
+        return {
+          ok: false,
+          error:
+            'This is your first job for this creator — upload a proof and get their approval before marking it ready.',
+        }
+      }
+    }
+  }
   const fromStatus = dispatch.status
   await prisma.orderDispatch.update({
     where: { id: dispatch.id },

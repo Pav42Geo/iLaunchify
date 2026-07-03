@@ -175,8 +175,8 @@ export default async function SettingsPage() {
           icon={<Warehouse className="h-[18px] w-[18px]" aria-hidden="true" />}
           title="Receiving & availability"
           href="/settings/fulfillment"
-          cta="Set receiving spec"
-          description="Fulfillment Center facilities: receiving requirements (appointments, pallet spec, label placement) and blackout dates that pause routing."
+          cta="Set availability"
+          description="Blackout dates that pause routing to your facility (all services), plus receiving requirements for Fulfillment Center facilities."
         />
       </Section>
 

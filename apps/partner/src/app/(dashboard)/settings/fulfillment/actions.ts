@@ -19,6 +19,16 @@ async function loadOwnedWarehouseService(userId: string, serviceId: string) {
   })
 }
 
+// P2 — blackout windows apply to EVERY service type (printer vacation pause,
+// co-packer line maintenance, FC closure); only the receiving spec stays
+// WAREHOUSE-specific.
+async function loadOwnedService(userId: string, serviceId: string) {
+  return prisma.partnerService.findFirst({
+    where: { id: serviceId, partner: { userId } },
+    select: { id: true, type: true },
+  })
+}
+
 export interface ReceivingSpecInput {
   appointmentRequired: boolean
   appointmentNotice: string // e.g. "48h notice via email"
@@ -76,8 +86,8 @@ export async function addBlackoutDate({
   reason?: string
 }): Promise<Result> {
   const user = await requireUser()
-  const service = await loadOwnedWarehouseService(user.id, serviceId)
-  if (!service) return { ok: false, error: 'Fulfillment service not found' }
+  const service = await loadOwnedService(user.id, serviceId)
+  if (!service) return { ok: false, error: 'Service not found' }
 
   const start = new Date(startsOn)
   const end = new Date(endsOn)
