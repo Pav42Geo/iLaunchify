@@ -42,6 +42,9 @@ export const AUDIT_ENTITY_TYPES = [
   'ChannelOrder', // Imported consumer orders (CHANNEL_MANAGEMENT_SPEC C2)
   'OnDemandEnablement', // Manufacturer approval to accept on-demand orders (C2.3)
   'InventoryPool', // Bulk available-to-sell pools + ledger movements (C2.4)
+  // Partner Role Accounts P0 (docs/PARTNER_ROLE_ACCOUNTS.md, 2026-07-02)
+  'InboundReceipt', // First-class FC receipt records (immutable lot capture, D2)
+  'ReceivingDiscrepancy', // FC short/over/damaged exceptions + adjudication
   'Order',
   'OrderDispatch',
   'Charge',

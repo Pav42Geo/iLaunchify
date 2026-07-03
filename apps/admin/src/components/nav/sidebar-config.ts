@@ -71,6 +71,7 @@ import {
   Map,
   Layout,
   PackageOpen,
+  PackageX,
   FileText,
   Store,
   Mail,
@@ -185,6 +186,8 @@ const PRIMARY: SidebarRegion = {
       icon: Truck,
       children: [
         { kind: 'item', label: 'Shipments', icon: Send, href: '/logistics/shipments' },
+        // Partner Role Accounts P0 — FC short/over/damaged adjudication queue
+        { kind: 'item', label: 'Receiving exceptions', icon: PackageX, href: '/logistics/receiving-exceptions' },
         { kind: 'item', label: 'Carriers', icon: Route, href: '/logistics/carriers' }, // Phase L2 — CarrierServiceRule matrix + integration status
         { kind: 'item', label: 'Fulfillment centers', icon: Warehouse, href: '/logistics/fulfillment-centers' },
         { kind: 'item', label: 'Channel plans', icon: PlaneTakeoff, href: '/logistics/channel-plans' }, // Phase L3b — ChannelInboundPlan (FBA/WFS/FBT)

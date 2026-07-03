@@ -2735,6 +2735,9 @@ model OrderDispatch {
   // FC receiving: one receipt per dispatch + first-class discrepancy records.
   inboundReceipt           InboundReceipt?
   receivingDiscrepancies   ReceivingDiscrepancy[]
+  // P0 §6.2 cron dedupe stamps (same pattern as acceptReminderSentAt above):
+  slaAtRiskNotifiedAt      DateTime? // DISPATCH_SLA_AT_RISK sent (~50% of accept window)
+  inboundUnconfirmedNotifiedAt DateTime? // INBOUND_DELIVERED_UNCONFIRMED sent to the FC
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 
@@ -3926,6 +3929,12 @@ model PartnerFile {
   // (die-lines, W-9) never expire.
   issuedAt         DateTime?
   expiresAt        DateTime?
+  // Idempotent threshold reminders (mirrors PartnerCertificateInstance C4
+  // flags): one notice per threshold, never re-sent, never sent backwards.
+  notifiedAt60d    DateTime?
+  notifiedAt30d    DateTime?
+  notifiedAt7d     DateTime?
+  expiredNotifiedAt DateTime?
 
   partner    Partner                     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   section    PartnerVerificationSection? @relation(fields: [sectionId], references: [id])

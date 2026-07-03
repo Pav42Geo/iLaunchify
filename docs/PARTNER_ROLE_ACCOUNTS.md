@@ -242,7 +242,7 @@ Existing chassis (FSM, verification, services toggle, tiers, strikes, finance, l
 1. **Role-aware partner review:** verification checklist shows the role-specific doc track (§4.1); reviewer sees which docs gate which capability.
 2. **Compliance dashboard** `/admin/compliance/expiries`: all partner docs by expiry bucket (expired / ≤7 / ≤30 / ≤60), capability-suspension log. (Capability: `compliance:admin`.)
 3. **SLA monitor** `/admin/operations/sla`: at-risk + breached across dispatch accept, receiving, release-ship, proofs; links to reroute actions.
-4. **Discrepancy/claims inbox** `/admin/operations/exceptions`: receiving discrepancies, defect claims, quality holds — the platform-mediation workbench. This is where "hide the orchestration" gets operationalized.
+4. **Discrepancy/claims inbox** — shipped at `/admin/logistics/receiving-exceptions` (fits the locked Logistics sidebar group; defect claims + quality holds join it in P2): receiving discrepancies — the platform-mediation workbench. This is where "hide the orchestration" gets operationalized.
 5. **Ramp queue:** partners in RAMP with per-dispatch confirm (§4.3).
 6. **Partner scorecards:** on-time %, defect/reprint rate, discrepancy rate, yield — read-only V1, feeds tier auto-promotion V1.1 and commodity-leg routing weights V2. (Never bind tier names to behavior — placeholder rule stands.)
 7. **New capabilities:** `operations:read/write` for SLA + exceptions surfaces; wire into role presets.
@@ -301,6 +301,7 @@ Suggested build split per two-agent rules: Cowork owns partner-app skins + admin
 
 **Build log:**
 - 2026-07-02 (Cowork) — P0 items 1–2 + partial 4 shipped: role-skin registry (`apps/partner/src/lib/role-skins.ts`) wired into sidebar/layout/dashboard/notification-settings; FC rename in UI; schema deltas (InboundReceipt + lines, ReceivingDiscrepancy, PartnerFile.issuedAt/expiresAt, 6 NotificationEvents) + templates; receive-confirm upgraded with D2 lot+expiry hard gate (client + server), first-class receipt + discrepancy rows, RECEIVING_DISCREPANCY_OPENED admin fan-out. **Requires `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` before typecheck/dev.** Next: admin exceptions inbox, Expiry Engine cron, INBOUND_DELIVERED_UNCONFIRMED + DISPATCH_SLA_AT_RISK emitters, onboarding doc tracks.
+- 2026-07-02 (Cowork, slice 2) — P0 items 3–4 complete: `/api/cron/partner-ops` (vercel.json, daily 9:00) running Expiry Engine v1 (PartnerFile 60/30/7 + DOC_EXPIRED w/ idempotent flags; certs stay in cert-expiry C4; hard capability suspension lands with doc tracks) + DISPATCH_SLA_AT_RISK (~50% window, `slaAtRiskNotifiedAt` dedupe) + INBOUND_DELIVERED_UNCONFIRMED (leg DELIVERED w/o receipt, `inboundUnconfirmedNotifiedAt` dedupe); admin exceptions inbox at `/logistics/receiving-exceptions` (list + adjudication detail, OPEN→UNDER_REVIEW→RESOLVED w/ required resolution note → FC notified; `orders:read`/`orders:write` gated); audit entity types InboundReceipt + ReceivingDiscrepancy. Remaining P0: role-specific onboarding doc tracks (item 5).
 
 ---
 
