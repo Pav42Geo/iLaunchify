@@ -13,20 +13,45 @@ Locked architecture still governs: **die-line = print master, 3D = derived previ
 2. **Creators CAN AI-generate scene mockups** at finalize time — clearly **labeled marketing-only**, never the production-accurate checkout preview. Reuses the AI try-on loop + rate limiter.
 3. **All mockups FREE at launch** (standard + premium 2D/3D). Schema carries an `isPremium` flag + tier hooks so gating later is a toggle, not a build.
 4. (Direction) **Generating from partner imagery is in-scope** — AI image-to-3D drafting is an admin-side accelerant, always admin-verified against die-line dims before ACTIVE.
+5. **Three intake lanes, one pipeline** (Pavel 2026-07-03): (a) partner uploads photos + die-lines; (b) admin uploads a **source 2D image** himself → same auto-generation pipeline; (c) admin uploads **ready-to-use 2D and 3D mockups** directly. All land in the same library, organized by **packaging type, category, size** (+ style tags).
 
 ## 1. The sourcing pipeline (inverse-Pacdora) — the admin-relief core
 
+Three intake lanes (§0.5), one Packaging Studio pipeline:
+
 ```
-Partner uploads (already collected today)          Auto job (new)                                Admin (Packaging Studio, admin mode)
+LANE 1 — Partner uploads (already collected)       Auto job (new)                                Admin (Packaging Studio, admin mode)
 ├─ white-label product photos (Layer A)   →   1. classify → StructuralPackType (6)      →   Review queue card:
 └─ die-line files (PartnerFile)           →   2. normalize die-line (exists)                 ✓ approve geometry/size
                                               3. REAL dims from die-line → geometry          ✓ tweak material preset
-                                              4. surfaces = real-size die-line placeholders  ✓ pick hero angle
-                                              5. material preset guess from photo            → PUBLISH to library
-                                              6. standard renders (4–6 angles, neutral)
+LANE 2 — Admin source image                   4. surfaces = real-size die-line placeholders  ✓ pick hero angle
+└─ admin uploads a 2D photo/reference     →   5. material preset guess from photo            → PUBLISH to library
+   (+ picks packaging type & dims if          6. standard renders (4–6 angles, neutral)
+   no die-line exists yet)
+
+LANE 3 — Admin ready-made assets (no generation, straight to curation)
+├─ ready 2D mockup image → print-area quad via existing PrintAreaEditor (= the built MockupTemplate photo-mask path)
+└─ ready 3D model (glTF) → existing surface-binding path so creator designs still wrap; if unbindable, publish as
+   static/scene-only (not design-aware) — flagged so it never serves as the checkout preview
 ```
 
-Admin never models anything. The default path is **approve, not author** — same ritual as the partner RAMP queue. Manual overrides (re-draw quad, swap material, upload curated glTF, AI-draft geometry from photo for odd shapes) are exceptions, not the flow.
+Admin never models anything in lanes 1–2. The default path is **approve, not author** — same ritual as the partner RAMP queue. Manual overrides (re-draw quad, swap material, AI-draft geometry from photo for odd shapes) are exceptions, not the flow. Lane 3 is pure curation: upload → tag → publish.
+
+### 1.1 Admin uploader modal (lanes 2–3 intake UX — Pavel sketch 2026-07-03)
+
+Pop-up modal in **Packaging Studio (admin mode)** — one modal serves both admin lanes; one session can submit multiple linked files (e.g. source photo + die-line for the same packaging):
+
+1. **Upload window** — drag/drop + picker; **file-kind auto-detect** (SVG/PDF/AI/DXF → die-line; JPG/PNG → photo/ready-2D; GLB/glTF → ready-3D) with manual override chip; type/size validation inline.
+2. **Preview pane** — renders on upload: image preview for photos/ready-2D; for die-lines, run `dielineParse` client-side and show the **recognized cut/crease layers + coverage warnings** in-modal (catch bad files at upload, not later); for glTF, spin it in the existing `Dieline3DViewer` and show **surface-binding result** (design-aware ✓ / static-only).
+3. **Intent switch** — "**Generate from this**" (lane 2: source image/die-line → §1 auto-pipeline) vs "**Ready-to-use mockup**" (lane 3: straight to library as DRAFT).
+4. **Packaging assignment** — pick existing PackagingType or **create one inline** (admin owns taxonomy — name, structural type, dims); category + size auto-fill from it.
+5. **Name + metadata** — display name; **dimensions + unit (mm/in) with scale check** (declared dims vs SVG viewBox — what makes "real size" trustworthy); material/substrate + finish; capacity/volume; style tags; camera/angle tag for ready-2D; notes.
+6. **Source attribution** — optional: which partner the file came from (links PartnerFile provenance) + rights note; files immutable after submit, re-upload = new version.
+7. **Submit** — lane 2 kicks the auto-generation job (progress surfaces in the review queue); lane 3 lands in the library as DRAFT → admin publishes. Everything audited (`MOCKUP_*` actions, existing pattern).
+
+Guardrails: min photo resolution, white-label check (no branding in source photos — preset reject reason), duplicate detection by content hash, ready-3D without surface binding auto-flagged `designAware=false`.
+
+(Partner-side lane-1 uploads keep their existing flow — product photos + die-line files already arrive via the partner editor; no new partner surface needed for V1 of this.)
 
 ## 2. What "Pacdora-like" decomposes into
 
@@ -50,7 +75,8 @@ New pure package **`packages/packaging-3d`** (Prisma-free, DI'd like `packages/s
 
 ## 4. The Mockup Library (new model)
 
-- **`MockupAsset`** (additive): packagingTypeId, kind (`STANDARD_RENDER` | `SCENE_2D` | `SCENE_3D_VIDEO` | `AI_SCENE`), sourceKind (`GENERATED` | `ADMIN_SCENE` | `CREATOR_AI`), assetId, cameraPreset, sceneRef?, **isPremium** (all false at launch, §0.3), status DRAFT→ACTIVE.
+- **`MockupAsset`** (additive): packagingTypeId, kind (`STANDARD_RENDER` | `SCENE_2D` | `SCENE_3D_VIDEO` | `AI_SCENE`), sourceKind (`GENERATED` | `ADMIN_SCENE` | `ADMIN_READY_2D` | `ADMIN_READY_3D` | `CREATOR_AI`), assetId, cameraPreset, sceneRef?, `designAware` bool (can the creator's design wrap onto it — false for unbindable ready-mades), **isPremium** (all false at launch, §0.3), status DRAFT→ACTIVE.
+- **Organization/browse taxonomy** (admin library + creator panel share it): **packaging type** (structural, 6 types) → **product category** (13 locked) → **size** (dims from the die-line/PackagingType; explicit dims for lane-3 ready-mades) → style tags (reuse DesignLibraryItem styleTags pattern). Filters URL-driven like every admin list surface.
 - **Free tier at launch = everything**: standard neutral renders (auto-generated) + admin scene mockups (juice-can-with-tropical-splash class) + videos when they land.
 - **Scene composer** (Packaging Studio admin mode): pick generated 3D model → choose scene template (background, props, lighting) or AI background → path-traced render → publish to library. AI backgrounds allowed — the *product* in frame is the true render; only the scene is generated (consistent with the locked AI principle).
 - **Creator flow (Design Studio, finalize/pre-checkout):** design done → "Mockups" panel on the product → browse library renders of *their own design* (composited live) → pick/save favorites → optionally **AI-generate a scene** (labeled marketing-only, rate-limited) → checkout preview itself stays the production-accurate render (locked).
