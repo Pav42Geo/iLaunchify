@@ -29,7 +29,7 @@ Not one method. A tier you can ship incrementally, cheapest-first:
 
 **V1.5 — Platform mockup LIBRARY (browseable).** Extend the existing `DesignLibraryItem` (12 already seeded, keyed by packaging type + styleTags) into an admin-curated, creator-browseable mockup library. This directly answers "admin adds his own at the start and can browse" — an admin library surface where admin uploads + tags mockups, creators filter by packaging type / style. Solves the "we might have none initially" worry: admin seeds it over time.
 
-**V2 — 3D mockups via Pacdora (schema already ready).** Per `docs/PACDORA_EVALUATION.md`: pull glTF + die-line geometry through the Pacdora API into `PackagingType.model3dKey`, render in three.js, wrap the creator's design on the 3D model. **Gated on the open decision** in that doc (does the API expose structured geometry?). The outreach email is drafted; send it + run the 1–2 day spike *before* building any 3D pipeline.
+**V2 — 3D mockups via the in-house 3D packaging generator (schema already ready).** ~~Pacdora~~ **RESOLVED 2026-07-03: Pacdora no longer offers API integration → we BUILD** (per `PACDORA_EVALUATION.md` §7.4 fallback): parametric primitives + die-line-parse + fold-from-net engine producing geometry into `PackagingType.model3dKey`, rendered in three.js, creator design wrapped via CanvasTexture. Plan: `docs/PACKAGING_3D_GENERATOR_PLAN.md`.
 
 **AI mockup generation — assist only, never the production-accurate preview.** This is a *production* marketplace: the checkout preview is a representation of the physical product the buyer will actually receive, so it must be faithful — same principle as Pavel's "labels are legal artifacts, build to spec, deterministic." An AI render can hallucinate a cap, finish, or proportion that doesn't match the real product → trust + liability problem at checkout. Use AI for: (a) clearly-labeled *placeholder* hero images when no real photo exists yet, and (b) future lifestyle/scene backgrounds. **Not** for the mockup substrate the creator designs on or approves at checkout.
 
@@ -48,7 +48,7 @@ So Layers B and C reuse infrastructure that's already built: Fabric canvas, die-
 2. **Mockup templates live on `PackagingType`**, inherited by every product on that packaging type.
 3. **Start with admin-curated 2D photo-mockups**, sourced from **manufacturer-uploaded white-label photos** + an admin print-area mask. Cheapest, accurate, no dependency, leverages photos partners already have.
 4. **Build the browseable library on existing `DesignLibraryItem` + `Asset` + `PackagingType`** — admin uploads/tags, creators browse by packaging type/style.
-5. **Defer 3D to the Pacdora decision** — send the outreach + run the spike first; the schema (`model3dKey`) is already staged.
+5. **3D = in-house build** (Pacdora API withdrawn 2026-07-03) — see `PACKAGING_3D_GENERATOR_PLAN.md`; the schema (`model3dKey`) is already staged.
 6. **AI = labeled placeholders / scenes only**, never the production-accurate design-on-product preview.
 
 ## 5. Smallest first build (when you green-light it)
@@ -65,7 +65,7 @@ Everything in §5 is 2D + reuses existing canvas/Asset code — no Pacdora, no t
 - **V1 source = 2D photo-mask, manufacturer-supplied.** Manufacturer uploads a white-label product photo → admin draws the print area → creator's artwork warps onto it. No Pacdora / 3D / AI dependency.
 - **Owner = PackagingType.** One mockup per physical container, inherited by every product on it.
 - **AI = labeled placeholders / scenes only**, never the production-accurate checkout preview.
-- **3D = deferred** to the Pacdora decision (`PACDORA_EVALUATION.md`); schema staged (`PackagingType.model3dKey`).
+- **3D = deferred** to the Pacdora decision (`PACDORA_EVALUATION.md`); schema staged (`PackagingType.model3dKey`). **UPDATE 2026-07-03: Pacdora withdrew API offering → resolved to in-house build (`PACKAGING_3D_GENERATOR_PLAN.md`).**
 
 ## 7. Build slices
 

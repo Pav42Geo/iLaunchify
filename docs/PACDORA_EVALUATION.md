@@ -13,6 +13,12 @@ one pivotal unknown: *does the API expose structured die-line geometry (panels +
 crease lines + surfaces), or only flat exports + renders?* Everything hinges on
 that.
 
+> **RESOLVED 2026-07-03 (Pavel):** Pacdora responded — they **no longer offer API
+> integration**. Per §7.4 this lands on the **BUILD** path: parametric primitives +
+> DXF/SVG-parse + fold-from-net engine + admin curation queue. Pacdora is at most a
+> manual asset source (subject to template license). Build plan:
+> `docs/PACKAGING_3D_GENERATOR_PLAN.md`.
+
 ---
 
 ## 1. What Pacdora is (confirmed)
