@@ -28,6 +28,7 @@ const FC_EVENTS = [
   { value: 'INBOUND_DELIVERED_UNCONFIRMED', label: 'Inbound awaiting confirmation', help: 'A delivered shipment has not been received into your facility yet.' },
   { value: 'RECEIVING_DISCREPANCY_OPENED', label: 'Receiving discrepancy filed', help: 'A short/over/damaged report was filed on an inbound shipment.' },
   { value: 'RECEIVING_DISCREPANCY_RESOLVED', label: 'Receiving discrepancy resolved', help: 'iLaunchify resolved a receiving discrepancy on one of your receipts.' },
+  { value: 'RELEASE_SHIP_SLA_AT_RISK', label: 'Release waiting too long', help: 'A requested stock release is still unshipped past the expected window.' },
 ] as const
 
 export default async function NotificationPreferencesPage() {

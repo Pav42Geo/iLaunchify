@@ -145,6 +145,12 @@ export default async function OutboundPage({
                     <td className="px-3 py-3 text-right tabular-nums text-ink-900">
                       {r.quantity.toLocaleString()}
                       <span className="block text-[10.5px] text-ink-400">of {r.unitsRemaining.toLocaleString()} held</span>
+                      {r.fefoLot && (r.status === 'REQUESTED' || r.status === 'PICKING') && (
+                        <span className="mt-0.5 block whitespace-nowrap rounded bg-warning-50 px-1 py-[1px] text-[10px] font-medium text-warning-800">
+                          FEFO: lot <span className="font-mono">{r.fefoLot}</span>
+                          {r.fefoExpiry && ` · exp ${r.fefoExpiry.toLocaleDateString()}`}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-3 text-[12px] text-ink-600">
                       {DEST_LABEL[r.destinationType] ?? r.destinationType}

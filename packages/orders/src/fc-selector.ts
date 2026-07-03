@@ -18,6 +18,10 @@ export interface FcCandidate {
   weeklyPalletCapacity: number | null
   facilityLat: number | null
   facilityLng: number | null
+  /** P1 (PARTNER_ROLE_ACCOUNTS §3.1.E) — facility inside a declared blackout
+   *  window as of selection time. HARD filter, like temp/hazmat — never traded
+   *  for cost. Optional so pre-P1 callers/tests stay valid (default false). */
+  blackedOut?: boolean
 }
 
 export interface FcSelectionInput {
@@ -61,7 +65,9 @@ export function haversineMiles(aLat: number, aLng: number, bLat: number, bLng: n
 export function rankFulfillmentCenters(candidates: FcCandidate[], input: FcSelectionInput): FcRanked[] {
   const ranked: FcRanked[] = candidates.map((c) => {
     let reason: string | null = null
-    if (!c.storageClasses.includes(input.storageClass)) {
+    if (c.blackedOut === true) {
+      reason = 'facility blackout window (partner-declared unavailability)'
+    } else if (!c.storageClasses.includes(input.storageClass)) {
       reason = `cannot hold ${input.storageClass}`
     } else if (input.hazmatClass !== 'NONE' && !c.hazmatAccepted.includes(input.hazmatClass)) {
       reason = `does not accept ${input.hazmatClass}`

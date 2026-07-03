@@ -306,6 +306,12 @@ export async function listDestinationOptions(
         facilityLat: true,
         facilityLng: true,
         partner: { select: { companyName: true, city: true, state: true } },
+        // P1 blackout enforcement — active window today = hard-excluded (fc-selector)
+        blackoutDates: {
+          where: { startsOn: { lte: new Date() }, endsOn: { gte: new Date() } },
+          select: { id: true },
+          take: 1,
+        },
       },
     }),
   ])
@@ -326,6 +332,7 @@ export async function listDestinationOptions(
     weeklyPalletCapacity: w.weeklyPalletCapacity,
     facilityLat: w.facilityLat,
     facilityLng: w.facilityLng,
+    blackedOut: w.blackoutDates.length > 0,
   }))
   const m = template?.manufacturerService ?? null
   let selection: FcScoreResult = {

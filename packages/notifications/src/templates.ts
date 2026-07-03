@@ -117,6 +117,7 @@ interface TemplateData {
   DISPATCH_SLA_AT_RISK: { dispatchId: string; hoursWaiting: number; hoursRemaining: number }
   DOC_EXPIRING_SOON: { docLabel: string; daysLeft: number; href: string }
   DOC_EXPIRED: { docLabel: string; suspendedCapability?: string; href: string }
+  RELEASE_SHIP_SLA_AT_RISK: { orderRef: string; daysWaiting: number }
 }
 
 function fmtSection(sectionType: string): string {
@@ -489,6 +490,14 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `${d.docLabel} expires in ${d.daysLeft} day${d.daysLeft === 1 ? '' : 's'}`,
         body: 'Upload a renewed document before it lapses — expired documents suspend the capabilities they back.',
         link: d.href,
+      }
+    }
+    case 'RELEASE_SHIP_SLA_AT_RISK': {
+      const d = data as TemplateData['RELEASE_SHIP_SLA_AT_RISK']
+      return {
+        title: `Stock release waiting ${d.daysWaiting} day${d.daysWaiting === 1 ? '' : 's'} · ${d.orderRef}`,
+        body: 'A requested release is still unshipped — pick and ship it to keep the fulfillment SLA on track.',
+        link: '/outbound',
       }
     }
     case 'DOC_EXPIRED': {

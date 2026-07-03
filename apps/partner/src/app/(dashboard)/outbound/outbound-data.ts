@@ -31,6 +31,9 @@ export interface OutboundRow {
   brandName: string
   unitsRemaining: number
   agreementMode: string
+  /** FEFO hint — oldest-expiring lot received for this order (pick it first). */
+  fefoLot: string | null
+  fefoExpiry: Date | null
 }
 
 function summarizeDestination(json: unknown): {
@@ -83,8 +86,36 @@ export async function loadOutboundRows(userId: string, tab: OutboundTab): Promis
     },
   })
 
+  // FEFO hints (P1 §3.1.C): oldest-expiring received lot per order, from the
+  // immutable receiving capture (D2). Batch lookup, oldest-first so the first
+  // line seen per order wins.
+  const orderIds = [...new Set(releases.map((r) => r.storageAgreement.orderId))]
+  const fefoByOrder = new Map<string, { lot: string; expiry: Date }>()
+  if (orderIds.length > 0) {
+    const lotLines = await prisma.inboundReceiptLine.findMany({
+      where: {
+        lotExpiryAt: { not: null },
+        lotNumber: { not: null },
+        receipt: { orderDispatch: { orderId: { in: orderIds } } },
+      },
+      orderBy: { lotExpiryAt: 'asc' },
+      select: {
+        lotNumber: true,
+        lotExpiryAt: true,
+        receipt: { select: { orderDispatch: { select: { orderId: true } } } },
+      },
+    })
+    for (const l of lotLines) {
+      const oid = l.receipt.orderDispatch.orderId
+      if (!fefoByOrder.has(oid) && l.lotNumber && l.lotExpiryAt) {
+        fefoByOrder.set(oid, { lot: l.lotNumber, expiry: l.lotExpiryAt })
+      }
+    }
+  }
+
   return releases.map((r) => {
     const dest = summarizeDestination(r.destinationJson)
+    const fefo = fefoByOrder.get(r.storageAgreement.orderId) ?? null
     return {
       releaseId: r.id,
       status: r.status as string,
@@ -99,6 +130,8 @@ export async function loadOutboundRows(userId: string, tab: OutboundTab): Promis
       brandName: r.storageAgreement.order.brand.name,
       unitsRemaining: r.storageAgreement.unitsRemaining,
       agreementMode: r.storageAgreement.mode as string,
+      fefoLot: fefo?.lot ?? null,
+      fefoExpiry: fefo?.expiry ?? null,
     }
   })
 }

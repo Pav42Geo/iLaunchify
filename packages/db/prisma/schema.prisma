@@ -2758,6 +2758,7 @@ model OrderDispatch {
   // P0 §6.2 cron dedupe stamps (same pattern as acceptReminderSentAt above):
   slaAtRiskNotifiedAt      DateTime? // DISPATCH_SLA_AT_RISK sent (~50% of accept window)
   inboundUnconfirmedNotifiedAt DateTime? // INBOUND_DELIVERED_UNCONFIRMED sent to the FC
+  inboundUnconfirmedEscalatedAt DateTime? // 2nd stage — admins alerted, receipt still missing
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 
@@ -4068,6 +4069,7 @@ enum NotificationEvent {
   DISPATCH_SLA_AT_RISK // accept window ~50% consumed and still PENDING_ACCEPT
   DOC_EXPIRING_SOON // partner document (COI etc.) inside the T-60/30/7 reminder window
   DOC_EXPIRED // document lapsed → affected capability suspended
+  RELEASE_SHIP_SLA_AT_RISK // storage release waiting too long in REQUESTED/PICKING
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -7843,6 +7845,9 @@ model StorageReleaseOrder {
   shipmentLegId      String? // soft FK — the leg that carried it
   status             StorageReleaseStatus @default(REQUESTED)
   requestedById      String?
+  // P1 §6 cron dedupe stamps (partner-ops sweep):
+  slaNotifiedAt      DateTime? // RELEASE_SHIP_SLA_AT_RISK sent to the storing partner
+  slaEscalatedAt     DateTime? // escalated to admins (ORDER_NEEDS_ATTENTION)
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   // Relations
