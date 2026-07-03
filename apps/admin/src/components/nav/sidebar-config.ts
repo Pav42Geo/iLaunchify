@@ -278,6 +278,8 @@ const PRIMARY: SidebarRegion = {
             { kind: 'item', label: 'Cancellations & Refunds', icon: RotateCcw, href: '/order-settings/cancellations', capability: 'refunds:approve' },
             { kind: 'item', label: 'Scoped Overrides', icon: Layers, href: '/order-settings/overrides', capability: 'billing:write' },
             { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/order-settings/sample-settings', capability: 'billing:write' },
+            // C6.3 — channel replenishment knobs (CHANNEL_MANAGEMENT_SPEC §3.5a)
+            { kind: 'item', label: 'Channel Replenishment', icon: Truck, href: '/order-settings/channels', capability: 'billing:write' },
           ],
         },
         // Finance console (docs/BILLING_AND_ACCOUNTING.md §4 + ADMIN_FINANCE_SIDEBAR_PROPOSAL.md).

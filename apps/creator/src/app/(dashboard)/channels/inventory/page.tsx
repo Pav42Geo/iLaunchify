@@ -6,7 +6,7 @@
 
 import Link from 'next/link'
 import { AlertTriangle, PackageSearch, TrendingUp } from 'lucide-react'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import {
   blendedVelocity,
@@ -22,10 +22,7 @@ import {
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Stock & replenishment — iLaunchify' }
 
-// V1 knobs (admin OrderSettings wiring is a follow-up; these mirror the spec defaults).
-const PROCESSING_BUFFER_DAYS = 3
-const SAFETY_DAYS = 7
-const TARGET_DAYS_OF_COVER = 45
+// Knobs come from admin OrderSettings (§3.5a; C6.3) — defaults 3/7/45 until tuned.
 const IN_FLIGHT_STATUSES = ['PENDING_ACCEPT', 'ACCEPTED', 'PRODUCING', 'READY', 'SHIPPED', 'IN_TRANSIT']
 
 const STATE_ORDER: Record<StockAlertState, number> = { STOCKOUT: 0, CRITICAL: 1, LOW: 2, HEALTHY: 3 }
@@ -53,6 +50,10 @@ interface Row {
 
 export default async function StockReplenishmentPage() {
   const user = await requireUser()
+  const settings = await getOrderSettings()
+  const PROCESSING_BUFFER_DAYS = settings.channelProcessingBufferDays
+  const SAFETY_DAYS = settings.channelSafetyStockDays
+  const TARGET_DAYS_OF_COVER = settings.channelTargetDaysOfCover
 
   // Pools (cast-guarded — page renders a helpful empty state pre-db:push).
   const pools =

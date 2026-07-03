@@ -29,6 +29,10 @@ export interface OrderSettingsValues {
   partnerStrikeOnCancel: boolean
   autoApproveCreatorCancelBeforeRouting: boolean
   disputeWindowDays: number
+  // Channel replenishment (CHANNEL_MANAGEMENT_SPEC §3.5a)
+  channelProcessingBufferDays: number
+  channelSafetyStockDays: number
+  channelTargetDaysOfCover: number
 }
 
 export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
@@ -51,6 +55,9 @@ export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
   partnerStrikeOnCancel: true,
   autoApproveCreatorCancelBeforeRouting: true,
   disputeWindowDays: 14,
+  channelProcessingBufferDays: 3,
+  channelSafetyStockDays: 7,
+  channelTargetDaysOfCover: 45,
 }
 
 export async function getOrderSettings(): Promise<OrderSettingsValues> {
@@ -69,7 +76,20 @@ export async function getOrderSettings(): Promise<OrderSettingsValues> {
         },
       })
       .catch(() => null)
-    return row ? { ...ORDER_SETTINGS_DEFAULTS, ...row } : ORDER_SETTINGS_DEFAULTS
+    // Channel-replenishment knobs live in a SEPARATE cast-guarded select: if the
+    // columns predate db:push, only THIS select fails (→ knob defaults) instead
+    // of nuking the whole row back to defaults for everyone.
+    const channelRow = await (prisma as unknown as {
+      orderSettings: { findUnique: (a: unknown) => Promise<Partial<OrderSettingsValues> | null> }
+    }).orderSettings
+      .findUnique({
+        where: { id: 'default' },
+        select: { channelProcessingBufferDays: true, channelSafetyStockDays: true, channelTargetDaysOfCover: true },
+      })
+      .catch(() => null)
+    return row || channelRow
+      ? { ...ORDER_SETTINGS_DEFAULTS, ...(row ?? {}), ...(channelRow ?? {}) }
+      : ORDER_SETTINGS_DEFAULTS
   } catch {
     return ORDER_SETTINGS_DEFAULTS
   }

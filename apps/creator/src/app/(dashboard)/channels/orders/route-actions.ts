@@ -19,6 +19,7 @@ import { logAuditAs } from '@ilaunchify/audit'
 import { createOrderWithNumber } from '@ilaunchify/orders'
 import { createCheckoutSession } from '@ilaunchify/payments'
 import { resolveChannelAdapter, applyLedgerEntry, type ChannelCode } from '@ilaunchify/channels'
+import { recomputeStockAlert } from '../inventory/alerts'
 
 const PLATFORM_FEE_BPS = 500 // mirror checkout's V1 5% (moves to PlatformFeeConfig)
 
@@ -296,6 +297,7 @@ export async function fulfillChannelOrder(input: {
   }
 
   // Convert reservations → sales for every BULK line with a pool (invariant-checked).
+  const touchedProducts = new Set<string>()
   for (const l of row.lines) {
     if (!l.channelVariantLinkId) continue
     const vlink = await (
@@ -327,7 +329,11 @@ export async function fulfillChannelOrder(input: {
         data: { poolId: String(pool.id), kind: 'CHANNEL_SALE', delta: -l.quantity, channelOrderId: row.id, note: `fulfilled ${row.externalOrderId}` },
       })
       .catch(() => {})
+    touchedProducts.add(vlink.productId)
   }
+
+  // Stock consumed → recompute alert state per product; notifies on escalation (C6.3).
+  for (const pid of touchedProducts) await recomputeStockAlert(user.id, pid)
 
   await od.update({ where: { id: row.id }, data: { status: 'FULFILLED', statusReason: null, fulfilledAt: new Date() } })
   await d('channelSyncEvent')
@@ -376,9 +382,10 @@ export async function cancelChannelOrder(channelOrderId: string, reason?: string
     ).inventoryLedger
       ?.findMany({ where: { channelOrderId: row.id, kind: 'RESERVATION' }, select: { poolId: true, delta: true } })
       .catch(() => [])) ?? []
+  const releasedProducts = new Set<string>()
   for (const r of reservations) {
     const pool = await d('inventoryPool')
-      ?.findFirst?.({ where: { id: r.poolId }, select: { id: true, quantityOnHand: true, quantityReserved: true } })
+      ?.findFirst?.({ where: { id: r.poolId }, select: { id: true, productId: true, quantityOnHand: true, quantityReserved: true } })
       .catch(() => null)
     if (!pool) continue
     const applied = applyLedgerEntry(
@@ -391,7 +398,11 @@ export async function cancelChannelOrder(channelOrderId: string, reason?: string
     await d('inventoryLedger')
       ?.create?.({ data: { poolId: r.poolId, kind: 'RELEASE', delta: -Math.abs(r.delta), channelOrderId: row.id, note: 'cancelled' } })
       .catch(() => {})
+    if (typeof pool.productId === 'string') releasedProducts.add(pool.productId)
   }
+
+  // Stock released → recompute; a release can be the recovery back to HEALTHY (C6.3).
+  for (const pid of releasedProducts) await recomputeStockAlert(user.id, pid)
 
   await od.update({
     where: { id: row.id },

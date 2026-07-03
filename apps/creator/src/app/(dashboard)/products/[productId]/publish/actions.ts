@@ -4,6 +4,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { resolveChannelAdapter, variantKey, applyLedgerEntry, type ChannelCode, type ListingVariantInput } from '@ilaunchify/channels'
+import { recomputeStockAlert } from '../../../channels/inventory/alerts'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -302,6 +303,9 @@ export async function receiveDelivery(input: { productId: string; quantity: numb
       action: 'INVENTORY_DELIVERY_RECEIVED',
       payload: { productId: product.id, quantity: qty },
     })
+    // Stock arrived → recompute the alert; this is the RECOVERY path that sends
+    // the one "back to healthy" notification (C6.3, shouldNotify).
+    await recomputeStockAlert(user.id, product.id)
     return { ok: true }
   } catch (err) {
     console.error('[channels] receiveDelivery failed:', err)

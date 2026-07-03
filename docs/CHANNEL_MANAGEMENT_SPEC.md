@@ -227,6 +227,18 @@ changeover, `@ilaunchify/orders`) and **we see incoming production orders in fli
 - Admin: OrderSettings knobs (processing buffer, default safety days, target
   days-of-cover default 45 per the 30–60 industry sweet spot).
 
+**C6.3 BUILT 2026-07-02 — knobs + alerts live:** the three model knobs moved
+into admin OrderSettings (`channelProcessingBufferDays` 3 / `channelSafetyStockDays`
+7 / `channelTargetDaysOfCover` 45; admin page Order Settings → Channel
+Replenishment; read via `getOrderSettings` with a SEPARATE cast-guarded select so
+pre-push never regresses other settings). `InventoryPool.alertState` persists the
+last computed state; `recomputeStockAlert(creatorUserId, productId)` (creator
+app, never-throws) recomputes at every ledger-touching mutation — ingest
+reservation, fulfillment CHANNEL_SALE, cancel RELEASE, delivery intake — and
+notifies once per TRANSITION via shouldNotify. Notifications are IN_APP rows
+(event CREATOR_STOCK_ALERT) written directly for now; the email template case in
+packages/notifications is pending the templates.ts handoff from Code (proof loop).
+
 ### 3.5b Auto-reorder (creator opt-in, added 2026-07-02)
 
 **Research:** the universal pattern across Amazon and the IMS field is *policy-based

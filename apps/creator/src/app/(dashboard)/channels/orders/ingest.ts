@@ -27,6 +27,7 @@ import {
   type ExternalOrder,
   type OrderLineReadiness,
 } from '@ilaunchify/channels'
+import { recomputeStockAlert } from '../inventory/alerts'
 
 // --- cast-guarded delegates (degrade before db:push) --------------------------
 type AnyDelegate = {
@@ -93,6 +94,9 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
     summary.errors.push('No adapter available for this channel.')
     return summary
   }
+
+  // Products whose pool moved this run — alert recompute at the end (C6.3).
+  const touchedProducts = new Set<string>()
 
   const since = (conn.lastSyncAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000)).toISOString()
   let externals: ExternalOrder[] = []
@@ -243,6 +247,7 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
               },
             })
             .catch(() => {})
+          touchedProducts.add(String(link.productId))
         }
       }
 
@@ -256,6 +261,10 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
       summary.errors.push(err instanceof Error ? err.message : `import failed for ${ext.externalOrderId}`)
     }
   }
+
+  // Alert recompute for every pool this sync touched (once per product, never
+  // per order) — notifies the creator on state ESCALATION only (§3.5a).
+  for (const pid of touchedProducts) await recomputeStockAlert(user.id, pid)
 
   await prisma.channelConnection.update({ where: { id: conn.id }, data: { lastSyncAt: new Date() } }).catch(() => {})
   await logSync(conn.id, 'order.pull', summary.errors.length ? 'ERROR' : 'OK', `pulled ${summary.pulled} · imported ${summary.imported}${summary.errors.length ? ` · ${summary.errors[0]}` : ''}`)

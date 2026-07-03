@@ -50,6 +50,10 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     set('cancellationFeeBps', 0, 10_000)
     set('refundProcessingFeeBps', 0, 10_000)
     set('disputeWindowDays', 0, 365)
+    // Channel replenishment (C6.3 — CHANNEL_MANAGEMENT_SPEC §3.5a)
+    set('channelProcessingBufferDays', 0, 60)
+    set('channelSafetyStockDays', 0, 90)
+    set('channelTargetDaysOfCover', 7, 365)
     if (patch.partnerStrikeOnCancel !== undefined) data.partnerStrikeOnCancel = !!patch.partnerStrikeOnCancel
     if (patch.autoApproveCreatorCancelBeforeRouting !== undefined) data.autoApproveCreatorCancelBeforeRouting = !!patch.autoApproveCreatorCancelBeforeRouting
 
@@ -70,6 +74,7 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     revalidatePath('/order-settings/routing')
     revalidatePath('/order-settings/shipping')
     revalidatePath('/order-settings/cancellations')
+    revalidatePath('/order-settings/channels')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: `Could not save settings: ${(err as Error).message}` }

@@ -5,7 +5,7 @@
 // singleton via saveOrderSettings(patch, section).
 
 import * as React from 'react'
-import { DollarSign, Workflow, Truck, RotateCcw } from 'lucide-react'
+import { DollarSign, Workflow, Truck, RotateCcw, Gauge } from 'lucide-react'
 import { saveOrderSettings, type OrderSettingsValues } from './actions'
 
 const NUM = 'w-36 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
@@ -153,6 +153,34 @@ export function ShippingForm({ initial }: { initial: OrderSettingsValues }) {
         </Field>
       </Card>
       <SaveBar pending={pending} status={status} onSave={() => save({ flatShippingBaseCents, flatShippingPerUnitCents, freeShippingThresholdCents, defaultMoq })} />
+    </div>
+  )
+}
+
+// --- Channel replenishment (C6.3 — CHANNEL_MANAGEMENT_SPEC §3.5a) -------------
+export function ChannelReplenishmentForm({ initial }: { initial: OrderSettingsValues }) {
+  const [channelProcessingBufferDays, setBuf] = React.useState(initial.channelProcessingBufferDays)
+  const [channelSafetyStockDays, setSafety] = React.useState(initial.channelSafetyStockDays)
+  const [channelTargetDaysOfCover, setCover] = React.useState(initial.channelTargetDaysOfCover)
+  const { pending, status, setStatus, save } = useSaver('channels')
+  return (
+    <div className="space-y-5">
+      <Card
+        icon={Gauge}
+        title="Replenishment model"
+        desc="Drives every creator's Stock & replenishment math and stock alerts: reorder point = sales/day × (manufacturer lead + buffer) + safety stock; suggested qty targets the cover below."
+      >
+        <Field label="Processing buffer (days)" hint="Added on top of the manufacturer's repeat-run lead time — covers receiving, QC, and put-away.">
+          <input className={NUM} type="number" min={0} max={60} value={channelProcessingBufferDays} onChange={(e) => { setBuf(intOr(e, 0)); setStatus(null) }} />
+        </Field>
+        <Field label="Safety stock (days of cover)" hint="Extra cushion above lead-time demand before a pool counts as LOW.">
+          <input className={NUM} type="number" min={0} max={90} value={channelSafetyStockDays} onChange={(e) => { setSafety(intOr(e, 0)); setStatus(null) }} />
+        </Field>
+        <Field label="Target days of cover" hint="Suggested reorder quantities top the pool up to this many days of sales (in-production units already subtracted).">
+          <input className={NUM} type="number" min={7} max={365} value={channelTargetDaysOfCover} onChange={(e) => { setCover(intOr(e, 7)); setStatus(null) }} />
+        </Field>
+      </Card>
+      <SaveBar pending={pending} status={status} onSave={() => save({ channelProcessingBufferDays, channelSafetyStockDays, channelTargetDaysOfCover })} />
     </div>
   )
 }
