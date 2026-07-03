@@ -111,12 +111,24 @@ export default async function ChannelsPage() {
         title="Channel operations"
         description="Registry + health per channel. Enabled = visible to creators · Ingest/Push = platform-wide kill switches for vendor incidents (channel stays visible, traffic stops) · single-store problems → force-disconnect on Connections."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Link
               href="/developer"
               className="rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50"
             >
               API keys →
+            </Link>
+            <Link
+              href="/channels/enablements"
+              className="rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50"
+            >
+              Enablements →
+            </Link>
+            <Link
+              href="/channels/orders"
+              className="rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50"
+            >
+              Channel orders →
             </Link>
             <Link
               href="/channels/connections"

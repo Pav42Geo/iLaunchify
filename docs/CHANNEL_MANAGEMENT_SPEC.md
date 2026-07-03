@@ -166,6 +166,17 @@ orders 7d, errors 24h, last adapter activity — per-connection stats rolled up
 via connection→channel map, all post-C0 model reads cast-guarded) + the ops
 controls inline. Connections page adds the per-row force-disconnect.
 
+**Oversight pages** (both admin-v2, read-only, cast-guarded, linked from the
+console header):
+- `/channels/orders` — every imported consumer order platform-wide: status
+  KPIs + chips (NEEDS_ATTENTION first), reason inline, manual-confirm badge,
+  units/total, deep-link to the production Order. Fixing happens in the
+  creator inbox / partner dispatch — never inline here.
+- `/channels/enablements` — every OnDemandEnablement (soft FKs batch-resolved
+  to creator/product/manufacturer names), status KPIs + chips, capacity/day,
+  partner note, and a **stale badge** on REQUESTED rows >3 days old — the
+  platform-wide answer to "where are creators stuck waiting on manufacturers?".
+
 Deliberately NOT included yet: event retry/replay (no replay infra until real
 adapters land in C1), per-creator channel beta cohorts (YAGNI until a second
 cohort exists), rate-limit dashboards (no real API traffic yet).
