@@ -383,6 +383,18 @@ export async function pushListing(input: { productId: string; channelCode: strin
   const adapter = resolveChannelAdapter(channel.code as ChannelCode)
   if (!adapter) return { ok: false, error: 'This channel’s integration is not configured yet.' }
 
+  // Admin kill switch (spec §3.4a): platform-wide push pause. Cast-guarded —
+  // pre-db:push the ops columns don't exist and the select throws → not paused.
+  const chOps = await (
+    prisma as unknown as { channel?: { findFirst?: (a: unknown) => Promise<{ pushPaused?: boolean; maintenanceNote?: string | null } | null> } }
+  ).channel
+    ?.findFirst?.({ where: { id: channel.id }, select: { pushPaused: true, maintenanceNote: true } })
+    .catch(() => null)
+  if (chOps?.pushPaused) {
+    const note = chOps.maintenanceNote ? ` — ${chOps.maintenanceNote}` : ''
+    return { ok: false, error: `Listing pushes for this channel are paused by iLaunchify${note}` }
+  }
+
   const priceStr = link.price != null ? String(link.price) : (product.priceCents / 100).toFixed(2)
   const flavors = product.productTemplateId
     ? await prisma.flavorPreset.findMany({

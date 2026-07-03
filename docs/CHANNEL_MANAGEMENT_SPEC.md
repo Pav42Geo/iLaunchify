@@ -138,6 +138,38 @@ edits get overwritten (logged).
   ChannelSyncEvent log (admin-v2 surface pattern); ChannelOrder oversight list;
   OnDemandEnablement oversight; per-channel kill switch (disable ingest on incident).
 
+### 3.4a Admin channel-ops console (BUILT 2026-07-02)
+
+The ChannelEngine/Linnworks operator pattern — a kill-switch **ladder**, coarsest
+to finest, every rung audited:
+
+1. **`enabled`** (existing) — visibility. Off = channel hidden from creators
+   entirely; existing connections untouched.
+2. **`Channel.ingestPaused` / `Channel.pushPaused`** (additive columns) —
+   capability switches. The channel stays visible but one traffic direction stops
+   platform-wide. For vendor API incidents / maintenance windows. Enforced
+   server-side in `importOrdersForConnection` (ingest) and `pushListing` (push);
+   both reads cast-guarded so pre-`db:push` = not paused.
+3. **Force-disconnect one connection** (`adminDisconnectConnection`, reason
+   required ≥5 chars → audit payload) — surgical, for a single misbehaving store
+   (webhook storm, token abuse). Creator sees DISCONNECTED and may reconnect.
+
+**`Channel.maintenanceNote`** (additive) — admin-authored plain text surfaced
+verbatim in the creator hub while a pause is on ("Shopify API maintenance —
+syncs resume 14:00 UTC"). Silence is the enemy during a pause; the note is the
+transparency valve.
+
+**Registry page = ops console** (`/channels`, admin-v2 chrome): KPI strip
+(enabled, OAuth ready, connected stores, orders 7d, sync errors 24h) + one row
+per channel with health rollups (connected/problem stores, LIVE listings,
+orders 7d, errors 24h, last adapter activity — per-connection stats rolled up
+via connection→channel map, all post-C0 model reads cast-guarded) + the ops
+controls inline. Connections page adds the per-row force-disconnect.
+
+Deliberately NOT included yet: event retry/replay (no replay infra until real
+adapters land in C1), per-creator channel beta cohorts (YAGNI until a second
+cohort exists), rate-limit dashboards (no real API traffic yet).
+
 ### 3.5a Inventory transparency & replenishment intelligence (added 2026-07-02)
 
 **The question:** many channels, ONE inventory — how does a creator see everything and

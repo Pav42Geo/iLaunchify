@@ -107,6 +107,11 @@ export function ChannelsHubClient({ initial }: { initial: ChannelsHubData }) {
                 </div>
               </div>
 
+              {card.paused && (
+                <p className="mt-2 rounded-lg border border-warning-200 bg-warning-50 px-2.5 py-1.5 text-[11px] font-medium text-warning-800">
+                  Syncing temporarily paused by iLaunchify{card.maintenanceNote ? ` — ${card.maintenanceNote}` : '.'}
+                </p>
+              )}
               {card.connection?.externalAccountId && isConnected && (
                 <p className="mt-2 truncate text-[11.5px] text-ink-500">{card.connection.externalAccountId}</p>
               )}

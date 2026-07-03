@@ -73,6 +73,21 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
     return summary
   }
 
+  // Admin kill switch (spec §3.4a): platform-wide ingest pause for this channel.
+  // Cast-guarded — before db:push the ops columns don't exist and the select
+  // throws, which we treat as "not paused".
+  const chOps = await d('channel')
+    ?.findFirst?.({
+      where: { code: conn.channel.code },
+      select: { ingestPaused: true, maintenanceNote: true },
+    })
+    .catch(() => null)
+  if (chOps?.ingestPaused) {
+    const note = typeof chOps.maintenanceNote === 'string' && chOps.maintenanceNote ? ` — ${chOps.maintenanceNote}` : ''
+    summary.errors.push(`Order sync for this channel is paused by iLaunchify${note}`)
+    return summary
+  }
+
   const adapter = resolveChannelAdapter(conn.channel.code as ChannelCode)
   if (!adapter) {
     summary.errors.push('No adapter available for this channel.')

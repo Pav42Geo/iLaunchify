@@ -18,6 +18,10 @@ export interface ChannelCardData {
   displayName: string
   enabled: boolean
   oauthConfigured: boolean
+  /** Admin ops (spec §3.4a): true while iLaunchify has paused sync/push for
+   *  this channel platform-wide. `maintenanceNote` explains why, verbatim. */
+  paused: boolean
+  maintenanceNote: string | null
   connection: {
     id: string
     status: string
@@ -53,12 +57,17 @@ export async function loadChannelsHub(): Promise<ChannelsHubData> {
       .filter((ch) => ch.enabled)
       .map((ch) => {
         const conn = byChannel.get(ch.id)
+        // Ops columns are post-C0 schema — read via cast so the hub renders
+        // before db:push (missing column → undefined → not paused).
+        const ops = ch as unknown as { ingestPaused?: boolean; pushPaused?: boolean; maintenanceNote?: string | null }
         return {
           channelId: ch.id,
           code: ch.code,
           displayName: ch.displayName,
           enabled: ch.enabled,
           oauthConfigured: ch.oauthConfigured,
+          paused: Boolean(ops.ingestPaused || ops.pushPaused),
+          maintenanceNote: ops.maintenanceNote ?? null,
           connection: conn
             ? {
                 id: conn.id,

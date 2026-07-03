@@ -4138,6 +4138,15 @@ model Channel {
   oauthConfigured Boolean              @default(false)
   // Free-form notes admin can leave for ops
   notes           String?
+  // --- Channel-ops kill switches (admin console — CHANNEL_MANAGEMENT_SPEC §3.4a).
+  // Finer than `enabled` (which hides the channel entirely): a pause keeps the
+  // channel visible but stops one direction of traffic platform-wide. The
+  // ChannelEngine/Linnworks ops pattern — per-capability switches, not one big off.
+  ingestPaused    Boolean              @default(false) // stop order pull/webhook ingest
+  pushPaused      Boolean              @default(false) // stop listing pushes
+  // Surfaced verbatim to creators while a pause is on ("Shopify API maintenance
+  // window — syncs resume 14:00 UTC"). Admin-authored plain text.
+  maintenanceNote String?
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   // Relations

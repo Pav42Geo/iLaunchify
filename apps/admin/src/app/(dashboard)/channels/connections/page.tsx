@@ -8,6 +8,7 @@ import { Plug, CheckCircle2, AlertTriangle, Activity, ShoppingBag } from 'lucide
 import { prisma } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
+import { ConnectionForceDisconnect } from './ConnectionForceDisconnect'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Channel connections — Admin' }
@@ -64,7 +65,7 @@ export default async function ChannelConnectionsPage({
       <AdminPageHeader
         eyebrow="Operate · Channels"
         title="Connections & sync"
-        description="Every creator↔channel connection with health, plus the most recent adapter interactions. Kill-switch = disable the channel in the registry."
+        description="Every creator↔channel connection with health, plus the most recent adapter interactions. Channel-wide pauses live on the registry; here you can force-disconnect a single misbehaving store (audited, creator can reconnect)."
         actions={
           <Link href="/channels" className="rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50">
             Channel registry →
@@ -104,6 +105,7 @@ export default async function ChannelConnectionsPage({
               <th className="px-3 py-2.5">Status</th>
               <th className="px-3 py-2.5">Connected</th>
               <th className="px-3 py-2.5">Last sync</th>
+              <th className="px-3 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -117,11 +119,21 @@ export default async function ChannelConnectionsPage({
                 </td>
                 <td className="px-3 py-2 text-ink-500">{c.connectedAt ? c.connectedAt.toISOString().slice(0, 10) : '—'}</td>
                 <td className="px-3 py-2 text-ink-500">{c.lastSyncAt ? c.lastSyncAt.toISOString().slice(0, 16).replace('T', ' ') : '—'}</td>
+                <td className="px-3 py-2 text-right">
+                  {c.status !== 'DISCONNECTED' && c.status !== 'NOT_CONNECTED' ? (
+                    <ConnectionForceDisconnect
+                      connectionId={c.id}
+                      label={`${c.channel.displayName} · ${c.creator.name ?? c.creator.email ?? c.id}`}
+                    />
+                  ) : (
+                    <span className="text-ink-300">—</span>
+                  )}
+                </td>
               </tr>
             ))}
             {connections.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-ink-400">
+                <td colSpan={7} className="px-3 py-8 text-center text-ink-400">
                   No connections{status ? ` with status ${status}` : ' yet'}.
                 </td>
               </tr>

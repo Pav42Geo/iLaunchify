@@ -36,6 +36,7 @@ export const AUDIT_ENTITY_TYPES = [
   'CarrierAccount', // EasyPost child / BYO carrier accounts (Phase L2)
   'CarrierServiceRule', // Carrier eligibility matrix rows (Phase L2)
   'StorageReleaseOrder', // Stock releases out of hold-at-manufacturer (Phase L1.2)
+  'Channel', // Channel registry rows — enable/pause kill switches (admin ops console)
   'ChannelConnection', // Creator sales-channel connections (Phase L3)
   'ChannelProductLink', // Channel-scoped product identifiers incl. FNSKU (Phase L3)
   'ChannelInboundPlan', // Factory→channel-FC inbound plans (Phase L3)
