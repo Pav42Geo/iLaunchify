@@ -17,7 +17,7 @@
 // the sibling loadOwnedDispatch pattern in orders/[dispatchId]/actions.ts but
 // on the receiving side of the shipment.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -65,9 +65,26 @@ export async function confirmInboundReceipt({
       type: true,
       orderId: true,
       orderItemId: true,
+      shipmentLegs: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { palletCount: true },
+      },
       order: {
         select: {
           orderNumber: true,
+          shipToPartnerServiceId: true,
+          shipToPartnerService: {
+            select: {
+              id: true,
+              storageBillingUnit: true,
+              storageRateCents: true,
+              storageFreeGraceDays: true,
+              storageMinMonthlyCents: true,
+              pickFeeCents: true,
+              packFeeCents: true,
+            },
+          },
           items: {
             select: {
               id: true,
@@ -152,8 +169,11 @@ export async function confirmInboundReceipt({
 
   const fromStatus = dispatch.status
   const orderRef = dispatch.order.orderNumber ?? `#${dispatch.orderId.slice(-8)}`
+  const totalReceived = received.reduce((s, l) => s + l.receivedQty, 0)
+  const orderSettings = await getOrderSettings()
 
   let discrepancyId: string | null = null
+  let openedAgreementId: string | null = null
   await prisma.$transaction(async (tx) => {
     await tx.orderDispatch.update({
       where: { id: dispatch.id },
@@ -197,6 +217,46 @@ export async function confirmInboundReceipt({
       discrepancyId = row.id
     }
 
+    // FC storage agreement (P1 seam fix, docs/PARTNER_ROLE_ACCOUNTS.md §3.1.B):
+    // WAREHOUSE_PARTNER orders open their StorageAgreement HERE — at the
+    // physical receipt — not at checkout (mirrors the HOLD comment: "the clock
+    // legally starts when the finished run lands in storage"). Fee schedule is
+    // snapshotted from the FC's rates at receipt (legal reproducibility;
+    // known V1 caveat: rates shown at checkout could differ if the FC
+    // repriced in transit — flagged in the doc). Idempotent: one agreement
+    // per (order, FC service); balance = what was actually RECEIVED.
+    const fcService = dispatch.order.shipToPartnerService
+    if (fcService && totalReceived > 0) {
+      const existing = await tx.storageAgreement.findFirst({
+        where: { orderId: dispatch.orderId, partnerServiceId: fcService.id },
+        select: { id: true },
+      })
+      if (!existing) {
+        const agreement = await tx.storageAgreement.create({
+          data: {
+            orderId: dispatch.orderId,
+            partnerServiceId: fcService.id,
+            mode: 'STOCK_RELEASE', // V1 default — ON_DEMAND arrives with channel rails (C-phases)
+            status: 'ACTIVE',
+            startedAt: new Date(),
+            unitsRemaining: totalReceived,
+            palletsRemaining: dispatch.shipmentLegs[0]?.palletCount ?? null,
+            feeSnapshotJson: {
+              billingUnit: fcService.storageBillingUnit ?? 'PALLET_MONTH',
+              rateCents: fcService.storageRateCents ?? 0,
+              graceDays: fcService.storageFreeGraceDays ?? 0,
+              minMonthlyCents: fcService.storageMinMonthlyCents ?? 0,
+              pickFeeCents: fcService.pickFeeCents ?? 0,
+              packFeeCents: fcService.packFeeCents ?? 0,
+              referralFeeBps: orderSettings.warehouseReferralFeeBps,
+            } as unknown as object,
+          },
+          select: { id: true },
+        })
+        openedAgreementId = agreement.id
+      }
+    }
+
     // Mirror markDelivered: when every dispatch has landed, advance the Order.
     const remaining = await tx.orderDispatch.count({
       where: { orderId: dispatch.orderId, status: { not: 'DELIVERED' } },
@@ -208,6 +268,19 @@ export async function confirmInboundReceipt({
       })
     }
   })
+
+  if (openedAgreementId) {
+    await logAuditAs(user, {
+      entityType: 'StorageAgreement',
+      entityId: openedAgreementId,
+      action: 'STORAGE_AGREEMENT_OPENED_AT_RECEIPT',
+      payload: {
+        orderId: dispatch.orderId,
+        unitsReceived: totalReceived,
+        palletCount: dispatch.shipmentLegs[0]?.palletCount ?? null,
+      },
+    })
+  }
 
   const auditPayload = {
     orderId: dispatch.orderId,

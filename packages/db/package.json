@@ -5,14 +5,14 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "// Note": "All commands load env from .env.local at the repo root via dotenv-cli — Next.js uses the same file.",
-    "generate":       "pnpm exec dotenv -e ../../.env.local -- prisma generate",
-    "push":           "pnpm exec dotenv -e ../../.env.local -- prisma db push",
-    "migrate":        "pnpm exec dotenv -e ../../.env.local -- prisma migrate dev",
+    "// Note": "All commands load env from .env.local at the repo root via dotenv-cli \u2014 Next.js uses the same file.",
+    "generate": "pnpm exec dotenv -e ../../.env.local -- prisma generate",
+    "push": "pnpm exec dotenv -e ../../.env.local -- prisma db push",
+    "migrate": "pnpm exec dotenv -e ../../.env.local -- prisma migrate dev",
     "migrate:deploy": "pnpm exec dotenv -e ../../.env.local -- prisma migrate deploy",
     "migrate:status": "pnpm exec dotenv -e ../../.env.local -- prisma migrate status",
-    "studio":         "pnpm exec dotenv -e ../../.env.local -- prisma studio",
-    "seed":           "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts",
+    "studio": "pnpm exec dotenv -e ../../.env.local -- prisma studio",
+    "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts",
     "seed:sample-orders": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-sample-orders.ts",
     "seed:subscription-plans": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-subscription-plans.ts",
     "seed:domain-ingredients": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-domain-ingredients.ts",
@@ -24,11 +24,12 @@
     "seed:packing-types": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/run-packing-types.ts",
     "seed:packaging-forms": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-packaging-forms.ts",
     "seed:logistics": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-logistics.ts",
-    "backfill:flavor-recipes":     "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-flavor-recipes.ts",
+    "backfill:flavor-recipes": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-flavor-recipes.ts",
     "backfill:flavor-recipes:apply": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-flavor-recipes.ts --apply",
-    "format":         "prisma format",
-    "type-check":     "tsc --noEmit",
-    "clean":          "rm -rf node_modules .turbo dist"
+    "format": "prisma format",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf node_modules .turbo dist",
+    "seed:fc-dryrun": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-fc-dryrun.ts"
   },
   "prisma": {
     "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts"
