@@ -34,8 +34,10 @@ import {
   AlertTriangle,
   Pencil,
   ShieldCheck,
+  PackageOpen,
 } from 'lucide-react'
 import { ActiveWelcomeModal } from './ActiveWelcomeModal'
+import { homeEyebrow, heroQuickActions } from '@/lib/role-skins'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Dashboard — Partners' }
@@ -67,7 +69,7 @@ export default async function ProviderDashboardHome() {
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
     include: {
-      services: { select: { id: true } },
+      services: { select: { id: true, type: true } },
       certificateInstances: {
         select: {
           id: true,
@@ -80,6 +82,14 @@ export default async function ProviderDashboardHome() {
   })
   if (!partner) return null
   const serviceIds = partner.services.map((s) => s.id)
+
+  // Role skin (docs/PARTNER_ROLE_ACCOUNTS.md §2) — copy, quick actions and the
+  // FC inbound queue all derive from the partner's service types.
+  const serviceTypes = partner.services.map((s) => s.type as string)
+  const isManufacturer = serviceTypes.includes('MANUFACTURING')
+  const warehouseServiceIds = partner.services
+    .filter((s) => (s.type as string) === 'WAREHOUSE')
+    .map((s) => s.id)
 
   const now = new Date()
   const since30 = new Date(now.getTime() - 30 * DAY)
@@ -128,6 +138,21 @@ export default async function ProviderDashboardHome() {
     }),
   ])
 
+  // FC skin — inbound shipments awaiting receipt confirmation (mirrors the
+  // /inbound ownership rule: ship-to service, never dispatch.partnerServiceId).
+  const inboundExpected =
+    warehouseServiceIds.length > 0
+      ? await prisma.orderDispatch.count({
+          where: {
+            status: { in: ['SHIPPED', 'IN_TRANSIT'] },
+            order: {
+              shipToType: 'WAREHOUSE_PARTNER',
+              shipToPartnerServiceId: { in: warehouseServiceIds },
+            },
+          },
+        })
+      : 0
+
   // ---- Dispatch metrics ----
   const dCount = (sts: string[]) => dispatches.filter((d) => sts.includes(d.status as string)).length
   const awaiting = dispatches.filter((d) => d.status === 'PENDING_ACCEPT')
@@ -165,6 +190,18 @@ export default async function ProviderDashboardHome() {
 
   // ---- "Needs your attention" queue ----
   const queue: QueueWidgetItem[] = [
+    ...(inboundExpected > 0
+      ? [
+          {
+            id: 'inbound-expected',
+            label: `Confirm inbound receipts · ${inboundExpected} shipment${inboundExpected === 1 ? '' : 's'}`,
+            sublabel: 'Reconcile received counts against the manifest',
+            icon: <PackageOpen className="h-4 w-4" aria-hidden="true" />,
+            tone: 'warning' as const,
+            primaryAction: { label: 'Receive', href: '/inbound', tone: 'pink' as const },
+          },
+        ]
+      : []),
     ...awaiting.map((d) => {
       const overdue = d.acceptDeadlineAt < now
       return {
@@ -245,7 +282,7 @@ export default async function ProviderDashboardHome() {
       <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">Manufacturing · Home</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">{homeEyebrow(serviceTypes)}</p>
             <h1 className="mt-1 font-display text-xl font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Welcome back
             </h1>
@@ -257,18 +294,30 @@ export default async function ProviderDashboardHome() {
             </p>
           </div>
           <div className="flex flex-none flex-wrap items-center gap-2">
-            <Link
-              href="/products/new"
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" /> New product
-            </Link>
-            <Link
-              href="/orders?tab=awaiting"
-              className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-            >
-              <Inbox className="h-4 w-4" aria-hidden="true" /> Order inbox
-            </Link>
+            {heroQuickActions(serviceTypes).map((a) =>
+              a.primary ? (
+                <Link
+                  key={a.href}
+                  href={a.href}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+                >
+                  <Inbox className="h-4 w-4" aria-hidden="true" /> {a.label}
+                </Link>
+              ) : (
+                <Link
+                  key={a.href}
+                  href={a.href}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                >
+                  {a.href === '/inbound' ? (
+                    <PackageOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}{' '}
+                  {a.label}
+                </Link>
+              ),
+            )}
           </div>
         </div>
       </div>
@@ -293,7 +342,11 @@ export default async function ProviderDashboardHome() {
         <KpiWidget label="In production" value={inProduction} icon={Factory} tone="ink" href="/orders?tab=production" span={2} />
         <KpiWidget label="Ready to ship" value={ready} icon={PackageCheck} tone="info" href="/orders?tab=ready" span={2} />
         <KpiWidget label="Earned · 30d" value={`$${(earned30 / 100).toLocaleString()}`} icon={DollarSign} tone="success" sparkline={earnSpark} href="/payments" span={2} />
-        <KpiWidget label="Live products" value={liveProducts} icon={Boxes} tone="pink" href="/products?tab=live" span={2} />
+        {isManufacturer ? (
+          <KpiWidget label="Live products" value={liveProducts} icon={Boxes} tone="pink" href="/products?tab=live" span={2} />
+        ) : (
+          <KpiWidget label="Inbound expected" value={inboundExpected} icon={PackageOpen} tone={inboundExpected > 0 ? 'warning' : 'ink'} href="/inbound" span={2} />
+        )}
         <KpiWidget label="Certs expiring" value={expiringCerts.length} icon={ShieldAlert} tone={expiringCerts.length > 0 ? 'danger' : 'ink'} href="/certifications" span={2} />
       </section>
 

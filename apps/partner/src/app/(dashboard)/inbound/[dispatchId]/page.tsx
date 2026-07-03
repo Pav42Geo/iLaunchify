@@ -52,7 +52,7 @@ export default async function InboundDetailPage({
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-            Warehouse · Inbound receipt
+            Fulfillment Center · Inbound receipt
           </p>
           <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
             {pill.label}
@@ -91,6 +91,7 @@ export default async function InboundDetailPage({
           dispatchId={row.dispatchId}
           items={row.items}
           checklist={receiverChecklist.map((c) => ({ key: c.key, label: c.label }))}
+          declaredLots={row.lotNumbers}
         />
       ) : (
         <section className="rounded-2xl border border-ink-200 bg-white px-6 py-8 text-center">

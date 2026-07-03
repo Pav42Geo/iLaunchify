@@ -23,6 +23,7 @@ export type IntegrationCategory =
   | 'Email'
   | 'AI'
   | 'Data APIs'
+  | 'Logistics'
   | 'Monitoring'
   | 'Platform Core'
   | 'Internal Services'
@@ -44,6 +45,14 @@ export interface IntegrationDef {
   lifecycle: 'live' | 'planned'
   /** True when `testIntegration(key)` has a read-only probe for it. */
   testable?: boolean
+  /**
+   * LogisticsSetting gate that ALSO has to be ON for this rail to run
+   * (env configured is only half the switch). Renders a gate pill linking
+   * to admin → Logistics → Gates.
+   */
+  gateKey?: string
+  /** In-app surfaces this integration powers — rendered as deep links. */
+  appLinks?: Array<{ label: string; href: string }>
 }
 
 // ── Catalog ──────────────────────────────────────────────────────────────────
@@ -279,14 +288,126 @@ export const INTEGRATIONS: IntegrationDef[] = [
     lifecycle: 'planned',
     envVars: [{ name: 'TAXJAR_API_KEY', kind: 'secret', required: false, note: 'Or use Stripe Tax (no extra key)' }],
   },
+  // ── Logistics (docs/LOGISTICS_AND_FULFILLMENT.md, built 2026-07-02).
+  // Env presence here is only half the switch — each rail ALSO needs its
+  // LogisticsSetting gate flipped in admin → Logistics → Gates. Per-partner /
+  // per-creator credentials (EasyPost Forge child keys, SP-API refresh tokens)
+  // live in the secret store referenced by CarrierAccount.externalRef /
+  // ChannelConnection.accessTokenRef — never in env, never shown here.
   {
-    key: 'shipping',
-    name: 'Shipping rates / labels',
-    vendor: 'Shippo / EasyPost',
-    category: 'Data APIs',
-    description: 'Carrier rates + label purchase for fulfillment (planned).',
+    key: 'easypost',
+    name: 'EasyPost (parcel rail)',
+    vendor: 'EasyPost',
+    category: 'Logistics',
+    description:
+      'Platform parcel rates, label purchase, Forge child accounts per partner, tracking webhooks. Gate: carrier:easypost.',
+    docsUrl: 'https://docs.easypost.com',
+    dashboardUrl: 'https://app.easypost.com/account/api-keys',
+    rotationDays: 180,
+    lifecycle: 'live',
+    testable: true,
+    gateKey: 'carrier:easypost',
+    appLinks: [
+      { label: 'Carrier rules', href: '/logistics/carriers' },
+      { label: 'Shipments', href: '/logistics/shipments' },
+    ],
+    envVars: [
+      { name: 'EASYPOST_API_KEY', kind: 'secret', required: true },
+      {
+        name: 'EASYPOST_WEBHOOK_SECRET',
+        kind: 'secret',
+        required: true,
+        note: 'Signs tracker webhooks → apps/partner /api/webhooks/easypost; register that URL in the EasyPost dashboard',
+      },
+    ],
+  },
+  {
+    key: 'shipengine-ltl',
+    name: 'ShipEngine (dry LTL)',
+    vendor: 'ShipEngine',
+    category: 'Logistics',
+    description: 'Dry LTL quotes + auto-BOL (Phase L2, flagged). Gate: carrier:shipengine_ltl.',
+    docsUrl: 'https://www.shipengine.com/docs/ltl/',
     lifecycle: 'planned',
-    envVars: [{ name: 'SHIPPING_API_KEY', kind: 'secret', required: false }],
+    gateKey: 'carrier:shipengine_ltl',
+    appLinks: [{ label: 'Carrier rules', href: '/logistics/carriers' }],
+    envVars: [{ name: 'SHIPENGINE_API_KEY', kind: 'secret', required: false }],
+  },
+  {
+    key: 'loadsmart',
+    name: 'Loadsmart (reefer freight)',
+    vendor: 'Loadsmart',
+    category: 'Logistics',
+    description: 'Refrigerated LTL/FTL broker — async quote rail (V2, with cold-chain gates). Gate: carrier:broker_reefer.',
+    docsUrl: 'https://loadsmart.com',
+    lifecycle: 'planned',
+    gateKey: 'carrier:broker_reefer',
+    appLinks: [{ label: 'Shipments', href: '/logistics/shipments' }],
+    envVars: [{ name: 'LOADSMART_API_KEY', kind: 'secret', required: false }],
+  },
+  {
+    key: 'amazon-spapi',
+    name: 'Amazon SP-API (FBA inbound)',
+    vendor: 'Amazon',
+    category: 'Logistics',
+    description:
+      'Creator OAuth + inbound plans + FBA box labels + MCF. Blocked on our developer-application approval; checkout/plan scaffolding already live. Gate: channel_inbound:AMAZON_FBA.',
+    docsUrl: 'https://developer-docs.amazon.com/sp-api/',
+    dashboardUrl: 'https://sellercentral.amazon.com/sellingpartner/developerconsole',
+    lifecycle: 'planned',
+    gateKey: 'channel_inbound:AMAZON_FBA',
+    appLinks: [{ label: 'Channel plans', href: '/logistics/channel-plans' }],
+    envVars: [
+      { name: 'AMZ_SPAPI_CLIENT_ID', kind: 'config', required: false, note: 'LWA app client id — its presence lights up the creator Connect button' },
+      { name: 'AMZ_SPAPI_CLIENT_SECRET', kind: 'secret', required: false },
+      { name: 'AMZ_SPAPI_REFRESH_ENDPOINT_REGION', kind: 'config', required: false, note: 'Default us-east-1' },
+    ],
+  },
+  {
+    key: 'walmart-wfs',
+    name: 'Walmart Marketplace (WFS)',
+    vendor: 'Walmart',
+    category: 'Logistics',
+    description: 'WFS inbound plans + box labels (Phase L4). GTIN-only labeling. Gate: channel_inbound:WALMART_WFS.',
+    docsUrl: 'https://developer.walmart.com',
+    lifecycle: 'planned',
+    gateKey: 'channel_inbound:WALMART_WFS',
+    appLinks: [{ label: 'Channel plans', href: '/logistics/channel-plans' }],
+    envVars: [
+      { name: 'WALMART_CLIENT_ID', kind: 'config', required: false },
+      { name: 'WALMART_CLIENT_SECRET', kind: 'secret', required: false },
+    ],
+  },
+  {
+    key: 'tiktok-shop',
+    name: 'TikTok Shop (FBT)',
+    vendor: 'TikTok',
+    category: 'Logistics',
+    description: 'FBT inbound requests + carton labels (Phase L4; FBT near-mandatory since 2026-02-25). Gate: channel_inbound:TIKTOK_FBT.',
+    docsUrl: 'https://partner.tiktokshop.com',
+    lifecycle: 'planned',
+    gateKey: 'channel_inbound:TIKTOK_FBT',
+    appLinks: [{ label: 'Channel plans', href: '/logistics/channel-plans' }],
+    envVars: [
+      { name: 'TIKTOK_SHOP_APP_KEY', kind: 'config', required: false },
+      { name: 'TIKTOK_SHOP_APP_SECRET', kind: 'secret', required: false },
+    ],
+  },
+  {
+    key: 'shipbob',
+    name: 'ShipBob (anchor 3PL)',
+    vendor: 'ShipBob',
+    category: 'Logistics',
+    description:
+      'FulfillmentConnector: WROs w/ lot+expiry, inventory webhooks (Phase L4, blocked on master agreement — decision L2). Gate: connector:shipbob.',
+    docsUrl: 'https://developer.shipbob.com',
+    lifecycle: 'planned',
+    gateKey: 'connector:shipbob',
+    appLinks: [{ label: 'Fulfillment centers', href: '/logistics/fulfillment-centers' }],
+    envVars: [
+      { name: 'SHIPBOB_CLIENT_ID', kind: 'config', required: false },
+      { name: 'SHIPBOB_CLIENT_SECRET', kind: 'secret', required: false },
+    ],
   },
   {
     key: 'gtin',
@@ -383,6 +504,7 @@ export const CATEGORY_ORDER: IntegrationCategory[] = [
   'Email',
   'AI',
   'Data APIs',
+  'Logistics',
   'Monitoring',
   'Internal Services',
   'Platform Core',

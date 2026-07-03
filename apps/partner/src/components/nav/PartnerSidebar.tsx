@@ -5,66 +5,34 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
 import {
-  Inbox,
-  Wrench,
-  Settings,
-  BarChart3,
   FileCheck2,
   LifeBuoy,
-  DollarSign,
-  Box,
-  Award,
-  Package,
-  Gift,
-  Printer,
-  PackageOpen,
-  Zap,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
+import { roleNavFor, type PartnerNavItem } from '@/lib/role-skins'
 
-interface NavItem {
-  href: string
-  label: string
-  icon: typeof Inbox
-}
-
-const FULL_NAV: NavItem[] = [
-  { href: '/dashboard',       label: 'Dashboard',       icon: BarChart3 },
-  { href: '/orders',          label: 'Orders',          icon: Inbox },
-  { href: '/on-demand',       label: 'On-demand',       icon: Zap },
-  // '/inbound' is inserted after Orders at render time — only for partners
-  // with a WAREHOUSE service (Phase L1.1c inbound receiving queue).
-  { href: '/products',        label: 'Products',        icon: Package },
-  { href: '/services',        label: 'Services',        icon: Wrench },
-  { href: '/packaging',       label: 'Packaging',       icon: Box },
-  { href: '/print-spec',      label: 'Prepress output', icon: Printer },
-  { href: '/accessories',     label: 'Accessories',     icon: Gift },
-  { href: '/certifications',  label: 'Certifications',  icon: Award },
-  { href: '/payments',        label: 'Payments',        icon: DollarSign },
-  // /my-application is intentionally absent here — once a partner is ACTIVE the
-  // application is closed; the record lives in the admin console. It only shows
-  // in RESTRICTED_NAV (pre-approval applicants).
-  { href: '/settings',        label: 'Settings',        icon: Settings },
-]
+// Full nav is now resolved per role — docs/PARTNER_ROLE_ACCOUNTS.md §2 (one
+// chassis, role skins). The registry owns which surfaces each ServiceType
+// sees; this component just renders whatever it resolves.
+//
+// /my-application is intentionally absent from the active nav — once a partner
+// is ACTIVE the application is closed; the record lives in the admin console.
+// It only shows in RESTRICTED_NAV (pre-approval applicants).
 
 // Restricted shell — pre-approval, in-progress, or suspended partners.
 // They can see their application and get help; everything else is hidden.
-const RESTRICTED_NAV: NavItem[] = [
+const RESTRICTED_NAV: PartnerNavItem[] = [
   { href: '/my-application',  label: 'My Application',  icon: FileCheck2 },
   { href: '/help',            label: 'Help',            icon: LifeBuoy },
 ]
 
-// Inbound receiving queue — only partners operating a WAREHOUSE service see it
-// (the /inbound route redirects everyone else; gate mirrors the layout query).
-const INBOUND_NAV_ITEM: NavItem = { href: '/inbound', label: 'Inbound', icon: PackageOpen }
-
 interface PartnerSidebarProps {
   status: PartnerStatus
   restricted: boolean
-  /** True when the partner has a WAREHOUSE service — shows the Inbound entry. */
-  hasWarehouseService?: boolean
+  /** The partner's ServiceType values (strings — RSC-boundary safe); drives the role-skinned nav. */
+  serviceTypes?: string[]
 }
 
 function statusBadge(status: PartnerStatus): {
@@ -90,13 +58,9 @@ function statusBadge(status: PartnerStatus): {
 
 const STORAGE_KEY = 'ilf-partner-sidebar-collapsed'
 
-export function PartnerSidebar({ status, restricted, hasWarehouseService }: PartnerSidebarProps) {
+export function PartnerSidebar({ status, restricted, serviceTypes }: PartnerSidebarProps) {
   const pathname = usePathname()
-  const nav = restricted
-    ? RESTRICTED_NAV
-    : hasWarehouseService
-      ? FULL_NAV.flatMap((item) => (item.href === '/orders' ? [item, INBOUND_NAV_ITEM] : [item]))
-      : FULL_NAV
+  const nav = restricted ? RESTRICTED_NAV : roleNavFor(serviceTypes ?? [])
   const badge = statusBadge(status)
 
   const [collapsed, setCollapsed] = useState(false)

@@ -2731,6 +2731,10 @@ model OrderDispatch {
   // platform-booked shipments create ShipmentLeg rows (docs/LOGISTICS_AND_FULFILLMENT.md §6).
   shipmentLegs             ShipmentLeg[]
   shipmentDocuments        ShipmentDocument[]
+  // Partner role accounts P0 (docs/PARTNER_ROLE_ACCOUNTS.md §3.1) — structured
+  // FC receiving: one receipt per dispatch + first-class discrepancy records.
+  inboundReceipt           InboundReceipt?
+  receivingDiscrepancies   ReceivingDiscrepancy[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 
@@ -3916,6 +3920,12 @@ model PartnerFile {
   sizeBytes        Int
   uploadedById     String // who uploaded (partner user)
   uploadedAt       DateTime                @default(now())
+  // Expiry Engine (docs/PARTNER_ROLE_ACCOUNTS.md §6.4) — expiring documents
+  // (COI, food-safety certs uploaded as files) get reminder fan-outs at
+  // T-60/30/7 and capability suspension on lapse. Nullable: most files
+  // (die-lines, W-9) never expire.
+  issuedAt         DateTime?
+  expiresAt        DateTime?
 
   partner    Partner                     @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   section    PartnerVerificationSection? @relation(fields: [sectionId], references: [id])
@@ -3925,6 +3935,7 @@ model PartnerFile {
 
   @@index([partnerId, sectionType])
   @@index([partnerId, kind])
+  @@index([expiresAt]) // Expiry Engine nightly sweep
 }
 
 // AuditLog — every state transition on User, Partner, PartnerService, Order,
@@ -4021,6 +4032,13 @@ enum NotificationEvent {
   SUPPORT_TICKET_REOPENED // → assignee (or category default)
   SUPPORT_SLA_BREACHED // → assignee (or category default)
   SUPPORT_REFUND_REQUESTED // → admins with refunds:approve (RBAC P3)
+  // Partner role accounts P0 (docs/PARTNER_ROLE_ACCOUNTS.md §6.2)
+  INBOUND_DELIVERED_UNCONFIRMED // FC: carrier says delivered, receipt not confirmed (receiving SLA)
+  RECEIVING_DISCREPANCY_OPENED // FC filed short/over/damaged → admin + creator visibility
+  RECEIVING_DISCREPANCY_RESOLVED // admin dispositioned the discrepancy → FC + creator
+  DISPATCH_SLA_AT_RISK // accept window ~50% consumed and still PENDING_ACCEPT
+  DOC_EXPIRING_SOON // partner document (COI etc.) inside the T-60/30/7 reminder window
+  DOC_EXPIRED // document lapsed → affected capability suspended
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -7646,6 +7664,80 @@ model ShipmentDocument {
   shipmentLeg         ShipmentLeg?  @relation(fields: [shipmentLegId], references: [id])
 
   @@index([orderDispatchId, type])
+}
+
+// =============================================================================
+// FC RECEIVING (Partner role accounts P0 — docs/PARTNER_ROLE_ACCOUNTS.md §3.1)
+// =============================================================================
+
+/// One row per confirmed inbound receipt at a Fulfillment Center (WAREHOUSE
+/// service). Replaces the audit-log-only record from Phase L1.1c: the receipt
+/// is a first-class, queryable, IMMUTABLE record (D2 LOCKED — lot + expiry are
+/// captured at receive time and never edited; corrections flow through a
+/// ReceivingDiscrepancy, never an update to these rows).
+model InboundReceipt {
+  id                 String    @id @default(cuid())
+  orderDispatchId    String    @unique // one receipt per dispatch
+  receivedByUserId   String // soft FK → User (partner user who signed)
+  receivedAt         DateTime  @default(now())
+  damaged            Boolean   @default(false)
+  note               String? // discrepancy/context note (≤1000 chars, app-enforced)
+  checklistKeys      String[] // RECEIVER checklist items confirmed (buildReceivingChecklist keys)
+
+  orderDispatch OrderDispatch        @relation(fields: [orderDispatchId], references: [id], onDelete: Cascade)
+  lines         InboundReceiptLine[]
+
+  @@index([receivedAt])
+}
+
+/// Per-line reconciliation on a receipt. lotNumber + lotExpiryAt are REQUIRED
+/// by the server action when the product variant is lot-tracked (food /
+/// supplement) — the hard gate lives in code, the schema stays nullable so
+/// non-lot-tracked lines (e.g. merch) can omit them.
+model InboundReceiptLine {
+  id          String    @id @default(cuid())
+  receiptId   String
+  orderItemId String // soft FK → OrderItem (scoped item on the order)
+  expectedQty Int
+  receivedQty Int
+  lotNumber   String? // required-at-receive for lot-tracked SKUs (D2)
+  lotExpiryAt DateTime? // required-at-receive for lot-tracked SKUs (D2)
+
+  receipt InboundReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
+  @@index([lotNumber]) // recall trace: lot → receipts → dispatch → order
+}
+
+enum ReceivingDiscrepancyStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+}
+
+/// First-class receiving exception (short / over / damaged) — the admin
+/// exceptions inbox works this queue. Platform-mediated: the FC files it, the
+/// admin resolves it; creator and upstream partner are notified but never
+/// negotiate directly (orchestration thesis).
+model ReceivingDiscrepancy {
+  id              String                     @id @default(cuid())
+  orderDispatchId String
+  linesJson       Json // [{ orderItemId, product, sku, expected, received, delta }]
+  damaged         Boolean                    @default(false)
+  note            String?
+  photoAssetIds   String[] // soft FKs → asset storage (consistent w/ labelAssetIds)
+  status          ReceivingDiscrepancyStatus @default(OPEN)
+  openedByUserId  String // soft FK → User (FC partner user)
+  resolvedById    String? // soft FK → User (admin)
+  resolutionNote  String?
+  resolvedAt      DateTime?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  orderDispatch OrderDispatch @relation(fields: [orderDispatchId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt]) // admin exceptions inbox
+  @@index([orderDispatchId])
 }
 
 /// Carrier account registry. externalRef points at the provider-side object

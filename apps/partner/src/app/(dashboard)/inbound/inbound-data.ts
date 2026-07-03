@@ -21,6 +21,9 @@ export interface InboundItem {
   sku: string | null
   gtin: string | null
   expectedQty: number
+  /** D2 (LOCKED) — lot + expiry are REQUIRED at receive time for this line.
+   *  Conservative default: lot-track unless the variant explicitly opted out. */
+  lotTracked: boolean
 }
 
 export interface InboundRow {
@@ -101,6 +104,7 @@ export function scopeExpectedItems(d: DispatchWithOrder): InboundItem[] {
     sku: i.product.internalSku,
     gtin: i.product.gtin,
     expectedQty: i.quantity,
+    lotTracked: i.product.variant?.lotTracking !== false,
   }))
 }
 

@@ -4,8 +4,9 @@
 // the running environment. It never reads, displays, or stores secret values.
 // Rotate keys in the vendor dashboard, then update your host's env vars.
 
+import Link from 'next/link'
 import { requireCapability } from '@ilaunchify/auth'
-import { getIntegrationMetaMap } from '@ilaunchify/db'
+import { getIntegrationMetaMap, getLogisticsSettings, prisma } from '@ilaunchify/db'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { ExternalLink, ShieldCheck, KeyRound, RotateCw } from 'lucide-react'
 import {
@@ -44,6 +45,50 @@ const KIND_CHIP: Record<EnvVarKind, string> = {
   public: 'bg-ink-50 text-ink-500 border-ink-200',
 }
 
+/**
+ * Gate pill for logistics rails: env configured is only HALF the switch —
+ * the LogisticsSetting gate is the other half. One glance = full rail state.
+ */
+function GatePill({ state, on }: { state: IntegrationStatus['state']; on: boolean }) {
+  const cls =
+    state === 'configured' && on
+      ? 'border-success-200 bg-success-50 text-success-700'
+      : state === 'configured'
+        ? 'border-warning-200 bg-warning-50 text-warning-800'
+        : 'border-ink-200 bg-ink-50 text-ink-500'
+  const label = state === 'configured' && on ? 'Rail live' : state === 'configured' ? 'Ready — gated off' : on ? 'Gate on, env missing' : 'Gate off'
+  return (
+    <Link
+      href="/logistics/settings"
+      className={`inline-flex items-center rounded-full border px-2.5 py-[3px] text-[11px] font-semibold hover:opacity-80 ${cls}`}
+      title="Flip in admin → Logistics → Gates"
+    >
+      {label}
+    </Link>
+  )
+}
+
+/** Last EasyPost tracker webhook seen — catches "key valid, webhook URL never registered". */
+async function getLastEasyPostWebhookAt(): Promise<Date | null> {
+  try {
+    const row = await prisma.auditLog.findFirst({
+      where: { action: 'SHIPMENT_LEG_TRACKING_UPDATE' },
+      orderBy: { at: 'desc' },
+      select: { at: true },
+    })
+    return row?.at ?? null
+  } catch {
+    return null
+  }
+}
+
+function relTime(d: Date, now: Date): string {
+  const mins = Math.round((now.getTime() - d.getTime()) / 60_000)
+  if (mins < 60) return `${mins}m ago`
+  if (mins < 60 * 24) return `${Math.round(mins / 60)}h ago`
+  return `${Math.round(mins / (60 * 24))}d ago`
+}
+
 function StatePill({ state }: { state: IntegrationStatus['state'] }) {
   const map = {
     configured: 'border-success-200 bg-success-50 text-success-700',
@@ -62,6 +107,10 @@ export default async function IntegrationsPage() {
   await requireCapability('platform:admin')
   const statuses = resolveIntegrationStatuses()
   const metaMap = await getIntegrationMetaMap()
+  // Logistics rails carry a second switch (LogisticsSetting gate) + webhook
+  // liveness — fetched once, rendered per-card via def.gateKey.
+  const gates = await getLogisticsSettings()
+  const lastEasyPostWebhookAt = await getLastEasyPostWebhookAt()
   const now = new Date()
 
   const live = statuses.filter((s) => s.def.lifecycle === 'live')
@@ -144,7 +193,10 @@ export default async function IntegrationsPage() {
                     </div>
                     <p className="mt-0.5 text-[11.5px] text-ink-500">{s.def.vendor}</p>
                   </div>
-                  {s.def.lifecycle === 'live' && <StatePill state={s.state} />}
+                  <div className="flex flex-none items-center gap-1.5">
+                    {s.def.gateKey && <GatePill state={s.state} on={gates[s.def.gateKey] === true} />}
+                    {s.def.lifecycle === 'live' && <StatePill state={s.state} />}
+                  </div>
                 </div>
 
                 <p className="mt-2 text-[12.5px] leading-snug text-ink-600">{s.def.description}</p>
@@ -185,6 +237,19 @@ export default async function IntegrationsPage() {
                   {s.def.rotationDays && (
                     <span className="inline-flex items-center gap-1 text-ink-400" title="Suggested rotation cadence">
                       <RotateCw className="h-3.5 w-3.5" /> rotate ~every {Math.round(s.def.rotationDays / 30)} mo
+                    </span>
+                  )}
+                  {s.def.appLinks?.map((l) => (
+                    <Link key={l.href} href={l.href} className="inline-flex items-center gap-1 text-ink-500 underline decoration-ink-200 underline-offset-2 hover:text-ink-800">
+                      {l.label}
+                    </Link>
+                  ))}
+                  {s.def.key === 'easypost' && s.state === 'configured' && (
+                    <span
+                      className={`inline-flex items-center gap-1 ${lastEasyPostWebhookAt ? 'text-ink-400' : 'text-warning-700'}`}
+                      title="Latest tracker webhook processed — 'never' with a configured key usually means the webhook URL isn't registered in the EasyPost dashboard"
+                    >
+                      webhook: {lastEasyPostWebhookAt ? relTime(lastEasyPostWebhookAt, now) : 'never received'}
                     </span>
                   )}
                 </div>

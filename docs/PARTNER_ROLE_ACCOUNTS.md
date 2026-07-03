@@ -1,6 +1,6 @@
 # PARTNER ROLE ACCOUNTS — Fulfillment Center, Co-packer, Print Provider
 
-**Status: DRAFT for Pavel review — proposed decisions marked `[P-DECIDE]`, everything else derived from locked specs.**
+**Status: LOCKED 2026-07-02 — Pavel approved all recommendations D0–D6.** D0 FC rename (enum stays) · D1 team in P3 · D2 lot+expiry hard gate day one · D3 proofs off-by-default, auto-on first order per creator×printer · D4 RAMP N=3 · D5 SMS deferred V1.5 · D6 FC-first, co-pack/print skins in P2.
 Created 2026-07-02 (Cowork). Companions: `PARTNER_ONBOARDING.md`, `LOGISTICS_AND_FULFILLMENT.md`, `MULTI_PARTNER_APPROVAL_WORKFLOW.md`, `PLATFORM_SPEC.md`, `PRINT_PRODUCTION_WORKFLOW.md`.
 
 Goal: bring the three under-built partner roles to full working accounts — each with its own workspace, onboarding track, settings, team, and notifications — as **one homogeneous mechanism**: one portal chassis, four role skins.
@@ -298,6 +298,9 @@ No drops, no renames. CockroachDB rules: bare `String`, uuid ids, AuditLog on ev
 Webhook channel + integration registry per partner · SMS P0 · formal RateCard model · dock-appointment scheduling · tier auto-promotion · native scanner app · print geographic routing (V2 pooling material).
 
 Suggested build split per two-agent rules: Cowork owns partner-app skins + admin surfaces; Code owns schema migrations + engines (`packages/*`) — hand off via this doc, commit per change.
+
+**Build log:**
+- 2026-07-02 (Cowork) — P0 items 1–2 + partial 4 shipped: role-skin registry (`apps/partner/src/lib/role-skins.ts`) wired into sidebar/layout/dashboard/notification-settings; FC rename in UI; schema deltas (InboundReceipt + lines, ReceivingDiscrepancy, PartnerFile.issuedAt/expiresAt, 6 NotificationEvents) + templates; receive-confirm upgraded with D2 lot+expiry hard gate (client + server), first-class receipt + discrepancy rows, RECEIVING_DISCREPANCY_OPENED admin fan-out. **Requires `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` before typecheck/dev.** Next: admin exceptions inbox, Expiry Engine cron, INBOUND_DELIVERED_UNCONFIRMED + DISPATCH_SLA_AT_RISK emitters, onboarding doc tracks.
 
 ---
 

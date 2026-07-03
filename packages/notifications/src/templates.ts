@@ -108,6 +108,15 @@ interface TemplateData {
   SUPPORT_TICKET_REOPENED: { ticketId: string; subject: string; href: string }
   SUPPORT_SLA_BREACHED: { ticketId: string; subject: string; href: string }
   SUPPORT_REFUND_REQUESTED: { orderId: string; amountCents: number; href: string }
+  // Partner role accounts P0 (docs/PARTNER_ROLE_ACCOUNTS.md §6.2). `href` is
+  // recipient-correct where the same event fans out to multiple audiences
+  // (FC partner vs admin vs creator) — the caller computes it per recipient.
+  INBOUND_DELIVERED_UNCONFIRMED: { dispatchId: string; orderRef: string }
+  RECEIVING_DISCREPANCY_OPENED: { orderRef: string; summary: string; href: string }
+  RECEIVING_DISCREPANCY_RESOLVED: { orderRef: string; resolutionNote?: string; href: string }
+  DISPATCH_SLA_AT_RISK: { dispatchId: string; hoursWaiting: number; hoursRemaining: number }
+  DOC_EXPIRING_SOON: { docLabel: string; daysLeft: number; href: string }
+  DOC_EXPIRED: { docLabel: string; suspendedCapability?: string; href: string }
 }
 
 function fmtSection(sectionType: string): string {
@@ -436,6 +445,59 @@ export function renderTemplate<E extends NotificationEvent>(
       return {
         title: `Refund requested · $${(d.amountCents / 100).toFixed(2)}`,
         body: `A support agent proposed a refund on order #${d.orderId.slice(-8)} — review to approve or reject.`,
+        link: d.href,
+      }
+    }
+    // Partner role accounts P0 (docs/PARTNER_ROLE_ACCOUNTS.md §6.2)
+    case 'INBOUND_DELIVERED_UNCONFIRMED': {
+      const d = data as TemplateData['INBOUND_DELIVERED_UNCONFIRMED']
+      return {
+        title: 'Inbound shipment awaiting receipt confirmation',
+        body: `Order ${d.orderRef} shows delivered by the carrier but hasn't been received into your facility yet. Confirm the receipt to keep your receiving SLA on track.`,
+        link: `/inbound/${d.dispatchId}`,
+      }
+    }
+    case 'RECEIVING_DISCREPANCY_OPENED': {
+      const d = data as TemplateData['RECEIVING_DISCREPANCY_OPENED']
+      return {
+        title: `Receiving discrepancy filed · ${d.orderRef}`,
+        body: `${d.summary} iLaunchify is reviewing and will coordinate the resolution.`,
+        link: d.href,
+      }
+    }
+    case 'RECEIVING_DISCREPANCY_RESOLVED': {
+      const d = data as TemplateData['RECEIVING_DISCREPANCY_RESOLVED']
+      return {
+        title: `Receiving discrepancy resolved · ${d.orderRef}`,
+        body: d.resolutionNote
+          ? `Resolution: ${d.resolutionNote.slice(0, 200)}`
+          : 'The receiving discrepancy on this order has been resolved.',
+        link: d.href,
+      }
+    }
+    case 'DISPATCH_SLA_AT_RISK': {
+      const d = data as TemplateData['DISPATCH_SLA_AT_RISK']
+      return {
+        title: 'Dispatch acceptance at risk',
+        body: `Dispatch ${d.dispatchId.slice(-8)} has been waiting ${d.hoursWaiting}h — ${d.hoursRemaining}h left before the acceptance window closes and the order is rerouted or cancelled.`,
+        link: `/orders/${d.dispatchId}`,
+      }
+    }
+    case 'DOC_EXPIRING_SOON': {
+      const d = data as TemplateData['DOC_EXPIRING_SOON']
+      return {
+        title: `${d.docLabel} expires in ${d.daysLeft} day${d.daysLeft === 1 ? '' : 's'}`,
+        body: 'Upload a renewed document before it lapses — expired documents suspend the capabilities they back.',
+        link: d.href,
+      }
+    }
+    case 'DOC_EXPIRED': {
+      const d = data as TemplateData['DOC_EXPIRED']
+      return {
+        title: `${d.docLabel} has expired`,
+        body: d.suspendedCapability
+          ? `Your ${d.suspendedCapability} eligibility is paused until a renewed document is verified.`
+          : 'Upload a renewed document to restore full eligibility.',
         link: d.href,
       }
     }

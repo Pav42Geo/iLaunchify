@@ -1,8 +1,16 @@
 'use server'
 
-// WAREHOUSE inbound receipt confirmation (Phase L1.1c —
-// docs/LOGISTICS_AND_FULFILLMENT.md §3.3 "Receipt confirmation returns as
-// discrepancy report → drives order FSM DELIVERED + any short/over handling").
+// WAREHOUSE (Fulfillment Center) inbound receipt confirmation.
+// Phase L1.1c, upgraded for Partner Role Accounts P0 —
+// docs/PARTNER_ROLE_ACCOUNTS.md §3.1.A (LOCKED 2026-07-02):
+//
+//   * D2 HARD GATE — lot number + expiry are required at receive time for every
+//     lot-tracked line and IMMUTABLE afterwards (no backfill; corrections go
+//     through a ReceivingDiscrepancy, never an edit).
+//   * The receipt is a first-class InboundReceipt row (+ lines), no longer an
+//     audit-log-only record. Audit rows remain the forensic trail.
+//   * Short/over/damaged files a first-class ReceivingDiscrepancy (OPEN) that
+//     the admin exceptions queue works — platform-mediated end to end.
 //
 // Guard: the acting user must own the WAREHOUSE service the order ships to
 // (order.shipToPartnerService) — NOT the dispatch's producing service. Mirrors
@@ -10,6 +18,7 @@
 // on the receiving side of the shipment.
 
 import { prisma } from '@ilaunchify/db'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertDispatchTransition } from '@ilaunchify/orders'
@@ -21,6 +30,10 @@ type Result = { ok: true } | { ok: false; error: string }
 export interface ReceivedLine {
   orderItemId: string
   receivedQty: number
+  /** Required when the line's variant is lot-tracked (D2). */
+  lotNumber?: string
+  /** ISO date (yyyy-mm-dd) — required when lot-tracked (D2). */
+  lotExpiry?: string
 }
 
 export async function confirmInboundReceipt({
@@ -54,11 +67,18 @@ export async function confirmInboundReceipt({
       orderItemId: true,
       order: {
         select: {
+          orderNumber: true,
           items: {
             select: {
               id: true,
               quantity: true,
-              product: { select: { name: true, internalSku: true } },
+              product: {
+                select: {
+                  name: true,
+                  internalSku: true,
+                  variant: { select: { lotTracking: true } },
+                },
+              },
             },
           },
         },
@@ -88,6 +108,25 @@ export async function confirmInboundReceipt({
     if (!Number.isInteger(line.receivedQty) || line.receivedQty < 0) {
       return { ok: false, error: 'Received quantities must be whole numbers of 0 or more.' }
     }
+    // D2 HARD GATE — server-side, mirrors the form. Conservative default:
+    // lot-track unless the variant explicitly opted out.
+    const lotTracked = expected.product.variant?.lotTracking !== false
+    if (lotTracked && line.receivedQty > 0) {
+      const lot = line.lotNumber?.trim() ?? ''
+      const expiry = line.lotExpiry?.trim() ?? ''
+      if (lot.length === 0 || expiry.length === 0) {
+        return {
+          ok: false,
+          error: `Lot number and expiry date are required for ${expected.product.name} — they cannot be added after confirmation.`,
+        }
+      }
+      if (lot.length > 64) {
+        return { ok: false, error: 'Lot numbers must be 64 characters or fewer.' }
+      }
+      if (Number.isNaN(new Date(expiry).getTime())) {
+        return { ok: false, error: 'Lot expiry must be a valid date.' }
+      }
+    }
   }
   const note = discrepancyNote?.trim() || null
   if (note && note.length > 1000) {
@@ -109,14 +148,54 @@ export async function confirmInboundReceipt({
     })
     .filter((d): d is NonNullable<typeof d> => d !== null && d.delta !== 0)
   const hasDiscrepancy = discrepancies.length > 0
+  const filesDiscrepancy = hasDiscrepancy || damaged
 
   const fromStatus = dispatch.status
+  const orderRef = dispatch.order.orderNumber ?? `#${dispatch.orderId.slice(-8)}`
 
+  let discrepancyId: string | null = null
   await prisma.$transaction(async (tx) => {
     await tx.orderDispatch.update({
       where: { id: dispatch.id },
       data: { status: 'DELIVERED', deliveredAt: new Date() },
     })
+
+    // First-class, immutable receipt record (D2) — one per dispatch.
+    await tx.inboundReceipt.create({
+      data: {
+        orderDispatchId: dispatch.id,
+        receivedByUserId: user.id,
+        damaged,
+        note,
+        checklistKeys: confirmedChecklistKeys,
+        lines: {
+          create: received.map((line) => {
+            const expected = expectedById.get(line.orderItemId)
+            return {
+              orderItemId: line.orderItemId,
+              expectedQty: expected?.quantity ?? 0,
+              receivedQty: line.receivedQty,
+              lotNumber: line.lotNumber?.trim() || null,
+              lotExpiryAt: line.lotExpiry ? new Date(line.lotExpiry) : null,
+            }
+          }),
+        },
+      },
+    })
+
+    if (filesDiscrepancy) {
+      const row = await tx.receivingDiscrepancy.create({
+        data: {
+          orderDispatchId: dispatch.id,
+          linesJson: discrepancies,
+          damaged,
+          note,
+          openedByUserId: user.id,
+        },
+        select: { id: true },
+      })
+      discrepancyId = row.id
+    }
 
     // Mirror markDelivered: when every dispatch has landed, advance the Order.
     const remaining = await tx.orderDispatch.count({
@@ -139,7 +218,12 @@ export async function confirmInboundReceipt({
       sku: i.product.internalSku,
       quantity: i.quantity,
     })),
-    received: received.map((l) => ({ orderItemId: l.orderItemId, quantity: l.receivedQty })),
+    received: received.map((l) => ({
+      orderItemId: l.orderItemId,
+      quantity: l.receivedQty,
+      lotNumber: l.lotNumber?.trim() || null,
+      lotExpiry: l.lotExpiry || null,
+    })),
     discrepancyNote: note,
     damaged,
     checklist: confirmedChecklistKeys,
@@ -154,7 +238,7 @@ export async function confirmInboundReceipt({
     payload: auditPayload,
   })
 
-  if (hasDiscrepancy || damaged) {
+  if (filesDiscrepancy) {
     // Second audit row flags the short/over/damage explicitly so the admin
     // discrepancy trail is queryable without unpacking every receipt payload.
     await logAuditAs(user, {
@@ -163,21 +247,33 @@ export async function confirmInboundReceipt({
       action: 'INBOUND_RECEIPT_DISCREPANCY',
       payload: {
         orderId: dispatch.orderId,
+        discrepancyId,
         discrepancies,
         damaged,
         discrepancyNote: note,
       },
     })
 
-    // Tell admins (same best-effort ORDER_NEEDS_ATTENTION fan-out as the sibling
-    // cancellation/dispute actions — the dispatcher never throws).
+    // Tell admins — RECEIVING_DISCREPANCY_OPENED lands in the exceptions queue
+    // (best-effort fan-out; the dispatcher never throws). Platform-mediated:
+    // the creator hears from iLaunchify after adjudication, not from the FC.
+    const summaryParts = [
+      ...discrepancies.map((d) => `${d.product}: expected ${d.expected}, received ${d.received}.`),
+      ...(damaged ? ['Damage reported on arrival.'] : []),
+    ]
     const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
     await Promise.allSettled(
       admins.map((a) =>
         dispatchNotification({
           userId: a.id,
-          event: 'ORDER_NEEDS_ATTENTION',
-          data: { orderId: dispatch.orderId, status: 'INBOUND_RECEIPT_DISCREPANCY' },
+          // Cast until `pnpm db:generate` picks up the P0 enum additions
+          // (same pattern as orderNumber post-dating the generated client).
+          event: 'RECEIVING_DISCREPANCY_OPENED' as NotificationEvent,
+          data: {
+            orderRef,
+            summary: summaryParts.join(' ').slice(0, 400),
+            href: `/orders/${dispatch.orderId}`,
+          },
           audience: 'admin',
         }),
       ),

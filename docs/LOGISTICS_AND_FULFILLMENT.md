@@ -488,6 +488,8 @@ ChannelConnection OAuth (SP-API), ChannelListing + FNSKU capture, FNSKU-in-dieli
 Walmart WFS + TikTok FBT adapters (same ChannelInboundPlan shape). ShipBob FulfillmentConnector (WRO w/ lot+expiry, inventory webhooks) behind the anchor agreement. Creator /inventory VMI view. FC scorer Phases 2–3 (weights in OrderSettings, FcAwardLog rotation) once ≥3 eligible nodes.
 
 **Phase L5 — Cold chain + scale (V2)**
+Also V2 (Pavel 2026-07-02): **integration spend/usage observability** — per-integration counters on an ops dashboard (label spend this month from ShipmentLeg.billedCostCents, rate-call volume, webhook event rate, storage-fee accruals, channel placement fees from ChannelInboundPlan.feesJson). Lives in an ops/analytics surface, NOT the Developer & API registry (registry = configuration truth only). Most of the raw data is already captured on the models — this is aggregation + display work.
+
 CHILLED/FROZEN gate-on: Lineage-class FC partner, Loadsmart reefer async rail + admin quote desk, dry-ice labeling, FSMA written-agreement clause rollout, insurance spoilage rider. Trackstar abstraction for independent warehouses. Retail EDI/SSCC. Split-destination orders. Feeds pooling/buffer-inventory (the V2 moat — PRODUCTION_ORCHESTRATION Modes 2–3).
 
 **Explicit non-goals:** consumer storefront (never), platform-owned warehouses, building placement/distribution math the 3PL already does (IPP), public FC API in V1, generic rules DSL, infant formula.

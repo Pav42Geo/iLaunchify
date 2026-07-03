@@ -98,6 +98,15 @@ const PROBES: Record<string, () => Promise<TestResult>> = {
     if (!key) return { ok: false, message: 'AUTH_RESEND_KEY not set' }
     return probe('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${key}` } })
   },
+  // GET /v2/carrier_accounts is free + read-only — validates the key without
+  // rating or buying anything (Logistics L2 rail).
+  easypost: async () => {
+    const key = need('EASYPOST_API_KEY')
+    if (!key) return { ok: false, message: 'EASYPOST_API_KEY not set' }
+    return probe('https://api.easypost.com/v2/carrier_accounts', {
+      headers: { Authorization: `Basic ${Buffer.from(`${key}:`).toString('base64')}` },
+    })
+  },
   // Tiny search; free + read-only.
   'usda-fdc': async () => {
     const key = need('USDA_FDC_API_KEY')
