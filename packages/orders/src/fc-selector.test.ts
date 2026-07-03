@@ -85,3 +85,23 @@ describe('nearest-eligible selection (Chicago → NJ, not TX)', () => {
     expect(ranked[1]!.eligible).toBe(false)
   })
 })
+
+describe('blackout is a hard filter (PARTNER_ROLE_ACCOUNTS §3.1.E)', () => {
+  it('blacked-out nearest loses to a farther clean node — never traded for distance', () => {
+    const njBlackedOut = fc({ ...nj, blackedOut: true })
+    const { winner, ranked } = selectNearestEligibleFc([njBlackedOut, tx], base)
+    // NJ is nearer (~710 mi vs ~800), but the blackout excludes it; TX wins.
+    expect(winner!.candidate.partnerServiceId).toBe('tx')
+    expect(ranked[0]!.candidate.partnerServiceId).toBe('tx')
+    const njRow = ranked.find((r) => r.candidate.partnerServiceId === 'nj')!
+    expect(njRow.eligible).toBe(false)
+    expect(njRow.exclusionReason).toContain('blackout')
+  })
+
+  it('blackedOut: undefined behaves as false (pre-P1 callers stay eligible)', () => {
+    const njUndefined = fc({ ...nj, blackedOut: undefined })
+    const { winner } = selectNearestEligibleFc([njUndefined], base)
+    expect(winner!.candidate.partnerServiceId).toBe('nj')
+    expect(winner!.eligible).toBe(true)
+  })
+})
