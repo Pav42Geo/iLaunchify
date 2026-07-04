@@ -460,6 +460,8 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
             })),
         }
       : null
+  // Packaging (container) info — the physical package the product ships in.
+  const packaging = await loadPackagingInfo(product.variant?.packagingTypeId ?? null, product.variant?.containerFormat ?? null)
   const productMeta = {
     category: product.category ?? null,
     manufacturerName: product.productTemplate?.manufacturerService?.partner?.companyName ?? null,
@@ -467,6 +469,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
     leadTimeDays: entryTier?.leadTimeDays ?? null,
     fulfillment: entryTier ? fulfillmentLabel(String(entryTier.fulfillmentMode)) : null,
     cost,
+    packaging,
   }
 
   return (
@@ -686,6 +689,40 @@ function deriveProductCtx(product: {
 // V1 fallback: first ACTIVE die-cut whose category roughly matches the product.
 // The admin-curated default die-line for a packaging type (#135). Cast-guarded
 // so it compiles before the client is regenerated for the new column.
+// Packaging (container) info for the Product drawer's Packaging accordion. Cast-guarded so it
+// compiles pre-migration and degrades to null.
+async function loadPackagingInfo(
+  packagingTypeId: string | null,
+  containerFormat: string | null,
+): Promise<{ container: string; category: string | null; fragility: string | null; dimensions: string | null; format: string | null } | null> {
+  if (!packagingTypeId) return null
+  const row = await (
+    prisma as unknown as {
+      packagingType: {
+        findUnique: (a: unknown) => Promise<{ displayName: string; containerCategory: string | null; fragilityClass: string | null; defaultDimensions: unknown } | null>
+      }
+    }
+  ).packagingType
+    .findUnique({
+      where: { id: packagingTypeId },
+      select: { displayName: true, containerCategory: true, fragilityClass: true, defaultDimensions: true },
+    })
+    .catch(() => null)
+  if (!row) return null
+  const d = row.defaultDimensions as { lengthMm?: number; widthMm?: number; heightMm?: number } | null
+  const dims =
+    d && (d.lengthMm || d.widthMm || d.heightMm)
+      ? `${d.lengthMm ?? '?'} × ${d.widthMm ?? '?'} × ${d.heightMm ?? '?'} mm`
+      : null
+  return {
+    container: row.displayName,
+    category: row.containerCategory,
+    fragility: row.fragilityClass,
+    dimensions: dims,
+    format: containerFormat,
+  }
+}
+
 async function resolvePackagingTypeDieCut(packagingTypeId: string | null): Promise<string | null> {
   if (!packagingTypeId) return null
   const row = await (prisma as unknown as {

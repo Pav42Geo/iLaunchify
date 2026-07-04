@@ -34,8 +34,12 @@ export interface ProductDetailsData {
   moq?: number | null
   leadTimeDays?: number | null
   fulfillment?: string | null
+  /** Earned certificates — shown as thumbnails under the product name. */
+  certs?: { name: string; badgeUrl: string | null }[]
   // ---- Cost summary ----
   cost?: { low: string; high: string; single: boolean; tiers: CostTier[] } | null
+  // ---- Packaging (container the product ships in) ----
+  packaging?: { container: string; category: string | null; fragility: string | null; dimensions: string | null; format: string | null } | null
   // ---- Print spec ----
   dieCut: DieCutSpec
 }
@@ -58,9 +62,9 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export function ProductDetailsDrawer({ data }: { data: ProductDetailsData }) {
-  const [openSection, setOpenSection] = React.useState<'cost' | 'spec' | null>('cost')
+  const [openSection, setOpenSection] = React.useState<'cost' | 'packaging' | 'spec' | null>('cost')
   const [detailsOpen, setDetailsOpen] = React.useState(false)
-  const toggle = (k: 'cost' | 'spec') => setOpenSection((cur) => (cur === k ? null : k))
+  const toggle = (k: 'cost' | 'packaging' | 'spec') => setOpenSection((cur) => (cur === k ? null : k))
 
   const costHeaderRight = data.cost
     ? data.cost.single
@@ -84,6 +88,18 @@ export function ProductDetailsDrawer({ data }: { data: ProductDetailsData }) {
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-[14px] font-semibold text-ink-900" title={data.productName}>{data.productName}</h3>
             {data.quantityLabel && <p className="mt-0.5 text-[12px] text-ink-500">{data.quantityLabel}</p>}
+            {data.certs && data.certs.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5" title="Certificates earned by this product">
+                {data.certs.map((c, i) =>
+                  c.badgeUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={i} src={c.badgeUrl} alt={c.name} title={c.name} className="h-7 w-7 rounded border border-ink-100 bg-white object-contain p-0.5" />
+                  ) : (
+                    <span key={i} title={c.name} className="inline-flex h-7 items-center rounded-full bg-ink-100 px-2 text-[10px] font-semibold text-ink-600">{c.name}</span>
+                  ),
+                )}
+              </div>
+            )}
             <button
               onClick={() => setDetailsOpen(true)}
               className="mt-1.5 inline-flex items-center rounded-full border border-ink-300 px-3 py-1 text-[12px] font-semibold text-ink-700 hover:border-ink-500"
@@ -127,6 +143,20 @@ export function ProductDetailsDrawer({ data }: { data: ProductDetailsData }) {
           </>
         )}
       </Accordion>
+
+      {/* Packaging (container) */}
+      {data.packaging && (
+        <Accordion title="Packaging" open={openSection === 'packaging'} onToggle={() => toggle('packaging')}>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
+            <Field k="Container" v={data.packaging.container} />
+            <Field k="Format" v={data.packaging.format ?? '—'} />
+            <Field k="Category" v={data.packaging.category ? pretty(data.packaging.category) : '—'} />
+            <Field k="Fragility" v={data.packaging.fragility ? pretty(data.packaging.fragility) : '—'} />
+            <Field k="Dimensions" v={data.packaging.dimensions ?? '—'} />
+            {data.netQuantity && <Field k="Net quantity" v={data.netQuantity} />}
+          </dl>
+        </Accordion>
+      )}
 
       {/* Print spec */}
       <Accordion title="Print spec" open={openSection === 'spec'} onToggle={() => toggle('spec')}>

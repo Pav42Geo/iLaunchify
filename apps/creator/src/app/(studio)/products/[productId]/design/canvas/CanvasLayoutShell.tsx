@@ -163,6 +163,7 @@ export interface ProductMeta {
   leadTimeDays: number | null
   fulfillment: string | null
   cost: { low: string; high: string; single: boolean; tiers: CostTier[] } | null
+  packaging: { container: string; category: string | null; fragility: string | null; dimensions: string | null; format: string | null } | null
 }
 
 interface Props {
@@ -349,7 +350,7 @@ export function CanvasLayoutShell({
   productId,
   productName,
   dieCut,
-  productMeta = { category: null, manufacturerName: null, moq: null, leadTimeDays: null, fulfillment: null, cost: null },
+  productMeta = { category: null, manufacturerName: null, moq: null, leadTimeDays: null, fulfillment: null, cost: null, packaging: null },
   brandAssets,
   initialDesignJson,
   certBadges: initialCertBadges,
@@ -1754,12 +1755,12 @@ function ToolDrawer({
               leadTimeDays: productMeta.leadTimeDays,
               fulfillment: productMeta.fulfillment,
               cost: productMeta.cost,
+              packaging: productMeta.packaging,
+              certs: certBadges.map((b) => ({ name: b.certTypeName, badgeUrl: b.badgeUrl })),
               dieCut,
             }}
             guides={guides}
             setGuides={setGuides}
-            brandAssets={brandAssets}
-            productId={productId}
             frameCount={frameCount}
             showFrames={showFrames}
             setShowFrames={setShowFrames}
@@ -1862,8 +1863,6 @@ function ProductDrawer({
   details,
   guides,
   setGuides,
-  brandAssets,
-  productId,
   frameCount,
   showFrames,
   setShowFrames,
@@ -1872,8 +1871,6 @@ function ProductDrawer({
   details: ProductDetailsData
   guides: GuideVisibility
   setGuides: (g: GuideVisibility) => void
-  brandAssets: BrandCanvasAssets
-  productId: string
   frameCount: number
   showFrames: boolean
   setShowFrames: (v: boolean) => void
@@ -1887,27 +1884,6 @@ function ProductDrawer({
       {/* Surfaces — V1 single-surface, V1.5+ adds back / multi-panel.
           See docs/MULTI_SURFACE_PLAN.md (DS-67c). */}
       <SurfacesSection dieCut={dieCut} />
-
-      {/* Templates entry-point — back to the Design Studio gallery. */}
-      <section>
-        <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-ink-700">
-          Templates
-        </div>
-        <Link
-          href={`/products/${productId}/design`}
-          className="flex items-center justify-between gap-2 rounded-md border border-ink-200 px-3 py-2.5 hover:border-pink-500 hover:bg-pink-50/40 transition-colors"
-        >
-          <div>
-            <div className="text-[12.5px] font-semibold text-ink-900">
-              Browse templates
-            </div>
-            <div className="text-[10.5px] text-ink-500 mt-0.5">
-              Start from a curated label design
-            </div>
-          </div>
-          <Sparkles className="h-3.5 w-3.5 text-pink-500" />
-        </Link>
-      </section>
 
       {/* Die-cut guides toggles */}
       <section>
@@ -1947,21 +1923,6 @@ function ProductDrawer({
           <DieCutLegend guides={guides} />
         </div>
       </section>
-
-      {/* Brand kit snapshot */}
-      <section className="rounded-md border border-pink-200 bg-pink-50/60 p-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-pink-700">
-          Brand kit loaded
-        </div>
-        <p className="mt-1 text-xs text-ink-700">
-          {brandAssets.fonts.length} font{brandAssets.fonts.length === 1 ? '' : 's'} ·{' '}
-          {[brandAssets.colorPrimary, brandAssets.colorSecondary, brandAssets.colorAccent].filter(Boolean).length +
-            brandAssets.extraSwatches.length}{' '}
-          color swatch
-          {brandAssets.extraSwatches.length === 0 ? '' : 'es'} ·{' '}
-          {brandAssets.logos.length} logo variant{brandAssets.logos.length === 1 ? '' : 's'}
-        </p>
-      </section>
     </div>
   )
 }
@@ -1992,18 +1953,6 @@ function SurfacesSection({ dieCut }: { dieCut: DieCutSpec }) {
             Active
           </span>
         </div>
-        <button
-          type="button"
-          disabled
-          aria-disabled
-          title="Multi-surface products (front + back, box panels) ship in V1.5 — see docs/MULTI_SURFACE_PLAN.md"
-          className="flex w-full items-center justify-between gap-2 rounded-md border border-dashed border-ink-300 px-3 py-2 text-ink-400 cursor-not-allowed"
-        >
-          <span className="text-[12px] font-medium">Add another surface</span>
-          <span className="text-[9.5px] font-bold uppercase tracking-wider">
-            Soon
-          </span>
-        </button>
       </div>
     </section>
   )
