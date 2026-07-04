@@ -11,16 +11,22 @@ import { createDieCutTemplate, setDieCutTemplateActive, setDieCutTemplateStandar
 import { DIE_CUT_CATEGORY_GROUPS, DIE_CUT_CATEGORIES, prettyCategory } from './constants'
 import type { DieCutLibraryData, DieCutRow } from './loader'
 
+// Outline-style thumbnail: force every shape to render stroked, not filled, regardless of how
+// the stored outlineSvg specifies fill (the seeds store filled <rect>/<ellipse>/… with no fill
+// attr, which would otherwise paint solid black). CSS beats presentation attributes, and
+// non-scaling-stroke keeps the line a constant pixel width across very different viewBox sizes.
+const OUTLINE = 'text-ink-600 [&_svg]:h-full [&_svg]:w-full [&_*]:!fill-none [&_*]:stroke-current [&_*]:[stroke-width:1.5] [&_*]:[vector-effect:non-scaling-stroke]'
+
 function ShapePreview({ svg, w, h }: { svg: string; w: number; h: number }) {
   const s = (svg ?? '').trim()
   if (s.startsWith('<svg')) {
-    return <div className="flex h-full w-full items-center justify-center [&_svg]:max-h-full [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: s }} />
+    return <div className={`flex h-full w-full items-center justify-center ${OUTLINE}`} dangerouslySetInnerHTML={{ __html: s }} />
   }
-  const inner = s.startsWith('<') ? s : `<path d="${s.replace(/"/g, '&quot;')}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" />`
+  const inner = s.startsWith('<') ? s : `<path d="${s.replace(/"/g, '&quot;')}" />`
   return (
     <svg
       viewBox={`0 0 ${w > 0 ? w : 100} ${h > 0 ? h : 100}`}
-      className="h-full w-full text-ink-400"
+      className={OUTLINE}
       preserveAspectRatio="xMidYMid meet"
       dangerouslySetInnerHTML={{ __html: inner }}
     />
