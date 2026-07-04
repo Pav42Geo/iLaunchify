@@ -355,8 +355,7 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
         // Packaging assets (moved from Asset Management 2026-07-04).
         { kind: 'item', label: 'Packaging Symbols', icon: Recycle, href: '/assets/packaging-symbols' },
-        { kind: 'item', label: 'Packaging Mockups (2D & 3D)', icon: Eye, href: '/asset-management/product-mockups' },
-        { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Product Mockups (2D)', icon: Eye, href: '/asset-management/product-mockups' },
       ],
     },
     {

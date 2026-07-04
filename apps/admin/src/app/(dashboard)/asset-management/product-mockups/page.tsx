@@ -77,8 +77,8 @@ export default async function ProductMockupsPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="Packaging mockups (2D & 3D)"
-        description="White-label photo-mockups a creator designs on. Upload a clean product photo for a packaging type and drag the print area; it lights up for every product on that container. (2D photo-mask, manufacturer-supplied — 3D via Pacdora is a later phase.)"
+        title="Product Mockups (2D)"
+        description="White-label 2D photo-mockups a creator designs on. Upload a clean product photo for a packaging type and drag the print area; it lights up for every product on that container. (2D photo-mask, manufacturer-supplied. 3D packaging models live in Packaging Studio.)"
       />
       <div className="flex gap-6 text-[12px] text-ink-500">
         <span><strong className="text-ink-900">{packagingTypes.length}</strong> packaging types</span>
