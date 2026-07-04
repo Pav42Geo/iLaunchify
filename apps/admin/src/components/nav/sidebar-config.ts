@@ -185,26 +185,6 @@ const PRIMARY: SidebarRegion = {
       icon: ShoppingBag,
       href: '/orders',
     },
-    // ---- Logistics (Phase L1c — docs/LOGISTICS_AND_FULFILLMENT.md §9) --------
-    // Only built surfaces are listed (hide-until-built rule) — all §9 admin
-    // logistics surfaces have now shipped. Shipments added in Phase L1.1c;
-    // Carriers added in Phase L2b; Channel plans added in Phase L3b.
-    {
-      kind: 'group',
-      label: 'Logistics',
-      icon: Truck,
-      children: [
-        { kind: 'item', label: 'Shipments', icon: Send, href: '/logistics/shipments' },
-        // Partner Role Accounts P0 — FC short/over/damaged adjudication queue
-        { kind: 'item', label: 'Receiving exceptions', icon: PackageX, href: '/logistics/receiving-exceptions' },
-        // Partner Role Accounts P3 — at-risk/breached windows radar (§7.3)
-        { kind: 'item', label: 'SLA monitor', icon: History, href: '/logistics/sla' },
-        { kind: 'item', label: 'Carriers', icon: Route, href: '/logistics/carriers' }, // Phase L2 — CarrierServiceRule matrix + integration status
-        { kind: 'item', label: 'Fulfillment centers', icon: Warehouse, href: '/logistics/fulfillment-centers' },
-        { kind: 'item', label: 'Channel plans', icon: PlaneTakeoff, href: '/logistics/channel-plans' }, // Phase L3b — ChannelInboundPlan (FBA/WFS/FBT)
-        { kind: 'item', label: 'Logistics gates', icon: SlidersHorizontal, href: '/logistics/settings', capability: 'platform:admin' },
-      ],
-    },
     // ---- formerly under Manage — promoted to top-level (Pavel 2026-06-01) ----
     {
       kind: 'item',
@@ -259,6 +239,26 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Label-claim consents', icon: BadgeCheck, href: '/compliance/claim-consents', capability: 'compliance:admin' },
         { kind: 'item', label: 'Erasure requests', icon: Shield, href: '/compliance/erasure-requests', hiddenUntilBuilt: true, capability: 'compliance:admin' },
         { kind: 'item', label: 'Sub-processors', icon: Building2, href: '/compliance/subprocessors', hiddenUntilBuilt: true, capability: 'compliance:admin' },
+      ],
+    },
+    // ---- Logistics (Phase L1c — docs/LOGISTICS_AND_FULFILLMENT.md §9) --------
+    // Only built surfaces are listed (hide-until-built rule) — all §9 admin
+    // logistics surfaces have now shipped. Moved here (between Compliance and
+    // Finance) per Pavel 2026-07-04.
+    {
+      kind: 'group',
+      label: 'Logistics',
+      icon: Truck,
+      children: [
+        { kind: 'item', label: 'Shipments', icon: Send, href: '/logistics/shipments' },
+        // Partner Role Accounts P0 — FC short/over/damaged adjudication queue
+        { kind: 'item', label: 'Receiving exceptions', icon: PackageX, href: '/logistics/receiving-exceptions' },
+        // Partner Role Accounts P3 — at-risk/breached windows radar (§7.3)
+        { kind: 'item', label: 'SLA monitor', icon: History, href: '/logistics/sla' },
+        { kind: 'item', label: 'Carriers', icon: Route, href: '/logistics/carriers' }, // Phase L2 — CarrierServiceRule matrix + integration status
+        { kind: 'item', label: 'Fulfillment centers', icon: Warehouse, href: '/logistics/fulfillment-centers' },
+        { kind: 'item', label: 'Channel plans', icon: PlaneTakeoff, href: '/logistics/channel-plans' }, // Phase L3b — ChannelInboundPlan (FBA/WFS/FBT)
+        { kind: 'item', label: 'Logistics gates', icon: SlidersHorizontal, href: '/logistics/settings', capability: 'platform:admin' },
       ],
     },
     // ---- Finance — promoted to top-level (Pavel 2026-07-04) ------------------
