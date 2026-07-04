@@ -129,6 +129,7 @@ import {
   Boxes,
   LayoutTemplate,
   ScrollText,
+  ChevronDown,
   ZoomIn,
   ZoomOut,
   Maximize,
@@ -320,7 +321,7 @@ const TOOLS: Array<{
   conditional?: 'finishes' | 'ai'
 }> = [
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
-  { key: 'label', label: 'Label', icon: Tag, v1: true },
+  { key: 'label', label: 'Label & Compliance', icon: Tag, v1: true },
   { key: 'templates', label: 'Templates', icon: LayoutTemplate, v1: true },
   // AI Templator — opens the AI packaging generator for this product's die-line set.
   // Conditional: hidden platform-wide when the admin master toggle is off.
@@ -331,7 +332,7 @@ const TOOLS: Array<{
   // Clipart / Background / Patterns into one grouped menu.
   { key: 'elements', label: 'Elements', icon: Shapes, v1: true },
   { key: 'components', label: 'Components', icon: Boxes, v1: true },
-  { key: 'phrases', label: 'Phrases', icon: ScrollText, v1: true },
+  // 'phrases' merged into the Label tool as "Label & Compliance" (2026-07-04) — no rail entry.
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
   { key: 'layers', label: 'Layers', icon: Layers, v1: true },
@@ -1706,7 +1707,7 @@ function ToolDrawer({
   // Images / Layers / etc.) receive it through this prop.
   const titles: Record<ToolKey, string> = {
     product: 'Product',
-    label: 'Label',
+    label: 'Label & Compliance',
     templates: 'Templates',
     ai: 'AI Templator',
     brand: 'Brand',
@@ -1724,6 +1725,10 @@ function ToolDrawer({
     components: 'Components',
     phrases: 'Mandatory phrases',
   }
+
+  // Label & Compliance merged tab — two collapsible sections (Facts label + Mandatory phrases).
+  const [openFacts, setOpenFacts] = useState(true)
+  const [openPhrases, setOpenPhrases] = useState(false)
 
   return (
     <aside className="flex w-[400px] flex-col border-r border-ink-200 bg-[var(--studio-panel-bg)]">
@@ -1770,25 +1775,33 @@ function ToolDrawer({
           />
         )}
         {tool === 'label' && (
-          <LabelDrawer
-            canvas={canvas}
-            brandAssets={brandAssets}
-            certBadges={certBadges}
-            onRequestAddCert={onRequestAddCert}
-            labelingType={labelingType}
-            dieCut={dieCut}
-            nutritionPanelData={nutritionPanelData}
-            aggregateNutritionData={aggregateNutritionData}
-            nonFoodPanelData={nonFoodPanelData}
-            activeFlavorPresetId={activeFlavorPresetId}
-            recipeHash={recipeHash}
-            productCtx={{
-              productName,
-              brandName: brandAssets.brandName,
-              netQuantity: productCtx.netQuantity,
-              allergens: productCtx.allergens,
-            }}
-          />
+          <div className="space-y-3">
+            {/* Label & Compliance — Facts label + Mandatory phrases in one place (2026-07-04). */}
+            <CollapseSection title="Facts label" open={openFacts} onToggle={() => setOpenFacts((v) => !v)}>
+              <LabelDrawer
+                canvas={canvas}
+                brandAssets={brandAssets}
+                certBadges={certBadges}
+                onRequestAddCert={onRequestAddCert}
+                labelingType={labelingType}
+                dieCut={dieCut}
+                nutritionPanelData={nutritionPanelData}
+                aggregateNutritionData={aggregateNutritionData}
+                nonFoodPanelData={nonFoodPanelData}
+                activeFlavorPresetId={activeFlavorPresetId}
+                recipeHash={recipeHash}
+                productCtx={{
+                  productName,
+                  brandName: brandAssets.brandName,
+                  netQuantity: productCtx.netQuantity,
+                  allergens: productCtx.allergens,
+                }}
+              />
+            </CollapseSection>
+            <CollapseSection title="Mandatory phrases" open={openPhrases} onToggle={() => setOpenPhrases((v) => !v)}>
+              <PhrasesDrawer canvas={canvas} productId={productId} labelingType={labelingType ?? 'FOOD'} />
+            </CollapseSection>
+          </div>
         )}
         {tool === 'templates' && (
           <TemplatesDrawer
@@ -1840,9 +1853,6 @@ function ToolDrawer({
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
         {tool === 'finishes' && <FinishesDrawer finishes={finishes} />}
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
-        {tool === 'phrases' && (
-          <PhrasesDrawer canvas={canvas} productId={productId} labelingType={labelingType ?? 'FOOD'} />
-        )}
         {tool !== 'product' &&
           tool !== 'label' &&
           tool !== 'templates' &&
@@ -1858,6 +1868,30 @@ function ToolDrawer({
           tool !== 'phrases' && <ComingSoonStub label={titles[tool]} />}
       </div>
     </aside>
+  )
+}
+
+// Collapsible section for the merged "Label & Compliance" tab. Keeps children MOUNTED
+// (CSS-hidden when collapsed) so LabelDrawer / PhrasesDrawer state survives collapsing.
+function CollapseSection({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <section className="rounded-lg border border-ink-200">
+      <button type="button" onClick={onToggle} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
+        <span className="text-[12px] font-bold uppercase tracking-wide text-ink-700">{title}</span>
+        <ChevronDown className={`ml-auto h-4 w-4 text-ink-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <div className={open ? 'border-t border-ink-100 p-3' : 'hidden'}>{children}</div>
+    </section>
   )
 }
 

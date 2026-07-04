@@ -116,9 +116,10 @@ Components** → **Details · Label & Compliance · Components** — more compac
    manufacturer + entry-tier pricing/MOQ) and threads it through the shell. Rail tool stays
    labelled **"Product"** (per Pavel). Pricing shown (collapsed); compliance = read-only summary +
    jump link. Dead `ProductSpecCard`/`SpecRow`/orphaned helpers removed.
-2. **Merge Label + Phrases** — new `LabelComplianceDrawer` wrapping `LabelDrawer` +
-   `PhrasesDrawer` + `ClaimSuggestions` as accordion sub-sections; drop the standalone `phrases`
-   rail tool. Keep `label` as the merged tool (relabel "Label & Compliance").
+2. **Merge Label + Phrases** — ✅ **BUILT 2026-07-04.** The `label` rail tool is relabelled
+   **"Label & Compliance"** and now renders `LabelDrawer` + `PhrasesDrawer` as two collapsible
+   `CollapseSection`s (Facts label open by default · Mandatory phrases collapsed; children stay
+   mounted so state survives collapsing). The standalone `phrases` rail entry was removed.
 3. **Polish** — one-open-at-a-time accordions, "Open Label & Compliance →" jump from the Details
    compliance summary, remember last-open section.
 
