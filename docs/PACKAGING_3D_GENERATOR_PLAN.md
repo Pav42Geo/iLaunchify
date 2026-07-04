@@ -75,6 +75,19 @@ Guardrails: min photo resolution, white-label check (no branding in source photo
 | 3. Realism | PBR + studio lighting | Basic three.js materials | **The visible gap**: substrate PBR presets, HDRI, shadows/AO |
 | 4. Output | PNG/video/scenes, credits | PNG capture exists | Render→Asset pipeline; **mockup library**; scene composer; video (deferred) |
 
+## 2.5 Two die-line classes + the Container model (LOCKED 2026-07-03, Pavel)
+
+**Not all die-lines shape the package.** Critical distinction, drives the whole geometry pipeline:
+- **STRUCTURAL die-line** (box / carton / rigid): the die-line net *is* the package — fold it and you have the 3D shape. → parametric box (G3.1) + fold-from-net (G4).
+- **LABEL die-line** (label / sticker / wrap / shrink-sleeve): shapes the printed *label only*. The package is a **separate container** — a glass bottle, jar, plastic tub, can — and the die-line just defines the printed region that wraps *onto* it. The container's 3D does NOT come from the die-line.
+
+→ Model a **`dielineClass` (STRUCTURAL | LABEL)** and, for LABEL die-lines, a **ContainerModel** (the bottle/jar/can/tub with its own real-mm spec dims + a decorable band). Container geometry sources, in priority:
+1. **Parametric / lathe** (default) — `buildLatheContainer(spec)` in packaging-3d (G3.1b, built): revolve a real-mm profile → CAN/BOTTLE/JAR/TUB/TUBE at exact size, clean UV, watertight. `labelWrapTarget` gives the exact die-line size (circumference × band height) so a wrap label maps 1 mm = 1 mm.
+2. **Admin-uploaded glTF** (already supported).
+3. **AI image-to-3D** (Meshy/Rodin/Tripo or self-host TripoSR) — **assist-only, for irregular shapes**, admin-verified + spec-scaled. NOT the primary engine: research (docs/CONTAINER_3D_FROM_IMAGE_RESEARCH.md) shows AI meshes are unit-less (no real scale) and fail on glass/clear/metal — the core CPG surfaces. **Scale is always spec-driven (manufacturer's real dims), never image-derived.**
+
+Label placement: **cylindrical wrap band** for symmetric bodies (default, exact); **decal** (near-planar patches) for spot stickers on irregular meshes.
+
 ## 3. Architecture — three layers, one new package
 
 New pure package **`packages/packaging-3d`** (Prisma-free, DI'd like `packages/shipping`; pure suites in run-vitest-suites.mjs):
