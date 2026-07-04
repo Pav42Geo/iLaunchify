@@ -1081,6 +1081,7 @@ export function CanvasLayoutShell({
               productId={productId}
               productName={productName}
               productMeta={productMeta}
+              productImageUrl={mockups[0]?.imageUrl ?? null}
               productCtx={productCtx}
               retailIdentity={retailIdentity}
               frameCount={emptyFrames.length}
@@ -1640,6 +1641,7 @@ function ToolDrawer({
   productId,
   productName,
   productMeta,
+  productImageUrl,
   productCtx,
   retailIdentity,
   frameCount,
@@ -1671,6 +1673,7 @@ function ToolDrawer({
   productId: string
   productName: string
   productMeta: ProductMeta
+  productImageUrl: string | null
   productCtx: {
     productName: string
     brandName: string
@@ -1741,7 +1744,7 @@ function ToolDrawer({
             dieCut={dieCut}
             details={{
               productName,
-              thumbnailUrl: null,
+              thumbnailUrl: productImageUrl,
               quantityLabel: productMeta.moq ? `MOQ ${productMeta.moq.toLocaleString()} units` : null,
               category: productMeta.category,
               domain: labelingType,
