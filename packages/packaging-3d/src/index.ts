@@ -14,3 +14,4 @@
  */
 
 export * from './types'
+export * from './pbr-presets'
