@@ -342,16 +342,16 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
       ],
     },
-    // Packaging Assets = the packaging section: the Packaging Studio tool + all structural
-    // packaging building blocks it consumes. Named distinctly from the "Packaging Studio"
-    // tool inside it to avoid section-vs-tool confusion (Pavel 2026-07-04). Promoted to a
-    // first-class group; the old hidden /applications/packaging-studio duplicate was removed.
+    // Packaging Studio = the packaging section. The child tool that opens the 3D model
+    // library/authoring canvas is renamed (below) so the section and the tool don't share
+    // a name (Pavel 2026-07-04). Promoted to a first-class group; the old hidden
+    // /applications/packaging-studio duplicate was removed.
     {
       kind: 'group',
-      label: 'Packaging Assets',
+      label: 'Packaging Studio',
       icon: Box,
       children: [
-        { kind: 'item', label: 'Packaging Studio', icon: Box, href: '/packaging-studio', capability: 'catalog:write' },
+        { kind: 'item', label: '3D Models & Surfaces', icon: Box, href: '/packaging-studio', capability: 'catalog:write' },
         { kind: 'item', label: 'Container Die-lines', icon: Boxes, href: '/asset-management/packaging-containers' },
         { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
         // Packaging assets (moved from Asset Management 2026-07-04).
