@@ -42,7 +42,7 @@
 
 ## G3 — Parametric engine + intake auto-pipeline (~8–10d)
 
-- [ ] G3.1 Parametric generators for all 6 StructuralPackTypes, dims from die-line/PackagingType, per-surface UVs — pure + golden-file tests
+- [~] G3.1 Parametric geometry — `parametric-geometry.ts` `buildParametricModel(topology, dims)` (pure, tested): primitive BOX/CYLINDER/PLANE per the 10 PackagingTopologies, resolved real-mm bounds (depth derived when omitted), real-size per-surface panels (BOX 6 faces, CYLINDER wrap+caps+lid, PLANE front/back) with decorable/face/role. **NEXT (visible): plumb real die-line dims into `Packaging3DView` + build actual three.js geometry from this** (needs G1.3d r128→npm migration + dims from loader).
 - [ ] G3.2 Intake auto-job: classify → normalize die-line (exists) → geometry → placeholder surfaces → material guess → 4–6 neutral renders
 - [ ] G3.3 Admin review queue in Packaging Studio admin mode (approve/tweak/publish — RAMP-queue ritual)
 - [ ] G3.4 Admin uploader modal per plan §1.1 (lanes 2–3: file-kind detect, in-modal dieline/glTF preview, intent switch, inline PackagingType create, dims+unit scale check, attribution, guardrails)

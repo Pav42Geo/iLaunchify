@@ -39,6 +39,10 @@ export const PACKAGING_TOPOLOGIES = [
 ] as const
 export type PackagingTopology = (typeof PACKAGING_TOPOLOGIES)[number]
 
+// ── Box faces (three.js BoxGeometry order maps to these in the viewer) ───────
+export const BOX_FACES = ['front', 'back', 'left', 'right', 'top', 'bottom'] as const
+export type BoxFace = (typeof BOX_FACES)[number]
+
 // ── Geometry source (plan §3 — three sources, one package) ───────────────────
 // A. PARAMETRIC   — real dims from die-line/PackagingType → generated geometry
 // B. FOLD_FROM_NET — normalizedSvg cut/crease → FOLD → folded mesh (G4)
