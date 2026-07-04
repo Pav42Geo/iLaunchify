@@ -25,7 +25,7 @@
 
 - [ ] G2.1 three-gpu-pathtracer integration: progressive preview → final still ≤10s mid hardware (LOCKED budget); PNG → `Asset`
 - [~] G2.2 Schema (additive) `MockupAsset` — **DRAFTED as proposal in plan §4.1** (kind/sourceKind/assetId/designAware/printAreaQuad/taxonomy/isPremium/creatorUserId/status; reuses `MockupTemplateStatus`; distinct from `MockupTemplate`). Pending Pavel sign-off → prisma-migrator → `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart (3-layer stale-client gotcha). Do NOT apply unilaterally.
-- [ ] G2.3 Creator "Mockups" panel (Design Studio, finalize step): browse library with own design composited, save favorites
+- [ ] G2.3 Creator "Mockups" panel (Design Studio, finalize step): browse library with own design composited, save favorites (`ProductMockupPick` — proposal drafted plan §4.3; uses `filterLibrary`/`facetCounts` + `pickDefaultThumbnail`)
 - [ ] G2.4 **Tier gates ship here**: `mockupLicense` PlanFeature `PREVIEW_ONLY|PERSONAL|COMMERCIAL` (Maker/Builder/Agency) + download action gated via `lookupPlanFeature()`; license line in download dialog
 - [ ] G2.5 AuditLog on publish/download (`MOCKUP_*` actions); checkout preview stays free-for-all path
 - [ ] G2.6 Replace CSS `MockupModal` shapes with real renders

@@ -142,7 +142,55 @@ model MockupAsset {
 }
 // + back-relation on PackagingType:  mockupAssets MockupAsset[]
 ```
-Cockroach-safe (cuid ids, `String[]`, `Decimal?`, enums; no `@db.Text`). After apply: `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart. Creator "favorites" (save a MockupAsset to a product) = a thin additive join (`ProductMockupPick { productId, mockupAssetId, pinned }`) — draft alongside G2b when the creator panel lands.
+Cockroach-safe (cuid ids, `String[]`, `Decimal?`, enums; no `@db.Text`). After apply: `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart.
+
+### 4.2 `MockupRenderSetting` — admin-tunable PBR presets (proposal; additive; NOT applied)
+Makes G1.2's `PBR_PRESETS` constants **DB-driven** (plan G1.2 "admin-tunable values in a table later"). One row per finish kind; the app reads the row and overrides the packaging-3d constant, which stays the fallback. LogisticsSetting/OrderSettings pattern (admin-editable knobs, code has safe defaults).
+
+```prisma
+model MockupRenderSetting {
+  id                 String   @id @default(cuid())
+  // The PbrMaterialKind ('MATTE_LAMINATE' | 'GLOSS_LAMINATE' | 'SOFT_TOUCH' |
+  // 'KRAFT' | 'UNCOATED_PAPER' | 'METAL' | 'GLASS' | 'SHRINK_FILM').
+  kind               String   @unique
+  roughness          Float
+  metalness          Float
+  clearcoat          Float
+  clearcoatRoughness Float
+  transmission       Float
+  ior                Float
+  thickness          Float
+  sheen              Float
+  sheenRoughness     Float
+  envMapIntensity    Float
+  suggestedBaseColorHex String?
+  updatedByAdminId   String?  // soft FK → User (admin who last tuned it)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+```
+Resolution order at render time: `MockupRenderSetting[kind]` (if present) → `PBR_PRESETS[kind]` (packaging-3d constant). Global knobs (default env intensity, contact-shadow opacity, HDRI choice) can ride as extra rows or a small singleton later — presets first. `Float` is Cockroach-safe.
+
+### 4.3 `ProductMockupPick` — creator favorites/curation (proposal; additive; NOT applied)
+The creator's saved selection of library mockups for a product (§9.2 favorites + §9.7 "revise mockups" curation). Decoupled from channel publish (that ordering/primary lives per-channel in `ChannelProductLink` media, §9.4).
+
+```prisma
+model ProductMockupPick {
+  id            String      @id @default(cuid())
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mockupAssetId String      // soft FK → MockupAsset
+  // Starred as a keeper / the creator's default beauty shot for this product.
+  pinned        Boolean     @default(false)
+  displayOrder  Int         @default(0)
+  createdAt     DateTime    @default(now())
+
+  @@unique([productId, mockupAssetId])
+  @@index([productId, pinned])
+}
+// + back-relation on Product:  mockupPicks ProductMockupPick[]
+```
+The always-on default thumbnail (§9.7) = the auto-generated STANDARD_RENDER picked by `pickDefaultThumbnail`; a creator pin overrides it. Cockroach-safe. Draft alongside G2b when the creator panel lands.
 
 ## 5. Phases
 
