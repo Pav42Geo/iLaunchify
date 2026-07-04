@@ -21,7 +21,7 @@ import * as THREE from 'three'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { PackagingSurface } from '@ilaunchify/ui'
-import { buildParametricModel, type PackagingTopology } from '@ilaunchify/packaging-3d'
+import { buildParametricModel, buildLatheContainer, type PackagingTopology, type ContainerArchetype } from '@ilaunchify/packaging-3d'
 
 type Vec3 = { x: number; y: number; z: number }
 
@@ -102,6 +102,20 @@ function dimsFromRealMm(topology: string, dims: { widthMm: number; heightMm: num
     d: depthMm * scale,
     kind: model.primitive === 'CYLINDER' ? 'cyl' : 'box',
     lid: model.hasLid,
+  }
+}
+
+// G3.1c — map a rotationally-symmetric topology to a lathe container archetype so the
+// body renders as a real bottle/tube (neck + shoulder) rather than a plain cylinder.
+// SINGLE_CONTAINER stays a clean straight body (CAN) — conservative, no wrong necks.
+function archetypeForTopology(topology: string): ContainerArchetype {
+  switch (topology) {
+    case 'CAPSULE_JAR':
+      return 'BOTTLE'
+    case 'TUBE':
+      return 'TUBE'
+    default:
+      return 'CAN'
   }
 }
 
@@ -205,23 +219,22 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
       const group = new THREE.Group()
       const mat = bodyMaterial(propsRef.current.material, 0xd8d8dc)
 
+      // G3.1c — real container body from a lathe (surface-of-revolution) profile for
+      // rotationally-symmetric topologies: bottle/tube get a neck+shoulder, can stays
+      // straight. Boxes stay boxes. Profile y is 0..h → translate to center at origin.
+      function makeLatheBody(): THREE.Mesh {
+        const container = buildLatheContainer({ archetype: archetypeForTopology(topology), heightMm: d.h, bodyDiameterMm: d.r * 2 })
+        const pts = container.profile.map((p) => new THREE.Vector2(Math.max(p.rMm, 0.001), p.yMm))
+        const geo = new THREE.LatheGeometry(pts, 64)
+        geo.translate(0, -d.h / 2, 0)
+        return new THREE.Mesh(geo, mat)
+      }
+
       // Parametric placeholder mesh (also the fallback if a GLB fails to load).
       function addParametric() {
-        const body =
-          d.kind === 'cyl'
-            ? new THREE.Mesh(new THREE.CylinderGeometry(d.r, d.r, d.h, 48), mat)
-            : new THREE.Mesh(new THREE.BoxGeometry(d.r * 2, d.h, d.d, 1, 1, 1), mat)
+        const body = d.kind === 'cyl' ? makeLatheBody() : new THREE.Mesh(new THREE.BoxGeometry(d.r * 2, d.h, d.d, 1, 1, 1), mat)
         body.name = 'body'
         group.add(body)
-        if (d.lid) {
-          const lid = new THREE.Mesh(
-            new THREE.CylinderGeometry(d.r * 1.04, d.r * 1.04, d.h * 0.18, 48),
-            bodyMaterial({ roughness: 0.4, metalness: 0.1 }, 0xb9b9c0),
-          )
-          lid.position.y = d.h / 2 - d.h * 0.05
-          lid.name = 'lid'
-          group.add(lid)
-        }
       }
       scene.add(group)
 
