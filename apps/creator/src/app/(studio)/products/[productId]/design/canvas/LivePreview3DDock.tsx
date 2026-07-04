@@ -20,17 +20,22 @@ import {
   type DieCutSpec,
   type DielineShapeKind,
   type FabricCanvas,
+  type PbrSurfaceParams,
 } from '@ilaunchify/ui'
 
 interface Props {
   canvas: FabricCanvas | null
   dieCut: DieCutSpec
   pxPerMm: number
+  /** G1.3 — PBR surface response for the product's substrate/finish (resolve from
+   *  `@ilaunchify/packaging-3d` at the shell). Optional: unset renders matte with
+   *  studio env + contact shadow (the viewer's realistic defaults). */
+  material?: PbrSurfaceParams
 }
 
 const THROTTLE_MS = 450
 
-export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
+export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material }: Props) {
   const [open, setOpen] = React.useState(false)
   const [expanded, setExpanded] = React.useState(false)
   const [snapshot, setSnapshot] = React.useState<string | null>(null)
@@ -149,6 +154,7 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm }: Props) {
             heightMm={dieCut.heightMm}
             textureImageUrl={snapshot}
             baseColor="#f4f2ee"
+            material={material}
             className="flex h-full w-full flex-col p-2"
             captureRef={captureRef}
             onSurfaceClick={selectAtUv}

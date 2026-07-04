@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { BoxFace } from '../lib/surface-face'
 
 export type { BoxFace }
@@ -63,6 +64,26 @@ export function shapeKindForCategory(category?: string | null): DielineShapeKind
   }
 }
 
+/**
+ * G1.2/G1.3 — renderer-agnostic PBR surface parameters (a structural subset of
+ * `@ilaunchify/packaging-3d`'s `PbrPreset`, so a resolved preset is assignable
+ * directly). All optional; unset fields fall back to matte-substrate defaults.
+ * The viewer stays free of a packaging-3d dependency — hosts resolve the preset
+ * and pass it down.
+ */
+export interface PbrSurfaceParams {
+  roughness?: number
+  metalness?: number
+  clearcoat?: number
+  clearcoatRoughness?: number
+  transmission?: number
+  ior?: number
+  thickness?: number
+  sheen?: number
+  sheenRoughness?: number
+  envMapIntensity?: number
+}
+
 export interface Dieline3DViewerProps {
   shape: DielineShapeKind
   widthMm: number
@@ -79,6 +100,14 @@ export interface Dieline3DViewerProps {
   faces?: Partial<Record<BoxFace, FaceTexture>>
   /** Substrate base colour (hex). */
   baseColor?: string
+  /** G1.3 — PBR surface response (from `@ilaunchify/packaging-3d` presets). When set,
+   *  the model renders with MeshPhysicalMaterial (clearcoat/transmission/sheen).
+   *  Pass a reference-stable object (a resolved preset constant is already stable). */
+  material?: PbrSurfaceParams
+  /** G1.3 — image-based studio lighting (PMREM RoomEnvironment). Default on. */
+  environment?: boolean
+  /** G1.3 — soft contact shadow grounding the model. Default on. */
+  contactShadow?: boolean
   className?: string
   /** When provided, the viewer sets `.current` to a function that captures the current
    *  frame as a PNG data URL (for "download 3D image"). Requires preserveDrawingBuffer. */
@@ -101,6 +130,26 @@ function svgTexture(svg: string): THREE.Texture {
   return rasterTexture(`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`)
 }
 
+/** A soft radial alpha gradient used as a fake contact shadow under the model —
+ *  cheaper than shadow maps and the standard product-viewer grounding trick. */
+function radialShadowTexture(): THREE.Texture {
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+    g.addColorStop(0, 'rgba(0,0,0,0.55)')
+    g.addColorStop(0.7, 'rgba(0,0,0,0.18)')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, size, size)
+  }
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
 export function Dieline3DViewer({
   shape,
   widthMm,
@@ -110,6 +159,9 @@ export function Dieline3DViewer({
   textureImageUrl,
   faces,
   baseColor = '#f2efe7',
+  material,
+  environment = true,
+  contactShadow = true,
   className,
   captureRef,
   onSurfaceClick,
@@ -149,11 +201,22 @@ export function Dieline3DViewer({
     renderer.domElement.style.cursor = 'grab'
     renderer.domElement.style.touchAction = 'none'
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.75))
-    const key = new THREE.DirectionalLight(0xffffff, 1.1)
+    // G1.3 — image-based studio lighting. PMREM-prefilter a procedural neutral
+    // room so every physical material gets realistic ambient + reflections with
+    // no vendored HDRI asset (CC0/no-CDN). Lights are dialed down when env is on
+    // so we light, not blow out; artwork colour stays trustworthy (no tone-map).
+    let envRT: THREE.WebGLRenderTarget | null = null
+    if (environment) {
+      const pmrem = new THREE.PMREMGenerator(renderer)
+      envRT = pmrem.fromScene(new RoomEnvironment(), 0.04)
+      scene.environment = envRT.texture
+      pmrem.dispose()
+    }
+    scene.add(new THREE.AmbientLight(0xffffff, environment ? 0.25 : 0.75))
+    const key = new THREE.DirectionalLight(0xffffff, environment ? 0.7 : 1.1)
     key.position.set(3, 5, 4)
     scene.add(key)
-    const fill = new THREE.DirectionalLight(0xffffff, 0.4)
+    const fill = new THREE.DirectionalLight(0xffffff, environment ? 0.25 : 0.4)
     fill.position.set(-4, 2, -3)
     scene.add(fill)
 
@@ -165,15 +228,31 @@ export function Dieline3DViewer({
     }
     const tex = textureImageUrl ? trackTex(rasterTexture(textureImageUrl)) : textureSvg ? trackTex(svgTexture(textureSvg)) : null
     const base = new THREE.Color(baseColor)
-    const substrateMat = () => new THREE.MeshStandardMaterial({ color: base, roughness: 0.85, metalness: 0.04 })
-    const printedMat = () =>
-      tex
-        ? new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, roughness: 0.7 })
-        : substrateMat()
+    // G1.3 — MeshPhysicalMaterial keyed to the PBR preset (clearcoat/transmission/
+    // sheen). `printed` = has artwork (default slightly smoother); `substrate` =
+    // bare stock (matte default). Preset params override the per-role defaults.
+    const m = material ?? {}
+    const physicalMat = (opts: { map?: THREE.Texture | null; color: THREE.ColorRepresentation; printed: boolean }) =>
+      new THREE.MeshPhysicalMaterial({
+        map: opts.map ?? undefined,
+        color: opts.color,
+        roughness: m.roughness ?? (opts.printed ? 0.7 : 0.85),
+        metalness: m.metalness ?? 0.05,
+        clearcoat: m.clearcoat ?? 0,
+        clearcoatRoughness: m.clearcoatRoughness ?? 0.3,
+        transmission: m.transmission ?? 0,
+        ior: m.ior ?? 1.45,
+        thickness: m.thickness ?? 0,
+        sheen: m.sheen ?? 0,
+        sheenRoughness: m.sheenRoughness ?? 0.5,
+        envMapIntensity: m.envMapIntensity ?? (environment ? 0.8 : 0),
+      })
+    const substrateMat = () => physicalMat({ color: base, printed: false })
+    const printedMat = () => (tex ? physicalMat({ map: tex, color: 0xffffff, printed: true }) : substrateMat())
     // Per-face material for a multi-panel box (Phase 3). Textured if the face has svg/image.
     const faceMat = (ft?: FaceTexture) => {
       const t = ft?.imageUrl ? trackTex(rasterTexture(ft.imageUrl)) : ft?.svg ? trackTex(svgTexture(ft.svg)) : null
-      return t ? new THREE.MeshStandardMaterial({ map: t, color: 0xffffff, roughness: 0.7 }) : substrateMat()
+      return t ? physicalMat({ map: t, color: 0xffffff, printed: true }) : substrateMat()
     }
 
     const group = new THREE.Group()
@@ -212,6 +291,20 @@ export function Dieline3DViewer({
     } else {
       const geo = new THREE.PlaneGeometry(w * s, h * s)
       group.add(new THREE.Mesh(geo, printedMat()))
+    }
+
+    // G1.3 — soft contact shadow under 3D volumes (skip flat stickers). Added to
+    // the group so it stays glued to the model base as the orbit tilts it.
+    if (contactShadow && shape !== 'FLAT') {
+      const shadowTex = trackTex(radialShadowTexture())
+      const foot = shape === 'CYLINDER' ? ((w * s) / (2 * Math.PI)) * 2 * 1.9 : Math.max(w, d) * s * 1.7
+      const shadow = new THREE.Mesh(
+        new THREE.PlaneGeometry(foot, foot),
+        new THREE.MeshBasicMaterial({ map: shadowTex ?? undefined, transparent: true, depthWrite: false, opacity: 0.6 }),
+      )
+      shadow.rotation.x = -Math.PI / 2
+      shadow.position.y = -(h * s) / 2 - 0.01
+      group.add(shadow)
     }
 
     // ---- manual orbit ----
@@ -288,11 +381,14 @@ export function Dieline3DViewer({
       window.removeEventListener('pointermove', onMove)
       renderer.domElement.removeEventListener('wheel', onWheel)
       disposables.forEach((t) => t.dispose())
+      scene.environment = null
+      envRT?.dispose()
       renderer.dispose()
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement)
     }
-    // `faces` should be memoized by the caller (a new object re-inits the scene).
-  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces])
+    // `faces` and `material` should be memoized by the caller (a new object re-inits
+    // the scene); resolved packaging-3d preset constants are already reference-stable.
+  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment, contactShadow])
 
   return (
     <div className={className ?? 'flex h-full w-full flex-col'}>
