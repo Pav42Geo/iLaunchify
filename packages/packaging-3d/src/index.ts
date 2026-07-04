@@ -15,3 +15,7 @@
 
 export * from './types'
 export * from './pbr-presets'
+export * from './channel-export'
+export * from './channel-compliance'
+export * from './render-presets'
+export * from './library-filter'

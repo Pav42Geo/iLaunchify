@@ -94,6 +94,56 @@ New pure package **`packages/packaging-3d`** (Prisma-free, DI'd like `packages/s
 - **Scene composer** (Packaging Studio admin mode): pick generated 3D model → choose scene template (background, props, lighting) or AI background → path-traced render → publish to library. AI backgrounds allowed — the *product* in frame is the true render; only the scene is generated (consistent with the locked AI principle).
 - **Creator flow (Design Studio, finalize/pre-checkout):** design done → "Mockups" panel on the product → browse library renders of *their own design* (composited live) → pick/save favorites → optionally **AI-generate a scene** (labeled marketing-only, rate-limited) → checkout preview itself stays the production-accurate render (locked).
 
+### 4.1 `MockupAsset` schema (G2.2 proposal — additive; needs Pavel sign-off + prisma-migrator; NOT applied)
+Distinct from `MockupTemplate` (the 2D photo-mask *template*, schema ~L5248, which stays as-is). `MockupAsset` is the **library item** — one rendered/generated/curated mockup. Reuses `MockupTemplateStatus` (DRAFT/ACTIVE/ARCHIVED) and the `Asset` soft-FK + cuid conventions already in the schema. A design-aware 2D item can carry its own `printAreaQuad` so the creator's design composites onto it (unifies the photo-mask path into the library).
+
+```prisma
+enum MockupAssetKind   { STANDARD_RENDER  SCENE_2D  SCENE_3D_VIDEO  AI_SCENE }
+enum MockupAssetSource { GENERATED  ADMIN_SCENE  ADMIN_READY_2D  ADMIN_READY_3D  CREATOR_AI }
+// reuse existing enum MockupTemplateStatus { DRAFT ACTIVE ARCHIVED }
+
+model MockupAsset {
+  id              String               @id @default(cuid())
+  packagingTypeId String
+  packagingType   PackagingType        @relation(fields: [packagingTypeId], references: [id], onDelete: Cascade)
+  kind            MockupAssetKind
+  sourceKind      MockupAssetSource
+  // The rendered image / video / glTF file (soft FK → Asset, like MockupTemplate.baseImageAssetId).
+  assetId         String
+  title           String?
+  // Can the creator's design wrap onto it? false for unbindable ready-mades → never the checkout preview.
+  designAware     Boolean              @default(true)
+  // Design-aware 2D compositing (optional): 4 corners TL,TR,BR,BL in 0..1 + which surface.
+  printAreaQuad   Json?
+  surfaceKey      String?
+  // 3D/scene metadata
+  cameraPreset    String?              // 'front-3q' | 'hero' | 'top' …
+  sceneRef        String?              // scene-template id for SCENE_* / AI_SCENE
+  // Browse taxonomy (packaging type × category × size × style) — filters URL-driven.
+  categorySlug    String?              // one of the 13 locked product categories
+  styleTags       String[]             // DesignLibraryItem styleTags vocab
+  widthMm         Decimal?             // explicit dims for ready-mades; else derive from PackagingType
+  heightMm        Decimal?
+  depthMm         Decimal?
+  // Tier gate (§0.3): premium items are download/Builder-Agency; license via lookupPlanFeature at action time.
+  isPremium       Boolean              @default(false)
+  // Ownership: null = admin/platform library; set = creator-owned (CREATOR_AI scenes, own-photo).
+  creatorUserId   String?              // soft FK → User
+  sourcePartnerId String?              // soft FK → Partner (lane-1 provenance/attribution)
+  status          MockupTemplateStatus @default(DRAFT)
+  displayOrder    Int                  @default(0)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([packagingTypeId, status])
+  @@index([kind, status])
+  @@index([categorySlug, status])
+  @@index([creatorUserId])
+}
+// + back-relation on PackagingType:  mockupAssets MockupAsset[]
+```
+Cockroach-safe (cuid ids, `String[]`, `Decimal?`, enums; no `@db.Text`). After apply: `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart. Creator "favorites" (save a MockupAsset to a product) = a thin additive join (`ProductMockupPick { productId, mockupAssetId, pinned }`) — draft alongside G2b when the creator panel lands.
+
 ## 5. Phases
 
 | Phase | Scope | Effort | Ships |

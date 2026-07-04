@@ -12,6 +12,15 @@
 // matching the existing packaging-3d spike. `any`-typed since @types/three isn't installed.
 //
 // Isolated to this folder on purpose: it does not touch the partner Packaging Studio.
+//
+// G1.3c realism (2026-07-03): version-safe upgrade on the existing r128 CDN scene —
+// a soft contact shadow + fill light + finish-aware roughness/metalness (from the
+// packaging-3d PBR preset, r128-safe subset). FULL PBR (clearcoat/transmission/sheen)
+// + HDRI env + the G1.4 glTF material texture swap need the npm three@0.184 that
+// Dieline3DViewer already uses — recommended follow-up: migrate this view off the
+// r128 CDN to `import * as THREE from 'three'` + examples/jsm GLTFLoader, drop the
+// `any`, then reuse the same RoomEnvironment + MeshPhysicalMaterial path. Deferred
+// because it needs browser QA (see PACKAGING_3D_GENERATOR_CHECKLIST G1.3c).
 // =============================================================================
 
 import * as React from 'react'
@@ -33,6 +42,11 @@ interface Props {
   onPlaceAnchor?: (key: string, anchor: Vec3) => void
   /** Signed URL to an imported glTF/glb. When set, renders the real mesh (parametric fallback on error). */
   modelUrl?: string | null
+  /** G1.3c — finish-aware surface response (r128-safe subset of the packaging-3d PBR
+   *  preset: roughness/metalness only). Resolve from the PackagingType's material at
+   *  the caller. Full clearcoat/transmission/sheen + HDRI arrive with the npm-three
+   *  migration (see file header). Read at scene init (topology change re-reads). */
+  material?: { roughness?: number; metalness?: number } | null
 }
 
 /** Load three.js from the CDN once; resolve when window.THREE is ready. */
@@ -109,14 +123,14 @@ function defaultAnchor(s: PackagingSurface, d: ReturnType<typeof dimsFor>, i: nu
   return { x: Math.sin(ang) * (d.kind === 'cyl' ? d.r + 0.04 : d.r * 0.7), y: 0, z: Math.cos(ang) * rad }
 }
 
-export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, placeMode, onPlaceAnchor, modelUrl }: Props) {
+export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, placeMode, onPlaceAnchor, modelUrl, material }: Props) {
   const mountRef = React.useRef<HTMLDivElement>(null)
   const [markers, setMarkers] = React.useState<{ key: string; label: string; x: number; y: number; front: boolean }[]>([])
   const [err, setErr] = React.useState<string | null>(null)
   const stateRef = React.useRef<any>({})
   // Keep the latest props available to the render loop without re-initializing the scene.
-  const propsRef = React.useRef({ surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl })
-  propsRef.current = { surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl }
+  const propsRef = React.useRef({ surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl, material })
+  propsRef.current = { surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl, material }
 
   React.useEffect(() => {
     let disposed = false
@@ -141,14 +155,20 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
         renderer.setSize(W, H)
         mount.appendChild(renderer.domElement)
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.75))
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6))
         const key = new THREE.DirectionalLight(0xffffff, 0.9)
         key.position.set(3, 5, 4)
         scene.add(key)
+        // G1.3c — fill light softens the shadow side to match Dieline3DViewer's look.
+        const fill = new THREE.DirectionalLight(0xffffff, 0.35)
+        fill.position.set(-4, 2, -3)
+        scene.add(fill)
 
         const d = dimsFor(topology)
         const group = new THREE.Group()
-        const mat = new THREE.MeshStandardMaterial({ color: 0xd8d8dc, roughness: 0.6, metalness: 0.1 })
+        // G1.3c — finish-aware roughness/metalness from the PBR preset (r128-safe subset).
+        const pm = propsRef.current.material
+        const mat = new THREE.MeshStandardMaterial({ color: 0xd8d8dc, roughness: pm?.roughness ?? 0.6, metalness: pm?.metalness ?? 0.1 })
 
         // Build the parametric placeholder mesh (also the fallback if a GLB fails to load).
         function addParametric() {
@@ -168,6 +188,31 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
           }
         }
         scene.add(group)
+
+        // G1.3c — soft contact shadow grounding the model (radial-gradient plane,
+        // glued under the base so it tilts with the orbit). r128-safe / no addon.
+        {
+          const canvas = document.createElement('canvas')
+          canvas.width = canvas.height = 128
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
+            g.addColorStop(0, 'rgba(0,0,0,0.5)')
+            g.addColorStop(0.7, 'rgba(0,0,0,0.16)')
+            g.addColorStop(1, 'rgba(0,0,0,0)')
+            ctx.fillStyle = g
+            ctx.fillRect(0, 0, 128, 128)
+          }
+          const shadowTex = new THREE.CanvasTexture(canvas)
+          const foot = d.kind === 'cyl' ? d.r * 2 * 1.9 : Math.max(d.r * 2, d.d) * 1.7
+          const shadow = new THREE.Mesh(
+            new THREE.PlaneGeometry(foot, foot),
+            new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: 0.6 }),
+          )
+          shadow.rotation.x = -Math.PI / 2
+          shadow.position.y = -d.h / 2 - 0.02
+          group.add(shadow)
+        }
 
         const initialModelUrl = propsRef.current.modelUrl
         if (initialModelUrl) {

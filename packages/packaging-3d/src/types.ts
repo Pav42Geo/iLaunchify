@@ -46,6 +46,17 @@ export type PackagingTopology = (typeof PACKAGING_TOPOLOGIES)[number]
 export const GEOMETRY_SOURCES = ['PARAMETRIC', 'FOLD_FROM_NET', 'GLTF'] as const
 export type GeometrySource = (typeof GEOMETRY_SOURCES)[number]
 
+// ── Mockup kinds (mirrors the proposed MockupAsset.kind — plan §4.1) ─────────
+// STANDARD_RENDER = clean studio render (the channel-legal main-image candidate);
+// SCENE_2D / SCENE_3D_VIDEO / AI_SCENE = lifestyle/scene (supplementary on
+// white-main-image channels — see channel-export.ts).
+export const MOCKUP_ASSET_KINDS = ['STANDARD_RENDER', 'SCENE_2D', 'SCENE_3D_VIDEO', 'AI_SCENE'] as const
+export type MockupAssetKind = (typeof MOCKUP_ASSET_KINDS)[number]
+
+export function isMockupAssetKind(v: unknown): v is MockupAssetKind {
+  return typeof v === 'string' && (MOCKUP_ASSET_KINDS as readonly string[]).includes(v)
+}
+
 // ── Real-world dimensions (from the die-line — never invented) ───────────────
 export interface Dimensions {
   /** trim width in millimetres */

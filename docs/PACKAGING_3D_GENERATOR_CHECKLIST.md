@@ -11,16 +11,20 @@
 
 ## G1 — Realism upgrade (~5–8d)
 
-- [ ] G1.1 `packages/packaging-3d` scaffold (pure, Prisma-free, DI'd; suites registered in run-vitest-suites.mjs)
-- [ ] G1.2 PBR preset map keyed to `PackagingMaterial` (matte/gloss laminate, soft-touch, kraft, metal, glass, shrink film) — pure module + unit tests; admin-tunable values in a `MockupRenderSetting` (or LogisticsSetting-pattern) table later, constants first
-- [ ] G1.3 HDRI environment + contact shadows/AO wired into `Packaging3DView` (admin) and `LivePreview3DDock` (creator) — CC0 Poly Haven assets vendored, no runtime CDN
-- [ ] G1.4 Verify glTF texture swap in-browser (the one untested seam flagged in the inventory) — creator design → CanvasTexture → bound material
+- [x] G1.1 `packages/packaging-3d` scaffold (pure, Prisma-free, DI'd; suites registered in run-vitest-suites.mjs)
+- [x] G1.2 PBR preset map keyed to `PackagingMaterial` (8 finishes) + `resolvePbrMaterialKind` (slug/SubstrateCategory → kind) — pure module + unit tests; admin-tunable `MockupRenderSetting` table later, constants first
+- [x] G1.3a `Dieline3DViewer` (npm three@0.184, shared by LivePreview3DDock + MockupModal): PMREM `RoomEnvironment` env map + contact shadow + `MeshPhysicalMaterial` w/ optional `PbrSurfaceParams` prop; no vendored HDRI asset (procedural room, CC0/no-CDN). Backward compatible, typecheck-green.
+- [x] G1.3b `PbrSurfaceParams` re-exported from `@ilaunchify/ui`; `LivePreview3DDock` accepts + forwards `material` (shell drives finish next)
+- [x] G1.3c `Packaging3DView` (admin, r128 CDN) r128-safe realism: contact shadow + fill light + finish-aware roughness/metalness seam. Typecheck-green.
+- [ ] G1.3d **(recommended, needs browser QA)** migrate `Packaging3DView` off r128 CDN → npm `three@0.184` + examples/jsm GLTFLoader; drop `any`; then reuse RoomEnvironment + MeshPhysicalMaterial for FULL PBR/HDRI. Unblocks G1.4.
+- [ ] G1.3e Wire the Design Studio shell (`CanvasLayoutShell`) to resolve the product's finish → `resolvePbrPreset` → pass `material` into `LivePreview3DDock` (needs `apps/creator → @ilaunchify/packaging-3d` dep → `pnpm install`)
+- [ ] G1.4 Verify glTF texture swap in-browser (the one untested seam flagged in the inventory) — creator design → CanvasTexture → bound material. **Blocked on G1.3d** (r128 CDN loader is the current glTF path).
 - [ ] G1.5 Visual QA pass: one product per StructuralPackType rendered before/after screenshots
 
 ## G2 — Render pipeline + library substrate (~6–8d)
 
 - [ ] G2.1 three-gpu-pathtracer integration: progressive preview → final still ≤10s mid hardware (LOCKED budget); PNG → `Asset`
-- [ ] G2.2 Schema (additive): `MockupAsset` (packagingTypeId, kind, sourceKind, assetId, cameraPreset, sceneRef?, designAware, isPremium, status) — then `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart (3-layer stale-client gotcha)
+- [~] G2.2 Schema (additive) `MockupAsset` — **DRAFTED as proposal in plan §4.1** (kind/sourceKind/assetId/designAware/printAreaQuad/taxonomy/isPremium/creatorUserId/status; reuses `MockupTemplateStatus`; distinct from `MockupTemplate`). Pending Pavel sign-off → prisma-migrator → `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart (3-layer stale-client gotcha). Do NOT apply unilaterally.
 - [ ] G2.3 Creator "Mockups" panel (Design Studio, finalize step): browse library with own design composited, save favorites
 - [ ] G2.4 **Tier gates ship here**: `mockupLicense` PlanFeature `PREVIEW_ONLY|PERSONAL|COMMERCIAL` (Maker/Builder/Agency) + download action gated via `lookupPlanFeature()`; license line in download dialog
 - [ ] G2.5 AuditLog on publish/download (`MOCKUP_*` actions); checkout preview stays free-for-all path
@@ -29,7 +33,7 @@
 ## G2b — Creator Preview → Mockup Library surface (~6–8d · plan §9) — Code-zone, broker first
 
 - [ ] G2b.1 Embed the Mockup Library **inside the existing Product Preview step** (NOT a new route) — expand the current `MockupModal`/preview seam into the full library (browse/favorites/export/publish); also expose a **"Revise mockups" modal gallery from the product page** (revisit any time before publish, §9.7)
-- [ ] G2b.1b **Always-on default mockup**: auto-wrap product on ≥1 mockup as the canonical **thumbnail** across product list / order list / channel main-image candidate (§9.7)
+- [~] G2b.1b **Always-on default mockup**: auto-wrap product on ≥1 mockup as the canonical **thumbnail** across product list / order list / channel main-image candidate (§9.7). Pure selection built — `render-presets.ts` `pickDefaultThumbnail` (prefer STANDARD_RENDER on hero `front-3q`) + `CAMERA_PRESETS`/`DEFAULT_INTAKE_ANGLES` (also the G3.2 neutral render set). App-side auto-generate + persist thumbnail remains.
 - [ ] G2b.2 **Design-aware on open** (§0.7): render the current Fabric design (CanvasTexture per surface) onto every library `MockupAsset` — no "apply" step; re-compose on upstream design edits
 - [ ] G2b.3 Grid UX: large-thumbnail grid, multi-select (checkbox + Select-all + Shift-range), favorite/star, two-axis browse (packaging type × category/size + style tags), paginate 50
 - [ ] G2b.4 Tier gates here: `mockupLicense` PlanFeature `PREVIEW_ONLY|PERSONAL|COMMERCIAL` (Maker/Builder/Agency), watermarked premium preview + corner badge, license line at download; AuditLog `MOCKUP_*`
@@ -42,7 +46,7 @@
 - [ ] G3.2 Intake auto-job: classify → normalize die-line (exists) → geometry → placeholder surfaces → material guess → 4–6 neutral renders
 - [ ] G3.3 Admin review queue in Packaging Studio admin mode (approve/tweak/publish — RAMP-queue ritual)
 - [ ] G3.4 Admin uploader modal per plan §1.1 (lanes 2–3: file-kind detect, in-modal dieline/glTF preview, intent switch, inline PackagingType create, dims+unit scale check, attribution, guardrails)
-- [ ] G3.5 Library taxonomy filters (packaging type → category → size → styleTags), URL-driven per admin surface pattern
+- [~] G3.5 Library taxonomy filters (packaging type → category → size → styleTags), URL-driven per admin surface pattern. **Pure engine built** — `library-filter.ts`: `SIZE_BUCKETS`/`sizeBucketFor`, `LibraryFilter` + `filterLibrary` (AND across facets, any-of within styleTags, query), `facetCounts` (inline per-facet counts, incl. base-narrowed faceted-search). App-side URL wiring + chips remain.
 
 ## G3b — Creator-uploaded mockup bases (~4–6d · plan §9.3) — Code-zone, broker first
 
@@ -57,8 +61,9 @@
 - [ ] G7.0a Apply **additive schema delta** (needs Pavel sign-off + prisma-migrator): +HELD/+SCHEDULED enum values, new `ChannelPublishTrigger`, `ChannelProductLink.{publishTrigger,publishAt,heldReason,releaseOnOrderId}` (all nullable/Cockroach-safe) → db:push → db:generate → rm -rf apps/*/.next
 - [ ] G7.0b **Hold-until-delivered wiring**: on order FSM → delivered, run `evaluatePublishRelease` for links with `ON_ORDER_DELIVERED`; advance HELD/SCHEDULED→PUSHED (+ AuditLog). Scheduled-datetime sweep for `SCHEDULED_AT`.
 - [ ] G7.0c **Channel targeting**: publish one / several / **bulk** across the creator's connected+tracked channels; state is per-channel; **Unpublish** = first-class image-scoped pull-back via ChannelAdapter
-- [ ] G7.1 **Per-channel compliant export presets** from the spec table (Amazon/Shopify/Etsy/TikTok/Walmart/Google/Meta) — sizes, aspect, bg, format, max-size
-- [ ] G7.2 **Main-image legality guardrail**: auto-steer a clean studio render to position 1 for Amazon/TikTok/Walmart; mark scenes supplementary
+- [x] G7.1 **Per-channel compliant export presets** — `@ilaunchify/packaging-3d/channel-export.ts` built (pure, tested): `CHANNEL_IMAGE_SPECS` for shopify/amazon/etsy/tiktok/walmart/google/meta (aspect, px, bg, formats, maxBytes, `verified` flag), `exportTargetFor`/`exportPlan`. Login-gated channels flagged `verified:false` — re-verify before locking.
+- [x] G7.2 **Main-image legality guardrail** — `mainImageEligibility` + `pickPrimaryRender` (prefers clean STANDARD_RENDER; null when only scenes on a white-main channel). UI wiring (auto-steer to position 1) lands with G7.3.
+- [x] G7.2b **Compliance validator + normalization planner** — `channel-compliance.ts` (pure, tested): `validateForChannel` (format/min-px/bytes/transparency/white-bg/main-legality → ERROR blocks publish, WARN auto-fixable) + `normalizationPlan` (ordered steps: flatten→white-bg→pad-square→downscale→convert→compress, or `CANNOT_FIX` below min res). App layer executes the plan with sharp/canvas at G7.3.
 - [ ] G7.3 Publish flow (Printify pattern): select renders → drag-order → star primary → map per-variant (auto-map flavor presets → variants) → push via **ChannelAdapter**
 - [ ] G7.4 Shopify mechanics (first adapter): `fileCreate`/`stagedUploadsCreate` → poll `READY` → attach → variant `mediaSrc` → `productReorderMedia` (pos 0 = featured)
 - [ ] G7.5 **Field-scoped re-sync** (image-only default; never clobber SEO/price/tags); warn on imageless new variant; AuditLog on publish
