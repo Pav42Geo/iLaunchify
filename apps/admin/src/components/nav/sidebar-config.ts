@@ -342,12 +342,13 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
       ],
     },
-    // Packaging Studio = 3D/structural packaging authoring + the assets it consumes.
-    // Promoted to a first-class group (2026-07-04); the old hidden /applications/packaging-studio
-    // duplicate was removed.
+    // Packaging Assets = the packaging section: the Packaging Studio tool + all structural
+    // packaging building blocks it consumes. Named distinctly from the "Packaging Studio"
+    // tool inside it to avoid section-vs-tool confusion (Pavel 2026-07-04). Promoted to a
+    // first-class group; the old hidden /applications/packaging-studio duplicate was removed.
     {
       kind: 'group',
-      label: 'Packaging Studio',
+      label: 'Packaging Assets',
       icon: Box,
       children: [
         { kind: 'item', label: 'Packaging Studio', icon: Box, href: '/packaging-studio', capability: 'catalog:write' },
