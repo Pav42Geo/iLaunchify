@@ -7,8 +7,9 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { Cuboid, Layout, Eye, Shapes, Info, Boxes, ExternalLink, Loader2, Check } from 'lucide-react'
-import { setPackagingTypeDefaultDieCut, setPackagingTypeStatus } from './actions'
+import { useRouter } from 'next/navigation'
+import { Cuboid, Layout, Eye, Shapes, Info, Boxes, ExternalLink, Loader2, Check, Upload, Trash2 } from 'lucide-react'
+import { setPackagingTypeDefaultDieCut, setPackagingTypeStatus, importPackagingModel3d, removePackagingModel3d } from './actions'
 import type { PackagingTypeDetail } from './loader'
 
 const pretty = (s: string) => s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
@@ -110,6 +111,7 @@ export function PackagingDetailClient({ data }: { data: PackagingTypeDetail }) {
               className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-ink-900 px-3 py-2 text-[12.5px] font-semibold text-white hover:bg-black">
               <Cuboid className="h-4 w-4" /> Author surfaces
             </a>
+            <ModelImport id={data.id} hasModel={data.has3dModel} />
           </div>
           <Card title="Surfaces">
             {data.surfaces.length === 0 ? (
@@ -227,4 +229,63 @@ function Empty({ children }: { children: React.ReactNode }) {
 
 function ToolLink({ href, label }: { href: string; label: string }) {
   return <Link href={href} className="inline-flex items-center gap-1 text-[12.5px] font-medium text-pink-700 hover:text-pink-800">{label}<ExternalLink className="h-3.5 w-3.5" /></Link>
+}
+
+// Admin-native 3D-model import (glTF/glb + optional thumbnail) → sets PackagingType.model3dKey.
+// No hop to the creator tool required.
+function ModelImport({ id, hasModel }: { id: string; hasModel: boolean }) {
+  const router = useRouter()
+  const fileRef = React.useRef<HTMLInputElement>(null)
+  const thumbRef = React.useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = React.useState(false)
+  const [msg, setMsg] = React.useState<string | null>(null)
+
+  async function upload() {
+    const file = fileRef.current?.files?.[0]
+    if (!file) { setMsg('Choose a .glb or .gltf file first.'); return }
+    const fd = new FormData()
+    fd.set('file', file)
+    const thumb = thumbRef.current?.files?.[0]
+    if (thumb) fd.set('thumb', thumb)
+    setBusy(true); setMsg(null)
+    const res = await importPackagingModel3d(id, fd).catch(() => null)
+    setBusy(false)
+    if (res && res.ok) {
+      if (fileRef.current) fileRef.current.value = ''
+      if (thumbRef.current) thumbRef.current.value = ''
+      router.refresh()
+    } else setMsg((res && !res.ok && res.error) || 'Upload failed.')
+  }
+
+  async function remove() {
+    if (!confirm('Remove the imported 3D model? The container reverts to the parametric mesh.')) return
+    setBusy(true)
+    const res = await removePackagingModel3d(id).catch(() => null)
+    setBusy(false)
+    if (res && res.ok) router.refresh()
+    else setMsg((res && !res.ok && res.error) || 'Could not remove.')
+  }
+
+  const fileCls = 'block w-full text-[11.5px] text-ink-600 file:mr-2 file:rounded-full file:border-0 file:bg-ink-100 file:px-2.5 file:py-1 file:text-[11.5px] file:font-semibold'
+  return (
+    <div className="mt-3 border-t border-ink-100 pt-3">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-500">Import 3D model</p>
+      <input ref={fileRef} type="file" accept=".glb,.gltf" className={fileCls} />
+      <input ref={thumbRef} type="file" accept="image/*" className={`mt-1.5 ${fileCls}`} />
+      <p className="mt-1 text-[10.5px] text-ink-400">.glb/.gltf up to 40MB · optional thumbnail image</p>
+      <div className="mt-2 flex items-center gap-2">
+        <button onClick={upload} disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-full bg-pink-600 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-pink-700 disabled:opacity-60">
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />} {hasModel ? 'Replace model' : 'Import model'}
+        </button>
+        {hasModel && (
+          <button onClick={remove} disabled={busy}
+            className="inline-flex items-center gap-1 rounded-full border border-ink-200 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-600 hover:border-ink-400">
+            <Trash2 className="h-3.5 w-3.5" /> Remove
+          </button>
+        )}
+      </div>
+      {msg && <p className="mt-1.5 text-[11px] text-pink-700">{msg}</p>}
+    </div>
+  )
 }
