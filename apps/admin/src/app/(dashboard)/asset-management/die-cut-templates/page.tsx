@@ -5,24 +5,32 @@
 
 import { requireCapability } from '@ilaunchify/auth'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
-import { loadDieCutTemplates } from './loader'
-import { DieCutTemplatesClient } from './DieCutTemplatesClient'
+import { loadDieCutTemplates, loadContainerAssignments } from './loader'
+import { DieCutModuleClient } from './DieCutModuleClient'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Die-cut Templates — Admin' }
 
-export default async function DieCutTemplatesPage() {
+export default async function DieCutTemplatesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   await requireCapability('catalog:write')
-  const data = await loadDieCutTemplates()
+  const [{ tab }, library, assignments] = await Promise.all([
+    searchParams,
+    loadDieCutTemplates(),
+    loadContainerAssignments(),
+  ])
 
   return (
     <div className="space-y-5">
       <AdminPageHeader
         eyebrow="Packaging Studio"
         title="Die-cut Templates"
-        description="The canonical die-cut shapes (cut outlines) products are built on — grouped by category, with the count of design templates, partner die-lines, and containers that use each. Container defaults are assigned in Container Die-lines."
+        description="The canonical die-cut shapes (cut outlines) products are built on. The Library tab manages the shapes; Container assignments sets each container's default die-cut + domains."
       />
-      <DieCutTemplatesClient data={data} />
+      <DieCutModuleClient
+        library={library}
+        assignments={assignments}
+        initialTab={tab === 'containers' ? 'containers' : 'library'}
+      />
     </div>
   )
 }

@@ -49,6 +49,7 @@ export interface OpsRow {
   uploadedAt: string
   isNormalized: boolean
   thumbnailUrl: string | null
+  packagingTypeId: string
   packagingTypeName: string
   partnerName: string
   offeringCount: number
@@ -359,7 +360,9 @@ function RowCard({ r, hideContextName }: { r: OpsRow; hideContextName?: Lens }) 
       <Thumb url={r.thumbnailUrl} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-[13px] font-semibold text-ink-900">{r.packagingTypeName}</p>
+          <Link href={`/packaging-studio/${r.packagingTypeId}`} className="truncate text-[13px] font-semibold text-ink-900 hover:text-pink-700 hover:underline" title="Open this container's hub">
+            {r.packagingTypeName}
+          </Link>
           <StatusBadges r={r} />
         </div>
         <p className="mt-0.5 truncate text-[11.5px] text-ink-500">

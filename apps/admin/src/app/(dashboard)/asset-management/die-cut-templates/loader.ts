@@ -88,3 +88,46 @@ export async function loadDieCutTemplates(): Promise<DieCutLibraryData> {
     },
   }
 }
+
+// ---- Tab 2: Container assignments (folded from the old Container Die-lines page) ----------
+
+export interface ContainerRow {
+  id: string
+  displayName: string
+  slug: string
+  containerCategory: string | null
+  status: string
+  defaultDieCutTemplateId: string | null
+  applicableLabelingTypes: string[]
+}
+export interface ContainerAssignmentsData {
+  containers: ContainerRow[]
+  options: { id: string; label: string }[]
+  stats: { total: number; assigned: number }
+}
+
+export async function loadContainerAssignments(): Promise<ContainerAssignmentsData> {
+  const containers = (await (
+    prisma as unknown as { packagingType: { findMany: (a: unknown) => Promise<ContainerRow[]> } }
+  ).packagingType
+    .findMany({
+      orderBy: { displayName: 'asc' },
+      select: {
+        id: true, displayName: true, slug: true, containerCategory: true, status: true,
+        defaultDieCutTemplateId: true, applicableLabelingTypes: true,
+      },
+    })
+    .catch(() => [] as ContainerRow[])) as ContainerRow[]
+
+  const dieCuts = (await (
+    prisma as unknown as { dieCutTemplate: { findMany: (a: unknown) => Promise<{ id: string; name: string; category: string }[]> } }
+  ).dieCutTemplate
+    .findMany({ where: { isActive: true }, orderBy: { name: 'asc' }, select: { id: true, name: true, category: true } })
+    .catch(() => [] as { id: string; name: string; category: string }[])) as { id: string; name: string; category: string }[]
+
+  return {
+    containers,
+    options: dieCuts.map((d) => ({ id: d.id, label: `${d.name} · ${d.category}` })),
+    stats: { total: containers.length, assigned: containers.filter((c) => c.defaultDieCutTemplateId).length },
+  }
+}

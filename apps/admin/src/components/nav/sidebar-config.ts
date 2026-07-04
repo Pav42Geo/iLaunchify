@@ -355,9 +355,10 @@ const APPLICATIONS: SidebarRegion = {
       icon: Box,
       children: [
         { kind: 'item', label: '3D Models & Surfaces', icon: Box, href: '/packaging-studio', capability: 'catalog:write' },
-        // Canonical die-cut shape library (DieCutTemplate) — docs/DIE_CUT_TEMPLATES_MODULE.md.
+        // Canonical die-cut shape library + container assignments (2 tabs) —
+        // docs/DIE_CUT_TEMPLATES_MODULE.md. The old standalone "Container Die-lines" link was
+        // retired 2026-07-04; that surface is now this module's "Container assignments" tab.
         { kind: 'item', label: 'Die-cut Templates', icon: Shapes, href: '/asset-management/die-cut-templates', capability: 'catalog:write' },
-        { kind: 'item', label: 'Container Die-lines', icon: Boxes, href: '/asset-management/packaging-containers' },
         { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
         // Packaging assets (moved from Asset Management 2026-07-04).
         { kind: 'item', label: 'Packaging Symbols', icon: Recycle, href: '/assets/packaging-symbols' },

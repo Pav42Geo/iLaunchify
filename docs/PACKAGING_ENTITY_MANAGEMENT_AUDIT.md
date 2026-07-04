@@ -119,8 +119,9 @@ target a shape).
    **back** to the hub (the "return to hub" spoke pattern): Container Die-lines rows and Product
    Mockups group headers both link to `/packaging-studio/[id]`. (Die-line Ops row → hub link is a
    small follow-up in that workspace.)
-3. **Fold Container Die-lines into the Die-cut Templates module** as its "assignments" tab
-   (already planned in `DIE_CUT_TEMPLATES_MODULE.md`).
+3. **Fold Container Die-lines into the Die-cut Templates module** as its "Container assignments"
+   tab — ✅ **BUILT 2026-07-04.** Old route redirects in; sidebar link retired. Also added the
+   Die-line Ops → hub link, completing the spoke↔hub loop.
 4. Leave Symbols / Materials / Design Templates as their own surfaces — cross-linked, not merged.
 
 ## 5. Direct answer to the question

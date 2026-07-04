@@ -73,8 +73,12 @@ sourcing/coverage gaps. Defer unless needed.
    audited (`DieCutTemplate` added to the audit entity-type union). Files:
    `page.tsx · loader.ts · actions.ts · DieCutTemplatesClient.tsx · constants.ts`.
    Follow-up: full edit / replace-outline (P1 only does create + toggles).
-2. **Fold Container Die-lines in as Tab 2**, redirect `/asset-management/packaging-containers`
-   here, retire its standalone sidebar link. (Not done yet — both entries coexist for now.)
+2. **Fold Container Die-lines in as Tab 2** — ✅ **BUILT 2026-07-04.** The module is now tabbed
+   (`DieCutModuleClient`): **Library** + **Container assignments** (per-container default die-cut +
+   domains, reusing the `DieCutPicker`/`DomainPicker` controls, each container name linking to its
+   hub). `/asset-management/packaging-containers` now **redirects** to
+   `…/die-cut-templates?tab=containers`, and the standalone "Container Die-lines" sidebar link was
+   retired. Files: `DieCutModuleClient.tsx · ContainerAssignmentsClient.tsx` + `loadContainerAssignments`.
 3. **(Optional) Tab 3** partner-support view (`PartnerServiceDieCut`).
 
 ## Sidebar state after 2026-07-04 cleanup
