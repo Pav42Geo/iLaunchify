@@ -193,6 +193,9 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.setSize(W, H)
+      // Neutral tone mapping → natural exposure, no blown-out highlights (colours preserved).
+      renderer.toneMapping = THREE.NeutralToneMapping
+      renderer.toneMappingExposure = 1.0
       mount.appendChild(renderer.domElement)
 
       // Image-based studio lighting (PMREM RoomEnvironment — no vendored HDRI asset).
@@ -205,13 +208,12 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
       } catch {
         /* env is optional — lights below still illuminate */
       }
-      scene.add(new THREE.AmbientLight(0xffffff, 0.3))
-      const key = new THREE.DirectionalLight(0xffffff, 0.7)
-      key.position.set(3, 5, 4)
-      scene.add(key)
-      const fill = new THREE.DirectionalLight(0xffffff, 0.25)
-      fill.position.set(-4, 2, -3)
-      scene.add(fill)
+      // Natural, even lighting: let the soft image-based environment do the work
+      // (no harsh front key that blows out the label). A gentle top light adds form.
+      scene.add(new THREE.AmbientLight(0xffffff, 0.12))
+      const soft = new THREE.DirectionalLight(0xffffff, 0.18)
+      soft.position.set(-2, 4, 1.5)
+      scene.add(soft)
 
       // Real-size proportions from the die-line when available (G3.1); else the guess.
       const realDims = propsRef.current.dims

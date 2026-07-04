@@ -195,6 +195,11 @@ export function Dieline3DViewer({
     // backbuffer readable so toDataURL returns the rendered frame (not a blank canvas).
     if (captureRef) captureRef.current = () => renderer.domElement.toDataURL('image/png')
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    // Neutral tone mapping → natural exposure, no blown-out highlights (colours preserved).
+    if (environment) {
+      renderer.toneMapping = THREE.NeutralToneMapping
+      renderer.toneMappingExposure = 1.0
+    }
     mount.appendChild(renderer.domElement)
     renderer.domElement.style.width = '100%'
     renderer.domElement.style.height = '100%'
@@ -212,13 +217,18 @@ export function Dieline3DViewer({
       scene.environment = envRT.texture
       pmrem.dispose()
     }
-    scene.add(new THREE.AmbientLight(0xffffff, environment ? 0.25 : 0.75))
-    const key = new THREE.DirectionalLight(0xffffff, environment ? 0.7 : 1.1)
-    key.position.set(3, 5, 4)
+    // Natural, even lighting when the environment is on: the soft image-based env
+    // does the work; a gentle top light adds form. No harsh front key that blows out
+    // the artwork. (Env-off keeps the old brighter direct rig as a fallback.)
+    scene.add(new THREE.AmbientLight(0xffffff, environment ? 0.12 : 0.75))
+    const key = new THREE.DirectionalLight(0xffffff, environment ? 0.18 : 1.1)
+    key.position.set(environment ? -2 : 3, environment ? 4 : 5, environment ? 1.5 : 4)
     scene.add(key)
-    const fill = new THREE.DirectionalLight(0xffffff, environment ? 0.25 : 0.4)
-    fill.position.set(-4, 2, -3)
-    scene.add(fill)
+    if (!environment) {
+      const fill = new THREE.DirectionalLight(0xffffff, 0.4)
+      fill.position.set(-4, 2, -3)
+      scene.add(fill)
+    }
 
     // Track every texture we create so cleanup disposes them all (multi-panel makes several).
     const disposables: THREE.Texture[] = []
