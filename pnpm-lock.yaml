@@ -240,6 +240,9 @@ importers:
       '@tanstack/react-query-devtools':
         specifier: ^5.59.0
         version: 5.100.11(@tanstack/react-query@5.100.11(react@18.3.1))(react@18.3.1)
+      '@types/three':
+        specifier: ^0.184.1
+        version: 0.184.1
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -273,6 +276,9 @@ importers:
       tailwind-merge:
         specifier: ^2.5.4
         version: 2.6.1
+      three:
+        specifier: ^0.184.0
+        version: 0.184.0
       zod:
         specifier: ^3.23.8
         version: 3.25.76

@@ -29,6 +29,8 @@
     "@ilaunchify/storage": "workspace:*",
     "@ilaunchify/packaging-3d": "workspace:*",
     "@ilaunchify/types": "workspace:*",
+    "@types/three": "^0.184.1",
+    "three": "^0.184.0",
     "@ilaunchify/ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-label": "^2.1.0",

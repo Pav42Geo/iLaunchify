@@ -1,37 +1,43 @@
 'use client'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // =============================================================================
 // Packaging Studio — 3D surface view (ADMIN_PACKAGING_STUDIO.md P2 Slice B).
 //
 // A self-contained three.js viewer for the admin surface-authoring page. Renders a
-// parametric package for the model's topology (can / jar / box / pouch / tube …),
-// overlays a clickable MARKER per surface (projected 3D→screen), and — in "place"
-// mode — raycasts a click on the mesh to set the selected surface's 3D anchor (the
-// clickable border position). three.js is loaded from the CDN at runtime (no npm dep),
-// matching the existing packaging-3d spike. `any`-typed since @types/three isn't installed.
+// parametric package for the model's topology (can / jar / box / pouch / tube …) at
+// the die-line's REAL proportions (buildParametricModel), overlays a clickable MARKER
+// per surface (projected 3D→screen), and — in "place" mode — raycasts a click on the
+// mesh to set the selected surface's 3D anchor.
 //
-// Isolated to this folder on purpose: it does not touch the partner Packaging Studio.
-//
-// G1.3c realism (2026-07-03): version-safe upgrade on the existing r128 CDN scene —
-// a soft contact shadow + fill light + finish-aware roughness/metalness (from the
-// packaging-3d PBR preset, r128-safe subset). FULL PBR (clearcoat/transmission/sheen)
-// + HDRI env + the G1.4 glTF material texture swap need the npm three@0.184 that
-// Dieline3DViewer already uses — recommended follow-up: migrate this view off the
-// r128 CDN to `import * as THREE from 'three'` + examples/jsm GLTFLoader, drop the
-// `any`, then reuse the same RoomEnvironment + MeshPhysicalMaterial path. Deferred
-// because it needs browser QA (see PACKAGING_3D_GENERATOR_CHECKLIST G1.3c).
+// G1.3d migration (2026-07-03): moved off the r128 CDN to npm three@0.184 (the same
+// build Dieline3DViewer uses) → real @types/three (no more `any`), PMREM RoomEnvironment
+// image-based lighting + contact shadow + MeshPhysicalMaterial (clearcoat/transmission/
+// sheen), and the examples/jsm GLTFLoader. This is the realism jump for the admin studio
+// and unblocks the G1.4 glTF texture swap. Needs browser QA.
 // =============================================================================
 
 import * as React from 'react'
+import * as THREE from 'three'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import type { PackagingSurface } from '@ilaunchify/ui'
 import { buildParametricModel, type PackagingTopology } from '@ilaunchify/packaging-3d'
 
-const THREE_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
-// GLTFLoader for three r128 — the examples/js UMD build attaches THREE.GLTFLoader.
-const GLTF_SRC = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js'
-
 type Vec3 = { x: number; y: number; z: number }
+
+/** Renderer-agnostic PBR surface params (subset of the packaging-3d preset). */
+interface MaterialParams {
+  roughness?: number
+  metalness?: number
+  clearcoat?: number
+  clearcoatRoughness?: number
+  transmission?: number
+  ior?: number
+  thickness?: number
+  sheen?: number
+  sheenRoughness?: number
+  envMapIntensity?: number
+}
 
 interface Props {
   topology: string
@@ -43,74 +49,27 @@ interface Props {
   onPlaceAnchor?: (key: string, anchor: Vec3) => void
   /** Signed URL to an imported glTF/glb. When set, renders the real mesh (parametric fallback on error). */
   modelUrl?: string | null
-  /** G1.3c — finish-aware surface response (r128-safe subset of the packaging-3d PBR
-   *  preset: roughness/metalness only). Resolve from the PackagingType's material at
-   *  the caller. Full clearcoat/transmission/sheen + HDRI arrive with the npm-three
-   *  migration (see file header). Read at scene init (topology change re-reads). */
-  material?: { roughness?: number; metalness?: number } | null
+  /** PBR surface response from the PackagingType's material/finish (packaging-3d preset). */
+  material?: MaterialParams | null
   /** G3.1 — real dimensions (mm) from the die-line. When present, the parametric mesh
-   *  is built at the package's TRUE proportions via buildParametricModel (a tall bottle
-   *  reads tall, a wide carton reads wide) instead of the fixed per-topology guess. */
+   *  is built at the package's TRUE proportions via buildParametricModel. */
   dims?: { widthMm: number; heightMm: number; depthMm?: number } | null
 }
 
-// Convert a parametric model's real-mm bounds → the normalized {r,h,d,kind,lid} the
-// scene builder uses (largest side ≈ 2.2 units, aspect preserved). r = half-width
-// (box width = r*2 / cylinder radius). Keeps the existing r128 geometry path.
-function dimsFromRealMm(topology: string, dims: { widthMm: number; heightMm: number; depthMm?: number }): ReturnType<typeof dimsFor> {
-  const model = buildParametricModel(topology as PackagingTopology, dims)
-  const { widthMm, heightMm, depthMm } = model.dims
-  const scale = 2.2 / Math.max(widthMm, heightMm, depthMm, 1)
-  return {
-    r: (widthMm * scale) / 2,
-    h: heightMm * scale,
-    d: depthMm * scale,
-    kind: model.primitive === 'CYLINDER' ? 'cyl' : 'box',
-    lid: model.hasLid,
-  }
-}
+type Dims = { r: number; h: number; d: number; kind: 'cyl' | 'box'; lid: boolean }
 
-/** Load three.js from the CDN once; resolve when window.THREE is ready. */
-function loadThree(): Promise<any> {
-  const w = window as any
-  if (w.THREE) return Promise.resolve(w.THREE)
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${THREE_SRC}"]`) as HTMLScriptElement | null
-    if (existing) {
-      existing.addEventListener('load', () => resolve((window as any).THREE))
-      existing.addEventListener('error', reject)
-      return
-    }
-    const s = document.createElement('script')
-    s.src = THREE_SRC
-    s.async = true
-    s.onload = () => resolve((window as any).THREE)
-    s.onerror = reject
-    document.head.appendChild(s)
-  })
-}
-
-/** Load the GLTFLoader UMD script (needs global THREE first). Resolves when ready. */
-function loadGLTFLoader(THREE: any): Promise<void> {
-  if (THREE.GLTFLoader) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${GLTF_SRC}"]`) as HTMLScriptElement | null
-    if (existing) {
-      existing.addEventListener('load', () => resolve())
-      existing.addEventListener('error', reject)
-      return
-    }
-    const s = document.createElement('script')
-    s.src = GLTF_SRC
-    s.async = true
-    s.onload = () => resolve()
-    s.onerror = reject
-    document.head.appendChild(s)
-  })
+interface SceneState {
+  renderer?: THREE.WebGLRenderer
+  el?: HTMLCanvasElement
+  onDown?: (e: PointerEvent) => void
+  onMove?: (e: PointerEvent) => void
+  onUp?: (e: PointerEvent) => void
+  onWheel?: (e: WheelEvent) => void
+  envRT?: THREE.WebGLRenderTarget | null
 }
 
 /** Rough half-extents for the parametric mesh by topology (three.js units). */
-function dimsFor(topology: string): { r: number; h: number; d: number; kind: 'cyl' | 'box'; lid: boolean } {
+function dimsFor(topology: string): Dims {
   switch (topology) {
     case 'CAPSULE_JAR':
       return { r: 1, h: 1.8, d: 1, kind: 'cyl', lid: true }
@@ -132,23 +91,72 @@ function dimsFor(topology: string): { r: number; h: number; d: number; kind: 'cy
   }
 }
 
+// Real-mm bounds → normalized {r,h,d,kind,lid} (largest side ≈ 2.2 units, aspect kept).
+function dimsFromRealMm(topology: string, dims: { widthMm: number; heightMm: number; depthMm?: number }): Dims {
+  const model = buildParametricModel(topology as PackagingTopology, dims)
+  const { widthMm, heightMm, depthMm } = model.dims
+  const scale = 2.2 / Math.max(widthMm, heightMm, depthMm, 1)
+  return {
+    r: (widthMm * scale) / 2,
+    h: heightMm * scale,
+    d: depthMm * scale,
+    kind: model.primitive === 'CYLINDER' ? 'cyl' : 'box',
+    lid: model.hasLid,
+  }
+}
+
 /** Default anchor for a surface with no stored hotspot — infer from part/role. */
-function defaultAnchor(s: PackagingSurface, d: ReturnType<typeof dimsFor>, i: number): Vec3 {
+function defaultAnchor(s: PackagingSurface, d: Dims, i: number): Vec3 {
   const top = s.part === 'lid' || s.role === 'CLOSURE'
   const base = s.role === 'OTHER' && /base/i.test(s.label)
   if (top) return { x: 0, y: d.h / 2 + 0.05, z: 0 }
   if (base) return { x: 0, y: -d.h / 2 - 0.05, z: 0 }
   // Spread body surfaces around the front/sides so markers don't overlap.
-  const ang = (i * 0.7) % (Math.PI * 1.2) - 0.6
+  const ang = ((i * 0.7) % (Math.PI * 1.2)) - 0.6
   const rad = d.kind === 'cyl' ? d.r + 0.04 : d.d / 2 + 0.04
   return { x: Math.sin(ang) * (d.kind === 'cyl' ? d.r + 0.04 : d.r * 0.7), y: 0, z: Math.cos(ang) * rad }
+}
+
+/** Soft radial contact-shadow texture (fake grounding — cheaper than shadow maps). */
+function radialShadowTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = 128
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
+    g.addColorStop(0, 'rgba(0,0,0,0.5)')
+    g.addColorStop(0.7, 'rgba(0,0,0,0.16)')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 128, 128)
+  }
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+function bodyMaterial(m: MaterialParams | null | undefined, color: THREE.ColorRepresentation): THREE.MeshPhysicalMaterial {
+  const p = m ?? {}
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: p.roughness ?? 0.55,
+    metalness: p.metalness ?? 0.08,
+    clearcoat: p.clearcoat ?? 0,
+    clearcoatRoughness: p.clearcoatRoughness ?? 0.3,
+    transmission: p.transmission ?? 0,
+    ior: p.ior ?? 1.45,
+    thickness: p.thickness ?? 0,
+    sheen: p.sheen ?? 0,
+    sheenRoughness: p.sheenRoughness ?? 0.5,
+    envMapIntensity: p.envMapIntensity ?? 0.9,
+  })
 }
 
 export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, placeMode, onPlaceAnchor, modelUrl, material, dims }: Props) {
   const mountRef = React.useRef<HTMLDivElement>(null)
   const [markers, setMarkers] = React.useState<{ key: string; label: string; x: number; y: number; front: boolean }[]>([])
   const [err, setErr] = React.useState<string | null>(null)
-  const stateRef = React.useRef<any>({})
+  const stateRef = React.useRef<SceneState>({})
   // Keep the latest props available to the render loop without re-initializing the scene.
   const propsRef = React.useRef({ surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl, material, dims })
   propsRef.current = { surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl, material, dims }
@@ -159,226 +167,221 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
     const mount = mountRef.current
     if (!mount) return
 
-    loadThree()
-      .then((THREE) => {
-        if (disposed || !mount) return
-        const W = mount.clientWidth || 360
-        const H = mount.clientHeight || 360
-        const scene = new THREE.Scene()
-        scene.background = new THREE.Color(0xf4f4f5)
-        const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100)
-        // Frame the model high + centred: sit back and aim BELOW the model centre, which
-        // lifts the package up on screen (aiming at the origin left it hanging low).
-        camera.position.set(0, 1.1, 7.5)
-        camera.lookAt(0, -1.3, 0)
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-        renderer.setSize(W, H)
-        mount.appendChild(renderer.domElement)
+    try {
+      const W = mount.clientWidth || 360
+      const H = mount.clientHeight || 360
+      const scene = new THREE.Scene()
+      scene.background = new THREE.Color(0xf4f4f5)
+      const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100)
+      // Frame the model high + centred: sit back and aim BELOW the model centre.
+      camera.position.set(0, 1.1, 7.5)
+      camera.lookAt(0, -1.3, 0)
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setSize(W, H)
+      mount.appendChild(renderer.domElement)
 
-        scene.add(new THREE.AmbientLight(0xffffff, 0.6))
-        const key = new THREE.DirectionalLight(0xffffff, 0.9)
-        key.position.set(3, 5, 4)
-        scene.add(key)
-        // G1.3c — fill light softens the shadow side to match Dieline3DViewer's look.
-        const fill = new THREE.DirectionalLight(0xffffff, 0.35)
-        fill.position.set(-4, 2, -3)
-        scene.add(fill)
+      // Image-based studio lighting (PMREM RoomEnvironment — no vendored HDRI asset).
+      let envRT: THREE.WebGLRenderTarget | null = null
+      try {
+        const pmrem = new THREE.PMREMGenerator(renderer)
+        envRT = pmrem.fromScene(new RoomEnvironment(), 0.04)
+        scene.environment = envRT.texture
+        pmrem.dispose()
+      } catch {
+        /* env is optional — lights below still illuminate */
+      }
+      scene.add(new THREE.AmbientLight(0xffffff, 0.3))
+      const key = new THREE.DirectionalLight(0xffffff, 0.7)
+      key.position.set(3, 5, 4)
+      scene.add(key)
+      const fill = new THREE.DirectionalLight(0xffffff, 0.25)
+      fill.position.set(-4, 2, -3)
+      scene.add(fill)
 
-        // Real-size proportions from the die-line when available (G3.1); else the guess.
-        const realDims = propsRef.current.dims
-        const d = realDims && realDims.widthMm > 0 && realDims.heightMm > 0 ? dimsFromRealMm(topology, realDims) : dimsFor(topology)
-        const group = new THREE.Group()
-        // G1.3c — finish-aware roughness/metalness from the PBR preset (r128-safe subset).
-        const pm = propsRef.current.material
-        const mat = new THREE.MeshStandardMaterial({ color: 0xd8d8dc, roughness: pm?.roughness ?? 0.6, metalness: pm?.metalness ?? 0.1 })
+      // Real-size proportions from the die-line when available (G3.1); else the guess.
+      const realDims = propsRef.current.dims
+      const d = realDims && realDims.widthMm > 0 && realDims.heightMm > 0 ? dimsFromRealMm(topology, realDims) : dimsFor(topology)
+      const group = new THREE.Group()
+      const mat = bodyMaterial(propsRef.current.material, 0xd8d8dc)
 
-        // Build the parametric placeholder mesh (also the fallback if a GLB fails to load).
-        function addParametric() {
-          let body: any
-          if (d.kind === 'cyl') {
-            body = new THREE.Mesh(new THREE.CylinderGeometry(d.r, d.r, d.h, 48), mat)
-          } else {
-            body = new THREE.Mesh(new THREE.BoxGeometry(d.r * 2, d.h, d.d, 1, 1, 1), mat)
-          }
-          body.name = 'body'
-          group.add(body)
-          if (d.lid) {
-            const lid = new THREE.Mesh(new THREE.CylinderGeometry(d.r * 1.04, d.r * 1.04, d.h * 0.18, 48), new THREE.MeshStandardMaterial({ color: 0xb9b9c0, roughness: 0.5 }))
-            lid.position.y = d.h / 2 - d.h * 0.05
-            lid.name = 'lid'
-            group.add(lid)
-          }
-        }
-        scene.add(group)
-
-        // G1.3c — soft contact shadow grounding the model (radial-gradient plane,
-        // glued under the base so it tilts with the orbit). r128-safe / no addon.
-        {
-          const canvas = document.createElement('canvas')
-          canvas.width = canvas.height = 128
-          const ctx = canvas.getContext('2d')
-          if (ctx) {
-            const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-            g.addColorStop(0, 'rgba(0,0,0,0.5)')
-            g.addColorStop(0.7, 'rgba(0,0,0,0.16)')
-            g.addColorStop(1, 'rgba(0,0,0,0)')
-            ctx.fillStyle = g
-            ctx.fillRect(0, 0, 128, 128)
-          }
-          const shadowTex = new THREE.CanvasTexture(canvas)
-          const foot = d.kind === 'cyl' ? d.r * 2 * 1.9 : Math.max(d.r * 2, d.d) * 1.7
-          const shadow = new THREE.Mesh(
-            new THREE.PlaneGeometry(foot, foot),
-            new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: 0.6 }),
+      // Parametric placeholder mesh (also the fallback if a GLB fails to load).
+      function addParametric() {
+        const body =
+          d.kind === 'cyl'
+            ? new THREE.Mesh(new THREE.CylinderGeometry(d.r, d.r, d.h, 48), mat)
+            : new THREE.Mesh(new THREE.BoxGeometry(d.r * 2, d.h, d.d, 1, 1, 1), mat)
+        body.name = 'body'
+        group.add(body)
+        if (d.lid) {
+          const lid = new THREE.Mesh(
+            new THREE.CylinderGeometry(d.r * 1.04, d.r * 1.04, d.h * 0.18, 48),
+            bodyMaterial({ roughness: 0.4, metalness: 0.1 }, 0xb9b9c0),
           )
-          shadow.rotation.x = -Math.PI / 2
-          shadow.position.y = -d.h / 2 - 0.02
-          group.add(shadow)
+          lid.position.y = d.h / 2 - d.h * 0.05
+          lid.name = 'lid'
+          group.add(lid)
         }
+      }
+      scene.add(group)
 
-        const initialModelUrl = propsRef.current.modelUrl
-        if (initialModelUrl) {
-          // Import the real glTF/glb; normalize to ~2.4 units and center it. Parametric fallback on any failure.
-          loadGLTFLoader(THREE)
-            .then(() => {
-              const loader = new THREE.GLTFLoader()
-              loader.load(
-                initialModelUrl,
-                (gltf: any) => {
-                  if (disposed) return
-                  const obj = gltf.scene || (gltf.scenes && gltf.scenes[0])
-                  if (!obj) {
-                    addParametric()
-                    return
-                  }
-                  const bbox = new THREE.Box3().setFromObject(obj)
-                  const size = new THREE.Vector3()
-                  const center = new THREE.Vector3()
-                  bbox.getSize(size)
-                  bbox.getCenter(center)
-                  const maxDim = Math.max(size.x, size.y, size.z) || 1
-                  const scale = 2.4 / maxDim
-                  obj.scale.setScalar(scale)
-                  obj.position.set(-center.x * scale, -center.y * scale, -center.z * scale)
-                  group.add(obj)
-                },
-                undefined,
-                () => {
-                  if (disposed) return
-                  addParametric()
-                  setErr('Could not load the imported 3D model — showing a placeholder.')
-                },
-              )
-            })
-            .catch(() => {
-              if (disposed) return
+      // Soft contact shadow grounding the model (glued under the base so it tilts with orbit).
+      {
+        const shadowTex = radialShadowTexture()
+        const foot = d.kind === 'cyl' ? d.r * 2 * 1.9 : Math.max(d.r * 2, d.d) * 1.7
+        const shadow = new THREE.Mesh(
+          new THREE.PlaneGeometry(foot, foot),
+          new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: 0.6 }),
+        )
+        shadow.rotation.x = -Math.PI / 2
+        shadow.position.y = -d.h / 2 - 0.02
+        group.add(shadow)
+      }
+
+      const initialModelUrl = propsRef.current.modelUrl
+      if (initialModelUrl) {
+        // Import the real glTF/glb; normalize to ~2.4 units and center it. Parametric fallback on failure.
+        const loader = new GLTFLoader()
+        loader.load(
+          initialModelUrl,
+          (gltf: GLTF) => {
+            if (disposed) return
+            const obj = gltf.scene ?? gltf.scenes?.[0]
+            if (!obj) {
               addParametric()
-              setErr('Could not load the 3D model loader — showing a placeholder.')
-            })
-        } else {
-          addParametric()
-        }
-
-        // Manual orbit + zoom (avoids the OrbitControls addon import-map).
-        let rotX = -0.15
-        let rotY = 0.5
-        let dragging = false
-        let lastX = 0
-        let lastY = 0
-        let moved = false
-        const raycaster = new THREE.Raycaster()
-        const ndc = new THREE.Vector2()
-
-        function onDown(e: PointerEvent) {
-          dragging = true
-          moved = false
-          lastX = e.clientX
-          lastY = e.clientY
-        }
-        function onMove(e: PointerEvent) {
-          if (!dragging) return
-          const dx = e.clientX - lastX
-          const dy = e.clientY - lastY
-          if (Math.abs(dx) + Math.abs(dy) > 3) moved = true
-          rotY += dx * 0.01
-          rotX = Math.max(-1.2, Math.min(1.2, rotX + dy * 0.01))
-          lastX = e.clientX
-          lastY = e.clientY
-        }
-        function onUp(e: PointerEvent) {
-          dragging = false
-          if (moved) return
-          // A click (no drag): in place mode, raycast to set the selected surface's anchor.
-          const p = propsRef.current
-          if (!p.placeMode || !p.selectedKey || !p.onPlaceAnchor) return
-          const rect = renderer.domElement.getBoundingClientRect()
-          ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-          ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
-          raycaster.setFromCamera(ndc, camera)
-          const hits = raycaster.intersectObjects(group.children, true)
-          if (hits.length) {
-            // Convert world point → local (group) space so it tracks rotation.
-            const local = group.worldToLocal(hits[0].point.clone())
-            p.onPlaceAnchor(p.selectedKey, { x: local.x, y: local.y, z: local.z })
-          }
-        }
-        function onWheel(e: WheelEvent) {
-          e.preventDefault()
-          camera.position.z = Math.max(3, Math.min(10, camera.position.z + e.deltaY * 0.002))
-        }
-        const el = renderer.domElement
-        el.style.touchAction = 'none'
-        el.addEventListener('pointerdown', onDown)
-        window.addEventListener('pointermove', onMove)
-        window.addEventListener('pointerup', onUp)
-        el.addEventListener('wheel', onWheel, { passive: false })
-
-        stateRef.current = { THREE, renderer, camera, scene, group, el, onDown, onMove, onUp, onWheel, dims: d }
-
-        const project = new THREE.Vector3()
-        let acc = 0
-        function tick() {
-          if (disposed) return
-          raf = requestAnimationFrame(tick)
-          group.rotation.x = rotX
-          group.rotation.y = rotY
-          renderer.render(scene, camera)
-
-          acc += 1
-          if (acc % 2 !== 0) return // throttle marker DOM updates
-          const p = propsRef.current
-          const rect = el.getBoundingClientRect()
-          const next = p.surfaces.map((s, i) => {
-            const a = s.hotspot?.anchor ?? defaultAnchor(s, d, i)
-            project.set(a.x, a.y, a.z)
-            group.localToWorld(project)
-            const front = project.clone().sub(camera.position).dot(camera.getWorldDirection(new THREE.Vector3())) > 0
-            project.project(camera)
-            return {
-              key: s.key,
-              label: s.label,
-              x: (project.x * 0.5 + 0.5) * rect.width,
-              y: (-project.y * 0.5 + 0.5) * rect.height,
-              front,
+              return
             }
-          })
-          setMarkers(next)
+            const bbox = new THREE.Box3().setFromObject(obj)
+            const size = new THREE.Vector3()
+            const center = new THREE.Vector3()
+            bbox.getSize(size)
+            bbox.getCenter(center)
+            const maxDim = Math.max(size.x, size.y, size.z) || 1
+            const scale = 2.4 / maxDim
+            obj.scale.setScalar(scale)
+            obj.position.set(-center.x * scale, -center.y * scale, -center.z * scale)
+            // Let imported materials catch the studio environment.
+            obj.traverse((o: THREE.Object3D) => {
+              const mesh = o as THREE.Mesh
+              const mm = mesh.material as THREE.MeshStandardMaterial | undefined
+              if (mm && 'envMapIntensity' in mm) mm.envMapIntensity = 0.9
+            })
+            group.add(obj)
+          },
+          undefined,
+          () => {
+            if (disposed) return
+            addParametric()
+            setErr('Could not load the imported 3D model — showing a placeholder.')
+          },
+        )
+      } else {
+        addParametric()
+      }
+
+      // Manual orbit + zoom (avoids the OrbitControls addon import-map).
+      let rotX = -0.15
+      let rotY = 0.5
+      let dragging = false
+      let lastX = 0
+      let lastY = 0
+      let moved = false
+      const raycaster = new THREE.Raycaster()
+      const ndc = new THREE.Vector2()
+
+      const onDown = (e: PointerEvent) => {
+        dragging = true
+        moved = false
+        lastX = e.clientX
+        lastY = e.clientY
+      }
+      const onMove = (e: PointerEvent) => {
+        if (!dragging) return
+        const dx = e.clientX - lastX
+        const dy = e.clientY - lastY
+        if (Math.abs(dx) + Math.abs(dy) > 3) moved = true
+        rotY += dx * 0.01
+        rotX = Math.max(-1.2, Math.min(1.2, rotX + dy * 0.01))
+        lastX = e.clientX
+        lastY = e.clientY
+      }
+      const onUp = (e: PointerEvent) => {
+        dragging = false
+        if (moved) return
+        // A click (no drag): in place mode, raycast to set the selected surface's anchor.
+        const p = propsRef.current
+        if (!p.placeMode || !p.selectedKey || !p.onPlaceAnchor) return
+        const rect = renderer.domElement.getBoundingClientRect()
+        ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+        ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+        raycaster.setFromCamera(ndc, camera)
+        const hits = raycaster.intersectObjects(group.children, true)
+        const hit = hits[0]
+        if (hit) {
+          const local = group.worldToLocal(hit.point.clone())
+          p.onPlaceAnchor(p.selectedKey, { x: local.x, y: local.y, z: local.z })
         }
-        tick()
-      })
-      .catch(() => setErr('Could not load the 3D engine.'))
+      }
+      const onWheel = (e: WheelEvent) => {
+        e.preventDefault()
+        camera.position.z = Math.max(3, Math.min(10, camera.position.z + e.deltaY * 0.002))
+      }
+      const el = renderer.domElement
+      el.style.touchAction = 'none'
+      el.addEventListener('pointerdown', onDown)
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      el.addEventListener('wheel', onWheel, { passive: false })
+
+      stateRef.current = { renderer, el, onDown, onMove, onUp, onWheel, envRT }
+
+      const project = new THREE.Vector3()
+      const camDir = new THREE.Vector3()
+      let acc = 0
+      const tick = () => {
+        if (disposed) return
+        raf = requestAnimationFrame(tick)
+        group.rotation.x = rotX
+        group.rotation.y = rotY
+        renderer.render(scene, camera)
+
+        acc += 1
+        if (acc % 2 !== 0) return // throttle marker DOM updates
+        const p = propsRef.current
+        const rect = el.getBoundingClientRect()
+        camera.getWorldDirection(camDir)
+        const next = p.surfaces.map((s, i) => {
+          const a = s.hotspot?.anchor ?? defaultAnchor(s, d, i)
+          project.set(a.x, a.y, a.z)
+          group.localToWorld(project)
+          const front = project.clone().sub(camera.position).dot(camDir) > 0
+          project.project(camera)
+          return {
+            key: s.key,
+            label: s.label,
+            x: (project.x * 0.5 + 0.5) * rect.width,
+            y: (-project.y * 0.5 + 0.5) * rect.height,
+            front,
+          }
+        })
+        setMarkers(next)
+      }
+      tick()
+    } catch {
+      setErr('Could not load the 3D engine.')
+    }
 
     return () => {
       disposed = true
       cancelAnimationFrame(raf)
       const st = stateRef.current
-      if (st?.el) {
-        st.el.removeEventListener('pointerdown', st.onDown)
-        window.removeEventListener('pointermove', st.onMove)
-        window.removeEventListener('pointerup', st.onUp)
-        st.el.removeEventListener('wheel', st.onWheel)
-        st.renderer?.dispose?.()
+      if (st.el) {
+        if (st.onDown) st.el.removeEventListener('pointerdown', st.onDown)
+        if (st.onMove) window.removeEventListener('pointermove', st.onMove)
+        if (st.onUp) window.removeEventListener('pointerup', st.onUp)
+        if (st.onWheel) st.el.removeEventListener('wheel', st.onWheel)
+        st.envRT?.dispose()
+        st.renderer?.dispose()
         if (mount && st.el.parentNode === mount) mount.removeChild(st.el)
       }
     }
