@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { BoxFace } from '../lib/surface-face'
 
 export type { BoxFace }
@@ -108,6 +109,10 @@ export interface Dieline3DViewerProps {
   environment?: boolean
   /** G1.3 — soft contact shadow grounding the model. Default on. */
   contactShadow?: boolean
+  /** G1.4 — imported glTF/glb URL. When set, renders the REAL model (parametric
+   *  fallback on error) and applies the design texture (`textureImageUrl`/`textureSvg`)
+   *  to its materials. When absent, behaviour is unchanged (parametric only). */
+  modelUrl?: string | null
   className?: string
   /** When provided, the viewer sets `.current` to a function that captures the current
    *  frame as a PNG data URL (for "download 3D image"). Requires preserveDrawingBuffer. */
@@ -162,6 +167,7 @@ export function Dieline3DViewer({
   material,
   environment = true,
   contactShadow = true,
+  modelUrl,
   className,
   captureRef,
   onSurfaceClick,
@@ -177,6 +183,7 @@ export function Dieline3DViewer({
     const mount = mountRef.current
     if (!mount) return
 
+    let cancelled = false // guards the async glTF load against unmount
     const w = Math.max(1, widthMm)
     const h = Math.max(1, heightMm)
     const d = Math.max(1, depthMm && depthMm > 0 ? depthMm : Math.min(w, h) * 0.5)
@@ -261,6 +268,7 @@ export function Dieline3DViewer({
     // Lid group (box only) — hinged at the back-top edge so the slider folds it open.
     let lid: THREE.Group | null = null
 
+    function addParametric() {
     if (shape === 'BOX') {
       const geo = new THREE.BoxGeometry(w * s, h * s, d * s)
       // material order: +X,-X,+Y,-Y,+Z,-Z. Multi-panel → per-face textures; else print on front.
@@ -305,6 +313,49 @@ export function Dieline3DViewer({
       shadow.rotation.x = -Math.PI / 2
       shadow.position.y = -(h * s) / 2 - 0.01
       group.add(shadow)
+    }
+    } // end addParametric
+
+    // G1.4 — imported glTF: render the REAL model and apply the design texture to its
+    // materials (first pass = all mesh materials; per-surface binding is a follow-up).
+    // Parametric fallback on error / no URL, so existing callers are unaffected.
+    if (modelUrl) {
+      new GLTFLoader().load(
+        modelUrl,
+        (gltf: GLTF) => {
+          if (cancelled) return
+          const obj = gltf.scene ?? gltf.scenes?.[0]
+          if (!obj) return addParametric()
+          const bbox = new THREE.Box3().setFromObject(obj)
+          const size = new THREE.Vector3()
+          const center = new THREE.Vector3()
+          bbox.getSize(size)
+          bbox.getCenter(center)
+          const scale = 1.6 / (Math.max(size.x, size.y, size.z) || 1)
+          obj.scale.setScalar(scale)
+          obj.position.set(-center.x * scale, -center.y * scale, -center.z * scale)
+          if (tex) {
+            tex.flipY = false
+            tex.colorSpace = THREE.SRGBColorSpace
+            tex.needsUpdate = true
+          }
+          obj.traverse((o: THREE.Object3D) => {
+            const mesh = o as THREE.Mesh
+            const mm = mesh.material as THREE.MeshStandardMaterial | undefined
+            if (!mm || typeof mm !== 'object') return
+            if (tex) mm.map = tex
+            if ('envMapIntensity' in mm) mm.envMapIntensity = environment ? 0.8 : 0
+            mm.needsUpdate = true
+          })
+          group.add(obj)
+        },
+        undefined,
+        () => {
+          if (!cancelled) addParametric()
+        },
+      )
+    } else {
+      addParametric()
     }
 
     // ---- manual orbit ----
@@ -373,6 +424,7 @@ export function Dieline3DViewer({
     loop()
 
     return () => {
+      cancelled = true
       if (captureRef) captureRef.current = null
       cancelAnimationFrame(raf)
       ro.disconnect()
@@ -388,7 +440,7 @@ export function Dieline3DViewer({
     }
     // `faces` and `material` should be memoized by the caller (a new object re-inits
     // the scene); resolved packaging-3d preset constants are already reference-stable.
-  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment, contactShadow])
+  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment, contactShadow, modelUrl])
 
   return (
     <div className={className ?? 'flex h-full w-full flex-col'}>
