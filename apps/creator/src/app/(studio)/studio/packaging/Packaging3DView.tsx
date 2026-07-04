@@ -131,24 +131,6 @@ function defaultAnchor(s: PackagingSurface, d: Dims, i: number): Vec3 {
   return { x: Math.sin(ang) * (d.kind === 'cyl' ? d.r + 0.04 : d.r * 0.7), y: 0, z: Math.cos(ang) * rad }
 }
 
-/** Soft radial contact-shadow texture (fake grounding — cheaper than shadow maps). */
-function radialShadowTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = 128
-  const ctx = canvas.getContext('2d')
-  if (ctx) {
-    const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-    g.addColorStop(0, 'rgba(0,0,0,0.5)')
-    g.addColorStop(0.7, 'rgba(0,0,0,0.16)')
-    g.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, 128, 128)
-  }
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.colorSpace = THREE.SRGBColorSpace
-  return tex
-}
-
 function bodyMaterial(m: MaterialParams | null | undefined, color: THREE.ColorRepresentation): THREE.MeshPhysicalMaterial {
   const p = m ?? {}
   return new THREE.MeshPhysicalMaterial({
@@ -239,19 +221,6 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
         group.add(body)
       }
       scene.add(group)
-
-      // Soft contact shadow grounding the model (glued under the base so it tilts with orbit).
-      {
-        const shadowTex = radialShadowTexture()
-        const foot = d.kind === 'cyl' ? d.r * 2 * 1.9 : Math.max(d.r * 2, d.d) * 1.7
-        const shadow = new THREE.Mesh(
-          new THREE.PlaneGeometry(foot, foot),
-          new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false, opacity: 0.6 }),
-        )
-        shadow.rotation.x = -Math.PI / 2
-        shadow.position.y = -d.h / 2 - 0.02
-        group.add(shadow)
-      }
 
       const initialModelUrl = propsRef.current.modelUrl
       if (initialModelUrl) {

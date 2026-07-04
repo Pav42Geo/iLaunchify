@@ -106,8 +106,6 @@ export interface Dieline3DViewerProps {
   material?: PbrSurfaceParams
   /** G1.3 — image-based studio lighting (PMREM RoomEnvironment). Default on. */
   environment?: boolean
-  /** G1.3 — soft contact shadow grounding the model. Default on. */
-  contactShadow?: boolean
   className?: string
   /** When provided, the viewer sets `.current` to a function that captures the current
    *  frame as a PNG data URL (for "download 3D image"). Requires preserveDrawingBuffer. */
@@ -130,26 +128,6 @@ function svgTexture(svg: string): THREE.Texture {
   return rasterTexture(`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`)
 }
 
-/** A soft radial alpha gradient used as a fake contact shadow under the model —
- *  cheaper than shadow maps and the standard product-viewer grounding trick. */
-function radialShadowTexture(): THREE.Texture {
-  const size = 128
-  const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = size
-  const ctx = canvas.getContext('2d')
-  if (ctx) {
-    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
-    g.addColorStop(0, 'rgba(0,0,0,0.55)')
-    g.addColorStop(0.7, 'rgba(0,0,0,0.18)')
-    g.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, size, size)
-  }
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.colorSpace = THREE.SRGBColorSpace
-  return tex
-}
-
 export function Dieline3DViewer({
   shape,
   widthMm,
@@ -161,7 +139,6 @@ export function Dieline3DViewer({
   baseColor = '#f2efe7',
   material,
   environment = true,
-  contactShadow = true,
   className,
   captureRef,
   onSurfaceClick,
@@ -303,20 +280,6 @@ export function Dieline3DViewer({
       group.add(new THREE.Mesh(geo, printedMat()))
     }
 
-    // G1.3 — soft contact shadow under 3D volumes (skip flat stickers). Added to
-    // the group so it stays glued to the model base as the orbit tilts it.
-    if (contactShadow && shape !== 'FLAT') {
-      const shadowTex = trackTex(radialShadowTexture())
-      const foot = shape === 'CYLINDER' ? ((w * s) / (2 * Math.PI)) * 2 * 1.9 : Math.max(w, d) * s * 1.7
-      const shadow = new THREE.Mesh(
-        new THREE.PlaneGeometry(foot, foot),
-        new THREE.MeshBasicMaterial({ map: shadowTex ?? undefined, transparent: true, depthWrite: false, opacity: 0.6 }),
-      )
-      shadow.rotation.x = -Math.PI / 2
-      shadow.position.y = -(h * s) / 2 - 0.01
-      group.add(shadow)
-    }
-
     // ---- manual orbit ----
     let rotX = -0.35
     let rotY = 0.5
@@ -398,7 +361,7 @@ export function Dieline3DViewer({
     }
     // `faces` and `material` should be memoized by the caller (a new object re-inits
     // the scene); resolved packaging-3d preset constants are already reference-stable.
-  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment, contactShadow])
+  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment])
 
   return (
     <div className={className ?? 'flex h-full w-full flex-col'}>
