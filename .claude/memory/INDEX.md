@@ -63,7 +63,7 @@ cp "$LATEST"/*.md .claude/memory/
 
 - `ilaunchify-design-system-v1.md` — pink/black/neon green LOCKED
 - `ilaunchify-admin-surface-pattern.md` — cream hero + KPI + chip + table
-- `ilaunchify-admin-sidebar-v3-locked.md` — sidebar tree LOCKED VERBATIM
+- `ilaunchify-admin-sidebar-v3-locked.md` — admin sidebar SOURCE OF TRUTH (v4, restructured 2026-07-04; supersedes the v3 lock)
 
 ### Phases
 

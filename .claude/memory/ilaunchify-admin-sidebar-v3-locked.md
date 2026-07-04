@@ -1,145 +1,132 @@
 ---
 name: ilaunchify-admin-sidebar-v3-locked
-description: "VERBATIM admin sidebar v3 tree, pasted by Pavel 2026-05-31. Source of truth — never re-derive from FOD screenshots or memory of approval. Read this file before touching apps/admin/src/components/nav/sidebar-config.ts."
-metadata: 
+description: "Admin sidebar SOURCE OF TRUTH. v3 (Pavel 2026-05-31) was fully restructured into v4 (Pavel 2026-07-04) — this file now documents v4. Read before touching apps/admin/src/components/nav/sidebar-config.ts; treat divergences as bugs. Labels are exact — names matter."
+metadata:
   node_type: memory
   type: project
   originSessionId: f1d70585-c159-4eab-861c-0f3599bfdeaf
 ---
 
-**Locked by Pavel 2026-05-31.** This is the canonical admin sidebar tree
-that drives `apps/admin/src/components/nav/sidebar-config.ts`. Every label
-below is exact — `Cert instance reviews` not `Cert reviews`, `Users & Roles`
-not `People & access`, `MANAGE` not `Catalog`. Names matter.
+**v4 — restructured by Pavel 2026-07-04 (this supersedes the v3 lock of 2026-05-31).**
+This is the canonical admin sidebar that drives
+`apps/admin/src/components/nav/sidebar-config.ts`. Every label below is exact
+(`Cert instance reviews` not `Cert reviews`). Read this before any sidebar edit.
 
-**Why this exists:** I (Claude) shipped a deviated sidebar earlier in the
-same session ("Inbox / Catalog / People & access / Commerce / Applications")
-because the verbatim tree did not survive context compaction. Pavel pushed
-back. This file is the antidote — read it before any sidebar edit and
-treat divergences as bugs.
+**How to apply:** unbuilt routes are marked `hiddenUntilBuilt: true`; the renderer
+filters hidden items + groups that would render empty. Cross-app links use plain
+`<a href>` (never `<Link>` cross-app). Three nesting levels are supported (e.g.
+Settings > Order Settings > items).
 
-**How to apply:** When a referenced route doesn't exist yet, mark the entry
-`hiddenUntilBuilt: true` per Pavel's "hide until built" rule (2026-05-31).
-The structure stays in the config as the locked plan; the renderer filters
-out hidden items + sections that would render with no visible children.
-
-# The locked tree
+# The v4 tree
 
 ```
-DASHBOARD                          ← landing — KPI cards + inbox preview + activity feed + quick actions
+-- PRIMARY (no region label) ----------------------------------------------
+DASHBOARD                                -> /dashboard
 
-INBOX
-  ├─ Leads
-  ├─ Partner verification
-  ├─ Cert instance reviews
-  ├─ Ingredient queue
-  ├─ Product approvals
-  ├─ Packaging-type submissions
-  ├─ Phrase submissions
-  └─ Support tickets
+INBOX  (the one work queue, ordered by theme)
+  Partners:        Leads . Partner verification . Partner ramp
+  Catalog review:  Product approvals . Category review . Ingredient queue .
+                   Accessory verification . Packaging review .
+                   Cert instance reviews . Cert type requests
+  Orders & money:  Disputes . Cancellation requests . Refund requests
+  Support:         Support tickets
 
-ORDERS
+ORDERS                                   -> /orders
+PRODUCTS                                 -> /products
+CATEGORIES                               -> /categories
 
-MANAGE
-  ├─ Products & Categories
-  ├─ Users & Roles
-  │    ├─ Admins
-  │    ├─ Creators
-  │    └─ Partners
-  ├─ Asset Management
-  │    ├─ Packaging Symbols
-  │    ├─ Packaging Materials
-  │    ├─ Die-Cut Shapes (+ compliance grids)
-  │    ├─ Packaging Types
-  │    ├─ Nutrition Facts Labels
-  │    ├─ Supplement Facts Labels
-  │    ├─ Mandatory Phrases
-  │    ├─ Certificate Library
-  │    ├─ Ingredient Library
-  │    ├─ Die-Cut Design Templates
-  │    ├─ Product Mockups
-  │    ├─ Graphics Library
-  │    └─ Fonts Library
-  ├─ Communications
-  │    ├─ Notification templates
-  │    ├─ Broadcasts
-  │    └─ Support workflows
-  ├─ Languages & Markets
-  │    ├─ Markets / Regions
-  │    └─ Global Compliance Center
-  │         ├─ Market Profiles
-  │         ├─ Regulation Matrix
-  │         └─ Compliance Gallery
-  └─ AI Tools                      (V1.5+ forward-pointer)
-       ├─ Prompt Library
-       └─ Template Agents
+USERS & ROLES
+  Creators . Partners . Admins . Roles & Permissions
 
-SETTINGS
-  ├─ Tiers & Plans
-  ├─ Billing & Subscription
-  ├─ Security & Access
-  ├─ Developer & API
-  ├─ Audit Log
-  └─ Analytics & Monitoring
+LIBRARIES                                (reference catalogs -- replaced "Asset Management")
+  Certificate Library . Ingredient Library . Bulk import (assets)
 
-HELP & SUPPORT
-  └─ My tickets
+LOGISTICS
+  Shipments . Receiving exceptions . SLA monitor . Carriers .
+  Fulfillment centers . Channel plans . Logistics gates
 
-— APPLICATIONS —
-Marketplace
-Design Studio (with Admin mode)
-Packaging Studio
-Packaging Mockups (2D & 3D)
-Integrations & API
-  ├─ Channels
-  ├─ Marketing
-  └─ Analytics
+FINANCE                                  (promoted out of Settings)
+  Overview . Invoices . Payouts & transfers . Refunds . Clawbacks . Tax forms (1099)
+
+SETTINGS  (config only)
+  Tiers & Plans . Product Domains . Support Policy
+  Order Settings > { Fees & Commissions . Partner Routing . Routing preview .
+                     Shipping & Fulfillment . Cancellations & Refunds .
+                     Scoped Overrides . Sample Policy . Channel Replenishment }
+  Markets & Regions . Theme Studio
+  Integrations & API > { API keys & status (/developer) . Channels .
+                         Ingredient Data Sources }
+  Security & Access
+  Compliance & Data Rights > { Document access log . Label-claim consents .
+                               Erasure requests* . Sub-processors* }
+  Audit Log
+
+-- APPLICATIONS (region divider) ------------------------------------------
+DESIGN STUDIO   (2D label/artwork authoring + its assets)
+  Design Templates . AI Generator . AI Template Pool . Die-lines .
+  Facts Labels . Mandatory Phrases . Labeling Symbols .
+  Graphics Library* . Fonts Library*
+
+PACKAGING STUDIO   (3D/structural + its assets; the group != the tool)
+  3D Models & Surfaces (/packaging-studio, the tool) . Die-cut Templates .
+  Packing Types . Packaging Symbols . Product Mockups (2D)
+
+MARKETPLACE
+  Niches . Niche rules . Lifestyle Tags . Decoration compatibility .
+  Niche audit . Phrase audit
+
+ACADEMY
+  Overview . Courses . Lessons . Topics
+
+-- HELP (bare region) -----------------------------------------------------
+Help Center                              -> /support-tickets
 ```
+`*` = `hiddenUntilBuilt: true` (route not built).
 
-# 2026-06-01 amendment (v3.1 — flatten MANAGE)
+# What changed from v3 -> v4 (2026-07-04) and why
 
-Pavel revisited the structure on 2026-06-01 and asked for two changes:
+- **Inbox = the single work queue.** `Category review` moved in from top-level;
+  ordered by theme (Partners / Catalog review / Orders & money / Support).
+- **"Asset Management" dissolved.** Each studio owns its own assets; only
+  cross-cutting reference catalogs remain, as **Libraries** (Certificate,
+  Ingredient, Bulk import). Rule: *an asset lives with the studio that consumes
+  it; cross-cutting catalog data lives on its own.*
+- **Users & Roles** reordered -> Creators . Partners . Admins . Roles & Permissions.
+- **Finance promoted** to top-level (was 3 levels deep in Settings).
+- **Logistics** placed between Compliance-area and Finance (Pavel's spot).
+- **Settings slimmed to config-only**; Compliance & Data Rights nested inside it;
+  removed dead placeholder groups (Communications, Global Compliance Center,
+  Analytics & Monitoring). `Languages & Markets` flattened -> **Markets & Regions**.
+- **Integrations & API consolidated into Settings.** `/developer` IS the
+  "Integrations & API keys control center" (was mislabeled "Developer & API" and
+  duplicated an Applications group). Folded to one group: API keys & status +
+  Channels + Ingredient Data Sources. Marketing/Analytics placeholders deleted.
+- **Applications** is now studios/surfaces only: Design Studio . Packaging Studio .
+  Marketplace . Academy. Packaging Studio **promoted to first-class**; the old
+  hidden `/applications/packaging-studio` duplicate removed.
+- **Packaging Studio group vs. tool:** the group is "Packaging Studio"; its 3D
+  tool child is "3D Models & Surfaces" (-> `/packaging-studio`) so section != tool.
+- **Die-line/die-cut consolidation** (three distinct models -- keep separate):
+  - `Die-lines` (`/dielines`) = partner-submitted `PackagingDieline` *files* ops.
+    The redundant "Die-line Curation" nav link was dropped (rows open the curator).
+  - `Die-cut Templates` (`/asset-management/die-cut-templates`) = `DieCutTemplate`
+    *shapes* -- a 2-tab module: **Library** + **Container assignments** (the old
+    "Container Die-lines" page, now redirected here; its sidebar link retired).
+  - `Design Templates` (`/templates`) = artwork (`LibraryTemplate`), keyed to a shape.
+  - `Product Mockups (2D)` = `MockupTemplate` (2D photo-masks; NOT the 3D studio).
+- **PackagingType HUB** -- hub-and-spoke: `/packaging-studio/[id]` gathers one
+  container (Overview . 3D & Surfaces . Die-lines . Mockups . Default die-cut),
+  reached via **Manage** on library cards; container-keyed lists link back to it.
+  Admin-native 3D-model import lives on its 3D & Surfaces tab.
 
-1. **Remove the wrapping `MANAGE` group entirely.** Promote its direct
-   children to top-level entries in the PRIMARY region:
-   - `Products & Categories` — flat item at `/products`
-   - `Users & Roles` — top-level expandable group
-   - `Asset Management` — top-level expandable group
-2. **Languages & Markets and Communications move INTO Settings** —
-   they were NOT promoted to top-level. They're now nested groups inside
-   the Settings group, alongside the existing Tiers & Plans / Billing /
-   Audit Log / Analytics leaves.
+# Companion docs (deeper rationale)
+- `docs/PACKAGING_ENTITY_MANAGEMENT_AUDIT.md` -- relation audit + hub-and-spoke recommendation.
+- `docs/DIE_CUT_TEMPLATES_MODULE.md` -- the 2-tab die-cut module spec/status.
 
-**AI TOOLS removed** from the tree entirely.
-
-PRIMARY region (final) reads as:
-- Dashboard
-- Inbox (group)
-- Orders
-- Products & Categories
-- Users & Roles (group)
-- Asset Management (group)
-- Settings (group — holds Tiers & Plans, Billing, Security, Developer &
-  API, Communications [group], Languages & Markets [group], Audit Log,
-  Analytics & Monitoring)
-
-APPLICATIONS region keeps its existing structure. HELP region (bare,
-no label) sits at the very bottom with the Help & Support group.
-
-# Notes locked alongside the tree
-
-1. **Three nesting levels in places** — e.g. `MANAGE > Languages & Markets >
-   Global Compliance Center > Market Profiles` is three levels deep.
-   SidebarSection must support sections-inside-sections.
-2. **The dashes around `— APPLICATIONS —`** are not a label flourish —
-   they're the region divider. Region 1 (DASHBOARD through HELP & SUPPORT)
-   has no label header; region 2 is labeled APPLICATIONS.
-3. **AI Tools is V1.5+ forward-pointer** — the parent section stays, all
-   children are hidden today. Pavel's instruction is "hide until built".
-4. **`Markets / Regions` is one entry**, not two — leads to a combined
-   page (or the existing /markets surface). Distinct from the
-   `Global Compliance Center` sub-tree below it.
-5. **Cert instance reviews ≠ Certificate Library.** The Inbox entry is
-   the per-partner cert verification queue (PartnerCertificateInstance
-   rows in PENDING_REVIEW). The MANAGE entry is the CertificateType
-   library (admin CRUD of the cert-type catalog).
+# Rules that survive from v3
+1. **Names matter** -- labels are verbatim; a divergence is a bug.
+2. **Hide-until-built** -- unbuilt routes stay in config as `hiddenUntilBuilt: true`.
+3. **Cert instance reviews != Certificate Library** -- Inbox entry is the per-partner
+   verification queue (`PartnerCertificateInstance` PENDING_REVIEW); the Libraries
+   entry is the `CertificateType` catalog CRUD.
+4. **Region dividers**: PRIMARY has no label; APPLICATIONS is labeled; HELP is bare.
