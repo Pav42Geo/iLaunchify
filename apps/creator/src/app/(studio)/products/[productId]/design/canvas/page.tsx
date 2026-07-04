@@ -262,6 +262,12 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
           id: true,
           labelingType: true,
           phraseFacts: true,
+          // Product details drawer — owner-pinned manufacturer + pricing/MOQ summary.
+          manufacturerService: { select: { partner: { select: { companyName: true } } } },
+          pricingTiers: {
+            orderBy: [{ fulfillmentMode: 'asc' }, { sortOrder: 'asc' }],
+            select: { fulfillmentMode: true, minQty: true, perUnitCostCents: true, leadTimeDays: true },
+          },
           // Per-flavor labels — labelTopology PER_FLAVOR + the flavor pool drive
           // the Studio's flavor switcher; each flavor persists its own Design.
           packingProfile: { select: { labelTopology: true } },
@@ -425,12 +431,34 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // settings row is missing, so the generator is never accidentally dark.
   const aiGeneratorEnabled = (await getAiGeneratorSettings()).gates.generatorEnabled
 
+  // Product details drawer meta — category + owner-pinned manufacturer + a compact pricing/MOQ
+  // summary (the entry tier = lowest minQty). All fields already decided upstream in the builder.
+  const pricingTiers = product.productTemplate?.pricingTiers ?? []
+  const entryTier = pricingTiers.length
+    ? pricingTiers.reduce((a, b) => (b.minQty < a.minQty ? b : a))
+    : null
+  const fulfillmentLabel = (m: string): string =>
+    m === 'ON_DEMAND' ? 'On-demand' : m === 'BOTH' ? 'Bulk + On-demand' : 'Bulk'
+  const productMeta = {
+    category: product.category ?? null,
+    manufacturerName: product.productTemplate?.manufacturerService?.partner?.companyName ?? null,
+    pricing: entryTier
+      ? {
+          perUnit: usd(entryTier.perUnitCostCents),
+          fulfillment: fulfillmentLabel(String(entryTier.fulfillmentMode)),
+          moq: entryTier.minQty,
+          leadTimeDays: entryTier.leadTimeDays ?? null,
+        }
+      : null,
+  }
+
   return (
     <CanvasLayoutShell
       studioLogo={studioLogo}
       productId={product.id}
       productName={product.name}
       dieCut={dieCut}
+      productMeta={productMeta}
       brandAssets={brandAssets}
       initialDesignJson={initialDesignJson}
       certBadges={certBadges}

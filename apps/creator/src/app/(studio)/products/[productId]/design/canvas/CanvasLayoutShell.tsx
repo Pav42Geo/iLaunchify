@@ -36,9 +36,6 @@ import {
   type FabricCanvas,
   type GuideVisibility,
   DEFAULT_GUIDES,
-  generateBlankPdfSpec,
-  generateBlankSvgSpec,
-  mmToInchesStr,
   reconcileCertBadges,
   addCertBadge,
   type NutritionPanelData,
@@ -102,6 +99,7 @@ import { VersionHistoryPanel } from './VersionHistoryPanel'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
+import { ProductDetailsDrawer, type ProductDetailsData } from './drawers/ProductDetailsDrawer'
 import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
@@ -157,11 +155,22 @@ const Stage = dynamic(() => import('@ilaunchify/ui').then((m) => ({ default: m.S
   ),
 })
 
+/** Server-derived product meta for the Product details drawer. */
+export interface ProductMeta {
+  category: string | null
+  manufacturerName: string | null
+  pricing: { perUnit: string | null; fulfillment: string | null; moq: number | null; leadTimeDays: number | null } | null
+}
+
 interface Props {
   studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null }
   productId: string
   productName: string
   dieCut: DieCutSpec
+  /** Product-details drawer meta (category + owner-pinned manufacturer + pricing summary),
+   *  derived server-side in page.tsx. Feeds the Printify-style Product panel. Optional: the
+   *  admin template-author mount hides the Product tool, so it defaults to empty. */
+  productMeta?: ProductMeta
   brandAssets: BrandCanvasAssets
   /** Existing Fabric JSON to hydrate the canvas with on mount. */
   initialDesignJson: object | null
@@ -337,6 +346,7 @@ export function CanvasLayoutShell({
   productId,
   productName,
   dieCut,
+  productMeta = { category: null, manufacturerName: null, pricing: null },
   brandAssets,
   initialDesignJson,
   certBadges: initialCertBadges,
@@ -1066,6 +1076,8 @@ export function CanvasLayoutShell({
               canvas={canvas}
               productId={productId}
               productName={productName}
+              productMeta={productMeta}
+              onOpenLabelCompliance={() => setActiveTool('label')}
               productCtx={productCtx}
               retailIdentity={retailIdentity}
               frameCount={emptyFrames.length}
@@ -1624,6 +1636,8 @@ function ToolDrawer({
   canvas,
   productId,
   productName,
+  productMeta,
+  onOpenLabelCompliance,
   productCtx,
   retailIdentity,
   frameCount,
@@ -1654,6 +1668,8 @@ function ToolDrawer({
   canvas: FabricCanvas | null
   productId: string
   productName: string
+  productMeta: ProductMeta
+  onOpenLabelCompliance: () => void
   productCtx: {
     productName: string
     brandName: string
@@ -1722,6 +1738,19 @@ function ToolDrawer({
         {tool === 'product' && (
           <ProductDrawer
             dieCut={dieCut}
+            details={{
+              productName,
+              category: productMeta.category,
+              domain: labelingType,
+              brandName: productCtx.brandName,
+              manufacturerName: productMeta.manufacturerName,
+              thumbnailUrl: null,
+              pricing: productMeta.pricing,
+              netQuantity: productCtx.netQuantity,
+              allergens: productCtx.allergens,
+              dieCut,
+            }}
+            onOpenLabelCompliance={onOpenLabelCompliance}
             guides={guides}
             setGuides={setGuides}
             brandAssets={brandAssets}
@@ -1825,6 +1854,8 @@ function ToolDrawer({
 
 function ProductDrawer({
   dieCut,
+  details,
+  onOpenLabelCompliance,
   guides,
   setGuides,
   brandAssets,
@@ -1834,6 +1865,8 @@ function ProductDrawer({
   setShowFrames,
 }: {
   dieCut: DieCutSpec
+  details: ProductDetailsData
+  onOpenLabelCompliance: () => void
   guides: GuideVisibility
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
@@ -1844,8 +1877,9 @@ function ProductDrawer({
 }) {
   return (
     <div className="space-y-5">
-      {/* Vistaprint-style spec card (DS-67b) */}
-      <ProductSpecCard dieCut={dieCut} />
+      {/* Printify-style product details panel (identity + pricing + print spec + compliance).
+          Replaces the old print-only ProductSpecCard. docs/CREATOR_PRODUCT_DETAILS_DRAWER.md */}
+      <ProductDetailsDrawer data={details} onOpenLabelCompliance={onOpenLabelCompliance} />
 
       {/* Surfaces — V1 single-surface, V1.5+ adds back / multi-panel.
           See docs/MULTI_SURFACE_PLAN.md (DS-67c). */}
@@ -1929,158 +1963,6 @@ function ProductDrawer({
   )
 }
 
-// ============================================================================
-// ProductSpecCard — Vistaprint-style with dimension table + downloads
-// ============================================================================
-
-function ProductSpecCard({ dieCut }: { dieCut: DieCutSpec }) {
-  const [downloadingPdf, setDownloadingPdf] = React.useState(false)
-
-  async function handleDownloadPdf() {
-    setDownloadingPdf(true)
-    try {
-      const blob = await generateBlankPdfSpec(dieCut)
-      downloadBlobLocal(blob, `${slugify(dieCut.name)}-blank.pdf`)
-    } catch (err) {
-      console.warn('[ProductSpecCard] PDF spec failed:', err)
-    } finally {
-      setDownloadingPdf(false)
-    }
-  }
-
-  function handleDownloadSvg() {
-    try {
-      const blob = generateBlankSvgSpec(dieCut)
-      downloadBlobLocal(blob, `${slugify(dieCut.name)}-blank.svg`)
-    } catch (err) {
-      console.warn('[ProductSpecCard] SVG spec failed:', err)
-    }
-  }
-
-  return (
-    <section>
-      <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-2">
-        Product specs
-      </div>
-
-      {/* Safe-area diagram */}
-      <div className="rounded-md border border-ink-200 bg-ink-50/60 p-4 flex items-center justify-center">
-        <div className="relative">
-          {/* Bleed */}
-          <div className="border border-dashed border-danger-500/80 rounded-md p-2">
-            {/* Trim */}
-            <div className="bg-white rounded-sm w-[120px] h-[68px] flex items-center justify-center relative">
-              {/* Safe */}
-              <div className="absolute inset-1.5 border border-dotted border-info-500/70 rounded-sm flex items-center justify-center">
-                <span className="text-[8px] uppercase tracking-wider text-ink-700">
-                  Safe area
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <h3 className="mt-3 text-sm font-semibold text-ink-900">{dieCut.name}</h3>
-      <p className="mt-1 text-[11px] text-ink-500 leading-[1.5]">
-        To avoid white edges, extend your design to the bleed line — keep
-        text and logos inside the safety area.
-      </p>
-
-      {/* Dimensions table */}
-      <table className="mt-3 w-full text-[11px] tabular-nums">
-        <thead>
-          <tr className="border-b border-ink-100 text-ink-500">
-            <th className="text-left font-semibold py-1.5"></th>
-            <th className="text-left font-semibold py-1.5">Width</th>
-            <th className="text-left font-semibold py-1.5">Height</th>
-          </tr>
-        </thead>
-        <tbody className="text-ink-700">
-          <SpecRow
-            color="red"
-            label="Bleed"
-            wMm={dieCut.widthMm + 2 * dieCut.bleedMm}
-            hMm={dieCut.heightMm + 2 * dieCut.bleedMm}
-          />
-          <SpecRow
-            color="ink"
-            label="Trim"
-            wMm={dieCut.widthMm}
-            hMm={dieCut.heightMm}
-          />
-          <SpecRow
-            color="blue"
-            label="Safety"
-            wMm={dieCut.widthMm - 2 * dieCut.safeAreaMm}
-            hMm={dieCut.heightMm - 2 * dieCut.safeAreaMm}
-          />
-        </tbody>
-      </table>
-
-      {/* Blank downloads */}
-      <div className="mt-3">
-        <div className="text-[12px] font-bold uppercase tracking-wider text-ink-700 mb-1.5">
-          Download a blank design file
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            disabled={downloadingPdf}
-            className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 px-2.5 py-1.5 text-[11px] font-semibold text-ink-900 hover:border-ink-500 disabled:opacity-50 transition-colors"
-          >
-            <Download className="h-3 w-3" />
-            {downloadingPdf ? 'PDF…' : 'PDF'}
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadSvg}
-            className="inline-flex items-center gap-1.5 rounded-md border border-ink-300 px-2.5 py-1.5 text-[11px] font-semibold text-ink-900 hover:border-ink-500 transition-colors"
-          >
-            <Download className="h-3 w-3" />
-            SVG
-          </button>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function SpecRow({
-  color,
-  label,
-  wMm,
-  hMm,
-}: {
-  color: 'red' | 'ink' | 'blue'
-  label: string
-  wMm: number
-  hMm: number
-}) {
-  const dotClass =
-    color === 'red'
-      ? 'bg-danger-500'
-      : color === 'blue'
-        ? 'bg-info-500'
-        : 'bg-ink-700'
-  return (
-    <tr className="border-b border-ink-50 last:border-0">
-      <td className="py-1.5 flex items-center gap-1.5">
-        <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
-        <span className="font-semibold text-ink-900">{label}</span>
-      </td>
-      <td className="py-1.5">
-        <span>{mmToInchesStr(wMm)}</span>
-        <span className="text-ink-400 ml-1">/ {wMm.toFixed(2)}mm</span>
-      </td>
-      <td className="py-1.5">
-        <span>{mmToInchesStr(hMm)}</span>
-        <span className="text-ink-400 ml-1">/ {hMm.toFixed(2)}mm</span>
-      </td>
-    </tr>
-  )
-}
 
 // ============================================================================
 // SurfacesSection — V1 single, V1.5+ multi (DS-67c forward-marker)
@@ -2122,26 +2004,6 @@ function SurfacesSection({ dieCut }: { dieCut: DieCutSpec }) {
       </div>
     </section>
   )
-}
-
-// Slugify helper for download filenames.
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40)
-}
-
-function downloadBlobLocal(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 100)
 }
 
 function GuideToggle({
