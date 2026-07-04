@@ -56,6 +56,7 @@ import {
   Code,
   LineChart,
   Boxes,
+  Shapes,
   Layers,
   Brush,
   Eye,
@@ -329,15 +330,17 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Design Templates', icon: LayoutTemplate, href: '/templates', capability: 'catalog:write' },
         { kind: 'item', label: 'AI Generator', icon: Sparkles, href: '/ai-generator', capability: 'catalog:write' },
         { kind: 'item', label: 'AI Template Pool', icon: Sparkles, href: '/ai-generator/pool', capability: 'catalog:write' },
+        // Die-lines = the ops/triage list of partner-submitted PackagingDieline files; each
+        // row opens the Die-line Curator (creator Studio via /go). The standalone "Die-line
+        // Curation" nav link was removed 2026-07-04 as redundant — you reach the curator
+        // from a die-line row. Die-cut SHAPE templates (DieCutTemplate) are a separate
+        // concept planned as a unified module — see docs/DIE_CUT_TEMPLATES_MODULE.md
+        // (Container assignments live in the Packaging Studio group → Container Die-lines).
         { kind: 'item', label: 'Die-lines', icon: Layout, href: '/dielines' },
-        // Die-line CURATION is a canvas surface in the Design Studio (creator app) — opened
-        // via the /go bridge which establishes the creator session first (Pavel 2026-07-01).
-        { kind: 'item', label: 'Die-line Curation', icon: Brush, href: '/go/dieline-studio', capability: 'catalog:write' },
         { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
         // Label/artwork assets (moved from Asset Management 2026-07-04).
         { kind: 'item', label: 'Labeling Symbols', icon: ScrollText, href: '/assets/labeling-symbols' },
-        { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
         { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
       ],
@@ -352,6 +355,8 @@ const APPLICATIONS: SidebarRegion = {
       icon: Box,
       children: [
         { kind: 'item', label: '3D Models & Surfaces', icon: Box, href: '/packaging-studio', capability: 'catalog:write' },
+        // Canonical die-cut shape library (DieCutTemplate) — docs/DIE_CUT_TEMPLATES_MODULE.md.
+        { kind: 'item', label: 'Die-cut Templates', icon: Shapes, href: '/asset-management/die-cut-templates', capability: 'catalog:write' },
         { kind: 'item', label: 'Container Die-lines', icon: Boxes, href: '/asset-management/packaging-containers' },
         { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
         // Packaging assets (moved from Asset Management 2026-07-04).

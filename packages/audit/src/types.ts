@@ -62,6 +62,8 @@ export const AUDIT_ENTITY_TYPES = [
   'PackagingSymbol',
   // Admin-curated container taxonomy — owns mockup templates (MOCKUP_STRATEGY.md)
   'PackagingType',
+  // Canonical die-cut shapes (admin Die-cut Templates library, 2026-07-04)
+  'DieCutTemplate',
   'LabelingSymbol',
   'PartnerCertificateInstance',
   'RulePack',
