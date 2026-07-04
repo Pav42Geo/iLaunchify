@@ -63,7 +63,6 @@ import {
   Type,
   Image,
   ScrollText,
-  Megaphone,
   Tag,
   Workflow,
   Layout,
@@ -71,7 +70,6 @@ import {
   PackageX,
   FileText,
   Store,
-  TrendingUp,
   Recycle,
   BadgeCheck,
   Gift,
@@ -285,7 +283,20 @@ const PRIMARY: SidebarRegion = {
         // built child). The empty Global Compliance Center sub-group was removed (2026-07-04).
         { kind: 'item', label: 'Markets & Regions', icon: Globe, href: '/markets' },
         { kind: 'item', label: 'Theme Studio', icon: Palette, href: '/theme-studio', capability: 'platform:admin' }, // Phase 3a read-only token catalog (2026-06-25)
-        { kind: 'item', label: 'Developer & API', icon: KeyRound, href: '/developer', capability: 'platform:admin' },
+        // Integrations & API — the single home for all connectivity/API management (Pavel
+        // 2026-07-04). /developer IS the "Integrations & API keys control center" (docs/
+        // INTEGRATIONS.md); it was mislabeled "Developer & API" and duplicated a separate
+        // Applications group. Folded together here; Marketing/Analytics placeholders dropped.
+        {
+          kind: 'group',
+          label: 'Integrations & API',
+          icon: Plug,
+          children: [
+            { kind: 'item', label: 'API keys & status', icon: KeyRound, href: '/developer', capability: 'platform:admin' },
+            { kind: 'item', label: 'Channels', icon: Plug, href: '/channels', capability: 'platform:admin' },
+            { kind: 'item', label: 'Ingredient Data Sources', icon: Database, href: '/ingredient-sources' },
+          ],
+        },
         { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
         // Communications group + Global Compliance Center + Analytics & Monitoring removed
         // 2026-07-04 — every page under them was an unbuilt placeholder. They return under
@@ -389,17 +400,8 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Topics', icon: Tag, href: '/academy/categories', hiddenUntilBuilt: false },
       ],
     },
-    {
-      kind: 'group',
-      label: 'Integrations & API',
-      icon: Plug,
-      children: [
-        { kind: 'item', label: 'Channels', icon: Plug, href: '/channels', capability: 'platform:admin' },
-        { kind: 'item', label: 'Ingredient Data Sources', icon: Database, href: '/ingredient-sources' },
-        { kind: 'item', label: 'Marketing', icon: Megaphone, href: '/integrations/marketing', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Analytics', icon: TrendingUp, href: '/integrations/analytics', hiddenUntilBuilt: true },
-      ],
-    },
+    // 'Integrations & API' moved to Settings (2026-07-04) — it's platform plumbing, not a
+    // studio/app surface. Channels + Ingredient Data Sources + API keys/status live there now.
   ],
 }
 

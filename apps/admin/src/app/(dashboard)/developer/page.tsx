@@ -127,7 +127,7 @@ export default async function IntegrationsPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Developer & API"
+        eyebrow="Integrations & API"
         title="API keys & integration status"
         description="Every external service the platform talks to, and whether it's configured in this environment. Rotate a key in the vendor's dashboard, then update the matching env var on your host."
       />
