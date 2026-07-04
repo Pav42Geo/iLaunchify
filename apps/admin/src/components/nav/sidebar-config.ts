@@ -50,7 +50,6 @@ import {
   Globe,
   Shield,
   Scale,
-  MessageSquare,
   LifeBuoy,
   Sparkles,
   Lock,
@@ -65,16 +64,12 @@ import {
   ScrollText,
   Megaphone,
   Tag,
-  Radio,
   Workflow,
-  Globe2,
-  Map,
   Layout,
   PackageOpen,
   PackageX,
   FileText,
   Store,
-  Mail,
   TrendingUp,
   Recycle,
   BadgeCheck,
@@ -302,39 +297,16 @@ const PRIMARY: SidebarRegion = {
             { kind: 'item', label: 'Channel Replenishment', icon: Truck, href: '/order-settings/channels', capability: 'billing:write' },
           ],
         },
-        { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
+        // Markets & Regions — flattened from the old "Languages & Markets" wrapper (its only
+        // built child). The empty Global Compliance Center sub-group was removed (2026-07-04).
+        { kind: 'item', label: 'Markets & Regions', icon: Globe, href: '/markets' },
         { kind: 'item', label: 'Theme Studio', icon: Palette, href: '/theme-studio', capability: 'platform:admin' }, // Phase 3a read-only token catalog (2026-06-25)
         { kind: 'item', label: 'Developer & API', icon: KeyRound, href: '/developer', capability: 'platform:admin' },
-        {
-          kind: 'group',
-          label: 'Communications',
-          icon: Megaphone,
-          children: [
-            { kind: 'item', label: 'Notification templates', icon: Mail, href: '/communications/notification-templates', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Broadcasts', icon: Radio, href: '/communications/broadcasts', hiddenUntilBuilt: true },
-            { kind: 'item', label: 'Support workflows', icon: Workflow, href: '/communications/support-workflows', hiddenUntilBuilt: true },
-          ],
-        },
-        {
-          kind: 'group',
-          label: 'Languages & Markets',
-          icon: Globe,
-          children: [
-            { kind: 'item', label: 'Markets / Regions', icon: Globe, href: '/markets' },
-            {
-              kind: 'group',
-              label: 'Global Compliance Center',
-              icon: Globe2,
-              children: [
-                { kind: 'item', label: 'Market Profiles', icon: Map, href: '/compliance-center/market-profiles', hiddenUntilBuilt: true },
-                { kind: 'item', label: 'Regulation Matrix', icon: ShieldCheck, href: '/compliance-center/regulation-matrix', hiddenUntilBuilt: true },
-                { kind: 'item', label: 'Compliance Gallery', icon: Award, href: '/compliance-center/compliance-gallery', hiddenUntilBuilt: true },
-              ],
-            },
-          ],
-        },
+        { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
+        // Communications group + Global Compliance Center + Analytics & Monitoring removed
+        // 2026-07-04 — every page under them was an unbuilt placeholder. They return under
+        // Settings when the pages ship.
         { kind: 'item', label: 'Audit Log', icon: History, href: '/audit' },
-        { kind: 'item', label: 'Analytics & Monitoring', icon: LineChart, href: '/analytics', hiddenUntilBuilt: true },
       ],
     },
   ],
