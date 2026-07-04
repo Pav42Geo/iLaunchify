@@ -52,7 +52,7 @@ export default async function PackagingContainersPage() {
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        eyebrow="Design Studio · Packaging"
+        eyebrow="Packaging Studio"
         title="Container Die-lines"
         description={
           <>
@@ -98,7 +98,9 @@ export default async function PackagingContainersPage() {
               {containers.map((c) => (
                 <tr key={c.id} className="border-b border-ink-100 last:border-0 align-top">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-ink-900">{c.displayName}</div>
+                    <a href={`/packaging-studio/${c.id}`} className="font-medium text-ink-900 hover:text-pink-700 hover:underline" title="Open this container's hub">
+                      {c.displayName}
+                    </a>
                     <div className="mt-0.5 text-[11px] text-ink-500">{c.slug}</div>
                   </td>
                   <td className="px-3 py-3 text-ink-700">{c.containerCategory ?? '—'}</td>

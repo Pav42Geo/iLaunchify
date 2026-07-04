@@ -78,7 +78,7 @@ export function MockupManager({ group }: { group: PackagingTypeGroup }) {
   return (
     <section className="rounded-3xl border border-ink-200 bg-white">
       <div className="flex items-center gap-2 rounded-t-3xl border-b border-ink-200 bg-[var(--bg-hero)] px-5 py-3">
-        <h3 className="font-display text-[15px] font-semibold text-ink-900">{group.displayName}</h3>
+        <a href={`/packaging-studio/${group.id}`} className="font-display text-[15px] font-semibold text-ink-900 hover:text-pink-700 hover:underline" title="Open this container's hub">{group.displayName}</a>
         <span className="text-[11.5px] text-ink-500">{group.mockups.length} mockup{group.mockups.length === 1 ? '' : 's'}</span>
         <button
           type="button"

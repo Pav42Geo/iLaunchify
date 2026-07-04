@@ -114,7 +114,11 @@ target a shape).
    (Author surfaces, Die-line Ops, Mockups, Die-cut library) with one inline action (set default
    die-cut) + status toggle. Additive — all relations already existed. Files:
    `[id]/{page,loader,actions,PackagingDetailClient}`.
-2. **Cross-link libraries ⇄ hub** ("used by N containers" counts; assign-from-container).
+2. **Cross-link libraries ⇄ hub** — ✅ **BUILT 2026-07-04.** The Die-cut Templates library already
+   shows per-shape usage (templates · die-lines · **containers**). Container-keyed surfaces now link
+   **back** to the hub (the "return to hub" spoke pattern): Container Die-lines rows and Product
+   Mockups group headers both link to `/packaging-studio/[id]`. (Die-line Ops row → hub link is a
+   small follow-up in that workspace.)
 3. **Fold Container Die-lines into the Die-cut Templates module** as its "assignments" tab
    (already planned in `DIE_CUT_TEMPLATES_MODULE.md`).
 4. Leave Symbols / Materials / Design Templates as their own surfaces — cross-linked, not merged.
