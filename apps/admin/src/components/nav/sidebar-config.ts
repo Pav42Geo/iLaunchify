@@ -205,35 +205,18 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Roles & Permissions', icon: Shield, href: '/roles', capability: 'users:admin' },
       ],
     },
+    // ---- Libraries — reference catalogs (Pavel 2026-07-04) -------------------
+    // Replaces the old "Asset Management" catch-all. Its design/packaging assets moved
+    // to the studio that consumes them (Design Studio / Packaging Studio in APPLICATIONS);
+    // only cross-cutting reference catalogs live here.
     {
       kind: 'group',
-      label: 'Asset Management',
+      label: 'Libraries',
       icon: Boxes,
       children: [
-        { kind: 'item', label: 'Packaging Symbols', icon: Recycle, href: '/assets/packaging-symbols' },
-        { kind: 'item', label: 'Labeling Symbols', icon: ScrollText, href: '/assets/labeling-symbols' },
-        { kind: 'item', label: 'Bulk import (assets)', icon: FileText, href: '/assets/import' },
-        { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
-        // Die-lines / Packing Types / Facts Labels / Mandatory Phrases moved to the
-        // Design Studio group (2026-06-23 unification) — they feed the Studio.
         { kind: 'item', label: 'Certificate Library', icon: Award, href: '/certificate-types' },
         { kind: 'item', label: 'Ingredient Library', icon: FlaskConical, href: '/ingredients' },
-        { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Packaging Mockups (2D & 3D)', icon: Eye, href: '/asset-management/product-mockups' },
-        { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
-      ],
-    },
-    // ---- Compliance & Data Rights (P10 / GDPR) ------------------------------
-    {
-      kind: 'group',
-      label: 'Compliance & Data Rights',
-      icon: Shield,
-      children: [
-        { kind: 'item', label: 'Document access log', icon: ScrollText, href: '/compliance/document-access', capability: 'compliance:admin' },
-        { kind: 'item', label: 'Label-claim consents', icon: BadgeCheck, href: '/compliance/claim-consents', capability: 'compliance:admin' },
-        { kind: 'item', label: 'Erasure requests', icon: Shield, href: '/compliance/erasure-requests', hiddenUntilBuilt: true, capability: 'compliance:admin' },
-        { kind: 'item', label: 'Sub-processors', icon: Building2, href: '/compliance/subprocessors', hiddenUntilBuilt: true, capability: 'compliance:admin' },
+        { kind: 'item', label: 'Bulk import (assets)', icon: FileText, href: '/assets/import' },
       ],
     },
     // ---- Logistics (Phase L1c — docs/LOGISTICS_AND_FULFILLMENT.md §9) --------
@@ -306,6 +289,18 @@ const PRIMARY: SidebarRegion = {
         // Communications group + Global Compliance Center + Analytics & Monitoring removed
         // 2026-07-04 — every page under them was an unbuilt placeholder. They return under
         // Settings when the pages ship.
+        // ---- Compliance & Data Rights (P10 / GDPR) — nested into Settings 2026-07-04 ----
+        {
+          kind: 'group',
+          label: 'Compliance & Data Rights',
+          icon: Shield,
+          children: [
+            { kind: 'item', label: 'Document access log', icon: ScrollText, href: '/compliance/document-access', capability: 'compliance:admin' },
+            { kind: 'item', label: 'Label-claim consents', icon: BadgeCheck, href: '/compliance/claim-consents', capability: 'compliance:admin' },
+            { kind: 'item', label: 'Erasure requests', icon: Shield, href: '/compliance/erasure-requests', hiddenUntilBuilt: true, capability: 'compliance:admin' },
+            { kind: 'item', label: 'Sub-processors', icon: Building2, href: '/compliance/subprocessors', hiddenUntilBuilt: true, capability: 'compliance:admin' },
+          ],
+        },
         { kind: 'item', label: 'Audit Log', icon: History, href: '/audit' },
       ],
     },
@@ -320,28 +315,48 @@ const APPLICATIONS: SidebarRegion = {
   id: 'applications',
   label: 'Applications',
   items: [
+    // Design Studio = 2D label & artwork authoring + the assets it consumes.
+    // (Packaging/structural building blocks moved to the Packaging Studio group below,
+    // 2026-07-04 — each studio owns its own assets.)
     {
       kind: 'group',
       label: 'Design Studio',
       icon: LayoutTemplate,
       children: [
-        { kind: 'item', label: 'Design Templates', icon: LayoutTemplate, href: '/templates', capability: 'catalog:write' },
         // Design Studio (Admin Mode) is reached from the top-bar Design Studio icon
         // (→ /go/design-studio), which establishes the creator session first. The old
         // sidebar "Admin Mode" link was removed (Pavel 2026-07-01).
-        // Studio-feeding building blocks (Pavel 2026-06-23 unification) — the catalogs
-        // the Design Studio consumes, gathered here from Asset Management.
-        { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
-        { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
+        { kind: 'item', label: 'Design Templates', icon: LayoutTemplate, href: '/templates', capability: 'catalog:write' },
+        { kind: 'item', label: 'AI Generator', icon: Sparkles, href: '/ai-generator', capability: 'catalog:write' },
+        { kind: 'item', label: 'AI Template Pool', icon: Sparkles, href: '/ai-generator/pool', capability: 'catalog:write' },
         { kind: 'item', label: 'Die-lines', icon: Layout, href: '/dielines' },
         // Die-line CURATION is a canvas surface in the Design Studio (creator app) — opened
         // via the /go bridge which establishes the creator session first (Pavel 2026-07-01).
         { kind: 'item', label: 'Die-line Curation', icon: Brush, href: '/go/dieline-studio', capability: 'catalog:write' },
-        { kind: 'item', label: 'AI Generator', icon: Sparkles, href: '/ai-generator', capability: 'catalog:write' },
-        { kind: 'item', label: 'AI Template Pool', icon: Sparkles, href: '/ai-generator/pool', capability: 'catalog:write' },
+        { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
+        { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
+        // Label/artwork assets (moved from Asset Management 2026-07-04).
+        { kind: 'item', label: 'Labeling Symbols', icon: ScrollText, href: '/assets/labeling-symbols' },
+        { kind: 'item', label: 'Die-Cut Design Templates', icon: Brush, href: '/asset-management/die-cut-design-templates', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Graphics Library', icon: Image, href: '/asset-management/graphics-library', hiddenUntilBuilt: true },
+        { kind: 'item', label: 'Fonts Library', icon: Type, href: '/asset-management/fonts-library', hiddenUntilBuilt: true },
+      ],
+    },
+    // Packaging Studio = 3D/structural packaging authoring + the assets it consumes.
+    // Promoted to a first-class group (2026-07-04); the old hidden /applications/packaging-studio
+    // duplicate was removed.
+    {
+      kind: 'group',
+      label: 'Packaging Studio',
+      icon: Box,
+      children: [
         { kind: 'item', label: 'Packaging Studio', icon: Box, href: '/packaging-studio', capability: 'catalog:write' },
-        { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
         { kind: 'item', label: 'Container Die-lines', icon: Boxes, href: '/asset-management/packaging-containers' },
+        { kind: 'item', label: 'Packing Types', icon: Package, href: '/asset-management/packaging-types' },
+        // Packaging assets (moved from Asset Management 2026-07-04).
+        { kind: 'item', label: 'Packaging Symbols', icon: Recycle, href: '/assets/packaging-symbols' },
+        { kind: 'item', label: 'Packaging Mockups (2D & 3D)', icon: Eye, href: '/asset-management/product-mockups' },
+        { kind: 'item', label: 'Packaging Materials', icon: Boxes, href: '/asset-management/packaging-materials', hiddenUntilBuilt: true },
       ],
     },
     {
@@ -368,7 +383,6 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Topics', icon: Tag, href: '/academy/categories', hiddenUntilBuilt: false },
       ],
     },
-    { kind: 'item', label: 'Packaging Studio', icon: Boxes, href: '/applications/packaging-studio', hiddenUntilBuilt: true },
     {
       kind: 'group',
       label: 'Integrations & API',
