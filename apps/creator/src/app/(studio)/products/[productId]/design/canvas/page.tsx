@@ -266,7 +266,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
           manufacturerService: { select: { partner: { select: { companyName: true } } } },
           pricingTiers: {
             orderBy: [{ fulfillmentMode: 'asc' }, { sortOrder: 'asc' }],
-            select: { fulfillmentMode: true, minQty: true, perUnitCostCents: true, leadTimeDays: true },
+            select: { fulfillmentMode: true, minQty: true, maxQty: true, perUnitCostCents: true, leadTimeDays: true },
           },
           // Per-flavor labels — labelTopology PER_FLAVOR + the flavor pool drive
           // the Studio's flavor switcher; each flavor persists its own Design.
@@ -431,25 +431,42 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // settings row is missing, so the generator is never accidentally dark.
   const aiGeneratorEnabled = (await getAiGeneratorSettings()).gates.generatorEnabled
 
-  // Product details drawer meta — category + owner-pinned manufacturer + a compact pricing/MOQ
-  // summary (the entry tier = lowest minQty). All fields already decided upstream in the builder.
+  // Product details drawer meta — category + owner-pinned manufacturer + a full cost summary
+  // (per-unit by quantity tier) + the entry tier (lowest minQty) for the header MOQ line.
+  // All fields already decided upstream in the builder.
   const pricingTiers = product.productTemplate?.pricingTiers ?? []
-  const entryTier = pricingTiers.length
-    ? pricingTiers.reduce((a, b) => (b.minQty < a.minQty ? b : a))
-    : null
+  const entryTier = pricingTiers.length ? pricingTiers.reduce((a, b) => (b.minQty < a.minQty ? b : a)) : null
   const fulfillmentLabel = (m: string): string =>
     m === 'ON_DEMAND' ? 'On-demand' : m === 'BOTH' ? 'Bulk + On-demand' : 'Bulk'
+  const qtyRange = (min: number, max: number | null): string =>
+    max ? `${min.toLocaleString()}–${max.toLocaleString()}` : `${min.toLocaleString()}+`
+  const centsList = pricingTiers.map((t) => t.perUnitCostCents)
+  const lowC = centsList.length ? Math.min(...centsList) : null
+  const highC = centsList.length ? Math.max(...centsList) : null
+  const cost =
+    pricingTiers.length && lowC != null && highC != null
+      ? {
+          low: usd(lowC),
+          high: usd(highC),
+          single: lowC === highC,
+          tiers: pricingTiers
+            .slice()
+            .sort((a, b) => a.minQty - b.minQty)
+            .map((t) => ({
+              qtyRange: qtyRange(t.minQty, t.maxQty ?? null),
+              perUnit: usd(t.perUnitCostCents),
+              leadTimeDays: t.leadTimeDays ?? null,
+              fulfillment: fulfillmentLabel(String(t.fulfillmentMode)),
+            })),
+        }
+      : null
   const productMeta = {
     category: product.category ?? null,
     manufacturerName: product.productTemplate?.manufacturerService?.partner?.companyName ?? null,
-    pricing: entryTier
-      ? {
-          perUnit: usd(entryTier.perUnitCostCents),
-          fulfillment: fulfillmentLabel(String(entryTier.fulfillmentMode)),
-          moq: entryTier.minQty,
-          leadTimeDays: entryTier.leadTimeDays ?? null,
-        }
-      : null,
+    moq: entryTier?.minQty ?? null,
+    leadTimeDays: entryTier?.leadTimeDays ?? null,
+    fulfillment: entryTier ? fulfillmentLabel(String(entryTier.fulfillmentMode)) : null,
+    cost,
   }
 
   return (

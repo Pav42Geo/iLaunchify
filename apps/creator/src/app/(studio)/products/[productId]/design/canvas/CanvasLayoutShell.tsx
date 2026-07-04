@@ -99,7 +99,7 @@ import { VersionHistoryPanel } from './VersionHistoryPanel'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
-import { ProductDetailsDrawer, type ProductDetailsData } from './drawers/ProductDetailsDrawer'
+import { ProductDetailsDrawer, type ProductDetailsData, type CostTier } from './drawers/ProductDetailsDrawer'
 import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
@@ -159,7 +159,10 @@ const Stage = dynamic(() => import('@ilaunchify/ui').then((m) => ({ default: m.S
 export interface ProductMeta {
   category: string | null
   manufacturerName: string | null
-  pricing: { perUnit: string | null; fulfillment: string | null; moq: number | null; leadTimeDays: number | null } | null
+  moq: number | null
+  leadTimeDays: number | null
+  fulfillment: string | null
+  cost: { low: string; high: string; single: boolean; tiers: CostTier[] } | null
 }
 
 interface Props {
@@ -346,7 +349,7 @@ export function CanvasLayoutShell({
   productId,
   productName,
   dieCut,
-  productMeta = { category: null, manufacturerName: null, pricing: null },
+  productMeta = { category: null, manufacturerName: null, moq: null, leadTimeDays: null, fulfillment: null, cost: null },
   brandAssets,
   initialDesignJson,
   certBadges: initialCertBadges,
@@ -1077,7 +1080,6 @@ export function CanvasLayoutShell({
               productId={productId}
               productName={productName}
               productMeta={productMeta}
-              onOpenLabelCompliance={() => setActiveTool('label')}
               productCtx={productCtx}
               retailIdentity={retailIdentity}
               frameCount={emptyFrames.length}
@@ -1637,7 +1639,6 @@ function ToolDrawer({
   productId,
   productName,
   productMeta,
-  onOpenLabelCompliance,
   productCtx,
   retailIdentity,
   frameCount,
@@ -1669,7 +1670,6 @@ function ToolDrawer({
   productId: string
   productName: string
   productMeta: ProductMeta
-  onOpenLabelCompliance: () => void
   productCtx: {
     productName: string
     brandName: string
@@ -1740,17 +1740,22 @@ function ToolDrawer({
             dieCut={dieCut}
             details={{
               productName,
+              thumbnailUrl: null,
+              quantityLabel: productMeta.moq ? `MOQ ${productMeta.moq.toLocaleString()} units` : null,
               category: productMeta.category,
               domain: labelingType,
               brandName: productCtx.brandName,
               manufacturerName: productMeta.manufacturerName,
-              thumbnailUrl: null,
-              pricing: productMeta.pricing,
               netQuantity: productCtx.netQuantity,
               allergens: productCtx.allergens,
+              bioengineered: productCtx.bioengineered,
+              retail: retailIdentity,
+              moq: productMeta.moq,
+              leadTimeDays: productMeta.leadTimeDays,
+              fulfillment: productMeta.fulfillment,
+              cost: productMeta.cost,
               dieCut,
             }}
-            onOpenLabelCompliance={onOpenLabelCompliance}
             guides={guides}
             setGuides={setGuides}
             brandAssets={brandAssets}
@@ -1855,7 +1860,6 @@ function ToolDrawer({
 function ProductDrawer({
   dieCut,
   details,
-  onOpenLabelCompliance,
   guides,
   setGuides,
   brandAssets,
@@ -1866,7 +1870,6 @@ function ProductDrawer({
 }: {
   dieCut: DieCutSpec
   details: ProductDetailsData
-  onOpenLabelCompliance: () => void
   guides: GuideVisibility
   setGuides: (g: GuideVisibility) => void
   brandAssets: BrandCanvasAssets
@@ -1879,7 +1882,7 @@ function ProductDrawer({
     <div className="space-y-5">
       {/* Printify-style product details panel (identity + pricing + print spec + compliance).
           Replaces the old print-only ProductSpecCard. docs/CREATOR_PRODUCT_DETAILS_DRAWER.md */}
-      <ProductDetailsDrawer data={details} onOpenLabelCompliance={onOpenLabelCompliance} />
+      <ProductDetailsDrawer data={details} />
 
       {/* Surfaces — V1 single-surface, V1.5+ adds back / multi-panel.
           See docs/MULTI_SURFACE_PLAN.md (DS-67c). */}
