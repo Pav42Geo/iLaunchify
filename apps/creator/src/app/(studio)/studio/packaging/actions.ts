@@ -19,8 +19,29 @@ export type SaveResult = { ok: true } | { ok: false; error: string }
 const MODEL_MAX_BYTES = 40 * 1024 * 1024 // 40MB — glb models are typically 1–15MB
 const THUMB_MAX_BYTES = 4 * 1024 * 1024
 
+// A Next.js redirect() (used by requireCapability on a forbidden/unauthed admin) throws
+// an error whose `digest` starts with NEXT_REDIRECT. The client's `.catch(() => null)`
+// would otherwise swallow it into a generic "Upload failed." — surface the real reason.
+function isRedirectError(err: unknown): boolean {
+  const digest = (err as { digest?: unknown } | null | undefined)?.digest
+  return typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')
+}
+
+function describeError(err: unknown, action: string): string {
+  if (isRedirectError(err)) {
+    return `You don't have permission to ${action} — this needs the "catalog:write" capability. Ask a super admin to set your account's role (Admin → Users & Roles).`
+  }
+  const msg = err instanceof Error ? err.message : String(err)
+  return `Upload failed: ${msg} — check R2 configuration if this persists.`
+}
+
 export async function attachPackagingModel3d(packagingTypeId: string, form: FormData): Promise<SaveResult> {
-  const admin = await requireCapability('catalog:write')
+  let admin: Awaited<ReturnType<typeof requireCapability>>
+  try {
+    admin = await requireCapability('catalog:write')
+  } catch (err) {
+    return { ok: false, error: describeError(err, 'import 3D packaging models') }
+  }
 
   const file = form.get('file')
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'No 3D model file provided.' }
@@ -29,15 +50,19 @@ export async function attachPackagingModel3d(packagingTypeId: string, form: Form
   if (file.size > MODEL_MAX_BYTES) return { ok: false, error: 'Model is too large (40MB max).' }
 
   const modelKey = packagingModelAssetKey({ packagingTypeId, kind: 'model3d', filename: file.name })
-  const buf = Buffer.from(await file.arrayBuffer())
-  const up = await uploadFile({
-    key: modelKey,
-    body: buf,
-    contentType: name.endsWith('.glb') ? 'model/gltf-binary' : 'model/gltf+json',
-  }).catch(() => null)
-  if (!up) return { ok: false, error: 'Upload failed — check R2 configuration.' }
+  let up: Awaited<ReturnType<typeof uploadFile>>
+  try {
+    const buf = Buffer.from(await file.arrayBuffer())
+    up = await uploadFile({
+      key: modelKey,
+      body: buf,
+      contentType: name.endsWith('.glb') ? 'model/gltf-binary' : 'model/gltf+json',
+    })
+  } catch (err) {
+    return { ok: false, error: describeError(err, 'import 3D packaging models') }
+  }
 
-  // Optional thumbnail (any image).
+  // Optional thumbnail (any image) — best-effort, never blocks the model import.
   let thumbKey: string | undefined
   const thumb = form.get('thumb')
   if (thumb instanceof File && thumb.size > 0 && thumb.size <= THUMB_MAX_BYTES && thumb.type.startsWith('image/')) {
@@ -54,14 +79,18 @@ export async function attachPackagingModel3d(packagingTypeId: string, form: Form
       data: { model3dKey: modelKey, model3dSource: 'UPLOAD', ...(thumbKey ? { model3dThumbKey: thumbKey } : {}) },
     })
     .catch(() => null)
-  if (done === null) return { ok: false, error: 'Uploaded, but could not attach to the model.' }
+  if (done === null) return { ok: false, error: 'Uploaded, but could not attach it to this packaging type.' }
 
-  await logAuditAs(admin, {
-    entityType: 'PackagingType',
-    entityId: packagingTypeId,
-    action: 'packaging-model.3d-imported',
-    payload: { modelKey, thumb: Boolean(thumbKey), bytes: up.sizeBytes },
-  })
+  try {
+    await logAuditAs(admin, {
+      entityType: 'PackagingType',
+      entityId: packagingTypeId,
+      action: 'packaging-model.3d-imported',
+      payload: { modelKey, thumb: Boolean(thumbKey), bytes: up.sizeBytes },
+    })
+  } catch {
+    /* audit is non-fatal — the model is already attached */
+  }
   return { ok: true }
 }
 
@@ -69,15 +98,24 @@ export async function attachPackagingModel3d(packagingTypeId: string, form: Form
 // package's preview image (shown as the thumbnail across the studio picker + admin grid) —
 // no migration. Any image type; 4MB cap. catalog:write + audited.
 export async function attachPackagingImage(packagingTypeId: string, form: FormData): Promise<SaveResult> {
-  const admin = await requireCapability('catalog:write')
+  let admin: Awaited<ReturnType<typeof requireCapability>>
+  try {
+    admin = await requireCapability('catalog:write')
+  } catch (err) {
+    return { ok: false, error: describeError(err, 'import packaging images') }
+  }
   const img = form.get('image')
   if (!(img instanceof File) || img.size === 0) return { ok: false, error: 'No image provided.' }
   if (!img.type.startsWith('image/')) return { ok: false, error: 'File must be an image.' }
   if (img.size > THUMB_MAX_BYTES) return { ok: false, error: 'Image is too large (4MB max).' }
 
   const key = packagingModelAssetKey({ packagingTypeId, kind: 'thumb', filename: img.name })
-  const up = await uploadFile({ key, body: Buffer.from(await img.arrayBuffer()), contentType: img.type }).catch(() => null)
-  if (!up) return { ok: false, error: 'Upload failed — check R2 configuration.' }
+  let up: Awaited<ReturnType<typeof uploadFile>>
+  try {
+    up = await uploadFile({ key, body: Buffer.from(await img.arrayBuffer()), contentType: img.type })
+  } catch (err) {
+    return { ok: false, error: describeError(err, 'import packaging images') }
+  }
 
   const done = await (
     prisma as unknown as { packagingType: { update: (a: unknown) => Promise<unknown> } }
@@ -86,7 +124,11 @@ export async function attachPackagingImage(packagingTypeId: string, form: FormDa
     .catch(() => null)
   if (done === null) return { ok: false, error: 'Uploaded, but could not attach the image.' }
 
-  await logAuditAs(admin, { entityType: 'PackagingType', entityId: packagingTypeId, action: 'packaging-model.image-imported', payload: { key, bytes: up.sizeBytes } })
+  try {
+    await logAuditAs(admin, { entityType: 'PackagingType', entityId: packagingTypeId, action: 'packaging-model.image-imported', payload: { key, bytes: up.sizeBytes } })
+  } catch {
+    /* audit is non-fatal */
+  }
   return { ok: true }
 }
 
