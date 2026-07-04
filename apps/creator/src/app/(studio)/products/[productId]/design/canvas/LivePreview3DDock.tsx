@@ -64,11 +64,10 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material }: Props) 
       }
     }
   }
-  // null = auto (derive from the product's die-cut category); otherwise a manual override so
-  // the creator can preview the same label on a different container shape.
-  const [shapeOverride, setShapeOverride] = React.useState<DielineShapeKind | null>(null)
-  const autoShape = React.useMemo(() => shapeKindForCategory(dieCut.category), [dieCut.category])
-  const shape = shapeOverride ?? autoShape
+  // The 3D shape is derived from THIS packaging piece's die-cut category (the dock
+  // previews the current component). Switching between a product's packaging pieces
+  // (e.g. wrap + cans) is a separate packaging switcher — see plan.
+  const shape = React.useMemo(() => shapeKindForCategory(dieCut.category), [dieCut.category])
   const captureRef = React.useRef<(() => string | null) | null>(null)
 
   function downloadShot() {
@@ -163,27 +162,6 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material }: Props) 
           <div className="flex h-full items-center justify-center text-[12px] text-ink-400">Preparing preview…</div>
         )}
       </div>
-      {/* Shape switcher — preview the same label on a different container. */}
-      <div className="flex items-center gap-1 border-t border-ink-100 px-2.5 py-1.5">
-        <span className="mr-0.5 text-[9.5px] font-bold uppercase tracking-wider text-ink-400">Shape</span>
-        <ShapeBtn label="Auto" active={shapeOverride === null} onClick={() => setShapeOverride(null)} />
-        <ShapeBtn label="Round" active={shapeOverride === 'CYLINDER'} onClick={() => setShapeOverride('CYLINDER')} />
-        <ShapeBtn label="Box" active={shapeOverride === 'BOX'} onClick={() => setShapeOverride('BOX')} />
-        <ShapeBtn label="Flat" active={shapeOverride === 'FLAT'} onClick={() => setShapeOverride('FLAT')} />
-      </div>
-      <p className="px-3 pb-1.5 text-[10px] leading-snug text-ink-400">Updates as you design · click the model to select that element · preview only, not the print file.</p>
     </div>
-  )
-}
-
-function ShapeBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full border px-2 py-0.5 text-[10.5px] font-semibold transition ${active ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
-    >
-      {label}
-    </button>
   )
 }
