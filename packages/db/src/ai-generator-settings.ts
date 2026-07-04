@@ -16,7 +16,11 @@ export interface AiGeneratorSettingsValues {
   outputPolicies: Record<string, Record<string, unknown>>
   /** provider tuning (model ids, cost overrides). */
   provider: Record<string, unknown>
-  gates: { blockExportUntilCompliant: boolean; blockSaveOverStorage: boolean; makerGenerationDisabled: boolean }
+  gates: { generatorEnabled: boolean; blockExportUntilCompliant: boolean; blockSaveOverStorage: boolean; makerGenerationDisabled: boolean }
+  /** groupId → reusable vocab group { label, styles[], colors[], elements[] }. */
+  vocabGroups: Record<string, Record<string, unknown>>
+  /** domain → assigned vocab-group ids. */
+  domainGroups: Record<string, string[]>
 }
 
 export const AI_GENERATOR_SETTINGS_DEFAULTS: AiGeneratorSettingsValues = {
@@ -24,7 +28,9 @@ export const AI_GENERATOR_SETTINGS_DEFAULTS: AiGeneratorSettingsValues = {
   domainVocab: {},
   outputPolicies: {},
   provider: {},
-  gates: { blockExportUntilCompliant: true, blockSaveOverStorage: true, makerGenerationDisabled: true },
+  gates: { generatorEnabled: true, blockExportUntilCompliant: true, blockSaveOverStorage: true, makerGenerationDisabled: true },
+  vocabGroups: {},
+  domainGroups: {},
 }
 
 type JsonRow = {
@@ -49,13 +55,25 @@ export async function getAiGeneratorSettings(): Promise<AiGeneratorSettingsValue
         select: { tierLimitsJson: true, domainVocabJson: true, outputPoliciesJson: true, providerJson: true, gatesJson: true },
       })
       .catch(() => null)) as JsonRow
-    if (!row) return AI_GENERATOR_SETTINGS_DEFAULTS
+    // Vocab groups live in additive columns (vocabGroupsJson / domainGroupsJson).
+    // Read them in a SEPARATE cast-guarded query so a not-yet-pushed column can
+    // never break the reads above — pre-push it simply degrades to empty groups.
+    const groupsRow = (await (prisma as unknown as {
+      aiGeneratorSettings: { findUnique: (a: unknown) => Promise<{ vocabGroupsJson: unknown; domainGroupsJson: unknown } | null> }
+    }).aiGeneratorSettings
+      .findUnique({ where: { id: 'default' }, select: { vocabGroupsJson: true, domainGroupsJson: true } })
+      .catch(() => null)) as { vocabGroupsJson: unknown; domainGroupsJson: unknown } | null
+    const vocabGroups = obj(groupsRow?.vocabGroupsJson) as Record<string, Record<string, unknown>>
+    const domainGroups = obj(groupsRow?.domainGroupsJson) as Record<string, string[]>
+    if (!row) return { ...AI_GENERATOR_SETTINGS_DEFAULTS, vocabGroups, domainGroups }
     return {
       tierLimits: obj(row.tierLimitsJson) as Record<string, Record<string, unknown>>,
       domainVocab: obj(row.domainVocabJson) as Record<string, Record<string, unknown>>,
       outputPolicies: obj(row.outputPoliciesJson) as Record<string, Record<string, unknown>>,
       provider: obj(row.providerJson),
       gates: { ...AI_GENERATOR_SETTINGS_DEFAULTS.gates, ...(obj(row.gatesJson) as Partial<AiGeneratorSettingsValues['gates']>) },
+      vocabGroups,
+      domainGroups,
     }
   } catch {
     return AI_GENERATOR_SETTINGS_DEFAULTS
@@ -68,6 +86,8 @@ export interface AiGeneratorSettingsPatch {
   outputPolicies?: Record<string, Record<string, unknown>>
   provider?: Record<string, unknown>
   gates?: Partial<AiGeneratorSettingsValues['gates']>
+  vocabGroups?: Record<string, Record<string, unknown>>
+  domainGroups?: Record<string, string[]>
   updatedById?: string | null
 }
 
@@ -78,6 +98,8 @@ export async function upsertAiGeneratorSettings(patch: AiGeneratorSettingsPatch)
   if (patch.outputPolicies !== undefined) data.outputPoliciesJson = patch.outputPolicies
   if (patch.provider !== undefined) data.providerJson = patch.provider
   if (patch.gates !== undefined) data.gatesJson = patch.gates
+  if (patch.vocabGroups !== undefined) data.vocabGroupsJson = patch.vocabGroups
+  if (patch.domainGroups !== undefined) data.domainGroupsJson = patch.domainGroups
   if (patch.updatedById !== undefined) data.updatedById = patch.updatedById
   try {
     await (prisma as unknown as {
