@@ -17,7 +17,7 @@
 - [x] G1.3b `PbrSurfaceParams` re-exported from `@ilaunchify/ui`; `LivePreview3DDock` accepts + forwards `material` (shell drives finish next)
 - [x] G1.3c `Packaging3DView` (admin, r128 CDN) r128-safe realism: contact shadow + fill light + finish-aware roughness/metalness seam. Typecheck-green.
 - [ ] G1.3d **(recommended, needs browser QA)** migrate `Packaging3DView` off r128 CDN → npm `three@0.184` + examples/jsm GLTFLoader; drop `any`; then reuse RoomEnvironment + MeshPhysicalMaterial for FULL PBR/HDRI. Unblocks G1.4.
-- [ ] G1.3e Wire the Design Studio shell (`CanvasLayoutShell`) to resolve the product's finish → `resolvePbrPreset` → pass `material` into `LivePreview3DDock` (needs `apps/creator → @ilaunchify/packaging-3d` dep → `pnpm install`)
+- [x] G1.3e `CanvasLayoutShell` resolves the product's default finish (FOIL_METALLIC→metal; else name→matte/gloss/soft-touch/…) via `resolvePbrPreset` → passes `material` into `LivePreview3DDock`. `@ilaunchify/packaging-3d` added to `apps/creator` deps. Creator app typecheck-green. **Requires `pnpm install`** to create the real workspace link (sandbox used a symlink).
 - [ ] G1.4 Verify glTF texture swap in-browser (the one untested seam flagged in the inventory) — creator design → CanvasTexture → bound material. **Blocked on G1.3d** (r128 CDN loader is the current glTF path).
 - [ ] G1.5 Visual QA pass: one product per StructuralPackType rendered before/after screenshots
 

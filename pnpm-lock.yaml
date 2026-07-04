@@ -195,6 +195,9 @@ importers:
       '@ilaunchify/orders':
         specifier: workspace:*
         version: link:../../packages/orders
+      '@ilaunchify/packaging-3d':
+        specifier: workspace:*
+        version: link:../../packages/packaging-3d
       '@ilaunchify/payments':
         specifier: workspace:*
         version: link:../../packages/payments

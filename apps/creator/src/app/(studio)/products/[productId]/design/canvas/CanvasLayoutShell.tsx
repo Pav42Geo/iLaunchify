@@ -92,6 +92,7 @@ import { CompliancePanel } from './CompliancePanel'
 import type { FrameDims } from './frameComplianceCanvas'
 import { MockupModal, type StudioMockup } from './MockupModal'
 import { LivePreview3DDock } from './LivePreview3DDock'
+import { resolvePbrPreset } from '@ilaunchify/packaging-3d'
 import { applyBaseToAllFlavors } from './flavor-actions'
 import { findNutritionPanel, regenerateNutritionPanel } from './lib/managedNutritionPanel'
 import { ExportModal } from './ExportModal'
@@ -355,6 +356,15 @@ export function CanvasLayoutShell({
   const [activeBrandId, setActiveBrandId] = useState(brandAssets.brandId)
   const [guides, setGuides] = useState<GuideVisibility>(DEFAULT_GUIDES)
   const [showFrames, setShowFrames] = useState(true)
+  // G1.3e — resolve the product's default finish → a PBR preset for the live 3D dock.
+  // FOIL_METALLIC finishes read as metal; otherwise the finish name (matte/gloss/
+  // soft-touch/…) drives the preset. Undefined → the viewer's matte substrate default.
+  const dockMaterial = useMemo(() => {
+    const f = finishes.find((x) => x.isDefault) ?? finishes[0]
+    if (!f) return undefined
+    const name = f.category === 'FOIL_METALLIC' ? `${f.name} foil` : f.name
+    return resolvePbrPreset({ name })
+  }, [finishes])
   // Resolve die-line frames for the current context. Empty when no die-line —
   // resolveLayout would otherwise fall back to a DEFAULT layout, so guard on it.
   const resolvedFrames = useMemo<ResolvedFrame[]>(
@@ -1189,7 +1199,7 @@ export function CanvasLayoutShell({
 
           {/* Live 3D preview dock (Studio 3D+2D Phase 2) — floats bottom-right and
               updates as you edit. Visualization only; the die-line stays the print master. */}
-          <LivePreview3DDock canvas={canvas} dieCut={dieCut} pxPerMm={pxPerMm} />
+          <LivePreview3DDock canvas={canvas} dieCut={dieCut} pxPerMm={pxPerMm} material={dockMaterial} />
         </div>
       </div>
 
