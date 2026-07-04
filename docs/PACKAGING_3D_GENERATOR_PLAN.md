@@ -24,7 +24,7 @@ Locked architecture still governs: **die-line = print master, 3D = derived previ
 
 7. **Design-aware on open — no "apply" step** (Pavel 2026-07-03). When the creator opens the Mockup Library, **every mockup already wears their current design**, composited live. They browse *their own product*, not blank templates. This is the Kittl/Smartmockups/Pacdora convention (live wrap / AI auto-place / real-time 3D). Implementation = the creator's Fabric canvas → CanvasTexture per surface (exists) rendered against each library geometry/quad; nothing to "apply."
 
-8. **The Mockup Library lives on a Preview screen *after* the Design Studio** (Pavel 2026-07-03). New creator step between design and checkout: **Design Studio → Preview (Mockups) → Checkout**. Today the design-aware mockup is a modal *inside* the canvas (`MockupModal`); it graduates to a dedicated Preview surface hosting the full library, favorites, export, and publish. The **production-accurate checkout preview stays a separate, free, deterministic render** (locked) — the Preview screen's beauty shots never replace it.
+8. **The Mockup Library lives INSIDE the existing product preview step — NOT a new step** (Pavel 2026-07-03, corrected). The creator flow keeps its current shape: `Design Studio → **Product Preview** → Checkout`. The product-preview surface that already exists (the design-aware preview / `MockupModal` seam already sitting in the canvas) **gains** the full Mockup Library — browse, favorites, export, publish — in place. Do **not** insert an extra route between design and checkout. The **production-accurate checkout preview stays a separate, free, deterministic render** (locked) — the library's beauty shots never replace it.
 
 9. **Creators publish channel-ready mockups straight to their connected channels** (Pavel 2026-07-03). From the Preview screen the creator selects renders → exports **per-channel compliant image sets** → pushes them into the product listing gallery on Shopify / TikTok Shop / Etsy / Amazon / Walmart via the existing **ChannelAdapter** seam (see docs/CHANNEL_MANAGEMENT_SPEC.md). Mirror Printify's Mockup-Library publish flow: pick which sync, order them, star a primary, map per-variant, **field-scoped re-sync** (image-only by default, never clobber channel SEO/pricing). Research: docs/MOCKUP_LIBRARY_UX_RESEARCH.md.
 
@@ -100,7 +100,7 @@ New pure package **`packages/packaging-3d`** (Prisma-free, DI'd like `packages/s
 |---|---|---|---|
 | **G1 — Realism upgrade** | PBR presets per PackagingMaterial + HDRI + shadows in Packaging3DView + LivePreview3DDock; verify glTF texture swap | ~5–8d | Visible quality jump on everything that already renders |
 | **G2 — Render pipeline + library substrate** | three-gpu-pathtracer render → PNG Asset; `MockupAsset` model (admin-produced library) | ~6–8d | Layer-C renders replace CSS MockupModal; library exists |
-| **G2b — Creator Preview → Mockup Library surface** (see §9) | Graduate `MockupModal` into a dedicated **Preview step** after Design Studio; **design pre-composited on every mockup on open** (§0.7); grid + multi-select + favorites; tier gates (`mockupLicense`) + license-at-download | ~6–8d | The creator UX Pavel asked for — browse *their* product on the library, save favorites, export |
+| **G2b — Mockup Library in the existing Product Preview step** (see §9) | Embed the library in the **existing Product Preview** (not a new step); **design pre-composited on every mockup on open** (§0.7); grid + multi-select + favorites; tier gates (`mockupLicense`) + license-at-download | ~6–8d | The creator UX Pavel asked for — browse *their* product on the library, save favorites, export |
 | **G3 — Parametric engine + intake auto-pipeline** | 6 StructuralPackTypes parametric from die-line dims; §1 auto job + admin review queue in Packaging Studio | ~8–10d | Partner upload → approved 3D mockup with near-zero admin work |
 | **G3b — Creator-uploaded mockup bases** (see §9.3) | Creator uploads own product photo → **4-corner print-area warp** (reuses `printAreaQuad` + `matrix3dForQuad`); private, reusable, design-aware | ~4–6d | Beats Mediamodifier's PSD-only path; own-photo mockups |
 | **G4 — Fold-from-net** | normalizedSvg → FOLD → folded carton mesh + per-panel UVs; fold animation bonus | ~8–12d (hardest) | Cartons/corrugate photoreal |
@@ -134,7 +134,7 @@ Remaining open: creator AI scene caps per tier (quota numbers = PlanFeature rows
 
 New locked scope (§0.6–0.9). Full UX research + citations: **docs/MOCKUP_LIBRARY_UX_RESEARCH.md**. This is the *creator* half of the mockup job; the admin half (§1–§4) produces the shared library, this half personalizes/contributes/publishes it. Reuses the same `MockupAsset` substrate + packaging-3d engine — no parallel stack.
 
-**Flow:** `Design Studio → **Preview (Mockups)** → Checkout`. The Preview step is a **mandatory checkpoint** immediately after the Design Studio (LOCKED 2026-07-03, Pavel) — but **selecting/adding mockups is optional**: the creator may pass through without curating. The platform **always auto-wraps the product onto ≥1 default mockup** regardless (§9.7), so a beauty thumbnail always exists.
+**Flow:** `Design Studio → **Product Preview** → Checkout` — **unchanged**. The Mockup Library is embedded **inside the existing Product Preview step** (NOT a new step, Pavel corrected 2026-07-03). Product Preview is already the step after the Design Studio; it simply gains the library. **Selecting/adding mockups is optional** — the creator may pass through without curating, and the platform **always auto-wraps the product onto ≥1 default mockup** (§9.7) so a beauty thumbnail always exists.
 
 ### 9.1 Design-aware library on open (§0.7 — the headline)
 The instant the creator lands on Preview, the grid **already shows their current design on every mockup** — no "apply." Mechanism = existing creator Fabric canvas → `CanvasTexture` per surface, rendered against each library item's geometry/quad (the `LivePreview3DDock` + `MockupModal` pipeline, promoted to a full surface). Design edits upstream re-compose the whole grid. This is the Kittl "edit once, all mockups update" / Smartmockups AI-auto-place / Pacdora real-time-3D convention.
@@ -158,15 +158,27 @@ Creator uploads their **own product photo** → drags a **4-corner print area** 
 - **AI-disclosure**: write IPTC `DigitalSourceType` on AI scenes (Google Merchant) + carry the marketing-only label through export.
 
 #### 9.4.1 Publish state model (LOCKED 2026-07-03, Pavel) — publishing is never auto-immediate
-The creator controls *when* and *where*, because on-demand vs bulk changes the timing calculus. Model a **`ChannelPublication`** (additive) per (product × channel) with an FSM — never publish silently on save:
+The creator controls *when* and *where*, because on-demand vs bulk changes the timing calculus. **EXTEND the existing `ChannelProductLink` + `ChannelPublishState` (schema.prisma ~L4322) — do NOT add a new `ChannelPublication` model** (the per-(product × channel) link, per-variant `ChannelVariantLink`, mode, `lastPushedAt`, and "transitions only via the @ilaunchify/channels FSM helper" rule all already exist). Never publish silently on save.
 
-- **States:** `DRAFT` → `HELD` → `SCHEDULED` → `PUBLISHED` → `UNPUBLISHED` (and back to `DRAFT`/`PUBLISHED` on edits). Every transition writes AuditLog + goes through an FSM helper (never inline).
-- **DRAFT** — images selected/exported but nothing pushed. Default state.
-- **HELD** — creator explicitly holds. **Bulk orders with lead time**: publish should *not* fire immediately; the creator can **hold until the order is delivered**, then publish. Wire an optional trigger `publishOn = ON_ORDER_DELIVERED` so the publication auto-advances HELD → PUBLISHED when the linked order reaches the delivered/fulfilled state (hooks the order FSM, not a manual reminder). Also allow a plain scheduled datetime.
-- **SCHEDULED** — a future datetime or the order-delivered trigger is armed.
-- **PUBLISHED / UNPUBLISHED** — live on the channel / pulled back. **Unpublish** removes or hides the listing images via the same ChannelAdapter (per-field, image-scoped) — a first-class action, not a delete.
-- **Channel targeting:** publish to **one selected connected channel, several, or bulk-publish to all** the creator's connected+tracked channels. State is **per channel** (a product can be PUBLISHED on Shopify while HELD on TikTok). Reuse the connected-channel registry from CHANNEL_MANAGEMENT_SPEC.
-- **First adapter target:** **Shopify** (cleanest media API, no white-bg rule) — the publish-state model + per-channel fan-out is channel-generic from day one so TikTok/Etsy/Amazon/Walmart adapters slot in behind the same FSM.
+- **States** (existing enum `DRAFT/PUSHED/LIVE/PAUSED/ERROR` + two additive values `HELD`, `SCHEDULED`). Plan-term ↔ enum: PUBLISHED = `LIVE`, UNPUBLISHED = `PAUSED`. Happy path `DRAFT → PUSHED → LIVE`; hold path `DRAFT → HELD/SCHEDULED → PUSHED → LIVE`. FSM helper: **`@ilaunchify/channels` `publish-fsm.ts`** (`canPublishTransition`, `evaluatePublishRelease`), pure + tested. Every transition writes AuditLog (server action).
+- **HELD** — creator explicitly holds. **Bulk orders with lead time**: publish should *not* fire immediately; the creator can **hold until the order is delivered**, then publish. Trigger `ON_ORDER_DELIVERED` auto-advances HELD → PUSHED when the linked production order reaches delivered (release guard `evaluatePublishRelease`, hooks the order FSM — not a manual reminder). `SCHEDULED_AT` datetime and `MANUAL` also supported.
+- **PAUSED (unpublish)** — removes/hides the listing images via the same ChannelAdapter (per-field, image-scoped) — a first-class action, not a delete.
+- **Channel targeting:** publish to **one selected connected channel, several, or bulk-publish to all** the creator's connected channels. State is **per channel** (a product can be `LIVE` on Shopify while `HELD` on TikTok) — already true, since `ChannelProductLink` is keyed `@@unique([channelId, productId])`.
+- **First adapter target:** **Shopify** (cleanest media API, no white-bg rule) — the FSM + per-channel fan-out is channel-generic, so TikTok/Etsy/Amazon/Walmart adapters slot behind the same helper.
+
+**Additive schema delta (proposed — needs Pavel sign-off + prisma-migrator; NOT yet applied):**
+```prisma
+enum ChannelPublishState { DRAFT  HELD  SCHEDULED  PUSHED  LIVE  PAUSED  ERROR }   // + HELD, SCHEDULED
+enum ChannelPublishTrigger { MANUAL  SCHEDULED_AT  ON_ORDER_DELIVERED }             // new
+model ChannelProductLink {
+  // …existing…
+  publishTrigger   ChannelPublishTrigger @default(MANUAL)
+  publishAt        DateTime?   // SCHEDULED_AT armed time
+  heldReason       String?     // why HELD (creator note / "await delivery")
+  releaseOnOrderId String?     // soft FK → production Order whose delivered state releases the hold
+}
+```
+All additive/nullable (Cockroach-safe: enum-value adds + nullable cols; no `@db.Text`). After apply: `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart (3-layer stale-client gotcha).
 
 ### 9.5 Reuse (creator side adds almost no new substrate)
 `MockupModal` + `StudioMockup`/`printAreaQuad`/`matrix3dForQuad` · `LivePreview3DDock` CanvasTexture pipeline · `MockupAsset` (shared) · packaging-3d engine (G1–G4) · `lookupPlanFeature()` tier gates · AI try-on loop + rate limiter (creator AI scenes) · **ChannelAdapter** seam + connected-channel registry (channel publish) · `saveDesignMockupRender` render-chain.
@@ -179,7 +191,7 @@ The creator controls *when* and *where*, because on-demand vs bulk changes the t
 The Preview surface + `MockupModal`/`LivePreview3DDock` live in the **creator Design Studio canvas = Code's historical single-writer zone**. G2b/G3b/G7 must be brokered single-writer-per-file with Code before build (pre-flight item). Cowork owns the packaging-3d engine + admin library; the creator canvas seam is coordinated.
 
 ## 10. Creator-side decisions — RESOLVED (Pavel 2026-07-03)
-1. **Preview screen** — ✅ LOCKED: **mandatory checkpoint** right after Design Studio; **curating mockups is optional**; platform always produces a default wrapped thumbnail (§9.7); a "Revise mockups" modal on the product page lets the creator re-curate any time before publish.
+1. **Preview screen** — ✅ LOCKED (corrected): the Mockup Library is embedded in the **existing Product Preview step — NOT a new step**; flow stays Design Studio → Product Preview → Checkout. **Curating mockups is optional**; platform always produces a default wrapped thumbnail (§9.7); a "Revise mockups" modal on the product page lets the creator re-curate any time before publish.
 2. **Creator-uploaded mockup bases (G3b)** — ✅ LOCKED: **Builder + Agency**. Maker uses the platform library only.
 3. **Publish-to-channel (G7)** — ✅ LOCKED: not a single "first channel + immediate push" — a **publish state model** (DRAFT/HELD/SCHEDULED/PUBLISHED/UNPUBLISHED, §9.4.1) with **hold-until-order-delivered** trigger, **per-channel state**, and **select-one / several / bulk** publish across connected channels. **Shopify** is the first adapter; the FSM is channel-generic.
 4. **"Commercial use" definition** — ✅ LOCKED: publishing to the creator's **own live sales channel = COMMERCIAL use → Agency tier**. Builder's PERSONAL license = internal/proofing/export only, not channel publish. (Resolves the pre-flight license-ladder question too.)

@@ -28,7 +28,7 @@
 
 ## G2b — Creator Preview → Mockup Library surface (~6–8d · plan §9) — Code-zone, broker first
 
-- [ ] G2b.1 Graduate `MockupModal` into a **mandatory Preview step** after Design Studio (curating optional); route + shell; also expose a **"Revise mockups" modal gallery from the product page** (revisit any time before publish, §9.7)
+- [ ] G2b.1 Embed the Mockup Library **inside the existing Product Preview step** (NOT a new route) — expand the current `MockupModal`/preview seam into the full library (browse/favorites/export/publish); also expose a **"Revise mockups" modal gallery from the product page** (revisit any time before publish, §9.7)
 - [ ] G2b.1b **Always-on default mockup**: auto-wrap product on ≥1 mockup as the canonical **thumbnail** across product list / order list / channel main-image candidate (§9.7)
 - [ ] G2b.2 **Design-aware on open** (§0.7): render the current Fabric design (CanvasTexture per surface) onto every library `MockupAsset` — no "apply" step; re-compose on upstream design edits
 - [ ] G2b.3 Grid UX: large-thumbnail grid, multi-select (checkbox + Select-all + Shift-range), favorite/star, two-axis browse (packaging type × category/size + style tags), paginate 50
@@ -53,8 +53,9 @@
 
 ## G7 — Publish-to-channel (~8–10d · plan §9.4) — Code-zone (ChannelAdapter), broker first · Agency-gated (own-channel = COMMERCIAL)
 
-- [ ] G7.0 **`ChannelPublication` FSM** (additive): DRAFT/HELD/SCHEDULED/PUBLISHED/UNPUBLISHED, **per (product × channel)**; FSM helper + AuditLog every transition (never inline)
-- [ ] G7.0b **Hold-until-delivered trigger** `publishOn = ON_ORDER_DELIVERED` (+ scheduled datetime): auto-advance HELD→PUBLISHED off the order FSM delivered state; for bulk orders w/ lead time
+- [x] G7.0 **Publish FSM** — `@ilaunchify/channels/publish-fsm.ts` built (pure, tested): states DRAFT/HELD/SCHEDULED/PUSHED/LIVE/PAUSED/ERROR, `canPublishTransition`, `evaluatePublishRelease`. **EXTENDS existing `ChannelProductLink`+`ChannelPublishState`** — NOT a new model.
+- [ ] G7.0a Apply **additive schema delta** (needs Pavel sign-off + prisma-migrator): +HELD/+SCHEDULED enum values, new `ChannelPublishTrigger`, `ChannelProductLink.{publishTrigger,publishAt,heldReason,releaseOnOrderId}` (all nullable/Cockroach-safe) → db:push → db:generate → rm -rf apps/*/.next
+- [ ] G7.0b **Hold-until-delivered wiring**: on order FSM → delivered, run `evaluatePublishRelease` for links with `ON_ORDER_DELIVERED`; advance HELD/SCHEDULED→PUSHED (+ AuditLog). Scheduled-datetime sweep for `SCHEDULED_AT`.
 - [ ] G7.0c **Channel targeting**: publish one / several / **bulk** across the creator's connected+tracked channels; state is per-channel; **Unpublish** = first-class image-scoped pull-back via ChannelAdapter
 - [ ] G7.1 **Per-channel compliant export presets** from the spec table (Amazon/Shopify/Etsy/TikTok/Walmart/Google/Meta) — sizes, aspect, bg, format, max-size
 - [ ] G7.2 **Main-image legality guardrail**: auto-steer a clean studio render to position 1 for Amazon/TikTok/Walmart; mark scenes supplementary
