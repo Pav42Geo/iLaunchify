@@ -150,26 +150,33 @@ const PRIMARY: SidebarRegion = {
       icon: LayoutDashboard,
       href: '/dashboard',
     },
+    // Inbox = the ONE admin work queue. All approval/review queues live here, ordered by
+    // theme (Partners → Catalog & product review → Orders & money → Support) so the pile
+    // scans as groups. Category review moved in here from top-level (Pavel 2026-07-04).
     {
       kind: 'group',
       label: 'Inbox',
       icon: Inbox,
       children: [
+        // — Partners —
         { kind: 'item', label: 'Leads', icon: Inbox, href: '/leads', badgeKey: 'leads.pending' },
         { kind: 'item', label: 'Partner verification', icon: ShieldCheck, href: '/partners', badgeKey: 'partners.pending' },
         // D4 RAMP — new partners' first-3-dispatch confirmations (PARTNER_ROLE_ACCOUNTS §4.3)
         { kind: 'item', label: 'Partner ramp', icon: BadgeCheck, href: '/partners/ramp', capability: 'partners:approve' },
-        { kind: 'item', label: 'Cert instance reviews', icon: Award, href: '/certificate-types', badgeKey: 'certs.pending' },
-        { kind: 'item', label: 'Cert type requests', icon: ScrollText, href: '/certificate-requests' },
-        { kind: 'item', label: 'Ingredient queue', icon: FlaskConical, href: '/ingredients', badgeKey: 'ingredients.pending' },
+        // — Catalog & product review —
         { kind: 'item', label: 'Product approvals', icon: Package, href: '/products?tab=new', badgeKey: 'products.pending' },
+        { kind: 'item', label: 'Category review', icon: Tag, href: '/categories/review', badgeKey: 'categoryReview.pending', capability: 'catalog:write' },
+        { kind: 'item', label: 'Ingredient queue', icon: FlaskConical, href: '/ingredients', badgeKey: 'ingredients.pending' },
         { kind: 'item', label: 'Accessory verification', icon: Gift, href: '/accessories' },
         { kind: 'item', label: 'Packaging review', icon: PackageOpen, href: '/asset-management/packaging-review' },
-        { kind: 'item', label: 'Phrase submissions', icon: MessageSquare, href: '/phrase-submissions', hiddenUntilBuilt: true },
-        { kind: 'item', label: 'Support tickets', icon: LifeBuoy, href: '/support-tickets', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Cert instance reviews', icon: Award, href: '/certificate-types', badgeKey: 'certs.pending' },
+        { kind: 'item', label: 'Cert type requests', icon: ScrollText, href: '/certificate-requests' },
+        // — Orders & money —
         { kind: 'item', label: 'Disputes', icon: Scale, href: '/disputes', badgeKey: 'disputes.pending' },
         { kind: 'item', label: 'Cancellation requests', icon: RotateCcw, href: '/cancellations', badgeKey: 'cancellations.pending', capability: 'refunds:approve' },
         { kind: 'item', label: 'Refund requests', icon: RotateCcw, href: '/support-tickets/refund-requests', capability: 'refunds:approve' },
+        // — Support —
+        { kind: 'item', label: 'Support tickets', icon: LifeBuoy, href: '/support-tickets', hiddenUntilBuilt: false },
       ],
     },
     {
@@ -211,14 +218,7 @@ const PRIMARY: SidebarRegion = {
       icon: Layers,
       href: '/categories',
     },
-    {
-      kind: 'item',
-      label: 'Category review',
-      icon: Tag,
-      href: '/categories/review',
-      badgeKey: 'categoryReview.pending',
-      capability: 'catalog:write',
-    },
+    // 'Category review' moved into the Inbox work queue (Pavel 2026-07-04).
     {
       kind: 'group',
       label: 'Users & Roles',
