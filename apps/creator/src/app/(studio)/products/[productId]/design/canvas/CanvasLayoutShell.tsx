@@ -199,6 +199,13 @@ interface Props {
    */
   partnerOffersFinishes?: boolean
   /**
+   * Platform-wide AI generator kill switch (admin → AI Generator settings →
+   * master toggle). When false the AI Templator rail tool is hidden and the
+   * generator is unreachable from the Studio. Defaults to true so admin
+   * template-author mode (which doesn't pass it) is unaffected.
+   */
+  aiGeneratorEnabled?: boolean
+  /**
    * F3a — the finishes THIS product offers (partner's ProductTemplateFinish
    * allow-list), serialized server-side in page.tsx#loadStudioFinishes.
    * DISPLAY-ONLY: rendered by the Finishes drawer; no object-apply yet (F3b).
@@ -297,13 +304,14 @@ const TOOLS: Array<{
   label: string
   icon: typeof Inbox
   v1: boolean
-  conditional?: 'finishes'
+  conditional?: 'finishes' | 'ai'
 }> = [
   { key: 'product', label: 'Product', icon: Inbox, v1: true },
   { key: 'label', label: 'Label', icon: Tag, v1: true },
   { key: 'templates', label: 'Templates', icon: LayoutTemplate, v1: true },
   // AI Templator — opens the AI packaging generator for this product's die-line set.
-  { key: 'ai', label: 'AI Templator', icon: Sparkles, v1: true },
+  // Conditional: hidden platform-wide when the admin master toggle is off.
+  { key: 'ai', label: 'AI Templator', icon: Sparkles, v1: true, conditional: 'ai' },
   { key: 'brand', label: 'Brand', icon: Palette, v1: true },
   { key: 'text', label: 'Text', icon: TypeIcon, v1: true },
   // Elements (Pavel 2026-06-23) — Canva-style merge of Images / Graphics /
@@ -335,6 +343,7 @@ export function CanvasLayoutShell({
   labelingType,
   productCtx: serverProductCtx,
   partnerOffersFinishes = false,
+  aiGeneratorEnabled = true,
   finishes = [],
   creatorTier = 'maker',
   partnerPrintSpec = null,
@@ -1031,6 +1040,7 @@ export function CanvasLayoutShell({
             onToggle={toggleTool}
             onHover={scheduleOpen}
             partnerOffersFinishes={partnerOffersFinishes}
+            aiGeneratorEnabled={aiGeneratorEnabled}
             templateAuthorMode={!!templateAuthor}
           />
 
@@ -1533,6 +1543,7 @@ function LeftRail({
   onToggle,
   onHover,
   partnerOffersFinishes,
+  aiGeneratorEnabled = true,
   templateAuthorMode = false,
 }: {
   activeTool: ToolKey | null
@@ -1541,6 +1552,8 @@ function LeftRail({
   onHover: (k: ToolKey) => void
   /** DS-70b — controls whether the Finishes icon renders. */
   partnerOffersFinishes: boolean
+  /** Admin master toggle — hides the AI Templator when the generator is off. */
+  aiGeneratorEnabled?: boolean
   /** Admin template-author mode — hide product-coupled tools (no real product). */
   templateAuthorMode?: boolean
 }) {
@@ -1551,6 +1564,9 @@ function LeftRail({
   const TEMPLATE_AUTHOR_HIDDEN: ToolKey[] = ['product', 'label', 'components', 'phrases']
   const visibleTools = TOOLS.filter((t) => {
     if (t.conditional === 'finishes') return partnerOffersFinishes
+    // AI Templator is hidden platform-wide when the admin master toggle is off.
+    // Admin template-author mode always keeps it (aiGeneratorEnabled defaults true).
+    if (t.conditional === 'ai') return aiGeneratorEnabled
     if (templateAuthorMode && TEMPLATE_AUTHOR_HIDDEN.includes(t.key)) return false
     return true
   })

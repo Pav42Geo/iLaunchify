@@ -10,7 +10,7 @@
 // when admin packaging curation (#135) is built.
 
 import { notFound, redirect } from 'next/navigation'
-import { prisma, resolveLogoForPlacement } from '@ilaunchify/db'
+import { prisma, resolveLogoForPlacement, getAiGeneratorSettings } from '@ilaunchify/db'
 import type { LabelingType } from '@ilaunchify/db'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import type { BrandCanvasAssets, DieCutSpec } from '@ilaunchify/ui'
@@ -420,6 +420,11 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   const studioFinishes = await loadStudioFinishes(product.productTemplate?.id ?? null)
   const partnerOffersFinishes = studioFinishes.length > 0
 
+  // Platform-wide AI generator kill switch (admin → AI Generator settings). When
+  // off, the AI Templator is hidden from the Studio rail. Defaults to true if the
+  // settings row is missing, so the generator is never accidentally dark.
+  const aiGeneratorEnabled = (await getAiGeneratorSettings()).gates.generatorEnabled
+
   return (
     <CanvasLayoutShell
       studioLogo={studioLogo}
@@ -447,6 +452,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       aggregateNutritionData={aggregateNutritionData}
       nonFoodPanelData={nonFoodPanelData}
       partnerOffersFinishes={partnerOffersFinishes}
+      aiGeneratorEnabled={aiGeneratorEnabled}
       finishes={studioFinishes}
     />
   )
