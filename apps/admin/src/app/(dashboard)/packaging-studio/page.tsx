@@ -17,8 +17,8 @@ export default async function PackagingStudioPage() {
   return (
     <div className="space-y-5">
       <AdminPageHeader
-        eyebrow="Design Templates · Packaging"
-        title="Packaging Studio"
+        eyebrow="Packaging Studio"
+        title="3D Models & Surfaces"
         description="Visual management for packaging models — 3D mockups, clickable label surfaces, and die-lines organized by category. Create a model here; author its 3D surfaces next."
       />
       <PackagingLibraryClient data={data} />

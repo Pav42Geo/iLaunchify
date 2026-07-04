@@ -191,13 +191,20 @@ export function PackagingLibraryClient({ data }: { data: PackagingLibraryData })
               </div>
               <div className="mt-3 flex items-center gap-1.5">
                 <a
+                  href={`/packaging-studio/${encodeURIComponent(m.id)}`}
+                  title="Open this container's hub — model, surfaces, die-lines, mockups, default die-cut"
+                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-ink-900 px-2.5 py-1.5 text-[11.5px] font-semibold text-white hover:bg-black"
+                >
+                  <Boxes className="h-3.5 w-3.5" /> Manage
+                </a>
+                <a
                   href={`/go/packaging-studio?packagingTypeId=${encodeURIComponent(m.id)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Author this model's clickable surfaces + bind die-lines"
-                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-full border border-ink-200 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-700 hover:border-ink-400"
+                  className="inline-flex items-center justify-center gap-1 rounded-full border border-ink-200 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-700 hover:border-ink-400"
                 >
-                  <Cuboid className="h-3.5 w-3.5" /> Author surfaces
+                  <Cuboid className="h-3.5 w-3.5" /> Surfaces
                 </a>
                 <button
                   onClick={() => toggleStatus(m)}
