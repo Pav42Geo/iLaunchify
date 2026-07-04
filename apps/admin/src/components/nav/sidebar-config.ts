@@ -224,10 +224,10 @@ const PRIMARY: SidebarRegion = {
       label: 'Users & Roles',
       icon: Users,
       children: [
-        { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', capability: 'users:admin' },
-        { kind: 'item', label: 'Roles & Permissions', icon: Shield, href: '/roles', capability: 'users:admin' },
         { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
         { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
+        { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', capability: 'users:admin' },
+        { kind: 'item', label: 'Roles & Permissions', icon: Shield, href: '/roles', capability: 'users:admin' },
       ],
     },
     {
@@ -261,6 +261,22 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Sub-processors', icon: Building2, href: '/compliance/subprocessors', hiddenUntilBuilt: true, capability: 'compliance:admin' },
       ],
     },
+    // ---- Finance — promoted to top-level (Pavel 2026-07-04) ------------------
+    // Was nested inside Settings; money is high-frequency + high-stakes, so it's its
+    // own PRIMARY group now. Read-mostly; refunds/clawbacks gated harder.
+    {
+      kind: 'group',
+      label: 'Finance',
+      icon: DollarSign,
+      children: [
+        { kind: 'item', label: 'Overview', icon: LineChart, href: '/finance', capability: 'billing:read', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Invoices', icon: FileText, href: '/finance/invoices', capability: 'billing:read', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Payouts & transfers', icon: Wallet, href: '/finance/payouts', capability: 'billing:read', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Refunds', icon: RotateCcw, href: '/finance/refunds', capability: 'refunds:approve', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Clawbacks', icon: Recycle, href: '/finance/clawbacks', capability: 'refunds:approve', hiddenUntilBuilt: false },
+        { kind: 'item', label: 'Tax forms (1099)', icon: Landmark, href: '/finance/tax-forms', capability: 'billing:read', hiddenUntilBuilt: false },
+      ],
+    },
     // ---- Settings — now also holds Languages & Markets + Communications -----
     {
       kind: 'group',
@@ -284,22 +300,6 @@ const PRIMARY: SidebarRegion = {
             { kind: 'item', label: 'Sample Policy', icon: FlaskConical, href: '/order-settings/sample-settings', capability: 'billing:write' },
             // C6.3 — channel replenishment knobs (CHANNEL_MANAGEMENT_SPEC §3.5a)
             { kind: 'item', label: 'Channel Replenishment', icon: Truck, href: '/order-settings/channels', capability: 'billing:write' },
-          ],
-        },
-        // Finance console (docs/BILLING_AND_ACCOUNTING.md §4 + ADMIN_FINANCE_SIDEBAR_PROPOSAL.md).
-        // Nested in Settings per Pavel 2026-06-22. Read-mostly; refunds gated harder.
-        // Each child flips hiddenUntilBuilt → false as its page ships.
-        {
-          kind: 'group',
-          label: 'Finance',
-          icon: DollarSign,
-          children: [
-            { kind: 'item', label: 'Overview', icon: LineChart, href: '/finance', capability: 'billing:read', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Invoices', icon: FileText, href: '/finance/invoices', capability: 'billing:read', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Payouts & transfers', icon: Wallet, href: '/finance/payouts', capability: 'billing:read', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Refunds', icon: RotateCcw, href: '/finance/refunds', capability: 'refunds:approve', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Clawbacks', icon: Recycle, href: '/finance/clawbacks', capability: 'refunds:approve', hiddenUntilBuilt: false },
-            { kind: 'item', label: 'Tax forms (1099)', icon: Landmark, href: '/finance/tax-forms', capability: 'billing:read', hiddenUntilBuilt: false },
           ],
         },
         { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
