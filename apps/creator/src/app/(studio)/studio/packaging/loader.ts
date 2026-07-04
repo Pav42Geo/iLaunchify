@@ -24,6 +24,9 @@ export interface PackagingAuthoringData {
   previewUrl: string | null
   surfaces: PackagingSurface[]
   dielines: BindableDieline[]
+  /** Real dimensions (mm) from the primary die-line — drives real-size parametric 3D
+   *  (buildParametricModel). Null when no die-line carries width+height yet. */
+  dims: { widthMm: number; heightMm: number; depthMm?: number } | null
 }
 
 // One row in the studio's Library drawer model picker (like the partner Library tab).
@@ -95,7 +98,7 @@ type PtRow = {
   defaultSurfaces: unknown
 } | null
 
-type DlRow = { id: string; widthMm: unknown; heightMm: unknown; canonicalShape?: { name: string } | null }
+type DlRow = { id: string; widthMm: unknown; heightMm: unknown; depthMm?: unknown; canonicalShape?: { name: string } | null }
 
 export async function loadPackagingAuthoring(packagingTypeId: string): Promise<PackagingAuthoringData | null> {
   const pt = (await (
@@ -115,7 +118,7 @@ export async function loadPackagingAuthoring(packagingTypeId: string): Promise<P
       where: { packagingTypeId },
       orderBy: { updatedAt: 'desc' },
       take: 100,
-      select: { id: true, widthMm: true, heightMm: true, canonicalShape: { select: { name: true } } },
+      select: { id: true, widthMm: true, heightMm: true, depthMm: true, canonicalShape: { select: { name: true } } },
     })
     .catch(() => [])) as DlRow[]
 
@@ -125,6 +128,17 @@ export async function loadPackagingAuthoring(packagingTypeId: string): Promise<P
     const dims = w && h ? ` · ${Math.round(w)}×${Math.round(h)}mm` : ''
     return { id: d.id, label: `${d.canonicalShape?.name ?? `Die-line ${i + 1}`}${dims}` }
   })
+
+  // Real dims from the first die-line that carries width+height — drives real-size 3D.
+  const dims: PackagingAuthoringData['dims'] = (() => {
+    for (const d of dls) {
+      const w = Number(String(d.widthMm ?? '')) || 0
+      const h = Number(String(d.heightMm ?? '')) || 0
+      const dp = Number(String(d.depthMm ?? '')) || 0
+      if (w > 0 && h > 0) return { widthMm: w, heightMm: h, ...(dp > 0 ? { depthMm: dp } : {}) }
+    }
+    return null
+  })()
 
   const [model3dUrl, previewUrl] = await Promise.all([
     pt.model3dKey ? getSignedReadUrl(pt.model3dKey, { expiresInSeconds: 600 }).catch(() => null) : Promise.resolve(null),
@@ -141,5 +155,6 @@ export async function loadPackagingAuthoring(packagingTypeId: string): Promise<P
     previewUrl,
     surfaces: resolvePackagingSurfaces(pt.defaultSurfaces),
     dielines,
+    dims,
   }
 }

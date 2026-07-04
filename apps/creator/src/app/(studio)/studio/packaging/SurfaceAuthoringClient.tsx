@@ -214,6 +214,7 @@ export function SurfaceAuthoringClient({ data, models }: { data: PackagingAuthor
                 setPlaceMode(false)
               }}
               modelUrl={data.model3dUrl}
+              dims={data.dims}
             />
             <div className="absolute right-4 top-4">
               <button

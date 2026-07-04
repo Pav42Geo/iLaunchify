@@ -25,6 +25,7 @@
 
 import * as React from 'react'
 import type { PackagingSurface } from '@ilaunchify/ui'
+import { buildParametricModel, type PackagingTopology } from '@ilaunchify/packaging-3d'
 
 const THREE_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
 // GLTFLoader for three r128 — the examples/js UMD build attaches THREE.GLTFLoader.
@@ -47,6 +48,26 @@ interface Props {
    *  the caller. Full clearcoat/transmission/sheen + HDRI arrive with the npm-three
    *  migration (see file header). Read at scene init (topology change re-reads). */
   material?: { roughness?: number; metalness?: number } | null
+  /** G3.1 — real dimensions (mm) from the die-line. When present, the parametric mesh
+   *  is built at the package's TRUE proportions via buildParametricModel (a tall bottle
+   *  reads tall, a wide carton reads wide) instead of the fixed per-topology guess. */
+  dims?: { widthMm: number; heightMm: number; depthMm?: number } | null
+}
+
+// Convert a parametric model's real-mm bounds → the normalized {r,h,d,kind,lid} the
+// scene builder uses (largest side ≈ 2.2 units, aspect preserved). r = half-width
+// (box width = r*2 / cylinder radius). Keeps the existing r128 geometry path.
+function dimsFromRealMm(topology: string, dims: { widthMm: number; heightMm: number; depthMm?: number }): ReturnType<typeof dimsFor> {
+  const model = buildParametricModel(topology as PackagingTopology, dims)
+  const { widthMm, heightMm, depthMm } = model.dims
+  const scale = 2.2 / Math.max(widthMm, heightMm, depthMm, 1)
+  return {
+    r: (widthMm * scale) / 2,
+    h: heightMm * scale,
+    d: depthMm * scale,
+    kind: model.primitive === 'CYLINDER' ? 'cyl' : 'box',
+    lid: model.hasLid,
+  }
 }
 
 /** Load three.js from the CDN once; resolve when window.THREE is ready. */
@@ -123,14 +144,14 @@ function defaultAnchor(s: PackagingSurface, d: ReturnType<typeof dimsFor>, i: nu
   return { x: Math.sin(ang) * (d.kind === 'cyl' ? d.r + 0.04 : d.r * 0.7), y: 0, z: Math.cos(ang) * rad }
 }
 
-export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, placeMode, onPlaceAnchor, modelUrl, material }: Props) {
+export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, placeMode, onPlaceAnchor, modelUrl, material, dims }: Props) {
   const mountRef = React.useRef<HTMLDivElement>(null)
   const [markers, setMarkers] = React.useState<{ key: string; label: string; x: number; y: number; front: boolean }[]>([])
   const [err, setErr] = React.useState<string | null>(null)
   const stateRef = React.useRef<any>({})
   // Keep the latest props available to the render loop without re-initializing the scene.
-  const propsRef = React.useRef({ surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl, material })
-  propsRef.current = { surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl, material }
+  const propsRef = React.useRef({ surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl, material, dims })
+  propsRef.current = { surfaces, selectedKey, placeMode, onPlaceAnchor, onSelect, topology, modelUrl, material, dims }
 
   React.useEffect(() => {
     let disposed = false
@@ -164,7 +185,9 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
         fill.position.set(-4, 2, -3)
         scene.add(fill)
 
-        const d = dimsFor(topology)
+        // Real-size proportions from the die-line when available (G3.1); else the guess.
+        const realDims = propsRef.current.dims
+        const d = realDims && realDims.widthMm > 0 && realDims.heightMm > 0 ? dimsFromRealMm(topology, realDims) : dimsFor(topology)
         const group = new THREE.Group()
         // G1.3c — finish-aware roughness/metalness from the PBR preset (r128-safe subset).
         const pm = propsRef.current.material
@@ -359,9 +382,9 @@ export function Packaging3DView({ topology, surfaces, selectedKey, onSelect, pla
         if (mount && st.el.parentNode === mount) mount.removeChild(st.el)
       }
     }
-    // Re-init only when topology changes (surfaces/selection ride via propsRef).
+    // Re-init when topology or real dims change (surfaces/selection ride via propsRef).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topology])
+  }, [topology, dims?.widthMm, dims?.heightMm, dims?.depthMm])
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-ink-50" style={{ aspectRatio: '1 / 1' }}>
