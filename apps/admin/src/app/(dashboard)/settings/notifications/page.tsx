@@ -1,23 +1,22 @@
+// Admin PERSONAL notification preferences — group × channel matrix + quiet
+// hours (docs/EMAIL_NOTIFICATION_CENTER.md). Replaced the legacy 3-event list
+// 2026-07-05. Platform-wide template/branding/deliverability control lives in
+// the sidebar under Settings → Notifications (the Center), not here.
+
+import Link from 'next/link'
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
-import { getEffectivePreferences } from '@ilaunchify/notifications'
+import { getPreferenceMatrixView } from '@ilaunchify/notifications'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
-import { PreferencesForm } from './PreferencesForm'
+import { CategoryPreferencesForm } from './CategoryPreferencesForm'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Notification preferences — Admin' }
 
-// Admin-relevant events only — partners get partner-specific ones in their own UI.
-const ADMIN_EVENTS = [
-  { value: 'PARTNER_APPLIED', label: 'New partner application', help: 'Someone submitted the public apply form.' },
-  { value: 'PARTNER_SUBMITTED', label: 'Partner ready for review', help: 'Partner finished onboarding and submitted for verification.' },
-  { value: 'ORDER_NEEDS_ATTENTION', label: 'Order needs attention', help: 'An order moved to ON_HOLD / DISPUTED / EXCEPTION.' },
-] as const
-
 export default async function NotificationPreferencesPage() {
   const user = await requireUser()
-  const [prefs, userRow] = await Promise.all([
-    getEffectivePreferences(user.id),
+  const [{ categories, cells }, userRow] = await Promise.all([
+    getPreferenceMatrixView(user.id),
     prisma.user.findUnique({
       where: { id: user.id },
       select: { quietHoursStartUtc: true, quietHoursEndUtc: true },
@@ -29,8 +28,12 @@ export default async function NotificationPreferencesPage() {
       <div>
         <h1 className="text-ui-title">Notification preferences</h1>
         <p className="mt-1 text-ui-body text-ink-500">
-          Choose which admin notifications you receive and on which channel. Quiet hours
-          apply to email only — in-app notifications always appear in your bell.
+          Your personal notification groups and quiet hours. Looking for the platform email
+          templates, branding, or deliverability? That&apos;s the{' '}
+          <Link href="/notifications-center/templates" className="font-medium text-pink-700 underline underline-offset-2">
+            Notification Center
+          </Link>
+          .
         </p>
       </div>
 
@@ -40,9 +43,9 @@ export default async function NotificationPreferencesPage() {
           <CardDescription>Times are in UTC.</CardDescription>
         </CardHeader>
         <CardContent>
-          <PreferencesForm
-            preferences={prefs}
-            events={[...ADMIN_EVENTS]}
+          <CategoryPreferencesForm
+            categories={categories}
+            cells={cells}
             quietHoursStartUtc={userRow?.quietHoursStartUtc ?? null}
             quietHoursEndUtc={userRow?.quietHoursEndUtc ?? null}
           />

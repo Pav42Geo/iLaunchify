@@ -328,6 +328,9 @@ importers:
       '@ilaunchify/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
+      '@ilaunchify/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@ilaunchify/nutrition':
         specifier: workspace:*
         version: link:../../packages/nutrition

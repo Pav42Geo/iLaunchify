@@ -7,10 +7,6 @@
 // (NOTIFICATION_CATEGORIES). The db package can't import @ilaunchify/notifications
 // (circular dep — notifications depends on db), so the 11 rows are mirrored here.
 //
-// CAST-GUARDED (docs/POST_PUSH_CASTGUARD_CLEANUP.md pattern): NotificationCategory
-// lands with the 2026-07-05 push; until `db:generate` the client doesn't type it.
-// Post-regenerate cleanup: replace `db(prisma)` with `prisma.notificationCategory`.
-
 import type { PrismaClient } from '@prisma/client'
 
 type ChannelName = 'IN_APP' | 'EMAIL'
@@ -35,17 +31,9 @@ const CATEGORIES: Array<{
   { slug: 'marketing', label: 'Marketing & product updates', description: 'Announcements and product news. Sent from a separate stream; consent recorded here.', optOutable: true, defaultChannels: ['EMAIL'] },
 ]
 
-function db(prisma: PrismaClient) {
-  return prisma as unknown as {
-    notificationCategory: {
-      upsert: (args: unknown) => Promise<unknown>
-    }
-  }
-}
-
 export async function seedNotificationCategories(prisma: PrismaClient): Promise<void> {
   for (const c of CATEGORIES) {
-    await db(prisma).notificationCategory.upsert({
+    await prisma.notificationCategory.upsert({
       where: { slug: c.slug },
       create: c,
       update: {

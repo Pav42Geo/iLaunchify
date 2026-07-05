@@ -136,6 +136,38 @@ export async function getEffectiveCategoryPreferences(
 }
 
 /**
+ * View-model for the preference-center UI (all three apps): the category
+ * descriptors + the user's effective cells, shaped for
+ * `<NotificationPreferenceMatrix />` (@ilaunchify/ui).
+ */
+export async function getPreferenceMatrixView(userId: string): Promise<{
+  categories: Array<{
+    slug: string
+    label: string
+    description: string
+    locked: boolean
+    channels: NotificationChannel[]
+  }>
+  cells: Array<{ category: string; channel: NotificationChannel; enabled: boolean }>
+}> {
+  const effective = await getEffectiveCategoryPreferences(userId)
+  return {
+    categories: Object.values(NOTIFICATION_CATEGORIES).map((c) => ({
+      slug: c.slug,
+      label: c.label,
+      description: c.description,
+      locked: !c.optOutable,
+      channels: c.defaultChannels,
+    })),
+    cells: effective.map((e) => ({
+      category: e.category,
+      channel: e.channel,
+      enabled: e.enabled,
+    })),
+  }
+}
+
+/**
  * Toggle one (category, channel). Rejects unknown slugs; mandatory categories
  * are rejected too — the dispatcher would ignore the row anyway, and storing
  * it would misrepresent the user's actual deliveries.

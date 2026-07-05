@@ -1,14 +1,9 @@
 // DB access for the Notification/Email Center control plane.
+// De-cast 2026-07-05 after the Center migration ran (was the single
+// cast-guard file per docs/POST_PUSH_CASTGUARD_CLEANUP.md pattern) — all
+// calls now use the typed generated client directly.
 //
-// CAST-GUARDED (repo pattern, see docs/POST_PUSH_CASTGUARD_CLEANUP.md): the
-// Center models (NotificationBranding / NotificationTemplate / EmailDelivery /
-// NotificationPreference.category) land with the 2026-07-05 schema push. Until
-// `pnpm db:push` + `pnpm db:generate` run, the generated client doesn't type
-// them, so every access goes through the typed shim below. ALL Center
-// cast-guards live in THIS file — post-regenerate cleanup replaces `centerDb()`
-// call sites with direct `prisma.<model>` calls here and nowhere else.
-//
-// Every function degrades gracefully (null / [] / no-op) so notification
+// Every read degrades gracefully (null / [] / no-op) so notification
 // plumbing can never break business operations — matching dispatcher policy.
 
 import { prisma } from '@ilaunchify/db'
@@ -18,70 +13,7 @@ import type {
   NotificationBrandingConfig,
   NotificationCategorySlug,
   NotificationTemplateOverride,
-  TemplateCtaMode,
-  TemplateStatus,
 } from './center-types'
-
-// ---------------------------------------------------------------------------
-// Typed shim over the not-yet-generated client (cast-guard)
-// ---------------------------------------------------------------------------
-
-interface BrandingRow {
-  logoUrl: string | null
-  brandName: string
-  accentHex: string
-  inkHex: string
-  footerText: string | null
-  unsubscribeText: string
-  preferencesText: string
-  preferenceCenterUrl: string | null
-  fromName: string | null
-  replyToEmail: string | null
-}
-
-interface TemplateRow {
-  event: NotificationEvent
-  enabled: boolean
-  subjectOverride: string | null
-  bodyMarkdown: string | null
-  ctaMode: TemplateCtaMode
-  ctaLabelOverride: string | null
-  status: TemplateStatus
-  version: number
-}
-
-interface PreferenceRow {
-  category: string | null
-  channel: NotificationChannel
-  enabled: boolean
-}
-
-function centerDb() {
-  return prisma as unknown as {
-    notificationBranding: {
-      findUnique: (args: unknown) => Promise<BrandingRow | null>
-      upsert: (args: unknown) => Promise<BrandingRow>
-    }
-    notificationTemplate: {
-      findUnique: (args: unknown) => Promise<TemplateRow | null>
-      findMany: (args: unknown) => Promise<TemplateRow[]>
-    }
-    notificationPreference: {
-      findMany: (args: unknown) => Promise<PreferenceRow[]>
-      upsert: (args: unknown) => Promise<unknown>
-    }
-    emailDelivery: {
-      create: (args: unknown) => Promise<unknown>
-      findFirst: (args: unknown) => Promise<{
-        id: string
-        notificationId?: string | null
-        event?: NotificationEvent | null
-        category?: string | null
-        toEmail?: string
-      } | null>
-    }
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Branding singleton
@@ -90,7 +22,7 @@ function centerDb() {
 /** The branding row, or null when unset/unreachable (resolver falls back to defaults). */
 export async function getNotificationBranding(): Promise<Partial<NotificationBrandingConfig> | null> {
   try {
-    const row = await centerDb().notificationBranding.findUnique({
+    const row = await prisma.notificationBranding.findUnique({
       where: { singletonKey: 'default' },
     })
     if (!row) return null
@@ -120,7 +52,7 @@ export async function getTemplateOverride(
   event: NotificationEvent,
 ): Promise<NotificationTemplateOverride | null> {
   try {
-    const row = await centerDb().notificationTemplate.findUnique({ where: { event } })
+    const row = await prisma.notificationTemplate.findUnique({ where: { event } })
     if (!row) return null
     return {
       event: row.event,
@@ -146,12 +78,12 @@ export async function getCategoryPreferenceRows(
   userId: string,
 ): Promise<CategoryPreferenceRow[]> {
   try {
-    const rows = await centerDb().notificationPreference.findMany({
+    const rows = await prisma.notificationPreference.findMany({
       where: { userId, category: { not: null } },
       select: { category: true, channel: true, enabled: true },
     })
     return rows
-      .filter((r): r is PreferenceRow & { category: string } => r.category != null)
+      .filter((r): r is typeof r & { category: string } => r.category != null)
       .map((r) => ({
         userId,
         category: r.category as NotificationCategorySlug,
@@ -170,7 +102,7 @@ export async function setCategoryPreference(params: {
   channel: NotificationChannel
   enabled: boolean
 }): Promise<void> {
-  await centerDb().notificationPreference.upsert({
+  await prisma.notificationPreference.upsert({
     where: {
       userId_category_channel: {
         userId: params.userId,
@@ -204,7 +136,7 @@ export const EMAIL_SUPPRESSION_WINDOW_DAYS = 90
 export async function isEmailSuppressed(email: string): Promise<boolean> {
   try {
     const since = new Date(Date.now() - EMAIL_SUPPRESSION_WINDOW_DAYS * 24 * 60 * 60 * 1000)
-    const hit = await centerDb().emailDelivery.findFirst({
+    const hit = await prisma.emailDelivery.findFirst({
       where: {
         toEmail: email,
         status: { in: ['BOUNCED', 'COMPLAINED'] },
@@ -229,16 +161,16 @@ export async function findDeliveryContext(providerMessageId: string): Promise<{
   toEmail: string
 } | null> {
   try {
-    const row = await centerDb().emailDelivery.findFirst({
+    const row = await prisma.emailDelivery.findFirst({
       where: { providerMessageId, status: 'SENT' },
-      select: { id: true, notificationId: true, event: true, category: true, toEmail: true },
+      select: { notificationId: true, event: true, category: true, toEmail: true },
     })
     if (!row) return null
     return {
-      notificationId: row.notificationId ?? null,
-      event: row.event ?? null,
-      category: row.category ?? null,
-      toEmail: row.toEmail ?? '',
+      notificationId: row.notificationId,
+      event: row.event,
+      category: row.category,
+      toEmail: row.toEmail,
     }
   } catch {
     return null
@@ -257,7 +189,7 @@ export async function recordEmailDelivery(params: {
   detail?: string | null
 }): Promise<void> {
   try {
-    await centerDb().emailDelivery.create({
+    await prisma.emailDelivery.create({
       data: {
         notificationId: params.notificationId ?? null,
         event: params.event ?? null,

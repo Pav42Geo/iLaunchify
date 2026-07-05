@@ -43,12 +43,10 @@ async function authorize(productId: string) {
 }
 
 // Creator's selected flavor subset (docs/SELECTION_THREADING_AUDIT.md) — the checkout pack pool is
-// CONSTRAINED to it so the order can't drift from what the creator chose on the detail page. Read
-// cast-guarded (column lands after db:push + db:generate); empty = legacy → full pool.
+// CONSTRAINED to it so the order can't drift from what the creator chose on the detail page.
+// Empty = legacy → full pool. (De-cast 2026-07-05 after the migration ran.)
 async function selectedFlavorIdsFor(productId: string): Promise<string[]> {
-  const row = await (
-    prisma as unknown as { product: { findUnique: (a: unknown) => Promise<{ selectedFlavorPresetIds: string[] } | null> } }
-  ).product
+  const row = await prisma.product
     .findUnique({ where: { id: productId }, select: { selectedFlavorPresetIds: true } })
     .catch(() => null)
   return row?.selectedFlavorPresetIds ?? []

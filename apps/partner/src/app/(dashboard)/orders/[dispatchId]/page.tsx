@@ -454,10 +454,7 @@ export default async function DispatchDetailPage({
           <ProgressUpdatePanel
             dispatchId={dispatch.id}
             canPost={['ACCEPTED', 'PRODUCING', 'QUALITY_CHECK', 'READY', 'SHIPPED', 'IN_TRANSIT'].includes(dispatch.status)}
-            currentEtaAt={
-              // Cast-guard until db:generate types OrderDispatch.currentEtaAt.
-              ((dispatch as unknown as { currentEtaAt?: Date | null }).currentEtaAt ?? null)?.toISOString() ?? null
-            }
+            currentEtaAt={dispatch.currentEtaAt?.toISOString() ?? null}
             updates={await listProgressUpdates(dispatch.id)}
           />
 

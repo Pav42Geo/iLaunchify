@@ -116,6 +116,10 @@ export const AUDIT_ENTITY_TYPES = [
   'AiGeneratorSettings', // AI generator admin config (docs/AI_PACKAGING_GENERATOR.md §7/§13/§16)
   'AiOutputPreset', // admin-authored output presets (docs/AI_PACKAGING_GENERATOR.md §16)
   'AiDesignGeneration', // a generation run — draft/finalize (docs/AI_PACKAGING_GENERATOR.md §5)
+  // Notification/Email Center control plane (docs/EMAIL_NOTIFICATION_CENTER.md, 2026-07-05)
+  'NotificationTemplate', // per-event body override — draft/publish/rollback/enable
+  'NotificationBranding', // global email chrome singleton
+  'NotificationPreference', // user category × channel opt-outs (incl. one-click unsubscribe)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

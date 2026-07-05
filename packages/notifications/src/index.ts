@@ -23,6 +23,7 @@ export {
   setQuietHours,
   // Category-keyed (Center) preference API — what the dispatcher + UI use.
   getEffectiveCategoryPreferences,
+  getPreferenceMatrixView,
   setCategoryPreferenceChecked,
   type EffectiveCategoryPreference,
 } from './preferences'
@@ -38,6 +39,8 @@ export {
 } from './center-db'
 // One-click unsubscribe apply (route-handler engine, checklist E).
 export { applyUnsubscribeToken, type ApplyUnsubscribeResult } from './unsubscribe-apply'
+// Sample payloads for admin template preview + test-send (checklist D).
+export { samplePayloadForEvent } from './sample-payload'
 // Resend inbound webhook engine (checklist E) — Svix verify + parse + record.
 export {
   verifyResendWebhook,

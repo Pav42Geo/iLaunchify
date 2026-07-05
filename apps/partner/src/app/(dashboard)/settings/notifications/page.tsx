@@ -1,41 +1,23 @@
-// Per-event, per-channel notification preference editor + quiet hours.
+// Partner notification preferences — group × channel matrix + quiet hours
+// (docs/EMAIL_NOTIFICATION_CENTER.md). Replaced the legacy per-event list
+// 2026-07-05: partners opt out of notification GROUPS, matching the one-click
+// unsubscribe in every email footer.
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
-import type { NotificationEvent } from '@ilaunchify/db'
-import { getEffectivePreferences } from '@ilaunchify/notifications'
+import { getPreferenceMatrixView } from '@ilaunchify/notifications'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
-import { PreferencesForm } from './PreferencesForm'
+import { CategoryPreferencesForm } from './CategoryPreferencesForm'
 import { rolePrefix } from '@/lib/role-skins'
 import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Notification preferences — Partner' }
 
-const PARTNER_EVENTS = [
-  { value: 'SECTION_VERIFIED', label: 'Verification section approved', help: 'An admin approves one of your application sections.' },
-  { value: 'SECTION_NEEDS_CHANGES', label: 'Section needs changes', help: 'An admin asks you to update a section.' },
-  { value: 'PARTNER_ACTIVATED', label: 'Account activated', help: 'Your partner account is fully approved.' },
-  { value: 'DISPATCH_RECEIVED', label: 'New dispatch received', help: 'A creator order is routed to you and awaits acceptance.' },
-  { value: 'DISPATCH_ACCEPT_REMINDER', label: 'Accept deadline reminder', help: 'A pending dispatch is close to its accept deadline.' },
-  { value: 'DISPATCH_SLA_AT_RISK', label: 'Acceptance at risk', help: 'A pending dispatch has consumed half its acceptance window.' },
-  { value: 'DOC_EXPIRING_SOON', label: 'Document expiring soon', help: 'A compliance document (COI, certificate) is inside its renewal window.' },
-  { value: 'DOC_EXPIRED', label: 'Document expired', help: 'A lapsed document paused the capability it backs.' },
-] as const
-
-// FC (WAREHOUSE service) events — appended only for partners who receive
-// inbound shipments (docs/PARTNER_ROLE_ACCOUNTS.md §6.2).
-const FC_EVENTS = [
-  { value: 'INBOUND_DELIVERED_UNCONFIRMED', label: 'Inbound awaiting confirmation', help: 'A delivered shipment has not been received into your facility yet.' },
-  { value: 'RECEIVING_DISCREPANCY_OPENED', label: 'Receiving discrepancy filed', help: 'A short/over/damaged report was filed on an inbound shipment.' },
-  { value: 'RECEIVING_DISCREPANCY_RESOLVED', label: 'Receiving discrepancy resolved', help: 'iLaunchify resolved a receiving discrepancy on one of your receipts.' },
-  { value: 'RELEASE_SHIP_SLA_AT_RISK', label: 'Release waiting too long', help: 'A requested stock release is still unshipped past the expected window.' },
-] as const
-
 export default async function NotificationPreferencesPage() {
   const user = await requireUser()
-  const [prefs, userRow, services] = await Promise.all([
-    getEffectivePreferences(user.id),
+  const [{ categories, cells }, userRow, services] = await Promise.all([
+    getPreferenceMatrixView(user.id),
     prisma.user.findUnique({
       where: { id: user.id },
       select: { quietHoursStartUtc: true, quietHoursEndUtc: true },
@@ -46,12 +28,6 @@ export default async function NotificationPreferencesPage() {
     }),
   ])
   const serviceTypes = services.map((s) => s.type as string)
-  // Cast until `pnpm db:generate` picks up the P0 NotificationEvent additions
-  // (docs/PARTNER_ROLE_ACCOUNTS.md §6.2) — post-regen this is a no-op.
-  const events = (
-    serviceTypes.includes('WAREHOUSE') ? [...PARTNER_EVENTS, ...FC_EVENTS] : [...PARTNER_EVENTS]
-  ) as Array<{ value: NotificationEvent; label: string; help: string }>
-
 
   return (
     <div className="space-y-6">
@@ -63,8 +39,9 @@ export default async function NotificationPreferencesPage() {
           Notification preferences
         </h1>
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          Choose which notifications you receive and on which channel. Quiet hours apply to
-          email only — in-app notifications always appear in your bell.
+          Notifications are grouped — turning a group off silences every event in it, on that
+          channel. Unsubscribing from an email&apos;s footer does the same thing for its group.
+          Required groups (account, billing, cancellation outcomes) can&apos;t be turned off.
         </p>
       </div>
 
@@ -77,9 +54,9 @@ export default async function NotificationPreferencesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PreferencesForm
-            preferences={prefs}
-            events={events}
+          <CategoryPreferencesForm
+            categories={categories}
+            cells={cells}
             quietHoursStartUtc={userRow?.quietHoursStartUtc ?? null}
             quietHoursEndUtc={userRow?.quietHoursEndUtc ?? null}
           />

@@ -8,14 +8,8 @@
 // CREATOR_DISPATCH_PROGRESS (category: orders — group-opt-outable).
 //
 // PHOTO kind exists in the model; the upload UI ships in a follow-up.
-//
-// CAST-GUARDED (docs/POST_PUSH_CASTGUARD_CLEANUP.md pattern): the
-// DispatchProgressUpdate model + OrderDispatch.currentEtaAt + the
-// CREATOR_DISPATCH_PROGRESS enum value land with the 2026-07-05 push; until
-// `db:generate`, access goes through the typed shims below.
 
 import { prisma } from '@ilaunchify/db'
-import type { NotificationEvent } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
@@ -35,19 +29,6 @@ const ACTIVE_STATES = new Set([
   'SHIPPED',
   'IN_TRANSIT',
 ])
-
-// Cast-guard shims — new model/column until db:generate.
-function progressDb() {
-  return prisma as unknown as {
-    dispatchProgressUpdate: {
-      create: (args: unknown) => Promise<{ id: string }>
-      findMany: (args: unknown) => Promise<ProgressUpdateRow[]>
-    }
-    orderDispatch: {
-      update: (args: unknown) => Promise<unknown>
-    }
-  }
-}
 
 export interface ProgressUpdateRow {
   id: string
@@ -118,7 +99,7 @@ export async function submitProgressUpdate(params: {
 
   const partnerName = dispatch.partnerService.partner.companyName
 
-  const created = await progressDb().dispatchProgressUpdate.create({
+  const created = await prisma.dispatchProgressUpdate.create({
     data: {
       dispatchId: dispatch.id,
       kind: params.kind,
@@ -130,7 +111,7 @@ export async function submitProgressUpdate(params: {
     },
   })
   if (etaAt) {
-    await progressDb().orderDispatch.update({
+    await prisma.orderDispatch.update({
       where: { id: dispatch.id },
       data: { currentEtaAt: etaAt },
     })
@@ -158,8 +139,7 @@ export async function submitProgressUpdate(params: {
         : 'posted a production update'
   await dispatchNotification({
     userId: dispatch.order.creatorUserId,
-    // CAST until db:generate adds CREATOR_DISPATCH_PROGRESS to the enum.
-    event: 'CREATOR_DISPATCH_PROGRESS' as NotificationEvent,
+    event: 'CREATOR_DISPATCH_PROGRESS',
     audience: 'creator',
     data: {
       orderId: dispatch.orderId,
@@ -176,13 +156,9 @@ export async function submitProgressUpdate(params: {
 
 /** Recent progress updates for the dispatch detail page (newest first). */
 export async function listProgressUpdates(dispatchId: string): Promise<ProgressUpdateRow[]> {
-  try {
-    return await progressDb().dispatchProgressUpdate.findMany({
-      where: { dispatchId },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    })
-  } catch {
-    return [] // pre-migration: table absent — panel renders empty state
-  }
+  return prisma.dispatchProgressUpdate.findMany({
+    where: { dispatchId },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+  })
 }

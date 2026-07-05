@@ -261,33 +261,11 @@ export default async function OrderDetailPage({
 
   // F — live production timeline (docs/EMAIL_NOTIFICATION_CENTER.md Part 3):
   // FSM state stamps + partner progress updates per dispatch, merged into one
-  // running story. DispatchProgressUpdate is cast-guarded until db:generate;
-  // pre-migration the query fails soft to [] and the timeline still renders
-  // the state stamps.
-  const progressByDispatch = await (
-    prisma as unknown as {
-      dispatchProgressUpdate: {
-        findMany: (a: unknown) => Promise<
-          Array<{
-            id: string
-            dispatchId: string
-            kind: 'NOTE' | 'ETA' | 'PHOTO' | 'MILESTONE'
-            body: string | null
-            etaAt: Date | null
-            photoAssetId: string | null
-            milestone: string | null
-            authorName: string | null
-            createdAt: Date
-          }>
-        >
-      }
-    }
-  ).dispatchProgressUpdate
-    .findMany({
-      where: { dispatch: { orderId: order.id } },
-      orderBy: { createdAt: 'asc' },
-    })
-    .catch(() => [])
+  // running story.
+  const progressByDispatch = await prisma.dispatchProgressUpdate.findMany({
+    where: { dispatch: { orderId: order.id } },
+    orderBy: { createdAt: 'asc' },
+  })
 
   const timelineSources: DispatchTimelineSource[] = order.dispatches.map((d) => ({
     dispatchId: d.id,
@@ -305,8 +283,7 @@ export default async function OrderDetailPage({
     declinedAt: d.declinedAt?.toISOString() ?? null,
     trackingCarrier: d.trackingCarrier,
     trackingNumber: d.trackingNumber,
-    currentEtaAt:
-      (d as unknown as { currentEtaAt?: Date | null }).currentEtaAt?.toISOString() ?? null,
+    currentEtaAt: d.currentEtaAt?.toISOString() ?? null,
     progressUpdates: progressByDispatch
       .filter((u) => u.dispatchId === d.id)
       .map((u) => ({

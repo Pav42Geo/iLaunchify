@@ -84,6 +84,7 @@ import {
   Wallet,
   Landmark,
   Palette,
+  Mail,
 } from 'lucide-react'
 
 // -----------------------------------------------------------------------------
@@ -298,7 +299,21 @@ const PRIMARY: SidebarRegion = {
           ],
         },
         { kind: 'item', label: 'Security & Access', icon: Lock, href: '/security' }, // built 2026-06-05 (Tier 1 surface)
-        // Communications group + Global Compliance Center + Analytics & Monitoring removed
+        // ---- Notifications — the Email/Notification Center control plane ----
+        // (docs/EMAIL_NOTIFICATION_CENTER.md, built 2026-07-05; Pavel: wire into
+        // admin — this is the Communications group returning, now that pages exist)
+        {
+          kind: 'group',
+          label: 'Notifications',
+          icon: Mail,
+          children: [
+            { kind: 'item', label: 'Templates', icon: LayoutTemplate, href: '/notifications-center/templates', capability: 'platform:admin' },
+            { kind: 'item', label: 'Branding', icon: Palette, href: '/notifications-center/branding', capability: 'platform:admin' },
+            { kind: 'item', label: 'Deliverability', icon: Mail, href: '/notifications-center/deliverability', capability: 'platform:admin' },
+            { kind: 'item', label: 'Log', icon: History, href: '/notifications-center/log', capability: 'platform:admin' },
+          ],
+        },
+        // Global Compliance Center + Analytics & Monitoring removed
         // 2026-07-04 — every page under them was an unbuilt placeholder. They return under
         // Settings when the pages ship.
         // ---- Compliance & Data Rights (P10 / GDPR) — nested into Settings 2026-07-04 ----

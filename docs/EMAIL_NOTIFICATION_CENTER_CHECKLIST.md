@@ -51,16 +51,18 @@ All in `@ilaunchify/notifications`, pure + unit-tested, collision-free — **bui
 - [x] **[CW]** Wire `dispatchNotification` → resolver + group-preference gate (mandatory categories bypass) — also: branded from-name/reply-to, signed unsubscribe link + `List-Unsubscribe`/`List-Unsubscribe-Post` headers on opt-outable sends, `EmailDelivery` SENT mirror. ALL new-model access is cast-guarded in ONE file: `packages/notifications/src/center-db.ts` (post-generate cleanup lives there only)
 - [x] **[CW]** `renderEmailHtml` reads branding (optional `EmailShellBranding` param — brandName/accent/ink/footer; defaults = locked constants, one-off sends unchanged)
 - [x] **[CW]** `applyUnsubscribeToken` route engine (`unsubscribe-apply.ts`) + category-keyed preference API (`getEffectiveCategoryPreferences`, `setCategoryPreferenceChecked`) + `seed-notification-categories.ts` wired into `seed.ts` (mirror of the code registry — keep in sync)
-- [ ] **[PAVEL]** migration run: `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart. Then `pnpm db:seed` (or just re-run seed) for the category rows. New env for one-click unsubscribe: `NOTIFICATION_UNSUBSCRIBE_SECRET` (any long random string; emails omit the unsubscribe link until set)
-- [ ] **[CW]** post-generate: de-cast `center-db.ts` + `seed-notification-categories.ts` (single-file cleanups)
+- [x] **[PAVEL]** migration run 2026-07-05 (`db:push` → `db:generate` → `.next` clear → seed). Envs: `NOTIFICATION_UNSUBSCRIBE_SECRET`, `RESEND_WEBHOOK_SECRET`
+- [x] **[CW]** post-generate de-cast done 2026-07-05: `center-db.ts`, `seed-notification-categories.ts`, enum-key casts in `categories.ts`/`template-tokens.ts`, F files (`progress-actions.ts`, partner/creator order pages), and the flavor-preset guard in `checkout/production-actions.ts`. Still Code's: `canvas/page.tsx` + `launch-actions.ts` guards (hot zone / Code-owned per POST_PUSH_CASTGUARD_CLEANUP.md)
 
 ## D. Notification/Email Center — Phase 3 (Code — admin v2 surfaces)
 
-- [ ] **[CODE]** Notifications → **Templates** (list 48 events, edit drawer w/ token palette, preview, test-send, publish/rollback, enable/disable)
-- [ ] **[CODE]** Notifications → **Branding** (logo, accent, ink, header, footer, from-name, reply-to; preview)
-- [ ] **[CODE]** Notifications → **Deliverability** (per-event sent/delivered/bounced/complained/opened; suppression list)
-- [ ] **[CODE]** Notifications → **Log** (recipient audit: who/what/when/channel/status)
-- [ ] **[CODE]** User-side **group × channel preference matrix** (replaces 8-event list; all categories)
+**Built by Cowork 2026-07-05** (admin routes under `/notifications-center/*`, sidebar: Settings → Notifications; Pavel decision — this is the Communications group returning):
+- [x] **[CW]** Notifications → **Templates** — list of all events (KPI strip, category/source chips) + per-event editor: token palette (click-to-insert, typo-validated via `unknownTokens`), server-action live preview (send path = preview path), publish w/ version snapshots, rollback, revert-to-code, per-event email kill-switch, test-send to self. `templates/page.tsx`, `templates/[event]/`
+- [x] **[CW]** Notifications → **Branding** — singleton editor (logo, brand name, accent/ink pickers, footer, unsubscribe/preferences copy + URL, from-name, reply-to) + live shell preview. `branding/`
+- [x] **[CW]** Notifications → **Deliverability** — event × status pivot (7/30/90d windows) from `EmailDelivery` + the active 90-day bounce/complaint suppression list. `deliverability/page.tsx`
+- [x] **[CW]** Notifications → **Log** — recipient audit (who/what/when/channel; email status distinguishes sent / digest-queued / quiet-hours-skipped / suppressed / failed), email filter, 50/page. `log/page.tsx`
+- [x] **[CW]** User-side **group × channel preference matrix** in ALL THREE apps (creator/partner/admin `settings/notifications`) — legacy per-event `PreferencesForm` deleted, actions re-keyed to `setCategoryPreferenceChecked` + audit rows; quiet hours preserved; shared `getPreferenceMatrixView` server helper. Admin personal page links to the Center.
+- [x] **[CW]** New audit entity types: `NotificationTemplate` / `NotificationBranding` / `NotificationPreference`; `samplePayloadForEvent` helper for preview/test-send
 - [x] **[CW]** (optional) presentational template-preview card + preference-matrix component — built 2026-07-05: `packages/ui/src/components/EmailTemplatePreviewCard.tsx` (subject + sandboxed-iframe email + plaintext + in-app tabs, `TokenPaletteRow` click-to-insert chips) and `NotificationPreferenceMatrix.tsx` (category × channel toggle grid, locked mandatory rows, channel-unavailable cells). Props-only; hosts feed them from `resolveNotificationContent` (preview:true) / `effectiveCategoryMatrix` + `tokenPaletteForEvent`.
 
 ## E. Notification/Email Center — Phase 4 (Code — deliverability + unsubscribe routes)
