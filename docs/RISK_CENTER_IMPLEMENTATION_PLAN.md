@@ -135,7 +135,7 @@ model PartnerRiskFeature {     // feature store — nightly snapshot
 | 3 | LATE_SHIP_RATE | nightly | shipped after `currentEtaAt` >4% (30d) | Amazon LSR <4% | MONITOR |
 | 4 | OTIF_FLOOR | nightly | OTIF <95% (90d) → WARN; <90% → HIGH | industry OTIF standard | MONITOR |
 | 5 | ACCEPT_TIMEOUT_AT_RISK | hourly (exists) | >50% window (existing cron, migrate thresholds to RiskSetting) | already built | WARN |
-| 6 | CAPACITY_HONESTY_GAP | nightly | demonstrated < 60% of declared for 2 consecutive months → re-verify | Alibaba third-party verification rationale | MONITOR |
+| 6 | CAPACITY_HONESTY_GAP | nightly | demonstrated < 60% of declared for 2 consecutive months → propose corrected number, admin one-click applies, partner notified + contest flow (DECIDED 2026-07-05: never fully automatic) | Alibaba third-party verification rationale | MONITOR |
 | 7 | RADAR_ELEVATED | Stripe webhook | risk_level `elevated` + (first order OR > admin-set qty) → REVIEW; `highest` → block | Stripe Radar | WARN |
 | 8 | ORDER_VELOCITY | checkout | ≥3 orders/24h new account, or > $X first order | Radar rules 101 velocity pattern | MONITOR |
 | 9 | CHARGEBACK_RATE | nightly | creator >0.75% (90d, count) → review | card-network ~0.9% programs, margin below | MONITOR |
@@ -159,16 +159,16 @@ Rule of thumb baked in: detectors 2, 3, 7 (highest), 10, 11 guard money/legal/cu
 ### M1 — Capacity truth (Pavel's scenario, end-to-end) · the flagship slice
 - PartnerCapacityLedger writes from dispatch FSM (accept/deliver/cancel call-sites).
 - Nightly demonstrated-capacity calc into PartnerRiskFeature.
-- Checkout hook: CAPACITY_OVERCOMMIT in MONITOR → observe 2–4 weeks of real distribution → promote to WARN (badge + honest ETA) → GATE (split / extended-ETA / admin-mediated migration options).
-- **Exit test:** the 50k-order-into-35k-partner case produces the three-option gate, and the ledger reserves the split correctly.
+- Checkout hook: CAPACITY_OVERCOMMIT in MONITOR → observe 2–4 weeks of real distribution → promote to WARN (badge + honest ETA) → GATE (split / extended-ETA; DECIDED 2026-07-05: migration stays a manual ops process in V1, no product workflow).
+- **Exit test:** the 50k-order-into-35k-partner case produces the split/extended-ETA gate, and the ledger reserves the split correctly.
 
 ### M2 — Risk Inbox + detector migration (unify what exists)
-- `/admin/risk` via `v2-admin-surface-builder`: Inbox (KPIs: open events, orders at risk, $ at risk, avg PRS, gates this week) + Detectors settings tab.
+- `/admin/risk` via `v2-admin-surface-builder`: Inbox (KPIs: open events, orders at risk, $ at risk = ORDER REVENUE of at-risk orders with fee-at-risk secondary (DECIDED 2026-07-05), avg PRS, gates this week) + Detectors settings tab.
 - Migrate partner-ops cron sweeps + SLA watchtower queries to emit RiskEvents (single inbox; /logistics/sla keeps working, backed by the same rows).
 - FALSE_POSITIVE resolution + per-detector FP counters (the calibration loop).
 
 ### M3 — PRS + partner transparency
-- Nightly PRS into PartnerRiskFeature; Amazon-style banded display (Healthy ≥75 · At Risk 50–74 · Critical <50) with full component breakdown **in the partner app** — self-correction is the mechanism, per Amazon.
+- Nightly PRS into PartnerRiskFeature; Amazon-style banded display (Healthy ≥75 · At Risk 50–74 · Critical <50) with full component breakdown **in the partner app** (DECIDED 2026-07-05: full breakdown, not badge-only) — self-correction is the mechanism, per Amazon.
 - Extend admin PartnerScorecard with PRS trend sparkline (extend, don't duplicate).
 - Optional (RiskSetting-gated, capped ±10): PRS as a weight on COMMODITY legs only. Never touches the pinned manufacturer.
 

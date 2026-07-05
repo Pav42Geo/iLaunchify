@@ -222,9 +222,9 @@ Blocked/adjacent: payout-hold waits on Stripe go-live verification; collusion de
 
 ---
 
-## 10. Open questions for Pavel
+## 10. Decisions (Pavel, 2026-07-05)
 
-1. Partner-visible PRS: full breakdown, or badge-only ("Good standing / At risk")?
-2. Capacity mediation UX: is admin-mediated manufacturer migration (§4 option 3) V1, or split/ETA only?
-3. Should declared capacity auto-adjust from demonstrated (with partner contest flow), or admin-adjust only?
-4. $-at-risk KPI definition: order revenue, or platform fee at risk?
+1. **Partner-visible PRS: FULL BREAKDOWN.** Amazon-style — score + every component, partner-facing. Self-correction is the mechanism.
+2. **Capacity gate V1: SPLIT + EXTENDED-ETA ONLY.** Admin-mediated manufacturer migration (§4 option 3) is a manual ops process in V1 — no product workflow. Revisit if migration volume justifies it.
+3. **Declared-capacity correction: SYSTEM PROPOSES, ADMIN APPROVES.** Detector computes the corrected number; admin one-click applies; partner notified + can contest with evidence. Never fully automatic in V1.
+4. **"$ at risk" KPI = ORDER REVENUE** (creator-pain view), platform fee shown as secondary metric.
