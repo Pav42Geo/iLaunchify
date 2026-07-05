@@ -46,9 +46,7 @@ export const dynamic = 'force-dynamic'
 // ── F3a per-draft finishes (DISPLAY-ONLY) ─────────────────────────────────────
 // The Studio's Finishes drawer surfaces the finishes THIS product offers — the
 // partner's ProductTemplateFinish allow-list. Read-only: no object-apply, no
-// substrate hard-filter (F3b). ProductTemplateFinish lands on the generated
-// Prisma client only AFTER the additive migration (db:push → db:generate), so
-// ALL access is cast-guarded and degrades to [] at runtime.
+// substrate hard-filter (F3b). Degrades to [] on any error.
 
 /** Serializable finish row handed to the (client) Finishes drawer. */
 export interface StudioFinish {
@@ -585,20 +583,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
 async function loadActiveMockups(packagingTypeId: string | null): Promise<StudioMockup[]> {
   if (!packagingTypeId) return []
   try {
-    const rows = await (
-      prisma as unknown as {
-        mockupTemplate: {
-          findMany: (a: unknown) => Promise<
-            Array<{
-              label: string
-              baseImageAssetId: string
-              printAreaQuad: unknown
-              surfaceKey: string | null
-            }>
-          >
-        }
-      }
-    ).mockupTemplate.findMany({
+    const rows = await prisma.mockupTemplate.findMany({
       where: { packagingTypeId, status: 'ACTIVE' },
       orderBy: { displayOrder: 'asc' },
       select: { label: true, baseImageAssetId: true, printAreaQuad: true, surfaceKey: true },
@@ -758,20 +743,14 @@ function deriveProductCtx(product: {
 // V1 fallback: first ACTIVE die-cut whose category roughly matches the product.
 // The admin-curated default die-line for a packaging type (#135). Cast-guarded
 // so it compiles before the client is regenerated for the new column.
-// Packaging (container) info for the Product drawer's Packaging accordion. Cast-guarded so it
-// compiles pre-migration and degrades to null.
+// Packaging (container) info for the Product drawer's Packaging accordion.
+// Degrades to null on any error.
 async function loadPackagingInfo(
   packagingTypeId: string | null,
   containerFormat: string | null,
 ): Promise<{ container: string; category: string | null; fragility: string | null; dimensions: string | null; format: string | null } | null> {
   if (!packagingTypeId) return null
-  const row = await (
-    prisma as unknown as {
-      packagingType: {
-        findUnique: (a: unknown) => Promise<{ displayName: string; containerCategory: string | null; fragilityClass: string | null; defaultDimensions: unknown } | null>
-      }
-    }
-  ).packagingType
+  const row = await prisma.packagingType
     .findUnique({
       where: { id: packagingTypeId },
       select: { displayName: true, containerCategory: true, fragilityClass: true, defaultDimensions: true },
@@ -794,9 +773,7 @@ async function loadPackagingInfo(
 
 async function resolvePackagingTypeDieCut(packagingTypeId: string | null): Promise<string | null> {
   if (!packagingTypeId) return null
-  const row = await (prisma as unknown as {
-    packagingType: { findUnique: (a: unknown) => Promise<{ defaultDieCutTemplateId: string | null } | null> }
-  }).packagingType
+  const row = await prisma.packagingType
     .findUnique({ where: { id: packagingTypeId }, select: { defaultDieCutTemplateId: true } })
     .catch(() => null)
   return row?.defaultDieCutTemplateId ?? null
@@ -866,13 +843,9 @@ async function resolveDefaultDieCut(
  *  to the correct surface (G1.4 imported-model path + exact per-surface binding). */
 async function loadPackagingModel3d(packagingTypeId: string | null): Promise<{ url: string | null; surfaces: BindableSurface[] }> {
   if (!packagingTypeId) return { url: null, surfaces: [] }
-  const row = (await (
-    prisma as unknown as {
-      packagingType: { findUnique: (a: unknown) => Promise<{ model3dKey: string | null; defaultSurfaces: unknown } | null> }
-    }
-  ).packagingType
+  const row = await prisma.packagingType
     .findUnique({ where: { id: packagingTypeId }, select: { model3dKey: true, defaultSurfaces: true } })
-    .catch(() => null)) as { model3dKey: string | null; defaultSurfaces: unknown } | null
+    .catch(() => null)
   if (!row) return { url: null, surfaces: [] }
   const surfaces: BindableSurface[] = resolvePackagingSurfaces(row.defaultSurfaces).map((s) => ({
     key: s.key,

@@ -16,20 +16,29 @@ Owner legend: **[CW]** Cowork (pure/new files, presentational) · **[CODE]** Cod
 - [x] Pure `scopeManifestForRole` engine + types + tests — `packages/orders/src/partner-packet.ts` (+ test)
 - [x] `ProductPassportView` shared panel — `packages/ui/src/components/ProductPassportView.tsx`
 - [x] `RolePacketView` per-role work-packet panel — `packages/ui/src/components/RolePacketView.tsx`
-- [ ] **[PAVEL]** commit + push the three files above (see plan doc for the git command)
+- [x] ~~[PAVEL]~~ commit + push the three files above — views were already tracked; the two orders
+      files turned out never-committed (origin unbuildable) and Code repaired that in `65e80803`
 
-**Remaining (Code — hot files):**
-- [ ] **[CODE]** Wire `scopeManifestForDispatchType` into `manifest.ts` → each dispatch's stored manifest is its packet (G1/G3)
-- [ ] **[CODE]** Supply `isFinalShipper` from the routing graph
-- [ ] **[CODE]** Render `<RolePacketView packet={packet} />` in partner (and admin) manifest view
-- [ ] **[CODE]** Raw-JSON download route returns the packet, not the full manifest
-- [ ] **[CODE]** FC/warehouse leg + `INBOUND_ASSIGNED` notification (G2)
-- [ ] **[CODE]** Typed `substrate`/`packaging`/`finish` columns on Order (replace internalNotes regex parse) (G4)
+**Remaining (Code — hot files):** ✅ **ALL DONE (Code, 2026-07-05)**
+- [x] **[CODE]** `scopeManifestForDispatchType` wired at the persist site (`routing.ts#createDispatches`) —
+      each dispatch's stored `finishManifestJson` IS its packet (G1/G3) — `891c8c0e`
+- [x] **[CODE]** `isFinalShipper` from the routing graph (co-packer when assembly exists, else the
+      manufacturer; printers never; warehouses always via the engine) — `891c8c0e`
+- [x] **[CODE]** `<RolePacketView packet={…}/>` rendered in partner + admin manifest views
+      (legacy full-manifest rows fall back to `ProductionManifestView`) — `891c8c0e`
+- [x] **[CODE]** Raw-JSON download returns the packet (route serves `finishManifestJson`, which now
+      holds the packet — no route change needed) — `891c8c0e`
+- [x] **[CODE]** `INBOUND_ASSIGNED` fired to the FC service at ship time (role-routed fan-out;
+      PRODUCT/COPACKING legs of WAREHOUSE_PARTNER orders) — `e11c8a44` + `866a8914`
+- [x] **[CODE]** Typed substrate/packaging/finish transport (G4) — reads the order-time
+      `configurationSnapshot.options` (typed, versioned) with the internalNotes regex as legacy
+      fallback; no new Order columns needed — `491a9353`
 
 **Unrelated carryover (blocks cast-guard cleanup):**
-- [ ] **[PAVEL]** `db:push` → `db:generate` → `rm -rf apps/*/.next` for `Product.selectedFlavorPresetIds`
+- [x] **[PAVEL]** `db:push` → `db:generate` → `rm -rf apps/*/.next` for `Product.selectedFlavorPresetIds` (landed 2026-07-05)
 - [ ] **[CW]** cast-guard cleanup in Cowork-owned files (`checkout/production-actions.ts`, seeds) per `docs/POST_PUSH_CASTGUARD_CLEANUP.md`
-- [ ] **[CODE]** cast-guard cleanup in `canvas/page.tsx` (Code owns that file now)
+- [x] **[CODE]** cast-guard cleanup in `canvas/page.tsx` — named guards (`selectedFlavorPresetIds`,
+      `loadStudioFinishes`) in `cb58429b`; remaining mockup/packagingType guards + `launch-actions.ts` done 2026-07-05
 
 ---
 
