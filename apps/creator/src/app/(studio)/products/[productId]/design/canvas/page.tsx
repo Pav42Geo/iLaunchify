@@ -113,47 +113,16 @@ function buildFinishPricingSummary(f: {
 
 /**
  * Load the finishes a product template offers, for the DISPLAY-ONLY Studio
- * drawer (F3a). Cast-guarded so it typechecks against the pre-migration client
- * and yields [] at runtime when the model/data isn't there.
+ * drawer (F3a). Degrades to [] on any error.
  */
 async function loadStudioFinishes(productTemplateId: string | null): Promise<StudioFinish[]> {
   if (!productTemplateId) return []
   try {
-    const rows =
-      (await (
-        prisma as unknown as {
-          productTemplateFinish?: {
-            findMany: (a: unknown) => Promise<
-              Array<{
-                partnerFinishId: string
-                isDefault: boolean
-                isIncludedInPrice: boolean
-                note: string | null
-                sortOrder: number
-                partnerFinish: {
-                  name: string | null
-                  pricingMode: string
-                  basePriceCents: number
-                  perUnitPriceCents: number
-                  pricePerSqInCents: number | null
-                  pricePerObjectCents: number | null
-                  pricePerColorCents: number | null
-                  leadTimeDays: number
-                  moqMin: number
-                  compatibleSubstrates: string[]
-                  finishType: { name: string; category: string }
-                } | null
-              }>
-            >
-          }
-        }
-      ).productTemplateFinish
-        ?.findMany({
-          where: { productTemplateId },
-          orderBy: { sortOrder: 'asc' },
-          include: { partnerFinish: { include: { finishType: true } } },
-        })
-        .catch(() => [])) ?? []
+    const rows = await prisma.productTemplateFinish.findMany({
+      where: { productTemplateId },
+      orderBy: { sortOrder: 'asc' },
+      include: { partnerFinish: { include: { finishType: true } } },
+    })
 
     return rows
       .filter((r) => r.partnerFinish)
@@ -205,6 +174,9 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       id: true,
       name: true,
       category: true,
+      // Creator-selection scoping (docs/SELECTION_THREADING_AUDIT.md) — the
+      // flavors the creator picked; scopes the Studio's flavor switcher.
+      selectedFlavorPresetIds: true,
       // Retail identity (GTIN / internal SKU / barcode mode) — relocated from the
       // retired product hub into the Studio Product panel (2026-06-18).
       gtin: true,
@@ -295,15 +267,10 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   if (!product) notFound()
 
   // Creator-selection scoping (docs/SELECTION_THREADING_AUDIT.md): the Studio must show ONLY the
-  // flavors the creator picked on the product detail page — not the full template pool. Read the
-  // subset cast-guarded (the column lands after db:push + db:generate); empty = legacy/unselected
-  // → fall back to the full pool so existing products keep working.
-  const selRow = await (
-    prisma as unknown as { product: { findUnique: (a: unknown) => Promise<{ selectedFlavorPresetIds: string[] } | null> } }
-  ).product
-    .findUnique({ where: { id: productId }, select: { selectedFlavorPresetIds: true } })
-    .catch(() => null)
-  const selectedFlavorIds = selRow?.selectedFlavorPresetIds ?? []
+  // flavors the creator picked on the product detail page — not the full template pool. The
+  // column rides the main product query; empty = legacy/unselected → fall back to the full
+  // pool so existing products keep working.
+  const selectedFlavorIds = product.selectedFlavorPresetIds ?? []
 
   // Per-flavor label design (docs/HANDOFF-TO-CODE-per-flavor-labels.md). When the
   // packing type is individually-labeled and the template offers flavors, the

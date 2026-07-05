@@ -207,9 +207,7 @@ async function resolveOrCreateProductForTemplate(
   const selectedFlavorPresetIds = [...new Set((normalizeSeedPack(input.pack)?.slots ?? []).map((s) => s.flavorPresetId))]
 
   try {
-    // Cast-guarded: `selectedFlavorPresetIds` lands on the generated client only after
-    // `pnpm db:push` + `db:generate`. Drop the cast once regenerated.
-    const product = await (prisma.product.create as (a: unknown) => Promise<{ id: string }>)({
+    const product = await prisma.product.create({
       data: {
         brandId,
         productTemplateId: template.id,
