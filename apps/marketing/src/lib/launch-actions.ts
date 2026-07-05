@@ -43,6 +43,22 @@ export interface StartLaunchInput {
   }
 }
 
+/** Pick the active variant matching the creator's size / single-flavor picks,
+ *  falling back to the first. `containerFormat` is the size ("12oz can"); `flavor`
+ *  is the single-flavor pick. The resolved variantId carries the size + packaging
+ *  type onto the Product (docs/CREATOR_PRODUCT_CONFIGURATION.md step 5). */
+function pickVariantForPicks<T extends { flavor: string | null; containerFormat: string }>(
+  variants: T[],
+  input: { size?: string; flavor?: string },
+): T | undefined {
+  if (variants.length <= 1) return variants[0]
+  const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
+  const bySize = input.size ? variants.filter((v) => norm(v.containerFormat) === norm(input.size)) : []
+  const pool = bySize.length ? bySize : variants
+  const byFlavor = input.flavor ? pool.find((v) => norm(v.flavor) === norm(input.flavor)) : undefined
+  return byFlavor ?? pool[0]
+}
+
 export type StartLaunchResult =
   | { ok: true; url: string }
   | { ok: false; reason: 'GUEST'; signupUrl: string }
@@ -123,7 +139,7 @@ async function resolveOrCreateProductForTemplate(
     where: { slug: input.templateSlug, status: 'PUBLISHED' },
     include: {
       subcategory: { include: { category: true } },
-      variants: { where: { isActive: true }, take: 1 },
+      variants: { where: { isActive: true } },
     },
   })
   if (!template) {
@@ -131,13 +147,18 @@ async function resolveOrCreateProductForTemplate(
       where: { status: 'PUBLISHED' },
       include: {
         subcategory: { include: { category: true } },
-        variants: { where: { isActive: true }, take: 1 },
+        variants: { where: { isActive: true } },
       },
       orderBy: { createdAt: 'asc' },
     })
   }
   if (!template) return { ok: false, reason: 'TEMPLATE_NOT_FOUND' }
-  const variant = template.variants[0]
+  // Persist the creator's size / packaging / single-flavor picks by selecting the
+  // matching active variant (containerFormat = size, flavor = single-flavor pick),
+  // not just the first — previously these picks were dropped for authed users
+  // (docs/CREATOR_PRODUCT_CONFIGURATION.md step 5). The chosen variantId carries
+  // the container size + packagingType into the Product → checkout → configuration.
+  const variant = pickVariantForPicks(template.variants, input)
   if (!variant) return { ok: false, reason: 'NO_VARIANT' }
 
   const market = await prisma.market.findUnique({ where: { code: 'US' } })
