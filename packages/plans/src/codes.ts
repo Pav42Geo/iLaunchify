@@ -33,9 +33,13 @@ export const DESIGN_ALTERNATE_CAPS: Record<'maker' | 'builder' | 'agency', numbe
   agency: null,
 }
 
-/** Max sibling alternates per design slot for a creator tier (null = unlimited). */
+/** Max sibling alternates per design slot for a creator tier (null = unlimited).
+ *  NOTE: `null` is a VALUE here (agency = unlimited) — key-membership check, not
+ *  `??`, or agency would silently fall back to the maker cap. */
 export function designAlternateCap(tier: string): number | null {
-  return DESIGN_ALTERNATE_CAPS[tier as keyof typeof DESIGN_ALTERNATE_CAPS] ?? DESIGN_ALTERNATE_CAPS.maker
+  return tier in DESIGN_ALTERNATE_CAPS
+    ? DESIGN_ALTERNATE_CAPS[tier as keyof typeof DESIGN_ALTERNATE_CAPS]
+    : DESIGN_ALTERNATE_CAPS.maker
 }
 
 export type CreatorPlanCode =

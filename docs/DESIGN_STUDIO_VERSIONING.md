@@ -223,16 +223,20 @@ Check items off as they land. One phase = one commit train; commit immediately.
 - [x] Promote confirm dialog (PromoteAlternateDialog.tsx) + PUBLISHED warning line (Product.status threaded through page → shell)
 - [x] "Open as new alternate" from history drawer (createAlternateFromSnapshot — forks any snapshot into a draft sibling)
 
-### Phase 4 — Admin + permissions
-- [ ] Template-author mode: same strip/drawer on templates (uncapped)
-- [ ] Admin read-only creator history view; support-restore w/ AuditLog + labeled row in creator drawer
-- [ ] `requireCapability` on all admin paths
+### Phase 4 — Admin + permissions (Cowork, 2026-07-05 — template part re-scoped)
+- [ ] ⚠ Template-author mode alternates RE-SCOPED: admin template authoring is product-less (no Design rows — history/alternates hang off Design). Needs a decision: either author templates against a scratch Design or add template-side versioning to the library substrate. Parked — don't build until Pavel picks.
+- [x] Admin read-only creator history view + support-restore: `/admin/design-history` (lookup by product id / GTIN / SKU → slots + alternates → snapshot list). Restore mirrors creator semantics (pin-before-restore), writes `DESIGN_VERSION_RESTORED_BY_ADMIN` AuditLog AND pins "Restored by iLaunchify support" in the creator's drawer — never silent. NOT in sidebar (sidebar v3 LOCKED — propose entry separately).
+- [x] `requireCapability` on all admin paths: view = `creators:read`, restore = `tickets:admin` (support lead)
 
-### Phase 5 — Gating + hardening
-- [ ] Alternate caps in `packages/plans` (Maker 2 / Builder 5 / Agency ∞) + upgrade nudge
-- [ ] Pure-logic tests (retention w/ PROMOTION kind, promote invariants, cap math) in run-vitest-suites.mjs — network/Prisma-free per shipping-pkg precedent
-- [ ] Verify: delete-guard on order-locked versions; exactly-one-Active invariant; snapshot payloads still asset-refs-only
-- [ ] Memory file + INDEX update; CLAUDE.md untouched (doc is the source)
+### Phase 5 — Gating + hardening (Cowork, 2026-07-05)
+- [x] Alternate caps in `packages/plans` (pure `designAlternateCap`, Maker 2 / Builder 5 / Agency ∞) — client nudge (strip) AND server enforcement in createAlternate + createAlternateFromSnapshot
+- [x] Pure-logic tests: snapshots-engine (unpin/coalesce contract) + alternate-caps (node --experimental-strip-types pattern; caught a real `??`-swallows-null bug where agency fell back to the maker cap)
+- [x] Verify: delete-guard on order-locked versions (deleteAlternate counts orderItems) ✓ · exactly-one-Active enforced transactionally in promote ✓ · snapshot payloads asset-refs-only unchanged ✓
+- [x] Memory file + INDEX updated; CLAUDE.md untouched (doc is the source)
+
+### Post-push follow-ups (Code)
+- [ ] De-cast alternates-actions + admin design-history reads after `db:push` + `db:generate`
+- [ ] `isActiveAlternate` filters on the four legacy findFirst readers (loadDesignJson, checkout lockedDesign, mockup-render, dieline-compliance) — §3.2 note
 
 ## 8. Explicitly out of scope (V1)
 

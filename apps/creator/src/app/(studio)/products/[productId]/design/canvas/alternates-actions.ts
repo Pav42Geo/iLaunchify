@@ -19,12 +19,36 @@
 import { revalidatePath } from 'next/cache'
 import { prisma, createSnapshot, getSnapshotJson } from '@ilaunchify/db'
 import type { SnapshotKind } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier } from '@ilaunchify/auth'
+import { designAlternateCap } from '@ilaunchify/plans'
 import { logAuditAs } from '@ilaunchify/audit'
 
 const WORKING_VERSION = 1
 
 type Result = { ok: true; designId?: string } | { ok: false; error: string }
+
+/**
+ * Phase 5 server-side cap (§4.4, count-gating only): siblings in the source's
+ * slot vs the creator's tier cap. Returns an error string when at cap, else null.
+ * The strip nudges client-side too, but the server is the authority.
+ */
+async function alternateCapError(
+  userId: string,
+  slot: { productId: string; flavorPresetId: string | null; surfaceKey: string | null },
+): Promise<string | null> {
+  const cap = designAlternateCap(await getCreatorTier(userId))
+  if (cap === null) return null
+  const siblings = await designDelegate()
+    .design.findMany({
+      where: { productId: slot.productId, flavorPresetId: slot.flavorPresetId, surfaceKey: slot.surfaceKey },
+      select: { id: true },
+    })
+    .catch(() => [])
+  if (siblings.length >= cap) {
+    return `Alternate limit reached (${cap} per label on your plan) — upgrade in Settings → Plan for more.`
+  }
+  return null
+}
 
 export interface AlternateRow {
   id: string
@@ -124,6 +148,8 @@ export async function createAlternate(
     const user = await requireUser()
     const src = await ownedAlternate(sourceDesignId, user.id)
     if (!src) return { ok: false, error: 'Design not found or access denied' }
+    const capError = await alternateCapError(user.id, src)
+    if (capError) return { ok: false, error: capError }
 
     const created = await designDelegate().design.create({
       data: {
@@ -174,6 +200,8 @@ export async function createAlternateFromSnapshot(
     const user = await requireUser()
     const src = await ownedAlternate(sourceDesignId, user.id)
     if (!src) return { ok: false, error: 'Design not found or access denied' }
+    const capError = await alternateCapError(user.id, src)
+    if (capError) return { ok: false, error: capError }
     const json = await getSnapshotJson(snapshotId, 'DESIGN', src.id)
     if (json == null) return { ok: false, error: 'Version not found' }
 
