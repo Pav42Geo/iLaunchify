@@ -57,6 +57,16 @@ export type { MatchCandidate, MatchContext, MatchScore, MatchWeights } from './s
 export { runAutoCancel, runStaleOrderAutoCancel, isOrderStale } from './auto-cancel'
 export type { AutoCancelResult, StaleOrderCancelResult } from './auto-cancel'
 export { runAcceptReminders, ACCEPT_REMINDER_LEAD_HOURS } from './accept-reminders'
+// Creator Product Configuration — the immutable "order of the creator" snapshot (source of truth
+// for partner manifest + channel listing). docs/CREATOR_PRODUCT_CONFIGURATION.md.
+export {
+  buildCreatorConfiguration,
+  configurationChannelVariants,
+  configurationManifestRecipe,
+  isCurrentConfiguration,
+  CREATOR_CONFIG_VERSION,
+} from './creator-configuration'
+export type { CreatorConfiguration, ConfigIngredient, ConfigFlavor, BuildConfigurationInput } from './creator-configuration'
 export type { AcceptReminder, AcceptReminderResult } from './accept-reminders'
 export { computeCancellationOutcome } from './cancellation-refund'
 export type { CancellationFeePolicy, CancellationOutcome } from './cancellation-refund'
