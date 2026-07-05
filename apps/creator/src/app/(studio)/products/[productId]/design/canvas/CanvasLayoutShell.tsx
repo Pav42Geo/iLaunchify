@@ -90,12 +90,15 @@ import type { FrameDims } from './frameComplianceCanvas'
 import { MockupModal, type StudioMockup } from './MockupModal'
 import { LivePreview3DDock } from './LivePreview3DDock'
 import { FlavorSwitcher } from './drawers/FlavorSwitcher'
+import { FlavorLabelSections } from './drawers/FlavorLabelSections'
+import { FlavorMismatchNotice } from './drawers/FlavorMismatchNotice'
+import { detectFlavorMismatch, type FlavorMismatchWarning } from './lib/flavorMismatch'
 import { resolvePbrPreset } from '@ilaunchify/packaging-3d'
 import { applyBaseToAllFlavors } from './flavor-actions'
 import { findNutritionPanel, regenerateNutritionPanel } from './lib/managedNutritionPanel'
 import { ExportModal } from './ExportModal'
 import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
-import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot } from './actions'
+import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot, getSavedFlavorIds } from './actions'
 import { VersionHistoryPanel } from './VersionHistoryPanel'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
@@ -757,6 +760,59 @@ export function CanvasLayoutShell({
 
   const autosave = useAutoSave(canvas, productId, { flavorPresetId: activeFlavorPresetId })
 
+  // ---- Per-flavor label safety (Signal/Verify — docs/PER_FLAVOR_LABEL_SAFETY_UX.md) ----
+  // Which selected flavors already have a saved label — initial load + refresh after
+  // each autosave so the active flavor's ✓ appears without a reload.
+  const [savedFlavorIds, setSavedFlavorIds] = useState<string[]>([])
+  useEffect(() => {
+    if (flavors.length === 0) return
+    let cancelled = false
+    void getSavedFlavorIds(productId).then((ids) => {
+      if (!cancelled) setSavedFlavorIds(ids)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [productId, flavors.length, autosave.lastSavedAt])
+
+  // Wrong-flavor text lint (Verify): flag visible text on the ACTIVE flavor's surface
+  // that mentions a DIFFERENT flavor. Re-runs as canvas text changes; only when a
+  // specific flavor is being edited (the shared base is flavor-agnostic).
+  const [mismatchWarnings, setMismatchWarnings] = useState<FlavorMismatchWarning[]>([])
+  useEffect(() => {
+    const activeName = flavors.find((f) => f.id === activeFlavorPresetId)?.name ?? null
+    if (!canvas || !activeName || flavors.length === 0) {
+      setMismatchWarnings((prev) => (prev.length === 0 ? prev : []))
+      return
+    }
+    const pool = flavors.map((f) => ({ name: f.name }))
+    const rescan = () => {
+      const texts: string[] = []
+      for (const o of canvas.getObjects()) {
+        const t = (o as { text?: unknown }).text
+        if (typeof t === 'string' && t.trim()) texts.push(t)
+      }
+      const next = detectFlavorMismatch(activeName, texts, pool)
+      setMismatchWarnings((prev) =>
+        prev.length === next.length &&
+        prev.every((w, i) => w.text === next[i]?.text && w.matchedFlavor === next[i]?.matchedFlavor)
+          ? prev
+          : next,
+      )
+    }
+    rescan()
+    canvas.on('object:added', rescan)
+    canvas.on('object:removed', rescan)
+    canvas.on('object:modified', rescan)
+    canvas.on('text:changed', rescan)
+    return () => {
+      canvas.off('object:added', rescan)
+      canvas.off('object:removed', rescan)
+      canvas.off('object:modified', rescan)
+      canvas.off('text:changed', rescan)
+    }
+  }, [canvas, flavors, activeFlavorPresetId])
+
   // Version history (EditSnapshot): docked panel + thumbnail previews + restore.
   // Snapshots copy the server-side working DesignVersion row; the client only
   // triggers them + supplies a small canvas PNG thumbnail. Prev/next move the
@@ -1093,6 +1149,9 @@ export function CanvasLayoutShell({
               aggregateNutritionData={aggregateNutritionData}
               nonFoodPanelData={nonFoodPanelData}
               activeFlavorPresetId={activeFlavorPresetId}
+              flavors={flavors}
+              savedFlavorIds={savedFlavorIds}
+              mismatchWarnings={mismatchWarnings}
               recipeHash={recipeHash}
               activeBrandId={activeBrandId}
               onActiveBrandChange={setActiveBrandId}
@@ -1617,6 +1676,9 @@ function ToolDrawer({
   aggregateNutritionData,
   nonFoodPanelData,
   activeFlavorPresetId,
+  flavors,
+  savedFlavorIds,
+  mismatchWarnings,
   recipeHash,
   activeBrandId,
   onActiveBrandChange,
@@ -1656,6 +1718,11 @@ function ToolDrawer({
   aggregateNutritionData: AggregateNutritionData | null
   nonFoodPanelData: { supplement: SupplementPanelData | null; aafco: AafcoPanelData | null } | null
   activeFlavorPresetId: string | null
+  /** Per-flavor label safety — the product's selected flavors, which of them have a
+   *  saved label, and the wrong-flavor-text warnings for the active surface. */
+  flavors: Array<{ id: string; name: string; swatchHex: string | null }>
+  savedFlavorIds: string[]
+  mismatchWarnings: FlavorMismatchWarning[]
   recipeHash: string | null
   activeBrandId: string
   onActiveBrandChange: (brandId: string) => void
@@ -1741,6 +1808,28 @@ function ToolDrawer({
         )}
         {tool === 'label' && (
           <div className="space-y-3">
+            {/* Per-flavor label safety (PER_FLAVOR only) — wrong-flavor text warning
+                + the scoped per-flavor label list with completeness. */}
+            {flavors.length > 0 && (
+              <>
+                <FlavorMismatchNotice
+                  warnings={mismatchWarnings}
+                  activeFlavorName={flavors.find((f) => f.id === activeFlavorPresetId)?.name ?? 'this flavor'}
+                />
+                <FlavorLabelSections
+                  flavors={flavors.map((f) => ({
+                    id: f.id,
+                    name: f.name,
+                    swatchHex: f.swatchHex,
+                    hasLabel: savedFlavorIds.includes(f.id),
+                  }))}
+                  activeId={activeFlavorPresetId}
+                  onSelect={(id) => {
+                    window.location.href = `/products/${productId}/design/canvas?flavor=${id}`
+                  }}
+                />
+              </>
+            )}
             {/* Label & Compliance — Facts label + Mandatory phrases in one place (2026-07-04). */}
             <CollapseSection title="Facts label" open={openFacts} onToggle={() => setOpenFacts((v) => !v)}>
               <LabelDrawer
