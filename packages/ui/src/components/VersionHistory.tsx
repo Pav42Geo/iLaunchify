@@ -32,7 +32,9 @@ function CloudCheck({ className }: { className?: string }) {
   )
 }
 
-export type SnapshotKind = 'AUTO' | 'MILESTONE' | 'MANUAL'
+// PROMOTION — auto-pin on the outgoing Active when an alternate is promoted
+// (versioning v2 §3.3); rendered like a milestone.
+export type SnapshotKind = 'AUTO' | 'MILESTONE' | 'MANUAL' | 'PROMOTION'
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
 export interface SnapshotItem {
