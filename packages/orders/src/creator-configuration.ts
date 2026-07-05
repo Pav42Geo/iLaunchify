@@ -36,6 +36,9 @@ export interface ConfigFlavor {
   unitPriceCents: number | null
   /** The version-locked design (label) for this flavor, or null. */
   lockedDesignVersionId: string | null
+  /** This flavor's FINAL ingredient list (base recipe + flavor extras), FDA weight-descending.
+   *  Null for products where each flavor shares the base recipe. */
+  recipe: { ingredients: ConfigIngredient[] } | null
 }
 
 export interface CreatorConfiguration {
@@ -82,6 +85,8 @@ export interface BuildConfigurationInput {
     qty?: number
     unitPriceCents?: number | null
     lockedDesignVersionId?: string | null
+    /** This flavor's FINAL ingredient list (from resolveFlavorRecipe). Omit to share the base recipe. */
+    recipeIngredients?: ConfigIngredient[]
   }>
   recipe?: {
     servingSizeG?: number | null
@@ -109,6 +114,7 @@ export function buildCreatorConfiguration(input: BuildConfigurationInput): Creat
     qty: Math.max(0, Math.floor(f.qty ?? 0)),
     unitPriceCents: f.unitPriceCents ?? null,
     lockedDesignVersionId: f.lockedDesignVersionId ?? null,
+    recipe: f.recipeIngredients ? { ingredients: f.recipeIngredients } : null,
   }))
 
   // Distinct, order-preserving selected ids.
@@ -224,6 +230,67 @@ export function mapRecipeIngredients(rows: readonly RawRecipeIngredientRow[]): C
       bioengineeredStatus: r.ingredient.bioengineeredStatus ?? null,
     }
   })
+}
+
+/** A flavor's distinguishing additions (`FlavorPreset.extras` JSON, structurally typed). */
+export interface FlavorExtra {
+  ingredientId: string
+  name?: string | null
+  qty?: number | string | null
+  unit?: string | null
+}
+
+function extraToGrams(qty: number | string | null | undefined, unit: string | null | undefined): number {
+  const q = typeof qty === 'number' ? qty : Number(String(qty ?? '')) || 0
+  switch ((unit ?? 'g').toLowerCase()) {
+    case 'mg':
+      return q / 1000
+    case 'kg':
+      return q * 1000
+    case 'g':
+    default:
+      return q
+  }
+}
+
+/**
+ * Resolve a flavor's FINAL ingredient list = the shared base recipe + that flavor's extras, ordered
+ * FDA-correct (weight descending). An extra whose ingredient already appears in the base ADDS to its
+ * weight; a new ingredient is appended (source `FLAVOR_EXTRA`). Pure — feeds `buildCreatorConfiguration`
+ * via `flavors[].recipeIngredients`, so each selected flavor carries its own exact recipe in the snapshot.
+ */
+export function resolveFlavorRecipe(
+  baseIngredients: readonly ConfigIngredient[],
+  extras: readonly FlavorExtra[],
+): ConfigIngredient[] {
+  const merged: ConfigIngredient[] = baseIngredients.map((b) => ({ ...b, allergenFlags: [...b.allergenFlags] }))
+  const idx = new Map(merged.map((i, k) => [i.ingredientId, k]))
+
+  for (const e of extras) {
+    if (!e.ingredientId) continue
+    const grams = extraToGrams(e.qty, e.unit)
+    const at = idx.get(e.ingredientId)
+    if (at != null) {
+      const cur = merged[at]!
+      merged[at] = { ...cur, weightG: cur.weightG + grams }
+    } else {
+      merged.push({
+        ingredientId: e.ingredientId,
+        labelDeclarationName: e.name ?? null,
+        weightG: grams,
+        position: merged.length,
+        source: 'FLAVOR_EXTRA',
+        filledSlotId: null,
+        allergenFlags: [],
+        bioengineeredStatus: null,
+      })
+      idx.set(e.ingredientId, merged.length - 1)
+    }
+  }
+
+  // FDA ingredient declaration is by weight, descending; reassign positions after the merge.
+  merged.sort((a, b) => b.weightG - a.weightG)
+  return merged.map((i, k) => ({ ...i, position: k }))
 }
 
 export interface FlavorPriceInput {

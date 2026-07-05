@@ -66,6 +66,7 @@ export {
   isCurrentConfiguration,
   mapRecipeIngredients,
   composeFlavorUnitPrices,
+  resolveFlavorRecipe,
   CREATOR_CONFIG_VERSION,
 } from './creator-configuration'
 export type {
@@ -75,6 +76,7 @@ export type {
   BuildConfigurationInput,
   RawRecipeIngredientRow,
   FlavorPriceInput,
+  FlavorExtra,
 } from './creator-configuration'
 export type { AcceptReminder, AcceptReminderResult } from './accept-reminders'
 export { computeCancellationOutcome } from './cancellation-refund'

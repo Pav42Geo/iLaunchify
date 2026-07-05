@@ -6,6 +6,7 @@ import {
   isCurrentConfiguration,
   mapRecipeIngredients,
   composeFlavorUnitPrices,
+  resolveFlavorRecipe,
   CREATOR_CONFIG_VERSION,
 } from './creator-configuration'
 
@@ -74,6 +75,39 @@ describe('mapRecipeIngredients', () => {
     ])
     expect(out[0]).toMatchObject({ ingredientId: 'y', labelDeclarationName: 'Oats', weightG: 90, allergenFlags: ['gluten'] })
     expect(out[1]).toMatchObject({ ingredientId: 'x', labelDeclarationName: 'Whey Protein', filledSlotId: 's1', allergenFlags: ['milk'], bioengineeredStatus: 'BIOENGINEERED' })
+  })
+})
+
+describe('resolveFlavorRecipe', () => {
+  const base = [
+    { ingredientId: 'oats', labelDeclarationName: 'Oats', weightG: 90, position: 0, source: 'TEMPLATE_BASE', filledSlotId: null, allergenFlags: [], bioengineeredStatus: null },
+    { ingredientId: 'sugar', labelDeclarationName: 'Sugar', weightG: 30, position: 1, source: 'TEMPLATE_BASE', filledSlotId: null, allergenFlags: [], bioengineeredStatus: null },
+  ]
+
+  it('appends a new extra as FLAVOR_EXTRA and re-sorts by weight (FDA descending)', () => {
+    const out = resolveFlavorRecipe(base, [{ ingredientId: 'straw', name: 'Strawberry', qty: 40, unit: 'g' }])
+    expect(out.map((i) => i.ingredientId)).toEqual(['oats', 'straw', 'sugar'])
+    expect(out.map((i) => i.position)).toEqual([0, 1, 2])
+    expect(out.find((i) => i.ingredientId === 'straw')).toMatchObject({ source: 'FLAVOR_EXTRA', weightG: 40 })
+  })
+
+  it('adds weight to an existing base ingredient (with unit conversion)', () => {
+    const out = resolveFlavorRecipe(base, [{ ingredientId: 'sugar', qty: 5000, unit: 'mg' }]) // +5g
+    expect(out.find((i) => i.ingredientId === 'sugar')?.weightG).toBe(35)
+  })
+
+  it('does not mutate the base array', () => {
+    resolveFlavorRecipe(base, [{ ingredientId: 'x', qty: 1 }])
+    expect(base).toHaveLength(2)
+    expect(base[0]?.weightG).toBe(90)
+  })
+})
+
+describe('per-flavor recipe in the snapshot', () => {
+  it('carries flavors[].recipe when recipeIngredients provided', () => {
+    const straw = resolveFlavorRecipe([], [{ ingredientId: 's', name: 'Strawberry', qty: 10 }])
+    const cfg = buildCreatorConfiguration({ flavors: [{ flavorPresetId: 'a', name: 'Strawberry', qty: 4, recipeIngredients: straw }] })
+    expect(cfg.flavors[0]?.recipe?.ingredients[0]?.ingredientId).toBe('s')
   })
 })
 
