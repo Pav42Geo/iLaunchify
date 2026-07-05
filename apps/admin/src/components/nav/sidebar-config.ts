@@ -363,6 +363,11 @@ const APPLICATIONS: SidebarRegion = {
         // concept planned as a unified module — see docs/DIE_CUT_TEMPLATES_MODULE.md
         // (Container assignments live in the Packaging Studio group → Container Die-lines).
         { kind: 'item', label: 'Die-lines', icon: Layout, href: '/dielines' },
+        // Design History = the support tool over creator Design/EditSnapshot rows
+        // (versioning v2 Phase 4). Lives here per the v4 rule "an asset lives with
+        // the studio that consumes it" (amendment, Pavel 2026-07-05). View is
+        // creators:read; the restore action inside is tickets:admin server-side.
+        { kind: 'item', label: 'Design History', icon: History, href: '/design-history', capability: 'creators:read' },
         { kind: 'item', label: 'Facts Labels', icon: FileText, href: '/label-formats', capability: 'platform:admin' },
         { kind: 'item', label: 'Mandatory Phrases', icon: ScrollText, href: '/mandatory-phrases' },
         // Label/artwork assets (moved from Asset Management 2026-07-04).

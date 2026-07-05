@@ -391,6 +391,9 @@ export async function loadDesignJson(
       design: {
         productId,
         flavorPresetId: flavorPresetId ?? null,
+        // The slot's ACTIVE alternate — draft alternates load via
+        // loadAlternateDesignJson(designId) instead (versioning v2 §3.2).
+        isActiveAlternate: true,
         product: { brand: { creatorProfile: { userId: user.id } } },
       },
     },

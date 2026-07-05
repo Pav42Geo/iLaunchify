@@ -580,7 +580,8 @@ export async function placeOrderFromCheckoutDraft(
   // saved design yet (legacy edge — order goes through with the bundle
   // marked FAILED for admin to follow up).
   const lockedDesign = await prisma.design.findFirst({
-    where: { productId: product.id },
+    // isActiveAlternate — never lock a draft alternate into production (versioning v2 §3.2).
+    where: { productId: product.id, isActiveAlternate: true },
     orderBy: { updatedAt: 'desc' },
     include: { versions: { orderBy: { version: 'desc' }, take: 1 } },
   })

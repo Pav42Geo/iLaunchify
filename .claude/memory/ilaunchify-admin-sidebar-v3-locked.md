@@ -125,6 +125,11 @@ Help Center                              -> /support-tickets
 
 # Amendments since v4
 
+- **2026-07-05 (Pavel):** DESIGN STUDIO gained **Design History** (`/design-history`,
+  after `Die-lines`, before `Facts Labels`, capability `creators:read`) — the
+  versioning-v2 Phase 4 support tool over creator Design/EditSnapshot rows.
+  Placement per the "asset lives with the studio that consumes it" rule;
+  restore inside is tickets:admin server-side. Not drift — do not remove.
 - **2026-07-05 (Pavel):** Settings gained a **Notifications** group —
   Templates / Branding / Deliverability / Log at `/notifications-center/*`
   (the removed Communications group returning, now that pages exist). See

@@ -30,6 +30,8 @@ export async function saveDesignMockupRender(
     const design = await prisma.design.findFirst({
       where: {
         productId,
+        // Never key mockup renders off a draft alternate (versioning v2 §3.2).
+        isActiveAlternate: true,
         product: { brand: { creatorProfile: { userId: user.id } } },
       },
       select: { id: true, product: { select: { id: true, brandId: true } } },

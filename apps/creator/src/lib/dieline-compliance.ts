@@ -113,7 +113,9 @@ export async function loadProductLabelCompliance(
   // Latest saved design → placed objects, mapped by the canonical role helper.
   const design = await prisma.design
     .findFirst({
-      where: { productId: product.id },
+      // isActiveAlternate — gate compliance on the PRODUCTION design, not a draft
+      // alternate (versioning v2 §3.2).
+      where: { productId: product.id, isActiveAlternate: true },
       select: { versions: { orderBy: { version: 'desc' }, take: 1, select: { designJson: true } } },
     })
     .catch(() => null)
