@@ -7827,13 +7827,49 @@ model AiGeneratorSettings {
   providerJson       Json?
   /// Feature gates: { generatorEnabled, blockExportUntilCompliant, blockSaveOverStorage, makerGenerationDisabled }.
   gatesJson          Json?
-  /// Reusable vocabulary groups (admin-authored): { <groupId>: { label, styles[], colors[], elements[] } }.
+  /// [DEPRECATED — superseded by AiVocabGroup table, Phase 2] Reusable vocabulary groups (JSON).
   vocabGroupsJson    Json?
-  /// Per-domain group assignment: { FOOD: [groupId, …], … }. Groups fold into that domain's creative vocab.
+  /// [DEPRECATED — superseded by AiDomainVocabGroup table, Phase 2] Per-domain group assignment (JSON).
   domainGroupsJson   Json?
 
   updatedAt   DateTime @updatedAt
   updatedById String?
+}
+
+/// Reusable creative-vocabulary group (AI_PACKAGING_GENERATOR §14, Phase 2). A named
+/// bundle of style / colour / element terms the admin can assign to any domain via
+/// AiDomainVocabGroup. Purely creative — never touches compliance.
+model AiVocabGroup {
+  id          String   @id @default(uuid())
+  label       String
+  styles      String[]
+  colors      String[]
+  elements    String[]
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  domainLinks AiDomainVocabGroup[]
+
+  @@index([active])
+}
+
+/// Assignment of a vocab group to a labeling domain (AI_PACKAGING_GENERATOR §14, Phase 2).
+/// A domain's creative vocabulary = its own preset/override UNION every assigned group.
+model AiDomainVocabGroup {
+  id        String @id @default(uuid())
+  /// LabelingDomain string: FOOD | DIETARY_SUPPLEMENT | OTC | COSMETIC | PET_PRODUCT.
+  domain    String
+  groupId   String
+  sortOrder Int    @default(0)
+
+  group AiVocabGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([domain, groupId])
+  @@index([domain])
+  @@index([groupId])
 }
 
 // =============================================================================

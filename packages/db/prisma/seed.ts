@@ -51,6 +51,7 @@ import { seedSpotColors } from './seed-spot-colors'
 import { seedAcademy } from './seed-academy'
 // 2026-07-05 Notification Center — category registry (group-level opt-out).
 import { seedNotificationCategories } from './seed-notification-categories'
+import { seedAiVocabGroups } from './seed-ai-vocab-groups'
 
 const prisma = new PrismaClient()
 
@@ -723,6 +724,10 @@ async function main() {
 
   // --- Notification Center category registry (EMAIL_NOTIFICATION_CENTER.md) ---
   await seedNotificationCategories(prisma)
+
+  // --- AI generator starter vocabulary groups (AI_PACKAGING_GENERATOR §14) ---
+  // Unassigned to domains — nothing changes for creators until an admin assigns them.
+  await seedAiVocabGroups(prisma)
 
   console.log('Seed complete.')
 }
