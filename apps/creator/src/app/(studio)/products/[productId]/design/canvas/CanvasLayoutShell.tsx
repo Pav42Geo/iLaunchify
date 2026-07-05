@@ -47,7 +47,11 @@ import {
   CANVAS_PROPERTIES_TO_INCLUDE,
   type FrameLayout,
   type SnapshotItem,
+  NutritionFactsRenderer,
+  VarietyFactsSvg,
+  SupplementFactsSvg,
 } from '@ilaunchify/ui'
+import type { PanelData } from '@ilaunchify/types'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
 import type { PreflightPartnerSpecResolved } from './partner-spec-actions'
 import type { BarcodeMode } from './retail-identity-actions'
@@ -245,6 +249,10 @@ interface Props {
   pictureFlavors?: Array<{ flavorPresetId: string; statementOfIdentity: string | null; recipe: PictureRecipe | null }>
   pictureBaseRecipe?: PictureRecipe | null
   labelTopology?: 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'
+  /** Slice 3 — raw PanelData for the single-product Facts panel + the per-flavor
+   *  variety columns (each carries its own PanelData), rendered domain-correct. */
+  pictureSinglePanel?: PanelData | null
+  pictureVarietyColumns?: Array<{ flavorPresetId: string; label: string; panel: PanelData; contains: string }>
   /**
    * DS-73d — current creator subscription tier. Drives the EXPORT
    * upgrade gate: Maker creators get the UpgradeOverlay instead of the
@@ -384,6 +392,8 @@ export function CanvasLayoutShell({
   pictureFlavors = [],
   pictureBaseRecipe = null,
   labelTopology,
+  pictureSinglePanel = null,
+  pictureVarietyColumns = [],
   creatorTier = 'maker',
   partnerPrintSpec = null,
   restrictionLabels = [],
@@ -1217,6 +1227,8 @@ export function CanvasLayoutShell({
               pictureFlavors={pictureFlavors}
               pictureBaseRecipe={pictureBaseRecipe}
               labelTopology={labelTopology}
+              pictureSinglePanel={pictureSinglePanel}
+              pictureVarietyColumns={pictureVarietyColumns}
               templateAuthor={templateAuthor}
               dielineFrameLayout={frameLayout}
               onClose={closeDrawer}
@@ -1730,6 +1742,22 @@ function LeftRail({
 // Tool drawer
 // ============================================================================
 
+/** Product-picture Details modal (slice 3) — render the domain-correct Facts panel
+ *  from raw PanelData. FOOD + SUPPLEMENT render directly (both consume PanelData);
+ *  PET / OTC / COSMETIC need their own domain data forwarded (a follow-up), so they
+ *  return null and the modal falls back to the recipe list. */
+function renderDomainFactsPanel(domain: string, panel: PanelData | null): React.ReactNode {
+  if (!panel) return null
+  switch (domain) {
+    case 'FOOD':
+      return <NutritionFactsRenderer data={panel} widthPx={260} />
+    case 'DIETARY_SUPPLEMENT':
+      return <SupplementFactsSvg data={panel} widthPx={280} />
+    default:
+      return null
+  }
+}
+
 function ToolDrawer({
   tool,
   dieCut,
@@ -1765,6 +1793,8 @@ function ToolDrawer({
   pictureFlavors,
   pictureBaseRecipe,
   labelTopology,
+  pictureSinglePanel,
+  pictureVarietyColumns,
   templateAuthor,
   dielineFrameLayout,
   onClose,
@@ -1812,6 +1842,8 @@ function ToolDrawer({
   pictureFlavors: Array<{ flavorPresetId: string; statementOfIdentity: string | null; recipe: PictureRecipe | null }>
   pictureBaseRecipe: PictureRecipe | null
   labelTopology?: 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'
+  pictureSinglePanel: PanelData | null
+  pictureVarietyColumns: Array<{ flavorPresetId: string; label: string; panel: PanelData; contains: string }>
   /** Admin template-author mode — the AI drawer loads product-less against this die-cut + domain. */
   templateAuthor: { domain: string; container: string | null; aspectBucket: string | null; dieCutId?: string | null } | null
   /** Resolved die-line FrameLayout — frame-aware template re-anchoring (Reshape R1). */
@@ -1889,8 +1921,16 @@ function ToolDrawer({
               picture: {
                 topology: labelTopology ?? (flavors.length > 0 ? 'PER_FLAVOR' : 'SINGLE'),
                 recipe: pictureBaseRecipe ?? null,
+                factsPanel: renderDomainFactsPanel(labelingType, pictureSinglePanel),
+                aggregateFactsPanel:
+                  pictureVarietyColumns.length > 0 ? (
+                    <VarietyFactsSvg
+                      columns={pictureVarietyColumns.map((c) => ({ label: c.label, data: c.panel, contains: c.contains }))}
+                    />
+                  ) : undefined,
                 flavors: flavors.map((f) => {
                   const pf = pictureFlavors.find((p) => p.flavorPresetId === f.id)
+                  const col = pictureVarietyColumns.find((c) => c.flavorPresetId === f.id)
                   return {
                     flavorPresetId: f.id,
                     name: f.name,
@@ -1898,6 +1938,7 @@ function ToolDrawer({
                     statementOfIdentity: pf?.statementOfIdentity ?? null,
                     hasLabel: savedFlavorIds.includes(f.id),
                     recipe: pf?.recipe ?? null,
+                    factsPanel: renderDomainFactsPanel(labelingType, col?.panel ?? null),
                   }
                 }),
                 finishes: finishes.map((ff) => ({ name: ff.name, category: ff.category })),

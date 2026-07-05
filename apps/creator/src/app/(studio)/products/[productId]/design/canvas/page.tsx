@@ -574,6 +574,8 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       pictureFlavors={pictureFlavors}
       pictureBaseRecipe={pictureBaseRecipe}
       labelTopology={labelTopology}
+      pictureSinglePanel={studioNutrition.ok && 'panel' in studioNutrition ? studioNutrition.panel : null}
+      pictureVarietyColumns={variety.ok ? variety.columns : []}
     />
   )
 }
