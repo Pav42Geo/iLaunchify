@@ -112,15 +112,41 @@ export const INTEGRATIONS: IntegrationDef[] = [
     name: 'Resend',
     vendor: 'Resend',
     category: 'Email',
-    description: 'Transactional email — magic-link sign-in, notifications, admin invites.',
+    description:
+      'Transactional email — magic-link sign-in, all Notification Center sends, admin invites. The webhook secret feeds the Deliverability surface (delivered/bounce/complaint/open) and the auto-suppression list.',
     docsUrl: 'https://resend.com/docs',
     dashboardUrl: 'https://resend.com/api-keys',
     rotationDays: 180,
     lifecycle: 'live',
     testable: true,
     envVars: [
-      { name: 'AUTH_RESEND_KEY', kind: 'secret', required: false },
-      { name: 'AUTH_EMAIL_FROM', kind: 'config', required: false, note: 'Verified sender address' },
+      { name: 'AUTH_RESEND_KEY', kind: 'secret', required: false, note: 'Emails silently skip (rows kept, emailSentAt null) until set' },
+      { name: 'AUTH_EMAIL_FROM', kind: 'config', required: false, note: 'Verified sender address ("Name <addr>" or bare)' },
+      { name: 'RESEND_WEBHOOK_SECRET', kind: 'secret', required: false, note: 'whsec_… — signs inbound delivery webhooks (Resend dashboard → Webhooks → endpoint /api/webhooks/resend on the creator app)' },
+    ],
+    appLinks: [
+      { label: 'Templates', href: '/notifications-center/templates' },
+      { label: 'Deliverability', href: '/notifications-center/deliverability' },
+    ],
+  },
+  // Notification Center platform secrets (docs/EMAIL_NOTIFICATION_CENTER.md,
+  // 2026-07-05) — self-issued, not vendor keys, so they get their own row.
+  {
+    key: 'notification-center',
+    name: 'Notification Center',
+    vendor: 'Self',
+    category: 'Email',
+    description:
+      'Signs the one-click unsubscribe tokens in every opt-outable email footer (HMAC over userId + category; powers the List-Unsubscribe header Gmail/Yahoo require). Emails omit the unsubscribe link until the secret is set. Rotating it invalidates links in already-sent emails — old footers will show "link expired" until users get a newer email.',
+    lifecycle: 'live',
+    rotationDays: 365,
+    envVars: [
+      { name: 'NOTIFICATION_UNSUBSCRIBE_SECRET', kind: 'secret', required: false, note: 'Any long random string (e.g. `openssl rand -hex 32`)' },
+      { name: 'NEXT_PUBLIC_MARKETING_URL', kind: 'public', required: false, note: 'Host serving /unsubscribe + /unsubscribe/one-click (defaults to localhost:3010 in dev)' },
+    ],
+    appLinks: [
+      { label: 'Branding (footer copy)', href: '/notifications-center/branding' },
+      { label: 'Notification log', href: '/notifications-center/log' },
     ],
   },
   // Storage & Hosting
