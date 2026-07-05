@@ -250,6 +250,22 @@ export interface ProductionManifest {
       bioengineeredStatus: string | null
     }>
   } | null
+  // ---- Per-flavor recipes (from the snapshot's selected flavors) -----------
+  // Each variety-pack flavor's FINAL recipe (base + that flavor's extras). Empty
+  // for single-recipe items or legacy/pre-snapshot orders.
+  perFlavorRecipes: Array<{
+    flavorPresetId: string
+    ingredients: Array<{
+      ingredientId: string
+      labelDeclarationName: string | null
+      weightG: number
+      position: number
+      source: string | null
+      filledSlotId: string | null
+      allergenFlags: string[]
+      bioengineeredStatus: string | null
+    }>
+  }>
   // ---- Production lead (LOCKED 2026-06-30 — global floor + changeover) -------
   // The quoted production lead for THIS order. `leadTimeDays` is what the partner
   // commits to: max(standard, max effective-flavor-lead) + (N-1)*changeover. For a
@@ -354,9 +370,15 @@ export async function generateOrderManifest(
     | { version?: unknown }
     | null
     | undefined
-  const configRecipe = isCurrentConfiguration(configSnapshot)
-    ? configurationManifestRecipe(configSnapshot)
-    : null
+  const config = isCurrentConfiguration(configSnapshot) ? configSnapshot : null
+  const configRecipe = config ? configurationManifestRecipe(config) : null
+  // Per-flavor final recipes (base + that flavor's extras) — the manufacturer produces
+  // a distinct recipe per flavor in a variety pack. Empty when the snapshot has none.
+  const perFlavorRecipes = config
+    ? config.flavors
+        .filter((f) => f.recipe)
+        .map((f) => ({ flavorPresetId: f.flavorPresetId, ingredients: f.recipe!.ingredients }))
+    : []
 
   // Variety-pack per-flavor splits for THIS item (Slice 1). Cast-guarded — the
   // OrderItemFlavor model post-dates the generated client until the migration.
@@ -513,6 +535,7 @@ export async function generateOrderManifest(
     designVersionId: item.designVersionId,
     designVersion: item.designVersion?.version ?? null,
     recipe: configRecipe,
+    perFlavorRecipes,
     substrate: substrate
       ? {
           slug: substrate.slug,
