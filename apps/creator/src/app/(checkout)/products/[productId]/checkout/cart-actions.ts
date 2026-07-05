@@ -30,6 +30,7 @@ import {
   estimateDispatchCosts,
   applySampleCredit,
   createOrderWithNumber,
+  buildCreatorConfiguration,
   resolveDestinationOptions,
   scoreAndSelectFc,
   buildScoredAwardPayload,
@@ -214,6 +215,9 @@ export async function placeOrderFromCheckoutDraft(
   // The basis-aware pack-priced subtotal (cents) — reconciled with the production
   // cost below so the order is never under-funded.
   let packPricedSubtotalCents = 0
+  // Per-flavor list price (cents) for the configuration snapshot / channel variants
+  // (pack path only; legacy leaves it empty → null price downstream).
+  const flavorPriceByPreset = new Map<string, number | null>()
 
   const packRules = product.productTemplateId
     ? await prisma.productTemplate.findUnique({
@@ -246,6 +250,7 @@ export async function placeOrderFromCheckoutDraft(
       matrix.pool,
     )
     packPricedSubtotalCents = orderTotalCents(pricePerPack, packSel.packCount)
+    for (const p of matrix.pool) flavorPriceByPreset.set(p.flavorPresetId, p.unitPriceCents)
     packPersist = {
       packVariantId: packSel.packVariantId,
       packCount: packSel.packCount,
@@ -459,6 +464,61 @@ export async function placeOrderFromCheckoutDraft(
   const applicationFeeCents = platformFeeCents - sampleCreditAppliedCents
   const totalCents = grossTotalCents - sampleCreditAppliedCents
 
+  // --- Creator Product Configuration snapshot (docs/CREATOR_PRODUCT_CONFIGURATION.md) ---
+  // The immutable "order of the creator", assembled from the pieces resolved above and
+  // stored on the OrderItem so the partner manifest + channel listing read THIS instead
+  // of re-deriving from the template pool. Recipe = the product's final RecipeIngredient
+  // rows (replaceable swaps + optional activations already baked in via `source`).
+  const recipeIngredients = product.recipe
+    ? await prisma.recipeIngredient.findMany({
+        where: { recipeId: product.recipe.id },
+        orderBy: { position: 'asc' },
+        include: {
+          ingredient: {
+            select: { labelDeclarationName: true, allergenFlags: true, bioengineeredStatus: true },
+          },
+        },
+      })
+    : []
+  const configuration = buildCreatorConfiguration({
+    flavors: flavorRows.map((f) => ({
+      flavorPresetId: f.flavorPresetId,
+      name: f.flavorName,
+      statementOfIdentity: f.soiSnapshot,
+      qty: f.qty,
+      unitPriceCents: flavorPriceByPreset.get(f.flavorPresetId) ?? null,
+      lockedDesignVersionId: f.designVersionId,
+    })),
+    recipe: product.recipe
+      ? {
+          servingSizeG: Number(product.recipe.servingSizeG),
+          servingsPerContainer: Number(product.recipe.servingsPerContainer),
+          ingredients: recipeIngredients.map((ri) => ({
+            ingredientId: ri.ingredientId,
+            labelDeclarationName: ri.ingredient.labelDeclarationName ?? null,
+            weightG: Number(ri.weightG),
+            position: ri.position,
+            source: ri.source ?? null,
+            filledSlotId: ri.filledSlotId ?? null,
+            allergenFlags: ri.ingredient.allergenFlags ?? [],
+            bioengineeredStatus: ri.ingredient.bioengineeredStatus ?? null,
+          })),
+        }
+      : null,
+    variant: { id: packPersist?.packVariantId ?? null, containerFormat: null, netQuantity: null },
+    options: {
+      substrateSlug: state.production.substrateSlug,
+      packagingMaterialSlug: state.production.packagingMaterialSlug,
+      finishPartnerFinishIds: state.production.finishPartnerFinishIds,
+      dieCutTemplateId: null,
+    },
+    pricing: {
+      basis: packPersist?.pricingBasisSnapshot ?? null,
+      pricePerPackCents: packPersist?.pricePerPackCentsSnapshot ?? null,
+    },
+    lockedPhraseIds: [],
+  })
+
   // --- 8. Order + OrderItem in a single txn ---------------------------------
   const promo = state.cart.promoCode?.trim() ? state.cart.promoCode.trim() : null
   const internalNotes = buildInternalNotes({
@@ -538,6 +598,9 @@ export async function placeOrderFromCheckoutDraft(
         unitPriceCents: Math.round(productionTotalCents / qty),
         totalCents: productionTotalCents,
         designVersionId: lockedDesignVersionId,
+        // Creator Product Configuration snapshot (cast-guarded — the column post-dates
+        // the generated client until db:push). Always written.
+        configurationSnapshot: configuration as unknown as object,
         // Variety-pack structure snapshot (cast-guarded — these columns post-date
         // the generated client until the migration). Null for non-pack items.
         ...(packPersist
