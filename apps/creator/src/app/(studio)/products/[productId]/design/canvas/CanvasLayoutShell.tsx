@@ -912,10 +912,20 @@ export function CanvasLayoutShell({
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const lastSnapAtRef = React.useRef(0)
 
+  // Studio versioning v2 §4.1 — history follows the canvas: every snapshot / list /
+  // restore below targets the SLOT currently on canvas (this flavor; surface +
+  // alternates join the key when they exist). Base products pass flavorPresetId null
+  // → the shared BASE design, byte-identical to pre-v2 behavior. Flavor switching is
+  // a full reload (?flavor=), so the scope is fixed per mount.
+  const historyScope = React.useMemo(
+    () => ({ flavorPresetId: activeFlavorPresetId }),
+    [activeFlavorPresetId],
+  )
+
   const loadHistory = React.useCallback(async () => {
-    const rows = await listDesignSnapshots(productId)
+    const rows = await listDesignSnapshots(productId, historyScope)
     setSnapshots(rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt), thumbnail: r.thumbnail })))
-  }, [productId])
+  }, [productId, historyScope])
 
   // Capture a small PNG of the live canvas for the version thumbnail.
   const grabThumb = React.useCallback((): string | null => {
@@ -937,13 +947,13 @@ export function CanvasLayoutShell({
     const now = Date.now()
     if (now - lastSnapAtRef.current < 120_000) return
     lastSnapAtRef.current = now
-    void snapshotDesign(productId, 'AUTO', undefined, grabThumb()).then(() => loadHistory())
-  }, [autosave.status, autosave.lastSavedAt, productId, grabThumb, loadHistory])
+    void snapshotDesign(productId, 'AUTO', undefined, grabThumb(), historyScope).then(() => loadHistory())
+  }, [autosave.status, autosave.lastSavedAt, productId, grabThumb, loadHistory, historyScope])
 
   const handleRestore = React.useCallback(
     async (snapshotId: string) => {
       setRestoringId(snapshotId)
-      const res = await restoreDesignSnapshot(productId, snapshotId)
+      const res = await restoreDesignSnapshot(productId, snapshotId, historyScope)
       setRestoringId(null)
       if (!res.ok) {
         toast.error(res.error)
@@ -957,17 +967,17 @@ export function CanvasLayoutShell({
       setSelectedVersionId(null)
       void loadHistory()
     },
-    [productId, canvas, loadHistory],
+    [productId, canvas, loadHistory, historyScope],
   )
 
   // "Save draft" (in the studio ☰ menu) — flush the autosave now, then pin a
   // MILESTONE version so the manual checkpoint is restorable from history.
   const handleSaveDraft = React.useCallback(async () => {
     await autosave.saveNow()
-    await snapshotDesign(productId, 'MILESTONE', 'Saved draft', grabThumb())
+    await snapshotDesign(productId, 'MILESTONE', 'Saved draft', grabThumb(), historyScope)
     void loadHistory()
     toast.success('Draft saved')
-  }, [autosave, productId, grabThumb, loadHistory])
+  }, [autosave, productId, grabThumb, loadHistory, historyScope])
 
   // Top-bar "Save now" (clickable status icon) — flush the autosave, then pin a
   // MANUAL checkpoint so the click appears in History. Returns false if the
@@ -975,10 +985,10 @@ export function CanvasLayoutShell({
   const handleSaveNow = React.useCallback(async (): Promise<boolean> => {
     await autosave.saveNow()
     if (autosave.status === 'error') return false
-    await snapshotDesign(productId, 'MANUAL', `Saved ${new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`, grabThumb())
+    await snapshotDesign(productId, 'MANUAL', `Saved ${new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`, grabThumb(), historyScope)
     void loadHistory()
     return true
-  }, [autosave, productId, grabThumb, loadHistory])
+  }, [autosave, productId, grabThumb, loadHistory, historyScope])
 
   // "Save as template" (☰ menu) — persist the current design to the ACTIVE brand
   // kit as a reusable BrandTemplate. The per-tier cap is enforced server-side; we
@@ -1363,6 +1373,11 @@ export function CanvasLayoutShell({
             onRestore={handleRestore}
             restoringId={restoringId}
             currentId={snapshots[0]?.id ?? null}
+            scopeLabel={
+              flavors.length > 0
+                ? flavors.find((f) => f.id === activeFlavorPresetId)?.name ?? 'Base — all flavors'
+                : null
+            }
           />
 
           {/* Bottom floating controls */}

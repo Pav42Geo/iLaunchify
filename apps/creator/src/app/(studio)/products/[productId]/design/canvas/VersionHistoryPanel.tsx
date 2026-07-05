@@ -50,6 +50,7 @@ export function VersionHistoryPanel({
   onRestore,
   restoringId,
   currentId,
+  scopeLabel,
 }: {
   open: boolean
   onClose: () => void
@@ -59,6 +60,9 @@ export function VersionHistoryPanel({
   onRestore: (id: string) => void
   restoringId: string | null
   currentId: string | null
+  /** Studio versioning v2 §4.1 — the slot on canvas ("Chocolate · Front label").
+   *  Null/absent = single-slot product; no scope line shown. */
+  scopeLabel?: string | null
 }) {
   if (!open) return null
   const selected = items.find((i) => i.id === selectedId) ?? items[0] ?? null
@@ -70,7 +74,9 @@ export function VersionHistoryPanel({
     <aside className="absolute bottom-0 right-0 top-0 z-30 flex w-[380px] flex-col border-l border-ink-200 bg-white shadow-xl">
       <header className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
         <div>
-          <div className="font-display text-[14px] font-semibold text-ink-900">Version history</div>
+          <div className="font-display text-[14px] font-semibold text-ink-900">
+            Version history{scopeLabel ? <span className="font-normal text-ink-500"> — {scopeLabel}</span> : null}
+          </div>
           <div className="text-[11px] text-ink-500">{items.length} version{items.length === 1 ? '' : 's'} · last 10 + milestones</div>
         </div>
         <button type="button" onClick={onClose} aria-label="Close" className="rounded p-1 text-ink-500 hover:bg-ink-100">

@@ -425,12 +425,29 @@ export async function getSavedFlavorIds(productId: string): Promise<string[]> {
 // server-side (no client serialization), so the client just triggers it.
 // ===========================================================================
 
-/** Resolve the creator-owned Design for a product (id + working JSON). */
-async function ownedDesign(productId: string, userId: string): Promise<{ id: string; json: unknown } | null> {
-  // Scope to the shared/base design (flavorPresetId = null) — the canvas's
-  // default surface. Per-flavor designs get their own history later if needed.
+/** Which Design a history action targets — the SLOT on canvas (Studio versioning v2
+ *  §4.1: history follows the canvas). `designId` is the exact on-canvas Design (the
+ *  alternates-proof key, once alternates exist); `flavorPresetId` is the flavor-slot
+ *  fallback the canvas already keys loads/saves by. Absent/empty scope = the shared
+ *  BASE design (flavorPresetId null) — exactly the pre-v2 behavior. */
+export interface DesignScope {
+  designId?: string | null
+  flavorPresetId?: string | null
+}
+
+/** Resolve the creator-owned Design for a slot (id + working JSON). */
+async function ownedDesign(
+  productId: string,
+  userId: string,
+  scope?: DesignScope,
+): Promise<{ id: string; json: unknown } | null> {
+  const owner = { brand: { creatorProfile: { userId } } }
   const design = await prisma.design.findFirst({
-    where: { productId, flavorPresetId: null, product: { brand: { creatorProfile: { userId } } } },
+    where: scope?.designId
+      ? // Exact on-canvas design — ownership re-checked (never trust a client id).
+        { id: scope.designId, productId, product: owner }
+      : // Flavor slot; null = the shared BASE design (the canvas's default surface).
+        { productId, flavorPresetId: scope?.flavorPresetId ?? null, product: owner },
     select: { id: true, versions: { where: { version: WORKING_VERSION }, select: { designJson: true }, take: 1 } },
   })
   if (!design) return null
@@ -447,10 +464,11 @@ export async function snapshotDesign(
   kind: SnapshotKind = 'AUTO',
   label?: string,
   thumbnail?: string | null,
+  scope?: DesignScope,
 ): Promise<{ ok: true } | SaveError> {
   try {
     const user = await requireUser()
-    const d = await ownedDesign(productId, user.id)
+    const d = await ownedDesign(productId, user.id, scope)
     if (!d) return { ok: false, error: 'Design not found or access denied' }
     if (d.json == null) return { ok: true }
     await createSnapshot({ entityType: 'DESIGN', entityId: d.id, snapshot: d.json, kind, label: label ?? null, createdById: user.id, thumbnail: thumbnail ?? null })
@@ -461,10 +479,10 @@ export async function snapshotDesign(
   }
 }
 
-/** List version-history metadata (newest first) for the drawer. */
-export async function listDesignSnapshots(productId: string): Promise<SnapshotMeta[]> {
+/** List version-history metadata (newest first) for the drawer — slot-scoped. */
+export async function listDesignSnapshots(productId: string, scope?: DesignScope): Promise<SnapshotMeta[]> {
   const user = await requireUser()
-  const d = await ownedDesign(productId, user.id)
+  const d = await ownedDesign(productId, user.id, scope)
   if (!d) return []
   return listSnapshots('DESIGN', d.id)
 }
@@ -477,10 +495,11 @@ export async function listDesignSnapshots(productId: string): Promise<SnapshotMe
 export async function restoreDesignSnapshot(
   productId: string,
   snapshotId: string,
+  scope?: DesignScope,
 ): Promise<{ ok: true; json: unknown } | SaveError> {
   try {
     const user = await requireUser()
-    const d = await ownedDesign(productId, user.id)
+    const d = await ownedDesign(productId, user.id, scope)
     if (!d) return { ok: false, error: 'Design not found or access denied' }
     const json = await getSnapshotJson(snapshotId, 'DESIGN', d.id)
     if (json == null) return { ok: false, error: 'Snapshot not found' }
