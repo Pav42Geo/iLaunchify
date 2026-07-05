@@ -4,6 +4,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { resolveChannelAdapter, variantKey, applyLedgerEntry, type ChannelCode, type ListingVariantInput } from '@ilaunchify/channels'
+import { configurationChannelVariants, isCurrentConfiguration } from '@ilaunchify/orders'
 import { recomputeStockAlert } from '../../../channels/inventory/alerts'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
@@ -400,17 +401,47 @@ export async function pushListing(input: { productId: string; channelCode: strin
   }
 
   const priceStr = link.price != null ? String(link.price) : (product.priceCents / 100).toFixed(2)
-  const flavors = product.productTemplateId
-    ? await prisma.flavorPreset.findMany({
-        where: { productTemplateId: product.productTemplateId, status: 'ACTIVE' },
-        orderBy: { sortOrder: 'asc' },
-        select: { id: true, name: true },
-      })
-    : []
-  const variants: ListingVariantInput[] =
-    flavors.length > 0
-      ? flavors.map((f) => ({ variantKey: variantKey(product.id, f.id), title: f.name, price: priceStr }))
-      : [{ variantKey: variantKey(product.id), title: product.name, price: priceStr }]
+
+  // Channel variants come from the creator's ORDER-TIME configuration snapshot —
+  // ONLY the selected flavors, each with its per-flavor price (a 2-of-6 pick lists
+  // 2 variants, not the full pool). Read the latest order's OrderItem snapshot
+  // (cast-guarded — configurationSnapshot post-dates the generated client until
+  // db:push). Falls back to the full active flavor pool when there's no snapshot
+  // yet (product published before it was ever ordered / legacy / pre-push).
+  const latestItem = await (
+    prisma as unknown as {
+      orderItem: { findFirst: (a: unknown) => Promise<{ configurationSnapshot?: unknown } | null> }
+    }
+  ).orderItem
+    .findFirst({
+      where: { productId: product.id, order: { creatorUserId: user.id } },
+      orderBy: { order: { createdAt: 'desc' } },
+      select: { configurationSnapshot: true },
+    })
+    .catch(() => null)
+  const snapshot = (latestItem?.configurationSnapshot ?? null) as { version?: unknown } | null
+  const cfgVariants = isCurrentConfiguration(snapshot) ? configurationChannelVariants(snapshot) : null
+
+  let variants: ListingVariantInput[]
+  if (cfgVariants && cfgVariants.length > 0) {
+    variants = cfgVariants.map((v) => ({
+      variantKey: variantKey(product.id, v.flavorPresetId),
+      title: v.name,
+      price: v.unitPriceCents != null ? (v.unitPriceCents / 100).toFixed(2) : priceStr,
+    }))
+  } else {
+    const flavors = product.productTemplateId
+      ? await prisma.flavorPreset.findMany({
+          where: { productTemplateId: product.productTemplateId, status: 'ACTIVE' },
+          orderBy: { sortOrder: 'asc' },
+          select: { id: true, name: true },
+        })
+      : []
+    variants =
+      flavors.length > 0
+        ? flavors.map((f) => ({ variantKey: variantKey(product.id, f.id), title: f.name, price: priceStr }))
+        : [{ variantKey: variantKey(product.id), title: product.name, price: priceStr }]
+  }
 
   try {
     const external = await adapter.pushListing(
