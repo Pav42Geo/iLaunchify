@@ -51,6 +51,7 @@ import {
   VarietyFactsSvg,
   SupplementFactsSvg,
   GuaranteedAnalysisSvg,
+  InciDeclarationSvg,
 } from '@ilaunchify/ui'
 import type { PanelData } from '@ilaunchify/types'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
@@ -261,6 +262,13 @@ interface Props {
     adequacyStatement: string | null
     feedingDirections: string | null
   } | null
+  /** Slice 3 — COSMETIC INCI declaration data (from the template formulation). */
+  pictureCosmeticData?: {
+    ingredients: string
+    netContents?: string
+    responsiblePerson?: string
+    adverseEventContact?: string
+  } | null
   /**
    * DS-73d — current creator subscription tier. Drives the EXPORT
    * upgrade gate: Maker creators get the UpgradeOverlay instead of the
@@ -403,6 +411,7 @@ export function CanvasLayoutShell({
   pictureSinglePanel = null,
   pictureVarietyColumns = [],
   picturePetData = null,
+  pictureCosmeticData = null,
   creatorTier = 'maker',
   partnerPrintSpec = null,
   restrictionLabels = [],
@@ -1239,6 +1248,7 @@ export function CanvasLayoutShell({
               pictureSinglePanel={pictureSinglePanel}
               pictureVarietyColumns={pictureVarietyColumns}
               picturePetData={picturePetData}
+              pictureCosmeticData={pictureCosmeticData}
               templateAuthor={templateAuthor}
               dielineFrameLayout={frameLayout}
               onClose={closeDrawer}
@@ -1806,6 +1816,7 @@ function ToolDrawer({
   pictureSinglePanel,
   pictureVarietyColumns,
   picturePetData,
+  pictureCosmeticData,
   templateAuthor,
   dielineFrameLayout,
   onClose,
@@ -1861,6 +1872,12 @@ function ToolDrawer({
     ingredients: string
     adequacyStatement: string | null
     feedingDirections: string | null
+  } | null
+  pictureCosmeticData: {
+    ingredients: string
+    netContents?: string
+    responsiblePerson?: string
+    adverseEventContact?: string
   } | null
   /** Admin template-author mode — the AI drawer loads product-less against this die-cut + domain. */
   templateAuthor: { domain: string; container: string | null; aspectBucket: string | null; dieCutId?: string | null } | null
@@ -1939,6 +1956,9 @@ function ToolDrawer({
               picture: {
                 topology: labelTopology ?? (flavors.length > 0 ? 'PER_FLAVOR' : 'SINGLE'),
                 recipe: pictureBaseRecipe ?? null,
+                // FOOD/SUPPLEMENT render from PanelData; PET + COSMETIC have their own
+                // shapes; OTC has no data source yet (DrugFacts engine isn't wired into
+                // computeProductLabel) → null → recipe fallback.
                 factsPanel:
                   labelingType === 'PET_PRODUCT' && picturePetData ? (
                     <GuaranteedAnalysisSvg
@@ -1947,6 +1967,13 @@ function ToolDrawer({
                       adequacyStatement={picturePetData.adequacyStatement ?? undefined}
                       feedingDirections={picturePetData.feedingDirections ?? undefined}
                       netContents={productCtx.netQuantity ?? undefined}
+                    />
+                  ) : labelingType === 'COSMETIC' && pictureCosmeticData ? (
+                    <InciDeclarationSvg
+                      ingredients={pictureCosmeticData.ingredients}
+                      netContents={pictureCosmeticData.netContents ?? productCtx.netQuantity ?? undefined}
+                      responsiblePerson={pictureCosmeticData.responsiblePerson ?? undefined}
+                      adverseEventContact={pictureCosmeticData.adverseEventContact ?? undefined}
                     />
                   ) : (
                     renderDomainFactsPanel(labelingType, pictureSinglePanel)

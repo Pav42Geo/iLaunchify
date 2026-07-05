@@ -31,7 +31,7 @@ import { resolveProductPhrases } from './phrase-actions'
 import { resolvePartnerPrintSpec } from './partner-spec-actions'
 import { loadDielineFrames, type DielineFramesData } from '@/lib/dieline-frames'
 import { buildBrandCanvasAssets } from '@/lib/brand-canvas-assets'
-import { resolveStudioNutrition, getVarietyPreviewColumns } from '@/components/labels/label-actions'
+import { resolveStudioNutrition, getVarietyPreviewColumns, computeProductLabel } from '@/components/labels/label-actions'
 import {
   panelDataToNutritionPanelData,
   varietyColumnsToAggregateNutritionData,
@@ -443,6 +443,16 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
     studioCategory(product.category),
   )
 
+  // COSMETIC INCI declaration for the product-picture Facts panel (slice 3) — from the
+  // template's persisted formulation. Only computed for cosmetic products.
+  const cosmeticLabel = labelingType === 'COSMETIC' ? await computeProductLabel(productId) : null
+  const pictureCosmeticData =
+    (cosmeticLabel?.ok
+      ? (cosmeticLabel.data.find((l) => l.domain === 'COSMETIC') as
+          | { ingredients: string; netContents?: string; responsiblePerson?: string; adverseEventContact?: string }
+          | undefined)
+      : undefined) ?? null
+
   // Per-product required (locked-mandatory) phrases — the compliance scanner
   // flags any whose text is missing from the canvas. Reuses the same resolver
   // the Phrases drawer uses (engine + live recipe).
@@ -586,6 +596,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
             }
           : null
       }
+      pictureCosmeticData={pictureCosmeticData}
     />
   )
 }
