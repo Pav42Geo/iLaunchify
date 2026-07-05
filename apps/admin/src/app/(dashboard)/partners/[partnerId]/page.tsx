@@ -303,6 +303,31 @@ export default async function PartnerDetail({ params }: PageProps) {
   const yieldPcts = yieldLots
     .filter((l) => (l.unitsExpected ?? 0) > 0)
     .map((l) => (l.unitsProduced / (l.unitsExpected as number)) * 100)
+  // Risk Center M3 — latest nightly PRS per service; the scorecard shows the
+  // most conservative one (worst service is the partner's effective standing).
+  let prs: number | null = null
+  let prsBand: string | null = null
+  try {
+    const prsRows = await Promise.all(
+      serviceIds.map((sid) =>
+        prisma.partnerRiskFeature.findFirst({
+          where: { partnerServiceId: sid },
+          orderBy: { computedAt: 'desc' },
+          select: { featuresJson: true },
+        }),
+      ),
+    )
+    for (const row of prsRows) {
+      const f = (row?.featuresJson ?? {}) as { prs?: number | null; prsBand?: string | null }
+      if (typeof f.prs === 'number' && (prs === null || f.prs < prs)) {
+        prs = f.prs
+        prsBand = f.prsBand ?? null
+      }
+    }
+  } catch {
+    // pre-push RiskCenter tables — scorecard renders without PRS
+  }
+
   const scorecard = {
     delivered: deliveredCount,
     acceptRatePct:
@@ -312,6 +337,8 @@ export default async function PartnerDetail({ params }: PageProps) {
     reprints: reprintCount,
     avgYieldPct:
       yieldPcts.length > 0 ? yieldPcts.reduce((a, b) => a + b, 0) / yieldPcts.length : null,
+    prs,
+    prsBand,
   }
 
   // Aggregate stats for the quick-stats card

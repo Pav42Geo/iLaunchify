@@ -29,6 +29,7 @@ import {
   Send,
   Receipt,
   Zap,
+  Gauge,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -57,6 +58,9 @@ export interface PartnerNavItem {
 
 const NAV_DASHBOARD: PartnerNavItem = { href: '/dashboard', label: 'Dashboard', icon: BarChart3 }
 const NAV_ORDERS: PartnerNavItem = { href: '/orders', label: 'Orders', icon: Inbox }
+// Risk Center M3 — partner-visible reliability score with FULL component
+// breakdown (Pavel 2026-07-05). Operational surface: every member sees it.
+const NAV_PERFORMANCE: PartnerNavItem = { href: '/performance', label: 'Performance', icon: Gauge }
 const NAV_INBOUND: PartnerNavItem = { href: '/inbound', label: 'Inbound', icon: PackageOpen }
 const NAV_INVENTORY: PartnerNavItem = { href: '/inventory', label: 'Inventory', icon: Boxes }
 const NAV_OUTBOUND: PartnerNavItem = { href: '/outbound', label: 'Outbound', icon: Send }
@@ -101,7 +105,7 @@ export function roleNavFor(
   // P3 §2 role scoping: non-admin members get the OPERATIONAL surfaces of
   // their services; commercial + catalog surfaces (products, packaging,
   // pricing, payments, billing) are org-admin only.
-  const nav: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS]
+  const nav: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS, NAV_PERFORMANCE]
   if (fulfillment) nav.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
   if (isOrgAdmin) {
     if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)

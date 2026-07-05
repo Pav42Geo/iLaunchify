@@ -15,6 +15,15 @@ export interface ScorecardData {
   discrepancies: number // ReceivingDiscrepancy rows on their producing dispatches
   reprints: number // dispatches reprintOf-linked to their jobs
   avgYieldPct: number | null // ProductionLot unitsProduced / unitsExpected
+  // Risk Center M3 — nightly Partner Reliability Score (worst service).
+  prs?: number | null
+  prsBand?: string | null
+}
+
+const PRS_PILL: Record<string, string> = {
+  HEALTHY: 'bg-success-50 text-success-800 ring-1 ring-success-200',
+  AT_RISK: 'bg-warning-50 text-warning-800 ring-1 ring-warning-200',
+  CRITICAL: 'bg-danger-50 text-danger-800 ring-1 ring-danger-200',
 }
 
 function Row({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
@@ -38,6 +47,21 @@ export function PartnerScorecard({ data }: { data: ScorecardData }) {
           Read-only V1
         </span>
       </h2>
+      {typeof data.prs === 'number' && (
+        <div className="mt-3 flex items-center justify-between rounded-xl bg-ink-50 px-3 py-2">
+          <span className="text-[12px] font-semibold text-ink-700">Reliability score (PRS)</span>
+          <span className="flex items-center gap-2">
+            <span className="font-display text-[18px] font-bold tabular-nums leading-none text-ink-900">
+              {Math.round(data.prs)}
+            </span>
+            {data.prsBand && (
+              <span className={cn('rounded-full px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', PRS_PILL[data.prsBand] ?? 'bg-ink-100 text-ink-700')}>
+                {data.prsBand.replace('_', ' ')}
+              </span>
+            )}
+          </span>
+        </div>
+      )}
       <dl className="mt-3 space-y-2 text-[12.5px]">
         <Row label="Completed dispatches" value={data.delivered.toLocaleString()} />
         <Row

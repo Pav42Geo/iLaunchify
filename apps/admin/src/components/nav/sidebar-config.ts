@@ -268,6 +268,10 @@ const PRIMARY: SidebarRegion = {
       children: [
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers', capability: 'tiers:write' },
         { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains', capability: 'platform:admin' },
+        // Risk Center M2 — detector mode ladder + thresholds (also reachable
+        // from the Risk Inbox header). Pavel 2026-07-05: mounted in Settings,
+        // labeled "Risk Center".
+        { kind: 'item', label: 'Risk Center', icon: ShieldAlert, href: '/risk/detectors', capability: 'platform:admin' },
         { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy', capability: 'tickets:admin' },
         {
           kind: 'group',
