@@ -13,6 +13,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { generateOrderManifest } from './manifest'
+import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
 
@@ -403,18 +404,27 @@ export async function createDispatches(params: {
     // OrderItem.designVersionId and renders the Fabric JSON).
     const dispatches = await tx.orderDispatch.findMany({
       where: { orderId: order.id },
-      select: { id: true },
+      select: { id: true, type: true },
     })
+    // Final shipper = the hop that physically ships finished goods to the order's
+    // ship-to: the co-packer when assembly exists, else the manufacturer. Printers
+    // ship labels UPSTREAM (never final); warehouses always get the full address
+    // (the engine forces that regardless of the flag). (docs/PARTNER_ORDER_PACKETS.md)
+    const hasCopacking = dispatches.some((d) => d.type === 'COPACKING')
     for (const d of dispatches) {
       try {
         const manifest = await generateOrderManifest(tx, {
           orderId: order.id,
           orderDispatchId: d.id,
         })
+        // Persist the ROLE-SCOPED need-to-know packet (not the full manifest) so the
+        // partner/admin view + raw-JSON download expose only this role's slice.
+        const isFinalShipper = d.type === 'COPACKING' || (d.type === 'PRODUCT' && !hasCopacking)
+        const packet = scopeManifestForDispatchType(manifest, manifest.dispatchType, { isFinalShipper })
         await tx.orderDispatch.update({
           where: { id: d.id },
           data: {
-            finishManifestJson: manifest as unknown as object,
+            finishManifestJson: packet as unknown as object,
             bundleStatus: 'PENDING_GENERATION',
           },
         })

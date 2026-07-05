@@ -41,7 +41,7 @@ import {
 import { prisma } from '@ilaunchify/db'
 import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { ResolveDisputeControls } from './ResolveDisputeControls'
-import { cn, ProductionManifestView } from '@ilaunchify/ui'
+import { cn, ProductionManifestView, RolePacketView } from '@ilaunchify/ui'
 import type { ProductionManifest } from '@ilaunchify/orders'
 import { computeStorageAccrual, type StorageFeeSnapshot } from '@ilaunchify/shipping'
 import { rankWarehousesForOrder, type FcRankingContext } from './logistics-data'
@@ -645,11 +645,19 @@ function DispatchesCard({
                         <span className="font-normal text-ink-400 group-open:hidden">· show</span>
                       </summary>
                       <div className="mt-2">
-                        <ProductionManifestView
-                          manifest={(d.finishManifestJson as unknown as ProductionManifest | null) ?? null}
-                          status={d.bundleStatus as 'PENDING_GENERATION' | 'READY' | 'FAILED'}
-                          manifestDownloadHref={`/api/manifest/${d.id}`}
-                        />
+                        {d.finishManifestJson &&
+                        typeof d.finishManifestJson === 'object' &&
+                        'role' in (d.finishManifestJson as object) ? (
+                          <RolePacketView
+                            packet={d.finishManifestJson as unknown as Parameters<typeof RolePacketView>[0]['packet']}
+                          />
+                        ) : (
+                          <ProductionManifestView
+                            manifest={(d.finishManifestJson as unknown as ProductionManifest | null) ?? null}
+                            status={d.bundleStatus as 'PENDING_GENERATION' | 'READY' | 'FAILED'}
+                            manifestDownloadHref={`/api/manifest/${d.id}`}
+                          />
+                        )}
                       </div>
                     </details>
                   </div>

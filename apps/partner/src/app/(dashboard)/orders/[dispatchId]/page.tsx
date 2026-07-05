@@ -26,7 +26,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { DispatchActions } from './DispatchActions'
-import { ProductionManifestView } from '@ilaunchify/ui'
+import { ProductionManifestView, RolePacketView } from '@ilaunchify/ui'
 import { ChangeRequestCard } from './ChangeRequestCard'
 import { DisputeResponsePanel } from './DisputeResponsePanel'
 import { ShipRequirementsCard, type ShipDocRowView, type UploadedShipDoc } from './ShipRequirementsCard'
@@ -528,12 +528,33 @@ export default async function DispatchDetailPage({
             status={dispatch.status}
           />
 
-          {/* Production manifest */}
-          <ProductionManifestView
-            manifest={(dispatch.finishManifestJson as unknown as ProductionManifest | null) ?? null}
-            status={dispatch.bundleStatus}
-            manifestDownloadHref={`/api/manifest/${dispatch.id}`}
-          />
+          {/* Work packet — the role-scoped need-to-know slice (partner-order-packets).
+              New dispatches persist a RolePacket; legacy/ungenerated ones fall back to
+              the full-manifest view. */}
+          {dispatch.finishManifestJson &&
+          typeof dispatch.finishManifestJson === 'object' &&
+          'role' in (dispatch.finishManifestJson as object) ? (
+            <section className="rounded-2xl border border-ink-200 bg-white p-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="font-display text-[15px] font-semibold text-ink-900">Your work packet</h2>
+                <a
+                  href={`/api/manifest/${dispatch.id}`}
+                  className="text-[12px] font-semibold text-pink-700 hover:underline"
+                >
+                  Download JSON
+                </a>
+              </div>
+              <RolePacketView
+                packet={dispatch.finishManifestJson as unknown as Parameters<typeof RolePacketView>[0]['packet']}
+              />
+            </section>
+          ) : (
+            <ProductionManifestView
+              manifest={(dispatch.finishManifestJson as unknown as ProductionManifest | null) ?? null}
+              status={dispatch.bundleStatus}
+              manifestDownloadHref={`/api/manifest/${dispatch.id}`}
+            />
+          )}
 
           {/* Event timeline */}
           <section className="rounded-2xl border border-ink-200 bg-white p-5">
