@@ -20,6 +20,24 @@ export const PARTNER_PLAN_CODES = {
   premier: 'partner_premier',
 } as const
 
+// -----------------------------------------------------------------------------
+// DESIGN ALTERNATE CAPS — Studio versioning v2 §4.4 (Pavel 2026-07-05: gate
+// COUNT only; history + named versions never paywalled). Pure data — safe to
+// import from client components (the strip's cap nudge). Server enforcement
+// joins createAlternate in Phase 5. null = unlimited.
+// -----------------------------------------------------------------------------
+
+export const DESIGN_ALTERNATE_CAPS: Record<'maker' | 'builder' | 'agency', number | null> = {
+  maker: 2,
+  builder: 5,
+  agency: null,
+}
+
+/** Max sibling alternates per design slot for a creator tier (null = unlimited). */
+export function designAlternateCap(tier: string): number | null {
+  return DESIGN_ALTERNATE_CAPS[tier as keyof typeof DESIGN_ALTERNATE_CAPS] ?? DESIGN_ALTERNATE_CAPS.maker
+}
+
 export type CreatorPlanCode =
   (typeof CREATOR_PLAN_CODES)[keyof typeof CREATOR_PLAN_CODES]
 export type PartnerPlanCode =

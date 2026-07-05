@@ -6,6 +6,8 @@ export {
   CREATOR_FEATURES,
   PARTNER_FEATURES,
   FEE_EVENTS,
+  DESIGN_ALTERNATE_CAPS,
+  designAlternateCap,
 } from './codes'
 
 export type {

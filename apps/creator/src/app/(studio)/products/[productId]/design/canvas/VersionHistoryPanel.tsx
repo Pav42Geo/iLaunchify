@@ -10,7 +10,7 @@
 // The top bar's prev/next icons move `selectedId` through the flat list.
 
 import * as React from 'react'
-import { X, RotateCcw, Loader2, Pin, PinOff, Bookmark, BookmarkPlus, ImageOff, MoreVertical, Pencil } from 'lucide-react'
+import { X, RotateCcw, Loader2, Pin, PinOff, Bookmark, BookmarkPlus, ImageOff, MoreVertical, Pencil, GitFork } from 'lucide-react'
 import { relativeTime, type SnapshotItem } from '@ilaunchify/ui'
 
 function KindBadge({ item }: { item: SnapshotItem }) {
@@ -63,6 +63,7 @@ export function VersionHistoryPanel({
   onRestore,
   onUpdateMeta,
   onSaveVersion,
+  onOpenAsAlternate,
   restoringId,
   currentId,
   scopeLabel,
@@ -77,6 +78,8 @@ export function VersionHistoryPanel({
   onUpdateMeta?: (id: string, patch: { label?: string | null; pinned?: boolean }) => void | Promise<void>
   /** Opens the Save-version dialog (also on ⌘S / top-bar bookmark). */
   onSaveVersion?: () => void
+  /** §4.2 secondary action — fork this snapshot into a new draft alternate. */
+  onOpenAsAlternate?: (snapshotId: string) => void | Promise<void>
   restoringId: string | null
   currentId: string | null
   /** Studio versioning v2 §4.1 — the slot on canvas ("Chocolate · Front label").
@@ -201,6 +204,15 @@ export function VersionHistoryPanel({
                     <PinOff className="h-3.5 w-3.5" /> Unpin
                   </button>
                 </>
+              )}
+              {onOpenAsAlternate && (
+                <button
+                  type="button"
+                  onClick={() => { setMenuId(null); void onOpenAsAlternate(it.id) }}
+                  className="flex w-full items-center gap-2 border-t border-ink-100 px-3 py-1.5 text-left text-[12px] text-ink-700 hover:bg-ink-50"
+                >
+                  <GitFork className="h-3.5 w-3.5" /> Open as new alternate
+                </button>
               )}
             </div>
           </>

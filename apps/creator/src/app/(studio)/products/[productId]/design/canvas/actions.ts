@@ -399,6 +399,18 @@ export async function loadDesignJson(
   return (row?.designJson as unknown) ?? null
 }
 
+/** Server-only fetch by EXACT design id (alternates, versioning v2 §4.3) — the
+ *  compare modal + alternate swap load a specific sibling's working JSON.
+ *  Ownership re-checked through the product chain; null when absent/foreign. */
+export async function loadAlternateDesignJson(
+  productId: string,
+  designId: string,
+): Promise<unknown | null> {
+  const user = await requireUser()
+  const d = await ownedDesign(productId, user.id, { designId })
+  return d?.json ?? null
+}
+
 /** Which of a product's per-flavor Designs already have a saved label (a working
  *  DesignVersion). Powers the Label & Compliance completeness list + the submit
  *  gate (checkFlavorCompleteness). Owned-by-user scoped. Base design excluded —

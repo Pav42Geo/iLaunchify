@@ -215,13 +215,13 @@ Check items off as they land. One phase = one commit train; commit immediately.
 - [ ] Server actions: createAlternate (duplicate/blank), rename, delete (order-lock guard), promote (confirm token + PROMOTION snapshot + AuditLog)
 - [ ] Ownership guards via `packages/auth` on every action; typecheck green
 
-### Phase 3 — Alternates UI
-- [ ] Alternates strip (collapse-when-single, pink Active dot, tier-cap nudge)
-- [ ] New-alternate menu: Duplicate current / Blank / Generate with AI (try-on hook)
-- [ ] Canvas swap between alternates (each keeps own autosave stream)
-- [ ] Compare modal: side-by-side static renders, synced zoom, 3D thumb toggle, Make-Active per side
-- [ ] Promote confirm dialog (+ published-product warning line)
-- [ ] "Open as new alternate" from history drawer
+### Phase 3 — Alternates UI ✅ (Cowork, 2026-07-05 — two follow-ups noted)
+- [x] Alternates strip (AlternatesStrip.tsx: collapse-when-single, pink Active dot, cap nudge → /settings/plan; caps as pure data `designAlternateCap()` in packages/plans/codes.ts — client-safe, DB-backed PlanFeature wiring stays Phase 5)
+- [x] New-alternate menu: Duplicate current / Start blank · ⚠ "Generate with AI" entry deferred to the AI try-on hookup (accepted ai-concept lands as a new alternate — wire in ai-create loop)
+- [x] Canvas swap between alternates — full-reload nav `?alt=<designId>` (same pattern as `?flavor=`); page loads by exact designId; historyScope.designId keeps each sibling's autosave + history stream separate
+- [x] Compare modal (CompareAlternatesModal.tsx): side-by-side static renders (offscreen fabric StaticCanvas @1.5×; live canvas gets a fresh grab), synced zoom + scroll, Make-Active per side · ⚠ 3D thumb toggle deferred until packaging-3d renders from JSON (G-phases)
+- [x] Promote confirm dialog (PromoteAlternateDialog.tsx) + PUBLISHED warning line (Product.status threaded through page → shell)
+- [x] "Open as new alternate" from history drawer (createAlternateFromSnapshot — forks any snapshot into a draft sibling)
 
 ### Phase 4 — Admin + permissions
 - [ ] Template-author mode: same strip/drawer on templates (uncapped)

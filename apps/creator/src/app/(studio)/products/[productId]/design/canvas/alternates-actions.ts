@@ -17,7 +17,7 @@
 // calls them is Phase 3, which mounts after the push).
 
 import { revalidatePath } from 'next/cache'
-import { prisma, createSnapshot } from '@ilaunchify/db'
+import { prisma, createSnapshot, getSnapshotJson } from '@ilaunchify/db'
 import type { SnapshotKind } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -151,6 +151,54 @@ export async function createAlternate(
       entityId: created.id,
       action: 'DESIGN_ALTERNATE_CREATED',
       payload: { productId: src.productId, mode, forkedFromId: mode === 'duplicate' ? src.id : null, name: name?.trim() || null },
+    })
+    revalidatePath(`/products/${src.productId}/design/canvas`)
+    return { ok: true, designId: created.id }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not create alternate' }
+  }
+}
+
+/**
+ * Fork a HISTORY SNAPSHOT into a new draft alternate in the source design's slot
+ * (§4.2 "Open as new alternate"). Same guarantees as createAlternate: the new
+ * sibling is a draft, never steals Active. Snapshot must belong to the source
+ * design (entity-scoped fetch).
+ */
+export async function createAlternateFromSnapshot(
+  sourceDesignId: string,
+  snapshotId: string,
+  name?: string,
+): Promise<Result> {
+  try {
+    const user = await requireUser()
+    const src = await ownedAlternate(sourceDesignId, user.id)
+    if (!src) return { ok: false, error: 'Design not found or access denied' }
+    const json = await getSnapshotJson(snapshotId, 'DESIGN', src.id)
+    if (json == null) return { ok: false, error: 'Version not found' }
+
+    const created = await designDelegate().design.create({
+      data: {
+        productId: src.productId,
+        brandId: src.brandId,
+        status: 'DRAFT',
+        flavorPresetId: src.flavorPresetId,
+        surfaceKey: src.surfaceKey,
+        isActiveAlternate: false,
+        alternateName: name?.trim() || null,
+        forkedFromId: src.id,
+      },
+      select: { id: true },
+    })
+    await prisma.designVersion.create({
+      data: { designId: created.id, version: WORKING_VERSION, designJson: json as never, source: 'USER_UPLOAD' },
+    })
+
+    await logAuditAs(user, {
+      entityType: 'Design',
+      entityId: created.id,
+      action: 'DESIGN_ALTERNATE_CREATED',
+      payload: { productId: src.productId, mode: 'from-snapshot', snapshotId, forkedFromId: src.id, name: name?.trim() || null },
     })
     revalidatePath(`/products/${src.productId}/design/canvas`)
     return { ok: true, designId: created.id }
