@@ -1855,6 +1855,22 @@ function ToolDrawer({
               packaging: productMeta.packaging,
               certs: certBadges.map((b) => ({ name: b.certTypeName, badgeUrl: b.badgeUrl })),
               dieCut,
+              // Product picture (docs/CREATOR_PRODUCT_PICTURE_MODAL.md) — slice 1:
+              // topology + the SELECTED flavors' identity + label completeness. SoI,
+              // per-flavor recipes + rendered Facts panels, finishes, phrases and the
+              // aggregate panel are the next slices (need page.tsx per-flavor forwarding
+              // + the per-domain render adapters). Every other picture field is optional,
+              // so the drawer degrades gracefully until they land.
+              picture: {
+                topology: flavors.length > 0 ? 'PER_FLAVOR' : 'SINGLE',
+                flavors: flavors.map((f) => ({
+                  flavorPresetId: f.id,
+                  name: f.name,
+                  swatchHex: f.swatchHex,
+                  statementOfIdentity: null,
+                  hasLabel: savedFlavorIds.includes(f.id),
+                })),
+              },
             }}
             guides={guides}
             setGuides={setGuides}
