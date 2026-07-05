@@ -59,6 +59,17 @@ function makeExpect(actual, negate = false) {
     toMatch: (e) => check(e instanceof RegExp ? e.test(String(actual)) : String(actual).includes(String(e)), `expected ${fmt(actual)} to match ${fmt(e)}`),
     toHaveLength: (n) => check(actual != null && actual.length === n, `expected length ${actual?.length} to be ${n}`),
     toMatchObject: (e) => check(Object.keys(e).every((k) => deepEqual(actual?.[k], e[k])), `expected ${fmt(actual)} to match ${fmt(e)}`),
+    toHaveProperty: (path, ...rest) => {
+      const parts = String(path).split('.')
+      let cur = actual
+      let has = true
+      for (const p of parts) {
+        if (cur != null && Object.prototype.hasOwnProperty.call(Object(cur), p)) cur = cur[p]
+        else { has = false; break }
+      }
+      const ok = rest.length ? has && deepEqual(cur, rest[0]) : has
+      check(ok, `expected ${fmt(actual)} to have property "${path}"${rest.length ? ` = ${fmt(rest[0])}` : ''}`)
+    },
     toThrow: (expected) => {
       let threw = false
       let err
