@@ -201,4 +201,9 @@ export {
   completeDispatchUnits,
   loadCapacityMonths,
 } from './capacity-ledger'
-export { recordCapacityRiskAtCheckout, type CheckoutCapacityInput } from './capacity-risk-checkout'
+export {
+  recordCapacityRiskAtCheckout,
+  recordOrderVelocityAtCheckout,
+  type CheckoutCapacityInput,
+  type CheckoutVelocityInput,
+} from './capacity-risk-checkout'

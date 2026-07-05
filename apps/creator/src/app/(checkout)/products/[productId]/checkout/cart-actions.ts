@@ -43,6 +43,7 @@ import {
   type FcAwardHistoryEntry,
   type SampleCreditEntry,
   recordCapacityRiskAtCheckout,
+  recordOrderVelocityAtCheckout,
 } from '@ilaunchify/orders'
 import {
   createCheckoutSession,
@@ -891,6 +892,12 @@ export async function placeOrderFromCheckoutDraft(
     orderId: order.id,
     partnerServiceId: routing.manufacturingServiceId,
     orderUnits: qty * Math.max(1, packPersist?.packUnitsPerPack ?? 1),
+  }).catch(() => {/* MONITOR mode — never blocks checkout */})
+  // M4 — ORDER_VELOCITY: new-account bursts + outsized first orders.
+  await recordOrderVelocityAtCheckout({
+    orderId: order.id,
+    creatorUserId: user.id,
+    totalCents,
   }).catch(() => {/* MONITOR mode — never blocks checkout */})
 
   // --- 11.a Per-flavor labels Phase 4 — snapshot each flavor's working design

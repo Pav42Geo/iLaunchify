@@ -2958,6 +2958,10 @@ model Charge {
   applicationFeeCents   Int // platform's cut (withheld at charge time)
   status                ChargeStatus
   statementDescriptor   String?
+  // Risk Center M4 — Stripe Radar outcome, captured from charge.succeeded
+  // (risk_score needs Radar for Fraud Teams; risk_level ships on every account).
+  riskScore             Int?
+  riskLevel             String? // normal | elevated | highest | not_assessed | unknown
   // Relations
   order                 Order        @relation(fields: [orderId], references: [id])
   transfers             Transfer[]

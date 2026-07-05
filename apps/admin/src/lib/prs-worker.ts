@@ -100,6 +100,146 @@ async function persistNightlyDecision(
   return true
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// M4 — money detectors (nightly, MONITOR-first). CHARGEBACK_RATE is
+// creator-scoped; CLAWBACK_EXPOSURE is partner-scoped and stays LOG-ONLY until
+// Stripe go-live verification + the RBAC refund fence land (payments-readiness)
+// — actually holding a payout is the GATE promotion, not this sweep.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function runMoneySweep(now: Date = new Date()): Promise<{ events: number }> {
+  let events = 0
+  const settings = await loadRiskSettings()
+
+  // CHARGEBACK_RATE — creator disputes vs charges, rolling 90d.
+  try {
+    const cfg = settings.CHARGEBACK_RATE?.thresholds ?? {}
+    const ceilingPct = cfg.ceilingPct ?? 0.75
+    const windowStart = new Date(now.getTime() - (cfg.windowDays ?? 90) * MS_PER_DAY)
+
+    const disputes = await prisma.dispute.findMany({
+      where: { createdAt: { gte: windowStart } },
+      select: { charge: { select: { order: { select: { creatorUserId: true } } } } },
+    })
+    const disputesByCreator = new Map<string, number>()
+    for (const d of disputes) {
+      const uid = d.charge.order.creatorUserId
+      disputesByCreator.set(uid, (disputesByCreator.get(uid) ?? 0) + 1)
+    }
+
+    for (const [creatorUserId, disputeCount] of disputesByCreator) {
+      const chargeCount = await prisma.charge.count({
+        where: { createdAt: { gte: windowStart }, order: { creatorUserId }, status: 'SUCCEEDED' },
+      })
+      if (chargeCount === 0) continue
+      const ratePct = (disputeCount / chargeCount) * 100
+      if (ratePct <= ceilingPct) continue
+
+      const decision: RiskDecision = {
+        detectorKey: 'CHARGEBACK_RATE',
+        fired: true,
+        severity: ratePct > ceilingPct * 2 ? 'HIGH' : 'WARN',
+        action: 'MONITOR_LOGGED',
+        uncappedAction: 'WARNED',
+        reasons: [
+          `${disputeCount} chargeback(s) across ${chargeCount} charges in 90d = ${Math.round(ratePct * 100) / 100}% (ceiling ${ceilingPct}%)`,
+        ],
+        snapshot: {
+          formulaVersion: 'money-v1',
+          inputs: { creatorUserId, disputeCount, chargeCount },
+          thresholds: { ceilingPct },
+          score: Math.round(ratePct * 100) / 100,
+        },
+      }
+      if (await persistNightlyDecisionFor(decision, 'User', creatorUserId, now)) events++
+    }
+  } catch {
+    // best-effort
+  }
+
+  // CLAWBACK_EXPOSURE — unrecovered clawbacks vs pending payout volume.
+  try {
+    const cfg = settings.CLAWBACK_EXPOSURE?.thresholds ?? {}
+    const ratio = cfg.exposureToPayoutRatio ?? 1
+
+    const exposures = await prisma.partnerClawback.groupBy({
+      by: ['partnerId'],
+      where: { remainingCents: { gt: 0 } },
+      _sum: { remainingCents: true },
+    })
+    for (const e of exposures) {
+      const exposureCents = e._sum.remainingCents ?? 0
+      if (exposureCents <= 0) continue
+      // Pending payout volume for this partner's users (destinationUserId join).
+      const partner = await prisma.partner.findUnique({
+        where: { id: e.partnerId },
+        select: { userId: true },
+      })
+      if (!partner) continue
+      const pending = await prisma.transfer.aggregate({
+        where: { destinationUserId: partner.userId, status: 'PENDING' },
+        _sum: { amountCents: true },
+      })
+      const pendingCents = pending._sum.amountCents ?? 0
+      if (exposureCents <= pendingCents * ratio) continue
+
+      const decision: RiskDecision = {
+        detectorKey: 'CLAWBACK_EXPOSURE',
+        fired: true,
+        severity: pendingCents === 0 ? 'HIGH' : 'WARN',
+        action: 'MONITOR_LOGGED', // GATE (payout hold) only after Stripe go-live + RBAC fence
+        uncappedAction: 'GATED',
+        reasons: [
+          `unrecovered clawbacks $${(exposureCents / 100).toLocaleString()} exceed pending payouts $${(pendingCents / 100).toLocaleString()} × ${ratio}`,
+          'GATE promotion (hold payout for admin approval) blocked on Stripe go-live verification + RBAC refund fence',
+        ],
+        snapshot: {
+          formulaVersion: 'money-v1',
+          inputs: { partnerId: e.partnerId, exposureCents, pendingCents },
+          thresholds: { exposureToPayoutRatio: ratio },
+          score: pendingCents > 0 ? Math.round((exposureCents / pendingCents) * 100) / 100 : 999,
+        },
+      }
+      if (await persistNightlyDecisionFor(decision, 'Partner', e.partnerId, now)) events++
+    }
+  } catch {
+    // best-effort
+  }
+
+  return { events }
+}
+
+/** Generic day-deduped RiskEvent writer for entity types beyond PartnerService. */
+async function persistNightlyDecisionFor(
+  decision: RiskDecision,
+  entityType: string,
+  entityId: string,
+  now: Date,
+): Promise<boolean> {
+  if (!decision.fired) return false
+  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const existing = await prisma.riskEvent.findFirst({
+    where: { detectorKey: decision.detectorKey, entityType, entityId, createdAt: { gte: dayStart } },
+    select: { id: true },
+  })
+  if (existing) return false
+  await prisma.riskEvent.create({
+    data: {
+      detectorKey: decision.detectorKey,
+      severity: decision.severity,
+      entityType,
+      entityId,
+      decision: decision.action === 'NONE' ? 'MONITOR_LOGGED' : decision.action,
+      scoreSnapshotJson: {
+        ...decision.snapshot,
+        reasons: decision.reasons,
+        uncappedAction: decision.uncappedAction,
+      } as unknown as object,
+    },
+  })
+  return true
+}
+
 export async function runPrsSweep(now: Date = new Date()): Promise<PrsSweepResult> {
   const result: PrsSweepResult = { capacityFeatureSnapshots: 0, nightlyDetectorEvents: 0 }
 

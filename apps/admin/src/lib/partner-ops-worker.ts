@@ -23,7 +23,7 @@ import { prisma, docTrackFor } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { dispatchNotification, dispatchToPartnerService, dispatchToPartnerAdmins } from '@ilaunchify/notifications'
 import { logSystemAudit } from '@ilaunchify/audit'
-import { runPrsSweep } from './prs-worker'
+import { runPrsSweep, runMoneySweep } from './prs-worker'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 
@@ -498,6 +498,7 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
   try {
     const prs = await runPrsSweep(now)
     result.capacityFeatureSnapshots = prs.capacityFeatureSnapshots
+    await runMoneySweep(now) // M4 — chargeback rate + clawback exposure (MONITOR)
   } catch {
     // RiskCenter tables not pushed yet, or a partial failure — older sweeps
     // above have already committed their work; the PRS pass retries nightly.

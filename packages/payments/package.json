@@ -11,6 +11,7 @@
     "clean": "rm -rf node_modules .turbo dist"
   },
   "dependencies": {
+    "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/logger": "workspace:*",

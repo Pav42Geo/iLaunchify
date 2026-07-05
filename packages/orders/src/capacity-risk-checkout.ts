@@ -115,3 +115,82 @@ export async function recordCapacityRiskAtCheckout(
     return null // never break checkout
   }
 }
+
+// ── ORDER_VELOCITY (M4) — marketplace rules Radar can't see ─────────────────
+// New-account order bursts and outsized first orders. Post-commit, best-effort,
+// MONITOR-first like everything else. Radar sees the card; we see the account.
+
+export interface CheckoutVelocityInput {
+  orderId: string
+  creatorUserId: string
+  totalCents: number
+}
+
+export async function recordOrderVelocityAtCheckout(input: CheckoutVelocityInput): Promise<void> {
+  try {
+    const cfg = await loadDetectorConfig('ORDER_VELOCITY')
+    const t = cfg?.thresholds ?? {}
+    const maxOrdersPer24h = t.maxOrdersPer24h ?? 3
+    const newAccountDays = t.newAccountDays ?? 14
+    const firstOrderCentsFloor = t.firstOrderCentsFloor ?? 500_000
+    const mode = cfg?.mode ?? 'MONITOR'
+
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const [user, orders24h, priorPaidOrders] = await Promise.all([
+      prisma.user.findUnique({ where: { id: input.creatorUserId }, select: { createdAt: true } }),
+      prisma.order.count({ where: { creatorUserId: input.creatorUserId, createdAt: { gte: dayAgo } } }),
+      prisma.order.count({
+        where: {
+          creatorUserId: input.creatorUserId,
+          id: { not: input.orderId },
+          status: { notIn: ['PENDING_PAYMENT', 'CANCELLED'] },
+        },
+      }),
+    ])
+    if (!user) return
+
+    const accountAgeDays = (Date.now() - user.createdAt.getTime()) / 86_400_000
+    const isNewAccount = accountAgeDays <= newAccountDays
+    const burst = isNewAccount && orders24h >= maxOrdersPer24h
+    const bigFirstOrder = priorPaidOrders === 0 && input.totalCents >= firstOrderCentsFloor
+    if (!burst && !bigFirstOrder) return
+
+    const reasons: string[] = []
+    if (burst) reasons.push(`${orders24h} orders in 24h from an account ${Math.floor(accountAgeDays)} day(s) old (limit ${maxOrdersPer24h})`)
+    if (bigFirstOrder) reasons.push(`first order of $${(input.totalCents / 100).toLocaleString()} exceeds the $${(firstOrderCentsFloor / 100).toLocaleString()} first-order review floor`)
+
+    const event = await prisma.riskEvent.create({
+      data: {
+        detectorKey: 'ORDER_VELOCITY',
+        severity: burst && bigFirstOrder ? 'HIGH' : 'WARN',
+        entityType: 'Order',
+        entityId: input.orderId,
+        decision: mode === 'MONITOR' ? 'MONITOR_LOGGED' : 'WARNED',
+        scoreSnapshotJson: {
+          formulaVersion: 'velocity-v1',
+          score: orders24h,
+          thresholds: { maxOrdersPer24h, newAccountDays, firstOrderCentsFloor },
+          inputs: {
+            creatorUserId: input.creatorUserId,
+            accountAgeDays: Math.round(accountAgeDays * 10) / 10,
+            orders24h,
+            priorPaidOrders,
+            totalCents: input.totalCents,
+          },
+          reasons,
+          uncappedAction: 'WARNED',
+        } as unknown as object,
+      },
+    })
+
+    await logSystemAudit({
+      entityType: 'RiskEvent',
+      entityId: event.id,
+      action: 'RISK_EVENT_CREATED',
+      toValue: burst && bigFirstOrder ? 'HIGH' : 'WARN',
+      payload: { detectorKey: 'ORDER_VELOCITY', orderId: input.orderId, orders24h, priorPaidOrders },
+    })
+  } catch {
+    // never break checkout
+  }
+}

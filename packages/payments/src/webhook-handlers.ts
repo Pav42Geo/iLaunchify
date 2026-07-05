@@ -28,6 +28,7 @@ import { setCreatorTierWithAudit } from '@ilaunchify/auth'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { appLogger } from '@ilaunchify/logger'
 import type Stripe from 'stripe'
+import { ingestChargeRadarOutcome } from './radar-risk'
 import { stripe } from './client'
 import { cancelProductionSubscription } from './subscriptions'
 
@@ -126,6 +127,12 @@ async function dispatchStripeEvent(event: Stripe.Event): Promise<{ handled: bool
 
     case 'charge.refunded':
       await onChargeRefunded(event.data.object as Stripe.Charge)
+      return { handled: true }
+
+    // Risk Center M4 — Radar outcome lands on the Charge object, not the PI.
+    // Persist risk_score/risk_level + run the RADAR_ELEVATED detector.
+    case 'charge.succeeded':
+      await ingestChargeRadarOutcome(event.data.object as Stripe.Charge)
       return { handled: true }
 
     case 'invoice.payment_succeeded':
