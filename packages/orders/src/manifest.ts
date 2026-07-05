@@ -364,12 +364,9 @@ export async function generateOrderManifest(
   const die = variant?.dieCutTemplate ?? null
 
   // Recipe from the immutable CreatorConfiguration snapshot (closes the recipe-in-
-  // manifest gap). configurationSnapshot post-dates the generated client until
-  // db:push → cast-guarded; unknown/legacy/pre-push snapshots degrade to null.
-  const configSnapshot = (item as { configurationSnapshot?: unknown }).configurationSnapshot as
-    | { version?: unknown }
-    | null
-    | undefined
+  // manifest gap). Json column → narrow to the version-tagged shape; unknown/legacy
+  // snapshots degrade to null via isCurrentConfiguration.
+  const configSnapshot = item.configurationSnapshot as { version?: unknown } | null
   const config = isCurrentConfiguration(configSnapshot) ? configSnapshot : null
   const configRecipe = config ? configurationManifestRecipe(config) : null
   // Per-flavor final recipes (base + that flavor's extras) — the manufacturer produces

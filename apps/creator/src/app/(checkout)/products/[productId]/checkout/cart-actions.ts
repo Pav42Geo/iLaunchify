@@ -644,8 +644,8 @@ export async function placeOrderFromCheckoutDraft(
         unitPriceCents: Math.round(productionTotalCents / qty),
         totalCents: productionTotalCents,
         designVersionId: lockedDesignVersionId,
-        // Creator Product Configuration snapshot (cast-guarded — the column post-dates
-        // the generated client until db:push). Always written.
+        // Creator Product Configuration snapshot — always written. (Cast = structured
+        // interface → Prisma Json input, not a pre-push guard.)
         configurationSnapshot: configuration as unknown as object,
         // Variety-pack structure snapshot (cast-guarded — these columns post-date
         // the generated client until the migration). Null for non-pack items.

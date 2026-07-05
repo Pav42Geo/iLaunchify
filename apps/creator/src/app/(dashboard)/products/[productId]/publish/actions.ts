@@ -407,12 +407,7 @@ export async function pushListing(input: { productId: string; channelCode: strin
   //      each with its per-flavor price (a 2-of-6 pick lists 2 variants, not 6);
   //   2. else the Product.selectedFlavorPresetIds subset (published but never ordered);
   //   3. else the full active flavor pool (legacy).
-  // Both new columns post-date the generated client until db:push → cast-guarded.
-  const latestItem = await (
-    prisma as unknown as {
-      orderItem: { findFirst: (a: unknown) => Promise<{ configurationSnapshot?: unknown } | null> }
-    }
-  ).orderItem
+  const latestItem = await prisma.orderItem
     .findFirst({
       where: { productId: product.id, order: { creatorUserId: user.id } },
       orderBy: { order: { createdAt: 'desc' } },
@@ -430,12 +425,8 @@ export async function pushListing(input: { productId: string; channelCode: strin
       price: v.unitPriceCents != null ? (v.unitPriceCents / 100).toFixed(2) : priceStr,
     }))
   } else {
-    // Tier 2 — scope to the creator's selected flavors when set (cast-guarded read).
-    const selRow = await (
-      prisma as unknown as {
-        product: { findUnique: (a: unknown) => Promise<{ selectedFlavorPresetIds?: string[] } | null> }
-      }
-    ).product
+    // Tier 2 — scope to the creator's selected flavors when set.
+    const selRow = await prisma.product
       .findUnique({ where: { id: product.id }, select: { selectedFlavorPresetIds: true } })
       .catch(() => null)
     const selectedIds = selRow?.selectedFlavorPresetIds ?? []
