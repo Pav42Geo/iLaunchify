@@ -49,6 +49,20 @@ export function previewIntentForCategory(category?: string | null): {
   }
 }
 
+/** Per-surface binding for imported glTF: should THIS material carry the design,
+ *  given the target surface from the die-cut role? Name-based, mirroring the
+ *  gltf-surface-binding keyword vocabulary. A lid sticker → only cap/lid materials;
+ *  a body label → label/body materials (and, as a safe default, anything that isn't
+ *  clearly a cap or base). Caller falls back to "all materials" if none match. */
+export function materialTakesDesign(name: string, target: 'body' | 'top' | 'front'): boolean {
+  const n = name.toLowerCase()
+  const isCap = /(lid|cap|closure|neck|top)/.test(n)
+  const isBase = /(bottom|base|underside|foot)/.test(n)
+  if (target === 'top') return isCap
+  const isLabel = /(label|body|wrap|front|pdp|sleeve|main|panel|art)/.test(n)
+  return isLabel || (!isCap && !isBase)
+}
+
 export function shapeKindForCategory(category?: string | null): DielineShapeKind {
   switch ((category ?? '').toUpperCase()) {
     // Rigid rectangular structures → box
@@ -364,14 +378,24 @@ export function Dieline3DViewer({
             tex.colorSpace = THREE.SRGBColorSpace
             tex.needsUpdate = true
           }
+          // Per-surface binding: collect the model's materials, then apply the design
+          // only to the ones that match the target surface (label on the body / lid).
+          const entries: { mat: THREE.MeshStandardMaterial; name: string }[] = []
           obj.traverse((o: THREE.Object3D) => {
             const mesh = o as THREE.Mesh
-            const mm = mesh.material as THREE.MeshStandardMaterial | undefined
-            if (!mm || typeof mm !== 'object') return
-            if (tex) mm.map = tex
-            if ('envMapIntensity' in mm) mm.envMapIntensity = environment ? 0.8 : 0
-            mm.needsUpdate = true
+            const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : []
+            for (const raw of mats) {
+              const mm = raw as THREE.MeshStandardMaterial
+              if (mm && typeof mm === 'object') entries.push({ mat: mm, name: mm.name || mesh.name || '' })
+            }
           })
+          const targeted = entries.filter((e) => materialTakesDesign(e.name, designSurface))
+          const applyTo = new Set((targeted.length > 0 ? targeted : entries).map((e) => e.mat))
+          for (const e of entries) {
+            if (tex && applyTo.has(e.mat)) e.mat.map = tex
+            if ('envMapIntensity' in e.mat) e.mat.envMapIntensity = environment ? 0.8 : 0
+            e.mat.needsUpdate = true
+          }
           group.add(obj)
         },
         undefined,
