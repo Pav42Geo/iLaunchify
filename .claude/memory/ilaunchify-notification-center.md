@@ -78,6 +78,12 @@ soft — notification plumbing must never break business operations.
   `ProgressUpdatePanel` → creator order page renders `buildOrderTimeline`
   (`@ilaunchify/orders` dispatch-timeline.ts) via `OrderTimelineView`
   (`@ilaunchify/ui`). PHOTO kind modeled, upload UI not built yet.
+- **Email header logo** (2026-07-05): precedence is explicit
+  `NotificationBranding.logoUrl` → Theme Studio `emailHeader` placement
+  (`/theme-studio/logos`, resolved via `resolveLogoForPlacement` →
+  `getPublicBrandLogos`, PUBLIC URLs only — signed URLs expire in inboxes;
+  needs `R2_PUBLIC_BASE_URL`) → text header. Applied identically in
+  `getNotificationBranding`, the Branding page preview, and `previewBranding`.
 - **Secrets** (registered in admin `/developer`): `AUTH_RESEND_KEY`,
   `AUTH_EMAIL_FROM`, `RESEND_WEBHOOK_SECRET`, `NOTIFICATION_UNSUBSCRIBE_SECRET`
   (rotating it expires links in already-sent emails), `NEXT_PUBLIC_MARKETING_URL`

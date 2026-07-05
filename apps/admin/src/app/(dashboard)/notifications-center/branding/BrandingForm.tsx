@@ -14,9 +14,12 @@ interface BrandingView extends BrandingInput {}
 export function BrandingForm({
   initial,
   initialPreviewHtml,
+  placementLogoUrl = null,
 }: {
   initial: BrandingView
   initialPreviewHtml: string
+  /** Theme Studio 'Email header' placement logo — the fallback when Logo URL is empty. */
+  placementLogoUrl?: string | null
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -62,7 +65,31 @@ export function BrandingForm({
           </label>
           <label className={label}>
             Logo URL (https, optional)
-            <input value={form.logoUrl ?? ''} onChange={(e) => set('logoUrl', e.target.value || null)} placeholder="Text header when empty" className={inputCls} />
+            <input
+              value={form.logoUrl ?? ''}
+              onChange={(e) => set('logoUrl', e.target.value || null)}
+              placeholder={placementLogoUrl ? 'Using the Theme Studio logo' : 'Text header when empty'}
+              className={inputCls}
+            />
+            <span className="mt-1 block text-[11px] font-normal text-ink-500">
+              {placementLogoUrl ? (
+                <>
+                  Empty = the{' '}
+                  <a href="/theme-studio/logos" className="text-pink-700 underline underline-offset-2">
+                    Theme Studio “Email header” logo
+                  </a>{' '}
+                  (currently set). Fill this only to override it for emails.
+                </>
+              ) : (
+                <>
+                  Empty = text header. Tip: upload a logo in{' '}
+                  <a href="/theme-studio/logos" className="text-pink-700 underline underline-offset-2">
+                    Theme Studio → Logos
+                  </a>{' '}
+                  and emails pick it up automatically (needs R2_PUBLIC_BASE_URL for a stable URL).
+                </>
+              )}
+            </span>
           </label>
           <label className={label}>
             Accent color

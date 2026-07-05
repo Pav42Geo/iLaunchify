@@ -34,6 +34,12 @@ export const LOGO_PLACEMENTS = [
   { key: 'creatorAcademy', label: 'Academy header (creator)', kind: 'full', sublabel: 'Academy' },
   { key: 'partnerAcademy', label: 'Academy header (partner)', kind: 'full', sublabel: 'Academy' },
   { key: 'footer', label: 'Marketing footer', kind: 'full', sublabel: '' },
+  // Notification Center email header (docs/EMAIL_NOTIFICATION_CENTER.md,
+  // 2026-07-05). Resolved by getNotificationBranding when
+  // NotificationBranding.logoUrl is unset. Emails need the STABLE public URL
+  // (R2_PUBLIC_BASE_URL) — signed URLs expire in inboxes — so resolution goes
+  // through getPublicBrandLogos (public-only by design).
+  { key: 'emailHeader', label: 'Email header (notifications)', kind: 'full', sublabel: '' },
   { key: 'creatorCanvas', label: 'Creator Design Studio (canvas)', kind: 'mark', sublabel: '' },
   { key: 'partnerPackaging', label: 'Partner Packaging Studio', kind: 'mark', sublabel: '' },
 ] as const

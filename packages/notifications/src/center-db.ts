@@ -6,7 +6,7 @@
 // Every read degrades gracefully (null / [] / no-op) so notification
 // plumbing can never break business operations — matching dispatcher policy.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, resolveLogoForPlacement } from '@ilaunchify/db'
 import type { NotificationChannel, NotificationEvent } from '@ilaunchify/db'
 import type {
   CategoryPreferenceRow,
@@ -19,15 +19,35 @@ import type {
 // Branding singleton
 // ---------------------------------------------------------------------------
 
-/** The branding row, or null when unset/unreachable (resolver falls back to defaults). */
+/**
+ * The Theme Studio 'emailHeader' placement logo (Theme Studio → Logos), or
+ * null. Only ever a STABLE public URL — resolveLogoForPlacement goes through
+ * getPublicBrandLogos, which returns publicUrl-only (signed URLs would expire
+ * inside already-delivered emails).
+ */
+async function emailHeaderPlacementLogo(): Promise<string | null> {
+  try {
+    const resolved = await resolveLogoForPlacement('emailHeader', 'light')
+    return resolved.src
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The branding row, or null when unset/unreachable (resolver falls back to
+ * defaults). Logo precedence: explicit NotificationBranding.logoUrl → the
+ * Theme Studio 'emailHeader' placement → text header (brand name).
+ */
 export async function getNotificationBranding(): Promise<Partial<NotificationBrandingConfig> | null> {
   try {
     const row = await prisma.notificationBranding.findUnique({
       where: { singletonKey: 'default' },
     })
-    if (!row) return null
+    const placementLogo = row?.logoUrl ? null : await emailHeaderPlacementLogo()
+    if (!row) return placementLogo ? { logoUrl: placementLogo } : null
     return {
-      logoUrl: row.logoUrl,
+      logoUrl: row.logoUrl ?? placementLogo,
       brandName: row.brandName,
       accentHex: row.accentHex,
       inkHex: row.inkHex,
