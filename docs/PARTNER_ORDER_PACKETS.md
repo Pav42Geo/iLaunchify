@@ -115,10 +115,68 @@ Passport {
   time, alongside the existing producer notifications.
 
 ### Phasing
-1. Cowork: the pure `scopeManifestForRole` engine + Passport/packet types + tests.
+1. Cowork: the pure `scopeManifestForRole` engine + Passport/packet types + tests. ✅ **BUILT 2026-07-04.**
 2. Code: wire it into `manifest.ts` (per-dispatch packets + shared passport) — closes over-exposure (G1/G3).
 3. Code: FC/warehouse leg + notification (G2).
 4. Code: typed substrate/packaging/finish columns (G4).
+
+## Status — Cowork pieces built
+
+**Phase 1 — pure engine** (`@ilaunchify/orders`): `packages/orders/src/partner-packet.ts` (+ `.test.ts`) —
+pure, DB-free, exported from the package index. Typecheck-clean (0 errors); all redaction paths verified.
+
+**View layer** (`@ilaunchify/ui`, presentational, dependency-free — own structural props so `ui` never
+imports `orders`):
+- `ProductPassportView` (`packages/ui/src/components/ProductPassportView.tsx`) — the shared read-only
+  passport panel (hero band + production lead + ship region + die-cut + pack + flavor identity). 0 errors.
+- `RolePacketView` (`packages/ui/src/components/RolePacketView.tsx`) — the full per-role work packet:
+  role header + optional "needs clarification" banner + `<ProductPassportView>` + the role-scoped blocks
+  (formulation / per-flavor recipes / substrate / packaging / cost-stripped finishes / components /
+  production splits) + the scoped ship-to (full address, or a "region only 🔒" block for intermediate
+  hops). 0 errors.
+
+Everything below is Code's hot-file zone (already handed off).
+
+Exports:
+- `scopeManifestForRole(manifest, role, { isFinalShipper? }) → RolePacket` — the redaction gate.
+- `scopeManifestForDispatchType(manifest, dispatchType, opts)` — resolves the role for you.
+- `roleForDispatchType`, `buildProductPassport`, `stripFinishCost`, `scopeShipTo` — the pieces.
+- Types: `PartnerRole`, `ProductPassport`, `RolePacket`, `FinishNoCost`, `ScopedShipTo`, `ScopeOptions`.
+
+Redaction guarantees (tested): MANUFACTURER gets the recipe + per-flavor recipes + packaging + flavor
+splits, no substrate/finishes/components; PRINTER gets substrate + **cost-stripped** finishes +
+components, no recipe; COPACKER gets packaging + components + flavor splits, no recipe/finishes;
+WAREHOUSE gets the full inbound address + flavor splits, no production content. Street/postal/contact
+are nulled for every intermediate hop (region survives); the final shipper and any WAREHOUSE get the
+full address. The shared passport is byte-identical across roles and never contains the recipe or street.
+
+### Code wiring (Phase 2) — in `manifest.ts`
+`generateOrderManifest` already builds the full `ProductionManifest` and already dispatch-scopes
+`components[]` via `scopeDispatchComponents`. To close G1/G3, after building the manifest:
+```ts
+import { scopeManifestForDispatchType } from './partner-packet'
+// dispatch-scoped components are already set on `manifest.components`
+const packet = scopeManifestForDispatchType(manifest, dispatch.type, {
+  isFinalShipper: /* true when this dispatch physically ships to order.shipTo */,
+})
+// persist `packet` as the dispatch's finishManifestJson; render packet.passport once (shared),
+// packet.<role fields> in the role view. The raw-JSON download returns `packet`, not the full manifest.
+```
+`isFinalShipper` is the one bit the engine can't infer — Code supplies it from the routing graph (the
+last producing hop before the ship-to, or the COPACKER when it ships to the FC/creator). Until the FC
+leg (G2) lands, a WAREHOUSE role never appears; the three producing roles are fully covered today.
+
+### Code wiring — the view
+In the partner (and admin) manifest view, render the scoped packet with the built component:
+```tsx
+import { RolePacketView } from '@ilaunchify/ui'
+// packet = scopeManifestForDispatchType(manifest, dispatch.type, { isFinalShipper })
+<RolePacketView packet={packet} />   // renders the shared passport + this role's fields
+```
+`packet` from the engine maps 1:1 onto `RolePacketData`; `packet.passport` maps onto `ProductPassportData`.
+This replaces the undifferentiated `ProductionManifestView` for the partner-facing surface (admin can
+keep the full view). Optional enrichment: `perFlavorRecipes[].flavorName` and `flavors[].swatchHex` are
+accepted if you want names/colors instead of raw preset IDs.
 
 ## Sources
 - Descartes DOM (split + route per vendor) — https://www.descartes.com/solutions/ecommerce-shipping-fulfillment/multichannel-inventory-order-management
