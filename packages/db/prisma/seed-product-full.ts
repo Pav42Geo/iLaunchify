@@ -80,7 +80,12 @@ async function main() {
       statementOfIdentity: `${f.name} Flavored Drink Mix`,
       swatchHex: f.swatchHex,
       slotResolution: [],
-      extras: [{ ingredientId: ingredients[i % ingredients.length]!.id, name: `${f.name} note`, qty: 5, unit: 'g' }],
+      // DISTINCT per-flavor extras — different ingredients (offset by i) + varied quantities — so the
+      // per-flavor Facts panels + recipe lists visibly DIFFER when testing the Product-picture modal.
+      extras: [
+        { ingredientId: ingredients[(i + 1) % ingredients.length]!.id, name: `${f.name} base note`, qty: 4 + i * 3, unit: 'g' },
+        { ingredientId: ingredients[(i + 3) % ingredients.length]!.id, name: `${f.name} accent`, qty: 1 + i, unit: 'g' },
+      ],
       status: 'ACTIVE',
       sortOrder: i,
     })),
