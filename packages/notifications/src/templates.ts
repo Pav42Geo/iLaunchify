@@ -113,6 +113,7 @@ export interface TemplateData {
   // Partner role accounts P0 (docs/PARTNER_ROLE_ACCOUNTS.md §6.2). `href` is
   // recipient-correct where the same event fans out to multiple audiences
   // (FC partner vs admin vs creator) — the caller computes it per recipient.
+  INBOUND_ASSIGNED: { dispatchId: string; orderRef: string; brandName?: string; trackingCarrier?: string | null; trackingNumber?: string | null }
   INBOUND_DELIVERED_UNCONFIRMED: { dispatchId: string; orderRef: string }
   RECEIVING_DISCREPANCY_OPENED: { orderRef: string; summary: string; href: string }
   RECEIVING_DISCREPANCY_RESOLVED: { orderRef: string; resolutionNote?: string; href: string }
@@ -468,6 +469,18 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `Refund requested · $${(d.amountCents / 100).toFixed(2)}`,
         body: `A support agent proposed a refund on order #${d.orderId.slice(-8)} — review to approve or reject.`,
         link: d.href,
+      }
+    }
+    // Partner order packets G2 (docs/PARTNER_ORDER_PACKETS.md) — FC hears about an
+    // inbound the moment the producing partner ships, not when someone chases it.
+    case 'INBOUND_ASSIGNED': {
+      const d = data as TemplateData['INBOUND_ASSIGNED']
+      const tracking =
+        d.trackingNumber ? ` Tracking: ${d.trackingCarrier ? `${d.trackingCarrier} ` : ''}${d.trackingNumber}.` : ''
+      return {
+        title: `Inbound shipment on the way · ${d.orderRef}`,
+        body: `A producing partner shipped goods bound for your facility${d.brandName ? ` (${d.brandName})` : ''}.${tracking} Review the inbound and prepare receiving.`,
+        link: `/inbound/${d.dispatchId}`,
       }
     }
     // Partner role accounts P0 (docs/PARTNER_ROLE_ACCOUNTS.md §6.2)

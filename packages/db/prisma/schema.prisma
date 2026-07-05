@@ -4188,6 +4188,7 @@ enum NotificationEvent {
   SUPPORT_SLA_BREACHED // → assignee (or category default)
   SUPPORT_REFUND_REQUESTED // → admins with refunds:approve (RBAC P3)
   // Partner role accounts P0 (docs/PARTNER_ROLE_ACCOUNTS.md §6.2)
+  INBOUND_ASSIGNED // FC: a producing partner shipped goods bound for your facility (packets G2)
   INBOUND_DELIVERED_UNCONFIRMED // FC: carrier says delivered, receipt not confirmed (receiving SLA)
   RECEIVING_DISCREPANCY_OPENED // FC filed short/over/damaged → admin + creator visibility
   RECEIVING_DISCREPANCY_RESOLVED // admin dispositioned the discrepancy → FC + creator

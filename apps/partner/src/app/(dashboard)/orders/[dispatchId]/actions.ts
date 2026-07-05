@@ -9,6 +9,7 @@
 // All transitions write to AuditLog + update per-state timestamps.
 
 import { prisma } from '@ilaunchify/db'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { recomputeAggregateApprovalStatus, assertDispatchTransition } from '@ilaunchify/orders'
@@ -705,6 +706,43 @@ export async function shipDispatch({
         sealNumber: sealNumber?.trim() || null,
       },
     })
+  }
+
+  // Packets G2 (docs/PARTNER_ORDER_PACKETS.md) — tell the destination FC an inbound
+  // is on the way THE MOMENT the producing partner ships, instead of the FC polling
+  // its queue. PRODUCT/COPACKING legs only (labels ship upstream to the producer,
+  // not to the FC). Best-effort — a notify failure never blocks the ship flip.
+  // Enum value pending db:push → cast the literal (same pattern as
+  // CREATOR_ORDER_DISPUTE_RESOLVED).
+  if (
+    dispatch.type !== 'LABEL' &&
+    dispatch.order.shipToType === 'WAREHOUSE_PARTNER' &&
+    dispatch.order.shipToPartnerServiceId
+  ) {
+    try {
+      const fc = await prisma.partnerService.findUnique({
+        where: { id: dispatch.order.shipToPartnerServiceId },
+        select: { partner: { select: { userId: true } } },
+      })
+      const fcUserId = fc?.partner.userId
+      if (fcUserId) {
+        await dispatchNotification({
+          userId: fcUserId,
+          event: 'INBOUND_ASSIGNED' as unknown as NotificationEvent,
+          audience: 'partner',
+          data: {
+            dispatchId: dispatch.id,
+            orderRef:
+              (dispatch.order as { orderNumber?: string | null }).orderNumber ??
+              `#${dispatch.orderId.slice(-8)}`,
+            trackingCarrier: trackingCarrier?.trim() || null,
+            trackingNumber: trackingNumber?.trim() || null,
+          },
+        })
+      }
+    } catch {
+      // best-effort — the FC also sees the inbound in its queue.
+    }
   }
 
   revalidatePath(`/orders/${dispatchId}`)
