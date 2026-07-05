@@ -4,6 +4,8 @@ import {
   configurationChannelVariants,
   configurationManifestRecipe,
   isCurrentConfiguration,
+  mapRecipeIngredients,
+  composeFlavorUnitPrices,
   CREATOR_CONFIG_VERSION,
 } from './creator-configuration'
 
@@ -61,5 +63,35 @@ describe('buildCreatorConfiguration', () => {
     expect(isCurrentConfiguration(null)).toBe(false)
     expect(isCurrentConfiguration({ version: 0 })).toBe(false)
     expect(isCurrentConfiguration(buildCreatorConfiguration({}))).toBe(true)
+  })
+})
+
+describe('mapRecipeIngredients', () => {
+  it('maps raw rows with allergen + label-name fallbacks and Decimal coercion', () => {
+    const out = mapRecipeIngredients([
+      { weightG: '90', position: 0, source: 'TEMPLATE_BASE', ingredient: { id: 'y', name: 'Oats', allergenFlags: [], allergens: ['GLUTEN'] } },
+      { weightG: 50, position: 1, source: 'TEMPLATE_REPLACEMENT', filledSlotId: 's1', ingredient: { id: 'x', name: 'Whey', labelDeclarationName: 'Whey Protein', allergenFlags: ['MILK'], bioengineeredStatus: 'BIOENGINEERED' } },
+    ])
+    expect(out[0]).toMatchObject({ ingredientId: 'y', labelDeclarationName: 'Oats', weightG: 90, allergenFlags: ['gluten'] })
+    expect(out[1]).toMatchObject({ ingredientId: 'x', labelDeclarationName: 'Whey Protein', filledSlotId: 's1', allergenFlags: ['milk'], bioengineeredStatus: 'BIOENGINEERED' })
+  })
+})
+
+describe('composeFlavorUnitPrices', () => {
+  it('PER_FLAVOR basis uses each flavor absolute price', () => {
+    const p = composeFlavorUnitPrices('PER_FLAVOR', 400, [
+      { flavorPresetId: 'a', unitPriceCents: 535 },
+      { flavorPresetId: 'b', unitPriceCents: 560 },
+    ])
+    expect(p).toEqual({ a: 535, b: 560 })
+  })
+
+  it('non-PER_FLAVOR basis is base + delta, never negative', () => {
+    const p = composeFlavorUnitPrices('PER_UNIT', 400, [
+      { flavorPresetId: 'a', priceDeltaCents: 25 },
+      { flavorPresetId: 'b' },
+      { flavorPresetId: 'c', priceDeltaCents: -1000 },
+    ])
+    expect(p).toEqual({ a: 425, b: 400, c: 0 })
   })
 })

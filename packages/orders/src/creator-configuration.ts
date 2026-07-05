@@ -185,3 +185,76 @@ export function configurationManifestRecipe(cfg: CreatorConfiguration): CreatorC
 export function isCurrentConfiguration(cfg: { version?: unknown } | null | undefined): cfg is CreatorConfiguration {
   return !!cfg && (cfg as { version?: unknown }).version === CREATOR_CONFIG_VERSION
 }
+
+// ---- Input mappers (Code feeds raw Prisma rows in; these normalise → builder inputs) --------------
+
+/** Raw `RecipeIngredient` row shape (structural — no Prisma dependency). */
+export interface RawRecipeIngredientRow {
+  weightG: number | string
+  position: number
+  source?: string | null
+  filledSlotId?: string | null
+  ingredient: {
+    id: string
+    name: string
+    labelDeclarationName?: string | null
+    allergenFlags?: string[]
+    /** Legacy fallback when allergenFlags is empty. */
+    allergens?: string[]
+    bioengineeredStatus?: string | null
+  }
+}
+
+/**
+ * Map the creator's FINAL recipe rows (after replaceable swaps + optional activations) into snapshot
+ * ingredients. Mirrors deriveProductCtx: allergenFlags falls back to legacy `allergens`;
+ * labelDeclarationName falls back to the internal name; Decimal weight coerced to number.
+ */
+export function mapRecipeIngredients(rows: readonly RawRecipeIngredientRow[]): ConfigIngredient[] {
+  return rows.map((r) => {
+    const flags = (r.ingredient.allergenFlags?.length ? r.ingredient.allergenFlags : r.ingredient.allergens) ?? []
+    return {
+      ingredientId: r.ingredient.id,
+      labelDeclarationName: r.ingredient.labelDeclarationName ?? r.ingredient.name ?? null,
+      weightG: typeof r.weightG === 'number' ? r.weightG : Number(String(r.weightG)) || 0,
+      position: r.position,
+      source: r.source ?? null,
+      filledSlotId: r.filledSlotId ?? null,
+      allergenFlags: flags.map((a) => a.toLowerCase()),
+      bioengineeredStatus: r.ingredient.bioengineeredStatus ?? null,
+    }
+  })
+}
+
+export interface FlavorPriceInput {
+  flavorPresetId: string
+  /** Absolute per-flavor price (used when basis is PER_FLAVOR). */
+  unitPriceCents?: number | null
+  /** Upcharge added on top of the base unit price (non-PER_FLAVOR bases). */
+  priceDeltaCents?: number | null
+}
+
+/**
+ * Compose each selected flavor's final per-unit price (cents). PER_FLAVOR basis → the flavor's own
+ * absolute `unitPriceCents`; otherwise `baseUnitCents + priceDeltaCents`; falls back to `unitPriceCents`
+ * when no base is known. Never negative. Pure — so PDP, order, and manifest can share one number.
+ */
+export function composeFlavorUnitPrices(
+  basis: string | null,
+  baseUnitCents: number | null,
+  flavors: readonly FlavorPriceInput[],
+): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const f of flavors) {
+    let cents: number | null = null
+    if (basis === 'PER_FLAVOR' && typeof f.unitPriceCents === 'number') {
+      cents = f.unitPriceCents
+    } else if (typeof baseUnitCents === 'number') {
+      cents = baseUnitCents + (f.priceDeltaCents ?? 0)
+    } else if (typeof f.unitPriceCents === 'number') {
+      cents = f.unitPriceCents
+    }
+    if (cents != null) out[f.flavorPresetId] = Math.max(0, Math.round(cents))
+  }
+  return out
+}

@@ -64,9 +64,18 @@ export {
   configurationChannelVariants,
   configurationManifestRecipe,
   isCurrentConfiguration,
+  mapRecipeIngredients,
+  composeFlavorUnitPrices,
   CREATOR_CONFIG_VERSION,
 } from './creator-configuration'
-export type { CreatorConfiguration, ConfigIngredient, ConfigFlavor, BuildConfigurationInput } from './creator-configuration'
+export type {
+  CreatorConfiguration,
+  ConfigIngredient,
+  ConfigFlavor,
+  BuildConfigurationInput,
+  RawRecipeIngredientRow,
+  FlavorPriceInput,
+} from './creator-configuration'
 export type { AcceptReminder, AcceptReminderResult } from './accept-reminders'
 export { computeCancellationOutcome } from './cancellation-refund'
 export type { CancellationFeePolicy, CancellationOutcome } from './cancellation-refund'
