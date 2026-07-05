@@ -10,15 +10,11 @@
 // chain (requireUser + where-clause — the canvas-actions convention; no ad-hoc
 // checks). Every mutation writes AuditLog.
 //
-// Cast-guarded: the alternate columns (isActiveAlternate / alternateName /
-// alternateSort / forkedFromId / surfaceKey) and SnapshotKind.PROMOTION post-date
-// the generated client until `pnpm db:push` + `db:generate` — drop the casts in
-// the post-push cleanup pass. Pre-push these actions fail gracefully (the UI that
-// calls them is Phase 3, which mounts after the push).
+// De-cast 2026-07-05: the alternate columns + SnapshotKind.PROMOTION are live on
+// the regenerated client (db:push + db:generate landed) — direct typed calls.
 
 import { revalidatePath } from 'next/cache'
 import { prisma, createSnapshot, getSnapshotJson } from '@ilaunchify/db'
-import type { SnapshotKind } from '@ilaunchify/db'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 import { designAlternateCap } from '@ilaunchify/plans'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -38,8 +34,8 @@ async function alternateCapError(
 ): Promise<string | null> {
   const cap = designAlternateCap(await getCreatorTier(userId))
   if (cap === null) return null
-  const siblings = await designDelegate()
-    .design.findMany({
+  const siblings = await prisma.design
+    .findMany({
       where: { productId: slot.productId, flavorPresetId: slot.flavorPresetId, surfaceKey: slot.surfaceKey },
       select: { id: true },
     })
@@ -59,22 +55,9 @@ export interface AlternateRow {
   updatedAt: string
 }
 
-// Cast-guarded delegate — the alternate columns post-date the generated client.
-const designDelegate = () =>
-  prisma as unknown as {
-    design: {
-      findFirst: (a: unknown) => Promise<Record<string, unknown> | null>
-      findMany: (a: unknown) => Promise<Array<Record<string, unknown>>>
-      create: (a: unknown) => Promise<{ id: string }>
-      update: (a: unknown) => Promise<unknown>
-      updateMany: (a: unknown) => Promise<unknown>
-      delete: (a: unknown) => Promise<unknown>
-    }
-  }
-
-/** Owner-scoped design fetch (slot fields included, cast-guarded). */
+/** Owner-scoped design fetch (slot fields included). */
 async function ownedAlternate(designId: string, userId: string) {
-  return designDelegate().design.findFirst({
+  return prisma.design.findFirst({
     where: { id: designId, product: { brand: { creatorProfile: { userId } } } },
     select: {
       id: true,
@@ -86,16 +69,7 @@ async function ownedAlternate(designId: string, userId: string) {
       alternateName: true,
       versions: { where: { version: WORKING_VERSION }, select: { designJson: true }, take: 1 },
     },
-  }) as Promise<{
-    id: string
-    productId: string
-    brandId: string
-    flavorPresetId: string | null
-    surfaceKey: string | null
-    isActiveAlternate: boolean
-    alternateName: string | null
-    versions: Array<{ designJson: unknown }>
-  } | null>
+  })
 }
 
 /** List the slot's alternates (Active first, then sort order). */
@@ -104,32 +78,23 @@ export async function listAlternates(
   scope: { flavorPresetId?: string | null; surfaceKey?: string | null },
 ): Promise<AlternateRow[]> {
   const user = await requireUser()
-  const rows = (await designDelegate()
-    .design.findMany({
-      where: {
-        productId,
-        flavorPresetId: scope.flavorPresetId ?? null,
-        surfaceKey: scope.surfaceKey ?? null,
-        product: { brand: { creatorProfile: { userId: user.id } } },
-      },
-      orderBy: [{ isActiveAlternate: 'desc' }, { alternateSort: 'asc' }, { createdAt: 'asc' }],
-      select: {
-        id: true,
-        isActiveAlternate: true,
-        alternateName: true,
-        alternateSort: true,
-        forkedFromId: true,
-        updatedAt: true,
-      },
-    })
-    .catch(() => [])) as Array<{
-    id: string
-    isActiveAlternate: boolean
-    alternateName: string | null
-    alternateSort: number
-    forkedFromId: string | null
-    updatedAt: Date
-  }>
+  const rows = await prisma.design.findMany({
+    where: {
+      productId,
+      flavorPresetId: scope.flavorPresetId ?? null,
+      surfaceKey: scope.surfaceKey ?? null,
+      product: { brand: { creatorProfile: { userId: user.id } } },
+    },
+    orderBy: [{ isActiveAlternate: 'desc' }, { alternateSort: 'asc' }, { createdAt: 'asc' }],
+    select: {
+      id: true,
+      isActiveAlternate: true,
+      alternateName: true,
+      alternateSort: true,
+      forkedFromId: true,
+      updatedAt: true,
+    },
+  })
   return rows.map((r) => ({ ...r, updatedAt: r.updatedAt.toISOString() }))
 }
 
@@ -151,7 +116,7 @@ export async function createAlternate(
     const capError = await alternateCapError(user.id, src)
     if (capError) return { ok: false, error: capError }
 
-    const created = await designDelegate().design.create({
+    const created = await prisma.design.create({
       data: {
         productId: src.productId,
         brandId: src.brandId,
@@ -205,7 +170,7 @@ export async function createAlternateFromSnapshot(
     const json = await getSnapshotJson(snapshotId, 'DESIGN', src.id)
     if (json == null) return { ok: false, error: 'Version not found' }
 
-    const created = await designDelegate().design.create({
+    const created = await prisma.design.create({
       data: {
         productId: src.productId,
         brandId: src.brandId,
@@ -241,7 +206,7 @@ export async function renameAlternate(designId: string, name: string): Promise<R
     const user = await requireUser()
     const d = await ownedAlternate(designId, user.id)
     if (!d) return { ok: false, error: 'Design not found or access denied' }
-    await designDelegate().design.update({ where: { id: d.id }, data: { alternateName: name.trim() || null } })
+    await prisma.design.update({ where: { id: d.id }, data: { alternateName: name.trim() || null } })
     await logAuditAs(user, {
       entityType: 'Design',
       entityId: d.id,
@@ -270,7 +235,7 @@ export async function promoteAlternate(designId: string): Promise<Result> {
     if (target.isActiveAlternate) return { ok: true, designId: target.id } // already Active
 
     // The outgoing Active in the same slot (may be absent for orphaned slots).
-    const outgoing = (await designDelegate().design.findFirst({
+    const outgoing = await prisma.design.findFirst({
       where: {
         productId: target.productId,
         flavorPresetId: target.flavorPresetId,
@@ -282,7 +247,7 @@ export async function promoteAlternate(designId: string): Promise<Result> {
         alternateName: true,
         versions: { where: { version: WORKING_VERSION }, select: { designJson: true }, take: 1 },
       },
-    })) as { id: string; alternateName: string | null; versions: Array<{ designJson: unknown }> } | null
+    })
 
     // Pin the outgoing state FIRST (PROMOTION kind — exempt from pruning) so the
     // handover is always reversible from history.
@@ -291,16 +256,14 @@ export async function promoteAlternate(designId: string): Promise<Result> {
         entityType: 'DESIGN',
         entityId: outgoing.id,
         snapshot: outgoing.versions[0].designJson,
-        // 'PROMOTION' joins the SnapshotKind union with Cowork's uncommitted Phase-1
-        // engine changes; double-cast so this compiles against the pre-Phase-1 union too.
-        kind: 'PROMOTION' as unknown as SnapshotKind,
+        kind: 'PROMOTION',
         label: `Replaced by "${target.alternateName ?? 'alternate'}" — ${new Date().toLocaleDateString()}`,
         createdById: user.id,
       })
     }
 
     await prisma.$transaction([
-      designDelegate().design.updateMany({
+      prisma.design.updateMany({
         where: {
           productId: target.productId,
           flavorPresetId: target.flavorPresetId,
@@ -308,11 +271,11 @@ export async function promoteAlternate(designId: string): Promise<Result> {
           isActiveAlternate: true,
         },
         data: { isActiveAlternate: false },
-      }) as never,
-      designDelegate().design.update({
+      }),
+      prisma.design.update({
         where: { id: target.id },
         data: { isActiveAlternate: true },
-      }) as never,
+      }),
     ])
 
     await logAuditAs(user, {
@@ -348,7 +311,7 @@ export async function deleteAlternate(designId: string): Promise<Result> {
       return { ok: false, error: 'This design has versions locked to placed orders and can’t be deleted.' }
     }
     await prisma.designVersion.deleteMany({ where: { designId: d.id } })
-    await designDelegate().design.delete({ where: { id: d.id } })
+    await prisma.design.delete({ where: { id: d.id } })
     await logAuditAs(user, {
       entityType: 'Design',
       entityId: d.id,

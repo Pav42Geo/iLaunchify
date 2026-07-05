@@ -72,38 +72,20 @@ export async function findProductForSupport(query: string): Promise<SupportProdu
 
   const flavorName = new Map((product.productTemplate?.flavorPresets ?? []).map((f) => [f.id, f.name]))
 
-  // Cast-guarded: alternate columns may be pre-push. Fall back to base fields.
-  const rows = (await (prisma as unknown as {
-    design: { findMany: (a: unknown) => Promise<Array<Record<string, unknown>>> }
-  }).design
-    .findMany({
-      where: { productId: product.id },
-      orderBy: [{ createdAt: 'asc' }],
-      select: {
-        id: true,
-        flavorPresetId: true,
-        surfaceKey: true,
-        isActiveAlternate: true,
-        alternateName: true,
-        updatedAt: true,
-        versions: { where: { version: WORKING_VERSION }, select: { id: true }, take: 1 },
-      },
-    })
-    .catch(async () =>
-      prisma.design.findMany({
-        where: { productId: product.id },
-        orderBy: [{ createdAt: 'asc' }],
-        select: { id: true, flavorPresetId: true, updatedAt: true, versions: { where: { version: WORKING_VERSION }, select: { id: true }, take: 1 } },
-      }),
-    )) as Array<{
-    id: string
-    flavorPresetId: string | null
-    surfaceKey?: string | null
-    isActiveAlternate?: boolean
-    alternateName?: string | null
-    updatedAt: Date
-    versions: Array<{ id: string }>
-  }>
+  // De-cast 2026-07-05 (post db:push + db:generate) — alternate columns are typed.
+  const rows = await prisma.design.findMany({
+    where: { productId: product.id },
+    orderBy: [{ createdAt: 'asc' }],
+    select: {
+      id: true,
+      flavorPresetId: true,
+      surfaceKey: true,
+      isActiveAlternate: true,
+      alternateName: true,
+      updatedAt: true,
+      versions: { where: { version: WORKING_VERSION }, select: { id: true }, take: 1 },
+    },
+  })
 
   return {
     ok: true,
