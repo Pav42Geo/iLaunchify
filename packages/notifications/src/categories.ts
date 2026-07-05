@@ -130,6 +130,7 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   PROOF_APPROVED: 'proofs',
   PROOF_REJECTED: 'proofs',
   // Fulfillment & receiving
+  INBOUND_ASSIGNED: 'fulfillment',
   INBOUND_DELIVERED_UNCONFIRMED: 'fulfillment',
   RECEIVING_DISCREPANCY_OPENED: 'fulfillment',
   RECEIVING_DISCREPANCY_RESOLVED: 'fulfillment',

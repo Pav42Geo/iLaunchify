@@ -93,6 +93,9 @@ export async function createReprintDispatch(
       finishManifestJson: original.finishManifestJson ?? undefined,
       bundleStatus: original.bundleStatus,
       bundleAssetId: original.bundleAssetId ?? undefined,
+      // First-class reprint linkage (P3 scorecards count defect rates off this).
+      // The audit payload keeps carrying the same key for the historical trail.
+      reprintOfDispatchId: original.id,
     },
     select: { id: true },
   })
@@ -100,22 +103,19 @@ export async function createReprintDispatch(
   const printerUserId = original.partnerService.partner.userId ?? null
   const creatorUserId = original.order.creatorUserId ?? null
 
-  // Notify the printer that a new LABEL dispatch is waiting (same event the
-  // normal routing flow fires). Lazy import + best-effort so a notification
-  // failure never rolls back the reprint. Imported lazily to match routing.ts —
-  // keeps notifications out of caller bundles that don't need it.
-  if (printerUserId) {
-    try {
-      const { dispatchNotification } = await import('@ilaunchify/notifications')
-      await dispatchNotification({
-        userId: printerUserId,
-        event: 'DISPATCH_RECEIVED',
-        data: { orderId: original.orderId, brandName: original.order.brand?.name, type: 'LABEL' },
-        audience: 'partner',
-      })
-    } catch {
-      // best-effort — dispatch is created; the printer also sees it in their queue.
-    }
+  // Notify the print SERVICE that a new LABEL dispatch is waiting (same event the
+  // normal routing flow fires) — role-routed fan-out (org admins + service members,
+  // not just the founder pointer). Lazy import + best-effort so a notification
+  // failure never rolls back the reprint.
+  try {
+    const { dispatchToPartnerService } = await import('@ilaunchify/notifications')
+    await dispatchToPartnerService(original.partnerServiceId, {
+      event: 'DISPATCH_RECEIVED',
+      data: { orderId: original.orderId, brandName: original.order.brand?.name, type: 'LABEL' },
+      audience: 'partner',
+    })
+  } catch {
+    // best-effort — dispatch is created; the printer also sees it in their queue.
   }
 
   return {

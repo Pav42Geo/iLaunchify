@@ -102,6 +102,7 @@ export const EVENT_TOKEN_PALETTE: {
   SUPPORT_TICKET_REOPENED: ['ticketId', 'subject', 'href'],
   SUPPORT_SLA_BREACHED: ['ticketId', 'subject', 'href'],
   SUPPORT_REFUND_REQUESTED: ['orderId', 'amountCents', 'href'],
+  INBOUND_ASSIGNED: ['dispatchId', 'orderRef', 'brandName', 'trackingCarrier', 'trackingNumber'],
   INBOUND_DELIVERED_UNCONFIRMED: ['dispatchId', 'orderRef'],
   RECEIVING_DISCREPANCY_OPENED: ['orderRef', 'summary', 'href'],
   RECEIVING_DISCREPANCY_RESOLVED: ['orderRef', 'resolutionNote', 'href'],

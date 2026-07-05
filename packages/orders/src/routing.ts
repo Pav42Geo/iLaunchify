@@ -230,6 +230,7 @@ export async function findRouting(params: {
 
   const dieCutTemplateId = product.template?.dieCutTemplateId
   if (dieCutTemplateId) {
+    const now = new Date()
     const printServices = await prisma.partnerService.findMany({
       where: {
         type: 'LABEL_PRINTING',
@@ -237,11 +238,21 @@ export async function findRouting(params: {
         partner: { status: 'ACTIVE' },
         dieCutSupport: { some: { dieCutTemplateId } },
       },
-      include: { partner: { include: { user: true } } },
+      include: {
+        partner: { include: { user: true } },
+        // Capacity pause (PARTNER_ROLE_ACCOUNTS §3.3.D) — an active blackout window
+        // hard-excludes the printer from the commodity shop below.
+        blackoutDates: { where: { startsOn: { lte: now }, endsOn: { gte: now } }, take: 1 },
+      },
     })
 
     const eligiblePrinters = printServices.filter((s) => {
       if (excluded.has(s.id)) return false
+      // Blacked-out printers never win the commodity shop (vacation pause /
+      // maintenance). The chosen-offering binding + owner self-label paths are
+      // deliberate bindings, not shopping — they stay untouched (D1 philosophy:
+      // pinned partners aren't silently rerouted).
+      if (s.blackoutDates.length > 0) return false
       const caps = s.capabilities as Record<string, unknown>
       const moqMin = (caps.moqMin as number | undefined) ?? 0
       return params.quantity >= moqMin && s.partner.user.stripeAccountStatus === 'ACTIVE'
@@ -296,9 +307,6 @@ export async function createDispatches(params: {
   )
 
   const dispatchRows: DispatchRow[] = []
-  const manufacturerUserIds = new Set<string>()
-  const printUserIds = new Set<string>()
-  const assemblyUserIds = new Set<string>()
   const failures: string[] = []
   let primaryManufacturerId: string | null = null
   let primaryPrintId: string | null = null
@@ -361,9 +369,6 @@ export async function createDispatches(params: {
     })
 
     dispatchRows.push(...plan.rows)
-    manufacturerUserIds.add(plan.manufacturerUserId)
-    for (const u of plan.printUserIds) printUserIds.add(u)
-    for (const u of plan.assemblyUserIds) assemblyUserIds.add(u)
     if (!primaryManufacturerId) {
       primaryManufacturerId = routing.manufacturingServiceId
       primaryPrintId = plan.primaryPrintServiceId
@@ -443,42 +448,33 @@ export async function createDispatches(params: {
     }
   })
 
-  // Notify both partners that a new dispatch is waiting for them. Imported
-  // lazily so the orders package doesn't take a hard dep on notifications
-  // for callers that don't need it (cron jobs, tests, etc.).
-  const { dispatchNotification } = await import('@ilaunchify/notifications')
+  // Notify every partner SERVICE that a new dispatch is waiting — role-routed
+  // fan-out (org admins + service-scoped members, not just the founder pointer;
+  // PARTNER_ROLE_ACCOUNTS P3 slice 13). Imported lazily so the orders package
+  // doesn't take a hard dep on notifications for callers that don't need it
+  // (cron jobs, tests, etc.). Deduped per (service, type) so a partner covering
+  // multiple items isn't pinged repeatedly.
+  const { dispatchToPartnerService } = await import('@ilaunchify/notifications')
   const brand = await prisma.brand.findUnique({
     where: { id: order.brandId },
     select: { name: true },
   })
-  // Dedupe by userId across ALL items so a partner covering multiple legs/items
-  // isn't pinged repeatedly (the sets were accumulated in the per-item loop).
-  await Promise.allSettled([
-    ...[...manufacturerUserIds].map((userId) =>
-      dispatchNotification({
-        userId,
+  const notifyTargets = new Map<string, { partnerServiceId: string; type: DispatchRow['type'] }>()
+  for (const row of dispatchRows) {
+    notifyTargets.set(`${row.partnerServiceId}:${row.type}`, {
+      partnerServiceId: row.partnerServiceId,
+      type: row.type,
+    })
+  }
+  await Promise.allSettled(
+    [...notifyTargets.values()].map((t) =>
+      dispatchToPartnerService(t.partnerServiceId, {
         event: 'DISPATCH_RECEIVED',
-        data: { orderId: order.id, brandName: brand?.name, type: 'PRODUCT' },
+        data: { orderId: order.id, brandName: brand?.name, type: t.type },
         audience: 'partner',
       }),
     ),
-    ...[...printUserIds].map((userId) =>
-      dispatchNotification({
-        userId,
-        event: 'DISPATCH_RECEIVED',
-        data: { orderId: order.id, brandName: brand?.name, type: 'LABEL' },
-        audience: 'partner',
-      }),
-    ),
-    ...[...assemblyUserIds].map((userId) =>
-      dispatchNotification({
-        userId,
-        event: 'DISPATCH_RECEIVED',
-        data: { orderId: order.id, brandName: brand?.name, type: 'COPACKING' },
-        audience: 'partner',
-      }),
-    ),
-  ])
+  )
 
   return { ok: true }
 }
