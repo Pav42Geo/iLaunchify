@@ -14,7 +14,8 @@ import { prisma, resolveLogoForPlacement, getAiGeneratorSettings } from '@ilaunc
 import type { LabelingType } from '@ilaunchify/db'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import { getSignedReadUrl } from '@ilaunchify/storage'
-import type { BrandCanvasAssets, DieCutSpec } from '@ilaunchify/ui'
+import { resolvePackagingSurfaces } from '@ilaunchify/ui'
+import type { BrandCanvasAssets, DieCutSpec, BindableSurface } from '@ilaunchify/ui'
 import {
   formatNetQuantity,
   inferNetQuantityKind,
@@ -37,6 +38,7 @@ import {
   panelDataToSupplementPanelData,
   petLabelToAafcoPanelData,
 } from './lib/nutritionPanelAdapter'
+import { mapRecipeIngredients, resolveFlavorRecipe, type FlavorExtra } from '@ilaunchify/orders'
 
 export const dynamic = 'force-dynamic'
 
@@ -227,10 +229,19 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       // Variant → derives net-quantity string.
       recipe: {
         select: {
+          servingSizeG: true,
+          servingsPerContainer: true,
+          servingSizeDesc: true,
           ingredients: {
+            orderBy: { position: 'asc' },
             select: {
+              weightG: true,
+              position: true,
+              source: true,
+              filledSlotId: true,
               ingredient: {
                 select: {
+                  id: true,
                   name: true,
                   labelDeclarationName: true,
                   allergenFlags: true,
@@ -274,7 +285,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
           packingProfile: { select: { labelTopology: true } },
           flavorPresets: {
             orderBy: { sortOrder: 'asc' },
-            select: { id: true, name: true, swatchHex: true },
+            select: { id: true, name: true, swatchHex: true, statementOfIdentity: true, extras: true },
           },
         },
       },
@@ -309,6 +320,46 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // Validate the requested flavor against the pool; unknown/absent → base (null).
   const activeFlavorPresetId =
     perFlavor && flavorParam && flavors.some((f) => f.id === flavorParam) ? flavorParam : null
+
+  // Product-picture Details modal (docs/CREATOR_PRODUCT_PICTURE_MODAL.md, slice 2) —
+  // per-flavor Statement of Identity + FINAL recipe (base + FlavorPreset.extras) for the
+  // SELECTED flavors, plus the single-product recipe + exact topology. Rendered Facts
+  // panels are slice 3.
+  const baseIngredients = mapRecipeIngredients(
+    (product.recipe?.ingredients ?? []).map((ri) => ({
+      weightG: Number(ri.weightG),
+      position: ri.position,
+      source: ri.source,
+      filledSlotId: ri.filledSlotId,
+      ingredient: ri.ingredient,
+    })),
+  )
+  const toPictureRecipe = (ingredients: typeof baseIngredients) => ({
+    servingSize:
+      product.recipe?.servingSizeDesc ?? (product.recipe ? `${Number(product.recipe.servingSizeG)}g` : null),
+    servings: product.recipe ? Number(product.recipe.servingsPerContainer) : null,
+    ingredients: ingredients.map((i) => ({
+      name: i.labelDeclarationName ?? i.ingredientId,
+      weightG: i.weightG,
+      source: i.source,
+    })),
+  })
+  const pictureFlavors = perFlavor
+    ? flavorPresets.map((f) => ({
+        flavorPresetId: f.id,
+        statementOfIdentity: f.statementOfIdentity ?? null,
+        recipe: product.recipe
+          ? toPictureRecipe(
+              resolveFlavorRecipe(baseIngredients, (Array.isArray(f.extras) ? f.extras : []) as unknown as FlavorExtra[]),
+            )
+          : null,
+      }))
+    : []
+  const pictureBaseRecipe = !perFlavor && product.recipe ? toPictureRecipe(baseIngredients) : null
+  const labelTopology = (product.productTemplate?.packingProfile?.labelTopology ?? 'SINGLE') as
+    | 'SINGLE'
+    | 'AGGREGATE'
+    | 'PER_FLAVOR'
 
   // Phase 2b — REAL Nutrition Facts data for the active flavor (or base) so the
   // Label drawer's panel reflects the actual recipe, not sample data. FOOD only;
@@ -477,7 +528,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       : null
   // Packaging (container) info — the physical package the product ships in.
   const packaging = await loadPackagingInfo(product.variant?.packagingTypeId ?? null, product.variant?.containerFormat ?? null)
-  const model3dUrl = await loadPackagingModel3dUrl(product.variant?.packagingTypeId ?? null)
+  const { url: model3dUrl, surfaces: modelSurfaces } = await loadPackagingModel3d(product.variant?.packagingTypeId ?? null)
   const productMeta = {
     category: product.category ?? null,
     manufacturerName: product.productTemplate?.manufacturerService?.partner?.companyName ?? null,
@@ -495,6 +546,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       productName={product.name}
       dieCut={dieCut}
       model3dUrl={model3dUrl}
+      modelSurfaces={modelSurfaces}
       productMeta={productMeta}
       brandAssets={brandAssets}
       initialDesignJson={initialDesignJson}
@@ -519,6 +571,9 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       partnerOffersFinishes={partnerOffersFinishes}
       aiGeneratorEnabled={aiGeneratorEnabled}
       finishes={studioFinishes}
+      pictureFlavors={pictureFlavors}
+      pictureBaseRecipe={pictureBaseRecipe}
+      labelTopology={labelTopology}
     />
   )
 }
@@ -809,15 +864,25 @@ async function resolveDefaultDieCut(
   return null
 }
 
-/** Signed URL to the packaging type's imported glTF/glb model, or null. Feeds the
- *  Live 3D preview so a real uploaded container renders (G1.4 imported-model path). */
-async function loadPackagingModel3dUrl(packagingTypeId: string | null): Promise<string | null> {
-  if (!packagingTypeId) return null
+/** Signed URL + authored surface map for the packaging type's imported glTF model.
+ *  Feeds the Live 3D preview so a real uploaded container renders with the design bound
+ *  to the correct surface (G1.4 imported-model path + exact per-surface binding). */
+async function loadPackagingModel3d(packagingTypeId: string | null): Promise<{ url: string | null; surfaces: BindableSurface[] }> {
+  if (!packagingTypeId) return { url: null, surfaces: [] }
   const row = (await (
-    prisma as unknown as { packagingType: { findUnique: (a: unknown) => Promise<{ model3dKey: string | null } | null> } }
+    prisma as unknown as {
+      packagingType: { findUnique: (a: unknown) => Promise<{ model3dKey: string | null; defaultSurfaces: unknown } | null> }
+    }
   ).packagingType
-    .findUnique({ where: { id: packagingTypeId }, select: { model3dKey: true } })
-    .catch(() => null)) as { model3dKey: string | null } | null
-  if (!row?.model3dKey) return null
-  return getSignedReadUrl(row.model3dKey, { expiresInSeconds: 600 }).catch(() => null)
+    .findUnique({ where: { id: packagingTypeId }, select: { model3dKey: true, defaultSurfaces: true } })
+    .catch(() => null)) as { model3dKey: string | null; defaultSurfaces: unknown } | null
+  if (!row) return { url: null, surfaces: [] }
+  const surfaces: BindableSurface[] = resolvePackagingSurfaces(row.defaultSurfaces).map((s) => ({
+    key: s.key,
+    label: s.label,
+    part: s.part,
+    role: s.role,
+  }))
+  const url = row.model3dKey ? await getSignedReadUrl(row.model3dKey, { expiresInSeconds: 600 }).catch(() => null) : null
+  return { url, surfaces }
 }

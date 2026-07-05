@@ -79,7 +79,7 @@ import { UpgradeOverlay } from './UpgradeOverlay'
 // R14.d — single tier helper now lives in @ilaunchify/auth. The TierKey
 // re-export here is structurally identical to @ilaunchify/ui's so the
 // UpgradeOverlay (which still imports from ui) continues to type-check.
-import type { FabricObject } from '@ilaunchify/ui'
+import type { FabricObject, BindableSurface } from '@ilaunchify/ui'
 import { hasTier, canRecolorTemplate, type TierKey } from '@ilaunchify/auth'
 import { TextFormatToolbar } from './TextFormatToolbar'
 import { NutritionFactsToolbar } from './NutritionFactsToolbar'
@@ -105,7 +105,7 @@ import { VersionHistoryPanel } from './VersionHistoryPanel'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
-import { ProductDetailsDrawer, type ProductDetailsData, type CostTier } from './drawers/ProductDetailsDrawer'
+import { ProductDetailsDrawer, type ProductDetailsData, type CostTier, type PictureRecipe } from './drawers/ProductDetailsDrawer'
 import { QrCodeDrawer } from './drawers/QrCodeDrawer'
 import { BarcodeDrawer } from './drawers/BarcodeDrawer'
 import { LabelDrawer } from './drawers/LabelDrawer'
@@ -181,6 +181,8 @@ interface Props {
   dieCut: DieCutSpec
   /** G1.4 — signed URL to the packaging type's imported glTF model, or null (parametric). */
   model3dUrl?: string | null
+  /** G1.4 — the packaging type's authored surface map, for exact glTF material binding. */
+  modelSurfaces?: BindableSurface[]
   /** Product-details drawer meta (category + owner-pinned manufacturer + pricing summary),
    *  derived server-side in page.tsx. Feeds the Printify-style Product panel. Optional: the
    *  admin template-author mount hides the Product tool, so it defaults to empty. */
@@ -235,6 +237,14 @@ interface Props {
    * Empty unless partnerOffersFinishes is true.
    */
   finishes?: StudioFinish[]
+  /**
+   * Product-picture Details modal (docs/CREATOR_PRODUCT_PICTURE_MODAL.md, slice 2) —
+   * per-flavor SoI + FINAL recipe for the SELECTED flavors, the single-product recipe,
+   * and the exact label topology. Resolved server-side in page.tsx.
+   */
+  pictureFlavors?: Array<{ flavorPresetId: string; statementOfIdentity: string | null; recipe: PictureRecipe | null }>
+  pictureBaseRecipe?: PictureRecipe | null
+  labelTopology?: 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'
   /**
    * DS-73d — current creator subscription tier. Drives the EXPORT
    * upgrade gate: Maker creators get the UpgradeOverlay instead of the
@@ -361,6 +371,7 @@ export function CanvasLayoutShell({
   productName,
   dieCut,
   model3dUrl,
+  modelSurfaces,
   productMeta = { category: null, manufacturerName: null, moq: null, leadTimeDays: null, fulfillment: null, cost: null, packaging: null },
   brandAssets,
   initialDesignJson,
@@ -370,6 +381,9 @@ export function CanvasLayoutShell({
   partnerOffersFinishes = false,
   aiGeneratorEnabled = true,
   finishes = [],
+  pictureFlavors = [],
+  pictureBaseRecipe = null,
+  labelTopology,
   creatorTier = 'maker',
   partnerPrintSpec = null,
   restrictionLabels = [],
@@ -1200,6 +1214,9 @@ export function CanvasLayoutShell({
               creatorTier={creatorTier}
               onSaveAsTemplate={onSaveTemplateClick}
               finishes={finishes}
+              pictureFlavors={pictureFlavors}
+              pictureBaseRecipe={pictureBaseRecipe}
+              labelTopology={labelTopology}
               templateAuthor={templateAuthor}
               dielineFrameLayout={frameLayout}
               onClose={closeDrawer}
@@ -1328,7 +1345,7 @@ export function CanvasLayoutShell({
 
           {/* Live 3D preview dock (Studio 3D+2D Phase 2) — floats bottom-right and
               updates as you edit. Visualization only; the die-line stays the print master. */}
-          <LivePreview3DDock canvas={canvas} dieCut={dieCut} pxPerMm={pxPerMm} material={dockMaterial} model3dUrl={model3dUrl} />
+          <LivePreview3DDock canvas={canvas} dieCut={dieCut} pxPerMm={pxPerMm} material={dockMaterial} model3dUrl={model3dUrl} modelSurfaces={modelSurfaces} />
         </div>
       </div>
 
@@ -1745,6 +1762,9 @@ function ToolDrawer({
   creatorTier,
   onSaveAsTemplate,
   finishes,
+  pictureFlavors,
+  pictureBaseRecipe,
+  labelTopology,
   templateAuthor,
   dielineFrameLayout,
   onClose,
@@ -1789,6 +1809,9 @@ function ToolDrawer({
   creatorTier: TierKey
   onSaveAsTemplate: () => void
   finishes: StudioFinish[]
+  pictureFlavors: Array<{ flavorPresetId: string; statementOfIdentity: string | null; recipe: PictureRecipe | null }>
+  pictureBaseRecipe: PictureRecipe | null
+  labelTopology?: 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'
   /** Admin template-author mode — the AI drawer loads product-less against this die-cut + domain. */
   templateAuthor: { domain: string; container: string | null; aspectBucket: string | null; dieCutId?: string | null } | null
   /** Resolved die-line FrameLayout — frame-aware template re-anchoring (Reshape R1). */
@@ -1859,20 +1882,25 @@ function ToolDrawer({
               certs: certBadges.map((b) => ({ name: b.certTypeName, badgeUrl: b.badgeUrl })),
               dieCut,
               // Product picture (docs/CREATOR_PRODUCT_PICTURE_MODAL.md) — slice 1:
-              // topology + the SELECTED flavors' identity + label completeness. SoI,
-              // per-flavor recipes + rendered Facts panels, finishes, phrases and the
-              // aggregate panel are the next slices (need page.tsx per-flavor forwarding
-              // + the per-domain render adapters). Every other picture field is optional,
-              // so the drawer degrades gracefully until they land.
+              // slice 2: topology + the SELECTED flavors' identity + label completeness +
+              // per-flavor SoI + FINAL recipe (from page.tsx) + the single-product recipe +
+              // finishes. Rendered Facts panels (single/aggregate/per-flavor) + phrases are
+              // slice 3 (the per-domain render adapters). Optional fields degrade gracefully.
               picture: {
-                topology: flavors.length > 0 ? 'PER_FLAVOR' : 'SINGLE',
-                flavors: flavors.map((f) => ({
-                  flavorPresetId: f.id,
-                  name: f.name,
-                  swatchHex: f.swatchHex,
-                  statementOfIdentity: null,
-                  hasLabel: savedFlavorIds.includes(f.id),
-                })),
+                topology: labelTopology ?? (flavors.length > 0 ? 'PER_FLAVOR' : 'SINGLE'),
+                recipe: pictureBaseRecipe ?? null,
+                flavors: flavors.map((f) => {
+                  const pf = pictureFlavors.find((p) => p.flavorPresetId === f.id)
+                  return {
+                    flavorPresetId: f.id,
+                    name: f.name,
+                    swatchHex: f.swatchHex,
+                    statementOfIdentity: pf?.statementOfIdentity ?? null,
+                    hasLabel: savedFlavorIds.includes(f.id),
+                    recipe: pf?.recipe ?? null,
+                  }
+                }),
+                finishes: finishes.map((ff) => ({ name: ff.name, category: ff.category })),
               },
             }}
             guides={guides}
