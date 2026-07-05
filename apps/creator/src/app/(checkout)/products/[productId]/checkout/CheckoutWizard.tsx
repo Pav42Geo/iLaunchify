@@ -62,7 +62,9 @@ import { SubscribeChoiceRail } from './SubscribeChoiceRail'
 // bring the upsell back.
 const SUBSCRIBE_AND_SAVE_FEATURE_ON = false
 import { BrandSwitcher, type BrandOption } from '@/components/nav/BrandSwitcher'
-import { placeOrderFromCheckoutDraft } from './cart-actions'
+import { placeOrderFromCheckoutDraft, type PlaceOrderOptions } from './cart-actions'
+import { CapacityGatePanel } from './CapacityGatePanel'
+import type { CapacityGateInfo } from '@ilaunchify/orders'
 import { applyOrderAdjustment } from './adjust-actions'
 import type { CostBreakdown } from './production-actions'
 import type { ReviewSnapshot } from './review-actions'
@@ -135,8 +137,11 @@ export function CheckoutWizard({
   // the column on Step 3, matching Amazon's checkout pattern). The
   // CheckoutStep body no longer carries the "Ready to place" panel.
   const [isPaying, startPaying] = useTransition()
+  // Risk Center capacity gate (M5-prep) — set when the server declines the
+  // order with honest options; only possible once the detector runs in GATE.
+  const [capacityGate, setCapacityGate] = useState<CapacityGateInfo | null>(null)
 
-  function placeOrder() {
+  function placeOrder(capacityAck?: PlaceOrderOptions['capacityAck']) {
     if (isRestricted) {
       toast.error(
         'This product is in a restricted category iLaunchify doesn’t support yet.',
@@ -177,12 +182,43 @@ export function CheckoutWizard({
       }
       const result = await placeOrderFromCheckoutDraft(productId, {
         complianceAck: ack,
+        capacityAck: capacityAck ?? null,
       })
       if (!result.ok) {
+        if ('capacityGate' in result && result.capacityGate) {
+          setCapacityGate(result.capacityGate)
+          return
+        }
         toast.error(result.error)
         return
       }
       window.location.href = result.data.checkoutUrl
+    })
+  }
+
+  // Capacity-gate choices (docs/RISK_MANAGEMENT_CENTER.md §4).
+  function gateReduceQty(newQty: number) {
+    setState((prev) => ({
+      ...prev,
+      production: {
+        ...prev.production,
+        quantity: newQty,
+        pack: prev.production.pack ? { ...prev.production.pack, packCount: newQty } : prev.production.pack,
+      },
+    }))
+    setCapacityGate(null)
+    toast.success(
+      `Quantity set to ${newQty.toLocaleString()} — fits this month's real capacity. Review and place your order.`,
+    )
+  }
+
+  function gateProceedExtendedEta() {
+    const gate = capacityGate
+    setCapacityGate(null)
+    placeOrder({
+      choice: 'EXTENDED_ETA',
+      suggestedEtaMonth: gate?.suggestedEtaMonth ?? null,
+      acknowledgedAt: new Date().toISOString(),
     })
   }
 
@@ -254,6 +290,17 @@ export function CheckoutWizard({
 
   return (
     <div className="min-h-screen bg-ink-50">
+      {/* Risk Center capacity gate (M5-prep) — honest options before payment. */}
+      {capacityGate && (
+        <CapacityGatePanel
+          gate={capacityGate}
+          qtyNoun={state.production.pack ? 'packs' : 'units'}
+          busy={isPaying}
+          onReduceQty={gateReduceQty}
+          onProceedExtendedEta={gateProceedExtendedEta}
+          onClose={() => setCapacityGate(null)}
+        />
+      )}
       {/* H3.1 — adjust-mode banner stays */}
       {isAdjustment && (
         <div className="border-b border-warning-300 bg-warning-50 px-6 py-2.5">
@@ -493,7 +540,7 @@ export function CheckoutWizard({
               isAdjustment={isAdjustment}
               isRestricted={isRestricted}
               isLabelIncomplete={isLabelIncomplete}
-              onPlaceOrder={placeOrder}
+              onPlaceOrder={() => placeOrder()}
             />
           )}
           {/* G6.c-rail (2026-05-30) — Amazon-style Subscribe & Save sits

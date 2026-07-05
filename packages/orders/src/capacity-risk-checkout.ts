@@ -45,6 +45,103 @@ export interface CheckoutCapacityInput {
   orderUnits: number
 }
 
+/** Shared: three-month ledger window + engine evaluation for a service. */
+async function evaluateForService(partnerServiceId: string, orderUnits: number) {
+  const now = new Date()
+  const months = [monthKey(now), monthKey(addMonths(now, 1)), monthKey(addMonths(now, 2))]
+  const ledger = await loadCapacityMonths(partnerServiceId, months)
+  const toInput = (m: string): CapacityMonthInput => {
+    const row = ledger.get(m)
+    return {
+      declaredUnits: row?.declaredUnits ?? 0,
+      demonstratedUnits: row?.demonstratedUnits ?? null,
+      committedUnits: row?.committedUnits ?? 0,
+    }
+  }
+  const currentMonth = months[0]!
+  const settings = await loadDetectorConfig('CAPACITY_OVERCOMMIT')
+  const decision = evaluateCapacityOvercommit(
+    {
+      orderUnits,
+      current: toInput(currentMonth),
+      futureMonths: months.slice(1).map((m) => ({ month: m, input: toInput(m) })),
+      currentMonth,
+    },
+    settings
+      ? { CAPACITY_OVERCOMMIT: { mode: settings.mode ?? 'MONITOR', thresholds: settings.thresholds ?? {} } }
+      : undefined,
+  )
+  return { decision, months, toInput, mode: settings?.mode ?? 'MONITOR' }
+}
+
+// ── PRE-PAYMENT GATE (M5-prep) ───────────────────────────────────────────────
+// Only active when the admin has promoted CAPACITY_OVERCOMMIT to GATE/ACT on
+// /risk/detectors — until then this returns null and checkout is untouched.
+// The gate NEVER re-routes: manufacturing is owner-pinned. It presents the
+// three honest options (split / extended ETA / ops mediation) — decisions
+// 2026-07-05: split + extended-ETA in product; migration stays manual ops.
+
+export interface CapacityGateInfo {
+  band: 'GATE' | 'BLOCK'
+  riskPct: number
+  orderUnits: number
+  headroomUnits: number
+  effectiveCapacity: number
+  splitProposal: { month: string; units: number }[] | null
+  /** First month whose headroom fits the FULL order (extended-ETA option). */
+  suggestedEtaMonth: string | null
+  /** Quantity (in the order's own qty terms — packs for pack items) that fits now. */
+  suggestedReducedQty: number | null
+}
+
+export async function evaluateCapacityGateForCheckout(input: {
+  partnerServiceId: string
+  orderUnits: number
+  /** Units one qty step represents (packUnitsPerPack for pack items, else 1). */
+  qtyUnitSize: number
+}): Promise<CapacityGateInfo | null> {
+  try {
+    const { decision, months, toInput, mode } = await evaluateForService(
+      input.partnerServiceId,
+      input.orderUnits,
+    )
+    if (mode !== 'GATE' && mode !== 'ACT') return null
+    const band = decision.assessment.band
+    if (band !== 'GATE' && band !== 'BLOCK') return null
+
+    let suggestedEtaMonth: string | null = null
+    for (const m of months.slice(1)) {
+      const inp = toInput(m)
+      const headroom = Math.max(
+        0,
+        Math.min(inp.declaredUnits, inp.demonstratedUnits ?? inp.declaredUnits) - inp.committedUnits,
+      )
+      if (headroom >= input.orderUnits) {
+        suggestedEtaMonth = m
+        break
+      }
+    }
+
+    const unitSize = Math.max(1, input.qtyUnitSize)
+    const fitsNowQty = Math.floor(decision.assessment.headroomUnits / unitSize)
+
+    return {
+      band,
+      riskPct: Number.isFinite(decision.assessment.riskPct)
+        ? Math.round(decision.assessment.riskPct)
+        : 9999,
+      orderUnits: input.orderUnits,
+      headroomUnits: decision.assessment.headroomUnits,
+      effectiveCapacity: decision.assessment.effectiveCapacity,
+      splitProposal: decision.assessment.splitProposal,
+      suggestedEtaMonth,
+      suggestedReducedQty: fitsNowQty > 0 ? fitsNowQty : null,
+    }
+  } catch {
+    return null // gate must fail OPEN — a risk-engine bug never blocks commerce
+  }
+}
+
 /**
  * Evaluate + persist. Returns the decision so a GATE-mode caller can branch;
  * returns null on any internal failure (best-effort by contract).
@@ -53,29 +150,7 @@ export async function recordCapacityRiskAtCheckout(
   input: CheckoutCapacityInput,
 ): Promise<RiskDecision | null> {
   try {
-    const now = new Date()
-    const months = [monthKey(now), monthKey(addMonths(now, 1)), monthKey(addMonths(now, 2))]
-    const ledger = await loadCapacityMonths(input.partnerServiceId, months)
-    const toInput = (m: string): CapacityMonthInput => {
-      const row = ledger.get(m)
-      return {
-        declaredUnits: row?.declaredUnits ?? 0,
-        demonstratedUnits: row?.demonstratedUnits ?? null,
-        committedUnits: row?.committedUnits ?? 0,
-      }
-    }
-
-    const currentMonth = months[0]!
-    const settings = await loadDetectorConfig('CAPACITY_OVERCOMMIT')
-    const decision = evaluateCapacityOvercommit(
-      {
-        orderUnits: input.orderUnits,
-        current: toInput(currentMonth),
-        futureMonths: months.slice(1).map((m) => ({ month: m, input: toInput(m) })),
-        currentMonth,
-      },
-      settings ? { CAPACITY_OVERCOMMIT: { mode: settings.mode ?? 'MONITOR', thresholds: settings.thresholds ?? {} } } : undefined,
-    )
+    const { decision } = await evaluateForService(input.partnerServiceId, input.orderUnits)
 
     if (!decision.fired) return decision
 

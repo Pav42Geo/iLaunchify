@@ -44,6 +44,8 @@ import {
   type SampleCreditEntry,
   recordCapacityRiskAtCheckout,
   recordOrderVelocityAtCheckout,
+  evaluateCapacityGateForCheckout,
+  type CapacityGateInfo,
 } from '@ilaunchify/orders'
 import {
   createCheckoutSession,
@@ -76,12 +78,27 @@ export interface PlaceOrderOptions {
     acknowledgedAt: string
     blockingFindingIds: string[]
   } | null
+  /** Risk Center capacity gate (M5-prep). Set when the gate fired and the
+   *  creator chose to proceed with a realistic extended ETA. Split/reduce is
+   *  handled client-side by changing the quantity — no bypass needed. */
+  capacityAck?: {
+    choice: 'EXTENDED_ETA'
+    suggestedEtaMonth: string | null
+    acknowledgedAt: string
+  } | null
+}
+
+/** placeOrder failure that carries the capacity-gate options for the UI. */
+export type PlaceOrderCapacityGate = {
+  ok: false
+  error: string
+  capacityGate: CapacityGateInfo
 }
 
 export async function placeOrderFromCheckoutDraft(
   productId: string,
   options: PlaceOrderOptions,
-): Promise<Result<{ checkoutUrl: string; orderId: string }>> {
+): Promise<Result<{ checkoutUrl: string; orderId: string }> | PlaceOrderCapacityGate> {
   const user = await requireUser()
   if (user.role !== 'CREATOR') {
     return { ok: false, error: 'Only creators can place production orders.' }
@@ -357,6 +374,29 @@ export async function placeOrderFromCheckoutDraft(
     targetMarketId: primaryMarket?.marketId ?? null,
   })
   if (!routing.ok) return { ok: false, error: routing.message }
+
+  // --- 4b. Risk Center capacity gate (M5-prep) --------------------------------
+  //         Inert until CAPACITY_OVERCOMMIT is promoted to GATE on
+  //         /risk/detectors. When it fires, the creator gets the three honest
+  //         options (reduce-to-fit / extended ETA / ops) BEFORE paying — the
+  //         platform never knowingly sells a date it can't deliver. An
+  //         EXTENDED_ETA ack proceeds; the ack is audited post-commit.
+  const unitsPerQtyStep = Math.max(1, packPersist?.packUnitsPerPack ?? 1)
+  if (!options.capacityAck) {
+    const gate = await evaluateCapacityGateForCheckout({
+      partnerServiceId: routing.manufacturingServiceId,
+      orderUnits: qty * unitsPerQtyStep,
+      qtyUnitSize: unitsPerQtyStep,
+    })
+    if (gate) {
+      return {
+        ok: false,
+        error:
+          'This order exceeds the manufacturer’s realistic capacity for this month — pick an option below.',
+        capacityGate: gate,
+      }
+    }
+  }
 
   // --- 5. Cost calculation. V1: pull substrate + packaging + finish baselines
   //        from the typed catalogs (G3 standardisation). Real partner pricing
@@ -899,6 +939,21 @@ export async function placeOrderFromCheckoutDraft(
     creatorUserId: user.id,
     totalCents,
   }).catch(() => {/* MONITOR mode — never blocks checkout */})
+  // M5-prep — the creator consciously accepted a realistic extended ETA at the
+  // capacity gate: record the informed consent (legal reproducibility).
+  if (options.capacityAck) {
+    await logAuditAs(user, {
+      entityType: 'Order',
+      entityId: order.id,
+      action: 'ORDER_CAPACITY_ETA_ACKED',
+      payload: {
+        choice: options.capacityAck.choice,
+        suggestedEtaMonth: options.capacityAck.suggestedEtaMonth,
+        acknowledgedAt: options.capacityAck.acknowledgedAt,
+        orderUnits: qty * unitsPerQtyStep,
+      },
+    }).catch(() => {/* best-effort */})
+  }
 
   // --- 11.a Per-flavor labels Phase 4 — snapshot each flavor's working design
   //          onto its OrderItemFlavor so production carries the right per-flavor

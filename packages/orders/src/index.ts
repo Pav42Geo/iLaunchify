@@ -204,6 +204,8 @@ export {
 export {
   recordCapacityRiskAtCheckout,
   recordOrderVelocityAtCheckout,
+  evaluateCapacityGateForCheckout,
   type CheckoutCapacityInput,
   type CheckoutVelocityInput,
+  type CapacityGateInfo,
 } from './capacity-risk-checkout'
