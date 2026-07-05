@@ -155,7 +155,7 @@ on DOWN+comment toggle.
 | Touchpoint | Prompt | Channel | When | Scope |
 |---|---|---|---|---|
 | Delivery confirmed (CHANNEL/DIRECT ship-to) | "How was your delivery?" | Email block on the delivered event | on DELIVERED | ✅ V1 |
-| Order fully delivered/completed (creator) | "How was your production experience?" | Email block | on order completion | ✅ V1 |
+| Order delivered +3 days (creator) | **Partner rating** — per-partner dimensional stars (Part 6) | Dedicated email → rating page | delivery + 3d cron | ✅ V1 |
 | Support ticket resolved | CSAT thumbs | Email block on SUPPORT_TICKET_RESOLVED | at resolution | ✅ V1 |
 | Account pages (creator + partner) | General form (Experience/Bug/Idea) | In-app, always-on | anytime | ✅ V1 |
 | Proof loop completed (creator → print partner) | "How was the proofing experience?" | Email block after PROOF_APPROVED settles | V1.5 |
@@ -168,7 +168,85 @@ on DOWN+comment toggle.
 Explicitly NOT: feedback on billing/account/security email (mandatory categories stay clean), and
 no end-buyer feedback (end buyers never touch iLaunchify — creators own that relationship).
 
-## Part 5 — Build checklist
+## Part 5 — Partner Rating System (creator → per-partner dimensional stars)
+
+**Intent (Pavel 2026-07-05):** show creators (and partners) that their opinion drives the
+marketplace. A few days after delivery, the creator rates EVERY partner who touched the order —
+Amazon-review-modal style: 3–5 one-word metrics, each a 1–5 star row — and those ratings feed the
+(currently hardcoded) stars on the product detail page + the P3 partner scorecard.
+
+### 5.1 Trigger + flow
+- **Cron: order DELIVERED + 3 days** (tunable; request-response rates peak days ~5–7 after
+  delivery, so day-3 send catches the peak) → ONE email per order:
+  "How did your partners do on {productName}?" with the product mockup hero and one CTA.
+  A single reminder at +10 days if unrated (then stop — fatigue rules apply).
+- **Rating page (creator app, authed — not the public token page):** one card per dispatch:
+  partner name + role chip + the role's metric rows (tap-a-star, mobile-first), optional short
+  comment per partner. One submit for the whole order. In-app nudge card on the order page too
+  ("Rate your partners") once delivered.
+- **Editable for 30 days** after first submit (mind-change window); one rating per
+  (creator, dispatch) — edits update, never duplicate.
+- **Verified-order only by construction** — ratings exist only behind a delivered dispatch the
+  creator owns. No drive-by reviews.
+
+### 5.2 Dimensions per role (one-word metrics, concrete on purpose)
+Research note: concrete, clearly-defined criteria measurably reduce halo error (raters blurring
+all dimensions into one impression); vague categories increase it. So metrics are one word, but
+each carries a one-line sublabel in the UI. 4 per role, locked in a CODE registry
+(`RATING_DIMENSIONS`), extensible per format later:
+
+| Role | Metrics (slug → label · sublabel) |
+|---|---|
+| MANUFACTURER | `quality` Quality · matched the approved spec/recipe · `consistency` Consistency · unit-to-unit uniformity · `speed` Speed · production vs quoted lead time · `communication` Communication · updates, ETA honesty, responsiveness |
+| PRINTER | `print-quality` Print · sharpness, finish, materials · `color` Color · matched the approved proof · `proofing` Proofing · proof turnaround + collaboration · `speed` Speed · print vs quoted lead time |
+| COPACKER | `assembly` Assembly · kit/bundle correctness · `packaging` Packaging · pack quality + protection · `accuracy` Accuracy · right items, right counts · `speed` Speed · turnaround |
+| WAREHOUSE (FC) | `receiving` Receiving · inbound confirmed promptly · `fulfillment` Fulfillment · pick/pack/ship speed · `accuracy` Accuracy · right stock, right counts · `handling` Handling · condition on arrival |
+
+- **No separate "overall" question.** The per-response overall = arithmetic mean of its
+  dimensions. Asking an overall star first anchors the dimension rows (halo/general-impression
+  effect); deriving it keeps the signal clean AND makes the modal faster.
+- Amazon-style popover on display: overall stars + count, expanding to the per-dimension bars
+  (mean per dimension), same interaction as the 4.2-out-of-5 histogram popover.
+
+### 5.3 Aggregation math (display vs ranking — different tools)
+- **Display = arithmetic mean**, 1 decimal, always with the count ("4.6 ★ · 23 ratings").
+  Users understand means; hiding the count is the real sin. Per-dimension bars use plain means.
+- **Ranking/sorting/badging = Bayesian (damped) average.** Raw means are unreliable at low N —
+  one 5★ rating would outrank a 4.8 across 200 orders. Standard fix:
+  `score = (C·m + Σratings) / (C + n)` where `m` = platform-wide mean (per role), `C` =
+  confidence constant (start fixed **C = 10** pre-scale; graduate to the 25th-percentile-of-
+  rating-counts heuristic once volume exists). Marketplace sort, "top partner" badges, and
+  routing-quality inputs use THIS score — never the raw mean.
+- **Minimum-N display gate:** below **3 ratings** show "New" instead of stars (protects new
+  partners from a single bad first rating and users from noise).
+- **Recency (V1.5):** 12-month rolling window or exponential decay so old performance doesn't
+  mask current reality; scorecard can show trend (last 90d vs lifetime).
+- Aggregates denormalized onto `PartnerService` (`ratingMean`, `ratingBayesian`, `ratingCount`,
+  `ratingDims Json`) and recomputed on every write — reads stay hot-path cheap.
+
+### 5.4 Storage + surfacing
+```
+model PartnerRating {
+  id / orderId / dispatchId @unique-per-rater / partnerServiceId / creatorUserId
+  role          String   // MANUFACTURER | PRINTER | COPACKER | WAREHOUSE (denormalized)
+  dimensions    Json     // { quality: 5, consistency: 4, … } — slugs from RATING_DIMENSIONS
+  overall       Decimal  // derived mean, stored for cheap aggregation
+  comment       String?
+  createdAt / updatedAt / editableUntil
+  @@unique([creatorUserId, dispatchId])
+  @@index([partnerServiceId, createdAt])
+}
+```
+- **Product detail page:** replace the hardcoded manufacturer stars with the live aggregate +
+  histogram/dimension popover (marketing + marketplace surfaces).
+- **Partner app:** "Your rating" card on the dashboard — overall + per-dimension bars + recent
+  comments (their own mirror of what creators see; transparency drives improvement).
+- **Admin:** ratings roll into the Feedback surface (subjectType `PARTNER_RATING`) + per-partner
+  rollup on the partner detail page; low ratings (≤2 overall) alert like thumbs-down (optional
+  auto-ticket). Feeds the P3 scorecard next to defect rate.
+- Ratings are FIRST-PARTY marketplace data (creator ↔ partner), never end-buyer data.
+
+## Part 6 — Build checklist
 
 ### FB-A. Pure engine (CW — collision-free, lands first)
 - [ ] **[CW]** Feedback token build/verify (HMAC v1, score-in-token, `{ok, late}` verify) + URL builders — `packages/notifications/src/feedback-token.ts`
@@ -193,12 +271,23 @@ no end-buyer feedback (end buyers never touch iLaunchify — creators own that r
 - [ ] **[CW]** Auto-ticket on DOWN+comment (W2-SUP integration, per-prompt toggle)
 - [ ] **[CW]** Register `FEEDBACK_TOKEN_SECRET` in `/developer` key registry
 
+### FB-F. Partner Rating System (Part 5)
+- [ ] **[CW]** `RATING_DIMENSIONS` registry (role → 4 slug/label/sublabel metrics) + pure aggregation engine: per-response overall, arithmetic means, Bayesian score (C=10, per-role prior), min-N gate — unit-tested
+- [ ] **[CW]** `PartnerRating` model + `PartnerService` aggregate columns (additive; same migration batch as FB-B)
+- [ ] **[CW]** Creator rating page (order → card per dispatch, star rows + optional comments) + in-app "Rate your partners" nudge on delivered orders + submit action (audit + aggregate recompute)
+- [ ] **[CW]** `CREATOR_RATE_PARTNERS` event + delivery+3d cron (single +10d reminder; reuses digest-cron pattern)
+- [ ] **[CW]** `RatingStars` + `RatingBreakdownPopover` (@ilaunchify/ui, Amazon-histogram-style) — replace hardcoded product-detail stars with the live manufacturer aggregate ("New" below 3 ratings)
+- [ ] **[CW]** Partner dashboard "Your rating" card (overall + dimension bars + recent comments)
+- [ ] **[CW]** Admin: ratings in the Feedback surface + partner-detail rollup; ≤2-overall alert path
+- [ ] **[PAVEL]** decide public-display policy for non-manufacturer roles (printer/co-packer/FC ratings: marketplace-public vs partner+admin-only)
+
 ### FB-E. Follow-ups (V1.5+)
 - [ ] Event wiring for imagery (product mockup URLs on order/dispatch payloads — needs public asset URLs)
 - [ ] Proof-loop / onboarding / dispute prompts; in-app moment cards
 - [ ] Partner scorecard rollup (P3 tie-in); NPS + Ideas board (V2)
 
-**Suggested order:** FB-A → FB-B (one migration) → FB-C → FB-D. A is buildable immediately.
+**Suggested order:** FB-A → FB-B (one migration, includes FB-F schema) → FB-C → FB-F → FB-D.
+A is buildable immediately.
 
 ## Sources
 - Simplesat — one-click email signature surveys: https://www.simplesat.io/gathering-feedback/everything-you-need-to-know-about-adding-one-click-customer-surveys-to-your-email-signatures/
@@ -209,3 +298,8 @@ no end-buyer feedback (end buyers never touch iLaunchify — creators own that r
 - Zonka — SaaS feedback channels (in-app 15–30% vs email 2–4%): https://www.zonkafeedback.com/blog/how-to-collect-customer-feedback-saas
 - eComEngine — Amazon feedback windows (90-day buyer window): https://www.ecomengine.com/amazon-feedback
 - SalesDuo — request timing (response peaks days 5–7): https://salesduo.com/blog/how-to-get-amazon-reviews-new-product/
+- Algolia — Bayesian average for reliable rating ranking: https://www.algolia.com/doc/guides/managing-results/must-do/custom-ranking/how-to/bayesian-average
+- Arpit Bhayani — Bayesian average mechanics + C constant: https://arpitbhayani.me/blogs/bayesian-average/
+- District Data Labs — Bayesian estimate of star-rating means: https://medium.com/district-data-labs/computing-a-bayesian-estimate-of-star-rating-means-651496a890ab
+- Springer (Language Testing in Asia) — halo effect across rating criteria: https://link.springer.com/article/10.1186/s40468-020-00115-0
+- IxDF — rating scales in UX research: https://ixdf.org/literature/article/rating-scales-for-ux-research
