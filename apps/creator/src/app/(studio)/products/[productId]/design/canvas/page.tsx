@@ -25,7 +25,9 @@ import {
 import { evaluateProductRestrictions } from '@ilaunchify/marketplace'
 import { CanvasLayoutShell } from './CanvasLayoutShell'
 import type { StudioMockup } from './MockupModal'
-import { loadDesignJson } from './actions'
+import { loadDesignJson, loadAlternateDesignJson } from './actions'
+import { listAlternates } from './alternates-actions'
+import { designAlternateCap } from '@ilaunchify/plans'
 import { loadProductCertBadges } from './cert-badge-actions'
 import { resolveProductPhrases } from './phrase-actions'
 import { resolvePartnerPrintSpec } from './partner-spec-actions'
@@ -155,12 +157,12 @@ async function loadStudioFinishes(productTemplateId: string | null): Promise<Stu
 
 interface PageProps {
   params: Promise<{ productId: string }>
-  searchParams: Promise<{ flavor?: string }>
+  searchParams: Promise<{ flavor?: string; alt?: string }>
 }
 
 export default async function DesignStudioCanvasPage({ params, searchParams }: PageProps) {
   const { productId } = await params
-  const { flavor: flavorParam } = await searchParams
+  const { flavor: flavorParam, alt: altParam } = await searchParams
   const user = await requireUser()
 
   const product = await prisma.product.findFirst({
@@ -172,6 +174,9 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       id: true,
       name: true,
       category: true,
+      // Versioning v2 §4.3 — PUBLISHED products get a warning line in the
+      // promote-alternate confirm dialog (no re-approval gate in V1).
+      status: true,
       // Creator-selection scoping (docs/SELECTION_THREADING_AUDIT.md) — the
       // flavors the creator picked; scopes the Studio's flavor switcher.
       selectedFlavorPresetIds: true,
@@ -380,9 +385,24 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // logos / tagline for the product's brand kit.
   const brandAssets: BrandCanvasAssets = await buildBrandCanvasAssets(product.brand)
 
+  // Alternates (versioning v2 §4.3) — sibling design candidates for the slot on
+  // canvas. ?alt=<designId> selects a specific sibling (validated against the
+  // slot); absent/unknown → the Active sibling. Cast-guarded server action →
+  // [] pre-push, and everything below falls back to pre-v2 behavior.
+  const slotAlternates = await listAlternates(productId, { flavorPresetId: activeFlavorPresetId })
+  const requestedAlt = altParam && slotAlternates.some((a) => a.id === altParam) ? altParam : null
+  const activeDesignId = requestedAlt ?? slotAlternates.find((a) => a.isActiveAlternate)?.id ?? null
+
   // Hydrate the canvas with any previously-saved Fabric state. Null → fresh
-  // empty canvas (first time editing this product).
-  const initialDesignJson = (await loadDesignJson(product.id, activeFlavorPresetId)) as object | null
+  // empty canvas (first time editing this product). With alternates resolved,
+  // load by EXACT design id (deterministic even while the legacy findFirst
+  // readers await their isActiveAlternate filters); fall back to the flavor-slot
+  // loader pre-push / pre-alternates.
+  const initialDesignJson = (
+    activeDesignId
+      ? await loadAlternateDesignJson(product.id, activeDesignId)
+      : await loadDesignJson(product.id, activeFlavorPresetId)
+  ) as object | null
 
   // Cert badges (DESIGN_STUDIO.md §Certificate badges V1) — the product's earned
   // certs, surfaced as managed vector badges on the host surface's canvas.
@@ -546,6 +566,10 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       mockups={mockups}
       flavors={flavors}
       activeFlavorPresetId={activeFlavorPresetId}
+      alternates={slotAlternates}
+      activeDesignId={activeDesignId}
+      alternateCap={designAlternateCap(creatorTier)}
+      productPublished={product.status === 'PUBLISHED'}
       nutritionPanelData={nutritionPanelData}
       aggregateNutritionData={aggregateNutritionData}
       nonFoodPanelData={nonFoodPanelData}

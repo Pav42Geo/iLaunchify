@@ -16,7 +16,8 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import type { BoxFace } from '../lib/surface-face'
+import { preferredFace, type BoxFace } from '../lib/surface-face'
+import { bindGltfMaterialsToSurfaces, type BindableSurface } from '../lib/gltf-surface-binding'
 
 export type { BoxFace }
 
@@ -146,6 +147,10 @@ export interface Dieline3DViewerProps {
   modelUrl?: string | null
   /** Which surface carries the design: 'body' (wrap, default), 'top' (lid sticker). */
   designSurface?: 'body' | 'top' | 'front'
+  /** G1.4 — the packaging type's authored surface map (PackagingType.defaultSurfaces).
+   *  When present with an imported glTF, materials are bound to surfaces EXACTLY via
+   *  `bindGltfMaterialsToSurfaces` (admin-defined), not raw material-name heuristics. */
+  modelSurfaces?: BindableSurface[]
   /** Initial camera framing: 'front' (default) or 'top' (look down at the lid). */
   initialView?: 'front' | 'top'
   className?: string
@@ -205,6 +210,7 @@ export function Dieline3DViewer({
   modelUrl,
   designSurface = 'body',
   initialView = 'front',
+  modelSurfaces,
   className,
   captureRef,
   onSurfaceClick,
@@ -389,8 +395,33 @@ export function Dieline3DViewer({
               if (mm && typeof mm === 'object') entries.push({ mat: mm, name: mm.name || mesh.name || '' })
             }
           })
-          const targeted = entries.filter((e) => materialTakesDesign(e.name, designSurface))
-          const applyTo = new Set((targeted.length > 0 ? targeted : entries).map((e) => e.mat))
+          // Exact binding when the admin surface map is available: bind material→surface,
+          // then target the surface(s) matching the design's face (top = lid, else front/body).
+          let applyTo: Set<THREE.Material>
+          if (modelSurfaces && modelSurfaces.length > 0) {
+            const binding = bindGltfMaterialsToSurfaces(
+              entries.map((e) => e.name).filter(Boolean),
+              modelSurfaces,
+            )
+            const targetFace: BoxFace = designSurface === 'top' ? 'top' : 'front'
+            const targetKeys = new Set(
+              modelSurfaces
+                .filter((s) => {
+                  const f = preferredFace(s)
+                  return f === targetFace || (targetFace === 'front' && f !== 'top' && f !== 'bottom')
+                })
+                .map((s) => s.key),
+            )
+            const bound = entries.filter((e) => {
+              const key = binding[e.name]
+              return key !== undefined && targetKeys.has(key)
+            })
+            const fallback = bound.length > 0 ? bound : entries.filter((e) => materialTakesDesign(e.name, designSurface))
+            applyTo = new Set((fallback.length > 0 ? fallback : entries).map((e) => e.mat))
+          } else {
+            const targeted = entries.filter((e) => materialTakesDesign(e.name, designSurface))
+            applyTo = new Set((targeted.length > 0 ? targeted : entries).map((e) => e.mat))
+          }
           for (const e of entries) {
             if (tex && applyTo.has(e.mat)) e.mat.map = tex
             if ('envMapIntensity' in e.mat) e.mat.envMapIntensity = environment ? 0.8 : 0
@@ -490,7 +521,7 @@ export function Dieline3DViewer({
     }
     // `faces` and `material` should be memoized by the caller (a new object re-inits
     // the scene); resolved packaging-3d preset constants are already reference-stable.
-  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment, contactShadow, modelUrl, designSurface, initialView])
+  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment, contactShadow, modelUrl, designSurface, initialView, modelSurfaces])
 
   return (
     <div className={className ?? 'flex h-full w-full flex-col'}>

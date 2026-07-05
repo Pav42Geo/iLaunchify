@@ -22,6 +22,7 @@ import {
   type DielineShapeKind,
   type FabricCanvas,
   type PbrSurfaceParams,
+  type BindableSurface,
 } from '@ilaunchify/ui'
 
 interface Props {
@@ -35,11 +36,13 @@ interface Props {
   /** G1.4 — signed URL to the packaging type's imported glTF; when set the preview
    *  renders the REAL model with the design on it (parametric fallback otherwise). */
   model3dUrl?: string | null
+  /** G1.4 — authored surface map for exact glTF material→surface binding. */
+  modelSurfaces?: BindableSurface[]
 }
 
 const THROTTLE_MS = 450
 
-export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material, model3dUrl }: Props) {
+export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material, model3dUrl, modelSurfaces }: Props) {
   const [open, setOpen] = React.useState(false)
   const [expanded, setExpanded] = React.useState(false)
   const [snapshot, setSnapshot] = React.useState<string | null>(null)
@@ -162,6 +165,7 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material, model3dUr
             baseColor="#f4f2ee"
             material={material}
             modelUrl={model3dUrl}
+            modelSurfaces={modelSurfaces}
             designSurface={intent.designSurface}
             initialView={intent.initialView}
             className="flex h-full w-full flex-col p-2"

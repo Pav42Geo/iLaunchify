@@ -111,6 +111,10 @@ import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
 import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot, getSavedFlavorIds, updateDesignSnapshotMeta } from './actions'
 import { VersionHistoryPanel } from './VersionHistoryPanel'
 import { SaveVersionDialog } from './SaveVersionDialog'
+import { AlternatesStrip, alternateDisplayName } from './AlternatesStrip'
+import { CompareAlternatesModal } from './CompareAlternatesModal'
+import { PromoteAlternateDialog } from './PromoteAlternateDialog'
+import { promoteAlternate, createAlternateFromSnapshot } from './alternates-actions'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
@@ -320,6 +324,15 @@ interface Props {
   flavors: Array<{ id: string; name: string; swatchHex: string | null }>
   /** The flavor whose Design is loaded (null = the shared base design). */
   activeFlavorPresetId: string | null
+  /** Alternates (versioning v2 §4.3) — sibling candidates for the slot on canvas.
+   *  [] pre-push / single-design slots. */
+  alternates?: Array<{ id: string; isActiveAlternate: boolean; alternateName: string | null; alternateSort: number; forkedFromId: string | null; updatedAt: string }>
+  /** The exact Design on canvas (may be a draft sibling); null = legacy resolve. */
+  activeDesignId?: string | null
+  /** Max alternates per slot for the creator's tier; null = unlimited (§4.4). */
+  alternateCap?: number | null
+  /** Product.status === PUBLISHED — promote dialog shows the live-production warning. */
+  productPublished?: boolean
   /** Phase 2b — REAL Nutrition Facts data for the active flavor/base (null →
    *  non-FOOD or no recipe). Fed to the Label drawer's panel add. */
   nutritionPanelData: NutritionPanelData | null
@@ -427,6 +440,10 @@ export function CanvasLayoutShell({
   mockups,
   flavors,
   activeFlavorPresetId,
+  alternates = [],
+  activeDesignId = null,
+  alternateCap = null,
+  productPublished = false,
   nutritionPanelData,
   aggregateNutritionData,
   nonFoodPanelData,
@@ -920,8 +937,10 @@ export function CanvasLayoutShell({
   // → the shared BASE design, byte-identical to pre-v2 behavior. Flavor switching is
   // a full reload (?flavor=), so the scope is fixed per mount.
   const historyScope = React.useMemo(
-    () => ({ flavorPresetId: activeFlavorPresetId }),
-    [activeFlavorPresetId],
+    // designId = the exact sibling on canvas (alternates-proof); flavorPresetId
+    // stays as the legacy fallback for slots without alternate rows.
+    () => ({ designId: activeDesignId, flavorPresetId: activeFlavorPresetId }),
+    [activeDesignId, activeFlavorPresetId],
   )
 
   const loadHistory = React.useCallback(async () => {
@@ -1033,6 +1052,74 @@ export function CanvasLayoutShell({
       void loadHistory()
     },
     [productId, historyScope, loadHistory],
+  )
+
+  // ---- Alternates (versioning v2 §4.3) ------------------------------------
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [compareLivePng, setCompareLivePng] = useState<string | null>(null)
+  const [promoteTargetId, setPromoteTargetId] = useState<string | null>(null)
+  const [promoting, setPromoting] = useState(false)
+
+  const swapToAlternate = React.useCallback(
+    (designId: string) => {
+      const qs = new URLSearchParams()
+      if (activeFlavorPresetId) qs.set('flavor', activeFlavorPresetId)
+      qs.set('alt', designId)
+      window.location.href = `/products/${productId}/design/canvas?${qs.toString()}`
+    },
+    [productId, activeFlavorPresetId],
+  )
+
+  const openCompare = React.useCallback(() => {
+    // Grab the freshest hi-res PNG of the live canvas for its side of the modal.
+    setCompareLivePng(canvas ? snapshotCanvasAsPng(canvas, { multiplier: 1.5 }) || null : null)
+    setCompareOpen(true)
+  }, [canvas])
+
+  const handlePromote = React.useCallback(async () => {
+    if (!promoteTargetId) return
+    setPromoting(true)
+    const res = await promoteAlternate(promoteTargetId)
+    setPromoting(false)
+    if (!res.ok) {
+      toast.error(res.error)
+      return
+    }
+    toast.success('Design promoted — it is now the Active design for this label')
+    // Stay on the promoted design; full reload re-resolves Active + history.
+    swapToAlternate(promoteTargetId)
+  }, [promoteTargetId, swapToAlternate])
+
+  // History drawer §4.2 secondary action — fork a snapshot into a new draft
+  // sibling so the creator can explore from a past moment without touching
+  // the current design.
+  const handleOpenSnapshotAsAlternate = React.useCallback(
+    async (snapshotId: string) => {
+      const source = activeDesignId ?? alternates.find((a) => a.isActiveAlternate)?.id ?? null
+      if (!source) {
+        toast.error('Alternates unlock after the first save of this design.')
+        return
+      }
+      const res = await createAlternateFromSnapshot(source, snapshotId)
+      if (!res.ok) {
+        toast.error(res.error)
+        return
+      }
+      toast.success('Opened as a new alternate')
+      if (res.designId) swapToAlternate(res.designId)
+    },
+    [activeDesignId, alternates, swapToAlternate],
+  )
+
+  const promoteTarget = alternates.find((a) => a.id === promoteTargetId) ?? null
+  const activeAlternateRow = alternates.find((a) => a.id === (activeDesignId ?? '')) ?? null
+  // Offscreen compare renders use the Stage's exact pixel math (trim+bleed × 3 px/mm).
+  const compareCanvasSize = React.useMemo(
+    () => ({
+      width: Math.round((dieCut.widthMm + 2 * dieCut.bleedMm) * 3.0),
+      height: Math.round((dieCut.heightMm + 2 * dieCut.bleedMm) * 3.0),
+    }),
+    [dieCut],
   )
 
   // "Save as template" (☰ menu) — persist the current design to the ACTIVE brand
@@ -1194,6 +1281,11 @@ export function CanvasLayoutShell({
         productId={productId}
         flavors={flavors}
         activeFlavorPresetId={activeFlavorPresetId}
+        alternates={alternates}
+        activeDesignId={activeDesignId}
+        alternateCap={alternateCap}
+        onPromoteAlternate={setPromoteTargetId}
+        onCompareAlternates={openCompare}
         flavorCompleteness={flavorCompleteness}
         canUndo={history.canUndo}
         canRedo={history.canRedo}
@@ -1424,13 +1516,19 @@ export function CanvasLayoutShell({
             onRestore={handleRestore}
             onUpdateMeta={handleUpdateSnapshotMeta}
             onSaveVersion={() => setSaveVersionOpen(true)}
+            onOpenAsAlternate={handleOpenSnapshotAsAlternate}
             restoringId={restoringId}
             currentId={snapshots[0]?.id ?? null}
-            scopeLabel={
+            scopeLabel={[
               flavors.length > 0
                 ? flavors.find((f) => f.id === activeFlavorPresetId)?.name ?? 'Base — all flavors'
-                : null
-            }
+                : null,
+              alternates.length > 1 && activeAlternateRow
+                ? `“${alternateDisplayName(activeAlternateRow, alternates.indexOf(activeAlternateRow))}”`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || null}
           />
 
           {/* Save a named version — ⌘S / top-bar bookmark / history panel. */}
@@ -1440,6 +1538,33 @@ export function CanvasLayoutShell({
             saving={savingVersion}
             onSave={(name) => { void handleSaveVersion(name) }}
             onClose={() => setSaveVersionOpen(false)}
+          />
+
+          {/* Alternates — side-by-side compare + promote confirm (v2 §4.3). */}
+          <CompareAlternatesModal
+            open={compareOpen}
+            onClose={() => setCompareOpen(false)}
+            productId={productId}
+            alternates={alternates}
+            activeDesignId={activeDesignId}
+            canvasSize={compareCanvasSize}
+            livePng={compareLivePng}
+            onPromote={(id) => setPromoteTargetId(id)}
+          />
+          <PromoteAlternateDialog
+            open={promoteTargetId !== null}
+            alternateName={
+              promoteTarget ? alternateDisplayName(promoteTarget, alternates.indexOf(promoteTarget)) : ''
+            }
+            slotLabel={
+              flavors.length > 0
+                ? flavors.find((f) => f.id === activeFlavorPresetId)?.name ?? 'Base — all flavors'
+                : null
+            }
+            productPublished={productPublished}
+            promoting={promoting}
+            onConfirm={() => { void handlePromote() }}
+            onClose={() => setPromoteTargetId(null)}
           />
 
           {/* Bottom floating controls */}
@@ -1568,6 +1693,11 @@ function TopBar({
   productId,
   flavors,
   activeFlavorPresetId,
+  alternates,
+  activeDesignId,
+  alternateCap,
+  onPromoteAlternate,
+  onCompareAlternates,
   flavorCompleteness,
   canUndo,
   canRedo,
@@ -1596,6 +1726,12 @@ function TopBar({
   studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null }
   flavors: Array<{ id: string; name: string; swatchHex: string | null }>
   activeFlavorPresetId: string | null
+  /** Alternates strip inputs (versioning v2 §4.3). */
+  alternates: Array<{ id: string; isActiveAlternate: boolean; alternateName: string | null; alternateSort: number; forkedFromId: string | null; updatedAt: string }>
+  activeDesignId: string | null
+  alternateCap: number | null
+  onPromoteAlternate: (designId: string) => void
+  onCompareAlternates: () => void
   /** Per-flavor submit gate — null when not a PER_FLAVOR product. */
   flavorCompleteness: CompletenessResult | null
   canUndo: boolean
@@ -1680,6 +1816,21 @@ function TopBar({
             />
             {!activeFlavorPresetId && <ApplyBaseButton productId={productId} />}
           </div>
+        )}
+
+        {/* Alternates strip (v2 §4.3) — sibling candidates for the slot on
+            canvas. Hidden in template-author mode (product-less). Collapses to
+            the "+" affordance when the slot has a single design. */}
+        {!templateAuthorMode && (
+          <AlternatesStrip
+            productId={productId}
+            flavorPresetId={activeFlavorPresetId}
+            alternates={alternates}
+            activeDesignId={activeDesignId}
+            alternateCap={alternateCap}
+            onPromote={onPromoteAlternate}
+            onCompare={onCompareAlternates}
+          />
         )}
       </div>
 
