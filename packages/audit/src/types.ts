@@ -116,6 +116,8 @@ export const AUDIT_ENTITY_TYPES = [
   'AiGeneratorSettings', // AI generator admin config (docs/AI_PACKAGING_GENERATOR.md §7/§13/§16)
   'AiOutputPreset', // admin-authored output presets (docs/AI_PACKAGING_GENERATOR.md §16)
   'AiDesignGeneration', // a generation run — draft/finalize (docs/AI_PACKAGING_GENERATOR.md §5)
+  // Studio versioning v2 — design alternates (docs/DESIGN_STUDIO_VERSIONING.md)
+  'Design',
   // Notification/Email Center control plane (docs/EMAIL_NOTIFICATION_CENTER.md, 2026-07-05)
   'NotificationTemplate', // per-event body override — draft/publish/rollback/enable
   'NotificationBranding', // global email chrome singleton
@@ -268,6 +270,12 @@ export const AUDIT_ACTIONS = [
   'SUPPORT_SETTINGS_UPDATED',
   // Brand Kit — reusable Studio templates (docs/BRAND_KIT_PROPOSAL.md)
   'BRAND_TEMPLATE_CREATED',
+  // Studio versioning v2 — Alternates (docs/DESIGN_STUDIO_VERSIONING.md §3.3)
+  'DESIGN_ALTERNATE_CREATED',
+  'DESIGN_ALTERNATE_RENAMED',
+  'DESIGN_ALTERNATE_PROMOTED',
+  'DESIGN_ALTERNATE_DELETED',
+  'DESIGN_VERSION_RESTORED_BY_ADMIN',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

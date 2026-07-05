@@ -14,6 +14,7 @@ import {
   createSnapshot,
   listSnapshots,
   getSnapshotJson,
+  updateSnapshotMeta,
   type SnapshotKind,
   type SnapshotMeta,
 } from '@ilaunchify/db'
@@ -485,6 +486,34 @@ export async function listDesignSnapshots(productId: string, scope?: DesignScope
   const d = await ownedDesign(productId, user.id, scope)
   if (!d) return []
   return listSnapshots('DESIGN', d.id)
+}
+
+/**
+ * Rename and/or (un)pin a version-history entry — Phase 1 named versions
+ * (docs/DESIGN_STUDIO_VERSIONING.md §4.2). Ownership resolved through the slot's
+ * Design (never trust the snapshot id alone); the db helper re-scopes the update
+ * to (DESIGN, designId) so a forged id can't touch another design's history.
+ * Unpinning makes the row prunable on a later write but never coalesce-overwritten
+ * (engine filters coalesce to kind AUTO).
+ */
+export async function updateDesignSnapshotMeta(
+  productId: string,
+  snapshotId: string,
+  patch: { label?: string | null; pinned?: boolean },
+  scope?: DesignScope,
+): Promise<{ ok: true } | SaveError> {
+  try {
+    const user = await requireUser()
+    const d = await ownedDesign(productId, user.id, scope)
+    if (!d) return { ok: false, error: 'Design not found or access denied' }
+    const label = patch.label === undefined ? undefined : (patch.label?.trim() || null)
+    const ok = await updateSnapshotMeta(snapshotId, 'DESIGN', d.id, { label, pinned: patch.pinned })
+    if (!ok) return { ok: false, error: 'Version not found' }
+    return { ok: true }
+  } catch (err) {
+    console.warn('[design/updateDesignSnapshotMeta] failed:', err)
+    return { ok: false, error: err instanceof Error ? err.message : 'Update failed' }
+  }
 }
 
 /**

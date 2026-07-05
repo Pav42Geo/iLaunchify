@@ -108,8 +108,9 @@ import { applyBaseToAllFlavors } from './flavor-actions'
 import { findNutritionPanel, regenerateNutritionPanel } from './lib/managedNutritionPanel'
 import { ExportModal } from './ExportModal'
 import { StudioHeaderMenu } from '@/components/labels/StudioHeaderMenu'
-import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot, getSavedFlavorIds } from './actions'
+import { recordDesignExport, snapshotDesign, listDesignSnapshots, restoreDesignSnapshot, getSavedFlavorIds, updateDesignSnapshotMeta } from './actions'
 import { VersionHistoryPanel } from './VersionHistoryPanel'
+import { SaveVersionDialog } from './SaveVersionDialog'
 import { TextDrawer } from './drawers/TextDrawer'
 import { TextFontDrawer } from './drawers/TextFontDrawer'
 import { LayersDrawer } from './drawers/LayersDrawer'
@@ -159,6 +160,7 @@ import {
   Wand2,
   X,
   Lock,
+  BookmarkPlus,
 } from 'lucide-react'
 
 // Stage is dynamically imported with ssr:false because Fabric.js needs `window`.
@@ -990,6 +992,49 @@ export function CanvasLayoutShell({
     return true
   }, [autosave, productId, grabThumb, loadHistory, historyScope])
 
+  // Phase 1 named versions (versioning v2 §4.2) — ⌘S / top-bar bookmark / panel
+  // button open a name dialog; saving flushes the autosave then pins a MANUAL
+  // snapshot under the chosen name. Kept forever; restorable from history.
+  const [saveVersionOpen, setSaveVersionOpen] = useState(false)
+  const [savingVersion, setSavingVersion] = useState(false)
+  // Suggested "Version N — Jul 5": N advances past the existing named versions.
+  const suggestedVersionName = React.useMemo(() => {
+    const n = snapshots.filter((s) => s.pinned).length + 1
+    const d = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    return `Version ${n} — ${d}`
+  }, [snapshots])
+
+  const handleSaveVersion = React.useCallback(
+    async (name: string) => {
+      setSavingVersion(true)
+      try {
+        await autosave.saveNow()
+        const res = await snapshotDesign(productId, 'MANUAL', name, grabThumb(), historyScope)
+        if (!res.ok) {
+          toast.error(res.error)
+          return
+        }
+        setSaveVersionOpen(false)
+        toast.success(`Saved “${name}” — find it any time in Version history`)
+        void loadHistory()
+      } finally {
+        setSavingVersion(false)
+      }
+    },
+    [autosave, productId, grabThumb, historyScope, loadHistory],
+  )
+
+  // Rename / pin-toggle a history row (drawer kebab). Unpin keeps the row until
+  // the ring buffer rolls past it; "Keep & name" pins an autosave permanently.
+  const handleUpdateSnapshotMeta = React.useCallback(
+    async (id: string, patch: { label?: string | null; pinned?: boolean }) => {
+      const res = await updateDesignSnapshotMeta(productId, id, patch, historyScope)
+      if (!res.ok) toast.error(res.error)
+      void loadHistory()
+    },
+    [productId, historyScope, loadHistory],
+  )
+
   // "Save as template" (☰ menu) — persist the current design to the ACTIVE brand
   // kit as a reusable BrandTemplate. The per-tier cap is enforced server-side; we
   // just surface the result. Fabric v6: toObject(props), not toJSON.
@@ -1117,7 +1162,9 @@ export function CanvasLayoutShell({
     setFontDrawerOpen(false)
   }
 
-  // Keyboard shortcuts: Cmd/Ctrl+Z for undo, Cmd/Ctrl+Shift+Z (or Y) for redo.
+  // Keyboard shortcuts: Cmd/Ctrl+Z undo, Cmd/Ctrl+Shift+Z (or Y) redo,
+  // Cmd/Ctrl+S save a named version (versioning v2 §4.2 — autosave already
+  // guards the work; ⌘S is the deliberate "keep this moment" gesture).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey
@@ -1129,6 +1176,9 @@ export function CanvasLayoutShell({
       } else if ((key === 'z' && e.shiftKey) || key === 'y') {
         e.preventDefault()
         history.redo()
+      } else if (key === 's' && !e.shiftKey) {
+        e.preventDefault()
+        setSaveVersionOpen(true)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -1152,6 +1202,7 @@ export function CanvasLayoutShell({
         saveStatus={autosave.status}
         lastSavedAt={autosave.lastSavedAt}
         onSaveNow={handleSaveNow}
+        onSaveVersion={() => setSaveVersionOpen(true)}
         onOpenHistory={() => { setHistoryOpen(true); void loadHistory() }}
         onSaveDraft={handleSaveDraft}
         onSaveAsTemplate={onSaveTemplateClick}
@@ -1371,6 +1422,8 @@ export function CanvasLayoutShell({
             selectedId={selectedVersionId}
             onSelect={setSelectedVersionId}
             onRestore={handleRestore}
+            onUpdateMeta={handleUpdateSnapshotMeta}
+            onSaveVersion={() => setSaveVersionOpen(true)}
             restoringId={restoringId}
             currentId={snapshots[0]?.id ?? null}
             scopeLabel={
@@ -1378,6 +1431,15 @@ export function CanvasLayoutShell({
                 ? flavors.find((f) => f.id === activeFlavorPresetId)?.name ?? 'Base — all flavors'
                 : null
             }
+          />
+
+          {/* Save a named version — ⌘S / top-bar bookmark / history panel. */}
+          <SaveVersionDialog
+            open={saveVersionOpen}
+            defaultName={suggestedVersionName}
+            saving={savingVersion}
+            onSave={(name) => { void handleSaveVersion(name) }}
+            onClose={() => setSaveVersionOpen(false)}
           />
 
           {/* Bottom floating controls */}
@@ -1514,6 +1576,7 @@ function TopBar({
   saveStatus,
   lastSavedAt,
   onSaveNow,
+  onSaveVersion,
   complianceOpen,
   onToggleCompliance,
   mockupOpen,
@@ -1544,6 +1607,8 @@ function TopBar({
   /** Top-bar "Save now" — flush the debounced autosave on demand. Returns false
    *  when nothing was saved so the indicator can show the not-saved flash. */
   onSaveNow: () => void | boolean | Promise<void | boolean>
+  /** Phase 1 named versions — opens the Save-version name dialog (also ⌘S). */
+  onSaveVersion: () => void
   onOpenHistory: () => void
   complianceOpen: boolean
   onToggleCompliance: () => void
@@ -1588,6 +1653,9 @@ function TopBar({
           onSave={onSaveNow}
           onOpenHistory={onOpenHistory}
         />
+        <IconButton ariaLabel="Save a version (⌘S)" onClick={onSaveVersion}>
+          <BookmarkPlus className="h-4 w-4" />
+        </IconButton>
         <IconButton ariaLabel="Undo (⌘Z)" onClick={onUndo} disabled={!canUndo}>
           <Undo2 className="h-4 w-4" />
         </IconButton>

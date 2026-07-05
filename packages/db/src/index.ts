@@ -192,6 +192,7 @@ export {
   createSnapshot,
   listSnapshots,
   getSnapshotJson,
+  updateSnapshotMeta,
   SNAPSHOT_RING_SIZE,
   COALESCE_WINDOW_MS,
   snapshotsToPrune,
@@ -314,6 +315,16 @@ export {
   type AiGeneratorSettingsPatch,
   type AiOutputPresetRow,
 } from './ai-generator-settings'
+
+export {
+  listAiVocabGroups,
+  createAiVocabGroup,
+  updateAiVocabGroup,
+  deleteAiVocabGroup,
+  getDomainVocabGroupAssignments,
+  setDomainVocabGroups,
+  type AiVocabGroupRow,
+} from './ai-vocab-groups'
 
 export {
   PARTNER_DOC_TRACK,

@@ -1691,6 +1691,22 @@ model Design {
   // a FlavorPreset id = that flavor's label (shared base + per-flavor overrides).
   // Soft FK (FlavorPreset is template-scoped). Resolve per (productId, flavorPresetId).
   flavorPresetId      String?
+  // Studio versioning v2 — Alternates (docs/DESIGN_STUDIO_VERSIONING.md §3.2).
+  // Sibling design candidates for the same slot (productId, surfaceKey,
+  // flavorPresetId). Exactly one sibling has isActiveAlternate = true (app-logic
+  // enforced, same pattern as showsCertifications); the Active one is what
+  // production / preview / export use. Existing rows default true → every current
+  // Design is its own group's Active; zero backfill.
+  isActiveAlternate   Boolean          @default(true)
+  alternateName       String? // creator label: "Bold v2", "Minimal test"
+  alternateSort       Int              @default(0)
+  // Soft self-reference: the Design.id this was forked FROM (lineage display only;
+  // null for originals). No FK — same soft-FK convention as flavorPresetId.
+  forkedFromId        String?
+  // Surface slot (§3.2 answer, confirmed Pavel 2026-07-05): keying today was
+  // positional/unkeyed; null = the product's single default surface (matches all
+  // existing rows). Populated when multi-surface products (wrap / box) arrive.
+  surfaceKey          String?
   // Relations
   product             Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   brand               Brand            @relation(fields: [brandId], references: [id])
@@ -1746,6 +1762,7 @@ enum SnapshotKind {
   AUTO // throttled background snapshot
   MILESTONE // step-advance / confirm / submit / export — pinned, kept forever
   MANUAL // user explicitly saved a named version — pinned
+  PROMOTION // auto-pin on the OUTGOING Active when an alternate is promoted — pinned (versioning v2 §3.3)
 }
 
 model EditSnapshot {

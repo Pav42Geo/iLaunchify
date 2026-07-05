@@ -35,4 +35,14 @@ assert.equal(coalesceTarget([auto('r0', 0)], t(3)), null)
 // 6) Coalesce never collapses a pinned milestone.
 assert.equal(coalesceTarget([pin('m0', 2.4)], t(2.5)), null)
 
+// 7) Phase 1 (versioning v2): an UNPINNED named version (kind MANUAL, pinned
+//    false after the creator unpins it) is prunable but NEVER a coalesce target —
+//    a background autosave must not overwrite a named save's payload in place.
+const unpinnedManual = { id: 'u0', kind: 'MANUAL', pinned: false, createdAt: t(2.4) }
+assert.equal(coalesceTarget([unpinnedManual], t(2.5)), null)
+assert.equal(coalesceTarget([auto('r0', 2.3), unpinnedManual], t(2.5)), 'r0')
+// …while still counting against the non-pinned ring for pruning.
+const ringWithUnpinned = [unpinnedManual, ...Array.from({ length: 10 }, (_, i) => auto('a' + i, i + 3))]
+assert.deepEqual(snapshotsToPrune(ringWithUnpinned), ['u0'])
+
 console.log('✓ snapshots-engine retention contract — all assertions passed')

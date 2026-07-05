@@ -130,6 +130,29 @@ export async function listSnapshots(entityType: SnapshotEntity, entityId: string
   return rows.map((r) => ({ id: r.id, kind: r.kind, label: r.label, pinned: r.pinned, createdAt: new Date(r.createdAt), thumbnail: r.thumbnail ?? null }))
 }
 
+/**
+ * Update a snapshot's user-facing metadata — rename and/or pin toggle (Phase 1
+ * named versions, docs/DESIGN_STUDIO_VERSIONING.md §4.2). Scoped to its entity so
+ * a forged id can't touch another design's history. Unpinning re-enters the row
+ * into the ring buffer (prunable on the NEXT write — we don't prune here so the
+ * user can immediately re-pin an accidental unpin).
+ */
+export async function updateSnapshotMeta(
+  id: string,
+  entityType: SnapshotEntity,
+  entityId: string,
+  patch: { label?: string | null; pinned?: boolean },
+): Promise<boolean> {
+  const found = await es().findMany({ where: { id, entityType, entityId }, select: { id: true }, take: 1 })
+  if (found.length === 0) return false
+  const data: Record<string, unknown> = {}
+  if (patch.label !== undefined) data.label = patch.label
+  if (patch.pinned !== undefined) data.pinned = patch.pinned
+  if (Object.keys(data).length === 0) return true
+  await es().update({ where: { id }, data })
+  return true
+}
+
 /** Fetch one snapshot's JSON payload (scoped to its entity) for restore/preview. */
 export async function getSnapshotJson(id: string, entityType: SnapshotEntity, entityId: string): Promise<unknown | null> {
   const row = await es().findFirst({ where: { id, entityType, entityId }, select: { snapshot: true } })

@@ -8,7 +8,9 @@
 export const SNAPSHOT_RING_SIZE = 10 // keep the last N non-pinned (AUTO) snapshots
 export const COALESCE_WINDOW_MS = 2 * 60_000 // collapse AUTO snapshots saved <2 min apart
 
-export type SnapshotKind = 'AUTO' | 'MILESTONE' | 'MANUAL'
+// PROMOTION — auto-pin written to the OUTGOING Active when an alternate is promoted
+// (versioning v2 §3.3). Non-AUTO → pinned via isPinnedKind, exempt from pruning.
+export type SnapshotKind = 'AUTO' | 'MILESTONE' | 'MANUAL' | 'PROMOTION'
 export type SnapshotEntity = 'PRODUCT_TEMPLATE_DRAFT' | 'DESIGN'
 
 export interface SnapshotRow {
@@ -34,13 +36,15 @@ export function snapshotsToPrune(rows: SnapshotRow[], ringSize: number = SNAPSHO
 }
 
 /**
- * If the most recent non-pinned (AUTO) snapshot is within the coalesce window of
+ * If the most recent non-pinned AUTO snapshot is within the coalesce window of
  * `now`, return its id so the caller UPDATES it in place instead of inserting a
- * new row. Otherwise null (insert fresh). Only AUTO snapshots are ever non-pinned,
- * so this never collapses a milestone/manual save.
+ * new row. Otherwise null (insert fresh). Filters on kind === 'AUTO' (not just
+ * !pinned): since Phase 1 named versions can be UNPINNED by the creator, an
+ * unpinned MANUAL/MILESTONE row becomes prunable but must never be silently
+ * overwritten by a background autosave.
  */
 export function coalesceTarget(rows: SnapshotRow[], now: Date, windowMs: number = COALESCE_WINDOW_MS): string | null {
-  const latest = rows.filter((r) => !r.pinned).sort(byNewest)[0]
+  const latest = rows.filter((r) => !r.pinned && r.kind === 'AUTO').sort(byNewest)[0]
   if (latest && now.getTime() - latest.createdAt.getTime() < windowMs) return latest.id
   return null
 }

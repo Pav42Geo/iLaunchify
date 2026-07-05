@@ -201,11 +201,12 @@ Check items off as they land. One phase = one commit train; commit immediately.
 - [x] Regression: single-flavor products pass `flavorPresetId: null` → identical
       where-clause to the old hard-coded base scoping; no scope line rendered
 
-### Phase 1 — Named versions polish
-- [ ] `⌘S` + Save-version button → named pinned snapshot w/ thumbnail
-- [ ] Drawer: pinned section w/ rename/unpin kebab; autosaves grouped by day
-- [ ] Restore = non-destructive (new autosave on top) — verify against engine
-- [ ] Hover large-preview in drawer
+### Phase 1 — Named versions polish ✅ (Cowork, 2026-07-05)
+- [x] `⌘S` + Save-version button → named pinned snapshot w/ thumbnail (SaveVersionDialog; top-bar BookmarkPlus; suggested "Version N — <date>")
+- [x] Drawer: pinned "Named versions" section w/ rename/unpin kebab; autosaves grouped by day; AUTO rows get "Keep & name…" (pin + label in one gesture)
+- [x] Restore = non-destructive — verified: restore pins a "Before restore" MILESTONE, copies JSON into the working row, newer history untouched
+- [x] Hover large-preview in drawer (transient — reverts to selection on leave)
+- [x] Engine hardening: `coalesceTarget` now filters kind === 'AUTO' so an UNPINNED named version is prunable but never coalesce-overwritten (+ test case 7)
 
 ### Phase 2 — Schema: alternates substrate
 - [ ] Confirm surface-keying question (§3.2 ⚠) with Code
