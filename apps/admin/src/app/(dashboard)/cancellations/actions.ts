@@ -4,7 +4,7 @@ import { prisma, getOrderSettings } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { computeCancellationOutcome, assertOrderTransition } from '@ilaunchify/orders'
+import { computeCancellationOutcome, assertOrderTransition, releaseDispatchCommitted } from '@ilaunchify/orders'
 import { executeOrderRefund } from '@ilaunchify/payments'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
@@ -97,6 +97,26 @@ export async function reviewCancellation({
         where: { id: req.orderId },
         data: { status: 'CANCELLED' },
       })
+
+      // Risk Center M1 — release every committed dispatch's capacity backlog.
+      // Dispatch statuses aren't individually flipped here (V1); the ledger
+      // release keys off the dispatch's CURRENT (committed) status so the
+      // partner's headroom frees up the moment the cancellation is approved.
+      const committedDispatches = await tx.orderDispatch.findMany({
+        where: { orderId: req.orderId },
+        select: {
+          id: true,
+          status: true,
+          partnerServiceId: true,
+          currentEtaAt: true,
+          proposedDeadlineAt: true,
+          acceptDeadlineAt: true,
+          orderItem: { select: { quantity: true, packUnitsPerPack: true } },
+        },
+      })
+      for (const d of committedDispatches) {
+        await releaseDispatchCommitted(tx, d, d.status)
+      }
     }
   })
 

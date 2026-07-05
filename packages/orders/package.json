@@ -13,6 +13,7 @@
     "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/notifications": "workspace:*",
+    "@ilaunchify/risk": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "zod": "^3.23.8"
   },

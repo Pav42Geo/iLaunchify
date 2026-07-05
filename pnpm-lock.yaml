@@ -68,6 +68,9 @@ importers:
       '@ilaunchify/plans':
         specifier: workspace:*
         version: link:../../packages/plans
+      '@ilaunchify/risk':
+        specifier: workspace:*
+        version: link:../../packages/risk
       '@ilaunchify/shipping':
         specifier: workspace:*
         version: link:../../packages/shipping
@@ -705,6 +708,9 @@ importers:
       '@ilaunchify/notifications':
         specifier: workspace:*
         version: link:../notifications
+      '@ilaunchify/risk':
+        specifier: workspace:*
+        version: link:../risk
       '@ilaunchify/types':
         specifier: workspace:*
         version: link:../types

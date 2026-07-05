@@ -23,6 +23,8 @@ import { prisma, docTrackFor } from '@ilaunchify/db'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { dispatchNotification, dispatchToPartnerService, dispatchToPartnerAdmins } from '@ilaunchify/notifications'
 import { logSystemAudit } from '@ilaunchify/audit'
+import { demonstratedCapacityP75 } from '@ilaunchify/risk'
+import { monthKey, dispatchUnits } from '@ilaunchify/orders'
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 
@@ -63,6 +65,7 @@ export interface PartnerOpsSweepResult {
   inboundEscalations: number
   releaseSlaNotices: number
   releaseSlaEscalations: number
+  capacityFeatureSnapshots: number
 }
 
 function daysUntil(expiry: Date, now: Date): number {
@@ -79,6 +82,7 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
     inboundEscalations: 0,
     releaseSlaNotices: 0,
     releaseSlaEscalations: 0,
+    capacityFeatureSnapshots: 0,
   }
 
   const adminUsers = await prisma.user.findMany({
@@ -434,6 +438,97 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
       )
       result.releaseSlaEscalations++
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 5. Risk Center M1 — capacity truth (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md).
+  //    demonstratedUnits = P75 of units DELIVERED per rolling-30d window over the
+  //    last 180 days (only windows after the partner's first delivery — thin
+  //    history is never punished). Written to the current-month ledger row +
+  //    snapshotted into PartnerRiskFeature for detectors and /admin/risk.
+  //    Best-effort: a pre-push RiskCenter table never breaks the older sweeps.
+  // ---------------------------------------------------------------------------
+  try {
+    const horizonDays = 180
+    const windowDays = 30
+    const horizonStart = new Date(now.getTime() - horizonDays * MS_PER_DAY)
+    const delivered = await prisma.orderDispatch.findMany({
+      where: { status: 'DELIVERED', deliveredAt: { gte: horizonStart } },
+      select: {
+        partnerServiceId: true,
+        deliveredAt: true,
+        orderItem: { select: { quantity: true, packUnitsPerPack: true } },
+      },
+    })
+
+    const byService = new Map<string, { deliveredAt: Date; units: number }[]>()
+    for (const d of delivered) {
+      if (!d.deliveredAt) continue
+      const units = dispatchUnits(d.orderItem)
+      if (units <= 0) continue
+      const list = byService.get(d.partnerServiceId) ?? []
+      list.push({ deliveredAt: d.deliveredAt, units })
+      byService.set(d.partnerServiceId, list)
+    }
+
+    const currentMonth = monthKey(now)
+    for (const [partnerServiceId, rows] of byService) {
+      const firstDelivery = rows.reduce((min, r) => (r.deliveredAt < min ? r.deliveredAt : min), now)
+      // Fixed rolling windows, newest last: [now−30d, now), [now−60d, now−30d), …
+      const windowSums: number[] = []
+      for (let w = Math.floor(horizonDays / windowDays); w >= 1; w--) {
+        const start = new Date(now.getTime() - w * windowDays * MS_PER_DAY)
+        const end = new Date(start.getTime() + windowDays * MS_PER_DAY)
+        if (end.getTime() <= firstDelivery.getTime()) continue // pre-history window
+        windowSums.push(
+          rows.reduce((sum, r) => (r.deliveredAt >= start && r.deliveredAt < end ? sum + r.units : sum), 0),
+        )
+      }
+      const demonstrated = demonstratedCapacityP75(windowSums)
+
+      const svc = await prisma.partnerService.findUnique({
+        where: { id: partnerServiceId },
+        select: { partnerId: true },
+      })
+      const cap = svc
+        ? await prisma.partnerOperationalCapability.findUnique({
+            where: { partnerId: svc.partnerId },
+            select: { monthlyCapacityUnits: true },
+          })
+        : null
+      const declaredUnits = cap?.monthlyCapacityUnits ?? 0
+
+      const ledgerRow = await prisma.partnerCapacityLedger.upsert({
+        where: { partnerServiceId_month: { partnerServiceId, month: currentMonth } },
+        create: { partnerServiceId, month: currentMonth, declaredUnits, demonstratedUnits: demonstrated },
+        update: { demonstratedUnits: demonstrated },
+      })
+
+      const capacityGapPct =
+        demonstrated !== null && declaredUnits > 0
+          ? Math.round((1 - demonstrated / declaredUnits) * 1000) / 10
+          : null
+      await prisma.partnerRiskFeature.create({
+        data: {
+          partnerServiceId,
+          featuresJson: {
+            formulaVersion: 'capacity-v1',
+            month: currentMonth,
+            declaredUnits,
+            demonstratedUnits: demonstrated,
+            committedUnits: ledgerRow.committedUnits,
+            completedUnits: ledgerRow.completedUnits,
+            capacityGapPct,
+            windowSums,
+          } as unknown as object,
+        },
+      })
+      result.capacityFeatureSnapshots++
+    }
+  } catch {
+    // RiskCenter tables not pushed yet, or a partial failure — older sweeps
+    // above have already committed their work; the capacity pass retries
+    // on the next nightly run.
   }
 
   return result

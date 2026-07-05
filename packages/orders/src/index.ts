@@ -189,3 +189,16 @@ export {
 export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'
 export { scoreAndSelectFc, buildScoredAwardPayload } from './fc-scorer'
 export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry } from './fc-scorer'
+
+// Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
+export {
+  monthKey,
+  dispatchUnits,
+  isCommittedStatus,
+  dispatchLedgerMonth,
+  bookDispatchCommitted,
+  releaseDispatchCommitted,
+  completeDispatchUnits,
+  loadCapacityMonths,
+} from './capacity-ledger'
+export { recordCapacityRiskAtCheckout, type CheckoutCapacityInput } from './capacity-risk-checkout'

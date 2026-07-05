@@ -18,7 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
-import { assertDispatchTransition } from '@ilaunchify/orders'
+import { assertDispatchTransition, completeDispatchUnits } from '@ilaunchify/orders'
 import {
   verifyEasyPostSignature,
   parseTrackerEvent,
@@ -132,7 +132,17 @@ export async function POST(req: NextRequest) {
     if (target) {
       const dispatch = await prisma.orderDispatch.findUnique({
         where: { id: leg.orderDispatchId },
-        select: { id: true, orderId: true, status: true },
+        select: {
+          id: true,
+          orderId: true,
+          status: true,
+          // Risk Center M1 — capacity-ledger completion needs these.
+          partnerServiceId: true,
+          currentEtaAt: true,
+          proposedDeadlineAt: true,
+          acceptDeadlineAt: true,
+          orderItem: { select: { quantity: true, packUnitsPerPack: true } },
+        },
       })
       const currentDispatchRank = dispatch ? DISPATCH_RANK[dispatch.status] : undefined
       const targetRank = DISPATCH_RANK[target]
@@ -161,6 +171,10 @@ export async function POST(req: NextRequest) {
               ...(target === 'DELIVERED' ? { deliveredAt: new Date() } : {}),
             },
           })
+          // Risk Center M1 — committed → completed on carrier-confirmed delivery.
+          if (target === 'DELIVERED') {
+            await completeDispatchUnits(tx, dispatch, dispatch.status)
+          }
           // Mirror markDelivered's order-completion echo.
           if (target === 'DELIVERED') {
             const remaining = await tx.orderDispatch.count({

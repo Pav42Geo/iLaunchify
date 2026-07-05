@@ -27,6 +27,9 @@ export const AUDIT_ENTITY_TYPES = [
   'IngredientSourceConfig', // Ingredient data-source admin settings (2026-06-11)
   'DomainSetting', // Product-domain on/off admin settings (2026-06-14)
   'LogisticsSetting', // Logistics gate on/off admin settings (Phase L1, 2026-07-02)
+  'RiskEvent', // Risk Center case-inbox rows (M1, 2026-07-05)
+  'RiskSetting', // Risk Center detector mode/threshold admin settings (M1, 2026-07-05)
+  'PartnerCapacityLedger', // Capacity truth rows — committed/completed units (M1, 2026-07-05)
   'StorageAgreement', // Hold-at-manufacturer storage agreements (Phase L1, 2026-07-02)
   'ShipmentLeg', // Platform-booked shipment legs (Phase L1, 2026-07-02)
   // Phase L2/L3 (2026-07-02). NOTE: earlier L2/L3 writes logged these under

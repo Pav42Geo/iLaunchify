@@ -12,7 +12,7 @@
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
-import { recomputeAggregateApprovalStatus } from '@ilaunchify/orders'
+import { recomputeAggregateApprovalStatus, bookDispatchCommitted } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -25,6 +25,11 @@ interface OwnedDispatch {
   manifestVersion: number
   proposedDeadlineAt: Date | null
   delayProposedAt: Date | null
+  // Risk Center M1 — capacity-ledger booking on delay-accept.
+  partnerServiceId: string
+  currentEtaAt: Date | null
+  acceptDeadlineAt: Date
+  orderItem: { quantity: number; packUnitsPerPack: number | null } | null
 }
 
 /** Load a dispatch the current creator owns (order → brand → creatorProfile → user). */
@@ -33,7 +38,19 @@ async function loadOwnedDispatch(userId: string, dispatchId: string): Promise<Ow
     orderDispatch: { findFirst: (a: unknown) => Promise<OwnedDispatch | null> }
   }).orderDispatch.findFirst({
     where: { id: dispatchId, order: { brand: { creatorProfile: { userId } } } },
-    select: { id: true, status: true, orderId: true, type: true, manifestVersion: true, proposedDeadlineAt: true, delayProposedAt: true },
+    select: {
+      id: true,
+      status: true,
+      orderId: true,
+      type: true,
+      manifestVersion: true,
+      proposedDeadlineAt: true,
+      delayProposedAt: true,
+      partnerServiceId: true,
+      currentEtaAt: true,
+      acceptDeadlineAt: true,
+      orderItem: { select: { quantity: true, packUnitsPerPack: true } },
+    },
   })
 }
 
@@ -64,6 +81,11 @@ export async function respondToDispatchDelay({
           acceptDeadlineAt: dispatch.proposedDeadlineAt,
           delayProposedAt: null,
         },
+      })
+      // Risk Center M1 — the agreed (delayed) deadline month gets the booking.
+      await bookDispatchCommitted(tx, {
+        ...dispatch,
+        acceptDeadlineAt: dispatch.proposedDeadlineAt ?? dispatch.acceptDeadlineAt,
       })
       aggregate = await recomputeAggregateApprovalStatus(tx, dispatch.orderId)
       if (aggregate === 'FULLY_ACCEPTED') {

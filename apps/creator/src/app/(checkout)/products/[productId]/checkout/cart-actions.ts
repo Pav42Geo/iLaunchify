@@ -42,6 +42,7 @@ import {
   type FcScoringWeights,
   type FcAwardHistoryEntry,
   type SampleCreditEntry,
+  recordCapacityRiskAtCheckout,
 } from '@ilaunchify/orders'
 import {
   createCheckoutSession,
@@ -879,6 +880,18 @@ export async function placeOrderFromCheckoutDraft(
       },
     })
   }
+
+  // --- 11.ab Risk Center M1 — CAPACITY_OVERCOMMIT evaluation (MONITOR).
+  //           POST-COMMIT + best-effort: while the detector is in shadow mode
+  //           a risk-engine failure must never fail an already-created order.
+  //           When admin promotes the detector to GATE (M5), the returned
+  //           decision drives the split / extended-ETA UX — wired then.
+  //           Units = packs × units-per-pack for pack items (true production units).
+  await recordCapacityRiskAtCheckout({
+    orderId: order.id,
+    partnerServiceId: routing.manufacturingServiceId,
+    orderUnits: qty * Math.max(1, packPersist?.packUnitsPerPack ?? 1),
+  }).catch(() => {/* MONITOR mode — never blocks checkout */})
 
   // --- 11.a Per-flavor labels Phase 4 — snapshot each flavor's working design
   //          onto its OrderItemFlavor so production carries the right per-flavor

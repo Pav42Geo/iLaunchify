@@ -11,7 +11,13 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { recomputeAggregateApprovalStatus, assertDispatchTransition } from '@ilaunchify/orders'
+import {
+  recomputeAggregateApprovalStatus,
+  assertDispatchTransition,
+  bookDispatchCommitted,
+  completeDispatchUnits,
+  releaseDispatchCommitted,
+} from '@ilaunchify/orders'
 import { dispatchNotification, dispatchToPartnerService } from '@ilaunchify/notifications'
 import { uploadFile, deleteFile, partnerFileKey } from '@ilaunchify/storage'
 import {
@@ -35,7 +41,12 @@ type Result = { ok: true } | { ok: false; error: string }
 async function loadOwnedDispatch(userId: string, dispatchId: string) {
   return prisma.orderDispatch.findFirst({
     where: { id: dispatchId, partnerService: serviceOwnedBy(userId) },
-    include: { order: true, partnerService: { include: { partner: true } } },
+    include: {
+      order: true,
+      partnerService: { include: { partner: true } },
+      // Risk Center M1 — capacity-ledger writers need the item's unit math.
+      orderItem: { select: { quantity: true, packUnitsPerPack: true } },
+    },
   })
 }
 
@@ -57,6 +68,10 @@ export async function acceptDispatch({ dispatchId }: { dispatchId: string }): Pr
         acceptedManifestVersion: dispatch.manifestVersion,
       },
     })
+
+    // Risk Center M1 — book the dispatch's units as committed backlog for its
+    // ETA month (CapacityRiskPct denominator). Atomic with the transition.
+    await bookDispatchCommitted(tx, dispatch)
 
     // Phase H — recompute aggregate approval gate. When all dispatches
     // have flowed past PENDING_ACCEPT into ACCEPTED-or-further, the
@@ -960,6 +975,9 @@ export async function markDelivered({ dispatchId }: { dispatchId: string }): Pro
       data: { status: 'DELIVERED', deliveredAt: new Date() },
     })
 
+    // Risk Center M1 — committed → completed (demonstrated-capacity raw data).
+    await completeDispatchUnits(tx, dispatch, fromStatus)
+
     // If both dispatches DELIVERED, advance Order → DELIVERED
     const remaining = await tx.orderDispatch.count({
       where: { orderId: dispatch.orderId, status: { not: 'DELIVERED' } },
@@ -1136,6 +1154,9 @@ export async function withdrawDispatch({
         withdrawReason: reason.trim(),
       },
     })
+
+    // Risk Center M1 — withdrawing from a committed state releases the backlog.
+    await releaseDispatchCommitted(tx, dispatch, fromStatus)
     if (isManufacturer) {
       await tx.order.update({
         where: { id: dispatch.orderId },

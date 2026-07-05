@@ -114,7 +114,7 @@ for (const pkgSrc of PKGS) {
   // Stub the runtime @ilaunchify/* deps a tested source module may import at the
   // top level (e.g. auto-cancel.ts imports prisma). The PURE functions under
   // test never touch them at call time, so a no-op Proxy lets the module load.
-  for (const dep of ['db', 'audit', 'notifications', 'payments', 'storage']) {
+  for (const dep of ['db', 'audit', 'notifications', 'payments', 'storage', 'risk']) {
     const d = join(outDir, 'node_modules', '@ilaunchify', dep)
     mkdirSync(d, { recursive: true })
     writeFileSync(join(d, 'package.json'), JSON.stringify({ name: `@ilaunchify/${dep}`, main: 'index.js' }))
