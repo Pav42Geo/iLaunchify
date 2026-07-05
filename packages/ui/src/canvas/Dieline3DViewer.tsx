@@ -32,6 +32,23 @@ export interface FaceTexture {
 // three BoxGeometry material order is [+X,-X,+Y,-Y,+Z,-Z].
 const MATERIAL_FACE_ORDER: BoxFace[] = ['right', 'left', 'top', 'bottom', 'front', 'back']
 
+/** Where the design sits + how to frame it, inferred from the die-cut's ROLE.
+ *  A lid/top sticker → design on the top cap, opened looking down at the lid.
+ *  A wrap/body label → design on the body, opened front-on. */
+export function previewIntentForCategory(category?: string | null): {
+  designSurface: 'body' | 'top' | 'front'
+  initialView: 'front' | 'top'
+} {
+  switch ((category ?? '').toUpperCase()) {
+    // Lid / top-circle stickers → the design belongs on the lid; show the lid from above.
+    case 'TUB_LID':
+    case 'LID_LABEL':
+      return { designSurface: 'top', initialView: 'top' }
+    default:
+      return { designSurface: 'body', initialView: 'front' }
+  }
+}
+
 export function shapeKindForCategory(category?: string | null): DielineShapeKind {
   switch ((category ?? '').toUpperCase()) {
     // Rigid rectangular structures → box
@@ -113,6 +130,10 @@ export interface Dieline3DViewerProps {
    *  fallback on error) and applies the design texture (`textureImageUrl`/`textureSvg`)
    *  to its materials. When absent, behaviour is unchanged (parametric only). */
   modelUrl?: string | null
+  /** Which surface carries the design: 'body' (wrap, default), 'top' (lid sticker). */
+  designSurface?: 'body' | 'top' | 'front'
+  /** Initial camera framing: 'front' (default) or 'top' (look down at the lid). */
+  initialView?: 'front' | 'top'
   className?: string
   /** When provided, the viewer sets `.current` to a function that captures the current
    *  frame as a PNG data URL (for "download 3D image"). Requires preserveDrawingBuffer. */
@@ -168,6 +189,8 @@ export function Dieline3DViewer({
   environment = true,
   contactShadow = true,
   modelUrl,
+  designSurface = 'body',
+  initialView = 'front',
   className,
   captureRef,
   onSurfaceClick,
@@ -285,11 +308,13 @@ export function Dieline3DViewer({
       lid.add(lidMesh)
       group.add(lid)
     } else if (shape === 'CYLINDER') {
+      // Lid sticker → design on the TOP cap, body bare. Body wrap → design on the body.
+      const onTop = designSurface === 'top'
       const r = (w * s) / (2 * Math.PI) // wrap circumference = width
       const geo = new THREE.CylinderGeometry(Math.max(0.2, r), Math.max(0.2, r), h * s, 48, 1, true)
-      group.add(new THREE.Mesh(geo, printedMat()))
+      group.add(new THREE.Mesh(geo, onTop ? substrateMat() : printedMat()))
       const capGeo = new THREE.CircleGeometry(Math.max(0.2, r), 48)
-      const top = new THREE.Mesh(capGeo, substrateMat())
+      const top = new THREE.Mesh(capGeo, onTop ? printedMat() : substrateMat())
       top.rotation.x = -Math.PI / 2
       top.position.y = (h * s) / 2
       const bot = new THREE.Mesh(capGeo, substrateMat())
@@ -359,8 +384,9 @@ export function Dieline3DViewer({
     }
 
     // ---- manual orbit ----
-    let rotX = -0.35
-    let rotY = 0.5
+    // Lid stickers open looking down at the top; everything else opens front 3/4.
+    let rotX = initialView === 'top' ? -1.3 : -0.35
+    let rotY = initialView === 'top' ? 0 : 0.5
     let dragging = false
     let moved = false
     let lastX = 0
@@ -440,7 +466,7 @@ export function Dieline3DViewer({
     }
     // `faces` and `material` should be memoized by the caller (a new object re-inits
     // the scene); resolved packaging-3d preset constants are already reference-stable.
-  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment, contactShadow, modelUrl])
+  }, [shape, widthMm, heightMm, depthMm, textureSvg, textureImageUrl, baseColor, faces, material, environment, contactShadow, modelUrl, designSurface, initialView])
 
   return (
     <div className={className ?? 'flex h-full w-full flex-col'}>

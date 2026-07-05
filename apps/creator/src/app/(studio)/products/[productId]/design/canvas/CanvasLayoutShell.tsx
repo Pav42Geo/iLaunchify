@@ -179,6 +179,8 @@ interface Props {
   productId: string
   productName: string
   dieCut: DieCutSpec
+  /** G1.4 — signed URL to the packaging type's imported glTF model, or null (parametric). */
+  model3dUrl?: string | null
   /** Product-details drawer meta (category + owner-pinned manufacturer + pricing summary),
    *  derived server-side in page.tsx. Feeds the Printify-style Product panel. Optional: the
    *  admin template-author mount hides the Product tool, so it defaults to empty. */
@@ -358,6 +360,7 @@ export function CanvasLayoutShell({
   productId,
   productName,
   dieCut,
+  model3dUrl,
   productMeta = { category: null, manufacturerName: null, moq: null, leadTimeDays: null, fulfillment: null, cost: null, packaging: null },
   brandAssets,
   initialDesignJson,
@@ -1325,7 +1328,7 @@ export function CanvasLayoutShell({
 
           {/* Live 3D preview dock (Studio 3D+2D Phase 2) — floats bottom-right and
               updates as you edit. Visualization only; the die-line stays the print master. */}
-          <LivePreview3DDock canvas={canvas} dieCut={dieCut} pxPerMm={pxPerMm} material={dockMaterial} />
+          <LivePreview3DDock canvas={canvas} dieCut={dieCut} pxPerMm={pxPerMm} material={dockMaterial} model3dUrl={model3dUrl} />
         </div>
       </div>
 

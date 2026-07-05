@@ -17,6 +17,7 @@ import {
   snapshotCanvasTrimmed,
   Dieline3DViewer,
   shapeKindForCategory,
+  previewIntentForCategory,
   type DieCutSpec,
   type DielineShapeKind,
   type FabricCanvas,
@@ -31,11 +32,14 @@ interface Props {
    *  `@ilaunchify/packaging-3d` at the shell). Optional: unset renders matte with
    *  studio env + contact shadow (the viewer's realistic defaults). */
   material?: PbrSurfaceParams
+  /** G1.4 — signed URL to the packaging type's imported glTF; when set the preview
+   *  renders the REAL model with the design on it (parametric fallback otherwise). */
+  model3dUrl?: string | null
 }
 
 const THROTTLE_MS = 450
 
-export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material }: Props) {
+export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material, model3dUrl }: Props) {
   const [open, setOpen] = React.useState(false)
   const [expanded, setExpanded] = React.useState(false)
   const [snapshot, setSnapshot] = React.useState<string | null>(null)
@@ -68,6 +72,9 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material }: Props) 
   // previews the current component). Switching between a product's packaging pieces
   // (e.g. wrap + cans) is a separate packaging switcher — see plan.
   const shape = React.useMemo(() => shapeKindForCategory(dieCut.category), [dieCut.category])
+  // Smart preview: the die-cut's role decides which surface carries the design and how
+  // the model is framed (a lid sticker → design on the lid, opened looking down).
+  const intent = React.useMemo(() => previewIntentForCategory(dieCut.category), [dieCut.category])
   const captureRef = React.useRef<(() => string | null) | null>(null)
 
   function downloadShot() {
@@ -154,6 +161,9 @@ export function LivePreview3DDock({ canvas, dieCut, pxPerMm, material }: Props) 
             textureImageUrl={snapshot}
             baseColor="#f4f2ee"
             material={material}
+            modelUrl={model3dUrl}
+            designSurface={intent.designSurface}
+            initialView={intent.initialView}
             className="flex h-full w-full flex-col p-2"
             captureRef={captureRef}
             onSurfaceClick={selectAtUv}

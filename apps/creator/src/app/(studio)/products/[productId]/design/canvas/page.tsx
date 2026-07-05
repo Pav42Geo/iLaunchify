@@ -13,6 +13,7 @@ import { notFound, redirect } from 'next/navigation'
 import { prisma, resolveLogoForPlacement, getAiGeneratorSettings } from '@ilaunchify/db'
 import type { LabelingType } from '@ilaunchify/db'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import type { BrandCanvasAssets, DieCutSpec } from '@ilaunchify/ui'
 import {
   formatNetQuantity,
@@ -476,6 +477,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       : null
   // Packaging (container) info — the physical package the product ships in.
   const packaging = await loadPackagingInfo(product.variant?.packagingTypeId ?? null, product.variant?.containerFormat ?? null)
+  const model3dUrl = await loadPackagingModel3dUrl(product.variant?.packagingTypeId ?? null)
   const productMeta = {
     category: product.category ?? null,
     manufacturerName: product.productTemplate?.manufacturerService?.partner?.companyName ?? null,
@@ -492,6 +494,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       productId={product.id}
       productName={product.name}
       dieCut={dieCut}
+      model3dUrl={model3dUrl}
       productMeta={productMeta}
       brandAssets={brandAssets}
       initialDesignJson={initialDesignJson}
@@ -804,4 +807,17 @@ async function resolveDefaultDieCut(
   }
   // No die-cuts at all
   return null
+}
+
+/** Signed URL to the packaging type's imported glTF/glb model, or null. Feeds the
+ *  Live 3D preview so a real uploaded container renders (G1.4 imported-model path). */
+async function loadPackagingModel3dUrl(packagingTypeId: string | null): Promise<string | null> {
+  if (!packagingTypeId) return null
+  const row = (await (
+    prisma as unknown as { packagingType: { findUnique: (a: unknown) => Promise<{ model3dKey: string | null } | null> } }
+  ).packagingType
+    .findUnique({ where: { id: packagingTypeId }, select: { model3dKey: true } })
+    .catch(() => null)) as { model3dKey: string | null } | null
+  if (!row?.model3dKey) return null
+  return getSignedReadUrl(row.model3dKey, { expiresInSeconds: 600 }).catch(() => null)
 }
