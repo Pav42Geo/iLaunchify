@@ -2740,6 +2740,13 @@ model OrderItem {
   packUnitsPerPack Int? // units one pack of the chosen size holds (snapshot)
   pricingBasisSnapshot PricingBasis? // PER_FLAVOR | PER_PACK at order time
   pricePerPackCentsSnapshot Int? // the per-pack price (cents) at order time
+  // Creator Product Configuration (docs/CREATOR_PRODUCT_CONFIGURATION.md) — the
+  // immutable "order of the creator" snapshot assembled at checkout
+  // (buildCreatorConfiguration). Downstream stages (partner manifest + channel
+  // listing) read THIS instead of re-deriving from the template pool, so the
+  // creator's filtered choice is the single source of truth. Additive/nullable —
+  // null = legacy item placed before configuration snapshots shipped.
+  configurationSnapshot Json?
   order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product         Product        @relation(fields: [productId], references: [id])
   designVersion   DesignVersion? @relation(fields: [designVersionId], references: [id])
