@@ -22,7 +22,7 @@
 // =============================================================================
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge, Pin, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, Palette, Upload, X, Sliders, Gauge, Pin, Maximize2, ChevronLeft, ChevronRight, ChevronDown, Check } from 'lucide-react'
 import { planGeneration, planGenerationSet, Dieline3DViewer, shapeKindForCategory, assignSurfaceFaces, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief, type BoxFace, type FaceTexture } from '@ilaunchify/ui'
 import { planFlavorSeries, type LabelingDomain, type MarketCode, type FlavorSpec, type FlavorSeriesPlan } from '@ilaunchify/ai-design'
 import { clampOutput, formatBytes, type OutputPolicy, type OutputSettings, type OutputFormat } from '@ilaunchify/imagegen'
@@ -142,18 +142,6 @@ export interface ManualBrand {
   audience: string
   colours: string[]
   logoDataUrl?: string
-}
-
-function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full border px-2.5 py-1 text-[12px] font-medium transition ${on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
-    >
-      {label}
-    </button>
-  )
 }
 
 export function AiCreatePanel(props: AiCreatePanelProps) {
@@ -278,8 +266,6 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
     return f
   }, [setVariants, setPlan])
 
-  const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
-    set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
 
   const genCtx: GenerateContext = {
     brandRefUrl,
@@ -526,12 +512,12 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
             rows={2}
             className="w-full resize-none rounded-lg border border-ink-200 px-3 py-2 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-200"
           />
-          <p className="mt-1 text-[11px] text-ink-400">Chips + prompt tone are domain-tuned for {domainLabel(domain)}.</p>
+          <p className="mt-1 text-[11px] text-ink-400">Options + prompt tone are domain-tuned for {domainLabel(domain)}. Type to add your own.</p>
         </div>
 
-        <ChipGroup title="Style" options={styleOptions} selected={styles} onToggle={(v) => toggle(styles, setStyles, v)} />
-        <ChipGroup title="Colour mood" options={colorOptions} selected={colors} onToggle={(v) => toggle(colors, setColors, v)} />
-        <ChipGroup title="Elements" options={elementOptions} selected={elements} onToggle={(v) => toggle(elements, setElements, v)} />
+        <VocabSelect title="Style" options={styleOptions} selected={styles} onChange={setStyles} placeholder="Choose styles…" />
+        <VocabSelect title="Colour mood" options={colorOptions} selected={colors} onChange={setColors} placeholder="Choose colours…" />
+        <VocabSelect title="Elements" options={elementOptions} selected={elements} onChange={setElements} placeholder="Choose elements…" />
 
         {/* Output settings — tier-clamped preset + fine-tune. */}
         {policy && output && (
@@ -1288,15 +1274,137 @@ function ResultActions({
   )
 }
 
-function ChipGroup({ title, options, selected, onToggle }: { title: string; options: string[]; selected: string[]; onToggle: (v: string) => void }) {
+/**
+ * VocabSelect — compact collapsible multi-select for a creative-vocabulary
+ * dimension (Style / Colour / Elements). Replaces the always-open chip rails:
+ * the trigger summarises the current picks as removable tokens (or a
+ * placeholder) and collapses everything to one row; the popover lists the
+ * admin-curated options as checkable rows, with type-to-filter and an
+ * "add your own" affordance so a creator can enter a custom term. Custom terms
+ * flow straight through to the prompt engine as ordinary tags.
+ */
+function VocabSelect({
+  title,
+  options,
+  selected,
+  onChange,
+  placeholder,
+}: {
+  title: string
+  options: string[]
+  selected: string[]
+  onChange: (v: string[]) => void
+  placeholder: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const toggle = (v: string) => onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v])
+  const remove = (v: string) => onChange(selected.filter((x) => x !== v))
+  const norm = query.trim()
+  // Curated options ∪ any already-selected custom terms, so a typed term still
+  // shows as a checked row.
+  const allOptions = [...options, ...selected.filter((s) => !options.includes(s))]
+  const filtered = norm ? allOptions.filter((o) => o.toLowerCase().includes(norm.toLowerCase())) : allOptions
+  const canAdd = norm.length > 0 && !allOptions.some((o) => o.toLowerCase() === norm.toLowerCase())
+  const addCustom = () => {
+    if (!norm) return
+    if (!selected.includes(norm)) onChange([...selected, norm])
+    setQuery('')
+  }
+
   return (
-    <div>
+    <div ref={ref} className="relative">
       <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-500">{title}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map((o) => (
-          <Chip key={o} label={o} on={selected.includes(o)} onClick={() => onToggle(o)} />
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-200"
+      >
+        <div className="flex flex-1 flex-wrap items-center gap-1">
+          {selected.length === 0 && <span className="px-0.5 text-[12.5px] text-ink-400">{placeholder}</span>}
+          {selected.map((s) => (
+            <span key={s} className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-2 py-0.5 text-[12px] font-medium text-pink-700">
+              {s}
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label={`Remove ${s}`}
+                onClick={(e) => { e.stopPropagation(); remove(s) }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); remove(s) } }}
+                className="grid h-3.5 w-3.5 place-items-center rounded-full hover:bg-pink-100"
+              >
+                <X className="h-3 w-3" />
+              </span>
+            </span>
+          ))}
+        </div>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-ink-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg border border-ink-200 bg-white shadow-lg">
+          <div className="border-b border-ink-100 p-1.5">
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && canAdd) { e.preventDefault(); addCustom() } }}
+              placeholder="Search or add your own…"
+              className="w-full rounded-md border border-ink-200 px-2 py-1 text-[12.5px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-200"
+            />
+          </div>
+          <div className="max-h-52 overflow-y-auto py-1" role="listbox" aria-multiselectable>
+            {filtered.map((o) => {
+              const on = selected.includes(o)
+              return (
+                <button
+                  key={o}
+                  type="button"
+                  role="option"
+                  aria-selected={on}
+                  onClick={() => toggle(o)}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-ink-700 hover:bg-ink-50"
+                >
+                  <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${on ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300'}`}>
+                    {on && <Check className="h-3 w-3" />}
+                  </span>
+                  {o}
+                </button>
+              )
+            })}
+            {filtered.length === 0 && !canAdd && <p className="px-2.5 py-2 text-[12px] text-ink-400">No matches.</p>}
+          </div>
+          {canAdd && (
+            <button
+              type="button"
+              onClick={addCustom}
+              className="flex w-full items-center gap-1.5 border-t border-ink-100 px-2.5 py-2 text-left text-[12.5px] font-medium text-pink-700 hover:bg-pink-50"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add “{norm}”
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

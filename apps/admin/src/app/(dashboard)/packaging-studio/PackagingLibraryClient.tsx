@@ -78,6 +78,15 @@ export function PackagingLibraryClient({ data }: { data: PackagingLibraryData })
     }
   }
 
+  // Deprecating hides the container from the marketplace + partner pickers, so it's
+  // confirmed via a modal. Re-activating is harmless → instant.
+  const [confirmDeprecate, setConfirmDeprecate] = React.useState<PackagingModelRow | null>(null)
+
+  function requestToggle(m: PackagingModelRow) {
+    if (m.status === 'ACTIVE') setConfirmDeprecate(m)
+    else toggleStatus(m)
+  }
+
   async function toggleStatus(m: PackagingModelRow) {
     const next = m.status === 'ACTIVE' ? 'DEPRECATED' : 'ACTIVE'
     setModels((prev) => prev.map((x) => (x.id === m.id ? { ...x, status: next } : x)))
@@ -207,7 +216,7 @@ export function PackagingLibraryClient({ data }: { data: PackagingLibraryData })
                   <Cuboid className="h-3.5 w-3.5" /> Surfaces
                 </a>
                 <button
-                  onClick={() => toggleStatus(m)}
+                  onClick={() => requestToggle(m)}
                   className="rounded-full border border-ink-200 px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-600 hover:border-ink-400"
                 >
                   {m.status === 'ACTIVE' ? 'Deprecate' : 'Activate'}
@@ -215,6 +224,31 @@ export function PackagingLibraryClient({ data }: { data: PackagingLibraryData })
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Deprecate confirmation */}
+      {confirmDeprecate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4" onClick={() => setConfirmDeprecate(null)}>
+          <div className="w-full max-w-md rounded-2xl border border-ink-200 bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-[16px] font-semibold text-ink-900">Deprecate “{confirmDeprecate.displayName}”?</h3>
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-600">
+              Deprecating hides this container from the marketplace packaging filter and the partner picker,
+              so new products can no longer be built on it. Existing products and its die-lines, mockups, and
+              surfaces are kept. You can re-activate it any time.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setConfirmDeprecate(null)} className="rounded-full border border-ink-200 px-4 py-2 text-[13px] font-semibold text-ink-700 hover:border-ink-400">
+                Cancel
+              </button>
+              <button
+                onClick={() => { const m = confirmDeprecate; setConfirmDeprecate(null); toggleStatus(m) }}
+                className="rounded-full bg-pink-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-pink-700"
+              >
+                Deprecate
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

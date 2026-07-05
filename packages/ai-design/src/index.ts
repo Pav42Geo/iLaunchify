@@ -10,8 +10,10 @@ export {
 export {
   domainPreset,
   resolveDomainOptions,
+  resolveDomainVocabulary,
   recommendedPackageTypes,
   type DomainPreset,
+  type VocabGroup,
 } from './domainPreset'
 
 export {

@@ -107,6 +107,46 @@ export function recommendedPackageTypes(domain: LabelingDomain): string[] {
   return [...PRESETS[domain].packageTypes]
 }
 
+/**
+ * A reusable, admin-authored vocabulary group: a named bundle of style / colour /
+ * element terms that can be assigned to one or more domains. Purely creative —
+ * never touches compliance. Stored in AiGeneratorSettings; folded in here.
+ */
+export interface VocabGroup {
+  label: string
+  styles: string[]
+  colors: string[]
+  elements: string[]
+}
+
+/**
+ * The full creative vocabulary a domain should offer = the resolved domain preset
+ * (defaults + admin per-domain override) UNIONed with every assigned vocabulary
+ * group's terms (deduped, order-stable: domain terms first, then group terms).
+ * promptTone / substrateHint / packageTypes come from the domain preset unchanged.
+ *
+ * Pure + deterministic. Single source of truth for both the admin preview and the
+ * creator options, so they can never drift.
+ */
+export function resolveDomainVocabulary(
+  domain: LabelingDomain,
+  domainOverride: Partial<Pick<DomainPreset, 'styles' | 'colors' | 'elements' | 'promptTone' | 'substrateHint' | 'packageTypes'>> | undefined,
+  vocabGroups: Record<string, Partial<VocabGroup>> | undefined,
+  assignedGroupIds: readonly string[] | undefined,
+): DomainPreset {
+  const base = resolveDomainOptions(domain, domainOverride)
+  const groups = (assignedGroupIds ?? [])
+    .map((id) => vocabGroups?.[id])
+    .filter((g): g is Partial<VocabGroup> => Boolean(g))
+  if (groups.length === 0) return base
+  return {
+    ...base,
+    styles: dedupe([...base.styles, ...groups.flatMap((g) => g.styles ?? [])]),
+    colors: dedupe([...base.colors, ...groups.flatMap((g) => g.colors ?? [])]),
+    elements: dedupe([...base.elements, ...groups.flatMap((g) => g.elements ?? [])]),
+  }
+}
+
 function dedupe(list: ReadonlyArray<string>): string[] {
   const seen = new Set<string>()
   const out: string[] = []

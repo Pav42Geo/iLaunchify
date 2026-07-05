@@ -1,6 +1,6 @@
 import { AdminPageHeader } from '@/components/AdminPageHeader'
-import { getAiGeneratorSettings, listAiOutputPresets } from './actions'
-import { AiGeneratorForms } from './AiGeneratorForms'
+import { getAiGeneratorSettings, listAiOutputPresets, listAiVocabGroups, getDomainVocabGroupAssignments } from './actions'
+import { AiGeneratorForms, AiGeneratorMasterToggle } from './AiGeneratorForms'
 import { tierLimits, resolveOutputPolicy, providerStatus, type CreatorBillingTier, type TierGenerationLimits, type OutputPolicy } from '@ilaunchify/imagegen'
 import { resolveDomainOptions, type LabelingDomain, type DomainPreset } from '@ilaunchify/ai-design'
 
@@ -14,6 +14,9 @@ const DOMAINS: LabelingDomain[] = ['FOOD', 'DIETARY_SUPPLEMENT', 'OTC', 'COSMETI
 export default async function AiGeneratorSettingsPage() {
   const settings = await getAiGeneratorSettings()
   const presets = await listAiOutputPresets()
+  // Phase 2 — vocab groups + domain assignment now live in dedicated tables.
+  const vocabGroups = await listAiVocabGroups()
+  const domainGroupAssignments = await getDomainVocabGroupAssignments()
 
   // Effective values = pure-engine defaults merged with the admin overrides.
   const tierLimitsEff: Record<string, TierGenerationLimits> = {}
@@ -33,10 +36,13 @@ export default async function AiGeneratorSettingsPage() {
         eyebrow="AI Packaging Generator"
         title="Generator settings"
         description={<>Tier limits, per-domain creative vocabulary, and output presets. Overrides the code defaults with no deploy.</>}
+        actions={<AiGeneratorMasterToggle initial={settings.gates.generatorEnabled} />}
       />
       <AiGeneratorForms
         tierLimits={tierLimitsEff}
         domains={domainEff}
+        vocabGroups={vocabGroups}
+        domainGroups={domainGroupAssignments}
         outputPolicies={outputEff}
         presets={presets}
         gates={settings.gates}

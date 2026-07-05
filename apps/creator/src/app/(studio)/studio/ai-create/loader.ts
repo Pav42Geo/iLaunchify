@@ -4,12 +4,30 @@
 // admin-tuned per-domain chip vocabulary. Cast-guarded → degrades to sensible
 // defaults pre-migration, so it always returns usable props.
 
-import { prisma, getAiGeneratorSettings, listActiveDieCuts } from '@ilaunchify/db'
+import { prisma, getAiGeneratorSettings, listActiveDieCuts, listAiVocabGroups, getDomainVocabGroupAssignments } from '@ilaunchify/db'
 import { getCreatorTier } from '@ilaunchify/auth'
-import { resolveDomainOptions, type LabelingDomain, type DomainPreset, type FlavorSpec } from '@ilaunchify/ai-design'
+import { resolveDomainVocabulary, type LabelingDomain, type DomainPreset, type VocabGroup, type FlavorSpec } from '@ilaunchify/ai-design'
 import { tierLimits, resolveOutputPolicy, type CreatorBillingTier, type OutputPolicy } from '@ilaunchify/imagegen'
 import type { FrameLayout } from '@ilaunchify/ui'
 import type { AiCreatePanelProps, DielineTarget, CreatorTier, AiUsageSnapshot, SavedConcept } from './AiCreatePanel'
+
+/**
+ * Effective creative vocabulary for a domain = its own preset/override UNION every
+ * ACTIVE vocab group assigned to it (Phase 2, table-backed). Cast-guarded reads
+ * degrade to the plain domain preset pre-migration.
+ */
+async function resolveVocabWithGroups(
+  domain: LabelingDomain,
+  domainOverride: Partial<DomainPreset> | undefined,
+): Promise<DomainPreset> {
+  const [activeGroups, assignments] = await Promise.all([
+    listAiVocabGroups({ activeOnly: true }),
+    getDomainVocabGroupAssignments(),
+  ])
+  const vocabGroups: Record<string, Partial<VocabGroup>> = {}
+  for (const g of activeGroups) vocabGroups[g.id] = { styles: g.styles, colors: g.colors, elements: g.elements }
+  return resolveDomainVocabulary(domain, domainOverride, vocabGroups, assignments[domain])
+}
 import type { LibraryItem } from './library-types'
 
 // Fallback accent ramp for flavours with no swatchHex and no brand palette to draw from.
@@ -329,7 +347,7 @@ export async function loadAiCreateProps(productId: string, userId: string): Prom
   const meteredTier: CreatorBillingTier = tier === 'admin' ? 'agency' : (tier as CreatorBillingTier)
 
   const settings = await getAiGeneratorSettings()
-  const vocab: DomainPreset = resolveDomainOptions(domain, settings.domainVocab[domain] as Partial<DomainPreset> | undefined)
+  const vocab: DomainPreset = await resolveVocabWithGroups(domain, settings.domainVocab[domain] as Partial<DomainPreset> | undefined)
 
   const palette = product.brand ? brandPalette(product.brand) : []
   const outputPolicy: OutputPolicy = resolveOutputPolicy(
@@ -402,7 +420,7 @@ export async function loadAdminAiCreateProps(input: { dieCutId?: string; domain?
   }
 
   const settings = await getAiGeneratorSettings()
-  const vocab: DomainPreset = resolveDomainOptions(domain, settings.domainVocab[domain] as Partial<DomainPreset> | undefined)
+  const vocab: DomainPreset = await resolveVocabWithGroups(domain, settings.domainVocab[domain] as Partial<DomainPreset> | undefined)
 
   return {
     productName: cut.name,

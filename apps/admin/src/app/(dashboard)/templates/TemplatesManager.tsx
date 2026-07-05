@@ -1,10 +1,11 @@
 'use client'
 
 import * as React from 'react'
-import { LayoutTemplate, Plus, Trash2, Crown } from 'lucide-react'
+import { LayoutTemplate, Plus, Trash2, Crown, Copy, Columns2, X, ImageOff } from 'lucide-react'
 import {
   adminCreateLibraryTemplate,
   adminDeleteLibraryTemplate,
+  adminDuplicateLibraryTemplate,
   adminListTemplateStyleOptions,
 } from './actions'
 
@@ -138,6 +139,40 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
     if (res.ok) setRows((r) => r.filter((x) => x.id !== id))
     else setError(res.error)
   }
+
+  // — Candidates + compare (versioning v2 Phase 4, option (b)) ---------------
+  // Template "alternates" = plain sibling library rows: Duplicate creates a
+  // candidate next to the original; pick any two rows to compare side by side.
+  const [duplicatingId, setDuplicatingId] = React.useState<string | null>(null)
+  const [compareIds, setCompareIds] = React.useState<string[]>([])
+  const [compareOpen, setCompareOpen] = React.useState(false)
+
+  async function duplicateAsCandidate(t: Row) {
+    setDuplicatingId(t.id)
+    setError(null)
+    const res = await adminDuplicateLibraryTemplate(t.id)
+    setDuplicatingId(null)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    setRows((r) => [
+      { ...t, id: res.id ?? crypto.randomUUID(), name: `${t.name} copy`, isPremium: false, tier: null, createdAt: new Date().toISOString() },
+      ...r,
+    ])
+  }
+
+  function toggleCompare(id: string) {
+    setCompareIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      // Keep at most 2 — picking a 3rd swaps out the oldest pick.
+      return [...prev, id].slice(-2)
+    })
+  }
+
+  const comparePair = compareIds
+    .map((id) => rows.find((r) => r.id === id))
+    .filter((r): r is Row => !!r)
 
   return (
     <div className="space-y-6">
@@ -349,6 +384,29 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
                   <td className="px-4 py-3 text-right">
                     <button
                       type="button"
+                      onClick={() => toggleCompare(t.id)}
+                      aria-pressed={compareIds.includes(t.id)}
+                      title="Pick for side-by-side compare (max 2)"
+                      className={
+                        'mr-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold transition-colors ' +
+                        (compareIds.includes(t.id)
+                          ? 'bg-pink-50 text-pink-700 ring-1 ring-pink-300'
+                          : 'text-ink-600 hover:bg-ink-100')
+                      }
+                    >
+                      <Columns2 className="h-3.5 w-3.5" /> Compare
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void duplicateAsCandidate(t)}
+                      disabled={duplicatingId === t.id}
+                      title="Duplicate as a candidate to iterate on"
+                      className="mr-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold text-ink-600 hover:bg-ink-100 disabled:opacity-50"
+                    >
+                      <Copy className="h-3.5 w-3.5" /> {duplicatingId === t.id ? 'Duplicating…' : 'Duplicate'}
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => remove(t.id)}
                       className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-semibold text-danger-600 hover:bg-danger-50"
                     >
@@ -361,6 +419,84 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
           </tbody>
         </table>
       </section>
+
+      {/* Floating compare bar — appears once 2 rows are picked. */}
+      {comparePair.length === 2 && !compareOpen && (
+        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-ink-200 bg-white px-4 py-2 shadow-xl">
+          <span className="text-[12px] text-ink-600">
+            <span className="font-semibold text-ink-900">{comparePair[0]!.name}</span> vs{' '}
+            <span className="font-semibold text-ink-900">{comparePair[1]!.name}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setCompareOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-black"
+          >
+            <Columns2 className="h-3.5 w-3.5" /> Compare
+          </button>
+          <button type="button" onClick={() => setCompareIds([])} aria-label="Clear selection" className="rounded p-1 text-ink-400 hover:bg-ink-100">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Side-by-side compare — thumbnails (captured at save time). Candidates
+          are plain sibling rows (option (b)); delete the loser, keep the winner. */}
+      {compareOpen && comparePair.length === 2 && (
+        <div className="fixed inset-0 z-[90] flex flex-col bg-ink-900/40 p-6" role="dialog" aria-modal="true" aria-label="Compare templates">
+          <div className="mx-auto flex h-full w-full max-w-[1100px] flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-2xl">
+            <header className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
+              <div className="font-display text-[14px] font-semibold text-ink-900">Compare templates</div>
+              <button type="button" onClick={() => setCompareOpen(false)} aria-label="Close" className="rounded p-1 text-ink-500 hover:bg-ink-100">
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+            <div className="flex min-h-0 flex-1 divide-x divide-ink-200">
+              {comparePair.map((t) => (
+                <div key={t.id} className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex items-center justify-between gap-2 border-b border-ink-200 px-3 py-2">
+                    <span className="truncate text-[12.5px] font-semibold text-ink-900">{t.name}</span>
+                    {t.isPremium && (
+                      <span className="inline-flex items-center gap-1 rounded bg-ink-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        <Crown className="h-2.5 w-2.5" /> Premium
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-1 items-center justify-center overflow-auto bg-[conic-gradient(#f1f1f3_90deg,#fafafb_0_180deg,#f1f1f3_0_270deg,#fafafb_0)] bg-[length:16px_16px] p-4">
+                    {t.thumbnailUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={t.thumbnailUrl} alt={t.name} className="max-h-full max-w-full rounded border border-ink-200 bg-white shadow-sm" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-ink-400">
+                        <ImageOff className="h-6 w-6" />
+                        <span className="text-[12px]">No thumbnail saved for this template</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-ink-100 px-3 py-2 text-[11px] text-ink-500">
+                    <span>
+                      {(t.domain && DOMAIN_LABEL[t.domain]) || '—'} · added {new Date(t.createdAt).toLocaleDateString()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompareOpen(false)
+                        void remove(t.id)
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-danger-600 hover:bg-danger-50"
+                    >
+                      <Trash2 className="h-3 w-3" /> Delete this one
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <footer className="border-t border-ink-100 px-4 py-2 text-[10.5px] text-ink-400">
+              Candidates are sibling library rows — keep the winner, delete the loser. Thumbnails come from the save-time canvas capture.
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

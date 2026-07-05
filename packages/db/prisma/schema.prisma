@@ -8315,3 +8315,101 @@ model FcAwardLog {
 
   @@index([partnerServiceId, awardedAt])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RISK MANAGEMENT CENTER (M0 — docs/RISK_MANAGEMENT_CENTER.md +
+// RISK_CENTER_IMPLEMENTATION_PLAN.md). Additive slice. Soft FKs by design:
+// risk rows are derived/observational data; no back-relations on hot models.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RiskMode {
+  MONITOR // detector runs, logs RiskEvent, notifies no one (shadow mode)
+  WARN // notify affected party + risk inbox row (advisory)
+  GATE // block progression until human choice
+  ACT // automatic mitigation
+}
+
+enum RiskSeverity {
+  INFO
+  WARN
+  HIGH
+  CRITICAL
+}
+
+enum RiskEventStatus {
+  OPEN
+  ACK
+  RESOLVED
+  MUTED
+  FALSE_POSITIVE // first-class: powers detector calibration (FP-rate counters)
+}
+
+enum RiskDecision {
+  MONITOR_LOGGED // detector fired but mode=MONITOR capped the action
+  WARNED
+  GATED
+  ACTED
+}
+
+/// One row per detector (LogisticsSetting pattern). Mode is the escalation
+/// ladder rung; a detector may never act above its mode. Seeded by
+/// seed-risk-settings.ts — all 14 detectors start MONITOR.
+model RiskSetting {
+  detectorKey    String   @id // e.g. "CAPACITY_OVERCOMMIT"
+  mode           RiskMode @default(MONITOR)
+  thresholdsJson Json // detector-specific thresholds, versioned inside
+  notes          String?
+  updatedAt      DateTime @updatedAt
+  updatedById    String?
+}
+
+/// Case-management row (append-only + resolution workflow). scoreSnapshotJson
+/// persists inputs + thresholds + formulaVersion so every decision is
+/// reproducible (same principle as fee snapshots).
+model RiskEvent {
+  id                String          @id @default(uuid())
+  detectorKey       String
+  severity          RiskSeverity
+  entityType        String // reuse audit entity types ("Order", "PartnerService", …)
+  entityId          String // soft FK
+  decision          RiskDecision
+  scoreSnapshotJson Json // { inputs, thresholds, score, formulaVersion }
+  status            RiskEventStatus @default(OPEN)
+  resolvedById      String?
+  resolvedAt        DateTime?
+  createdAt         DateTime        @default(now())
+
+  @@index([status, severity, createdAt])
+  @@index([entityType, entityId])
+  @@index([detectorKey, status, createdAt])
+}
+
+/// Per-partner-service per-month capacity truth. committedUnits written by
+/// dispatch FSM transitions (accept adds; deliver/cancel releases);
+/// demonstratedUnits recomputed by the nightly partner-ops cron (P75 rolling).
+model PartnerCapacityLedger {
+  id                String   @id @default(uuid())
+  partnerServiceId  String // soft FK → PartnerService
+  month             String // "2026-07"
+  declaredUnits     Int // snapshot of PartnerOperationalCapability.monthlyCapacityUnits
+  demonstratedUnits Int? // null until enough history
+  committedUnits    Int      @default(0)
+  completedUnits    Int      @default(0)
+  updatedAt         DateTime @updatedAt
+
+  @@unique([partnerServiceId, month])
+  @@index([month])
+}
+
+/// Feature-store snapshot (nightly, partner-ops cron). featuresJson holds
+/// { otif90d, acceptRate90d, ltVarianceP90Days, odrEquiv90d, discrepancyRate,
+///   yieldAvgPct, capacityGapPct, activeStrikes, clawbackExposureCents,
+///   prs, prsComponents } — consumed by detectors + /admin/risk.
+model PartnerRiskFeature {
+  id               String   @id @default(uuid())
+  partnerServiceId String // soft FK → PartnerService
+  computedAt       DateTime @default(now())
+  featuresJson     Json
+
+  @@index([partnerServiceId, computedAt])
+}

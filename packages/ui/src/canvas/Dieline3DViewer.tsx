@@ -16,8 +16,9 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { preferredFace, type BoxFace } from '../lib/surface-face'
+import type { BoxFace } from '../lib/surface-face'
 import { bindGltfMaterialsToSurfaces, type BindableSurface } from '../lib/gltf-surface-binding'
+import { materialsForDesign } from '../lib/gltf-design-binding'
 
 export type { BoxFace }
 
@@ -48,20 +49,6 @@ export function previewIntentForCategory(category?: string | null): {
     default:
       return { designSurface: 'body', initialView: 'front' }
   }
-}
-
-/** Per-surface binding for imported glTF: should THIS material carry the design,
- *  given the target surface from the die-cut role? Name-based, mirroring the
- *  gltf-surface-binding keyword vocabulary. A lid sticker → only cap/lid materials;
- *  a body label → label/body materials (and, as a safe default, anything that isn't
- *  clearly a cap or base). Caller falls back to "all materials" if none match. */
-export function materialTakesDesign(name: string, target: 'body' | 'top' | 'front'): boolean {
-  const n = name.toLowerCase()
-  const isCap = /(lid|cap|closure|neck|top)/.test(n)
-  const isBase = /(bottom|base|underside|foot)/.test(n)
-  if (target === 'top') return isCap
-  const isLabel = /(label|body|wrap|front|pdp|sleeve|main|panel|art)/.test(n)
-  return isLabel || (!isCap && !isBase)
 }
 
 export function shapeKindForCategory(category?: string | null): DielineShapeKind {
@@ -395,33 +382,12 @@ export function Dieline3DViewer({
               if (mm && typeof mm === 'object') entries.push({ mat: mm, name: mm.name || mesh.name || '' })
             }
           })
-          // Exact binding when the admin surface map is available: bind material→surface,
-          // then target the surface(s) matching the design's face (top = lid, else front/body).
-          let applyTo: Set<THREE.Material>
-          if (modelSurfaces && modelSurfaces.length > 0) {
-            const binding = bindGltfMaterialsToSurfaces(
-              entries.map((e) => e.name).filter(Boolean),
-              modelSurfaces,
-            )
-            const targetFace: BoxFace = designSurface === 'top' ? 'top' : 'front'
-            const targetKeys = new Set(
-              modelSurfaces
-                .filter((s) => {
-                  const f = preferredFace(s)
-                  return f === targetFace || (targetFace === 'front' && f !== 'top' && f !== 'bottom')
-                })
-                .map((s) => s.key),
-            )
-            const bound = entries.filter((e) => {
-              const key = binding[e.name]
-              return key !== undefined && targetKeys.has(key)
-            })
-            const fallback = bound.length > 0 ? bound : entries.filter((e) => materialTakesDesign(e.name, designSurface))
-            applyTo = new Set((fallback.length > 0 ? fallback : entries).map((e) => e.mat))
-          } else {
-            const targeted = entries.filter((e) => materialTakesDesign(e.name, designSurface))
-            applyTo = new Set((targeted.length > 0 ? targeted : entries).map((e) => e.mat))
-          }
+          // Decide which materials carry the design (pure: exact binding → heuristic → all).
+          const names = entries.map((e) => e.name).filter(Boolean)
+          const surfaces = modelSurfaces ?? []
+          const binding = surfaces.length > 0 ? bindGltfMaterialsToSurfaces(names, surfaces) : {}
+          const chosen = new Set(materialsForDesign(names, binding, surfaces, designSurface))
+          const applyTo = new Set(entries.filter((e) => chosen.has(e.name)).map((e) => e.mat))
           for (const e of entries) {
             if (tex && applyTo.has(e.mat)) e.mat.map = tex
             if ('envMapIntensity' in e.mat) e.mat.envMapIntensity = environment ? 0.8 : 0

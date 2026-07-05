@@ -14,6 +14,7 @@ import { AiCreatePanel, type DielineTarget } from './AiCreatePanel'
 import { AiCreatePanelClient } from './AiCreatePanelClient'
 import { AiCreateWorkspace } from './AiCreateWorkspace'
 import { loadAiCreateProps, loadAdminAiCreateProps } from './loader'
+import { getAiGeneratorSettings } from '@ilaunchify/db'
 import type { FrameLayout } from '@ilaunchify/ui'
 
 const primaryLayout: FrameLayout = {
@@ -92,6 +93,18 @@ export default async function AiCreatePage({
   }
 
   if (productId) {
+    // Platform-wide kill switch — a creator can't reach the generator by URL when
+    // the admin has turned it off, even though the rail tool is already hidden.
+    const { gates } = await getAiGeneratorSettings()
+    if (!gates.generatorEnabled) {
+      return (
+        <div className="mx-auto max-w-5xl space-y-4 p-6">
+          <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12px] text-ink-600">
+            The AI generator is currently turned off. It will be back when the platform team re-enables it.
+          </div>
+        </div>
+      )
+    }
     const session = await auth()
     const userId = session?.user?.id
     const data = userId ? await loadAiCreateProps(productId, userId) : null

@@ -234,6 +234,10 @@ Check items off as they land. One phase = one commit train; commit immediately.
       with zero new substrate. Remaining work reduces to a small library-UI affordance
       ("Duplicate template" + side-by-side pick), Cowork's presentational zone;
       revisit slot-grouped template alternates only if admins concretely ask.
+      → **BUILT (Cowork, 2026-07-05):** /templates gained per-row **Duplicate** (candidate
+      copy via `adminDuplicateLibraryTemplate` — audited, never premium, styles re-tagged
+      on publish) + **Compare** pick-2 → floating bar → side-by-side thumbnail modal with
+      delete-the-loser. tsc green. Phase 4 fully closed.
 - [x] Admin read-only creator history view + support-restore: `/admin/design-history` (lookup by product id / GTIN / SKU → slots + alternates → snapshot list). Restore mirrors creator semantics (pin-before-restore), writes `DESIGN_VERSION_RESTORED_BY_ADMIN` AuditLog AND pins "Restored by iLaunchify support" in the creator's drawer — never silent. NOT in sidebar (sidebar v3 LOCKED — propose entry separately).
 - [x] `requireCapability` on all admin paths: view = `creators:read`, restore = `tickets:admin` (support lead)
 

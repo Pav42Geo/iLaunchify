@@ -9,6 +9,7 @@ import { requireCapability } from '@ilaunchify/auth'
 import {
   getOrCreateSystemTemplatesBrand,
   createBrandTemplate,
+  duplicateBrandTemplate,
   setTemplateStyleAssignments,
   updateLibraryTemplate,
   deleteLibraryTemplate,
@@ -131,6 +132,30 @@ export async function adminUpdateLibraryTemplate(
   })
   revalidatePath('/templates')
   return { ok: true }
+}
+
+/**
+ * Duplicate a library template as a CANDIDATE (versioning v2 Phase 4, option (b)
+ * — Pavel 2026-07-05: template "alternates" are plain sibling LibraryTemplate
+ * rows, no Design machinery). The copy keeps layout + targeting, is never
+ * premium (helper convention), and lands next to the original for side-by-side
+ * compare in the library. Style assignments intentionally NOT copied — the
+ * admin re-tags the winner when publishing.
+ */
+export async function adminDuplicateLibraryTemplate(id: string): Promise<AdminTemplateResult> {
+  const admin = await requireCapability('catalog:write')
+  const brandId = await getOrCreateSystemTemplatesBrand()
+  if (!brandId) return { ok: false, error: 'Could not initialize the templates library.' }
+  const created = await duplicateBrandTemplate(brandId, id)
+  if (!created) return { ok: false, error: 'Template not found.' }
+  await logAuditAs(admin, {
+    entityType: 'BrandTemplate',
+    entityId: created.id,
+    action: 'LIBRARY_TEMPLATE_CREATED',
+    payload: { duplicatedFrom: id, candidate: true },
+  })
+  revalidatePath('/templates')
+  return { ok: true, id: created.id }
 }
 
 export async function adminDeleteLibraryTemplate(id: string): Promise<AdminTemplateResult> {
