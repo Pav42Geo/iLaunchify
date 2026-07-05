@@ -402,12 +402,12 @@ export async function pushListing(input: { productId: string; channelCode: strin
 
   const priceStr = link.price != null ? String(link.price) : (product.priceCents / 100).toFixed(2)
 
-  // Channel variants come from the creator's ORDER-TIME configuration snapshot —
-  // ONLY the selected flavors, each with its per-flavor price (a 2-of-6 pick lists
-  // 2 variants, not the full pool). Read the latest order's OrderItem snapshot
-  // (cast-guarded — configurationSnapshot post-dates the generated client until
-  // db:push). Falls back to the full active flavor pool when there's no snapshot
-  // yet (product published before it was ever ordered / legacy / pre-push).
+  // Channel variants, in preference order (docs/CREATOR_PRODUCT_CONFIGURATION.md §4):
+  //   1. the creator's ORDER-TIME configuration snapshot — ONLY the selected flavors,
+  //      each with its per-flavor price (a 2-of-6 pick lists 2 variants, not 6);
+  //   2. else the Product.selectedFlavorPresetIds subset (published but never ordered);
+  //   3. else the full active flavor pool (legacy).
+  // Both new columns post-date the generated client until db:push → cast-guarded.
   const latestItem = await (
     prisma as unknown as {
       orderItem: { findFirst: (a: unknown) => Promise<{ configurationSnapshot?: unknown } | null> }
@@ -430,9 +430,22 @@ export async function pushListing(input: { productId: string; channelCode: strin
       price: v.unitPriceCents != null ? (v.unitPriceCents / 100).toFixed(2) : priceStr,
     }))
   } else {
+    // Tier 2 — scope to the creator's selected flavors when set (cast-guarded read).
+    const selRow = await (
+      prisma as unknown as {
+        product: { findUnique: (a: unknown) => Promise<{ selectedFlavorPresetIds?: string[] } | null> }
+      }
+    ).product
+      .findUnique({ where: { id: product.id }, select: { selectedFlavorPresetIds: true } })
+      .catch(() => null)
+    const selectedIds = selRow?.selectedFlavorPresetIds ?? []
     const flavors = product.productTemplateId
       ? await prisma.flavorPreset.findMany({
-          where: { productTemplateId: product.productTemplateId, status: 'ACTIVE' },
+          where: {
+            productTemplateId: product.productTemplateId,
+            status: 'ACTIVE',
+            ...(selectedIds.length ? { id: { in: selectedIds } } : {}),
+          },
           orderBy: { sortOrder: 'asc' },
           select: { id: true, name: true },
         })
