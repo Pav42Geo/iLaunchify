@@ -17,6 +17,47 @@ export interface CostTier {
   fulfillment: string // "Bulk" | "On-demand"
 }
 
+// ---- "Product picture" — the full order picture shown in the Details modal ----
+// docs/CREATOR_PRODUCT_PICTURE_MODAL.md. Facts panels are passed PRE-RENDERED (ReactNode) by the shell
+// (which owns the data + domain→renderer mapping), so this component stays layout-only + decoupled.
+export interface PictureIngredient {
+  name: string
+  weightG?: number | null
+  /** ProductIngredientSource — e.g. FLAVOR_EXTRA / TEMPLATE_REPLACEMENT. */
+  source?: string | null
+}
+export interface PictureRecipe {
+  servingSize?: string | null
+  servings?: number | null
+  ingredients: PictureIngredient[]
+}
+export interface PictureFlavor {
+  flavorPresetId: string
+  name: string
+  swatchHex: string | null
+  statementOfIdentity: string | null
+  hasLabel?: boolean
+  recipe?: PictureRecipe | null
+  /** Rendered Facts panel for this flavor (single column). */
+  factsPanel?: React.ReactNode
+}
+export interface ProductPicture {
+  topology: 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'
+  /** Single-product recipe (null for multi-flavor). */
+  recipe?: PictureRecipe | null
+  /** Single-product Facts panel (rendered). */
+  factsPanel?: React.ReactNode
+  /** Multi-column aggregate/variety Facts panel (rendered), for AGGREGATE packs. */
+  aggregateFactsPanel?: React.ReactNode
+  /** The creator's SELECTED flavors. */
+  flavors?: PictureFlavor[]
+  /** Pack composition — units per flavor. */
+  packComposition?: Array<{ flavorPresetId: string; name: string; units: number }> | null
+  finishes?: Array<{ name: string; category?: string | null }>
+  mandatoryPhrases?: Array<{ title: string; body?: string | null }>
+  claims?: string[]
+}
+
 export interface ProductDetailsData {
   productName: string
   thumbnailUrl?: string | null
@@ -40,6 +81,8 @@ export interface ProductDetailsData {
   cost?: { low: string; high: string; single: boolean; tiers: CostTier[] } | null
   // ---- Packaging (container the product ships in) ----
   packaging?: { container: string; category: string | null; fragility: string | null; dimensions: string | null; format: string | null } | null
+  // ---- The full order picture (recipes + rendered Facts labels + per-flavor tabs) ----
+  picture?: ProductPicture | null
   // ---- Print spec ----
   dieCut: DieCutSpec
 }
@@ -211,53 +254,96 @@ export function ProductDetailsDrawer({ data }: { data: ProductDetailsData }) {
 
 // ── Details modal (tabbed) ────────────────────────────────────────────────────
 function DetailsModal({ data, onClose }: { data: ProductDetailsData; onClose: () => void }) {
-  const [tab, setTab] = React.useState<'overview' | 'compliance' | 'manufacturing'>('overview')
-  const tabs: { key: typeof tab; label: string }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'compliance', label: 'Compliance' },
-    { key: 'manufacturing', label: 'Manufacturing' },
-  ]
+  const pic = data.picture ?? null
+  const flavors = pic?.flavors ?? []
+  const isMulti = !!pic && pic.topology !== 'SINGLE' && flavors.length > 0
+
+  // Topology-driven tabs: Overview always; multi → optional Aggregate + one per selected flavor;
+  // single → a "Recipe & label" tab; no picture yet → the legacy Compliance/Manufacturing tabs.
+  const tabs: { key: string; label: string }[] = [{ key: 'overview', label: 'Overview' }]
+  if (pic) {
+    if (isMulti) {
+      if (pic.aggregateFactsPanel) tabs.push({ key: 'aggregate', label: 'Variety pack' })
+      for (const f of flavors) tabs.push({ key: `flavor:${f.flavorPresetId}`, label: f.name })
+    } else if (pic.factsPanel || pic.recipe) {
+      tabs.push({ key: 'label', label: 'Recipe & label' })
+    }
+  } else {
+    tabs.push({ key: 'compliance', label: 'Compliance' }, { key: 'manufacturing', label: 'Manufacturing' })
+  }
+
+  const [tab, setTab] = React.useState<string>('overview')
+  const activeFlavor = tab.startsWith('flavor:') ? flavors.find((f) => `flavor:${f.flavorPresetId}` === tab) ?? null : null
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-ink-200 bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 border-b border-ink-100 px-5 py-4">
-          <div>
-            <h3 className="text-[15px] font-semibold text-ink-900">{data.productName}</h3>
+          <div className="min-w-0">
+            <h3 className="truncate text-[15px] font-semibold text-ink-900">{data.productName}</h3>
             <p className="mt-0.5 text-[12px] text-ink-500">
               {data.category ? pretty(data.category) : '—'} · {DOMAIN_LABEL[data.domain] ?? pretty(data.domain)}
+              {isMulti ? ` · ${flavors.length} flavors` : ''}
             </p>
           </div>
           <button onClick={onClose} aria-label="Close" className="rounded p-1 text-ink-500 hover:bg-ink-100"><X className="h-4 w-4" /></button>
         </div>
-        <div className="flex gap-1 border-b border-ink-100 px-4">
-          {tabs.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={`border-b-2 px-3 py-2 text-[13px] font-medium ${tab === t.key ? 'border-pink-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>
-              {t.label}
-            </button>
-          ))}
+
+        <div className="flex flex-wrap gap-1 border-b border-ink-100 px-4">
+          {tabs.map((t) => {
+            const f = t.key.startsWith('flavor:') ? flavors.find((x) => `flavor:${x.flavorPresetId}` === t.key) : null
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] font-medium ${tab === t.key ? 'border-pink-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'}`}>
+                {f && <span className="inline-block h-2.5 w-2.5 rounded-full border border-ink-200" style={{ backgroundColor: f.swatchHex ?? 'transparent' }} aria-hidden />}
+                {t.label}
+              </button>
+            )
+          })}
         </div>
-        <div className="max-h-[60vh] overflow-y-auto p-5">
-          {tab === 'overview' && (
-            <dl className="space-y-2 text-[13px]">
-              <MRow k="Brand" v={data.brandName ?? '—'} />
-              <MRow k="Category" v={data.category ? pretty(data.category) : '—'} />
-              <MRow k="Label domain" v={DOMAIN_LABEL[data.domain] ?? pretty(data.domain)} />
-              <MRow k="Net quantity" v={data.netQuantity ?? '—'} />
-              <MRow k="GTIN / UPC" v={data.retail?.gtin ?? '—'} />
-              <MRow k="Internal SKU" v={data.retail?.internalSku ?? '—'} />
-              <MRow k="Barcode" v={data.retail?.barcodeMode ? pretty(data.retail.barcodeMode) : '—'} />
-            </dl>
+
+        <div className="flex-1 overflow-y-auto p-5">
+          {tab === 'overview' && <OverviewSheet data={data} pic={pic} isMulti={isMulti} />}
+
+          {tab === 'aggregate' && (
+            <div className="space-y-3">
+              <p className="text-[12px] text-ink-500">Combined label for the whole variety pack — all selected flavors declared together.</p>
+              <FactsFrame node={pic?.aggregateFactsPanel} />
+            </div>
           )}
-          {tab === 'compliance' && (
+
+          {tab === 'label' && (
+            <div className="space-y-4">
+              {pic?.recipe && <RecipeBlock recipe={pic.recipe} />}
+              <FactsFrame node={pic?.factsPanel} />
+            </div>
+          )}
+
+          {activeFlavor && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-4 w-4 rounded-full border border-ink-200" style={{ backgroundColor: activeFlavor.swatchHex ?? 'transparent' }} aria-hidden />
+                <div>
+                  <p className="text-[14px] font-semibold text-ink-900">{activeFlavor.name}</p>
+                  {activeFlavor.statementOfIdentity && <p className="text-[12px] text-ink-500">{activeFlavor.statementOfIdentity}</p>}
+                </div>
+                {activeFlavor.hasLabel === false && <span className="ml-auto rounded-full bg-ink-100 px-2 py-0.5 text-[10.5px] font-semibold text-ink-500">No label yet</span>}
+              </div>
+              {activeFlavor.recipe && <RecipeBlock recipe={activeFlavor.recipe} />}
+              <FactsFrame node={activeFlavor.factsPanel} />
+            </div>
+          )}
+
+          {/* Legacy fallback (no picture wired yet) */}
+          {!pic && tab === 'compliance' && (
             <dl className="space-y-2 text-[13px]">
               <MRow k="Label type" v={DOMAIN_LABEL[data.domain] ?? pretty(data.domain)} />
               <MRow k="Allergens" v={data.allergens.length ? data.allergens.map(pretty).join(', ') : 'None declared'} />
               <MRow k="Bioengineered" v={data.bioengineered ? 'Contains BE ingredient(s)' : 'Not flagged'} />
-              <p className="pt-1 text-[12px] text-ink-500">Edit the facts panel + mandatory phrases in the Label tab.</p>
+              <p className="pt-1 text-[12px] text-ink-500">Edit the facts panel + mandatory phrases in the Label &amp; Compliance tab.</p>
             </dl>
           )}
-          {tab === 'manufacturing' && (
+          {!pic && tab === 'manufacturing' && (
             <dl className="space-y-2 text-[13px]">
               <MRow k="Manufacturer" v={data.manufacturerName ?? 'Assigned at production'} />
               <MRow k="MOQ" v={data.moq ? `${data.moq.toLocaleString()} units` : '—'} />
@@ -269,6 +355,122 @@ function DetailsModal({ data, onClose }: { data: ProductDetailsData; onClose: ()
       </div>
     </div>
   )
+}
+
+// The full spec-sheet overview — everything that comes with the product.
+function OverviewSheet({ data, pic, isMulti }: { data: ProductDetailsData; pic: ProductPicture | null; isMulti: boolean }) {
+  return (
+    <div className="space-y-5">
+      <SheetSection title="Identity">
+        <MRow k="Brand" v={data.brandName ?? '—'} />
+        <MRow k="Category" v={data.category ? pretty(data.category) : '—'} />
+        <MRow k="Label domain" v={DOMAIN_LABEL[data.domain] ?? pretty(data.domain)} />
+        <MRow k="Manufacturer" v={data.manufacturerName ?? 'Assigned at production'} />
+      </SheetSection>
+
+      {isMulti && pic?.packComposition && pic.packComposition.length > 0 && (
+        <SheetSection title="Selected flavors & pack">
+          {pic.packComposition.map((c) => <MRow key={c.flavorPresetId} k={c.name} v={`${c.units} units`} />)}
+        </SheetSection>
+      )}
+
+      <SheetSection title="Commercial">
+        <MRow k="Price" v={data.cost ? (data.cost.single ? data.cost.low : `${data.cost.low} – ${data.cost.high}`) : '—'} />
+        <MRow k="MOQ" v={data.moq ? `${data.moq.toLocaleString()} units` : '—'} />
+        <MRow k="Lead time" v={data.leadTimeDays ? `${data.leadTimeDays} days` : '—'} />
+        <MRow k="Fulfillment" v={data.fulfillment ?? '—'} />
+      </SheetSection>
+
+      <SheetSection title="Packaging">
+        <MRow k="Net quantity" v={data.netQuantity ?? '—'} />
+        {data.packaging && <MRow k="Container" v={data.packaging.container} />}
+        {data.packaging?.category && <MRow k="Material / category" v={pretty(data.packaging.category)} />}
+        {data.packaging?.dimensions && <MRow k="Dimensions" v={data.packaging.dimensions} />}
+        {data.packaging?.fragility && <MRow k="Fragility" v={pretty(data.packaging.fragility)} />}
+      </SheetSection>
+
+      <SheetSection title="Compliance">
+        <MRow k="Allergens" v={data.allergens.length ? data.allergens.map(pretty).join(', ') : 'None declared'} />
+        <MRow k="Bioengineered" v={data.bioengineered ? 'Contains BE ingredient(s)' : 'Not flagged'} />
+        {pic?.mandatoryPhrases && <MRow k="Mandatory phrases" v={pic.mandatoryPhrases.length ? `${pic.mandatoryPhrases.length} required` : 'None'} />}
+        {pic?.claims && pic.claims.length > 0 && <MRow k="Claims" v={pic.claims.join(', ')} />}
+      </SheetSection>
+
+      <SheetSection title="Retail identity">
+        <MRow k="GTIN / UPC" v={data.retail?.gtin ?? '—'} />
+        <MRow k="Internal SKU" v={data.retail?.internalSku ?? '—'} />
+        <MRow k="Barcode" v={data.retail?.barcodeMode ? pretty(data.retail.barcodeMode) : '—'} />
+      </SheetSection>
+
+      {pic?.finishes && pic.finishes.length > 0 && (
+        <SheetSection title="Finishes">
+          {pic.finishes.map((f, i) => <MRow key={i} k={f.name} v={f.category ? pretty(f.category) : '—'} />)}
+        </SheetSection>
+      )}
+
+      {data.certs && data.certs.length > 0 && (
+        <SheetSection title="Certificates">
+          <div className="flex flex-wrap items-center gap-2">
+            {data.certs.map((c, i) =>
+              c.badgeUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={c.badgeUrl} alt={c.name} title={c.name} className="h-8 w-8 rounded border border-ink-100 bg-white object-contain p-0.5" />
+              ) : (
+                <span key={i} className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] font-semibold text-ink-600">{c.name}</span>
+              ),
+            )}
+          </div>
+        </SheetSection>
+      )}
+    </div>
+  )
+}
+
+function SheetSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h4 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-500">{title}</h4>
+      <dl className="space-y-2 text-[13px]">{children}</dl>
+    </section>
+  )
+}
+
+function RecipeBlock({ recipe }: { recipe: PictureRecipe }) {
+  return (
+    <section>
+      <h4 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-500">Recipe</h4>
+      {(recipe.servingSize || recipe.servings != null) && (
+        <p className="mb-2 text-[12px] text-ink-500">
+          {recipe.servingSize ? `Serving ${recipe.servingSize}` : ''}
+          {recipe.servingSize && recipe.servings != null ? ' · ' : ''}
+          {recipe.servings != null ? `${recipe.servings} servings/container` : ''}
+        </p>
+      )}
+      {recipe.ingredients.length === 0 ? (
+        <p className="text-[12px] text-ink-400">No ingredients recorded.</p>
+      ) : (
+        <ol className="space-y-1 text-[13px]">
+          {recipe.ingredients.map((ing, i) => (
+            <li key={i} className="flex items-center justify-between gap-3 border-b border-ink-50 pb-1 last:border-0">
+              <span className="text-ink-800">
+                {ing.name}
+                {ing.source === 'FLAVOR_EXTRA' && <span className="ml-1.5 rounded-full bg-pink-50 px-1.5 py-0.5 text-[10px] font-semibold text-pink-700">flavor</span>}
+              </span>
+              {ing.weightG != null && <span className="tabular-nums text-ink-500">{ing.weightG} g</span>}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
+}
+
+// Frame for a pre-rendered Facts panel (SVG element passed by the shell). Scrolls if tall.
+function FactsFrame({ node }: { node?: React.ReactNode }) {
+  if (!node) {
+    return <p className="rounded-lg border border-dashed border-ink-200 bg-ink-50 px-4 py-8 text-center text-[12px] text-ink-500">Facts label preview isn&apos;t available for this product yet.</p>
+  }
+  return <div className="flex justify-center overflow-auto rounded-lg border border-ink-100 bg-white p-3">{node}</div>
 }
 
 function PdfDownloadButton({ dieCut }: { dieCut: DieCutSpec }) {
