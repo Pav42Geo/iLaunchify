@@ -50,6 +50,20 @@ flavors — so the Studio must scope to the selection, not the pool.
 - **Broken promise**: "the creator's choice threads through the whole process." Today it doesn't reach
   the Studio, and checkout treats it as a suggestion.
 
+## Status — fix BUILT 2026-07-04 (Cowork), pending `db:push`
+
+The threading fix below is implemented, cast-guarded so it compiles before the migration:
+- **Schema:** `Product.selectedFlavorPresetIds String[] @default([])` (additive).
+- **Launch** (`launch-actions.ts`): writes the PDP pack's flavor ids onto the Product at create.
+- **Studio loader** (`design/canvas/page.tsx`): scopes `flavorPresets` to `selectedFlavorPresetIds`
+  (falls back to full pool when empty).
+- **Checkout** (`production-actions.ts`): both `getPackBuilderConfig` and `getVarietyPackMatrix` pools
+  are constrained to the subset.
+
+**Pavel must run** (stale-client 3-layer gotcha): `pnpm db:push` → `pnpm db:generate` →
+`rm -rf apps/*/.next` → restart dev. After that, drop the `as unknown as …` cast-guards on the new
+field. Then the Studio + checkout show ONLY the creator's selected flavors.
+
 ## Recommended fix (no-regret) — Code's zone
 
 Give the selection **one persistent home on the `Product`** and make it authoritative:

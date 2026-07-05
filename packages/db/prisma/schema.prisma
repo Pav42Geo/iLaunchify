@@ -1514,6 +1514,12 @@ model Product {
   // additive; new flows require it).
   productTemplateId       String?
   variantId               String?
+  // ---- Creator selection (docs/SELECTION_THREADING_AUDIT.md) ----
+  // The flavor subset the creator picked on the product detail page (of the template's full
+  // FlavorPreset pool). Scopes the Design Studio + checkout to the creator's choice so a creator
+  // who picked 2 of 6 flavors sees only those 2. Empty = legacy/unselected → fall back to the
+  // full template pool. Additive; no destructive migration.
+  selectedFlavorPresetIds String[]         @default([])
   // Inventory-vs-storefront publishing — creators can do either or both
   publishedToStorefront   Boolean          @default(false)
   inventoryOrderQty       Int? // if creator pre-bought their own stock

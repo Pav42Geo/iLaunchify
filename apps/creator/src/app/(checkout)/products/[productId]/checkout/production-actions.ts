@@ -42,6 +42,18 @@ async function authorize(productId: string) {
   return { user, product, error: null as null }
 }
 
+// Creator's selected flavor subset (docs/SELECTION_THREADING_AUDIT.md) — the checkout pack pool is
+// CONSTRAINED to it so the order can't drift from what the creator chose on the detail page. Read
+// cast-guarded (column lands after db:push + db:generate); empty = legacy → full pool.
+async function selectedFlavorIdsFor(productId: string): Promise<string[]> {
+  const row = await (
+    prisma as unknown as { product: { findUnique: (a: unknown) => Promise<{ selectedFlavorPresetIds: string[] } | null> } }
+  ).product
+    .findUnique({ where: { id: productId }, select: { selectedFlavorPresetIds: true } })
+    .catch(() => null)
+  return row?.selectedFlavorPresetIds ?? []
+}
+
 // -----------------------------------------------------------------------------
 // SHAPES
 // -----------------------------------------------------------------------------
@@ -177,12 +189,15 @@ export async function getPackBuilderConfig(
     },
   })
   const t = product?.productTemplate
+  const selected = await selectedFlavorIdsFor(productId)
+  const allPresets = t?.flavorPresets ?? []
+  const scopedPresets = selected.length ? allPresets.filter((f) => selected.includes(f.id)) : allPresets
   return {
     ok: true,
     data: {
       flavorMode: t?.packingProfile?.flavorMode === 'MULTI' ? 'MULTI' : 'SINGLE',
       maxFlavorsPerPack: t?.maxFlavorsPerPack ?? null,
-      pool: (t?.flavorPresets ?? []).map((f) => ({
+      pool: scopedPresets.map((f) => ({
         id: f.id,
         name: f.name,
         swatchHex: f.swatchHex,
@@ -264,6 +279,13 @@ export async function getVarietyPackMatrix(
     },
   })
 
+  // Constrain the pack pool to the creator's selected subset (empty = legacy → full pool).
+  const selected = await selectedFlavorIdsFor(productId)
+  const allMatrixPresets = product?.productTemplate?.flavorPresets ?? []
+  const scopedMatrixPresets = selected.length
+    ? allMatrixPresets.filter((f) => selected.includes(f.id))
+    : allMatrixPresets
+
   const empty: VarietyPackMatrix = {
     enabled: false,
     minFlavors: 1,
@@ -275,7 +297,7 @@ export async function getVarietyPackMatrix(
     assortment: [],
     fixedDistribution: null,
     packSizes: [],
-    pool: (product?.productTemplate?.flavorPresets ?? []).map((f) => ({
+    pool: scopedMatrixPresets.map((f) => ({
       flavorPresetId: f.id,
       name: f.name,
       swatchHex: f.swatchHex,

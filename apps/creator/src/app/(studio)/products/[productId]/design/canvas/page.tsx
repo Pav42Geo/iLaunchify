@@ -281,11 +281,25 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   })
   if (!product) notFound()
 
+  // Creator-selection scoping (docs/SELECTION_THREADING_AUDIT.md): the Studio must show ONLY the
+  // flavors the creator picked on the product detail page — not the full template pool. Read the
+  // subset cast-guarded (the column lands after db:push + db:generate); empty = legacy/unselected
+  // → fall back to the full pool so existing products keep working.
+  const selRow = await (
+    prisma as unknown as { product: { findUnique: (a: unknown) => Promise<{ selectedFlavorPresetIds: string[] } | null> } }
+  ).product
+    .findUnique({ where: { id: productId }, select: { selectedFlavorPresetIds: true } })
+    .catch(() => null)
+  const selectedFlavorIds = selRow?.selectedFlavorPresetIds ?? []
+
   // Per-flavor label design (docs/HANDOFF-TO-CODE-per-flavor-labels.md). When the
   // packing type is individually-labeled and the template offers flavors, the
   // Studio shows a flavor switcher; ?flavor=<id> selects which flavor's Design to
-  // load/save (null/absent = the shared base design).
-  const flavorPresets = product.productTemplate?.flavorPresets ?? []
+  // load/save (null/absent = the shared base design). Scoped to the creator's selection.
+  const allFlavorPresets = product.productTemplate?.flavorPresets ?? []
+  const flavorPresets = selectedFlavorIds.length
+    ? allFlavorPresets.filter((f) => selectedFlavorIds.includes(f.id))
+    : allFlavorPresets
   const perFlavor =
     product.productTemplate?.packingProfile?.labelTopology === 'PER_FLAVOR' && flavorPresets.length > 0
   const flavors = perFlavor

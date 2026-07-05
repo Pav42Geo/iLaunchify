@@ -180,8 +180,15 @@ async function resolveOrCreateProductForTemplate(
     slug = `${baseSlug}-${collision}`
   }
 
+  // The creator's chosen flavor subset (of the template's full pool) from the PDP pack.
+  // Persisted on the Product so the Design Studio + checkout scope to the creator's choice
+  // (docs/SELECTION_THREADING_AUDIT.md). Empty when no pack was chosen → legacy full-pool behaviour.
+  const selectedFlavorPresetIds = [...new Set((normalizeSeedPack(input.pack)?.slots ?? []).map((s) => s.flavorPresetId))]
+
   try {
-    const product = await prisma.product.create({
+    // Cast-guarded: `selectedFlavorPresetIds` lands on the generated client only after
+    // `pnpm db:push` + `db:generate`. Drop the cast once regenerated.
+    const product = await (prisma.product.create as (a: unknown) => Promise<{ id: string }>)({
       data: {
         brandId,
         productTemplateId: template.id,
@@ -191,6 +198,7 @@ async function resolveOrCreateProductForTemplate(
         slug,
         category: productCategory,
         status: 'DRAFT',
+        ...(selectedFlavorPresetIds.length ? { selectedFlavorPresetIds } : {}),
         // Recipe is created lazily by the customize / canvas flow.
       },
       select: { id: true },
