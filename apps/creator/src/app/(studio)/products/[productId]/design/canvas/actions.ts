@@ -398,6 +398,26 @@ export async function loadDesignJson(
   return (row?.designJson as unknown) ?? null
 }
 
+/** Which of a product's per-flavor Designs already have a saved label (a working
+ *  DesignVersion). Powers the Label & Compliance completeness list + the submit
+ *  gate (checkFlavorCompleteness). Owned-by-user scoped. Base design excluded —
+ *  only per-flavor (flavorPresetId != null) rows count. */
+export async function getSavedFlavorIds(productId: string): Promise<string[]> {
+  const user = await requireUser()
+  const rows = await prisma.design.findMany({
+    where: {
+      productId,
+      flavorPresetId: { not: null },
+      product: { brand: { creatorProfile: { userId: user.id } } },
+      versions: { some: { version: WORKING_VERSION } },
+    },
+    select: { flavorPresetId: true },
+  })
+  return rows
+    .map((r) => r.flavorPresetId)
+    .filter((id): id is string => id !== null)
+}
+
 // ===========================================================================
 // VERSION HISTORY — EditSnapshot-backed (entityType = 'DESIGN', entityId =
 // Design.id). The working DesignVersion row is the live state; these snapshots
