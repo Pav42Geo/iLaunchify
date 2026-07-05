@@ -7628,8 +7628,12 @@ model AiGeneratorSettings {
   outputPoliciesJson Json?
   /// Provider tuning (model ids, per-MP cost overrides) — env holds the KEYS, this the knobs.
   providerJson       Json?
-  /// Feature gates: { blockExportUntilCompliant, blockSaveOverStorage, makerGenerationDisabled }.
+  /// Feature gates: { generatorEnabled, blockExportUntilCompliant, blockSaveOverStorage, makerGenerationDisabled }.
   gatesJson          Json?
+  /// Reusable vocabulary groups (admin-authored): { <groupId>: { label, styles[], colors[], elements[] } }.
+  vocabGroupsJson    Json?
+  /// Per-domain group assignment: { FOOD: [groupId, …], … }. Groups fold into that domain's creative vocab.
+  domainGroupsJson   Json?
 
   updatedAt   DateTime @updatedAt
   updatedById String?
