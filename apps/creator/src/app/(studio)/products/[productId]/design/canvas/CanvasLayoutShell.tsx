@@ -94,6 +94,7 @@ import { FlavorLabelSections } from './drawers/FlavorLabelSections'
 import { FlavorMismatchNotice } from './drawers/FlavorMismatchNotice'
 import { detectFlavorMismatch, type FlavorMismatchWarning } from './lib/flavorMismatch'
 import { checkFlavorCompleteness, type CompletenessResult } from './lib/flavorCompleteness'
+import { flavorTokenOf } from './flavorBind'
 import { resolvePbrPreset } from '@ilaunchify/packaging-3d'
 import { applyBaseToAllFlavors } from './flavor-actions'
 import { findNutritionPanel, regenerateNutritionPanel } from './lib/managedNutritionPanel'
@@ -814,6 +815,32 @@ export function CanvasLayoutShell({
       canvas.off('text:changed', rescan)
     }
   }, [canvas, flavors, activeFlavorPresetId])
+
+  // BIND (safety §1): on a flavor's design the statement-of-identity is a managed
+  // token — lock text editing on the live canvas so it can't be retyped to another
+  // flavor ("typed Chocolate on the Strawberry can"). Re-runs on load/add so it
+  // survives re-hydration; the shared base (no active flavor) stays editable.
+  useEffect(() => {
+    if (!canvas || !activeFlavorPresetId) return
+    const lockTokens = () => {
+      for (const o of canvas.getObjects()) {
+        const obj = o as {
+          customRole?: string
+          customData?: unknown
+          editable?: boolean
+          set?: (k: string, v: unknown) => void
+        }
+        if (flavorTokenOf(obj) === 'soi' && obj.editable !== false) {
+          obj.set?.('editable', false)
+        }
+      }
+    }
+    lockTokens()
+    canvas.on('object:added', lockTokens)
+    return () => {
+      canvas.off('object:added', lockTokens)
+    }
+  }, [canvas, activeFlavorPresetId])
 
   // Submit gate (Verify): every selected flavor needs a saved label before checkout.
   // needsAggregate is V1-false until aggregate detection is wired; selection-threading
