@@ -15,6 +15,7 @@
 import type { PrismaClient, Prisma } from '@ilaunchify/db'
 import { getOrderSettings } from '@ilaunchify/db'
 import { effectiveFlavorLeadDays, resolveOrderLeadDays } from './multi-flavor-lead'
+import { isCurrentConfiguration, configurationManifestRecipe } from './creator-configuration'
 
 export const MANIFEST_VERSION = '1.0.0'
 
@@ -230,6 +231,25 @@ export interface ProductionManifest {
   // `leadTimeDays` is the flavor's EFFECTIVE lead (global floor governs; a flavor
   // override only extends it). null = no per-flavor recipe lead → the standard.
   flavors: Array<{ flavorName: string; qty: number; statementOfIdentity: string | null; leadTimeDays: number | null }>
+  // ---- Recipe (from the CreatorConfiguration snapshot) ---------------------
+  // The exact filtered recipe the partner produces — final ingredients after
+  // replaceable swaps + optional activations, read from the order-time snapshot.
+  // null for non-recipe products, legacy orders without a snapshot, or pre-db:push.
+  // Closes the recipe-in-manifest gap (docs/CREATOR_PRODUCT_CONFIGURATION.md).
+  recipe: {
+    servingSizeG: number | null
+    servingsPerContainer: number | null
+    ingredients: Array<{
+      ingredientId: string
+      labelDeclarationName: string | null
+      weightG: number
+      position: number
+      source: string | null
+      filledSlotId: string | null
+      allergenFlags: string[]
+      bioengineeredStatus: string | null
+    }>
+  } | null
   // ---- Production lead (LOCKED 2026-06-30 — global floor + changeover) -------
   // The quoted production lead for THIS order. `leadTimeDays` is what the partner
   // commits to: max(standard, max effective-flavor-lead) + (N-1)*changeover. For a
@@ -326,6 +346,17 @@ export async function generateOrderManifest(
   const product = item.product
   const variant = product.variant
   const die = variant?.dieCutTemplate ?? null
+
+  // Recipe from the immutable CreatorConfiguration snapshot (closes the recipe-in-
+  // manifest gap). configurationSnapshot post-dates the generated client until
+  // db:push → cast-guarded; unknown/legacy/pre-push snapshots degrade to null.
+  const configSnapshot = (item as { configurationSnapshot?: unknown }).configurationSnapshot as
+    | { version?: unknown }
+    | null
+    | undefined
+  const configRecipe = isCurrentConfiguration(configSnapshot)
+    ? configurationManifestRecipe(configSnapshot)
+    : null
 
   // Variety-pack per-flavor splits for THIS item (Slice 1). Cast-guarded — the
   // OrderItemFlavor model post-dates the generated client until the migration.
@@ -481,6 +512,7 @@ export async function generateOrderManifest(
     productName: product.name,
     designVersionId: item.designVersionId,
     designVersion: item.designVersion?.version ?? null,
+    recipe: configRecipe,
     substrate: substrate
       ? {
           slug: substrate.slug,
