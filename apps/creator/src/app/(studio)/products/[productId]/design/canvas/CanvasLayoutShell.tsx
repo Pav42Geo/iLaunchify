@@ -89,6 +89,7 @@ import { CompliancePanel } from './CompliancePanel'
 import type { FrameDims } from './frameComplianceCanvas'
 import { MockupModal, type StudioMockup } from './MockupModal'
 import { LivePreview3DDock } from './LivePreview3DDock'
+import { FlavorSwitcher } from './drawers/FlavorSwitcher'
 import { resolvePbrPreset } from '@ilaunchify/packaging-3d'
 import { applyBaseToAllFlavors } from './flavor-actions'
 import { findNutritionPanel, regenerateNutritionPanel } from './lib/managedNutritionPanel'
@@ -1329,39 +1330,6 @@ function ApplyBaseButton({ productId }: { productId: string }) {
   )
 }
 
-/** One flavor tab in the TopBar switcher. Plain <a> = full reload so the canvas
- *  re-hydrates the target flavor's saved Design (no client re-hydration). */
-function FlavorPill({
-  href,
-  active,
-  label,
-  swatch,
-}: {
-  href: string
-  active: boolean
-  label: string
-  swatch?: string | null
-}) {
-  return (
-    <a
-      href={href}
-      aria-current={active ? 'true' : undefined}
-      className={
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ' +
-        (active ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-100')
-      }
-    >
-      {swatch && (
-        <span
-          className="h-2.5 w-2.5 rounded-full border border-black/10"
-          style={{ backgroundColor: swatch }}
-        />
-      )}
-      {label}
-    </a>
-  )
-}
-
 function TopBar({
   productName,
   productId,
@@ -1453,24 +1421,21 @@ function TopBar({
           <Redo2 className="h-4 w-4" />
         </IconButton>
 
-        {/* Per-flavor labels — switch which flavor's Design is open. Plain <a>
-            (full reload) so the canvas re-hydrates that flavor's saved art. */}
+        {/* Per-flavor labels — the switcher is the active-flavor Signal (safety
+            UX). onSelect does a full-reload nav so the canvas re-hydrates that
+            flavor's saved Design (no client re-hydration). */}
         {flavors.length > 0 && (
-          <div className="ml-2 flex items-center gap-1 border-l border-ink-200 pl-4">
-            <FlavorPill
-              href={`/products/${productId}/design/canvas`}
-              active={!activeFlavorPresetId}
-              label="Base"
+          <div className="ml-2 flex items-center gap-3 border-l border-ink-200 pl-4">
+            <FlavorSwitcher
+              flavors={flavors}
+              activeId={activeFlavorPresetId}
+              includeBase
+              onSelect={(id) => {
+                window.location.href = id
+                  ? `/products/${productId}/design/canvas?flavor=${id}`
+                  : `/products/${productId}/design/canvas`
+              }}
             />
-            {flavors.map((f) => (
-              <FlavorPill
-                key={f.id}
-                href={`/products/${productId}/design/canvas?flavor=${f.id}`}
-                active={activeFlavorPresetId === f.id}
-                label={f.name}
-                swatch={f.swatchHex}
-              />
-            ))}
             {!activeFlavorPresetId && <ApplyBaseButton productId={productId} />}
           </div>
         )}
