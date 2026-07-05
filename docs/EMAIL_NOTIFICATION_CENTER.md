@@ -238,6 +238,38 @@ a role segment, reusing `sendTransactionalEmail`.
   wiring, the group-preference gate, the admin server actions, the Resend + unsubscribe routes, and the
   partner progress-submit action.
 
+## Part 5 — Marketing email (scope + platform boundary)
+
+**Marketing does NOT belong in this transactional center.** Keep the two streams separate:
+- **Transactional** (order/production/account/billing/support) → this Center, in-house on Resend, its own
+  subdomain (e.g. `notifications.ilaunchify.com`). Time-sensitive; must never be at risk.
+- **Marketing / lifecycle** (announcements, newsletters, activation drips, winback, partner recruitment)
+  → a **dedicated external platform on a separate subdomain** (e.g. `news.ilaunchify.com`). Mixing the two
+  on one identity risks a promo's complaints dragging down transactional deliverability — the emails a
+  partner needs to fulfill an order. ([separation best practice](https://messageflow.com/blog/email-deliverability-2026/) · [transactional vs marketing](https://www.mailjet.com/blog/email-best-practices/transactional-vs-marketing-email/))
+
+**Buy marketing tooling, don't build it.** Segmentation, journeys, A/B, send-time optimization, campaign
+analytics, and a builder are a whole product; in 2026 AI-native platforms do agentic campaign
+orchestration, predictive winback, and content/subject generation natively — not worth rebuilding in our
+transactional stack. ([Klaviyo 2026 trends](https://www.klaviyo.com/blog/marketing-automation-trends) · [AI email tools for SaaS](https://www.sequenzy.com/blog/best-ai-email-marketing-tools))
+
+**Audience = iLaunchify → creators & partners only** (B2B SaaS lifecycle). **Not end-buyers** — they never
+touch iLaunchify (business model); creators market to their own buyers via their own channels. This keeps
+the choice firmly B2B.
+
+**Platform recommendation:**
+- **Now (low-lift):** Resend Broadcasts (no new vendor / one less domain to warm) or Loops (AI-native,
+  dev-friendly) for announcements + simple newsletters.
+- **Graduate to:** **Customer.io** for real behavioral automation — B2B/product-led, triggers journeys off
+  the product events we already emit (order placed, product published, tier upgrade), with an AI content
+  layer. ([Customer.io for B2B SaaS](https://aiproductivity.ai/blog/best-email-marketing-tools-2026/))
+- **Skip** Klaviyo (B2C/e-commerce-shaped) and classic Mailchimp for this audience.
+
+**The one integration point — consent.** This Center's category model is the **source of truth for
+opt-in**. Add a **"Marketing & product updates"** category (genuinely opt-outable, unlike transactional),
+and sync opt-in/out **bidirectionally** with the ESP so an unsubscribe anywhere is honored everywhere —
+one consent record, one preference center. Everything else about the marketing platform stays external.
+
 ## Sources
 - Printify webhooks — https://developers.printify.com/
 - Printful webhooks — https://www.printful.com/docs/webhooks
