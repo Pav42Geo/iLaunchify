@@ -465,12 +465,18 @@ export async function generateOrderManifest(
     components: normalizedComponents,
   })
 
-  // Pull substrate / packaging from the Order's internalNotes (set by
-  // placeOrderFromCheckoutDraft as a structured block). When V1.5 wires
-  // typed Order.substrateSlug / Order.packagingMaterialSlug + Order
-  // finishApplications relations we'll switch to those — the manifest
-  // shape stays identical.
-  const lookups = parseInternalNotesLookups(dispatch.order.internalNotes)
+  // Substrate / packaging / finishes — typed transport (packets G4). Prefer the
+  // order-time CreatorConfiguration snapshot's options (typed + versioned, written
+  // by cart-actions); fall back to the legacy internalNotes regex-parse for orders
+  // placed before the snapshot shipped. The manifest shape stays identical.
+  const notesLookups = parseInternalNotesLookups(dispatch.order.internalNotes)
+  const lookups = {
+    substrateSlug: config?.options.substrateSlug ?? notesLookups.substrateSlug,
+    packagingSlug: config?.options.packagingMaterialSlug ?? notesLookups.packagingSlug,
+    finishPartnerIds: config?.options.finishPartnerFinishIds?.length
+      ? config.options.finishPartnerFinishIds
+      : notesLookups.finishPartnerIds,
+  }
 
   const [substrate, packaging, finishes] = await Promise.all([
     lookups.substrateSlug
