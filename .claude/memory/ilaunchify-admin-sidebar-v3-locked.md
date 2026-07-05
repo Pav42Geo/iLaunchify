@@ -123,6 +123,13 @@ Help Center                              -> /support-tickets
 - `docs/PACKAGING_ENTITY_MANAGEMENT_AUDIT.md` -- relation audit + hub-and-spoke recommendation.
 - `docs/DIE_CUT_TEMPLATES_MODULE.md` -- the 2-tab die-cut module spec/status.
 
+# Amendments since v4
+
+- **2026-07-05 (Pavel):** Settings gained a **Notifications** group —
+  Templates / Branding / Deliverability / Log at `/notifications-center/*`
+  (the removed Communications group returning, now that pages exist). See
+  `ilaunchify-notification-center.md`. Not drift — do not remove.
+
 # Rules that survive from v3
 1. **Names matter** -- labels are verbatim; a divergence is a bug.
 2. **Hide-until-built** -- unbuilt routes stay in config as `hiddenUntilBuilt: true`.

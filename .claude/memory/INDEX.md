@@ -69,6 +69,10 @@ cp "$LATEST"/*.md .claude/memory/
 
 - `ilaunchify-g3-standardize-capabilities.md` — substrate/material/finish typed
 
+### Platform systems
+
+- `ilaunchify-notification-center.md` — Email/Notification Center (2026-07-05): code category registry is source of truth, DB-override templates, category opt-outs, signed unsubscribe, deliverability + suppression, job-progress timeline. Read before touching @ilaunchify/notifications or adding a NotificationEvent.
+
 ### Engineering gotchas
 
 - `ilaunchify-dev-prisma-restart.md` — restart Next after migrate
