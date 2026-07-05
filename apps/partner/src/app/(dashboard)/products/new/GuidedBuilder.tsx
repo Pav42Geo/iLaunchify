@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, Boxes, ArrowLeft, type LucideIcon } from 'lucide-react'
+import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, Cross, Boxes, ArrowLeft, type LucideIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
@@ -20,17 +20,20 @@ import { RecipeBuilderStep } from './RecipeBuilderStep'
 import { SupplementFormulationStep } from './SupplementFormulationStep'
 import { CosmeticFormulationStep } from './CosmeticFormulationStep'
 import { PetFormulationStep } from './PetFormulationStep'
+import { OtcFormulationStep } from './OtcFormulationStep'
 import { ReviewSummary } from './ReviewSummary'
 import { setDraftLabelingType, type LabelingTypeValue } from './domain-actions'
 
-type Ltype = 'Recipe' | 'Supplement' | 'Cosmetic' | 'Pet'
-const LT_TO_LTYPE: Record<string, Ltype> = { FOOD: 'Recipe', DIETARY_SUPPLEMENT: 'Supplement', COSMETIC: 'Cosmetic', PET_PRODUCT: 'Pet' }
-const LTYPE_TO_LT: Record<Ltype, LabelingTypeValue> = { Recipe: 'FOOD', Supplement: 'DIETARY_SUPPLEMENT', Cosmetic: 'COSMETIC', Pet: 'PET_PRODUCT' }
+type Ltype = 'Recipe' | 'Supplement' | 'Cosmetic' | 'Pet' | 'Otc'
+const LT_TO_LTYPE: Record<string, Ltype> = { FOOD: 'Recipe', DIETARY_SUPPLEMENT: 'Supplement', COSMETIC: 'Cosmetic', PET_PRODUCT: 'Pet', OTC: 'Otc' }
+const LTYPE_TO_LT: Record<Ltype, LabelingTypeValue> = { Recipe: 'FOOD', Supplement: 'DIETARY_SUPPLEMENT', Cosmetic: 'COSMETIC', Pet: 'PET_PRODUCT', Otc: 'OTC' }
 const DOMAIN_OPTIONS: { v: Ltype; label: string; desc: string; artifact: string; Icon: LucideIcon }[] = [
   { v: 'Recipe', label: 'Food / Beverage', desc: 'Edible food or drink', artifact: 'Nutrition Facts', Icon: UtensilsCrossed },
   { v: 'Supplement', label: 'Supplement', desc: 'Vitamins, minerals, botanicals', artifact: 'Supplement Facts', Icon: Pill },
   { v: 'Cosmetic', label: 'Cosmetic', desc: 'Skincare, haircare, personal care', artifact: 'INCI declaration', Icon: Sparkles },
   { v: 'Pet', label: 'Pet', desc: 'Pet food, treats, supplements', artifact: 'Guaranteed Analysis', Icon: PawPrint },
+  // Admin-gated — only appears when the OTC domain is enabled (enabledDomains).
+  { v: 'Otc', label: 'OTC drug', desc: 'Monograph OTC (sunscreen, pain relief…)', artifact: 'Drug Facts', Icon: Cross },
 ]
 import { BasicsScreen } from './BasicsScreen'
 import { type PackingProfileOption } from './ProductTypeGate'
@@ -517,6 +520,8 @@ export function GuidedBuilder({
                 <SupplementFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} flavorMode={profile?.flavorMode ?? 'SINGLE'} flavors={flavors} />
               ) : ltype === 'Cosmetic' ? (
                 <CosmeticFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} />
+              ) : ltype === 'Otc' ? (
+                <OtcFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} />
               ) : ltype === 'Pet' ? (
                 <PetFormulationStep productName={name} draftId={draftId} registerFlush={registerFlush} flavorMode={profile?.flavorMode ?? 'SINGLE'} flavors={flavors} />
               ) : (

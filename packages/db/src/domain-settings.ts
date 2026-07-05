@@ -10,8 +10,10 @@ export type DomainKey = 'FOOD' | 'DIETARY_SUPPLEMENT' | 'PET_PRODUCT' | 'OTC' | 
 /** Canonical order for admin UI + builder. */
 export const DOMAIN_KEYS: DomainKey[] = ['FOOD', 'DIETARY_SUPPLEMENT', 'COSMETIC', 'PET_PRODUCT', 'OTC']
 
-/** Fallback when a domain has no DomainSetting row yet. OTC ships OFF (the Drug
- *  Facts renderer exists but the OTC flow isn't live). */
+/** Fallback when a domain has no DomainSetting row yet. OTC ships OFF by default —
+ *  the full flow is built (builder Drug Facts editor → formulationData.otc →
+ *  computeProductLabel resolver → renderer), but opening the OTC category is a
+ *  business/compliance decision the admin makes via Settings → Product domains. */
 export const DOMAIN_ENABLED_DEFAULTS: Record<DomainKey, boolean> = {
   FOOD: true,
   DIETARY_SUPPLEMENT: true,
