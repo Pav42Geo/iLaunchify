@@ -35,6 +35,58 @@ export {
 export { sendTransactionalEmail, type SendEmailResult } from './email'
 // Daily digest for P2-severity events (dispatched with digest:true).
 export { runNotificationDigest, type DigestResult } from './digest'
+// Notification/Email Center — pure control-plane engine
+// (docs/EMAIL_NOTIFICATION_CENTER.md, checklist section B).
+export type {
+  NotificationCategorySlug,
+  NotificationCategoryConfig,
+  CategoryPreferenceRow,
+  NotificationBrandingConfig,
+  NotificationTemplateOverride,
+  NotificationTemplateVersionSnapshot,
+  TemplateCtaMode,
+  TemplateStatus,
+  EmailDeliveryStatus,
+  EmailDeliveryRecord,
+} from './center-types'
+export {
+  NOTIFICATION_CATEGORIES,
+  EVENT_CATEGORY,
+  categoryForEvent,
+  categoryConfig,
+  isCategoryOptOutable,
+  isValidCategorySlug,
+  allCategories,
+  eventsInCategory,
+  resolveCategoryPreference,
+  shouldDeliver,
+  effectiveCategoryMatrix,
+} from './categories'
+export {
+  buildUnsubscribeToken,
+  verifyUnsubscribeToken,
+  buildUnsubscribeUrl,
+  buildListUnsubscribeHeader,
+  LIST_UNSUBSCRIBE_POST,
+  UNSUBSCRIBE_TOKEN_MAX_AGE_MS,
+  type VerifyUnsubscribeResult,
+} from './unsubscribe'
+export {
+  substituteTokens,
+  extractTokens,
+  unknownTokens,
+  tokenPaletteForEvent,
+  EVENT_TOKEN_PALETTE,
+} from './template-tokens'
+export {
+  resolveNotificationContent,
+  renderEmailShell,
+  markdownLiteToHtml,
+  markdownLiteToText,
+  DEFAULT_NOTIFICATION_BRANDING,
+  type ResolveContentOptions,
+  type ResolvedNotificationContent,
+} from './resolve-content'
 // P3 role-routed recipients (docs/PARTNER_ROLE_ACCOUNTS.md §6.3).
 export {
   partnerServiceRecipients,

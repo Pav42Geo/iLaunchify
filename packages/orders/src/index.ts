@@ -92,6 +92,39 @@ export {
   buildManifestPackStructure,
 } from './manifest'
 export type { ProductionManifest, PackSlotInput } from './manifest'
+// Partner order packets — shared Product Passport + per-role need-to-know scoping
+// (docs/PARTNER_ORDER_PACKETS.md). Pure redaction gate over the full manifest.
+export {
+  roleForDispatchType,
+  buildProductPassport,
+  stripFinishCost,
+  scopeShipTo,
+  scopeManifestForRole,
+  scopeManifestForDispatchType,
+} from './partner-packet'
+export type {
+  PartnerRole,
+  ProductPassport,
+  FinishNoCost,
+  ScopedShipTo,
+  RolePacket,
+  ScopeOptions,
+} from './partner-packet'
+// Creator order timeline — pure builder over FSM timestamps + progress updates
+// (docs/EMAIL_NOTIFICATION_CENTER.md Part 3, checklist F).
+export {
+  buildDispatchTimeline,
+  buildOrderTimeline,
+  effectiveEta,
+  humanizeMilestone,
+} from './dispatch-timeline'
+export type {
+  ProgressUpdateKind,
+  DispatchProgressUpdateData,
+  DispatchTimelineSource,
+  TimelineEntryKind,
+  OrderTimelineEntry,
+} from './dispatch-timeline'
 export { recomputeAggregateApprovalStatus, computeAggregateStatus } from './aggregate-approval'
 export type { AggregateStatus } from './aggregate-approval'
 export {

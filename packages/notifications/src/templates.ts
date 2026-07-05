@@ -10,7 +10,9 @@ export interface NotificationTemplate {
   link?: string
 }
 
-interface TemplateData {
+// Exported so the token-palette registry (template-tokens.ts) can type-check
+// its per-event key lists against the real payload shapes.
+export interface TemplateData {
   SECTION_VERIFIED: { sectionType: string; companyName?: string }
   SECTION_NEEDS_CHANGES: { sectionType: string; companyName?: string; notes?: string }
   PARTNER_ACTIVATED: { companyName?: string }

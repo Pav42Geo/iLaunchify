@@ -35,13 +35,14 @@ Owner legend: **[CW]** Cowork (pure/new files, presentational) · **[CODE]** Cod
 
 ## B. Notification/Email Center — Phase 1 (Cowork, pure — buildable now)
 
-All in `@ilaunchify/notifications`, pure + unit-tested, collision-free:
-- [ ] **[CW]** `resolveNotificationContent(event, payload, { templateOverride?, branding? }) → { subject, html, text }` — composes global **header + per-event body + global footer**, override-or-code-fallback, token substitution
-- [ ] **[CW]** Token substitution + **token-palette extractor** (available `{{vars}}` per event)
-- [ ] **[CW]** Event → **category** lookup + category config + `isCategoryOptOutable` / group-preference resolver
-- [ ] **[CW]** Signed **unsubscribe token** build/verify (HMAC; secret passed in, never read/logged) + `List-Unsubscribe` header builder
-- [ ] **[CW]** TS types for new models (branding / template / category / delivery)
-- [ ] **[CW]** Tests for all of the above
+All in `@ilaunchify/notifications`, pure + unit-tested, collision-free — **built 2026-07-05**:
+- [x] **[CW]** `resolveNotificationContent(event, payload, { templateOverride?, branding? }) → { subject, html, text }` — composes global **header + per-event body + global footer**, override-or-code-fallback, token substitution — `src/resolve-content.ts` (+ `renderEmailShell` for admin preview, markdown-lite, DRAFT-preview mode, mandatory-category unsubscribe suppression)
+- [x] **[CW]** Token substitution + **token-palette extractor** (available `{{vars}}` per event) — `src/template-tokens.ts` (palette type-checked against `TemplateData` payload keys; `unknownTokens` for editor validation)
+- [x] **[CW]** Event → **category** lookup + category config + `isCategoryOptOutable` / group-preference resolver — `src/categories.ts` (total `Record<NotificationEvent, slug>`, 11 categories incl. `marketing` for G; `shouldDeliver`, `effectiveCategoryMatrix`)
+- [x] **[CW]** Signed **unsubscribe token** build/verify (HMAC; secret passed in, never read/logged) + `List-Unsubscribe` header builder — `src/unsubscribe.ts` (v1 HMAC-SHA256, constant-time verify, 90-day max age, rejects mandatory categories; `LIST_UNSUBSCRIBE_POST`)
+- [x] **[CW]** TS types for new models (branding / template / category / delivery) — `src/center-types.ts`
+- [x] **[CW]** Tests for all of the above — `src/notification-center.selftest.ts` (tsx/node selftest, package convention; passing) + package `tsc --noEmit` clean
+- [ ] **[PAVEL]** commit + push the section-B files (5 new files in `packages/notifications/src/` + additive edits to `index.ts` and `templates.ts` — `TemplateData` export)
 
 ## C. Notification/Email Center — Phase 2 (Code — schema + wiring)
 
@@ -58,7 +59,7 @@ All in `@ilaunchify/notifications`, pure + unit-tested, collision-free:
 - [ ] **[CODE]** Notifications → **Deliverability** (per-event sent/delivered/bounced/complained/opened; suppression list)
 - [ ] **[CODE]** Notifications → **Log** (recipient audit: who/what/when/channel/status)
 - [ ] **[CODE]** User-side **group × channel preference matrix** (replaces 8-event list; all categories)
-- [ ] **[CW]** (optional) presentational template-preview card + preference-matrix component
+- [x] **[CW]** (optional) presentational template-preview card + preference-matrix component — built 2026-07-05: `packages/ui/src/components/EmailTemplatePreviewCard.tsx` (subject + sandboxed-iframe email + plaintext + in-app tabs, `TokenPaletteRow` click-to-insert chips) and `NotificationPreferenceMatrix.tsx` (category × channel toggle grid, locked mandatory rows, channel-unavailable cells). Props-only; hosts feed them from `resolveNotificationContent` (preview:true) / `effectiveCategoryMatrix` + `tokenPaletteForEvent`.
 
 ## E. Notification/Email Center — Phase 4 (Code — deliverability + unsubscribe routes)
 
@@ -71,8 +72,8 @@ All in `@ilaunchify/notifications`, pure + unit-tested, collision-free:
 - [ ] **[CODE/PAVEL]** `DispatchProgressUpdate` model (kind NOTE/ETA/PHOTO/MILESTONE, body, etaAt, photoAssetId, milestone, author, ts)
 - [ ] **[CODE]** `OrderDispatch.currentEtaAt` (partner-revisable) + `CREATOR_DISPATCH_PROGRESS` event
 - [ ] **[CODE]** Partner progress-submit action + UI on the dispatch detail
-- [ ] **[CW]** Pure helper: build creator order timeline from state timestamps + progress updates
-- [ ] **[CW]** Presentational creator **order timeline** component
+- [x] **[CW]** Pure helper: build creator order timeline from state timestamps + progress updates — `packages/orders/src/dispatch-timeline.ts` (+ vitest suite `dispatch-timeline.test.ts`; built 2026-07-05). `buildDispatchTimeline` / `buildOrderTimeline` / `effectiveEta`; declares the `DispatchProgressUpdateData` shape the F schema must match (kind NOTE/ETA/PHOTO/MILESTONE, body, etaAt, photoAssetId, milestone, authorName, createdAt). ETA dates format in UTC (calendar-date, viewer-TZ-stable).
+- [x] **[CW]** Presentational creator **order timeline** component — `packages/ui/src/components/OrderTimelineView.tsx` (built 2026-07-05). Props-only; host resolves photoAssetId → photoUrl; ETA banner via `effectiveEta`; compact mode for embedding.
 - [ ] **[CODE]** Wire timeline into the creator order view
 
 ## G. Marketing email (external — Pavel decision + setup)
