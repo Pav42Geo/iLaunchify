@@ -49,6 +49,8 @@ import { seedDecorationCompatibility } from './seed-decoration-compatibility'
 import { seedPackagingOfferingFixtures } from './seed-packaging-offerings-fixtures'
 import { seedSpotColors } from './seed-spot-colors'
 import { seedAcademy } from './seed-academy'
+// 2026-07-05 Notification Center — category registry (group-level opt-out).
+import { seedNotificationCategories } from './seed-notification-categories'
 
 const prisma = new PrismaClient()
 
@@ -718,6 +720,9 @@ async function main() {
   // Two flagship courses + topic grids, PUBLISHED so both public academies
   // (Creator /academy, Partner /business/academy) render content on a fresh DB.
   await seedAcademy(prisma)
+
+  // --- Notification Center category registry (EMAIL_NOTIFICATION_CENTER.md) ---
+  await seedNotificationCategories(prisma)
 
   console.log('Seed complete.')
 }

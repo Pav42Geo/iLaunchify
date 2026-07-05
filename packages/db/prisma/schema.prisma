@@ -2884,12 +2884,47 @@ model OrderDispatch {
   reprintOfDispatchId      String?
   reprintOf                OrderDispatch?  @relation("DispatchReprints", fields: [reprintOfDispatchId], references: [id])
   reprints                 OrderDispatch[] @relation("DispatchReprints")
+  // F — job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3).
+  // Partner-revisable running ETA; each revision also writes a
+  // DispatchProgressUpdate(kind=ETA) row + CREATOR_DISPATCH_PROGRESS event.
+  currentEtaAt             DateTime?
+  progressUpdates          DispatchProgressUpdate[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 
   @@index([orderId])
   @@index([orderItemId])
   @@index([partnerServiceId, status])
+}
+
+// F — partner-authored, creator-visible job-progress entries
+// (docs/EMAIL_NOTIFICATION_CENTER.md Part 3 — the operation-level signal
+// MES/ShipBob-style customers expect, without forcing a full MES).
+// Mirrored by DispatchProgressUpdateData in @ilaunchify/orders dispatch-timeline.
+
+enum DispatchProgressKind {
+  NOTE // free-text update from the floor
+  ETA // revised delivery estimate (etaAt set; also stamped to OrderDispatch.currentEtaAt)
+  PHOTO // production photo (photoAssetId set; body = caption)
+  MILESTONE // named step, e.g. printer: proof → plates → printing → finishing
+}
+
+model DispatchProgressUpdate {
+  id           String               @id @default(uuid())
+  dispatchId   String
+  kind         DispatchProgressKind
+  body         String? // note / caption / milestone annotation (creator-visible)
+  etaAt        DateTime? // kind=ETA
+  photoAssetId String? // kind=PHOTO — soft FK → stored asset
+  milestone    String? // kind=MILESTONE — machine slug, e.g. "plates-made"
+  // Author (partner-side service account user)
+  authorUserId String?
+  authorName   String? // denormalized display name (creator timeline shows it)
+  createdAt    DateTime             @default(now())
+
+  dispatch OrderDispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+
+  @@index([dispatchId, createdAt])
 }
 
 // =============================================================================
@@ -4202,6 +4237,8 @@ enum NotificationEvent {
   PROOF_REJECTED // creator rejected with annotation → printer uploads next round
   // C6.3 — channel inventory intelligence (CHANNEL_MANAGEMENT_SPEC §3.5a)
   CREATOR_STOCK_ALERT // stock alert state ESCALATED (LOW/CRITICAL/STOCKOUT) or recovered to HEALTHY
+  // F — job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3)
+  CREATOR_DISPATCH_PROGRESS // partner posted a progress update / revised ETA on a dispatch
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -4230,20 +4267,149 @@ model Notification {
   @@index([event])
 }
 
-// Per-user per-event per-channel opt-out. Default: enabled. Rows are upserted
-// only when the user explicitly toggles a preference; absent rows are treated
-// as enabled by the dispatcher.
+// Per-user per-channel opt-out. Default: enabled. Rows are upserted only when
+// the user explicitly toggles a preference; absent rows are treated as enabled.
+//
+// RE-KEYED 2026-07-05 (docs/EMAIL_NOTIFICATION_CENTER.md — group-level opt-out):
+// the opt-out unit is now a notification CATEGORY (slug from the code registry
+// in @ilaunchify/notifications categories.ts), not a single event. `event` is
+// kept nullable for the legacy 8-event rows (additive migration — no drops);
+// the dispatcher reads ONLY category rows. Exactly one of event/category is set.
 model NotificationPreference {
-  id        String              @id @default(cuid())
+  id        String               @id @default(cuid())
   userId    String
-  event     NotificationEvent
+  // LEGACY per-event rows (pre-Center). Ignored by the dispatcher.
+  event     NotificationEvent?
+  // Category slug, e.g. "orders" / "support" — see NotificationCategorySlug.
+  category  String?
   channel   NotificationChannel
-  enabled   Boolean             @default(true)
-  updatedAt DateTime            @updatedAt
+  enabled   Boolean              @default(true)
+  updatedAt DateTime             @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, event, channel])
+  @@unique([userId, category, channel])
+}
+
+// ============================================================================
+// NOTIFICATION / EMAIL CENTER — control plane (docs/EMAIL_NOTIFICATION_CENTER.md)
+// DB override + branding over the typed code templates (Shopify model). The
+// code templates in @ilaunchify/notifications remain the default + fallback.
+// ============================================================================
+
+enum NotificationTemplateStatus {
+  DRAFT // preview-only; the code template still renders on real sends
+  PUBLISHED // overrides the code template's subject/body/CTA
+}
+
+enum NotificationCtaMode {
+  AUTO // event-appropriate label (ctaLabelForEvent) + code-template link
+  CUSTOM // ctaLabelOverride + code-template link
+  NONE // no button
+}
+
+enum EmailDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  OPENED
+}
+
+// Singleton — global email chrome (header + footer). The resolver merges this
+// over the LOCKED design-system defaults; absent row = today's exact shell.
+model NotificationBranding {
+  id                  String   @id @default(uuid())
+  // Enforces the singleton: every writer upserts on this fixed key.
+  singletonKey        String   @unique @default("default")
+  logoUrl             String?
+  brandName           String   @default("iLaunchify")
+  accentHex           String   @default("#FF2E63") // LOCKED brand pink
+  inkHex              String   @default("#18181b")
+  footerText          String? // address / legal line above the unsubscribe row
+  unsubscribeText     String   @default("Unsubscribe from these emails")
+  preferencesText     String   @default("Manage your email preferences")
+  preferenceCenterUrl String?
+  fromName            String?
+  replyToEmail        String?
+  updatedAt           DateTime @updatedAt
+  updatedById         String? // soft FK → admin User
+}
+
+// Per-event BODY override (subject / body / CTA). One optional row per event;
+// PUBLISHED rows win over the code template, DRAFT rows render only in the
+// admin preview. Tokens = the event's typed payload keys ({{orderRef}} etc.).
+model NotificationTemplate {
+  id               String                        @id @default(uuid())
+  event            NotificationEvent             @unique
+  // false = EMAIL channel off for this event entirely (in-app unaffected).
+  enabled          Boolean                       @default(true)
+  subjectOverride  String?
+  bodyMarkdown     String? // markdown-lite: **bold**, [label](url), blank-line paragraphs
+  ctaMode          NotificationCtaMode           @default(AUTO)
+  ctaLabelOverride String?
+  status           NotificationTemplateStatus    @default(DRAFT)
+  version          Int                           @default(1)
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+  updatedById      String? // soft FK → admin User
+  versions         NotificationTemplateVersion[]
+}
+
+// Snapshot on publish — rollback target for the Templates admin surface.
+model NotificationTemplateVersion {
+  id               String               @id @default(uuid())
+  templateId       String
+  event            NotificationEvent
+  version          Int
+  subjectOverride  String?
+  bodyMarkdown     String?
+  ctaMode          NotificationCtaMode
+  ctaLabelOverride String?
+  publishedAt      DateTime             @default(now())
+  publishedById    String? // soft FK → admin User
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, version])
+  @@index([event])
+}
+
+// Admin-editable copy of the category registry (labels/descriptions for the
+// preference center). The CODE registry in @ilaunchify/notifications is the
+// source of truth for slugs + opt-outability + event mapping; rows here only
+// override display copy. Seeded from the code registry.
+model NotificationCategory {
+  id              String                @id @default(uuid())
+  slug            String                @unique // NotificationCategorySlug
+  label           String
+  description     String
+  optOutable      Boolean
+  defaultChannels NotificationChannel[]
+  updatedAt       DateTime              @updatedAt
+}
+
+// Mirror of Resend delivery lifecycle events (send + webhook) — powers the
+// Deliverability admin surface and the bounce/complaint suppression signal.
+model EmailDelivery {
+  id                String              @id @default(uuid())
+  notificationId    String? // soft FK → Notification row that produced the send
+  // Nullable: provider webhook events (bounce/complaint/open) for sends we
+  // can't correlate (e.g. one-off transactional emails) still get a row.
+  event             NotificationEvent?
+  category          String? // NotificationCategorySlug at send time
+  toEmail           String
+  providerMessageId String? // Resend message id (webhook correlation key)
+  status            EmailDeliveryStatus
+  detail            String? // bounce/complaint detail from the provider
+  occurredAt        DateTime            @default(now())
+  createdAt         DateTime            @default(now())
+
+  @@index([event, status])
+  @@index([toEmail, status])
+  @@index([providerMessageId])
 }
 
 // ============================================================================

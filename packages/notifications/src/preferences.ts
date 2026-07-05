@@ -1,4 +1,10 @@
 // User notification preferences + quiet-hours helpers.
+//
+// 2026-07-05 — the Center re-keys preferences to (userId, CATEGORY, channel)
+// (docs/EMAIL_NOTIFICATION_CENTER.md, group-level opt-out). The category-keyed
+// API below is what the dispatcher + preference-center UI use; the legacy
+// per-event functions remain for the old 8-event settings page until D-phase
+// replaces it, but the dispatcher no longer consults them.
 
 import { prisma } from '@ilaunchify/db'
 import type {
@@ -6,6 +12,13 @@ import type {
   NotificationEvent,
   NotificationPreference,
 } from '@ilaunchify/db'
+import {
+  NOTIFICATION_CATEGORIES,
+  effectiveCategoryMatrix,
+  isValidCategorySlug,
+} from './categories'
+import { getCategoryPreferenceRows, setCategoryPreference } from './center-db'
+import type { NotificationCategorySlug } from './center-types'
 
 export interface EffectivePreference {
   event: NotificationEvent
@@ -96,6 +109,54 @@ export async function isEnabled(
     where: { userId_event_channel: { userId, event, channel } },
   })
   return row?.enabled ?? true
+}
+
+// ---------------------------------------------------------------------------
+// Category-keyed preferences (the Center's group-level opt-out)
+// ---------------------------------------------------------------------------
+
+export interface EffectiveCategoryPreference {
+  category: NotificationCategorySlug
+  channel: NotificationChannel
+  enabled: boolean
+  /** Mandatory categories — rendered on + disabled in the matrix UI. */
+  locked: boolean
+}
+
+/**
+ * Full category × channel matrix for the preference-center UI: every category
+ * with the user's explicit rows overlaid on the defaults (mandatory categories
+ * report enabled + locked).
+ */
+export async function getEffectiveCategoryPreferences(
+  userId: string,
+): Promise<EffectiveCategoryPreference[]> {
+  const rows = await getCategoryPreferenceRows(userId)
+  return effectiveCategoryMatrix(rows)
+}
+
+/**
+ * Toggle one (category, channel). Rejects unknown slugs; mandatory categories
+ * are rejected too — the dispatcher would ignore the row anyway, and storing
+ * it would misrepresent the user's actual deliveries.
+ */
+export async function setCategoryPreferenceChecked(params: {
+  userId: string
+  category: string
+  channel: NotificationChannel
+  enabled: boolean
+}): Promise<{ ok: true } | { ok: false; reason: 'unknown-category' | 'not-opt-outable' }> {
+  if (!isValidCategorySlug(params.category)) return { ok: false, reason: 'unknown-category' }
+  if (!NOTIFICATION_CATEGORIES[params.category].optOutable) {
+    return { ok: false, reason: 'not-opt-outable' }
+  }
+  await setCategoryPreference({
+    userId: params.userId,
+    category: params.category,
+    channel: params.channel,
+    enabled: params.enabled,
+  })
+  return { ok: true }
 }
 
 export async function setQuietHours(params: {

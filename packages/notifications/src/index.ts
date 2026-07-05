@@ -21,7 +21,31 @@ export {
   getEffectivePreferences,
   setPreference,
   setQuietHours,
+  // Category-keyed (Center) preference API — what the dispatcher + UI use.
+  getEffectiveCategoryPreferences,
+  setCategoryPreferenceChecked,
+  type EffectiveCategoryPreference,
 } from './preferences'
+// Center control-plane DB access (cast-guarded until db:generate — center-db.ts).
+export {
+  getNotificationBranding,
+  getTemplateOverride,
+  getCategoryPreferenceRows,
+  setCategoryPreference,
+  recordEmailDelivery,
+  isEmailSuppressed,
+  EMAIL_SUPPRESSION_WINDOW_DAYS,
+} from './center-db'
+// One-click unsubscribe apply (route-handler engine, checklist E).
+export { applyUnsubscribeToken, type ApplyUnsubscribeResult } from './unsubscribe-apply'
+// Resend inbound webhook engine (checklist E) — Svix verify + parse + record.
+export {
+  verifyResendWebhook,
+  parseResendEvent,
+  recordResendEvent,
+  type ParsedResendEvent,
+  type ResendDeliveryStatus,
+} from './resend-webhook'
 export { renderTemplate } from './templates'
 export type { NotificationTemplate } from './templates'
 // Branded transactional-email shell (reusable for one-off sends too).
@@ -66,6 +90,7 @@ export {
   buildUnsubscribeToken,
   verifyUnsubscribeToken,
   buildUnsubscribeUrl,
+  buildOneClickUnsubscribeUrl,
   buildListUnsubscribeHeader,
   LIST_UNSUBSCRIBE_POST,
   UNSUBSCRIBE_TOKEN_MAX_AGE_MS,

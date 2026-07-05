@@ -15,6 +15,20 @@ const BRAND = {
   font: "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,Helvetica,Arial,sans-serif",
 }
 
+/**
+ * Optional NotificationBranding overrides (docs/EMAIL_NOTIFICATION_CENTER.md).
+ * Callers with a branding row (one-off sends, digest) pass it here; absent
+ * fields keep the LOCKED defaults so pre-Center behavior is unchanged. Event
+ * emails go through resolveNotificationContent instead, which has the full
+ * header/footer treatment.
+ */
+export interface EmailShellBranding {
+  brandName?: string | null
+  accentHex?: string | null
+  inkHex?: string | null
+  footerText?: string | null
+}
+
 export interface EmailContent {
   title: string
   body?: string
@@ -33,11 +47,14 @@ export function escapeHtml(s: string): string {
 }
 
 /** Full branded HTML email body. */
-export function renderEmailHtml(c: EmailContent): string {
+export function renderEmailHtml(c: EmailContent, branding?: EmailShellBranding): string {
+  const brandName = branding?.brandName ?? 'iLaunchify'
+  const accent = branding?.accentHex ?? BRAND.pink
+  const ink = branding?.inkHex ?? BRAND.ink
   const preheader = (c.preheader ?? c.body ?? c.title).slice(0, 140)
   const button = c.cta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 4px">
-         <tr><td style="border-radius:999px;background:${BRAND.ink}">
+         <tr><td style="border-radius:999px;background:${ink}">
            <a href="${c.cta.url}" style="display:inline-block;padding:11px 22px;font-family:${BRAND.font};font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px">${escapeHtml(c.cta.label)}</a>
          </td></tr>
        </table>`
@@ -50,17 +67,17 @@ export function renderEmailHtml(c: EmailContent): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.pageBg}">
     <tr><td align="center" style="padding:28px 16px">
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background:#ffffff;border:1px solid ${BRAND.hairline};border-radius:14px;overflow:hidden">
-        <tr><td style="height:4px;background:${BRAND.pink}"></td></tr>
+        <tr><td style="height:4px;background:${accent}"></td></tr>
         <tr><td style="padding:28px 32px">
-          <p style="margin:0 0 18px;font-family:${BRAND.font};font-size:15px;font-weight:800;letter-spacing:-0.01em;color:${BRAND.ink}">iLaunchify</p>
-          <h1 style="margin:0 0 12px;font-family:${BRAND.font};font-size:19px;font-weight:600;line-height:1.35;color:${BRAND.ink}">${escapeHtml(c.title)}</h1>
+          <p style="margin:0 0 18px;font-family:${BRAND.font};font-size:15px;font-weight:800;letter-spacing:-0.01em;color:${ink}">${escapeHtml(brandName)}</p>
+          <h1 style="margin:0 0 12px;font-family:${BRAND.font};font-size:19px;font-weight:600;line-height:1.35;color:${ink}">${escapeHtml(c.title)}</h1>
           ${c.body ? `<p style="margin:0 0 18px;font-family:${BRAND.font};font-size:14px;line-height:1.6;color:${BRAND.inkSoft}">${escapeHtml(c.body)}</p>` : ''}
           ${button}
         </td></tr>
         <tr><td style="padding:0 32px 26px">
           <hr style="border:none;border-top:1px solid ${BRAND.hairline};margin:6px 0 14px">
           <p style="margin:0;font-family:${BRAND.font};font-size:12px;line-height:1.5;color:${BRAND.inkFaint}">
-            You're receiving this because email notifications are on for your iLaunchify account.
+            ${branding?.footerText ? `${escapeHtml(branding.footerText)}<br>` : ''}You're receiving this because email notifications are on for your ${escapeHtml(brandName)} account.
             Manage them anytime in your notification settings.
           </p>
         </td></tr>

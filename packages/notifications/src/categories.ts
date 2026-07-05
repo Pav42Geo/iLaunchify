@@ -160,6 +160,10 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   // Reminders & digests
   DISPATCH_ACCEPT_REMINDER: 'reminders',
   DISPATCH_SLA_AT_RISK: 'reminders',
+  // F — job progress. CAST-GUARDED KEY until db:generate adds
+  // CREATOR_DISPATCH_PROGRESS to the generated enum (then drop the cast —
+  // see docs/POST_PUSH_CASTGUARD_CLEANUP.md pattern).
+  ['CREATOR_DISPATCH_PROGRESS' as NotificationEvent]: 'orders',
 }
 
 export function categoryForEvent(event: NotificationEvent): NotificationCategorySlug {

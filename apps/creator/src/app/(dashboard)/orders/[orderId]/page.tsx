@@ -15,7 +15,13 @@
 
 import Link from 'next/link'
 import { prisma, getOrderSettings } from '@ilaunchify/db'
-import { canCreatorSelfCancel } from '@ilaunchify/orders'
+import {
+  canCreatorSelfCancel,
+  buildOrderTimeline,
+  effectiveEta,
+  type DispatchTimelineSource,
+} from '@ilaunchify/orders'
+import { OrderTimelineView } from '@ilaunchify/ui'
 import { getCreatorTier, requireUser } from '@ilaunchify/auth'
 import { creatorTierToPlanCode, hasFeature, CREATOR_FEATURES } from '@ilaunchify/plans'
 import { notFound } from 'next/navigation'
@@ -253,6 +259,76 @@ export default async function OrderDetailPage({
     createdAt: r.createdAt.toISOString(),
   }))
 
+  // F — live production timeline (docs/EMAIL_NOTIFICATION_CENTER.md Part 3):
+  // FSM state stamps + partner progress updates per dispatch, merged into one
+  // running story. DispatchProgressUpdate is cast-guarded until db:generate;
+  // pre-migration the query fails soft to [] and the timeline still renders
+  // the state stamps.
+  const progressByDispatch = await (
+    prisma as unknown as {
+      dispatchProgressUpdate: {
+        findMany: (a: unknown) => Promise<
+          Array<{
+            id: string
+            dispatchId: string
+            kind: 'NOTE' | 'ETA' | 'PHOTO' | 'MILESTONE'
+            body: string | null
+            etaAt: Date | null
+            photoAssetId: string | null
+            milestone: string | null
+            authorName: string | null
+            createdAt: Date
+          }>
+        >
+      }
+    }
+  ).dispatchProgressUpdate
+    .findMany({
+      where: { dispatch: { orderId: order.id } },
+      orderBy: { createdAt: 'asc' },
+    })
+    .catch(() => [])
+
+  const timelineSources: DispatchTimelineSource[] = order.dispatches.map((d) => ({
+    dispatchId: d.id,
+    dispatchType: d.type,
+    partnerName: d.partnerService.partner.companyName,
+    createdAt: d.createdAt.toISOString(),
+    acceptedAt: d.acceptedAt?.toISOString() ?? null,
+    productionStartedAt: d.productionStartedAt?.toISOString() ?? null,
+    qualityCheckStartedAt: d.qualityCheckStartedAt?.toISOString() ?? null,
+    qualityCheckFailedAt: d.qualityCheckFailedAt?.toISOString() ?? null,
+    readyAt: d.readyAt?.toISOString() ?? null,
+    shippedAt: d.shippedAt?.toISOString() ?? null,
+    inTransitAt: d.inTransitAt?.toISOString() ?? null,
+    deliveredAt: d.deliveredAt?.toISOString() ?? null,
+    declinedAt: d.declinedAt?.toISOString() ?? null,
+    trackingCarrier: d.trackingCarrier,
+    trackingNumber: d.trackingNumber,
+    currentEtaAt:
+      (d as unknown as { currentEtaAt?: Date | null }).currentEtaAt?.toISOString() ?? null,
+    progressUpdates: progressByDispatch
+      .filter((u) => u.dispatchId === d.id)
+      .map((u) => ({
+        id: u.id,
+        kind: u.kind,
+        body: u.body,
+        etaAt: u.etaAt?.toISOString() ?? null,
+        photoAssetId: u.photoAssetId,
+        milestone: u.milestone,
+        authorName: u.authorName,
+        createdAt: u.createdAt.toISOString(),
+      })),
+  }))
+  const timelineEntries = buildOrderTimeline(timelineSources)
+  // Order-level ETA: the latest running estimate across dispatches.
+  const orderEta =
+    timelineSources
+      .map((s) => effectiveEta(s))
+      .filter((e): e is string => e != null)
+      .sort()
+      .at(-1) ?? null
+
   return (
     <div className="space-y-6">
       {/* Cream header band — mirrors R10 list-card header */}
@@ -363,6 +439,13 @@ export default async function OrderDetailPage({
             })
           )}
         </section>
+
+        {/* F — live production timeline: FSM state stamps + partner progress
+            updates (notes / revised ETAs / milestones) merged into one running
+            story (docs/EMAIL_NOTIFICATION_CENTER.md Part 3). */}
+        {timelineEntries.length > 0 && (
+          <OrderTimelineView entries={timelineEntries} etaAt={orderEta} title="Production timeline" />
+        )}
 
         {/* P2 proof loop (D3) — print-proof approval, when the print job has rounds */}
         {proofRounds.length > 0 && <ProofApprovalPanel rounds={proofRounds} />}

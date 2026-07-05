@@ -131,6 +131,14 @@ export interface TemplateData {
   // entry keeps the TemplateData index total and carries the copy through
   // whenever it migrates to dispatchNotification.
   CREATOR_STOCK_ALERT: { title?: string; body?: string; productName?: string; alertState?: string }
+  // F — job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3)
+  CREATOR_DISPATCH_PROGRESS: {
+    orderId: string
+    partnerName: string
+    kind: 'NOTE' | 'ETA' | 'PHOTO' | 'MILESTONE'
+    summary: string // pre-formatted line, e.g. "updated the delivery estimate to Jul 20, 2026"
+    note?: string
+  }
 }
 
 function fmtSection(sectionType: string): string {
@@ -576,6 +584,16 @@ export function renderTemplate<E extends NotificationEvent>(
           ? `Your ${d.suspendedCapability} eligibility is paused until a renewed document is verified.`
           : 'Upload a renewed document to restore full eligibility.',
         link: d.href,
+      }
+    }
+    case 'CREATOR_DISPATCH_PROGRESS': {
+      const d = data as TemplateData['CREATOR_DISPATCH_PROGRESS']
+      return {
+        title: `${d.partnerName} ${d.summary}`,
+        body: d.note
+          ? `"${d.note.slice(0, 200)}" — see the running timeline on your order.`
+          : `Order #${d.orderId.slice(-8)} has a new production update — see the running timeline on your order.`,
+        link: `/orders/${d.orderId}`,
       }
     }
     default:

@@ -36,6 +36,9 @@ import { ProofPanel, type ProofRoundView } from './ProofPanel'
 import { isProofRequired } from './proof-actions'
 import { ProductionLotsCard, type ProductionLotView } from './ProductionLotsCard'
 import { StorageReleasesCard, type StorageReleaseView } from './StorageReleasesCard'
+// F — job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3)
+import { ProgressUpdatePanel } from './ProgressUpdatePanel'
+import { listProgressUpdates } from './progress-actions'
 import { getDispatchShippingContext } from './ship-requirements'
 import { SHIP_DOC_LABELS, PARTNER_UPLOADED_DOC_TYPES } from '@ilaunchify/shipping'
 import type { ProductionManifest } from '@ilaunchify/orders'
@@ -446,6 +449,17 @@ export default async function DispatchDetailPage({
           {!isLabel && (canRecordLots || productionLots.length > 0) && (
             <ProductionLotsCard dispatchId={dispatch.id} lots={productionLots} canRecord={canRecordLots} />
           )}
+
+          {/* F — job-progress capture: notes / revised ETA / milestones → creator timeline */}
+          <ProgressUpdatePanel
+            dispatchId={dispatch.id}
+            canPost={['ACCEPTED', 'PRODUCING', 'QUALITY_CHECK', 'READY', 'SHIPPED', 'IN_TRANSIT'].includes(dispatch.status)}
+            currentEtaAt={
+              // Cast-guard until db:generate types OrderDispatch.currentEtaAt.
+              ((dispatch as unknown as { currentEtaAt?: Date | null }).currentEtaAt ?? null)?.toISOString() ?? null
+            }
+            updates={await listProgressUpdates(dispatch.id)}
+          />
 
           {/* Product + payout */}
           <section className="rounded-2xl border border-ink-200 bg-white p-5">

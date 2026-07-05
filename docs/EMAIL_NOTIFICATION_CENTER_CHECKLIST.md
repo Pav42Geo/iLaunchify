@@ -44,13 +44,15 @@ All in `@ilaunchify/notifications`, pure + unit-tested, collision-free — **bui
 - [x] **[CW]** Tests for all of the above — `src/notification-center.selftest.ts` (tsx/node selftest, package convention; passing) + package `tsc --noEmit` clean
 - [ ] **[PAVEL]** commit + push the section-B files (5 new files in `packages/notifications/src/` + additive edits to `index.ts` and `templates.ts` — `TemplateData` export)
 
-## C. Notification/Email Center — Phase 2 (Code — schema + wiring)
+## C. Notification/Email Center — Phase 2 (schema + wiring) — **built by Cowork 2026-07-05** (Pavel decision: CW builds all phases this session)
 
-- [ ] **[CODE/PAVEL]** Additive Prisma models: `NotificationBranding` (header/footer/unsubscribe/preferenceCenterUrl), `NotificationTemplate` (body-only override), `NotificationCategory`, `NotificationTemplateVersion`, `EmailDelivery`
-- [ ] **[CODE]** Re-key `NotificationPreference` to **(userId, category, channel)**
-- [ ] **[CODE]** Wire `dispatchNotification` → resolver + group-preference gate (mandatory categories bypass)
-- [ ] **[CODE]** `renderEmailHtml` reads `NotificationBranding` instead of hardcoded colors
-- [ ] **[PAVEL]** migration run (`db:push` → `db:generate` → `.next` clear)
+- [x] **[CW]** Additive Prisma models: `NotificationBranding` (singleton, header/footer/unsubscribe/preferenceCenterUrl), `NotificationTemplate` (body-only override, DRAFT/PUBLISHED), `NotificationCategory` (display-copy mirror; code registry stays source of truth), `NotificationTemplateVersion` (publish snapshots), `EmailDelivery` (+ enums `NotificationTemplateStatus`, `NotificationCtaMode`, `EmailDeliveryStatus`) — end of the notifications block in `schema.prisma`
+- [x] **[CW]** Re-key `NotificationPreference` to **(userId, category, channel)** — additive: `event` now nullable (legacy rows kept, dispatcher ignores them), `category String?` added, second `@@unique([userId, category, channel])`
+- [x] **[CW]** Wire `dispatchNotification` → resolver + group-preference gate (mandatory categories bypass) — also: branded from-name/reply-to, signed unsubscribe link + `List-Unsubscribe`/`List-Unsubscribe-Post` headers on opt-outable sends, `EmailDelivery` SENT mirror. ALL new-model access is cast-guarded in ONE file: `packages/notifications/src/center-db.ts` (post-generate cleanup lives there only)
+- [x] **[CW]** `renderEmailHtml` reads branding (optional `EmailShellBranding` param — brandName/accent/ink/footer; defaults = locked constants, one-off sends unchanged)
+- [x] **[CW]** `applyUnsubscribeToken` route engine (`unsubscribe-apply.ts`) + category-keyed preference API (`getEffectiveCategoryPreferences`, `setCategoryPreferenceChecked`) + `seed-notification-categories.ts` wired into `seed.ts` (mirror of the code registry — keep in sync)
+- [ ] **[PAVEL]** migration run: `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart. Then `pnpm db:seed` (or just re-run seed) for the category rows. New env for one-click unsubscribe: `NOTIFICATION_UNSUBSCRIBE_SECRET` (any long random string; emails omit the unsubscribe link until set)
+- [ ] **[CW]** post-generate: de-cast `center-db.ts` + `seed-notification-categories.ts` (single-file cleanups)
 
 ## D. Notification/Email Center — Phase 3 (Code — admin v2 surfaces)
 
@@ -63,18 +65,20 @@ All in `@ilaunchify/notifications`, pure + unit-tested, collision-free — **bui
 
 ## E. Notification/Email Center — Phase 4 (Code — deliverability + unsubscribe routes)
 
-- [ ] **[CODE]** Resend inbound webhook → `EmailDelivery` rows + bounce/complaint **suppression**
-- [ ] **[CODE]** One-click **unsubscribe route** (verifies token → sets group preference off)
-- [ ] **[CODE]** Emit `List-Unsubscribe` + `List-Unsubscribe-Post` headers on marketing-category sends
+**Built by Cowork 2026-07-05:**
+- [x] **[CW]** Resend inbound webhook → `EmailDelivery` rows + bounce/complaint **suppression** — engine in `packages/notifications/src/resend-webhook.ts` (Svix HMAC verify, no svix dep; correlates to the SENT row via provider message id), route at `apps/creator/src/app/api/webhooks/resend/route.ts` (public `/api/webhooks` prefix). Suppression: dispatcher checks `isEmailSuppressed` (bounce/complaint within 90d) before every send. Env: `RESEND_WEBHOOK_SECRET`
+- [x] **[CW]** One-click **unsubscribe route** — human landing page `apps/marketing/src/app/unsubscribe/page.tsx` (applies token, category-labeled confirmation, error copy per reason) + RFC 8058 POST endpoint `apps/marketing/src/app/unsubscribe/one-click/route.ts`. Marketing gained the `@ilaunchify/notifications` workspace dep (**[PAVEL]** `pnpm install` to persist the symlink)
+- [x] **[CW]** `List-Unsubscribe` + `List-Unsubscribe-Post` headers — emitted by the dispatcher on EVERY opt-outable-category send (not just marketing; Gmail/Yahoo look at volume, not intent). Header URL = one-click POST endpoint; footer link = landing page
 
 ## F. Job-progress capture (Code + Cowork — closes the daily-flow gap)
 
-- [ ] **[CODE/PAVEL]** `DispatchProgressUpdate` model (kind NOTE/ETA/PHOTO/MILESTONE, body, etaAt, photoAssetId, milestone, author, ts)
-- [ ] **[CODE]** `OrderDispatch.currentEtaAt` (partner-revisable) + `CREATOR_DISPATCH_PROGRESS` event
-- [ ] **[CODE]** Partner progress-submit action + UI on the dispatch detail
+**Built by Cowork 2026-07-05 (schema lands with the same push as C):**
+- [x] **[CW]** `DispatchProgressUpdate` model (kind NOTE/ETA/PHOTO/MILESTONE, body, etaAt, photoAssetId, milestone, author, ts) + `DispatchProgressKind` enum — schema.prisma after OrderDispatch
+- [x] **[CW]** `OrderDispatch.currentEtaAt` (partner-revisable) + `CREATOR_DISPATCH_PROGRESS` event (enum + template + category `orders` + token palette; enum-key casts marked for post-generate cleanup)
+- [x] **[CW]** Partner progress-submit action + UI on the dispatch detail — `progress-actions.ts` (ownership check, active-state gate, audit row, creator notification; PHOTO upload UI = follow-up) + `ProgressUpdatePanel.tsx` on the partner dispatch page
 - [x] **[CW]** Pure helper: build creator order timeline from state timestamps + progress updates — `packages/orders/src/dispatch-timeline.ts` (+ vitest suite `dispatch-timeline.test.ts`; built 2026-07-05). `buildDispatchTimeline` / `buildOrderTimeline` / `effectiveEta`; declares the `DispatchProgressUpdateData` shape the F schema must match (kind NOTE/ETA/PHOTO/MILESTONE, body, etaAt, photoAssetId, milestone, authorName, createdAt). ETA dates format in UTC (calendar-date, viewer-TZ-stable).
 - [x] **[CW]** Presentational creator **order timeline** component — `packages/ui/src/components/OrderTimelineView.tsx` (built 2026-07-05). Props-only; host resolves photoAssetId → photoUrl; ETA banner via `effectiveEta`; compact mode for embedding.
-- [ ] **[CODE]** Wire timeline into the creator order view
+- [x] **[CW]** Wire timeline into the creator order view — creator `orders/[orderId]/page.tsx`: `buildOrderTimeline` over all dispatches + progress rows (query fails soft pre-migration), order-level ETA banner via `effectiveEta`
 
 ## G. Marketing email (external — Pavel decision + setup)
 

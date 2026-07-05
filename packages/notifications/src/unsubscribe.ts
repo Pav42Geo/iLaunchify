@@ -98,10 +98,20 @@ export function verifyUnsubscribeToken(
 // Header + URL builders
 // ---------------------------------------------------------------------------
 
-/** `{base}/unsubscribe?token=…` — base is the app host serving the route. */
+/** `{base}/unsubscribe?token=…` — the human landing page (email footer link). */
 export function buildUnsubscribeUrl(baseUrl: string, token: string): string {
   const trimmed = baseUrl.replace(/\/+$/, '')
   return `${trimmed}/unsubscribe?token=${encodeURIComponent(token)}`
+}
+
+/**
+ * `{base}/unsubscribe/one-click?token=…` — the RFC 8058 POST endpoint mail
+ * clients hit for one-click unsubscribe. Goes in the `List-Unsubscribe`
+ * header; the footer keeps the human landing page above.
+ */
+export function buildOneClickUnsubscribeUrl(baseUrl: string, token: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, '')
+  return `${trimmed}/unsubscribe/one-click?token=${encodeURIComponent(token)}`
 }
 
 /**

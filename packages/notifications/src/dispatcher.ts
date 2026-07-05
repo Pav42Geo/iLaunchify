@@ -1,12 +1,37 @@
 // Main entry point — fan out a single business event to all enabled channels
 // for one user. Never throws; failures are logged but don't propagate.
+//
+// WIRED TO THE NOTIFICATION CENTER (2026-07-05, docs/EMAIL_NOTIFICATION_CENTER.md):
+//   1. Resolve the event's CATEGORY → check the recipient's group-level
+//      preference per channel (mandatory categories always deliver).
+//   2. Compose content via resolveNotificationContent — PUBLISHED DB override
+//      or code-template fallback, inside the branded header/footer shell.
+//   3. Opt-outable categories get a signed one-click unsubscribe link +
+//      List-Unsubscribe headers (Gmail/Yahoo one-click requirement).
+//   4. Every send mirrors into EmailDelivery (deliverability surface).
+// Absent control-plane rows (pre-migration or unconfigured) degrade to the
+// exact pre-Center behavior: code template + locked-brand shell, default-on.
 
 import { prisma } from '@ilaunchify/db'
 import { Resend } from 'resend'
 import type { NotificationEvent } from '@ilaunchify/db'
-import { renderTemplate, absoluteLink } from './templates'
-import { renderEmailHtml, renderEmailText, ctaLabelForEvent } from './email-html'
-import { isEnabled, isInQuietHours } from './preferences'
+import { resolveNotificationContent } from './resolve-content'
+import { categoryForEvent, isCategoryOptOutable, shouldDeliver } from './categories'
+import {
+  getCategoryPreferenceRows,
+  getNotificationBranding,
+  getTemplateOverride,
+  isEmailSuppressed,
+  recordEmailDelivery,
+} from './center-db'
+import {
+  buildUnsubscribeToken,
+  buildUnsubscribeUrl,
+  buildOneClickUnsubscribeUrl,
+  buildListUnsubscribeHeader,
+  LIST_UNSUBSCRIBE_POST,
+} from './unsubscribe'
+import { isInQuietHours } from './preferences'
 
 export interface DispatchInput {
   userId: string
@@ -34,6 +59,21 @@ function getResend(): Resend | null {
   return resendClient
 }
 
+// Public host serving the one-click unsubscribe route (marketing app —
+// unauthenticated surface). Matches apps' marketingUrl() helper default.
+function unsubscribeBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_MARKETING_URL ?? 'http://localhost:3010'
+}
+
+/** From-header with the branded display name when configured. */
+function fromHeader(configuredFrom: string, brandFromName: string | null | undefined): string {
+  if (!brandFromName) return configuredFrom
+  // AUTH_EMAIL_FROM may be "Name <addr>" or a bare address — extract the addr.
+  const m = configuredFrom.match(/<([^>]+)>/)
+  const addr = m?.[1] ?? configuredFrom
+  return `${brandFromName} <${addr}>`
+}
+
 export async function dispatchNotification(input: DispatchInput): Promise<void> {
   try {
     const user = await prisma.user.findUnique({
@@ -53,7 +93,6 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
       return
     }
 
-    const template = renderTemplate(input.event, input.data as never)
     const audience =
       input.audience ??
       (user.role === 'ADMIN'
@@ -62,30 +101,66 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
           ? 'creator'
           : 'partner')
 
+    const category = categoryForEvent(input.event)
+    const optOutable = isCategoryOptOutable(category)
+
+    // Control-plane rows — all optional, all graceful-degrade (center-db).
+    const [branding, override, prefRows] = await Promise.all([
+      getNotificationBranding(),
+      getTemplateOverride(input.event),
+      getCategoryPreferenceRows(user.id),
+    ])
+
+    // Signed one-click unsubscribe link — only for opt-outable categories and
+    // only when the secret is configured. Secret is passed into the pure
+    // builder; never logged.
+    const unsubscribeSecret = process.env.NOTIFICATION_UNSUBSCRIBE_SECRET
+    const unsubscribeToken =
+      optOutable && unsubscribeSecret
+        ? buildUnsubscribeToken({ userId: user.id, category, secret: unsubscribeSecret })
+        : null
+    // Footer link = human landing page; header URL = RFC 8058 POST endpoint.
+    const unsubscribeUrl = unsubscribeToken
+      ? buildUnsubscribeUrl(unsubscribeBaseUrl(), unsubscribeToken)
+      : undefined
+    const oneClickUrl = unsubscribeToken
+      ? buildOneClickUnsubscribeUrl(unsubscribeBaseUrl(), unsubscribeToken)
+      : undefined
+
+    const content = resolveNotificationContent(input.event, input.data, {
+      templateOverride: override,
+      branding,
+      audience,
+      unsubscribeUrl,
+    })
+
     const tasks: Promise<unknown>[] = []
 
     // IN_APP — write the row, regardless of quiet hours (notification center
-    // is the place users go *to* see what's pending)
-    if (await isEnabled(user.id, input.event, 'IN_APP')) {
+    // is the place users go *to* see what's pending). Group-preference gated;
+    // mandatory categories always pass.
+    if (shouldDeliver(input.event, 'IN_APP', prefRows)) {
       tasks.push(
         prisma.notification.create({
           data: {
             userId: user.id,
             event: input.event,
             channel: 'IN_APP',
-            title: template.title,
-            body: template.body,
-            link: template.link,
+            title: content.inApp.title,
+            body: content.inApp.body,
+            link: content.inApp.link,
             payload: input.data as never,
           },
         }),
       )
     }
 
-    // EMAIL — guarded by enabled-preference AND quiet hours. We always write
-    // the Notification row (so it appears in their history) but skip the
-    // actual send when in quiet hours; emailSentAt stays null.
-    if (await isEnabled(user.id, input.event, 'EMAIL')) {
+    // EMAIL — gated by the category preference AND quiet hours AND the
+    // template's per-event email kill-switch. We always write the Notification
+    // row when the preference allows (history), but skip the actual send when
+    // in quiet hours; emailSentAt stays null.
+    const emailKilled = override?.enabled === false
+    if (!emailKilled && shouldDeliver(input.event, 'EMAIL', prefRows)) {
       const inQuiet = isInQuietHours(user.quietHoursStartUtc, user.quietHoursEndUtc)
       const resend = getResend()
       const from = process.env.AUTH_EMAIL_FROM
@@ -97,9 +172,9 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
               userId: user.id,
               event: input.event,
               channel: 'EMAIL',
-              title: template.title,
-              body: template.body,
-              link: template.link,
+              title: content.inApp.title,
+              body: content.inApp.body,
+              link: content.inApp.link,
               // digest:true tags the row for the daily digest cron — it stays
               // emailSentAt=null until the digest bundles + stamps it.
               payload: (input.digest ? { ...input.data, digest: true } : input.data) as never,
@@ -114,25 +189,45 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
           }
 
           try {
-            const linkAbsolute = template.link ? absoluteLink(template.link, audience) : null
-            const content = {
-              title: template.title,
-              body: template.body || undefined,
-              preheader: template.body || template.title,
-              cta: linkAbsolute
-                ? { label: ctaLabelForEvent(input.event), url: linkAbsolute }
-                : undefined,
+            // Bounce/complaint suppression (checklist E): skip the send, keep
+            // the history row, stamp why.
+            if (await isEmailSuppressed(user.email)) {
+              await prisma.notification
+                .update({
+                  where: { id: row.id },
+                  data: { emailError: 'suppressed: recent bounce/complaint' },
+                })
+                .catch(() => {})
+              return
             }
-            await resend.emails.send({
-              from,
+
+            const headers: Record<string, string> = {}
+            if (oneClickUrl) {
+              headers['List-Unsubscribe'] = buildListUnsubscribeHeader({
+                unsubscribeUrl: oneClickUrl,
+              })
+              headers['List-Unsubscribe-Post'] = LIST_UNSUBSCRIBE_POST
+            }
+            const result = await resend.emails.send({
+              from: fromHeader(from, branding?.fromName),
               to: user.email,
-              subject: template.title,
-              html: renderEmailHtml(content),
-              text: renderEmailText(content),
+              ...(branding?.replyToEmail ? { replyTo: branding.replyToEmail } : {}),
+              subject: content.subject,
+              html: content.html,
+              text: content.text,
+              ...(Object.keys(headers).length ? { headers } : {}),
             })
             await prisma.notification.update({
               where: { id: row.id },
               data: { emailSentAt: new Date() },
+            })
+            await recordEmailDelivery({
+              notificationId: row.id,
+              event: input.event,
+              category,
+              toEmail: user.email,
+              providerMessageId: result.data?.id ?? null,
+              status: 'SENT',
             })
           } catch (err) {
             await prisma.notification

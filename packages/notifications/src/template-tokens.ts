@@ -116,6 +116,13 @@ export const EVENT_TOKEN_PALETTE: {
   CREATOR_STOCK_ALERT: ['title', 'body', 'productName', 'alertState'],
 }
 
+// F — job progress. CAST-GUARDED ASSIGNMENT until db:generate adds
+// CREATOR_DISPATCH_PROGRESS to the generated enum (then move it into the
+// literal above and drop the cast — docs/POST_PUSH_CASTGUARD_CLEANUP.md).
+;(EVENT_TOKEN_PALETTE as unknown as Record<string, readonly string[]>)[
+  'CREATOR_DISPATCH_PROGRESS'
+] = ['orderId', 'partnerName', 'kind', 'summary', 'note']
+
 /** Tokens the admin can insert for one event (the editor's palette). */
 export function tokenPaletteForEvent(event: NotificationEvent): readonly string[] {
   return EVENT_TOKEN_PALETTE[event]
