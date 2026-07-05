@@ -38,6 +38,7 @@ import {
   Inbox,
   ShoppingBag,
   Package,
+  ShieldAlert,
   ShieldCheck,
   FlaskConical,
   Award,
@@ -167,6 +168,10 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Cert instance reviews', icon: Award, href: '/certificate-types', badgeKey: 'certs.pending' },
         { kind: 'item', label: 'Cert type requests', icon: ScrollText, href: '/certificate-requests' },
         // — Orders & money —
+        // Risk Center M2 — the one queue for every detector's RiskEvents
+        // (docs/RISK_MANAGEMENT_CENTER.md §7). Detector settings hang off the
+        // inbox header (platform:admin), not a separate sidebar item.
+        { kind: 'item', label: 'Risk Inbox', icon: ShieldAlert, href: '/risk' },
         { kind: 'item', label: 'Disputes', icon: Scale, href: '/disputes', badgeKey: 'disputes.pending' },
         { kind: 'item', label: 'Cancellation requests', icon: RotateCcw, href: '/cancellations', badgeKey: 'cancellations.pending', capability: 'refunds:approve' },
         { kind: 'item', label: 'Refund requests', icon: RotateCcw, href: '/support-tickets/refund-requests', capability: 'refunds:approve' },

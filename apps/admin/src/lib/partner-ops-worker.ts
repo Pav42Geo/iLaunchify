@@ -213,6 +213,33 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
       )
     }
     await Promise.allSettled(sends)
+
+    // Risk Center M2 — lapsed doc = CERT_EXPIRY_VOLUME event (compliance is a
+    // hard-gate family; severity escalates when services were actually paused).
+    // Dedupe inherited from expiredNotifiedAt (one event per file). Best-effort.
+    await prisma.riskEvent
+      .create({
+        data: {
+          detectorKey: 'CERT_EXPIRY_VOLUME',
+          severity: suspendedLabel ? 'CRITICAL' : 'HIGH',
+          entityType: 'Partner',
+          entityId: file.partner.id,
+          decision: suspendedLabel ? 'ACTED' : 'WARNED',
+          scoreSnapshotJson: {
+            formulaVersion: 'sweep-v1',
+            score: 0,
+            thresholds: { horizon3Days: 7 },
+            inputs: {
+              partnerFileId: file.id,
+              kind: file.kind,
+              filename: file.originalFilename,
+              expiresAt: file.expiresAt?.toISOString() ?? null,
+              servicesPaused: Boolean(suspendedLabel),
+            },
+          } as unknown as object,
+        },
+      })
+      .catch(() => {/* notifications above already delivered */})
     result.docExpiredNotices++
   }
 
@@ -300,6 +327,30 @@ export async function runPartnerOpsSweep(now: Date = new Date()): Promise<Partne
       },
       audience: 'partner',
     })
+    // Risk Center M2 — the sweep IS the ACCEPT_TIMEOUT_AT_RISK detector; the
+    // notification above stays, the RiskEvent row lands it in /risk. Dedupe is
+    // inherited from slaAtRiskNotifiedAt (one event per dispatch). Best-effort.
+    await prisma.riskEvent
+      .create({
+        data: {
+          detectorKey: 'ACCEPT_TIMEOUT_AT_RISK',
+          severity: 'WARN',
+          entityType: 'OrderDispatch',
+          entityId: d.id,
+          decision: 'WARNED',
+          scoreSnapshotJson: {
+            formulaVersion: 'sweep-v1',
+            score: Math.round(consumed * 100),
+            thresholds: { windowConsumedPct: 50 },
+            inputs: {
+              partnerServiceId: d.partnerServiceId,
+              acceptDeadlineAt: d.acceptDeadlineAt.toISOString(),
+              windowConsumedPct: Math.round(consumed * 100),
+            },
+          } as unknown as object,
+        },
+      })
+      .catch(() => {/* inbox row is additive — the notice above already went out */})
     result.slaAtRiskNotices++
   }
 
