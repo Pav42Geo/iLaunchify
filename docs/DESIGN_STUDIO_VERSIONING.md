@@ -224,7 +224,16 @@ Check items off as they land. One phase = one commit train; commit immediately.
 - [x] "Open as new alternate" from history drawer (createAlternateFromSnapshot — forks any snapshot into a draft sibling)
 
 ### Phase 4 — Admin + permissions (Cowork, 2026-07-05 — template part re-scoped)
-- [ ] ⚠ Template-author mode alternates RE-SCOPED: admin template authoring is product-less (no Design rows — history/alternates hang off Design). Needs a decision: either author templates against a scratch Design or add template-side versioning to the library substrate. Parked — don't build until Pavel picks.
+- [x] ⚠ Template-author mode alternates RE-SCOPED — **DECIDED (b), Pavel 2026-07-05:
+      template-side versioning on the library substrate.** No scratch Design rows, no
+      nullable `Design.productId` (option (a) rejected: synthetic products pollute every
+      product query; the FK invariant stays hard). Rationale: template drafts ALREADY
+      version via the same EditSnapshot engine (`PRODUCT_TEMPLATE_DRAFT` entity,
+      builder `snapshotDraft`), and a "template alternate" is simply another template
+      in the library (admin uncapped) — duplicate-in-library gives compare-and-pick
+      with zero new substrate. Remaining work reduces to a small library-UI affordance
+      ("Duplicate template" + side-by-side pick), Cowork's presentational zone;
+      revisit slot-grouped template alternates only if admins concretely ask.
 - [x] Admin read-only creator history view + support-restore: `/admin/design-history` (lookup by product id / GTIN / SKU → slots + alternates → snapshot list). Restore mirrors creator semantics (pin-before-restore), writes `DESIGN_VERSION_RESTORED_BY_ADMIN` AuditLog AND pins "Restored by iLaunchify support" in the creator's drawer — never silent. NOT in sidebar (sidebar v3 LOCKED — propose entry separately).
 - [x] `requireCapability` on all admin paths: view = `creators:read`, restore = `tickets:admin` (support lead)
 
