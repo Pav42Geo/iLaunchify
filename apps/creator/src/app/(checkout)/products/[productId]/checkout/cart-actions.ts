@@ -31,6 +31,10 @@ import {
   applySampleCredit,
   createOrderWithNumber,
   buildCreatorConfiguration,
+  mapRecipeIngredients,
+  composeFlavorUnitPrices,
+  resolveFlavorRecipe,
+  type FlavorExtra,
   resolveDestinationOptions,
   scoreAndSelectFc,
   buildScoredAwardPayload,
@@ -87,8 +91,29 @@ export async function placeOrderFromCheckoutDraft(
     include: {
       brand: true,
       productTemplate: true,
+      // Variant carries the chosen size (containerFormat), die-cut, and net-quantity
+      // label string — feeds the configuration snapshot's variant/options.
+      variant: { select: { containerFormat: true, dieCutTemplateId: true, netContentDisplay: true } },
       recipe: {
-        include: { complianceChecks: { orderBy: { createdAt: 'desc' }, take: 1 } },
+        include: {
+          complianceChecks: { orderBy: { createdAt: 'desc' }, take: 1 },
+          // Final recipe rows (swaps/optionals baked in) → the snapshot base recipe.
+          ingredients: {
+            orderBy: { position: 'asc' },
+            include: {
+              ingredient: {
+                select: {
+                  id: true,
+                  name: true,
+                  labelDeclarationName: true,
+                  allergenFlags: true,
+                  allergens: true,
+                  bioengineeredStatus: true,
+                },
+              },
+            },
+          },
+        },
       },
     },
   })
@@ -465,52 +490,73 @@ export async function placeOrderFromCheckoutDraft(
   const totalCents = grossTotalCents - sampleCreditAppliedCents
 
   // --- Creator Product Configuration snapshot (docs/CREATOR_PRODUCT_CONFIGURATION.md) ---
-  // The immutable "order of the creator", assembled from the pieces resolved above and
-  // stored on the OrderItem so the partner manifest + channel listing read THIS instead
-  // of re-deriving from the template pool. Recipe = the product's final RecipeIngredient
-  // rows (replaceable swaps + optional activations already baked in via `source`).
-  const recipeIngredients = product.recipe
-    ? await prisma.recipeIngredient.findMany({
-        where: { recipeId: product.recipe.id },
-        orderBy: { position: 'asc' },
-        include: {
-          ingredient: {
-            select: { labelDeclarationName: true, allergenFlags: true, bioengineeredStatus: true },
-          },
-        },
+  // The immutable "order of the creator", assembled via the @ilaunchify/orders toolkit
+  // and stored on the OrderItem so the partner manifest + channel listing read THIS
+  // instead of re-deriving from the template pool.
+  //
+  // Base recipe = the product's final RecipeIngredient rows (swaps/optionals baked in).
+  // weightG is a Prisma Decimal → coerce to number for the pure mapper.
+  const baseIngredients = mapRecipeIngredients(
+    (product.recipe?.ingredients ?? []).map((ri) => ({
+      weightG: Number(ri.weightG),
+      position: ri.position,
+      source: ri.source,
+      filledSlotId: ri.filledSlotId,
+      ingredient: ri.ingredient,
+    })),
+  )
+  // Per-flavor extras (→ each flavor's final recipe) + price deltas, in one query.
+  const flavorMeta = flavorRows.length
+    ? await prisma.flavorPreset.findMany({
+        where: { id: { in: flavorRows.map((f) => f.flavorPresetId) } },
+        select: { id: true, extras: true, priceDeltaCents: true },
       })
     : []
+  const extrasByFlavor = new Map<string, FlavorExtra[]>(
+    flavorMeta.map((f) => [f.id, (Array.isArray(f.extras) ? f.extras : []) as unknown as FlavorExtra[]]),
+  )
+  const deltaByFlavor = new Map(flavorMeta.map((f) => [f.id, f.priceDeltaCents]))
+  // Base per-unit price for non-PER_FLAVOR bases = pack price ÷ units per pack.
+  const baseUnitCents = packPersist
+    ? Math.round(packPersist.pricePerPackCentsSnapshot / Math.max(1, packPersist.packUnitsPerPack))
+    : null
+  const perFlavorPrice = composeFlavorUnitPrices(
+    packPersist?.pricingBasisSnapshot ?? null,
+    baseUnitCents,
+    flavorRows.map((f) => ({
+      flavorPresetId: f.flavorPresetId,
+      unitPriceCents: flavorPriceByPreset.get(f.flavorPresetId) ?? null,
+      priceDeltaCents: deltaByFlavor.get(f.flavorPresetId) ?? null,
+    })),
+  )
   const configuration = buildCreatorConfiguration({
     flavors: flavorRows.map((f) => ({
       flavorPresetId: f.flavorPresetId,
       name: f.flavorName,
       statementOfIdentity: f.soiSnapshot,
       qty: f.qty,
-      unitPriceCents: flavorPriceByPreset.get(f.flavorPresetId) ?? null,
+      unitPriceCents: perFlavorPrice[f.flavorPresetId] ?? null,
       lockedDesignVersionId: f.designVersionId,
+      // Each selected flavor's FINAL recipe = base + that flavor's extras.
+      recipeIngredients: resolveFlavorRecipe(baseIngredients, extrasByFlavor.get(f.flavorPresetId) ?? []),
     })),
     recipe: product.recipe
       ? {
           servingSizeG: Number(product.recipe.servingSizeG),
           servingsPerContainer: Number(product.recipe.servingsPerContainer),
-          ingredients: recipeIngredients.map((ri) => ({
-            ingredientId: ri.ingredientId,
-            labelDeclarationName: ri.ingredient.labelDeclarationName ?? null,
-            weightG: Number(ri.weightG),
-            position: ri.position,
-            source: ri.source ?? null,
-            filledSlotId: ri.filledSlotId ?? null,
-            allergenFlags: ri.ingredient.allergenFlags ?? [],
-            bioengineeredStatus: ri.ingredient.bioengineeredStatus ?? null,
-          })),
+          ingredients: baseIngredients,
         }
       : null,
-    variant: { id: packPersist?.packVariantId ?? null, containerFormat: null, netQuantity: null },
+    variant: {
+      id: product.variantId ?? null,
+      containerFormat: product.variant?.containerFormat ?? null,
+      netQuantity: product.variant?.netContentDisplay ?? null,
+    },
     options: {
       substrateSlug: state.production.substrateSlug,
       packagingMaterialSlug: state.production.packagingMaterialSlug,
       finishPartnerFinishIds: state.production.finishPartnerFinishIds,
-      dieCutTemplateId: null,
+      dieCutTemplateId: product.variant?.dieCutTemplateId ?? null,
     },
     pricing: {
       basis: packPersist?.pricingBasisSnapshot ?? null,
