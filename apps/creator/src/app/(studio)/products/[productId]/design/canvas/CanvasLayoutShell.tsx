@@ -93,6 +93,7 @@ import { FlavorSwitcher } from './drawers/FlavorSwitcher'
 import { FlavorLabelSections } from './drawers/FlavorLabelSections'
 import { FlavorMismatchNotice } from './drawers/FlavorMismatchNotice'
 import { detectFlavorMismatch, type FlavorMismatchWarning } from './lib/flavorMismatch'
+import { checkFlavorCompleteness, type CompletenessResult } from './lib/flavorCompleteness'
 import { resolvePbrPreset } from '@ilaunchify/packaging-3d'
 import { applyBaseToAllFlavors } from './flavor-actions'
 import { findNutritionPanel, regenerateNutritionPanel } from './lib/managedNutritionPanel'
@@ -148,6 +149,7 @@ import {
   Download,
   Wand2,
   X,
+  Lock,
 } from 'lucide-react'
 
 // Stage is dynamically imported with ssr:false because Fabric.js needs `window`.
@@ -813,6 +815,15 @@ export function CanvasLayoutShell({
     }
   }, [canvas, flavors, activeFlavorPresetId])
 
+  // Submit gate (Verify): every selected flavor needs a saved label before checkout.
+  // needsAggregate is V1-false until aggregate detection is wired; selection-threading
+  // (Cowork, Product.selectedFlavorPresetIds) will scope `flavors` to the creator's
+  // picks, which auto-scopes this gate.
+  const flavorCompleteness: CompletenessResult | null =
+    flavors.length > 0
+      ? checkFlavorCompleteness({ flavors, savedFlavorIds, needsAggregate: false, aggregateSaved: false })
+      : null
+
   // Version history (EditSnapshot): docked panel + thumbnail previews + restore.
   // Snapshots copy the server-side working DesignVersion row; the client only
   // triggers them + supplies a small canvas PNG thumbnail. Prev/next move the
@@ -1046,6 +1057,7 @@ export function CanvasLayoutShell({
         productId={productId}
         flavors={flavors}
         activeFlavorPresetId={activeFlavorPresetId}
+        flavorCompleteness={flavorCompleteness}
         canUndo={history.canUndo}
         canRedo={history.canRedo}
         onUndo={history.undo}
@@ -1394,6 +1406,7 @@ function TopBar({
   productId,
   flavors,
   activeFlavorPresetId,
+  flavorCompleteness,
   canUndo,
   canRedo,
   onUndo,
@@ -1420,6 +1433,8 @@ function TopBar({
   studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null }
   flavors: Array<{ id: string; name: string; swatchHex: string | null }>
   activeFlavorPresetId: string | null
+  /** Per-flavor submit gate — null when not a PER_FLAVOR product. */
+  flavorCompleteness: CompletenessResult | null
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -1563,13 +1578,28 @@ function TopBar({
             into the 3-step checkout wizard. The Studio is the only
             entry point to checkout (we removed the dashboard
             shortcut), so this button is the seam between design and
-            order placement. */}
-        <Link
-          href={`/products/${productId}/checkout`}
-          className="ml-2 inline-flex items-center rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-black"
-        >
-          Next
-        </Link>
+            order placement. Per-flavor safety gate (Verify): blocked until
+            every selected flavor has a saved label. */}
+        {flavorCompleteness && !flavorCompleteness.complete ? (
+          <button
+            type="button"
+            disabled
+            title={`Add a label for every flavor before checkout — missing: ${flavorCompleteness.missingFlavors.join(', ')}${
+              flavorCompleteness.missingAggregate ? ' + the aggregate label' : ''
+            }`}
+            className="ml-2 inline-flex cursor-not-allowed items-center gap-1.5 rounded-full bg-ink-200 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-ink-500"
+          >
+            <Lock className="h-3.5 w-3.5" />
+            Next
+          </button>
+        ) : (
+          <Link
+            href={`/products/${productId}/checkout`}
+            className="ml-2 inline-flex items-center rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-black"
+          >
+            Next
+          </Link>
+        )}
       </div>
     </header>
   )
