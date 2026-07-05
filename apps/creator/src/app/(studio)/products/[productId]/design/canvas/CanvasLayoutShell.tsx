@@ -52,6 +52,8 @@ import {
   SupplementFactsSvg,
   GuaranteedAnalysisSvg,
   InciDeclarationSvg,
+  DrugFactsSvg,
+  type DrugFactsData,
 } from '@ilaunchify/ui'
 import type { PanelData } from '@ilaunchify/types'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
@@ -269,6 +271,8 @@ interface Props {
     responsiblePerson?: string
     adverseEventContact?: string
   } | null
+  /** Slice 3 — OTC Drug Facts data (from the template formulation). */
+  pictureOtcData?: DrugFactsData | null
   /**
    * DS-73d — current creator subscription tier. Drives the EXPORT
    * upgrade gate: Maker creators get the UpgradeOverlay instead of the
@@ -412,6 +416,7 @@ export function CanvasLayoutShell({
   pictureVarietyColumns = [],
   picturePetData = null,
   pictureCosmeticData = null,
+  pictureOtcData = null,
   creatorTier = 'maker',
   partnerPrintSpec = null,
   restrictionLabels = [],
@@ -1249,6 +1254,7 @@ export function CanvasLayoutShell({
               pictureVarietyColumns={pictureVarietyColumns}
               picturePetData={picturePetData}
               pictureCosmeticData={pictureCosmeticData}
+              pictureOtcData={pictureOtcData}
               templateAuthor={templateAuthor}
               dielineFrameLayout={frameLayout}
               onClose={closeDrawer}
@@ -1817,6 +1823,7 @@ function ToolDrawer({
   pictureVarietyColumns,
   picturePetData,
   pictureCosmeticData,
+  pictureOtcData,
   templateAuthor,
   dielineFrameLayout,
   onClose,
@@ -1879,6 +1886,7 @@ function ToolDrawer({
     responsiblePerson?: string
     adverseEventContact?: string
   } | null
+  pictureOtcData: DrugFactsData | null
   /** Admin template-author mode — the AI drawer loads product-less against this die-cut + domain. */
   templateAuthor: { domain: string; container: string | null; aspectBucket: string | null; dieCutId?: string | null } | null
   /** Resolved die-line FrameLayout — frame-aware template re-anchoring (Reshape R1). */
@@ -1956,9 +1964,9 @@ function ToolDrawer({
               picture: {
                 topology: labelTopology ?? (flavors.length > 0 ? 'PER_FLAVOR' : 'SINGLE'),
                 recipe: pictureBaseRecipe ?? null,
-                // FOOD/SUPPLEMENT render from PanelData; PET + COSMETIC have their own
-                // shapes; OTC has no data source yet (DrugFacts engine isn't wired into
-                // computeProductLabel) → null → recipe fallback.
+                // FOOD/SUPPLEMENT render from PanelData; PET + COSMETIC + OTC have their
+                // own shapes. All 5 label domains now render real Facts panels when their
+                // data exists; otherwise null → recipe fallback.
                 factsPanel:
                   labelingType === 'PET_PRODUCT' && picturePetData ? (
                     <GuaranteedAnalysisSvg
@@ -1975,6 +1983,8 @@ function ToolDrawer({
                       responsiblePerson={pictureCosmeticData.responsiblePerson ?? undefined}
                       adverseEventContact={pictureCosmeticData.adverseEventContact ?? undefined}
                     />
+                  ) : labelingType === 'OTC' && pictureOtcData ? (
+                    <DrugFactsSvg data={pictureOtcData} widthPx={280} />
                   ) : (
                     renderDomainFactsPanel(labelingType, pictureSinglePanel)
                   ),

@@ -26,6 +26,7 @@ import {
   type CosmeticIngredient, type GuaranteedAnalysis, type PetSpecies, type LifeStage, type AdequacyMethod,
 } from '@ilaunchify/nutrition'
 import type { PanelData } from '@ilaunchify/types'
+import type { DrugFactsData } from '@ilaunchify/ui'
 
 const DOMAIN_ARTIFACT: Record<string, string> = {
   FOOD: 'Nutrition Facts',
@@ -66,6 +67,7 @@ export type ProductLabel =
   | { domain: 'DIETARY_SUPPLEMENT'; productName: string; panel: PanelData; otherIngredients: string[] }
   | { domain: 'COSMETIC'; productName: string; ingredients: string; netContents?: string; responsiblePerson?: string; adverseEventContact?: string }
   | { domain: 'PET_PRODUCT'; productName: string; gaRows: { label: string; value: string }[]; ingredients: string; adequacyStatement?: string; feedingDirections?: string }
+  | { domain: 'OTC'; productName: string; drugFacts: DrugFactsData }
 export type ComputeLabelResult = { ok: true; data: ProductLabel[] } | { ok: false; error: string }
 
 function buildFoodLabel(
@@ -114,7 +116,18 @@ interface PetPayload {
   method: AdequacyMethod
   feedingDirections: string
 }
-interface FormulationData { supplement?: SupplementPayload; cosmetic?: CosmeticPayload; pet?: PetPayload }
+// OTC Drug Facts — persisted shape mirrors DrugFactsData (the future editor writes it
+// directly). Empty active-ingredient list ⇒ the resolver reports "no Drug Facts yet".
+interface OtcPayload {
+  activeIngredients: Array<{ name: string; purpose?: string }>
+  uses?: string[]
+  warnings?: Array<{ text: string; bold?: boolean }>
+  directions?: string
+  otherInformation?: string[]
+  inactiveIngredients?: string
+  questions?: string
+}
+interface FormulationData { supplement?: SupplementPayload; cosmetic?: CosmeticPayload; pet?: PetPayload; otc?: OtcPayload }
 
 export async function computeProductLabel(productId: string): Promise<ComputeLabelResult> {
   const user = await requireUser()
@@ -166,7 +179,19 @@ export async function computeProductLabel(productId: string): Promise<ComputeLab
 
   // ===================== Non-food domains =====================
   if (domain === 'OTC') {
-    return { ok: false, error: 'Drug Facts downloads aren’t available yet.' }
+    const p = tmpl?.formulationData?.otc
+    const actives = (p?.activeIngredients ?? []).filter((a) => a.name?.trim())
+    if (!actives.length) return { ok: false, error: 'This product has no Drug Facts yet.' }
+    const drugFacts: DrugFactsData = {
+      activeIngredients: actives.map((a) => ({ name: a.name.trim(), purpose: a.purpose?.trim() ?? '' })),
+      uses: (p?.uses ?? []).map((u) => u.trim()).filter(Boolean),
+      warnings: (p?.warnings ?? []).filter((w) => w.text?.trim()).map((w) => ({ text: w.text.trim(), bold: w.bold })),
+      directions: p?.directions?.trim() ?? '',
+      otherInformation: p?.otherInformation?.map((o) => o.trim()).filter(Boolean),
+      inactiveIngredients: p?.inactiveIngredients?.trim() ?? '',
+      questions: p?.questions?.trim() || undefined,
+    }
+    return { ok: true, data: [{ domain: 'OTC', productName: product.name, drugFacts }] }
   }
   if (domain === 'DIETARY_SUPPLEMENT') {
     const p = tmpl?.formulationData?.supplement

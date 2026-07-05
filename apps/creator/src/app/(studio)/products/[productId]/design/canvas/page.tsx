@@ -39,6 +39,7 @@ import {
   petLabelToAafcoPanelData,
 } from './lib/nutritionPanelAdapter'
 import { mapRecipeIngredients, resolveFlavorRecipe, type FlavorExtra } from '@ilaunchify/orders'
+import type { DrugFactsData } from '@ilaunchify/ui'
 
 export const dynamic = 'force-dynamic'
 
@@ -443,14 +444,19 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
     studioCategory(product.category),
   )
 
-  // COSMETIC INCI declaration for the product-picture Facts panel (slice 3) — from the
-  // template's persisted formulation. Only computed for cosmetic products.
-  const cosmeticLabel = labelingType === 'COSMETIC' ? await computeProductLabel(productId) : null
+  // COSMETIC INCI + OTC Drug Facts for the product-picture panel (slice 3) — from the
+  // template's persisted formulation. Only computed for those domains.
+  const nonFoodLabel =
+    labelingType === 'COSMETIC' || labelingType === 'OTC' ? await computeProductLabel(productId) : null
   const pictureCosmeticData =
-    (cosmeticLabel?.ok
-      ? (cosmeticLabel.data.find((l) => l.domain === 'COSMETIC') as
+    (nonFoodLabel?.ok
+      ? (nonFoodLabel.data.find((l) => l.domain === 'COSMETIC') as
           | { ingredients: string; netContents?: string; responsiblePerson?: string; adverseEventContact?: string }
           | undefined)
+      : undefined) ?? null
+  const pictureOtcData =
+    (nonFoodLabel?.ok
+      ? (nonFoodLabel.data.find((l) => l.domain === 'OTC') as { drugFacts: DrugFactsData } | undefined)?.drugFacts
       : undefined) ?? null
 
   // Per-product required (locked-mandatory) phrases — the compliance scanner
@@ -597,6 +603,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
           : null
       }
       pictureCosmeticData={pictureCosmeticData}
+      pictureOtcData={pictureOtcData}
     />
   )
 }

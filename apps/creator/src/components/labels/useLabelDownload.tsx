@@ -8,7 +8,7 @@
 
 import { useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { NutritionFactsSvg, SupplementFactsSvg, InciDeclarationSvg, GuaranteedAnalysisSvg } from '@ilaunchify/ui'
+import { NutritionFactsSvg, SupplementFactsSvg, InciDeclarationSvg, GuaranteedAnalysisSvg, DrugFactsSvg } from '@ilaunchify/ui'
 import { computeProductLabel, type ProductLabel } from './label-actions'
 import { printLabels } from './label-export'
 
@@ -44,6 +44,8 @@ export function useLabelDownload(productId: string, productName: string): { trig
             <SupplementFactsSvg data={l.panel} otherIngredients={l.otherIngredients} widthPx={300} />
           ) : l.domain === 'COSMETIC' ? (
             <InciDeclarationSvg ingredients={l.ingredients} netContents={l.netContents} responsiblePerson={l.responsiblePerson} adverseEventContact={l.adverseEventContact} widthPx={300} />
+          ) : l.domain === 'OTC' ? (
+            <DrugFactsSvg data={l.drugFacts} widthPx={300} />
           ) : (
             <GuaranteedAnalysisSvg gaRows={l.gaRows} ingredients={l.ingredients} adequacyStatement={l.adequacyStatement} feedingDirections={l.feedingDirections} widthPx={300} />
           )}
