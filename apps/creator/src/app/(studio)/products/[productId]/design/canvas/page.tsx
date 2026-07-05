@@ -576,6 +576,16 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       labelTopology={labelTopology}
       pictureSinglePanel={studioNutrition.ok && 'panel' in studioNutrition ? studioNutrition.panel : null}
       pictureVarietyColumns={variety.ok ? variety.columns : []}
+      picturePetData={
+        studioNutrition.ok && studioNutrition.domain === 'PET'
+          ? {
+              gaRows: studioNutrition.gaRows,
+              ingredients: studioNutrition.ingredients,
+              adequacyStatement: studioNutrition.adequacyStatement ?? null,
+              feedingDirections: studioNutrition.feedingDirections ?? null,
+            }
+          : null
+      }
     />
   )
 }

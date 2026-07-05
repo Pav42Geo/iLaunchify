@@ -50,6 +50,7 @@ import {
   NutritionFactsRenderer,
   VarietyFactsSvg,
   SupplementFactsSvg,
+  GuaranteedAnalysisSvg,
 } from '@ilaunchify/ui'
 import type { PanelData } from '@ilaunchify/types'
 import type { CertBadge, CertBadgeVariant } from './cert-badge-actions'
@@ -253,6 +254,13 @@ interface Props {
    *  variety columns (each carries its own PanelData), rendered domain-correct. */
   pictureSinglePanel?: PanelData | null
   pictureVarietyColumns?: Array<{ flavorPresetId: string; label: string; panel: PanelData; contains: string }>
+  /** Slice 3 — PET Guaranteed-Analysis data (not PanelData-shaped). */
+  picturePetData?: {
+    gaRows: Array<{ label: string; value: string }>
+    ingredients: string
+    adequacyStatement: string | null
+    feedingDirections: string | null
+  } | null
   /**
    * DS-73d — current creator subscription tier. Drives the EXPORT
    * upgrade gate: Maker creators get the UpgradeOverlay instead of the
@@ -394,6 +402,7 @@ export function CanvasLayoutShell({
   labelTopology,
   pictureSinglePanel = null,
   pictureVarietyColumns = [],
+  picturePetData = null,
   creatorTier = 'maker',
   partnerPrintSpec = null,
   restrictionLabels = [],
@@ -1229,6 +1238,7 @@ export function CanvasLayoutShell({
               labelTopology={labelTopology}
               pictureSinglePanel={pictureSinglePanel}
               pictureVarietyColumns={pictureVarietyColumns}
+              picturePetData={picturePetData}
               templateAuthor={templateAuthor}
               dielineFrameLayout={frameLayout}
               onClose={closeDrawer}
@@ -1795,6 +1805,7 @@ function ToolDrawer({
   labelTopology,
   pictureSinglePanel,
   pictureVarietyColumns,
+  picturePetData,
   templateAuthor,
   dielineFrameLayout,
   onClose,
@@ -1819,6 +1830,7 @@ function ToolDrawer({
     bioengineered: boolean
     netQuantity: string | null
     netQuantityKind: 'solid' | 'liquid' | 'count'
+    lockedPhrases?: Array<{ title: string; body: string }>
   }
   retailIdentity: { gtin: string | null; internalSku: string | null; barcodeMode: BarcodeMode }
   frameCount: number
@@ -1844,6 +1856,12 @@ function ToolDrawer({
   labelTopology?: 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'
   pictureSinglePanel: PanelData | null
   pictureVarietyColumns: Array<{ flavorPresetId: string; label: string; panel: PanelData; contains: string }>
+  picturePetData: {
+    gaRows: Array<{ label: string; value: string }>
+    ingredients: string
+    adequacyStatement: string | null
+    feedingDirections: string | null
+  } | null
   /** Admin template-author mode — the AI drawer loads product-less against this die-cut + domain. */
   templateAuthor: { domain: string; container: string | null; aspectBucket: string | null; dieCutId?: string | null } | null
   /** Resolved die-line FrameLayout — frame-aware template re-anchoring (Reshape R1). */
@@ -1921,7 +1939,18 @@ function ToolDrawer({
               picture: {
                 topology: labelTopology ?? (flavors.length > 0 ? 'PER_FLAVOR' : 'SINGLE'),
                 recipe: pictureBaseRecipe ?? null,
-                factsPanel: renderDomainFactsPanel(labelingType, pictureSinglePanel),
+                factsPanel:
+                  labelingType === 'PET_PRODUCT' && picturePetData ? (
+                    <GuaranteedAnalysisSvg
+                      gaRows={picturePetData.gaRows}
+                      ingredients={picturePetData.ingredients}
+                      adequacyStatement={picturePetData.adequacyStatement ?? undefined}
+                      feedingDirections={picturePetData.feedingDirections ?? undefined}
+                      netContents={productCtx.netQuantity ?? undefined}
+                    />
+                  ) : (
+                    renderDomainFactsPanel(labelingType, pictureSinglePanel)
+                  ),
                 aggregateFactsPanel:
                   pictureVarietyColumns.length > 0 ? (
                     <VarietyFactsSvg
@@ -1942,6 +1971,7 @@ function ToolDrawer({
                   }
                 }),
                 finishes: finishes.map((ff) => ({ name: ff.name, category: ff.category })),
+                mandatoryPhrases: (productCtx.lockedPhrases ?? []).map((p) => ({ title: p.title, body: p.body })),
               },
             }}
             guides={guides}
