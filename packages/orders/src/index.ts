@@ -309,6 +309,25 @@ export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'
 export { scoreAndSelectFc, buildScoredAwardPayload } from './fc-scorer'
 export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry, FcRotationPolicy } from './fc-scorer'
 
+// Manufacturer Merit Engine — pure scoring core (docs/MANUFACTURER_MERIT_ENGINE.md, MM-1/MM-2).
+export {
+  computeMeritScore,
+  validateMeritPolicy,
+  recommendBadgeChange,
+  DEFAULT_MERIT_POLICY,
+} from './merit'
+export type {
+  MeritBadge,
+  MeritSignals,
+  MeritCohort,
+  MeritPolicy,
+  MeritResult,
+  BadgeAction,
+  BadgeRecommendation,
+  BadgeSnapshotRef,
+} from './merit'
+export { loadManufacturerMeritSignals, deriveCohortFromSignals } from './merit-signals'
+
 // Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
 export {
   monthKey,

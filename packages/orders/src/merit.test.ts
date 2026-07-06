@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   computeMeritScore,
   validateMeritPolicy,
+  recommendBadgeChange,
   DEFAULT_MERIT_POLICY,
   type MeritSignals,
   type MeritCohort,
+  type MeritBadge,
 } from './merit'
 
 const cohort: MeritCohort = {
@@ -115,5 +117,48 @@ describe('merit policy', () => {
   it('rejects trusted threshold at/above premier', () => {
     const bad = { ...DEFAULT_MERIT_POLICY, thresholds: { trusted: 85, premier: 82 } }
     expect(validateMeritPolicy(bad)).toMatch(/below Premier/)
+  })
+})
+
+describe('merit hysteresis (anti-yo-yo)', () => {
+  const now = new Date('2026-07-06T00:00:00Z')
+  const daysAgo = (d: number) => new Date(now.getTime() - d * 86_400_000)
+  const hist = (spec: Array<[MeritBadge, number]>) =>
+    spec.map(([qualifiedBadge, d]) => ({ qualifiedBadge, computedAt: daysAgo(d) }))
+  const ctx = (over: Partial<{ promoteSustainDays: number; demoteMissDays: number; inGrace: boolean }> = {}) => ({
+    now,
+    promoteSustainDays: 30,
+    demoteMissDays: 60,
+    inGrace: false,
+    ...over,
+  })
+
+  it('promotes only when the level is SUSTAINED across the window', () => {
+    const history = hist([['TRUSTED', 0], ['TRUSTED', 15], ['TRUSTED', 31], ['TRUSTED', 40]])
+    const r = recommendBadgeChange('VERIFIED', history, DEFAULT_MERIT_POLICY, ctx())
+    expect(r.action).toBe('PROMOTE')
+    expect(r.to).toBe('TRUSTED')
+  })
+
+  it('holds a promotion without enough history to cover the sustain window', () => {
+    const history = hist([['TRUSTED', 0], ['TRUSTED', 5]]) // nothing older than 30d
+    expect(recommendBadgeChange('VERIFIED', history, DEFAULT_MERIT_POLICY, ctx()).action).toBe('HOLD')
+  })
+
+  it('one bad night never demotes (max over window still meets tier)', () => {
+    const history = hist([['VERIFIED', 0], ['TRUSTED', 10], ['TRUSTED', 40], ['TRUSTED', 70]])
+    expect(recommendBadgeChange('TRUSTED', history, DEFAULT_MERIT_POLICY, ctx()).action).toBe('HOLD')
+  })
+
+  it('demotes one rung after a sustained miss', () => {
+    const history = hist([['VERIFIED', 0], ['VERIFIED', 20], ['VERIFIED', 45], ['VERIFIED', 65]])
+    const r = recommendBadgeChange('TRUSTED', history, DEFAULT_MERIT_POLICY, ctx())
+    expect(r.action).toBe('DEMOTE')
+    expect(r.to).toBe('VERIFIED')
+  })
+
+  it('never demotes during the grace window', () => {
+    const history = hist([['VERIFIED', 0], ['VERIFIED', 20], ['VERIFIED', 45], ['VERIFIED', 65]])
+    expect(recommendBadgeChange('TRUSTED', history, DEFAULT_MERIT_POLICY, ctx({ inGrace: true })).action).toBe('HOLD')
   })
 })

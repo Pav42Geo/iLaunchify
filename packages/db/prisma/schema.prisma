@@ -1435,6 +1435,63 @@ model PrintCapabilityClaim {
   @@index([partnerServiceId, status])
 }
 
+// ─── Manufacturer Merit Engine (docs/MANUFACTURER_MERIT_ENGINE.md, MM-1) ─────
+// Admin policy singleton + computed per-manufacturer standing snapshots. The
+// pure engine lives in @ilaunchify/orders/merit.ts; the badge (PartnerTier) binds
+// to the production fee in MM-5. `enabled=false` = shadow-mode (compute, don't
+// assign) until admin flips it — no economics change on migrate.
+
+model MeritPolicy {
+  id                     Int      @id @default(1) // singleton
+  // Pillar weights — sum to 100 (validated by validateMeritPolicy).
+  craftWeight            Int      @default(40)
+  reliabilityWeight      Int      @default(30)
+  contributionWeight     Int      @default(20)
+  standingWeight         Int      @default(10)
+  // MeritScore gates (0–100), trusted < premier.
+  trustedThreshold       Int      @default(62)
+  premierThreshold       Int      @default(82)
+  // Evidence gates.
+  trustedMinOrders       Int      @default(10)
+  trustedMinMonths       Int      @default(3)
+  premierMinOrders       Int      @default(50)
+  premierMinMonths       Int      @default(6)
+  premierMaxDefectPer100 Int      @default(5)
+  opsConfidence          Int      @default(15) // Bayesian confidence for ops rates
+  // Fee per badge (bps) — DECIDED 2026-07-06: Verified 4.5% / Trusted 2.5% / Premier 0%.
+  verifiedFeeBps         Int      @default(450)
+  trustedFeeBps          Int      @default(250)
+  premierFeeBps          Int      @default(0)
+  // Hysteresis + grace (MM-2 cron applies these; engine is instantaneous).
+  promoteSustainDays     Int      @default(30)
+  demoteMissDays         Int      @default(60)
+  graceDays              Int      @default(60)
+  // Shadow-mode master switch — false = compute snapshots but never change tier.
+  enabled                Boolean  @default(false)
+  updatedAt              DateTime @updatedAt
+  updatedById            String?
+}
+
+model PartnerMeritSnapshot {
+  id                String      @id @default(uuid())
+  partnerServiceId  String // soft FK → MANUFACTURING PartnerService (decoupled like PrintCapability*)
+  meritScore        Decimal     @db.Decimal(5, 1)
+  craftScore        Decimal     @db.Decimal(5, 1)
+  reliabilityScore  Decimal     @db.Decimal(5, 1)
+  contributionScore Decimal     @db.Decimal(5, 1)
+  standingScore     Decimal     @db.Decimal(5, 1)
+  qualifiedBadge    PartnerTier // reuse the badge enum — badge IS the tier
+  cohortKey         String? // category/format cohort the peer baselines came from
+  ordersCompleted   Int
+  monthsActive      Int
+  defectRatePer100  Decimal?    @db.Decimal(6, 2)
+  gapsJson          Json        @default("[]") // "why not higher" strings for the standing card
+  computedAt        DateTime    @default(now())
+
+  @@index([partnerServiceId, computedAt])
+  @@index([qualifiedBadge])
+}
+
 // ─── Smart Rotation Engine (docs/SMART_ROTATION_ENGINE.md §2, SR-1) ──────────
 
 enum RotationMode {

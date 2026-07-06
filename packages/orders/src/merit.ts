@@ -230,6 +230,81 @@ function buildGaps(
   return gaps
 }
 
+// ---------------------------------------------------------------------------
+// Hysteresis — the anti-yo-yo layer the nightly cron applies over snapshots.
+// Promotion needs the level SUSTAINED; demotion needs a longer MISS + not in
+// grace; one rung at a time. One bad night never moves anyone.
+// ---------------------------------------------------------------------------
+
+export type BadgeAction = 'PROMOTE' | 'DEMOTE' | 'HOLD'
+
+export interface BadgeSnapshotRef {
+  qualifiedBadge: MeritBadge
+  computedAt: Date
+}
+
+export interface BadgeRecommendation {
+  action: BadgeAction
+  from: MeritBadge
+  to: MeritBadge
+  reason: string
+}
+
+const BADGE_RANK: Record<MeritBadge, number> = { VERIFIED: 0, TRUSTED: 1, PREMIER: 2 }
+const BADGE_BY_RANK: MeritBadge[] = ['VERIFIED', 'TRUSTED', 'PREMIER']
+
+/** Lowest qualified rank across [windowStart, now]; null if history doesn't cover the window. */
+function sustainedFloor(history: readonly BadgeSnapshotRef[], windowStartMs: number, nowMs: number): number | null {
+  const inWin = history.filter((h) => h.computedAt.getTime() >= windowStartMs && h.computedAt.getTime() <= nowMs)
+  if (inWin.length === 0) return null
+  const covers = history.some((h) => h.computedAt.getTime() <= windowStartMs) // history reaches before the window
+  if (!covers) return null
+  return Math.min(...inWin.map((h) => BADGE_RANK[h.qualifiedBadge]))
+}
+
+/** Highest qualified rank across the window; null if history doesn't cover it. */
+function windowCeil(history: readonly BadgeSnapshotRef[], windowStartMs: number, nowMs: number): number | null {
+  const inWin = history.filter((h) => h.computedAt.getTime() >= windowStartMs && h.computedAt.getTime() <= nowMs)
+  if (inWin.length === 0) return null
+  const covers = history.some((h) => h.computedAt.getTime() <= windowStartMs)
+  if (!covers) return null
+  return Math.max(...inWin.map((h) => BADGE_RANK[h.qualifiedBadge]))
+}
+
+/**
+ * Given the current tier and a trailing set of snapshots (INCLUDING the one just
+ * computed, at `now`), decide whether to promote, demote, or hold — with
+ * hysteresis. Pure; the cron acts on the result (and in shadow-mode only logs it).
+ */
+export function recommendBadgeChange(
+  currentBadge: MeritBadge,
+  history: readonly BadgeSnapshotRef[],
+  policy: MeritPolicy,
+  ctx: { now: Date; promoteSustainDays: number; demoteMissDays: number; inGrace: boolean },
+): BadgeRecommendation {
+  const cur = BADGE_RANK[currentBadge]
+  const nowMs = ctx.now.getTime()
+  const hold = (reason: string): BadgeRecommendation => ({ action: 'HOLD', from: currentBadge, to: currentBadge, reason })
+
+  // Promotion — the level continuously held over the sustain window.
+  const floor = sustainedFloor(history, nowMs - ctx.promoteSustainDays * 86_400_000, nowMs)
+  if (floor != null && floor > cur) {
+    const to = BADGE_BY_RANK[floor]!
+    return { action: 'PROMOTE', from: currentBadge, to, reason: `Sustained ${to} for ${ctx.promoteSustainDays}d` }
+  }
+
+  // Demotion — one rung, only after a longer miss, never during grace.
+  if (!ctx.inGrace && cur > 0) {
+    const ceil = windowCeil(history, nowMs - ctx.demoteMissDays * 86_400_000, nowMs)
+    if (ceil != null && ceil < cur) {
+      const to = BADGE_BY_RANK[cur - 1]!
+      return { action: 'DEMOTE', from: currentBadge, to, reason: `Below ${currentBadge} for ${ctx.demoteMissDays}d` }
+    }
+  }
+
+  return hold(ctx.inGrace ? 'In grace window — promote-only' : 'No sustained change')
+}
+
 /** Validate an admin MeritPolicy — returns an error string, or null when valid. */
 export function validateMeritPolicy(p: MeritPolicy): string | null {
   const w = p.weights

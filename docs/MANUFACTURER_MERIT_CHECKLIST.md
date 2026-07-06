@@ -29,13 +29,25 @@ Rule of the build: **MM-1→MM-4 change no economics and are reversible. Only MM
 - [ ] **[PAVEL]** migrate (db:push + generate + .next clear) — the pure engine ships without it;
   MM-2 (loaders/cron writing snapshots) is the first consumer of the tables.
 
-## MM-2 · Signal loaders + nightly badge job *(CW)*
-- [ ] Loaders over existing data (ratings, dispatch on-time, declines, strikes, disputes,
-  order/product counts, capacity/GMV) → `MeritSignals`.
-- [ ] Cohort stats loader (category/format peer baselines).
-- [ ] Nightly cron: compute snapshots for all manufacturer services; **shadow-mode** (writes
-  snapshot, does NOT change `Partner.tier`).
-- [ ] Hysteresis + warning-before-demotion notifications (new `PARTNER_STANDING_*` events).
+## MM-2 · Signal loaders + nightly badge job — CODE COMPLETE 2026-07-06 (CW)
+- [x] `loadManufacturerMeritSignals` (merit-signals.ts) over existing data: rating (denorm),
+  accept-rate (dispatch declines), defect-rate (ACTIVE strikes /100 orders), completed PRODUCT
+  dispatches, product count, capacity units, tenure, clean-recency. **on-time = null in V1**
+  (no promised-date field on OrderDispatch — MM-2.1 follow-up); dispute-attributed defects also
+  MM-2.1 (disputes are order-level today).
+- [x] `deriveCohortFromSignals` — GLOBAL cohort (batch means + median volume). Per-category
+  cohorts = MM-2.1 refinement (engine already takes any cohort).
+- [x] `recommendBadgeChange` (pure, hysteresis) — promote only when SUSTAINED over the window,
+  demote one rung only after a longer miss, never during grace; 5 tests (one bad night never
+  demotes; insufficient history holds). Full suite 629/0.
+- [x] Nightly cron `apps/admin/api/cron/merit` + `runMeritSnapshotSweep` worker (CRON_SECRET,
+  vercel.json `0 4 * * *`): computes + writes `PartnerMeritSnapshot` in **SHADOW-MODE** (never
+  changes `Partner.tier`/fee), logs the recommendation (MERIT_BADGE_RECOMMENDED_SHADOW). Cast-
+  guarded reads/writes until the MM-1 tables migrate. `MeritPolicy.enabled` is read but only
+  consumed to ASSIGN at MM-5.
+- [ ] Warning-before-demotion NOTIFICATIONS (`PARTNER_STANDING_*` events) — deferred to the MM-5
+  flip (nothing to warn about while shadow; the recommendation is already audit-logged).
+- [ ] **[PAVEL]** migrate (MM-1 tables ride here): `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next`.
 
 ## MM-3 · Admin Merit console *(CW; v2 admin surface)*
 - [ ] Standing dashboard (cohorts, distribution, would-promote/demote).
