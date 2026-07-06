@@ -5,9 +5,6 @@
 // what standing WOULD be and logs the hysteresis recommendation, so admins can
 // watch the model against reality before MM-5 flips assignment live (gated on
 // MeritPolicy.enabled). Nothing here touches economics.
-//
-// Cast-guarded reads/writes for MeritPolicy + PartnerMeritSnapshot until the
-// MM-1 migration lands the tables on the client (getOrderSettings pre-push pattern).
 
 import { prisma } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
@@ -68,9 +65,7 @@ function policyOf(row: MeritPolicyRow | null): { policy: MeritPolicy; promoteSus
 export async function runMeritSnapshotSweep(now: Date = new Date()): Promise<MeritSweepResult> {
   const result: MeritSweepResult = { manufacturers: 0, snapshots: 0, wouldPromote: 0, wouldDemote: 0, live: false }
 
-  const policyRow = await (prisma as unknown as {
-    meritPolicy: { findUnique: (a: unknown) => Promise<MeritPolicyRow | null> }
-  }).meritPolicy.findUnique({ where: { id: 1 } }).catch(() => null)
+  const policyRow = await prisma.meritPolicy.findUnique({ where: { id: 1 } }).catch(() => null)
   const { policy, promoteSustainDays, demoteMissDays, graceDays, enabled } = policyOf(policyRow)
   result.live = enabled // MM-5 will consume this to actually assign; MM-2 stays shadow regardless
 
@@ -90,12 +85,7 @@ export async function runMeritSnapshotSweep(now: Date = new Date()): Promise<Mer
   const cohort = deriveCohortFromSignals(rows.map((r) => r.signals))
 
   // Pass 2 — score, write snapshot (shadow), recommend (log only).
-  const snapWriter = (prisma as unknown as {
-    partnerMeritSnapshot: {
-      create: (a: unknown) => Promise<unknown>
-      findMany: (a: unknown) => Promise<BadgeSnapshotRef[]>
-    }
-  }).partnerMeritSnapshot
+  const snapWriter = prisma.partnerMeritSnapshot
 
   for (const r of rows) {
     try {

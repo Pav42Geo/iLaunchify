@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   computeMeritScore,
+  scoreFromPillars,
   validateMeritPolicy,
   recommendBadgeChange,
   DEFAULT_MERIT_POLICY,
@@ -117,6 +118,27 @@ describe('merit policy', () => {
   it('rejects trusted threshold at/above premier', () => {
     const bad = { ...DEFAULT_MERIT_POLICY, thresholds: { trusted: 85, premier: 82 } }
     expect(validateMeritPolicy(bad)).toMatch(/below Premier/)
+  })
+})
+
+describe('scoreFromPillars (simulator core) agrees with computeMeritScore', () => {
+  it('re-scoring stored pillars reproduces the full engine result', () => {
+    const full = run({ ratingBayesian: 4.8, ratingCount: 200, ordersCompleted: 200, monthsActive: 12, defectRatePer100: 1 })
+    const re = scoreFromPillars(
+      full.pillars,
+      { ordersCompleted: 200, monthsActive: 12, defectRatePer100: 1 },
+      DEFAULT_MERIT_POLICY,
+    )
+    expect(re.meritScore).toBe(full.meritScore)
+    expect(re.qualifiedBadge).toBe(full.qualifiedBadge)
+  })
+
+  it('re-weighting shifts the distribution (simulator use)', () => {
+    const pillars = { craft: 90, reliability: 50, contribution: 100, standing: 40 }
+    const ev = { ordersCompleted: 100, monthsActive: 12, defectRatePer100: 1 }
+    const craftHeavy = scoreFromPillars(pillars, ev, { ...DEFAULT_MERIT_POLICY, weights: { craft: 70, reliability: 10, contribution: 10, standing: 10 } })
+    const contribHeavy = scoreFromPillars(pillars, ev, { ...DEFAULT_MERIT_POLICY, weights: { craft: 10, reliability: 10, contribution: 70, standing: 10 } })
+    expect(craftHeavy.meritScore).not.toBe(contribHeavy.meritScore)
   })
 })
 

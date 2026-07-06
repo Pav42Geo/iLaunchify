@@ -208,6 +208,7 @@ const PRIMARY: SidebarRegion = {
       children: [
         { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
         { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
+        { kind: 'item', label: 'Manufacturer standing', icon: Award, href: '/merit', capability: 'billing:write' },
         { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', capability: 'users:admin' },
         { kind: 'item', label: 'Roles & Permissions', icon: Shield, href: '/roles', capability: 'users:admin' },
       ],

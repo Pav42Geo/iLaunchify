@@ -49,11 +49,19 @@ Rule of the build: **MM-1→MM-4 change no economics and are reversible. Only MM
   flip (nothing to warn about while shadow; the recommendation is already audit-logged).
 - [ ] **[PAVEL]** migrate (MM-1 tables ride here): `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next`.
 
-## MM-3 · Admin Merit console *(CW; v2 admin surface)*
-- [ ] Standing dashboard (cohorts, distribution, would-promote/demote).
-- [ ] Per-manufacturer pillar breakdown + history.
-- [ ] Simulator (tune weights/thresholds → resulting badge distribution before committing).
-- [ ] Manual override w/ reason (audited); policy editor.
+## MM-3 · Admin Merit console — CODE COMPLETE 2026-07-06 (CW)
+- [x] `/merit` v2 surface (sidebar Users & Roles → Manufacturer standing, `billing:write`):
+  KPI strip (Verified/Trusted/Premier shadow distribution w/ fee labels, would-change count,
+  engine on/off) + standing table (current→qualified badge, MeritScore, pillar breakdown,
+  orders, next-step gap) — latest snapshot per manufacturer.
+- [x] `scoreFromPillars` shared core (computeMeritScore refactored to use it; 2 tests) — lets the
+  simulator re-score STORED pillars under a candidate policy with no signal recompute.
+- [x] Policy editor + **dry-run simulator**: tune weights/thresholds/evidence/fees/windows →
+  "Simulate" shows the resulting badge distribution + how many change vs today's tier and vs the
+  saved policy, BEFORE saving. `saveMeritPolicy` (validated + audited); weight-sum guard.
+- [x] De-cast `merit-worker.ts` against the real client (tables migrated) — genuine tsc-green.
+- Note: manual per-manufacturer override already exists (`/admin/tiers` changePartnerTier);
+  console links standing → that flow rather than duplicating it.
 
 ## MM-4 · Fairness / appeal flow *(CW + PAVEL policy)*
 - [ ] `RATING_APPEAL` reason on the existing dispute/ticket rails + provisional hold.

@@ -312,6 +312,7 @@ export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwa
 // Manufacturer Merit Engine — pure scoring core (docs/MANUFACTURER_MERIT_ENGINE.md, MM-1/MM-2).
 export {
   computeMeritScore,
+  scoreFromPillars,
   validateMeritPolicy,
   recommendBadgeChange,
   DEFAULT_MERIT_POLICY,
@@ -322,6 +323,8 @@ export type {
   MeritCohort,
   MeritPolicy,
   MeritResult,
+  PillarScores,
+  BadgeEvidence,
   BadgeAction,
   BadgeRecommendation,
   BadgeSnapshotRef,

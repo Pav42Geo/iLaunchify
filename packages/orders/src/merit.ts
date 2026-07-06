@@ -154,6 +154,54 @@ function standingPillar(s: MeritSignals): number {
   return clamp(tenure - penalty)
 }
 
+export interface PillarScores {
+  craft: number
+  reliability: number
+  contribution: number
+  standing: number
+}
+
+/** Evidence facts the badge gates need (stored on every snapshot). */
+export interface BadgeEvidence {
+  ordersCompleted: number
+  monthsActive: number
+  defectRatePer100: number | null
+}
+
+/**
+ * Re-weight already-computed pillar scores + apply the badge gates. This is the
+ * SHARED scoring core: `computeMeritScore` uses it after computing pillars, and
+ * the admin simulator uses it to re-score STORED snapshots under a candidate
+ * policy WITHOUT re-loading raw signals (weights/thresholds/evidence only).
+ */
+export function scoreFromPillars(
+  pillars: PillarScores,
+  evidence: BadgeEvidence,
+  policy: MeritPolicy,
+): { meritScore: number; qualifiedBadge: MeritBadge; eligibility: { trusted: boolean; premier: boolean } } {
+  const w = policy.weights
+  const wsum = w.craft + w.reliability + w.contribution + w.standing || 1
+  const meritScore = round1(
+    (pillars.craft * w.craft +
+      pillars.reliability * w.reliability +
+      pillars.contribution * w.contribution +
+      pillars.standing * w.standing) /
+      wsum,
+  )
+  const defect = evidence.defectRatePer100 ?? 0
+  const trusted =
+    meritScore >= policy.thresholds.trusted &&
+    evidence.ordersCompleted >= policy.evidence.trustedMinOrders &&
+    evidence.monthsActive >= policy.evidence.trustedMinMonths
+  const premier =
+    meritScore >= policy.thresholds.premier &&
+    evidence.ordersCompleted >= policy.evidence.premierMinOrders &&
+    evidence.monthsActive >= policy.evidence.premierMinMonths &&
+    defect <= policy.evidence.premierMaxDefectPer100
+  const qualifiedBadge: MeritBadge = premier ? 'PREMIER' : trusted ? 'TRUSTED' : 'VERIFIED'
+  return { meritScore, qualifiedBadge, eligibility: { trusted, premier } }
+}
+
 /**
  * Compute a manufacturer's MeritScore, pillar breakdown, and the badge it
  * qualifies for right now. Pure + deterministic. Hysteresis (sustained
@@ -164,40 +212,22 @@ export function computeMeritScore(
   policy: MeritPolicy = DEFAULT_MERIT_POLICY,
   cohort: MeritCohort,
 ): MeritResult {
-  const w = policy.weights
-  const pillars = {
+  const pillars: PillarScores = {
     craft: round1(craftPillar(signals, cohort)),
     reliability: round1(reliabilityPillar(signals, cohort, policy.opsConfidence)),
     contribution: round1(contributionPillar(signals, cohort)),
     standing: round1(standingPillar(signals)),
   }
-  const wsum = w.craft + w.reliability + w.contribution + w.standing || 1
-  const meritScore = round1(
-    (pillars.craft * w.craft +
-      pillars.reliability * w.reliability +
-      pillars.contribution * w.contribution +
-      pillars.standing * w.standing) /
-      wsum,
+  const { meritScore, qualifiedBadge, eligibility } = scoreFromPillars(
+    pillars,
+    { ordersCompleted: signals.ordersCompleted, monthsActive: signals.monthsActive, defectRatePer100: signals.defectRatePer100 },
+    policy,
   )
-
-  const defect = signals.defectRatePer100 ?? 0
-  const trusted =
-    meritScore >= policy.thresholds.trusted &&
-    signals.ordersCompleted >= policy.evidence.trustedMinOrders &&
-    signals.monthsActive >= policy.evidence.trustedMinMonths
-  const premier =
-    meritScore >= policy.thresholds.premier &&
-    signals.ordersCompleted >= policy.evidence.premierMinOrders &&
-    signals.monthsActive >= policy.evidence.premierMinMonths &&
-    defect <= policy.evidence.premierMaxDefectPer100
-
-  const qualifiedBadge: MeritBadge = premier ? 'PREMIER' : trusted ? 'TRUSTED' : 'VERIFIED'
-
   return {
     meritScore,
     pillars,
     qualifiedBadge,
-    eligibility: { trusted, premier },
+    eligibility,
     gaps: buildGaps(meritScore, pillars, signals, policy),
   }
 }
