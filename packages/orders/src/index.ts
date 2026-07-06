@@ -152,6 +152,20 @@ export type {
   GraphCompletenessResult,
   GraphIncompleteness,
 } from './application-point'
+// Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8a).
+export {
+  computeTemplatePrintCoverage,
+  buildCapabilityTuples,
+  loadCapabilityShortlist,
+} from './print-coverage'
+export type { TemplatePrintCoverage } from './print-coverage'
+export { rankCapabilityShortlist } from './capability-shortlist'
+export type {
+  CapabilityRequirementTuple,
+  ShortlistCandidate,
+  ShortlistSignals,
+  ShortlistRanked,
+} from './capability-shortlist'
 // Smart Rotation Engine — pure selection core (docs/SMART_ROTATION_ENGINE.md §2, SR-1).
 export {
   selectRotatingProvider,

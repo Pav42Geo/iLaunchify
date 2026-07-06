@@ -446,24 +446,33 @@ offerings (existing flow) and optionally nudge/extend an expiring request. Detec
 shortlisting, broadcast, re-broadcast, unpark — all automatic.
 
 ### 10.5 Execution checklist (PS-8, started 2026-07-06)
-- **PS-8a — schema + engines** · IN PROGRESS (handed off mid-stage)
+- **PS-8a — schema + engines** · CODE COMPLETE 2026-07-06 (CW); migration pending Pavel
   - [x] Schema drafted in packages/db/prisma/schema.prisma (UNMIGRATED — no code references
     it yet): `CapabilityRequestStatus` + `CapabilityClaimStatus` enums,
     `PrintCapabilityRequest` (denormalized tuple, `notifiedServiceIds` broadcast ledger,
     unique templateId+packagingTypeId), `PrintCapabilityClaim` (unique request+service,
     offeringId link)
-  - [ ] `packages/orders/src/print-coverage.ts`: `computeTemplatePrintCoverage(templateId)` —
+  - [x] `packages/orders/src/print-coverage.ts`: `computeTemplatePrintCoverage(templateId)` —
     template → manufacturerServiceId → effectivePrintSourcing (IN_HOUSE = not applicable) →
     template packagingTypeIds (via packagingSystems → packagingSystem.packagingTypeId) →
     DISTINCT ops-gated printers with an ACTIVE offering on those types (svc+partner ACTIVE,
-    Stripe ACTIVE, no live blackout). Mirror apps/marketing/src/lib/print-providers.ts
-    candidate derivation.
-  - [ ] Pure adjacency shortlist `rankCapabilityShortlist(candidates, tuple)` — (a) same
-    decorationMethod on a DIFFERENT packagingType > (b) same packagingType different method >
-    (c) same printProcess (physics matrix) > (d) geo (manufacturerRegion match) > (e) rating.
-    Deterministic, tested (compiled-node pattern — vitest can't run in the Cowork sandbox).
-  - [ ] Audit entity types: 'PrintCapabilityRequest', 'PrintCapabilityClaim'
-  - [ ] Migration handoff (db:push + generate + .next clear)
+    Stripe ACTIVE, no live blackout). Mirrors apps/marketing/src/lib/print-providers.ts
+    candidate derivation. Fails soft to `{applicable:false}`. Returns `uncovered`/`fragile`
+    flags + `manufacturerRegion` (partner.primaryRegion.code) for the tuple. Also
+    `buildCapabilityTuples()` (one tuple per packaging type — matches the RFQ unique key) and
+    `loadCapabilityShortlist()` (prisma pool loader → the pure ranker below).
+  - [x] Pure adjacency shortlist `rankCapabilityShortlist(candidates, tuple)` in
+    `capability-shortlist.ts` — (a) same decorationMethod on a DIFFERENT packagingType >
+    (b) same packagingType different method > (c) same printProcess (physics matrix) >
+    (d) geo (manufacturerRegion match) > (e) rating. Spaced-weight score = faithful
+    lexicographic key; serviceId final tiebreak (fully deterministic). 11 compiled-node tests
+    pass (priority ladder, null-method, no-adjacency long-shots, limit, rating clamp).
+  - [x] Audit entity types: 'PrintCapabilityRequest', 'PrintCapabilityClaim'
+    (packages/audit/src/types.ts)
+  - [ ] **[PAVEL]** Migration handoff (db:push + generate + .next clear) — the drafted enums +
+    models are still UNMIGRATED. Nothing in PS-8a references them at runtime yet, so the code
+    compiles and ships without the migration; PS-8b (RFQ create/broadcast) is the first
+    consumer and MUST NOT merge before the push.
 - **PS-8b — gate + broadcast**: approve action in apps/admin products/actions.ts (~line 35-68,
   PENDING_REVIEW→PUBLISHED) blocks publish at coverage 0 for non-IN_HOUSE + auto-creates the
   RFQ; coverage-drop watch (offering deactivate/blackout/churn → auto-PAUSE + RFQ + notify);

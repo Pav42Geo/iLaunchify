@@ -134,6 +134,9 @@ export const AUDIT_ENTITY_TYPES = [
   'RotationPolicy', // Smart Rotation Engine admin knobs (SR-1)
   'SampleVerdict', // creator's judgment of a delivered sample (SR-2.2)
   'ProductPrintExclusion', // "not this printer again" after sample rejection (SR-2.2)
+  // Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8)
+  'PrintCapabilityRequest', // auto-broadcast RFQ for an uncovered template requirement tuple
+  'PrintCapabilityClaim', // a printer's "I can produce this" → offering → verification
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
