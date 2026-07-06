@@ -56,6 +56,7 @@ import {
   type FcLabelingContext,
   type FcLabelingOffer,
 } from '../labeling-actions'
+import type { ShippingHop } from '../shipping-hops'
 
 interface Props {
   productId: string
@@ -64,7 +65,11 @@ interface Props {
   onChange: (patch: Partial<CartState>) => void
   onFulfillmentChange: (patch: Partial<FulfillmentState>) => void
   onShippingEstimate?: (
-    estimate: { shippingCents: number; leadTimeBusinessDays: number } | null,
+    estimate: {
+      shippingCents: number
+      leadTimeBusinessDays: number
+      hops?: ShippingHop[]
+    } | null,
   ) => void
   // PS-3c — lifts the ACTIVE FC-labeling fee (creator ticked the box on a
   // qualifying FC) to the wizard so the OrderSummary can show the line.
@@ -150,6 +155,11 @@ export function CheckoutStep({
         savedAddressId: draft.fulfillment.savedAddressId,
         newAddressCountry: draft.fulfillment.newAddress?.country ?? null,
         quantity: draft.production.quantity ?? 0,
+        // PS-3d — label hop rates on physical units; FC copy when opted in.
+        physicalUnits:
+          (draft.production.quantity ?? 0) *
+          (draft.production.pack?.unitsPerPack ?? 1),
+        labelingAtFc: draft.fulfillment.labelingAtFc === true,
       })
       if (result.ok) onShippingEstimate(result.data)
     }, 220)
@@ -157,10 +167,12 @@ export function CheckoutStep({
   }, [
     productId,
     draft.production.quantity,
+    draft.production.pack?.unitsPerPack,
     draft.fulfillment.shipToType,
     draft.fulfillment.warehousePartnerServiceId,
     draft.fulfillment.savedAddressId,
     draft.fulfillment.newAddress?.country,
+    draft.fulfillment.labelingAtFc,
     onShippingEstimate,
   ])
 

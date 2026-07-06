@@ -65,6 +65,7 @@ import type { CheckoutDraftState } from './types'
 import { checkProductRestrictions } from './restriction-actions'
 import { quoteCarrierShipping } from './fulfillment-actions'
 import { computeFcLabelingContext } from './labeling-actions'
+import { estimateLabelHopCents } from './shipping-hops'
 import { loadProductLabelCompliance } from '@/lib/dieline-compliance'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -452,6 +453,14 @@ export async function placeOrderFromCheckoutDraft(
   //             can never disagree). The flag is ignored unless the ship-to FC
   //             holds a verified RELABEL offer for this order's method AND the
   //             order actually needs downstream application.
+  // Shared PS-3c/PS-3d context: FC labeling eligibility + whether an external
+  // label freight hop exists at all (badge, fee, and shipping breakdown all
+  // derive from this ONE call).
+  const labelingCtx = await computeFcLabelingContext({
+    productId: product.id,
+    printSourcingMode: product.printSourcingMode ?? null,
+    manufacturerServiceId: product.productTemplate?.manufacturerServiceId ?? null,
+  })
   let fcLabelingCents = 0
   let fcLabelingFeePerUnitCents: number | null = null
   if (
@@ -459,11 +468,6 @@ export async function placeOrderFromCheckoutDraft(
     shipTo.data.shipToType === 'WAREHOUSE_PARTNER' &&
     shipTo.data.shipToPartnerServiceId
   ) {
-    const labelingCtx = await computeFcLabelingContext({
-      productId: product.id,
-      printSourcingMode: product.printSourcingMode ?? null,
-      manufacturerServiceId: product.productTemplate?.manufacturerServiceId ?? null,
-    })
     const offer = labelingCtx.needsExternalApplication
       ? labelingCtx.offers.find(
           (o) => o.partnerServiceId === shipTo.data.shipToPartnerServiceId,
@@ -599,6 +603,14 @@ export async function placeOrderFromCheckoutDraft(
     })
     if (carrierQuote) baseShippingCents = carrierQuote.shippingCents
   }
+  // PS-3d (Pavel 2026-07-06) — the printer→applier label freight hop bills to
+  // the creator's SHIPPING line: one combined figure here, the breakdown lives
+  // in the estimate UI + internalNotes. Free-shipping threshold covers the
+  // combined total (free shipping means free shipping).
+  const labelHopCents = labelingCtx.externalLabelHop
+    ? estimateLabelHopCents(qty * Math.max(1, packPersist?.packUnitsPerPack ?? 1))
+    : 0
+  baseShippingCents += labelHopCents
   const freeThreshold = orderSettings.freeShippingThresholdCents
   const shippingCents =
     freeThreshold != null && productionTotalCents >= freeThreshold ? 0 : baseShippingCents
@@ -732,6 +744,8 @@ export async function placeOrderFromCheckoutDraft(
     fcLabelingFeePerUnitCents,
     fcLabelingPartnerServiceId:
       fcLabelingCents > 0 ? (shipTo.data.shipToPartnerServiceId ?? null) : null,
+    labelHopCents,
+    shippingCents,
   })
 
   // Phase G8 — lock the exact DesignVersion sold so the partner-side
@@ -1883,6 +1897,8 @@ function buildInternalNotes(args: {
   fcLabelingCents?: number
   fcLabelingFeePerUnitCents?: number | null
   fcLabelingPartnerServiceId?: string | null
+  labelHopCents?: number
+  shippingCents?: number
 }): string {
   const lines: string[] = []
   if (args.promo) lines.push(`Promo: ${args.promo}`)
@@ -1894,6 +1910,17 @@ function buildInternalNotes(args: {
   if (args.fcLabelingCents && args.fcLabelingCents > 0) {
     lines.push(
       `FC labeling: ${args.fcLabelingCents}c (${args.fcLabelingFeePerUnitCents}c/unit) at PartnerService ${args.fcLabelingPartnerServiceId} — creator opted in at checkout`,
+    )
+  }
+  // PS-3d — booked shipping is ONE combined figure; record the hop split
+  // (label freight bills to the creator's shipping line, Pavel 2026-07-06).
+  if (args.labelHopCents && args.labelHopCents > 0) {
+    const booked = args.shippingCents ?? 0
+    const goods = Math.max(0, booked - args.labelHopCents)
+    lines.push(
+      booked === 0
+        ? `Shipping hops: labels printer→applier ${args.labelHopCents}c waived (free-shipping threshold)`
+        : `Shipping hops: labels printer→applier ${args.labelHopCents}c + finished goods ${goods}c = booked ${booked}c`,
     )
   }
   if (args.state.production.substrateSlug)

@@ -19,13 +19,20 @@
 
 import type { CheckoutDraftState, WizardStepIndex } from './types'
 import type { CostBreakdown } from './production-actions'
+import type { ShippingHop } from './shipping-hops'
 
 interface Props {
   state: CheckoutDraftState
   estimate: CostBreakdown | null
   // G4d — shipping cents from the wizard's lifted estimateShipping state.
-  // Null until the user has picked a ship-to mode.
-  shipping: { shippingCents: number; leadTimeBusinessDays: number } | null
+  // Null until the user has picked a ship-to mode. PS-3d: `hops` present when
+  // external print adds the printer→applier label leg — ONE line, expandable
+  // breakdown (Pavel 2026-07-06).
+  shipping: {
+    shippingCents: number
+    leadTimeBusinessDays: number
+    hops?: ShippingHop[]
+  } | null
   // Reserved for future step-specific hints in the right rail. Kept on
   // the API even after the Subscribe stub was removed so wizard callers
   // don't need a follow-up patch.
@@ -178,6 +185,26 @@ export function OrderSummary({
           value={hasShipping ? formatCents(shipping.shippingCents) : '$—.——'}
           dimmed={!hasShipping}
         />
+        {/* PS-3d — per-hop breakdown: ONE Shipping line above, hops on expand
+            (Pavel 2026-07-06: label freight bills to the shipping line). */}
+        {hasShipping && (shipping.hops?.length ?? 0) > 1 && (
+          <details className="-mt-1 pl-0.5">
+            <summary className="cursor-pointer select-none text-[11.5px] text-ink-500 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500">
+              {shipping.hops!.length} legs — see breakdown
+            </summary>
+            <ul className="mt-1 space-y-0.5">
+              {shipping.hops!.map((h) => (
+                <li
+                  key={h.kind}
+                  className="flex items-baseline justify-between gap-2 text-[11.5px] text-ink-500"
+                >
+                  <span className="min-w-0">{h.label}</span>
+                  <span className="flex-shrink-0 tabular-nums">{formatCents(h.cents)}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         <Row label="Tax" value="$—.——" dimmed />
       </dl>
 

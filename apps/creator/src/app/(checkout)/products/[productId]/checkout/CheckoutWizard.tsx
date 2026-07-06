@@ -67,6 +67,7 @@ import {
   type PlaceOrderOptions,
   type PinnedPrintGateInfo,
 } from './cart-actions'
+import type { ShippingHop } from './shipping-hops'
 import { CapacityGatePanel } from './CapacityGatePanel'
 import { PinnedPrintGatePanel } from './PinnedPrintGatePanel'
 import type { CapacityGateInfo } from '@ilaunchify/orders'
@@ -140,6 +141,8 @@ export function CheckoutWizard({
   const [shipping, setShipping] = useState<{
     shippingCents: number
     leadTimeBusinessDays: number
+    // PS-3d — per-hop breakdown when external print adds the label leg.
+    hops?: ShippingHop[]
   } | null>(null)
   // PS-3c — the FC-labeling fee/unit lifted from CheckoutStep when the creator
   // ticks "Finalize labeling at this center" on a qualifying FC. Display-only;

@@ -49,6 +49,12 @@ import {
   type InboundChannel,
 } from '@ilaunchify/shipping'
 import { revalidatePath } from 'next/cache'
+import { computeFcLabelingContext } from './labeling-actions'
+import {
+  estimateLabelHopCents,
+  labelHopCopy,
+  type ShippingHop,
+} from './shipping-hops'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -729,13 +735,23 @@ export interface EstimateShippingInput {
   savedAddressId?: string | null
   newAddressCountry?: string | null
   quantity: number
+  /** PS-3d — physical units (packs × units-per-pack) for the label-hop rate;
+   *  falls back to `quantity` when omitted. */
+  physicalUnits?: number
+  /** PS-3c/d — creator ticked "Finalize labeling at this center" (labels hop
+   *  addresses the FC instead of the manufacturer). Breakdown copy only. */
+  labelingAtFc?: boolean
 }
 
 export interface EstimateShippingResult {
+  /** TOTAL across all hops — the ONE Shipping line (Pavel 2026-07-06). */
   shippingCents: number
   leadTimeBusinessDays: number
   /** 'carrier' = live EasyPost rate + margin (L5) · 'flat' = V1 rate-card. */
   quoteSource: 'carrier' | 'flat'
+  /** PS-3d — per-hop breakdown, present only when external print adds the
+   *  printer→applier label leg. Sums to shippingCents. */
+  hops?: ShippingHop[]
 }
 
 export async function estimateShipping(
@@ -751,8 +767,17 @@ export async function estimateShipping(
 
   // HOLD_AT_MANUFACTURER — goods never leave the producer's dock at order
   // time; storage bills monthly via the StorageAgreement, not as shipping.
+  // The printer→manufacturer LABEL hop still exists though (PS-3d) — printed
+  // matter must reach the producer regardless of where finished goods sit.
   if (input.shipToType === 'HOLD_AT_MANUFACTURER') {
-    return { ok: true, data: { shippingCents: 0, leadTimeBusinessDays: 0, quoteSource: 'flat' } }
+    return {
+      ok: true,
+      data: await addLabelHop(input, qty, {
+        shippingCents: 0,
+        leadTimeBusinessDays: 0,
+        quoteSource: 'flat',
+      }),
+    }
   }
 
   // ---- Live carrier quote (Phase L2 / L5) -----------------------------------
@@ -768,11 +793,11 @@ export async function estimateShipping(
         input.shipToType === 'CLOSEST_WAREHOUSE' || input.shipToType === 'SPECIFIC_WAREHOUSE' ? 3 : 5
       return {
         ok: true,
-        data: {
+        data: await addLabelHop(input, qty, {
           shippingCents: quote.shippingCents,
           leadTimeBusinessDays: quote.transitDays ?? fallbackLead,
           quoteSource: 'carrier',
-        },
+        }),
       }
     }
   }
@@ -808,7 +833,68 @@ export async function estimateShipping(
       ? 3
       : 5
 
-  return { ok: true, data: { shippingCents, leadTimeBusinessDays, quoteSource: 'flat' } }
+  return {
+    ok: true,
+    data: await addLabelHop(input, qty, { shippingCents, leadTimeBusinessDays, quoteSource: 'flat' }),
+  }
+}
+
+// PS-3d — fold the printer→applier label freight hop into the estimate when
+// external print sourcing creates one (Pavel 2026-07-06: the hop bills to the
+// creator's Shipping line; ONE total, per-hop breakdown). Fail-soft: any
+// lookup error returns the goods-leg-only estimate unchanged.
+async function addLabelHop(
+  input: EstimateShippingInput,
+  qty: number,
+  goodsLeg: { shippingCents: number; leadTimeBusinessDays: number; quoteSource: 'carrier' | 'flat' },
+): Promise<EstimateShippingResult> {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: input.productId },
+      select: {
+        printSourcingMode: true,
+        productTemplate: { select: { manufacturerServiceId: true } },
+      },
+    })
+    if (!product) return goodsLeg
+    const ctx = await computeFcLabelingContext({
+      productId: input.productId,
+      printSourcingMode: product.printSourcingMode ?? null,
+      manufacturerServiceId: product.productTemplate?.manufacturerServiceId ?? null,
+    })
+    if (!ctx.externalLabelHop) return goodsLeg
+
+    const units = Math.max(qty, Math.floor(input.physicalUnits ?? 0))
+    const labelCents = estimateLabelHopCents(units)
+    const applier: 'MANUFACTURER' | 'FC' =
+      input.labelingAtFc &&
+      ctx.needsExternalApplication &&
+      (input.shipToType === 'CLOSEST_WAREHOUSE' || input.shipToType === 'SPECIFIC_WAREHOUSE')
+        ? 'FC'
+        : 'MANUFACTURER'
+
+    const hops: ShippingHop[] = [
+      { kind: 'LABELS', label: labelHopCopy(applier), cents: labelCents },
+    ]
+    if (goodsLeg.shippingCents > 0) {
+      hops.push({
+        kind: 'FINISHED_GOODS',
+        label:
+          input.shipToType === 'HOLD_AT_MANUFACTURER'
+            ? 'Finished goods: held at manufacturer'
+            : 'Finished goods: producer → your destination',
+        cents: goodsLeg.shippingCents,
+      })
+    }
+    return {
+      shippingCents: goodsLeg.shippingCents + labelCents,
+      leadTimeBusinessDays: goodsLeg.leadTimeBusinessDays,
+      quoteSource: goodsLeg.quoteSource,
+      hops,
+    }
+  } catch {
+    return goodsLeg
+  }
 }
 
 // -----------------------------------------------------------------------------

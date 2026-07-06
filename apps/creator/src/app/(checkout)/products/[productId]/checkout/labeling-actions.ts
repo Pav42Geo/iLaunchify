@@ -29,6 +29,12 @@ export interface FcLabelingContext {
   /** True only when application must happen downstream of the manufacturer —
    *  the precondition for any FC labeling offer to render at all. */
   needsExternalApplication: boolean
+  /** PS-3d — true when a printer→applier label freight hop exists at all:
+   *  applied decoration + external print sourcing. True even when the
+   *  manufacturer applies (the hop is printer → manufacturer then). Drives
+   *  the shipping breakdown; Pavel 2026-07-06: this hop bills to the
+   *  creator's Shipping line. */
+  externalLabelHop: boolean
   /** The applied decoration method driving the requirement (null when none). */
   decorationMethod: string | null
   /** Verified RELABEL offers, keyed by warehouse service — empty unless
@@ -38,6 +44,7 @@ export interface FcLabelingContext {
 
 const NONE: FcLabelingContext = {
   needsExternalApplication: false,
+  externalLabelHop: false,
   decorationMethod: null,
   offers: [],
 }
@@ -78,8 +85,8 @@ export async function computeFcLabelingContext(args: {
 }): Promise<FcLabelingContext> {
   if (!args.manufacturerServiceId) return NONE
 
-  // 1 — applied decoration? (Printed-in methods ship finished from the printer/
-  //     manufacturer; no application step exists to place anywhere.)
+  // 1 — a decorated primary container at all? No printed matter = no hop and
+  //     no application step, full stop.
   const primaryContainer = await prisma.packagingComponent.findFirst({
     where: {
       productId: args.productId,
@@ -90,9 +97,10 @@ export async function computeFcLabelingContext(args: {
     select: { decorationMethod: true },
   })
   const decorationMethod = primaryContainer?.decorationMethod ?? null
-  if (!decorationMethod || !APPLIED_DECORATIONS.has(decorationMethod)) return NONE
+  if (!decorationMethod) return NONE
 
-  // 2 — external print + manufacturer can't apply?
+  // 2 — print sourcing. IN_HOUSE = manufacturer prints (and applies, when the
+  //     method needs applying): no freight hop, no external application.
   const manufacturer = await prisma.partnerService.findUnique({
     where: { id: args.manufacturerServiceId },
     select: { labelingMode: true, appliesLabels: true },
@@ -102,11 +110,23 @@ export async function computeFcLabelingContext(args: {
     { printSourcingMode: args.printSourcingMode as 'IN_HOUSE' | 'EXTERNAL_ALLOWED' | 'EXTERNAL_REQUIRED' | null },
     manufacturer,
   )
-  // IN_HOUSE = manufacturer prints AND applies; self-label needs no downstream
-  // application. Manufacturer-applies is the default resolution (§8.2 step 1) —
-  // FC labeling only matters when that first choice is off the table.
-  if (mode === 'IN_HOUSE' || manufacturer.appliesLabels) {
-    return { needsExternalApplication: false, decorationMethod, offers: [] }
+  if (mode === 'IN_HOUSE') {
+    return { needsExternalApplication: false, externalLabelHop: false, decorationMethod, offers: [] }
+  }
+
+  // External print → the printer→applier freight hop exists from here on
+  // (PS-3d), for printed-in AND applied methods alike: decorated packaging or
+  // labels, either way the printed matter must physically reach the producer.
+
+  // Printed-in methods (direct print, in-mold…) need no application step —
+  // hop yes, FC labeling no.
+  if (!APPLIED_DECORATIONS.has(decorationMethod)) {
+    return { needsExternalApplication: false, externalLabelHop: true, decorationMethod, offers: [] }
+  }
+  // Manufacturer-applies is the default resolution (§8.2 step 1) — FC labeling
+  // only matters when that first choice is off the table.
+  if (manufacturer.appliesLabels) {
+    return { needsExternalApplication: false, externalLabelHop: true, decorationMethod, offers: [] }
   }
 
   // 3 — verified RELABEL offers covering THIS method, on live warehouses.
@@ -131,6 +151,7 @@ export async function computeFcLabelingContext(args: {
 
   return {
     needsExternalApplication: true,
+    externalLabelHop: true,
     decorationMethod,
     offers: rows.map((r) => ({
       partnerServiceId: r.partnerServiceId,
