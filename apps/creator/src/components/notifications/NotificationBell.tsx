@@ -1,172 +1,18 @@
 'use client'
 
-// Notification bell + dropdown for the creator topbar. Polls
-// /api/notifications/feed every 30s for unread count + recent rows. Clicking a
-// notification marks it read and (if it has a link) navigates. Pink-accented to
-// match the creator design system.
+// Thin wrapper over the shared @ilaunchify/ui NotificationBell (in-app
+// notifications P0, 2026-07-06) — passes the creator server actions + pink
+// accent. Kept at this path so topbar imports don't change.
 
-import { useEffect, useState, useTransition } from 'react'
-import Link from 'next/link'
-import { Bell, Check, CheckCheck } from 'lucide-react'
+import { NotificationBell as SharedBell } from '@ilaunchify/ui'
 import { markNotificationRead, markAllNotificationsRead } from './actions'
 
-interface Notification {
-  id: string
-  event: string
-  title: string
-  body: string | null
-  link: string | null
-  readAt: string | null
-  createdAt: string
-}
-
-interface FeedResponse {
-  notifications: Notification[]
-  unread: number
-}
-
-function timeAgo(date: string): string {
-  const diff = Date.now() - new Date(date).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1) return 'now'
-  if (m < 60) return `${m}m`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h`
-  return `${Math.floor(h / 24)}d`
-}
-
 export function NotificationBell() {
-  const [open, setOpen] = useState(false)
-  const [data, setData] = useState<FeedResponse>({ notifications: [], unread: 0 })
-  const [isPending, startTransition] = useTransition()
-
-  async function refresh() {
-    try {
-      const res = await fetch('/api/notifications/feed', { cache: 'no-store' })
-      if (res.ok) setData(await res.json())
-    } catch {
-      // Silent — the bell must never break the page.
-    }
-  }
-
-  useEffect(() => {
-    refresh()
-    const interval = setInterval(refresh, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    function onClick(e: MouseEvent) {
-      const target = e.target as HTMLElement
-      if (!target.closest('[data-notification-bell]')) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [open])
-
-  function handleClickNotification(n: Notification) {
-    if (!n.readAt) {
-      startTransition(async () => {
-        await markNotificationRead({ notificationId: n.id })
-        await refresh()
-      })
-    }
-  }
-
-  function handleMarkAll() {
-    startTransition(async () => {
-      await markAllNotificationsRead()
-      await refresh()
-    })
-  }
-
   return (
-    <div className="relative" data-notification-bell>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-        aria-label="Notifications"
-      >
-        <Bell strokeWidth={2} className="h-5 w-5" />
-        {data.unread > 0 && (
-          <span className="absolute right-0.5 top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-semibold text-white">
-            {data.unread > 99 ? '99+' : data.unread}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
-            <h3 className="text-ui-value text-ink-900">Notifications</h3>
-            {data.unread > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAll}
-                disabled={isPending}
-                className="inline-flex items-center gap-1 text-xs text-ink-500 hover:text-ink-900"
-              >
-                <CheckCheck className="h-3.5 w-3.5" /> Mark all read
-              </button>
-            )}
-          </div>
-
-          <div className="max-h-96 overflow-y-auto">
-            {data.notifications.length === 0 ? (
-              <div className="p-6 text-center text-sm text-ink-500">No notifications yet.</div>
-            ) : (
-              <ul className="divide-y divide-ink-100">
-                {data.notifications.slice(0, 8).map((n) => {
-                  const isUnread = !n.readAt
-                  const content = (
-                    <div className={`group flex gap-3 px-4 py-3 hover:bg-ink-50 ${isUnread ? 'bg-pink-50/50' : ''}`}>
-                      <div className="mt-1 shrink-0">
-                        {isUnread ? (
-                          <span className="block h-2 w-2 rounded-full bg-pink-600" />
-                        ) : (
-                          <Check className="h-3 w-3 text-ink-300" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className={`text-sm ${isUnread ? 'font-semibold text-ink-900' : 'text-ink-700'}`}>
-                          {n.title}
-                        </div>
-                        {n.body && (
-                          <div className="mt-0.5 line-clamp-2 text-xs text-ink-500">{n.body}</div>
-                        )}
-                        <div className="mt-1 text-[11px] text-ink-400">{timeAgo(n.createdAt)}</div>
-                      </div>
-                    </div>
-                  )
-                  return (
-                    <li key={n.id} onClick={() => handleClickNotification(n)}>
-                      {n.link ? (
-                        <Link href={n.link} onClick={() => setOpen(false)}>
-                          {content}
-                        </Link>
-                      ) : (
-                        content
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-
-          <div className="border-t border-ink-200 bg-ink-50 px-4 py-2 text-center">
-            <Link
-              href="/notifications"
-              onClick={() => setOpen(false)}
-              className="text-xs font-medium text-ink-700 hover:text-ink-900"
-            >
-              View all notifications
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
+    <SharedBell
+      accent="pink"
+      markRead={markNotificationRead}
+      markAllRead={markAllNotificationsRead}
+    />
   )
 }

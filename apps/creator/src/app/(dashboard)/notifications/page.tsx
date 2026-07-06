@@ -1,14 +1,27 @@
-// Creator notifications — full list, newest first, with mark-all-read.
+// Creator notifications — filterable, cursor-paginated feed (in-app P0,
+// docs/IN_APP_NOTIFICATIONS_AUDIT.md §5). URL-driven filters:
+// ?filter=unread & ?category=<slug> & ?cursor=<id>.
 
 import { requireUser } from '@ilaunchify/auth'
-import { listNotifications, markAllRead } from '@ilaunchify/notifications'
+import {
+  listNotificationsPage,
+  countUnread,
+  markAllRead,
+  allCategories,
+  eventsInCategory,
+  isValidCategorySlug,
+  categoryForEvent,
+  categoryConfig,
+} from '@ilaunchify/notifications'
 import Link from 'next/link'
-import { CheckCheck, Mail, Inbox } from 'lucide-react'
-import { EmptyState } from '@ilaunchify/ui'
+import { CheckCheck } from 'lucide-react'
+import { NotificationFeed } from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Notifications' }
+
+const PAGE_SIZE = 50
 
 async function handleMarkAllRead() {
   'use server'
@@ -17,10 +30,26 @@ async function handleMarkAllRead() {
   revalidatePath('/notifications')
 }
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string; category?: string; cursor?: string }>
+}) {
   const user = await requireUser()
-  const notifications = await listNotifications(user.id, { limit: 200 })
-  const unread = notifications.filter((n) => !n.readAt).length
+  const params = await searchParams
+  const filter = params.filter === 'unread' ? ('unread' as const) : ('all' as const)
+  const category =
+    params.category && isValidCategorySlug(params.category) ? params.category : null
+
+  const [{ notifications, nextCursor }, unread] = await Promise.all([
+    listNotificationsPage(user.id, {
+      limit: PAGE_SIZE,
+      unreadOnly: filter === 'unread',
+      ...(category ? { events: eventsInCategory(category) } : {}),
+      ...(params.cursor ? { cursor: params.cursor } : {}),
+    }),
+    countUnread(user.id),
+  ])
 
   return (
     <div className="space-y-6">
@@ -28,7 +57,7 @@ export default async function NotificationsPage() {
         <div>
           <h1 className="font-display text-ui-title text-ink-900">Notifications</h1>
           <p className="mt-1 text-ui-body text-ink-500">
-            {unread} unread of last {notifications.length}
+            {unread} unread
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -51,46 +80,23 @@ export default async function NotificationsPage() {
         </div>
       </div>
 
-      {notifications.length === 0 ? (
-        <EmptyState
-          align="center"
-          icon={<Inbox className="h-[22px] w-[22px]" aria-hidden="true" />}
-          title="You’re all caught up"
-          body="Order updates, partner activity, and replies from support will show up here."
-        />
-      ) : (
-        <ul className="space-y-2">
-          {notifications.map((n) => {
-            const isUnread = !n.readAt
-            const inner = (
-              <div
-                className={`flex gap-3 rounded-2xl border px-4 py-3.5 transition-colors ${
-                  isUnread ? 'border-pink-200 bg-pink-50/30' : 'border-ink-200 bg-white'
-                } ${n.link ? 'hover:bg-ink-50' : ''}`}
-              >
-                <div className="mt-0.5 shrink-0">
-                  {isUnread ? (
-                    <Mail className="h-4 w-4 text-pink-600" />
-                  ) : (
-                    <Inbox className="h-4 w-4 text-ink-300" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className={`text-[14px] text-ink-900 ${isUnread ? 'font-semibold' : ''}`}>
-                    {n.title}
-                  </p>
-                  {n.body && <p className="mt-0.5 text-[12.5px] text-ink-600">{n.body}</p>}
-                  <p className="mt-1.5 text-[11px] text-ink-400">
-                    {new Date(n.createdAt).toLocaleString()} ·{' '}
-                    {n.event.replace(/_/g, ' ').toLowerCase()}
-                  </p>
-                </div>
-              </div>
-            )
-            return <li key={n.id}>{n.link ? <Link href={n.link}>{inner}</Link> : inner}</li>
-          })}
-        </ul>
-      )}
+      <NotificationFeed
+        accent="pink"
+        basePath="/notifications"
+        filter={filter}
+        category={category}
+        categories={allCategories().map((c) => ({ slug: c.slug, label: c.label }))}
+        nextCursor={nextCursor}
+        items={notifications.map((n) => ({
+          id: n.id,
+          title: n.title,
+          body: n.body,
+          link: n.link,
+          readAt: n.readAt ? n.readAt.toISOString() : null,
+          createdAt: n.createdAt.toISOString(),
+          categoryLabel: categoryConfig(categoryForEvent(n.event)).label,
+        }))}
+      />
     </div>
   )
 }

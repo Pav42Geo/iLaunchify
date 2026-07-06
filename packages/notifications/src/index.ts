@@ -13,6 +13,7 @@
 export { dispatchNotification, type DispatchInput } from './dispatcher'
 export {
   listNotifications,
+  listNotificationsPage,
   countUnread,
   markRead,
   markAllRead,
