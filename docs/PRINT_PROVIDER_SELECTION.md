@@ -340,6 +340,106 @@ cost itself stays a production line item — never blended into shipping.
 PS-7's validator must land BEFORE PS-3 (manual printer pinning) goes live — pinning a printer
 into a graph with no application point would manufacture the honey problem on demand.
 
+## §10 Print Coverage & Capability RFQ — kill UNRESOLVED upstream (added 2026-07-06)
+
+**The decision (Pavel):** there should be no UNRESOLVED case at order time. Match the
+manufacturer with a printer who can produce its labels/packaging BEFORE the product activates.
+A creator must never design for hours and then hit "we can't execute your order."
+
+**Industry grounding (researched 2026-07-06):**
+- **Keychain** (CPG matchmaking; General Mills-backed): AI translates a product description into
+  processing + packaging EQUIPMENT REQUIREMENTS, then matches against a categorized capability
+  database of 50k+ manufacturers; manufacturers are shown "in-demand products you could produce"
+  as inbound demand. The insight: the match runs on a structured requirement graph, and the
+  platform PUSHES qualified demand to the supply side.
+- **Lumi** (packaging marketplace, Narvar): ONE quote request auto-fans out to every supplier
+  whose declared capabilities match; suppliers "receive opportunities that fit their
+  capabilities" — no manual brokering.
+- **Printify**: capability is claimed at ONBOARDING (application → catalog + pricing + capacity
+  → sample quality check → contract); a listing never surfaces a provider who didn't claim it.
+  Coverage is guaranteed by construction — that's why their checkout has no UNRESOLVED.
+
+**Our advantage:** we don't need Keychain's AI translation layer — a ProductTemplate already IS
+a structured requirement tuple (packagingTypeId + dieline + decorationMethod + substrate family
++ run band + foodContact + envelope), and `eligiblePrintProviders()` (§7) already evaluates it
+against offerings deterministically. What's missing is the LIFECYCLE wiring: gate activation on
+coverage, and push uncovered specs to the printer pool as claimable requests.
+
+### 10.1 Print Coverage — computed, continuous, gating
+`printCoverage(templateId)` = count of DISTINCT ACTIVE printers passing the §7 hard filters for
+the template's requirement tuple (ops-gated: partner ACTIVE + Stripe ACTIVE + not blacked out).
+- Computed at template submit, at every offering create/verify/deactivate/blackout, and nightly.
+- **Activation gate:** a template whose `effectivePrintSourcing != IN_HOUSE` cannot reach
+  PUBLISHED with coverage 0. It parks visibly in the admin review queue: "Print coverage: 0 —
+  capability request broadcast" (flag on the review item, not a new enum value).
+- **Coverage-drop watch:** a PUBLISHED template whose coverage falls to 0 (printer churn,
+  blackout, offering unverified) → auto-PAUSE marketplace ordering with honest copy ("printing
+  being re-arranged"), notify manufacturer + admins, auto-fire the RFQ (10.2). Creators with
+  in-flight designs get a Notification Center email when coverage returns — design work is
+  never lost, orders are never taken into a hole.
+- Coverage ≥1 is the floor; the dashboard (10.4) flags coverage-1 templates as "fragile" so the
+  pool deepens before churn bites.
+
+### 10.2 PrintCapabilityRequest — the claimable RFQ (zero-admin broadcast)
+When coverage = 0 (at submit or by drop), the system generates ONE open request per requirement
+tuple and broadcasts it to a SMART SHORTLIST automatically:
+
+```prisma
+model PrintCapabilityRequest {
+  id                  String @id @default(uuid())
+  productTemplateId   String // soft FK
+  // requirement tuple, denormalized — printers see the spec without template access
+  packagingTypeId     String
+  dielineId           String?
+  decorationMethod    DecorationMethod
+  printProcessHint    PrintProcess? // from the §7 physics matrix
+  substrateFamily     String?       // family, not exact id — claimers declare their own
+  runBandMin          Int
+  runBandMax          Int?
+  foodContactRequired Boolean @default(false)
+  status              CapabilityRequestStatus @default(OPEN) // OPEN|CLAIMED|FULFILLED|EXPIRED
+  createdAt/updatedAt/expiresAt
+}
+model PrintCapabilityClaim {
+  id / requestId / partnerServiceId
+  status     ClaimStatus @default(SUBMITTED) // SUBMITTED|OFFERING_DRAFTED|VERIFIED|WITHDRAWN
+  offeringId String? // the PartnerPackagingOffering the claim produced
+  @@unique([requestId, partnerServiceId])
+}
+```
+
+**Shortlist ranking (smart but deterministic — no admin, no AI):** rank onboarded
+LABEL_PRINTING services by adjacency: (a) same decorationMethod on a DIFFERENT packaging type —
+strongest signal, they own the press; (b) same packagingType, different method; (c) same
+printProcess per the physics matrix; (d) geo proximity to the manufacturer (label-hop freight,
+PS-3d); (e) rating (FB-F). Top N (admin-tunable, default 10) get a Notification Center email +
+partner-dashboard card: *"A manufacturer on iLaunchify needs shrink-sleeve printing for 500ml
+PET jars — you already run shrink sleeve on cans. Claim this job type."* Weekly re-broadcast to
+the next band while OPEN; EXPIRED after an admin-tunable window escalates to ops — the ONLY
+manual touch in the loop.
+
+**Partial disclosure (per Pavel):** claimers see the requirement spec + dieline + run band +
+manufacturer's REGION. NOT creator designs, NOT brand names, NOT manufacturer identity until
+the claim verifies. Full pre-approved product detail unlocks post-verification (they need it
+for production anyway).
+
+**Claim → offering, zero re-typing:** "I can produce this" pre-fills a DRAFT
+PartnerPackagingOffering from the request tuple → printer completes pricing/MOQ/envelope in the
+EXISTING §7.2 offering wizard → EXISTING admin verification → ACTIVE → coverage recomputes →
+template auto-unparks/resumes → claim FULFILLED → manufacturer + waiting creators notified.
+
+### 10.3 Design Studio guard (inherited)
+Because activation gates on coverage, a creator can never START designing an uncoverable
+product. The only residual case is a coverage DROP mid-design → ordering pauses with honest
+copy, the RFQ machinery is already reopening supply, the creator's work is safe. §8's
+UNRESOLVED validator stays as defense-in-depth at Pay — 10.1 makes it structurally unreachable.
+
+### 10.4 Admin Coverage dashboard (v2 admin surface)
+KPIs: uncovered templates · fragile (coverage 1) · open RFQs · claims awaiting verification ·
+median time-to-coverage. Rows deep-link to template + claim list. Admin's only jobs: verify
+offerings (existing flow) and optionally nudge/extend an expiring request. Detection,
+shortlisting, broadcast, re-broadcast, unpark — all automatic.
+
 ## §9 Build phases + ownership
 
 - **PS-1** `labelingMode` + product override + `effectivePrintSourcing()` + backfill + partner

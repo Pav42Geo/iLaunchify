@@ -152,6 +152,18 @@ export type {
   GraphCompletenessResult,
   GraphIncompleteness,
 } from './application-point'
+// Smart Rotation Engine — pure selection core (docs/SMART_ROTATION_ENGINE.md §2, SR-1).
+export {
+  selectRotatingProvider,
+  validateRotationPolicy,
+  buildRotationAwardPayload,
+} from './rotation'
+export type {
+  RotationPolicyInput,
+  RotationCandidate,
+  RotationContext,
+  RotationDecision,
+} from './rotation'
 // Partner rating engine — dimensions + aggregation math (docs/FEEDBACK_MODULE.md §5).
 export {
   RATING_DIMENSIONS,

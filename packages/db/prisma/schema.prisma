@@ -1234,6 +1234,11 @@ model PartnerService {
   // Logistics L0 back-relations
   storageAgreements                StorageAgreement[]
   fcAwards                         FcAwardLog[]
+  // Smart Rotation Engine (SR-1) — print-leg award history + ops kill switch:
+  // excluded services stay fully orderable via manual/pinned picks but never
+  // enter the auto-rotation pool.
+  printAwards                      PrintAwardLog[]
+  excludeFromAutoRotation          Boolean                           @default(false)
   // Partner Role Accounts P1 (docs/PARTNER_ROLE_ACCOUNTS.md §3.1.E) —
   // partner-declared unavailability windows; FC selection + dispatch routing
   // treat them as capacity = 0 (wired into fc-scorer in a later slice).
@@ -1312,6 +1317,53 @@ model ProductPrintSelection {
 
   @@unique([creatorUserId, productTemplateId])
   @@index([partnerServiceId])
+}
+
+// ─── Smart Rotation Engine (docs/SMART_ROTATION_ENGINE.md §2, SR-1) ──────────
+
+enum RotationMode {
+  EQUAL // least-recently-awarded in pool (perfect round-robin over time)
+  RANDOM // uniform random over pool
+  WEIGHTED_EXACT // weighted random by slotSharesPct (rank 1 → slot 0, …)
+  BEST_ONLY // pool[0] always — rating winner-take-all
+}
+
+/// One admin-controlled auto-rotation policy per service type. `enabled=false`
+/// (the default) preserves pre-SR routing behavior exactly — the engine only
+/// steers once an admin flips it on in Routing & Rotation. Every change audited.
+model RotationPolicy {
+  id          String       @id @default(uuid())
+  serviceType ServiceType  @unique
+  enabled     Boolean      @default(false)
+  poolSize    Int          @default(3) // rotate among top-N by ratingBayesian
+  mode        RotationMode @default(EQUAL)
+  // WEIGHTED_EXACT — exact % per rank slot; validated to sum to 100 when used.
+  slotSharesPct Int[]      @default([])
+  // New-provider exposure ramp (providers below MIN_RATINGS_FOR_DISPLAY):
+  newProviderSharePct Int  @default(10) // % of eligible awards diverted to unrated providers
+  newProviderMaxOpen  Int  @default(2) // concurrent unrated awards per provider (quality-risk cap)
+  // Pool entry/exit:
+  ratingFloor     Decimal? @db.Decimal(4, 3) // Bayesian floor; below → out of auto-pool
+  locationBiasPct Int      @default(0) // 0–100 distance damping toward the producing node
+  stickyReorders  Boolean  @default(true) // reorders keep the SAME printer (color consistency)
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
+/// Every auto-rotation award on the print leg — mirror of FcAwardLog. The full
+/// decision (candidates + ratings + pool + mode + roll + winner) makes actual
+/// award shares measurable in the Routing & Rotation analytics tab.
+model PrintAwardLog {
+  id               String   @id @default(uuid())
+  partnerServiceId String
+  orderId          String? // soft FK — null for preview/dry-run simulations never persisted
+  decisionJson     Json // { policy, candidates: [{serviceId, ratingBayesian, new, factors}], pool, mode, roll, winner, path }
+  awardedAt        DateTime @default(now())
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id])
+
+  @@index([partnerServiceId, awardedAt])
+  @@index([awardedAt])
 }
 
 /// Partner-declared unavailability window (vacation, maintenance, peak
