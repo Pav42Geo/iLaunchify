@@ -15,6 +15,7 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma, getOrderSettings } from '@ilaunchify/db'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import {
   computeCancellationOutcome,
@@ -140,15 +141,16 @@ export async function requestOrderCancellation({
     },
   })
 
-  // Tell admins a cancellation needs review (reuses the existing ORDER_NEEDS_ATTENTION
-  // event). Best-effort — the dispatcher never throws.
+  // Tell admins a cancellation needs review. Specific event per the in-app P1
+  // split (docs/IN_APP_NOTIFICATIONS_AUDIT.md §4); cast until db:push +
+  // db:generate land the enum value. Best-effort — the dispatcher never throws.
   const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
   await Promise.allSettled(
     admins.map((a) =>
       dispatchNotification({
         userId: a.id,
-        event: 'ORDER_NEEDS_ATTENTION',
-        data: { orderId: order.id, status: 'CANCELLATION_REQUESTED' },
+        event: 'ORDER_CANCELLATION_REQUESTED' as NotificationEvent,
+        data: { orderId: order.id },
         audience: 'admin',
       }),
     ),

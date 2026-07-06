@@ -98,10 +98,21 @@ Every IN_APP template conforms to:
    change → needs `pnpm db:push` + `db:generate` + `.next` clear — schedule with next schema batch.)
 
 ### P1 — triage + hygiene
-5. `archivedAt` on Notification (additive) — archive action per row + auto-archive read > 30d
-   (cron alongside partner-ops-worker); bell + feed exclude archived.
-6. Zod payload schemas per event in `packages/notifications`.
-7. Category icon + tone accent on bell/feed rows (per §4).
+5. `archivedAt` on Notification — ✅ BUILT 2026-07-06, **GATED on `pnpm db:push` +
+   `pnpm db:generate` + `rm -rf apps/*/.next`** (cast-guarded per
+   docs/POST_PUSH_CASTGUARD_CLEANUP.md; de-cast in `packages/notifications/src/query.ts`,
+   `categories.ts`, `template-tokens.ts` + the two emit sites after regen). Row archive
+   button on all 3 feeds; auto-archive read>30d via `/api/cron/archive-notifications`
+   (admin app, CRON_SECRET, suggested daily 04:00); bell + feed + unread count exclude archived.
+   ⚠️ Until the push runs, archive buttons + the new events fail at runtime (dispatcher
+   swallows event errors; archive updateMany will error) — run the incantation before testing.
+6. Zod payload schemas per event in `packages/notifications`. (open)
+7. Category icon + tone accent on bell/feed rows (per §4). (open)
+
+P0 item 4 also ✅ BUILT 2026-07-06 (same gate): `ORDER_CANCELLATION_REQUESTED` +
+`ORDER_DISPUTE_OPENED` enum values + templates (deep-link to /cancellations and /disputes
+queues); cancel/dispute actions emit them; `ORDER_NEEDS_ATTENTION` kept for existing rows +
+the two ops sweeps (inbound-receipt / release-ship overdue).
 
 ### P2 — grouping + realtime
 8. Server-side coalescing window (e.g. same event + same order within 10 min → one row,

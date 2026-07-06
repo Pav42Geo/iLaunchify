@@ -8,7 +8,7 @@
 // passes serializable rows only.
 
 import Link from 'next/link'
-import { Mail, Inbox } from 'lucide-react'
+import { Mail, Inbox, Archive } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 export interface NotificationFeedItem {
@@ -36,6 +36,9 @@ export interface NotificationFeedProps {
   nextCursor: string | null
   /** Row accent. pink = creator, info = partner + admin. */
   accent?: 'pink' | 'info'
+  /** Server action archiving one row (reads `notificationId` from formData).
+      When present, each row gets an archive button (in-app P1). */
+  archiveAction?: (formData: FormData) => Promise<void>
 }
 
 function buildHref(
@@ -58,6 +61,7 @@ export function NotificationFeed({
   basePath,
   nextCursor,
   accent = 'pink',
+  archiveAction,
 }: NotificationFeedProps) {
   const unreadIcon = accent === 'pink' ? 'text-pink-600' : 'text-info-600'
   const unreadRow =
@@ -135,9 +139,30 @@ export function NotificationFeed({
                     {new Date(n.createdAt).toLocaleString()} · {n.categoryLabel}
                   </p>
                 </div>
+                {/* Spacer keeps text clear of the absolutely-positioned archive button. */}
+                {archiveAction && <div className="w-7 shrink-0" aria-hidden />}
               </div>
             )
-            return <li key={n.id}>{n.link ? <Link href={n.link}>{inner}</Link> : inner}</li>
+            return (
+              <li key={n.id} className="relative">
+                {n.link ? <Link href={n.link}>{inner}</Link> : inner}
+                {/* Sibling of the link (a form inside an <a> is invalid HTML and
+                    submitting would navigate) — overlaid on the row's top-right. */}
+                {archiveAction && (
+                  <form action={archiveAction} className="absolute right-3 top-3">
+                    <input type="hidden" name="notificationId" value={n.id} />
+                    <button
+                      type="submit"
+                      title="Archive"
+                      aria-label="Archive notification"
+                      className="rounded-md p-1.5 text-ink-300 transition-colors hover:bg-ink-100 hover:text-ink-700"
+                    >
+                      <Archive className="h-3.5 w-3.5" />
+                    </button>
+                  </form>
+                )}
+              </li>
+            )
           })}
         </ul>
       )}

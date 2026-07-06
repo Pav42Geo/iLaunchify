@@ -15,16 +15,18 @@ import { assertOrderTransition } from '@ilaunchify/orders'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
-/** Fan an "order needs attention" notification out to every admin. Best-effort —
- *  the dispatcher never throws, and we don't let a notify failure break the action. */
-async function notifyAdminsOrderNeedsAttention(orderId: string, status: string): Promise<void> {
+/** Fan a "dispute opened" notification out to every admin. Specific event per
+ *  the in-app P1 split (docs/IN_APP_NOTIFICATIONS_AUDIT.md §4); cast until
+ *  db:push + db:generate land the enum value. Best-effort — the dispatcher
+ *  never throws, and we don't let a notify failure break the action. */
+async function notifyAdminsDisputeOpened(orderId: string, category?: string): Promise<void> {
   const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
   await Promise.allSettled(
     admins.map((a) =>
       dispatchNotification({
         userId: a.id,
-        event: 'ORDER_NEEDS_ATTENTION',
-        data: { orderId, status },
+        event: 'ORDER_DISPUTE_OPENED' as NotificationEvent,
+        data: { orderId, ...(category ? { category } : {}) },
         audience: 'admin',
       }),
     ),
@@ -141,7 +143,7 @@ export async function openOrderDispute({
       windowDays: settings.disputeWindowDays,
     },
   })
-  await notifyAdminsOrderNeedsAttention(order.id, 'DISPUTED')
+  await notifyAdminsDisputeOpened(order.id, category)
   await notifyOrderPartnersDisputed(order.id)
   revalidatePath(`/orders/${order.id}`)
   revalidatePath('/orders')

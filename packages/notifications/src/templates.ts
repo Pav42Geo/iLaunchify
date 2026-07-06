@@ -26,6 +26,10 @@ export interface TemplateData {
   PARTNER_APPLIED: { companyName: string; partnerEmail: string; partnerId: string }
   PARTNER_SUBMITTED: { companyName: string; partnerId: string }
   ORDER_NEEDS_ATTENTION: { orderId: string; status: string }
+  // In-app P1 — specific admin-queue events split out of ORDER_NEEDS_ATTENTION
+  // (docs/IN_APP_NOTIFICATIONS_AUDIT.md §4; enum values pending db:push+generate).
+  ORDER_CANCELLATION_REQUESTED: { orderId: string; orderRef?: string }
+  ORDER_DISPUTE_OPENED: { orderId: string; orderRef?: string; category?: string }
   // Phase H4 — creator-facing workflow events
   CREATOR_DISPATCH_ACCEPTED: {
     orderId: string
@@ -272,6 +276,24 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `Order needs attention — ${d.status}`,
         body: `Order #${d.orderId.slice(-8)} moved to ${d.status}.`,
         link: `/orders/${d.orderId}`,
+      }
+    }
+    // In-app P1 — split out of ORDER_NEEDS_ATTENTION so the admin queue reads
+    // without clicking (docs/IN_APP_NOTIFICATIONS_AUDIT.md §4).
+    case 'ORDER_CANCELLATION_REQUESTED': {
+      const d = data as TemplateData['ORDER_CANCELLATION_REQUESTED']
+      return {
+        title: `Cancellation requested · ${d.orderRef ?? `#${d.orderId.slice(-8)}`}`,
+        body: 'A creator asked to cancel this order — review it in the cancellations queue.',
+        link: '/cancellations',
+      }
+    }
+    case 'ORDER_DISPUTE_OPENED': {
+      const d = data as TemplateData['ORDER_DISPUTE_OPENED']
+      return {
+        title: `Dispute opened · ${d.orderRef ?? `#${d.orderId.slice(-8)}`}`,
+        body: `A creator opened a dispute${d.category ? ` (${d.category.toLowerCase()})` : ''} — review it in the disputes queue.`,
+        link: '/disputes',
       }
     }
     // -----------------------------------------------------------------------

@@ -7,6 +7,7 @@ import {
   listNotificationsPage,
   countUnread,
   markAllRead,
+  archiveNotification,
   allCategories,
   eventsInCategory,
   isValidCategorySlug,
@@ -27,6 +28,14 @@ async function handleMarkAllRead() {
   'use server'
   const user = await requireUser()
   await markAllRead(user.id)
+  revalidatePath('/notifications')
+}
+
+async function handleArchive(formData: FormData) {
+  'use server'
+  const user = await requireUser()
+  const notificationId = String(formData.get('notificationId') ?? '')
+  if (notificationId) await archiveNotification({ userId: user.id, notificationId })
   revalidatePath('/notifications')
 }
 
@@ -82,6 +91,7 @@ export default async function NotificationsPage({
 
       <NotificationFeed
         accent="pink"
+        archiveAction={handleArchive}
         basePath="/notifications"
         filter={filter}
         category={category}

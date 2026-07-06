@@ -57,6 +57,12 @@ export function unknownTokens(template: string, event: NotificationEvent): strin
 export const EVENT_TOKEN_PALETTE: {
   [E in NotificationEvent]: readonly (keyof TemplateData[E] & string)[]
 } = {
+  // Cast-guard (in-app P1 split, docs/POST_PUSH_CASTGUARD_CLEANUP.md): inline as
+  // plain keys + delete this spread after db:push + db:generate.
+  ...({
+    ORDER_CANCELLATION_REQUESTED: ['orderId', 'orderRef'],
+    ORDER_DISPUTE_OPENED: ['orderId', 'orderRef', 'category'],
+  } as unknown as Partial<{ [E in NotificationEvent]: readonly (keyof TemplateData[E] & string)[] }>),
   SECTION_VERIFIED: ['sectionType', 'companyName'],
   SECTION_NEEDS_CHANGES: ['sectionType', 'companyName', 'notes'],
   PARTNER_ACTIVATED: ['companyName'],

@@ -17,6 +17,8 @@ export {
   countUnread,
   markRead,
   markAllRead,
+  archiveNotification,
+  autoArchiveRead,
 } from './query'
 export {
   getEffectivePreferences,

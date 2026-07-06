@@ -4355,6 +4355,11 @@ enum NotificationEvent {
   CREATOR_DISPATCH_PROGRESS // partner posted a progress update / revised ETA on a dispatch
   // Feedback module (docs/FEEDBACK_MODULE.md §5/§6) — delivery+3d combined ask
   CREATOR_RATE_PARTNERS // rate your partners + review your product (single +10d reminder reuses it)
+  // In-app P1 (docs/IN_APP_NOTIFICATIONS_AUDIT.md §4) — split out of the generic
+  // ORDER_NEEDS_ATTENTION so admins can tell what happened without clicking.
+  // ORDER_NEEDS_ATTENTION stays (existing rows reference it + ops sweeps still use it).
+  ORDER_CANCELLATION_REQUESTED // creator asked to cancel — admin review queue
+  ORDER_DISPUTE_OPENED // creator opened a dispute — admin review queue
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -4372,6 +4377,9 @@ model Notification {
   emailSentAt DateTime? // when Resend confirmed send
   emailError  String? // truncated error if send failed
   readAt      DateTime? // in-app read state
+  // In-app P1 — user archived the row (or the 30d auto-archive sweep did).
+  // Archived rows are hidden from the bell + feed but never deleted.
+  archivedAt  DateTime?
   // Free-form context (entity ids the receiver may want to navigate to)
   payload     Json?
   createdAt   DateTime            @default(now())
@@ -4380,6 +4388,7 @@ model Notification {
 
   @@index([userId, readAt]) // unread feed query
   @@index([userId, createdAt]) // chronological feed
+  @@index([userId, archivedAt]) // active-feed filter (in-app P1)
   @@index([event])
 }
 

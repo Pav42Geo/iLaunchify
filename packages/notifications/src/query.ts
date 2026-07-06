@@ -1,7 +1,14 @@
-// Read + mark-read helpers for the notification center UI.
+// Read + mark-read + archive helpers for the notification center UI.
 
 import { prisma } from '@ilaunchify/db'
 import type { Notification, NotificationEvent } from '@ilaunchify/db'
+
+// Cast-guard (in-app P1, docs/POST_PUSH_CASTGUARD_CLEANUP.md): Notification.archivedAt
+// lands with the next `pnpm db:push && pnpm db:generate`. The Record<string, never>
+// spread typechecks against the stale client; inline `archivedAt: null` directly and
+// delete these once the client knows the column.
+const NOT_ARCHIVED = { archivedAt: null } as unknown as Record<string, never>
+const SET_ARCHIVED = () => ({ archivedAt: new Date() }) as unknown as Record<string, never>
 
 /**
  * In-app notifications for a user, newest first. Defaults to a 50-row cap
@@ -15,6 +22,7 @@ export async function listNotifications(
     where: {
       userId,
       channel: 'IN_APP',
+      ...NOT_ARCHIVED,
       ...(options.unreadOnly ? { readAt: null } : {}),
     },
     orderBy: { createdAt: 'desc' },
@@ -43,6 +51,7 @@ export async function listNotificationsPage(
     where: {
       userId,
       channel: 'IN_APP',
+      ...NOT_ARCHIVED,
       ...(options.unreadOnly ? { readAt: null } : {}),
       ...(options.events ? { event: { in: options.events } } : {}),
     },
@@ -60,8 +69,37 @@ export async function listNotificationsPage(
 
 export async function countUnread(userId: string): Promise<number> {
   return prisma.notification.count({
-    where: { userId, channel: 'IN_APP', readAt: null },
+    where: { userId, channel: 'IN_APP', readAt: null, ...NOT_ARCHIVED },
   })
+}
+
+/** Archive one row (hidden from bell + feed, never deleted). In-app P1. */
+export async function archiveNotification(params: {
+  userId: string
+  notificationId: string
+}): Promise<void> {
+  await prisma.notification.updateMany({
+    // updateMany so the userId filter is a security fence, not a throw.
+    where: { id: params.notificationId, userId: params.userId },
+    data: { readAt: new Date(), ...SET_ARCHIVED() },
+  })
+}
+
+/**
+ * Auto-archive READ in-app rows older than `olderThanDays` (Pavel 2026-07-06:
+ * 30 days). Cron-driven — see apps/admin /api/cron/archive-notifications.
+ */
+export async function autoArchiveRead(olderThanDays = 30): Promise<{ count: number }> {
+  const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000)
+  const res = await prisma.notification.updateMany({
+    where: {
+      channel: 'IN_APP',
+      readAt: { lt: cutoff },
+      ...NOT_ARCHIVED,
+    },
+    data: SET_ARCHIVED(),
+  })
+  return { count: res.count }
 }
 
 export async function markRead(params: {
