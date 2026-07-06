@@ -100,10 +100,56 @@ Per their own published rules, these must **never appear on consumer product pac
 - `qai-organic` — qai-inc.com redirects to nsf.org; update `issuingBodyUrl`.
 - `heart-check`, `carbon-trust-standard` — program/label names updated at source; refresh copy.
 
-## 8. Recommended next actions
+## 8. EXPANSION 2026-07-05 — 90 new US/CA certs added (catalog now 179)
+
+Full US+Canada sweep of legally operating cert programs not previously in the catalog. All verified against issuing-body domains; every entry appended to `_certificates-master-catalog.json` (v2026-07-05) with artwork status + legal requirement in `applicabilityNotes`.
+
+### 8.1 New certs WITH free official artwork (3)
+
+| Cert | Download | Formats |
+|---|---|---|
+| Real Organic Project | https://realorganicproject.org/get-certified/usethelabel/ + logo zip at https://www.store.realorganicproject.org/shop/p/logos | PNG (color/no-border/white-band/BW) |
+| WSDA Organic | https://agr.wa.gov/departments/organic/resources/organic-labels | Organic + transitional logos, direct download |
+| MOSA Certified Organic | https://mosaorganic.org/logos-usage | PNG + EPS (AI/PDF on request); incl. MOSA Non-GMO |
+
+(Also semi-public: Green America seal zip at https://www.greenbusinessnetwork.org/s/GBN-Seal-General.zip and Nutrasource mark SVGs e.g. https://certifications.nutrasource.ca/images/certified-ifos.svg — publicly served but legally member/licensee-restricted.)
+
+### 8.2 All other 85+ new marks are GATED
+
+Same pattern as the original 89: artwork issued only after certification/license. Licensee entry-point URLs are in each catalog entry. Notable legal specifics:
+- **ISWA Halal**: written permission for EVERY label use; $250k-per-incident infringement notice.
+- **JAKIM-style statutory regimes**: none new, but Foodland Ontario requires a signed logo agreement even though free.
+- **PEFC**: labels ONLY from labelgenerator.pefc.org with licensee number. **SFI**: pre-press approval + label ID.
+- **TÜV OK compost**: mark must embed holder's S-code; misuse "systematically prosecuted."
+- **Green America**: seal never directly on product; can't imply product safety/quality.
+- **GGN Label**: the B2B GLOBALG.A.P. mark is NOT for retail packs — only the GGN consumer label is.
+- **How2Compost**: requires How2Recycle membership AND BPI certification of the package.
+
+### 8.3 Flagged entries (admin review before enabling)
+
+- `made-in-usa-brand` — 2014 FTC enforcement action against the issuer (deceptive certification claims; settled, still operating).
+- `certified-clean` — founder-driven niche org (ICIS / Shiva Ayyadurai).
+- `isura-certified` — closely associated with Natural Factors/Assured Natural; independence is their claim.
+- `plastic-bank-plastic-neutral` — self-administered, not ISO-accredited third-party.
+- `certified-angus-beef` — licensed brand program, not an independent third-party cert.
+- `ocean-wise-seafood` — by its own wording a RECOMMENDATION program, not a certification.
+- `npn-health-canada` — regulatory text element ("NPN 8XXXXXXX"), no artwork; model as label text, not badge.
+
+### 8.4 Updated existing entry
+
+- `climate-neutral` → renamed **The Climate Label** (program renamed 2025; URL now changeclimate.org; no longer a "carbon neutral" claim model).
+
+### 8.5 Investigated and correctly EXCLUDED (defunct / no mark / duplicate)
+
+Kehilla Kosher (merged into OK 2015) · CHFA (trade assoc, no product mark) · Fairtrade America/Canada (same FAIRTRADE Mark as Fairtrade International — licensing contacts, not new marks) · TerraCycle (program, not cert) · QAI Certified Transitional (effectively dead) · Food Justice Certified (AJP closing 2026) · PCO 100% Grassfed (absorbed into Organic Plus Trust) · GRS/RCS (textile-focused) · ASTM D6400/6868 (specs, not marks) · SBA VetCert + NVBDC (no on-pack logo program) · American Made Matters (self-certified membership) · Product of Canada / Made in Canada / FTC Made in USA (regulatory claims, no cert body) · Baby Food Council standard (never launched) · TRU-ID (site dead, unverifiable) · Dermatest (marginal US/CA presence) · Choose Cruelty Free (merged into Leaping Bunny) · Truth About Pet Food (advocacy listing).
+
+## 9. Recommended next actions
 
 1. Upload the staged USDA + EU pairs via /admin/certificate-types (canonical: `usda-organic-seal-color`, `EU_Organic_Logo_Colour_54x36mm`; alternates as C7 variants).
 2. Download + convert (same gs→inkscape pipeline) the 3 newly found free ones worth having: **Oregon Tilth, PCO, Regenerative Organic** (ROC ships SVG natively — no conversion needed). Optionally V-Label/FTUSA/B Corp/1%FTP for *display-only* chips with a "license required" flag.
 3. For the ~66 gated marks: build the partner-uploaded-artwork path (artwork + cert number + license evidence: FSC license code, MSC royalty agreement, RA claims approval).
 4. Add the §5 no-mark list as `TEXT_ONLY` cert types (no badge slot) and §6 facility schemes as `NO_CONSUMER_PACKAGING` in the badge placement gate.
-5. Apply §7 catalog fixes to `_certificates-master-catalog.json`.
+5. Apply §7 catalog fixes to `_certificates-master-catalog.json` (climate-neutral rename done 2026-07-05; qai/sqf/allergen-control-group renames still pending).
+6. **NEW 2026-07-05:** commit the expanded catalog + run `pnpm db:seed` (C1 importer upserts the 90 new CertificateTypes by slug) → `pnpm db:generate` not needed (no schema change).
+7. Download + convert the 3 new free organic marks (§8.1) via the existing gs→inkscape pipeline into `_public-cert-seals/`.
+8. Gate the §8.3 flagged slugs behind admin review (keep status non-ACTIVE or hide until reviewed).
