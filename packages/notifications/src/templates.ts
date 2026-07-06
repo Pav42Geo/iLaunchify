@@ -30,6 +30,10 @@ export interface TemplateData {
   // (docs/IN_APP_NOTIFICATIONS_AUDIT.md §4; enum values pending db:push+generate).
   ORDER_CANCELLATION_REQUESTED: { orderId: string; orderRef?: string }
   ORDER_DISPUTE_OPENED: { orderId: string; orderRef?: string; category?: string }
+  // Coverage batch 2026-07-06 (audit §2b; enum values pending db:push+generate)
+  PARTNER_TEAM_MEMBER_JOINED: { memberName: string; memberEmail?: string; isAdmin?: boolean }
+  CREATOR_CHANNEL_CONNECTED: { channelName: string; shopName?: string }
+  CREATOR_CHANNEL_DISCONNECTED: { channelName: string }
   // Phase H4 — creator-facing workflow events
   CREATOR_DISPATCH_ACCEPTED: {
     orderId: string
@@ -294,6 +298,31 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `Dispute opened · ${d.orderRef ?? `#${d.orderId.slice(-8)}`}`,
         body: `A creator opened a dispute${d.category ? ` (${d.category.toLowerCase()})` : ''} — review it in the disputes queue.`,
         link: '/disputes',
+      }
+    }
+    // --- Coverage batch 2026-07-06 (audit §2b) -----------------------------
+    case 'PARTNER_TEAM_MEMBER_JOINED': {
+      const d = data as TemplateData['PARTNER_TEAM_MEMBER_JOINED']
+      return {
+        title: `${d.memberName} joined your team`,
+        body: `${d.memberEmail ? `${d.memberEmail} ` : ''}accepted your invite${d.isAdmin ? ' as an org admin' : ''}. Manage roles and access on the Team page.`,
+        link: '/settings/team',
+      }
+    }
+    case 'CREATOR_CHANNEL_CONNECTED': {
+      const d = data as TemplateData['CREATOR_CHANNEL_CONNECTED']
+      return {
+        title: `${d.channelName} connected${d.shopName ? ` · ${d.shopName}` : ''}`,
+        body: 'The sales channel is linked to your account — you can publish products and route orders to it. Not you? Disconnect it now.',
+        link: '/channels',
+      }
+    }
+    case 'CREATOR_CHANNEL_DISCONNECTED': {
+      const d = data as TemplateData['CREATOR_CHANNEL_DISCONNECTED']
+      return {
+        title: `${d.channelName} disconnected`,
+        body: 'Publishing and order routing to this channel stopped. Reconnect any time from the Channels hub.',
+        link: '/channels',
       }
     }
     // -----------------------------------------------------------------------

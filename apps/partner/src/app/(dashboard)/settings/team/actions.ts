@@ -255,5 +255,23 @@ export async function acceptPartnerInvite({ token }: { token: string }): Promise
     payload: { inviteId: invite.id, grantAdmin: invite.grantAdmin, serviceGrantCount: grants.length },
   })
 
+  // Tell the inviter their teammate landed (coverage batch 2026-07-06).
+  // Best-effort, lazy-imported; cast until db:push + db:generate land the enum.
+  try {
+    const { dispatchNotification } = await import('@ilaunchify/notifications')
+    await dispatchNotification({
+      userId: invite.invitedByUserId,
+      event: 'PARTNER_TEAM_MEMBER_JOINED' as import('@ilaunchify/db').NotificationEvent,
+      data: {
+        memberName: user.name ?? user.email ?? 'A teammate',
+        ...(user.email ? { memberEmail: user.email } : {}),
+        isAdmin: invite.grantAdmin,
+      },
+      audience: 'partner',
+    })
+  } catch {
+    /* best-effort */
+  }
+
   return { ok: true }
 }

@@ -42,11 +42,15 @@ generated client already has these values, so the casts are dead weight; sweep t
 **"New order placed" in-app event — DECIDED NOT NEEDED (Pavel 2026-07-06):** the checkout
 confirmation screen + email is enough.
 
-### 2b. Also missing (no event at all)
+### 2b. Also missing (no event at all) — RESOLVED 2026-07-06
 
-Team invites (creator teammate / PartnerMembership), channel connect–disconnect + go-live results,
-payout paid (Stripe transfer), risk-gate actions touching a creator's order (per RISK_MANAGEMENT
-spec MONITOR→ACT), sample-order lifecycle. These need new enum values — additive.
+Coverage batch shipped (gated on db:push + db:generate): `PARTNER_TEAM_MEMBER_JOINED`
+(acceptPartnerInvite → inviter), `CREATOR_CHANNEL_CONNECTED` / `CREATOR_CHANNEL_DISCONNECTED`
+(channels hub actions; 'account' category on purpose — security-relevant confirmations).
+Deliberately NOT added (no real emit site exists): payout-paid (transfer webhook is a V1.5
+reconciliation stub), risk-gate creator events (Risk Center ACT ladder unbuilt), sample-order
+events (samples ride the normal order/dispatch pipeline — already covered). Creator-team
+invites are V1.5-deferred with the team model itself.
 
 ## 3. UX assessment vs. major platforms
 

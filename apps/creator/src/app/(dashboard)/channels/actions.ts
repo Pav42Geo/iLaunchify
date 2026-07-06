@@ -8,9 +8,31 @@
 // server-side (1 / 3 / all — CHANNEL_CONNECTION_LIMITS). Everything audited.
 
 import { prisma } from '@ilaunchify/db'
+import type { NotificationEvent } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, channelConnectionLimit } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { resolveChannelAdapter, type ChannelCode } from '@ilaunchify/channels'
+
+/** Best-effort security-confirmation ping (coverage batch 2026-07-06). Lazy
+ *  import + swallow — notifications never break a connect/disconnect. Cast
+ *  until db:push + db:generate land the enum values. */
+async function notifyChannelEvent(
+  userId: string,
+  event: 'CREATOR_CHANNEL_CONNECTED' | 'CREATOR_CHANNEL_DISCONNECTED',
+  data: { channelName: string; shopName?: string },
+): Promise<void> {
+  try {
+    const { dispatchNotification } = await import('@ilaunchify/notifications')
+    await dispatchNotification({
+      userId,
+      event: event as NotificationEvent,
+      data,
+      audience: 'creator',
+    })
+  } catch {
+    /* best-effort */
+  }
+}
 
 export interface ChannelCardData {
   channelId: string
@@ -143,6 +165,10 @@ export async function connectChannel(channelCode: string, shopHint?: string): Pr
     action: 'CHANNEL_CONNECTED',
     payload: { channel: channel.code, externalAccountId: tokens.externalAccountId ?? null, adapter: adapter.code },
   })
+  await notifyChannelEvent(user.id, 'CREATOR_CHANNEL_CONNECTED', {
+    channelName: channel.displayName ?? channel.code,
+    ...(tokens.externalAccountId ? { shopName: tokens.externalAccountId } : {}),
+  })
   return { ok: true, connectionId: conn.id, externalAccountId: tokens.externalAccountId ?? null }
 }
 
@@ -151,7 +177,7 @@ export async function disconnectChannel(connectionId: string): Promise<{ ok: boo
   const user = await requireUser()
   const conn = await prisma.channelConnection.findFirst({
     where: { id: connectionId, creatorUserId: user.id },
-    select: { id: true, channel: { select: { code: true } } },
+    select: { id: true, channel: { select: { code: true, displayName: true } } },
   })
   if (!conn) return { ok: false, error: 'Connection not found.' }
   await prisma.channelConnection.update({
@@ -163,6 +189,9 @@ export async function disconnectChannel(connectionId: string): Promise<{ ok: boo
     entityId: conn.id,
     action: 'CHANNEL_DISCONNECTED',
     payload: { channel: conn.channel.code },
+  })
+  await notifyChannelEvent(user.id, 'CREATOR_CHANNEL_DISCONNECTED', {
+    channelName: conn.channel.displayName ?? conn.channel.code,
   })
   return { ok: true }
 }

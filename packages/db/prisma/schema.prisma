@@ -4360,6 +4360,12 @@ enum NotificationEvent {
   // ORDER_NEEDS_ATTENTION stays (existing rows reference it + ops sweeps still use it).
   ORDER_CANCELLATION_REQUESTED // creator asked to cancel — admin review queue
   ORDER_DISPUTE_OPENED // creator opened a dispute — admin review queue
+  // Coverage batch 2026-07-06 (audit §2b) — events with verified emit sites only.
+  // Payout-paid + risk-hold deliberately skipped: no real emit site yet (transfer
+  // reconciliation is V1.5; Risk Center ACT ladder unbuilt).
+  PARTNER_TEAM_MEMBER_JOINED // invitee accepted — tell the inviter
+  CREATOR_CHANNEL_CONNECTED // sales channel connected (security-relevant confirmation)
+  CREATOR_CHANNEL_DISCONNECTED // sales channel disconnected
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

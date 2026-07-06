@@ -20,6 +20,12 @@ export const REQUIRED_PAYLOAD_KEYS: {
 } = {
   ORDER_CANCELLATION_REQUESTED: ['orderId'],
   ORDER_DISPUTE_OPENED: ['orderId'],
+  // Cast-guard (coverage batch 2026-07-06): inline after db:push + db:generate.
+  ...({
+    PARTNER_TEAM_MEMBER_JOINED: ['memberName'],
+    CREATOR_CHANNEL_CONNECTED: ['channelName'],
+    CREATOR_CHANNEL_DISCONNECTED: ['channelName'],
+  } as unknown as Partial<{ [E in NotificationEvent]: readonly (keyof TemplateData[E] & string)[] }>),
   SECTION_VERIFIED: ['sectionType'],
   SECTION_NEEDS_CHANGES: ['sectionType'],
   PARTNER_ACTIVATED: [],
