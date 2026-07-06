@@ -13,7 +13,7 @@
 // @ilaunchify/notifications (same pattern as routing.ts / reprint-dispatch.ts —
 // keeps the heavy dep off the module's static graph and avoids any cycle).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
 import {
   recomputeTemplateCoverage,
@@ -21,9 +21,9 @@ import {
   loadCapabilityShortlist,
 } from './print-coverage'
 
-/** §10.2 default shortlist depth per broadcast (admin-tunable later). */
+/** §10.2 fallback shortlist depth (admin-tunable via OrderSettings.rfqShortlistSize). */
 export const RFQ_SHORTLIST_SIZE = 10
-/** Open window before an unclaimed request escalates to ops (§10.2). */
+/** Fallback open window before escalation (OrderSettings.rfqExpiryDays). */
 export const RFQ_EXPIRY_DAYS = 14
 /** Partner-app landing for a claim — the capability inbox (PS-8c). */
 const PARTNER_CLAIM_PATH = '/capability-requests'
@@ -56,7 +56,8 @@ export async function broadcastCapabilityRequestsForTemplate(
   templateId: string,
   opts: { limit?: number; reason?: RfqBroadcastReason } = {},
 ): Promise<CapabilityBroadcastResult> {
-  const limit = opts.limit ?? RFQ_SHORTLIST_SIZE
+  const settings = await getOrderSettings()
+  const limit = opts.limit ?? settings.rfqShortlistSize
   const reason = opts.reason ?? 'PUBLISH_GATE'
   const EMPTY: CapabilityBroadcastResult = {
     applicable: false,
@@ -92,7 +93,7 @@ export async function broadcastCapabilityRequestsForTemplate(
 
     // Uncovered → one request per required packaging type.
     const tuples = buildCapabilityTuples(coverage)
-    const expiresAt = new Date(Date.now() + RFQ_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+    const expiresAt = new Date(Date.now() + settings.rfqExpiryDays * 24 * 60 * 60 * 1000)
 
     // Human packaging labels for the broadcast copy (partial disclosure — spec
     // only, never designs/brand/manufacturer identity).

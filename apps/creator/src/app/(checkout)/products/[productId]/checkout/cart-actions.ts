@@ -37,6 +37,7 @@ import {
   type FlavorExtra,
   resolveDestinationOptions,
   scoreAndSelectFc,
+  loadFcRotationPolicy,
   buildScoredAwardPayload,
   type FcCandidate,
   type FcScoringWeights,
@@ -1436,9 +1437,10 @@ async function resolveShipTo({
         facilityLng: w.facilityLng,
         blackedOut: w.blackoutDates.length > 0,
       }))
-      const [weights, awardHistory] = await Promise.all([
+      const [weights, awardHistory, fcRotationPolicy] = await Promise.all([
         readFcScoringWeights(),
         readFcAwardHistory(candidates.map((c) => c.partnerServiceId)),
+        loadFcRotationPolicy(),
       ])
       const selection = scoreAndSelectFc(
         candidates,
@@ -1455,6 +1457,7 @@ async function resolveShipTo({
           weights,
           history: awardHistory.history,
           totalRecentAwards: awardHistory.totalRecentAwards,
+          rotationPolicy: fcRotationPolicy,
         },
       )
       if (selection.winner) {

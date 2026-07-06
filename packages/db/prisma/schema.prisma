@@ -2889,6 +2889,11 @@ model OrderSettings {
   firstLegMarginBps        Int     @default(0) // platform margin on platform-booked freight (L5: creator pays at checkout)
   // Channel gates
   channelMinShelfLifeDays  Int     @default(105) // Amazon practical check-in floor; per-channel × category overrides later
+  // Print Capability RFQ knobs (docs/PRINT_PROVIDER_SELECTION.md §10.2, PS-8) —
+  // previously hardcoded constants; admin-tunable.
+  rfqShortlistSize    Int @default(10) // top-N printers notified per broadcast band
+  rfqExpiryDays       Int @default(14) // OPEN request window before ops escalation
+  rfqRebroadcastDays  Int @default(7)  // idle days before re-broadcasting to the next band
 
   updatedAt   DateTime @updatedAt
   updatedById String?

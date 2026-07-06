@@ -59,7 +59,8 @@ export default async function RoutingRotationPage() {
   await requireCapability('billing:write')
 
   const since90 = new Date(Date.now() - 90 * 86_400_000)
-  const [policies, printers, awards, settings, products, orderSettings] = await Promise.all([
+  const [policies, printers, awards, settings, products, orderSettings, fcAwardsRaw, warehouses] =
+    await Promise.all([
     prisma.rotationPolicy.findMany(),
     prisma.partnerService.findMany({
       where: { type: 'LABEL_PRINTING', status: 'ACTIVE', partner: { status: 'ACTIVE' } },
@@ -105,6 +106,17 @@ export default async function RoutingRotationPage() {
     // Routing knobs absorbed from the retired Partner Routing page — the single
     // OrderSettings the engine already reads (match weights + lifecycle timers).
     getOrderSettings(),
+    // SR-4 — FC awards (90d) + the active warehouse pool for the FC awards table.
+    prisma.fcAwardLog.findMany({
+      where: { awardedAt: { gte: since90 } },
+      select: { partnerServiceId: true },
+      take: 2000,
+    }),
+    prisma.partnerService.findMany({
+      where: { type: 'WAREHOUSE', status: 'ACTIVE', partner: { status: 'ACTIVE' } },
+      select: { id: true, excludeFromAutoRotation: true, partner: { select: { companyName: true } } },
+      orderBy: { partner: { companyName: 'asc' } },
+    }),
   ])
 
   // Award analytics — 90d shares + decision-path mix (JS aggregate; V1 volume).
@@ -140,6 +152,24 @@ export default async function RoutingRotationPage() {
     excluded: s.excludeFromAutoRotation,
     awards90d: awardsByService.get(s.id) ?? 0,
     sharePct: totalAwards > 0 ? Math.round(((awardsByService.get(s.id) ?? 0) / totalAwards) * 100) : 0,
+  }))
+
+  // SR-4 — FC award shares (90d) for the FC awards table.
+  const fcAwardsByService = new Map<string, number>()
+  for (const a of fcAwardsRaw) {
+    fcAwardsByService.set(a.partnerServiceId, (fcAwardsByService.get(a.partnerServiceId) ?? 0) + 1)
+  }
+  const totalFcAwards = fcAwardsRaw.length
+  const fcProviderRows: ProviderRow[] = warehouses.map((s) => ({
+    partnerServiceId: s.id,
+    companyName: s.partner.companyName,
+    ratingMean: null,
+    ratingBayesian: null,
+    ratingCount: 0,
+    sampleCapable: false,
+    excluded: s.excludeFromAutoRotation,
+    awards90d: fcAwardsByService.get(s.id) ?? 0,
+    sharePct: totalFcAwards > 0 ? Math.round(((fcAwardsByService.get(s.id) ?? 0) / totalFcAwards) * 100) : 0,
   }))
 
   // Dedupe seed products by name (routing-preview precedent).
@@ -181,6 +211,7 @@ export default async function RoutingRotationPage() {
         printPolicies={printPolicies}
         fcPolicy={fcPolicy}
         providers={providerRows}
+        fcProviders={fcProviderRows}
         products={uniqueProducts}
         fcWeights={{
           cost: settings?.fcCostWeightPct ?? 35,

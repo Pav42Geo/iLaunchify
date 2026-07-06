@@ -54,6 +54,9 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     set('channelProcessingBufferDays', 0, 60)
     set('channelSafetyStockDays', 0, 90)
     set('channelTargetDaysOfCover', 7, 365)
+    set('rfqShortlistSize', 1, 100)
+    set('rfqExpiryDays', 1, 90)
+    set('rfqRebroadcastDays', 1, 60)
     if (patch.partnerStrikeOnCancel !== undefined) data.partnerStrikeOnCancel = !!patch.partnerStrikeOnCancel
     if (patch.autoApproveCreatorCancelBeforeRouting !== undefined) data.autoApproveCreatorCancelBeforeRouting = !!patch.autoApproveCreatorCancelBeforeRouting
 

@@ -230,8 +230,23 @@ craft) SEPARATELY on delivery.
   awards deep-link to orders · configured-vs-actual variance alert · retire the now-unused
   `RoutingForm` export in OrderSettingsForms.tsx (harmless, left in place)
 
-### SR-4 — FC adoption (pending)
-- [ ] FC tab: poolSize/mode/new-node share layered on the existing scorer band
+### SR-4 — FC adoption — **BUILT 2026-07-06 (CW)**
+- [x] `FcRotationPolicy` on the pure `scoreAndSelectFc` (fc-scorer.ts): when the WAREHOUSE
+  policy is enabled it REPLACES the indifference-band tiebreak with new-node diversion → top-N
+  pool by score → EQUAL (least-recently-awarded) / RANDOM / WEIGHTED_EXACT / BEST_ONLY. Ranks by
+  fc-SCORE, not rating (FCs have none). Absent/disabled → unchanged V1.5 band. Injectable roll;
+  9 rotation tests (compiled-node) + full suite green.
+- [x] `loadFcRotationPolicy()` (routing.ts) maps the WAREHOUSE RotationPolicy row → FC shape
+  (new-provider → new-node). Wired into BOTH checkout FC selection call sites (cart-actions +
+  fulfillment-actions) — additive `rotationPolicy` in the ctx, so production is unchanged until
+  an admin enables the row.
+- [x] Admin FC tab (Routing & Rotation): FC rotation policy editor (enable / pool / mode / slot
+  shares / new-node share+cap → `saveRotationPolicy` WAREHOUSE), the now-editable FC scorer
+  weights (was a dead pointer → `saveFcWeights`), a dry-run FC preview (real engine over 100
+  rolls from the product's manufacturer origin), and the FC awards table (90d) + per-node kill
+  switch. Full FC parity with the printer tab.
+- [ ] **[PAVEL]** the WAREHOUSE RotationPolicy row is `enabled=false` until you flip it — no
+  behavior change ships. FC weights + RFQ knobs ride the pending OrderSettings columns migration.
 
 ### Later
 - [ ] Capacity damping (capacity-ledger tie-in) · measured-SLA factor · strike integration ·

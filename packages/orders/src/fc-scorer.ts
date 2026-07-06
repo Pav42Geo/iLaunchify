@@ -23,11 +23,31 @@ export interface FcAwardHistoryEntry {
   lastAwardedAt: Date | null
 }
 
+/**
+ * SR-4 — admin rotation policy layered on the FC scorer (the WAREHOUSE
+ * RotationPolicy row). When enabled, it REPLACES the indifference-band tiebreak
+ * with pool/mode/new-node logic (ranking by fc-score, not rating — FCs have no
+ * rating). Absent or `enabled:false` → the V1.5 band behavior is unchanged, so
+ * this is a no-op until an admin flips it on.
+ */
+export interface FcRotationPolicy {
+  enabled: boolean
+  poolSize: number // top-N by score
+  mode: 'EQUAL' | 'RANDOM' | 'WEIGHTED_EXACT' | 'BEST_ONLY'
+  slotSharesPct: number[] // WEIGHTED_EXACT — per rank slot
+  newNodeSharePct: number // % of awards diverted to under-exposed FCs
+  newNodeMaxOpen: number // an FC counts as "new" while its recent award count is below this
+}
+
 export interface FcScoringContext {
   weights: FcScoringWeights
   /** partnerServiceId → history (from FcAwardLog, e.g. last 90 days). */
   history: Record<string, FcAwardHistoryEntry>
   totalRecentAwards: number
+  /** SR-4 rotation policy (WAREHOUSE row). Omitted/disabled → band behavior. */
+  rotationPolicy?: FcRotationPolicy
+  /** Injectable roll for deterministic tests + the preview simulator. */
+  roll?: () => number
 }
 
 export interface FcScored {
@@ -40,9 +60,9 @@ export interface FcScored {
 export interface FcScoreResult {
   winner: FcScored | null
   scored: FcScored[]
-  /** True when the rotation tiebreak (not raw score) picked the winner. */
+  /** True when rotation (not raw best score) picked the winner. */
   rotationApplied: boolean
-  algorithm: 'V15_WEIGHTED_BAND' | 'V1_NEAREST_ELIGIBLE'
+  algorithm: 'V15_WEIGHTED_BAND' | 'V1_NEAREST_ELIGIBLE' | 'SR4_ROTATION_POLICY'
 }
 
 const MIN_CANDIDATES_FOR_SCORING = 3
@@ -129,6 +149,11 @@ export function scoreAndSelectFc(
   const best = eligibleScored[0]
   if (!best) return { winner: null, scored, rotationApplied: false, algorithm: 'V15_WEIGHTED_BAND' }
 
+  // SR-4 — admin rotation policy replaces the band tiebreak when enabled.
+  if (ctx.rotationPolicy?.enabled) {
+    return selectFcWithRotation(eligibleScored, scored, ctx, ctx.rotationPolicy, best)
+  }
+
   // Phase 3 — rotation inside the indifference band: least-recently-awarded wins.
   const bandCeiling = best.score * (1 + Math.max(0, w.rotationBandPct) / 100)
   const band = eligibleScored.filter((s) => s.score <= bandCeiling || s.score === best.score)
@@ -146,6 +171,79 @@ export function scoreAndSelectFc(
     rotationApplied: winner.ranked.candidate.partnerServiceId !== best.ranked.candidate.partnerServiceId,
     algorithm: 'V15_WEIGHTED_BAND',
   }
+}
+
+type EligibleScored = FcScored & { score: number }
+
+/**
+ * SR-4 pool/mode/new-node split over score-ranked FCs (pure; injectable roll).
+ * Mirrors the printer rotation semantics: new-node diversion → top-N pool →
+ * EQUAL (least-recently-awarded) / RANDOM / WEIGHTED_EXACT / BEST_ONLY.
+ */
+function selectFcWithRotation(
+  eligibleScored: EligibleScored[],
+  scored: FcScored[],
+  ctx: FcScoringContext,
+  policy: FcRotationPolicy,
+  best: EligibleScored,
+): FcScoreResult {
+  const roll = ctx.roll ?? Math.random
+  const awardsOf = (s: EligibleScored) =>
+    ctx.history[s.ranked.candidate.partnerServiceId]?.awardCount ?? 0
+  const lastOf = (s: EligibleScored) =>
+    ctx.history[s.ranked.candidate.partnerServiceId]?.lastAwardedAt?.getTime() ?? 0
+
+  const done = (winner: EligibleScored): FcScoreResult => ({
+    winner,
+    scored,
+    rotationApplied:
+      winner.ranked.candidate.partnerServiceId !== best.ranked.candidate.partnerServiceId,
+    algorithm: 'SR4_ROTATION_POLICY',
+  })
+
+  // 1. New-node diversion — under-exposed FCs (recent awards below the cap) get a
+  //    seeded exposure share; least-exposed (then best score) wins.
+  const newNodes = eligibleScored
+    .filter((s) => awardsOf(s) < Math.max(0, policy.newNodeMaxOpen))
+    .sort((a, b) => awardsOf(a) - awardsOf(b) || a.score - b.score)
+  if (policy.newNodeSharePct > 0 && newNodes.length > 0 && roll() < policy.newNodeSharePct / 100) {
+    return done(newNodes[0]!)
+  }
+
+  // 2. Pool — top-N by score.
+  const pool = eligibleScored.slice(0, Math.max(1, policy.poolSize))
+
+  // 3. Split.
+  switch (policy.mode) {
+    case 'BEST_ONLY':
+      return done(pool[0]!)
+    case 'RANDOM':
+      return done(pool[Math.min(pool.length - 1, Math.floor(roll() * pool.length))]!)
+    case 'WEIGHTED_EXACT':
+      return done(weightedPick(pool, policy.slotSharesPct, roll))
+    case 'EQUAL':
+    default: {
+      const byRecency = [...pool].sort((a, b) => lastOf(a) - lastOf(b) || a.score - b.score)
+      return done(byRecency[0]!)
+    }
+  }
+}
+
+/** Weighted random over the pool by per-rank shares; renormalized to pool length. */
+function weightedPick(
+  pool: EligibleScored[],
+  sharesPct: number[],
+  roll: () => number,
+): EligibleScored {
+  const shares = pool.map((_, i) => Math.max(0, sharesPct[i] ?? 0))
+  const total = shares.reduce((s, v) => s + v, 0)
+  if (total <= 0) return pool[0]!
+  let r = roll() * total
+  for (let i = 0; i < pool.length; i++) {
+    r -= shares[i]!
+    if (r < 0) return pool[i]!
+  }
+  return pool[pool.length - 1]!
 }
 
 /** FcAwardLog.scoreJson payload for scored selections (extends the V1 shape). */

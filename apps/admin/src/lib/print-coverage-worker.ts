@@ -16,15 +16,13 @@
 // the scheduler glue + the PAUSE + audit. Never throws per-item — one bad
 // template can't sink the sweep.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
 import {
   recomputeTemplateCoverage,
   broadcastCapabilityRequestsForTemplate,
   recoverTemplateCoverage,
 } from '@ilaunchify/orders'
-
-const REBROADCAST_AFTER_DAYS = 7
 
 export interface PrintCoverageSweepResult {
   templatesChecked: number
@@ -98,7 +96,8 @@ export async function runPrintCoverageSweep(): Promise<PrintCoverageSweepResult>
   }
 
   // ── 2. Weekly re-broadcast of stale OPEN requests ────────────────────────
-  const staleBefore = new Date(Date.now() - REBROADCAST_AFTER_DAYS * 24 * 60 * 60 * 1000)
+  const { rfqRebroadcastDays } = await getOrderSettings()
+  const staleBefore = new Date(Date.now() - rfqRebroadcastDays * 24 * 60 * 60 * 1000)
   const stale = await prisma.printCapabilityRequest.findMany({
     where: { status: 'OPEN', updatedAt: { lt: staleBefore } },
     select: { productTemplateId: true },

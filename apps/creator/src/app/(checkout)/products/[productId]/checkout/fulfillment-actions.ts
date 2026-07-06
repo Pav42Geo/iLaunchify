@@ -30,6 +30,7 @@ import { requireUser } from '@ilaunchify/auth'
 import {
   resolveDestinationOptions,
   scoreAndSelectFc,
+  loadFcRotationPolicy,
   type DestinationOption,
   type FcCandidate,
   type FcScoreResult,
@@ -348,9 +349,10 @@ export async function listDestinationOptions(
     algorithm: 'V1_NEAREST_ELIGIBLE',
   }
   if (classEnabled) {
-    const [weights, awardHistory] = await Promise.all([
+    const [weights, awardHistory, fcRotationPolicy] = await Promise.all([
       readFcScoringWeights(),
       readFcAwardHistory(candidates.map((c) => c.partnerServiceId)),
+      loadFcRotationPolicy(),
     ])
     selection = scoreAndSelectFc(
       candidates,
@@ -367,6 +369,7 @@ export async function listDestinationOptions(
         weights,
         history: awardHistory.history,
         totalRecentAwards: awardHistory.totalRecentAwards,
+        rotationPolicy: fcRotationPolicy,
       },
     )
   }

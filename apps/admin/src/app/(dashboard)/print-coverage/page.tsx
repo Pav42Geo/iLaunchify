@@ -7,10 +7,12 @@
 import Link from 'next/link'
 import { AlertTriangle, Megaphone, Handshake, ShieldAlert, Timer } from 'lucide-react'
 import { KpiWidget } from '@ilaunchify/ui'
+import { getOrderSettings } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { loadCoverageDashboard, type CoverageRequestStatus } from './data'
 import { CoverageRowActions } from './CoverageRowActions'
+import { RfqSettingsForm } from './RfqSettingsForm'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Print coverage — Admin' }
@@ -29,7 +31,10 @@ function ageDays(iso: string): string {
 
 export default async function PrintCoveragePage() {
   await requireCapability('reviews:write')
-  const { kpis, rows } = await loadCoverageDashboard()
+  const [{ kpis, rows }, settings] = await Promise.all([
+    loadCoverageDashboard(),
+    getOrderSettings(),
+  ])
 
   return (
     <div className="space-y-6">
@@ -69,6 +74,14 @@ export default async function PrintCoveragePage() {
           icon={Timer}
         />
       </div>
+
+      <RfqSettingsForm
+        initial={{
+          rfqShortlistSize: settings.rfqShortlistSize,
+          rfqExpiryDays: settings.rfqExpiryDays,
+          rfqRebroadcastDays: settings.rfqRebroadcastDays,
+        }}
+      />
 
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
         <div className="border-b border-ink-100 bg-[var(--bg-hero)] px-5 py-3">

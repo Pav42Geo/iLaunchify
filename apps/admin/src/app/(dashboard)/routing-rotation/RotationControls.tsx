@@ -9,6 +9,7 @@ import { useState, useTransition, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import {
   runPrintRotationPreview,
+  runFcRotationPreview,
   saveRotationPolicy,
   saveManufacturerWeights,
   saveDispatchLifecycle,
@@ -16,6 +17,7 @@ import {
   setExcludeFromAutoRotation,
   type PolicyContext,
   type PrintPreviewResult,
+  type FcPreviewResult,
   type RotationPolicyView,
 } from './actions'
 
@@ -65,6 +67,7 @@ export function RotationControls({
   printPolicies,
   fcPolicy,
   providers,
+  fcProviders,
   products,
   fcWeights,
   mfrWeights,
@@ -74,6 +77,7 @@ export function RotationControls({
   printPolicies: RotationPolicyView[]
   fcPolicy: RotationPolicyView
   providers: ProviderRow[]
+  fcProviders: ProviderRow[]
   products: Array<{ id: string; name: string }>
   fcWeights: {
     cost: number
@@ -128,12 +132,10 @@ export function RotationControls({
 
       {tab === 'FC' && (
         <div className="space-y-5">
+          <FcPolicyEditor initial={fcPolicy} />
+          <FcPreviewPanel products={products} />
           <FcWeightsEditor initial={fcWeights} />
-          <section className="rounded-2xl border border-dashed border-ink-300 bg-ink-50/40 p-5 text-[13px] text-ink-500">
-            SR-4 — pool size / split mode / new-node exposure for FCs lands here, driven by the
-            WAREHOUSE policy row (currently {fcPolicy.exists ? 'created' : 'not created'},{' '}
-            {fcPolicy.enabled ? 'enabled' : 'off'}).
-          </section>
+          <FcAwardsTable providers={fcProviders} />
         </div>
       )}
 
@@ -601,6 +603,342 @@ function PolicyForm({ initial }: { initial: RotationPolicyView }) {
         </button>
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// FC dry-run preview — the SAME engine production uses, over 100 rolls.
+// ---------------------------------------------------------------------------
+
+function FcPreviewPanel({ products }: { products: Array<{ id: string; name: string }> }) {
+  const [productId, setProductId] = useState('')
+  const [result, setResult] = useState<FcPreviewResult | null>(null)
+  const [isRunning, startRunning] = useTransition()
+
+  function run() {
+    if (!productId) return void toast.error('Pick a product.')
+    startRunning(async () => {
+      const res = await runFcRotationPreview({ productId })
+      if (!res.ok) return void toast.error(res.error)
+      setResult(res.data)
+    })
+  }
+
+  return (
+    <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <h2 className="font-display text-[15px] font-semibold text-ink-900">
+        Dry-run preview — which FC wins the next {result?.runs ?? 100} orders?
+      </h2>
+      <p className="mt-1 text-[12.5px] text-ink-600">
+        Runs the exact production FC engine (score → policy/band) from the product&rsquo;s
+        manufacturer origin. No awards are written.
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <div className="min-w-[240px] flex-1">
+          <label className="text-[12px] font-bold uppercase tracking-widest text-ink-700">Product</label>
+          <select
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            className="mt-1 block w-full rounded-lg border border-ink-200 px-2.5 py-2 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            <option value="">Pick a product…</option>
+            {products.map((pr) => (
+              <option key={pr.id} value={pr.id}>
+                {pr.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={run}
+          disabled={isRunning}
+          className="rounded-full bg-pink-600 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60"
+        >
+          {isRunning ? 'Simulating…' : 'Run 100 orders'}
+        </button>
+      </div>
+
+      {result && (
+        <div className="mt-4">
+          {!result.policyEnabled && (
+            <p className="mb-2 rounded-xl border border-warning-300 bg-warning-100/50 px-3.5 py-2 text-[12.5px] text-warning-700">
+              FC rotation engine is OFF — the split below is the V1.5 weighted band.
+            </p>
+          )}
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-ink-100 text-left text-[11px] uppercase tracking-wide text-ink-500">
+                <th className="py-2 pr-3 font-semibold">Fulfillment center</th>
+                <th className="py-2 pr-3 font-semibold">Eligible</th>
+                <th className="py-2 pr-3 font-semibold">Simulated share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.candidates.map((c) => (
+                <tr key={c.partnerServiceId} className="border-b border-ink-50">
+                  <td className="py-2 pr-3 font-medium text-ink-900">{c.companyName}</td>
+                  <td className="py-2 pr-3 text-ink-700">{c.eligible ? 'Yes' : '—'}</td>
+                  <td className="py-2 pr-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-32 overflow-hidden rounded-full bg-ink-100">
+                        <div
+                          className="h-full rounded-full bg-pink-600"
+                          style={{ width: `${Math.min(100, c.simulatedSharePct)}%` }}
+                        />
+                      </div>
+                      <span className="tabular-nums text-ink-900">{c.simulatedSharePct}%</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {result.note && <p className="mt-2 text-[11.5px] text-ink-500">{result.note}</p>}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// FC awards table (90d) + per-node kill switch — parity with the printer table.
+// ---------------------------------------------------------------------------
+
+function FcAwardsTable({ providers }: { providers: ProviderRow[] }) {
+  const [rows, setRows] = useState(providers)
+  const [isPending, startTransition] = useTransition()
+
+  function toggle(row: ProviderRow) {
+    startTransition(async () => {
+      const res = await setExcludeFromAutoRotation({
+        partnerServiceId: row.partnerServiceId,
+        exclude: !row.excluded,
+      })
+      if (!res.ok) return void toast.error(res.error)
+      setRows((prev) =>
+        prev.map((r) =>
+          r.partnerServiceId === row.partnerServiceId ? { ...r, excluded: !row.excluded } : r,
+        ),
+      )
+      toast.success(
+        !row.excluded
+          ? `${row.companyName} removed from auto-rotation (manual routing still works).`
+          : `${row.companyName} reinstated.`,
+      )
+    })
+  }
+
+  return (
+    <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <h2 className="font-display text-[15px] font-semibold text-ink-900">
+        Fulfillment centers — awards (90 days)
+      </h2>
+      {rows.length === 0 ? (
+        <p className="mt-2 text-[13px] text-ink-500">No active fulfillment centers yet.</p>
+      ) : (
+        <table className="mt-3 w-full text-[13px]">
+          <thead>
+            <tr className="border-b border-ink-100 text-left text-[11px] uppercase tracking-wide text-ink-500">
+              <th className="py-2 pr-3 font-semibold">Fulfillment center</th>
+              <th className="py-2 pr-3 font-semibold">Awards · 90d</th>
+              <th className="py-2 pr-3 font-semibold">Actual share</th>
+              <th className="py-2 pr-3 font-semibold">Auto-rotation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.partnerServiceId} className="border-b border-ink-50">
+                <td className="py-2 pr-3 font-medium text-ink-900">{r.companyName}</td>
+                <td className="py-2 pr-3 tabular-nums">{r.awards90d}</td>
+                <td className="py-2 pr-3 tabular-nums">{r.sharePct}%</td>
+                <td className="py-2 pr-3">
+                  <button
+                    onClick={() => toggle(r)}
+                    disabled={isPending}
+                    aria-pressed={r.excluded}
+                    className={`rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60 ${
+                      r.excluded
+                        ? 'bg-danger-100 text-danger-700 hover:bg-danger-100/70'
+                        : 'bg-success-100 text-success-700 hover:bg-success-100/70'
+                    }`}
+                  >
+                    {r.excluded ? 'Excluded — reinstate' : 'In pool — exclude'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// SR-4 — FC rotation policy (WAREHOUSE row). Pool/mode/new-node over score rank;
+// rating-only knobs (floor / location bias / sticky) don't apply to FCs.
+// ---------------------------------------------------------------------------
+
+function FcPolicyEditor({ initial }: { initial: RotationPolicyView }) {
+  const [p, setP] = useState(initial)
+  const [sharesText, setSharesText] = useState(initial.slotSharesPct.join(', '))
+  const [isSaving, startSaving] = useTransition()
+
+  function patch<K extends keyof RotationPolicyView>(key: K, value: RotationPolicyView[K]) {
+    setP((prev) => ({ ...prev, [key]: value }))
+  }
+  function save() {
+    const shares =
+      p.mode === 'WEIGHTED_EXACT'
+        ? sharesText.split(/[,\s]+/).filter(Boolean).map(Number)
+        : []
+    if (p.mode === 'WEIGHTED_EXACT' && shares.some((s) => !Number.isFinite(s))) {
+      toast.error('Slot shares must be numbers, e.g. 50, 30, 20')
+      return
+    }
+    startSaving(async () => {
+      const res = await saveRotationPolicy({ ...p, slotSharesPct: shares })
+      if (!res.ok) return void toast.error(res.error)
+      toast.success(
+        `FC rotation saved${p.enabled ? ' — engine LIVE.' : ' (engine off — band tiebreak).'}`,
+      )
+    })
+  }
+
+  const inputCls =
+    'w-24 rounded-lg border border-ink-200 px-2.5 py-1.5 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500'
+
+  return (
+    <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <h2 className="font-display text-[15px] font-semibold text-ink-900">
+        FC rotation policy (SR-4)
+      </h2>
+      <p className="mt-1 text-[12.5px] text-ink-600">
+        Layers pool / split-mode / new-node exposure on the FC scorer. Off = the V1.5 indifference
+        band (least-recently-awarded) stays authoritative. Ranks by score, not rating.
+      </p>
+
+      <label className="mt-4 flex items-start gap-2.5 rounded-xl border border-ink-200 bg-ink-50/40 p-3.5">
+        <input
+          type="checkbox"
+          checked={p.enabled}
+          onChange={(e) => patch('enabled', e.target.checked)}
+          className="mt-0.5 accent-pink-600"
+        />
+        <span>
+          <span className="block text-[13.5px] font-semibold text-ink-900">
+            Rotation engine enabled for fulfillment centers
+          </span>
+          <span className="block text-[12px] text-ink-500">
+            Off = band tiebreak. Hard eligibility filters (storage class, hazmat, capacity,
+            blackout) always run first either way.
+          </span>
+        </span>
+      </label>
+
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <label className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
+            Pool size (top-N by score)
+          </label>
+          <div className="mt-1 flex items-center gap-2">
+            {[3, 5].map((n) => (
+              <button
+                key={n}
+                onClick={() => patch('poolSize', n)}
+                aria-pressed={p.poolSize === n}
+                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold ${
+                  p.poolSize === n
+                    ? 'bg-ink-900 text-white'
+                    : 'border border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                }`}
+              >
+                Top {n}
+              </button>
+            ))}
+            <input
+              type="number"
+              min={1}
+              max={25}
+              value={p.poolSize}
+              onChange={(e) => patch('poolSize', Math.max(1, Number(e.target.value) || 1))}
+              className={inputCls}
+              aria-label="Custom pool size"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
+            Split mode
+          </label>
+          <select
+            value={p.mode}
+            onChange={(e) => patch('mode', e.target.value as RotationPolicyView['mode'])}
+            className="mt-1 block w-full rounded-lg border border-ink-200 px-2.5 py-2 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            <option value="EQUAL">Equal (least-recently-awarded)</option>
+            <option value="RANDOM">Random</option>
+            <option value="WEIGHTED_EXACT">Exact percentages</option>
+            <option value="BEST_ONLY">Best only</option>
+          </select>
+          <p className="mt-1 text-[11.5px] text-ink-500">{MODE_HELP[p.mode]}</p>
+        </div>
+
+        {p.mode === 'WEIGHTED_EXACT' && (
+          <div>
+            <label className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
+              Slot shares (%, sum 100)
+            </label>
+            <input
+              type="text"
+              value={sharesText}
+              onChange={(e) => setSharesText(e.target.value)}
+              placeholder="50, 30, 20"
+              className="mt-1 block w-full rounded-lg border border-ink-200 px-2.5 py-2 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="text-[12px] font-bold uppercase tracking-widest text-ink-700">
+            New-node share %
+          </label>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={p.newProviderSharePct}
+              onChange={(e) => patch('newProviderSharePct', Math.max(0, Number(e.target.value) || 0))}
+              className={inputCls}
+            />
+            <span className="text-[11.5px] text-ink-500">
+              of awards divert to under-exposed FCs (new while under{' '}
+              <input
+                type="number"
+                min={0}
+                value={p.newProviderMaxOpen}
+                onChange={(e) => patch('newProviderMaxOpen', Math.max(0, Number(e.target.value) || 0))}
+                className="w-14 rounded-lg border border-ink-200 px-2 py-1 text-[12px]"
+                aria-label="New-node award cap"
+              />{' '}
+              awards)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={save}
+          disabled={isSaving}
+          className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60"
+        >
+          {isSaving ? 'Saving…' : 'Save FC rotation'}
+        </button>
+      </div>
+    </section>
   )
 }
 

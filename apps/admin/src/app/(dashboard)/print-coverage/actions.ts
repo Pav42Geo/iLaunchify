@@ -10,8 +10,23 @@ import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { broadcastCapabilityRequestsForTemplate, RFQ_EXPIRY_DAYS } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
+import { saveOrderSettings } from '../order-settings/actions'
 
 type Result = { ok: true; message: string } | { ok: false; error: string }
+
+export interface RfqSettingsInput {
+  rfqShortlistSize: number
+  rfqExpiryDays: number
+  rfqRebroadcastDays: number
+}
+
+/** RFQ broadcast knobs (§10.2) — top-N shortlist depth, open-window expiry, and
+ *  re-broadcast cadence. Forwards to the shared OrderSettings writer. */
+export async function saveRfqSettings(input: RfqSettingsInput): Promise<Result> {
+  const r = await saveOrderSettings(input, 'rfq')
+  revalidatePath('/print-coverage')
+  return r.ok ? { ok: true, message: 'RFQ settings saved.' } : { ok: false, error: r.error }
+}
 
 /** Push a template's open request(s) to the next un-notified printer band now. */
 export async function rebroadcastCoverageRequest(templateId: string): Promise<Result> {

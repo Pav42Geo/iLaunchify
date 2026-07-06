@@ -15,8 +15,13 @@ import {
   validateRotationPolicy,
   loadRotationPolicy,
   policyInputOf,
+  scoreAndSelectFc,
+  loadFcRotationPolicy,
   type RotationCandidate,
   type RotationPolicyInput,
+  type FcCandidate,
+  type FcScoringWeights,
+  type FcAwardHistoryEntry,
 } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 import { saveOrderSettings } from '../order-settings/actions'
@@ -423,4 +428,155 @@ export async function saveDispatchLifecycle(
   const r = await saveOrderSettings({ ...input }, 'routing')
   revalidatePath('/routing-rotation')
   return r.ok ? { ok: true, data: null } : { ok: false, error: r.error }
+}
+
+// ─── SR-4 FC dry-run preview (mirrors the printer simulator) ─────────────────
+// Builds candidates from the product's manufacturer origin, runs the REAL FC
+// engine over evenly-spaced rolls with the live WAREHOUSE policy. No awards written.
+
+export interface FcPreviewCandidateRow {
+  partnerServiceId: string
+  companyName: string
+  eligible: boolean
+  simulatedSharePct: number
+}
+export interface FcPreviewResult {
+  policyEnabled: boolean
+  candidates: FcPreviewCandidateRow[]
+  runs: number
+  note?: string
+}
+
+export async function runFcRotationPreview(input: {
+  productId: string
+  runs?: number
+}): Promise<Result<FcPreviewResult>> {
+  await requireCapability('billing:write')
+  const runs = Math.min(1000, Math.max(50, Math.floor(input.runs ?? 100)))
+
+  const product = await prisma.product.findUnique({
+    where: { id: input.productId },
+    select: {
+      productTemplate: {
+        select: {
+          hazmatClass: true,
+          labelingType: true,
+          manufacturerService: {
+            select: { facilityLat: true, facilityLng: true, partner: { select: { state: true } } },
+          },
+        },
+      },
+    },
+  })
+  const origin = product?.productTemplate?.manufacturerService
+  if (!origin) {
+    return { ok: false, error: 'This product has no manufacturer origin to route from.' }
+  }
+
+  const now = new Date()
+  const warehouses = await prisma.partnerService.findMany({
+    where: { type: 'WAREHOUSE', status: 'ACTIVE', partner: { status: 'ACTIVE' } },
+    select: {
+      id: true,
+      storageClasses: true,
+      hazmatAccepted: true,
+      fcCertifications: true,
+      weeklyPalletCapacity: true,
+      facilityLat: true,
+      facilityLng: true,
+      partner: { select: { companyName: true, state: true } },
+      blackoutDates: { where: { startsOn: { lte: now }, endsOn: { gte: now } }, take: 1 },
+    },
+  })
+  const nameOf = new Map(warehouses.map((w) => [w.id, w.partner.companyName]))
+  const candidates: FcCandidate[] = warehouses.map((w) => ({
+    partnerServiceId: w.id,
+    partnerName: w.partner.companyName,
+    city: null,
+    state: w.partner.state,
+    storageClasses: w.storageClasses,
+    hazmatAccepted: w.hazmatAccepted,
+    fcCertifications: w.fcCertifications,
+    weeklyPalletCapacity: w.weeklyPalletCapacity,
+    facilityLat: w.facilityLat,
+    facilityLng: w.facilityLng,
+    blackedOut: w.blackoutDates.length > 0,
+  }))
+
+  const settings = await prisma.orderSettings
+    .findUnique({
+      where: { id: 'default' },
+      select: {
+        fcCostWeightPct: true, fcDistanceWeightPct: true, fcSlaWeightPct: true,
+        fcCapacityWeightPct: true, fcRotationWeightPct: true, fcStorageMatchWeightPct: true,
+        fcRotationBandPct: true,
+      },
+    })
+    .catch(() => null)
+  const weights: FcScoringWeights = {
+    costWeightPct: settings?.fcCostWeightPct ?? 35,
+    distanceWeightPct: settings?.fcDistanceWeightPct ?? 15,
+    slaWeightPct: settings?.fcSlaWeightPct ?? 15,
+    capacityWeightPct: settings?.fcCapacityWeightPct ?? 15,
+    rotationWeightPct: settings?.fcRotationWeightPct ?? 10,
+    storageMatchWeightPct: settings?.fcStorageMatchWeightPct ?? 10,
+    rotationBandPct: settings?.fcRotationBandPct ?? 5,
+  }
+
+  const since90 = new Date(Date.now() - 90 * 86_400_000)
+  const awardRows = await prisma.fcAwardLog.findMany({
+    where: { partnerServiceId: { in: candidates.map((c) => c.partnerServiceId) }, awardedAt: { gte: since90 } },
+    select: { partnerServiceId: true, awardedAt: true },
+  })
+  const history: Record<string, FcAwardHistoryEntry> = {}
+  let totalRecentAwards = 0
+  for (const a of awardRows) {
+    totalRecentAwards += 1
+    const h = history[a.partnerServiceId] ?? { awardCount: 0, lastAwardedAt: null }
+    h.awardCount += 1
+    if (!h.lastAwardedAt || a.awardedAt > h.lastAwardedAt) h.lastAwardedAt = a.awardedAt
+    history[a.partnerServiceId] = h
+  }
+
+  const rotationPolicy = await loadFcRotationPolicy()
+
+  const selectionInput = {
+    storageClass: 'AMBIENT' as const, // representative — real orders derive per SKU
+    hazmatClass: (product.productTemplate?.hazmatClass ?? 'NONE') as string,
+    domain: (product.productTemplate?.labelingType ?? 'FOOD') as string,
+    pallets: 0,
+    originLat: origin.facilityLat,
+    originLng: origin.facilityLng,
+    originState: origin.partner?.state ?? null,
+  }
+
+  const wins = new Map<string, number>()
+  const eligibleIds = new Set<string>()
+  for (let i = 0; i < runs; i++) {
+    const roll = (i + 0.5) / runs
+    const r = scoreAndSelectFc(candidates, selectionInput as never, {
+      weights, history, totalRecentAwards, rotationPolicy, roll: () => roll,
+    })
+    for (const s of r.scored) if (s.ranked.eligible) eligibleIds.add(s.ranked.candidate.partnerServiceId)
+    if (r.winner) wins.set(r.winner.ranked.candidate.partnerServiceId, (wins.get(r.winner.ranked.candidate.partnerServiceId) ?? 0) + 1)
+  }
+
+  const rows: FcPreviewCandidateRow[] = candidates
+    .map((c) => ({
+      partnerServiceId: c.partnerServiceId,
+      companyName: nameOf.get(c.partnerServiceId) ?? c.partnerName,
+      eligible: eligibleIds.has(c.partnerServiceId),
+      simulatedSharePct: Math.round(((wins.get(c.partnerServiceId) ?? 0) / runs) * 1000) / 10,
+    }))
+    .sort((a, b) => b.simulatedSharePct - a.simulatedSharePct)
+
+  return {
+    ok: true,
+    data: {
+      policyEnabled: rotationPolicy.enabled,
+      candidates: rows,
+      runs,
+      note: 'Representative simulation at AMBIENT storage; real orders derive storage class per SKU.',
+    },
+  }
 }

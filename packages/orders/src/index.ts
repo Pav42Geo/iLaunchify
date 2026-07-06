@@ -195,7 +195,7 @@ export type {
   RotationContext,
   RotationDecision,
 } from './rotation'
-export { loadRotationPolicy, policyInputOf } from './routing'
+export { loadRotationPolicy, policyInputOf, loadFcRotationPolicy } from './routing'
 // SR-2.2 — sample print-leg resolver + verdict loop support.
 export { resolveSamplePrintLeg } from './sample-print'
 export type { SamplePrintLeg } from './sample-print'
@@ -282,7 +282,7 @@ export {
 } from './fc-selector'
 export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'
 export { scoreAndSelectFc, buildScoredAwardPayload } from './fc-scorer'
-export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry } from './fc-scorer'
+export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry, FcRotationPolicy } from './fc-scorer'
 
 // Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
 export {

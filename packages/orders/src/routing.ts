@@ -22,6 +22,7 @@ import {
   type RotationCandidate,
   type RotationPolicyInput,
 } from './rotation'
+import type { FcRotationPolicy } from './fc-scorer'
 
 // Re-exported for back-compat: estimateDispatchCosts now lives in the pure planner.
 export { estimateDispatchCosts } from './dispatch-planner'
@@ -428,6 +429,25 @@ export function policyInputOf(
         stickyReorders: policyRow.stickyReorders,
       }
     : DEFAULT_ROTATION_POLICY
+}
+
+/**
+ * SR-4 — load the WAREHOUSE rotation policy mapped onto the FC engine's shape
+ * (rating-specific knobs drop; new-provider → new-node). Always returns a value;
+ * `enabled:false` (no row / disabled) makes the FC scorer keep its band behavior.
+ */
+export async function loadFcRotationPolicy(
+  context: 'DEFAULT' | 'SAMPLE' | 'REPLENISHMENT' = 'DEFAULT',
+): Promise<FcRotationPolicy> {
+  const p = policyInputOf(await loadRotationPolicy('WAREHOUSE', context))
+  return {
+    enabled: p.enabled,
+    poolSize: p.poolSize,
+    mode: p.mode,
+    slotSharesPct: p.slotSharesPct,
+    newNodeSharePct: p.newProviderSharePct,
+    newNodeMaxOpen: p.newProviderMaxOpen,
+  }
 }
 
 async function rotatePrintShop(args: {
