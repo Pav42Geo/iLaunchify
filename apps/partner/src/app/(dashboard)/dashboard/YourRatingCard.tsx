@@ -20,6 +20,14 @@ export interface RatingCommentView {
   createdAt: string // ISO
 }
 
+// Aspect-attributed notes routed to this partner (docs/REVIEW_ATTRIBUTION_MODEL.md §3).
+// Narrative-only (no star) — the "what to fix" that sits beside the dimensional score.
+export interface AspectNoteView {
+  body: string
+  aspectLabel: string // e.g. "Printing"
+  createdAt: string // ISO
+}
+
 function Stars({ value, size = 13 }: { value: number; size?: number }) {
   return (
     <span className="inline-flex items-center gap-px" aria-hidden>
@@ -37,10 +45,12 @@ function Stars({ value, size = 13 }: { value: number; size?: number }) {
 export function YourRatingCard({
   services,
   comments,
+  notes = [],
   span = 12,
 }: {
   services: ServiceRatingView[]
   comments: RatingCommentView[]
+  notes?: AspectNoteView[]
   span?: number
 }) {
   const rated = services.filter((s) => s.count > 0)
@@ -121,6 +131,31 @@ export function YourRatingCard({
                 <span className="ml-1.5 text-[11px] text-ink-400">
                   {c.roleLabel} ·{' '}
                   {new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {notes.length > 0 && (
+        <div className="mt-5 border-t border-ink-100 pt-4">
+          <h3 className="text-[11px] font-medium uppercase tracking-wide text-ink-500">
+            Flagged by creators
+          </h3>
+          <p className="mt-0.5 text-[11.5px] text-ink-400">
+            Specific notes creators attributed to your work on an order — the “what to fix” beside
+            your score.
+          </p>
+          <ul className="mt-2 space-y-2.5">
+            {notes.map((n, i) => (
+              <li key={i} className="text-[12.5px] leading-relaxed text-ink-700">
+                <span className="mr-1.5 rounded bg-ink-100 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-600">
+                  {n.aspectLabel}
+                </span>
+                “{n.body}”
+                <span className="ml-1.5 text-[11px] text-ink-400">
+                  {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
               </li>
             ))}

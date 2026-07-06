@@ -215,6 +215,33 @@ model ReviewAspectNote {
 - Moderation reuses `ReviewStatus` (PUBLISHED/FLAGGED/HIDDEN) and the admin Feedback surface — one
   moderation queue, not two.
 - Everything writes an `AuditLog` row (`ReviewAspectNote`) like every other mutation.
+- `reanchored Boolean` marks a note the creator used to re-anchor the product star (§3.2a) — the
+  admin abuse signal.
+
+### 3.4a Admin controls (singleton, on the existing Review/Feedback surface)
+Pavel 2026-07-06: keep all of this in ONE place — the existing `/notifications-center/feedback`
+surface — and give admin **controls**, not just charts. A `ReviewAttributionSetting` singleton
+(id=1, `OrderSettings` pattern) holds the knobs; the engine falls back to
+`DEFAULT_ATTRIBUTION_CONTROLS` when unset:
+
+```prisma
+model ReviewAttributionSetting {
+  id                   Int      @id @default(1)
+  attributionEnabled   Boolean  @default(true)  // master switch for the whole layer
+  reanchorEnabled      Boolean  @default(true)  // offer the §3.2a fork
+  enforceReanchorFloor Boolean  @default(true)  // new star ≥ original on the PARTNER branch
+  offeredAspects       String[]                 // which aspect chips creators may tag
+  reanchorFlagRate     Float    @default(0.5)   // flag a partner above this re-anchor share
+  reanchorFlagMinNotes Int      @default(10)    // small-sample guard before the flag fires
+  updatedAt / updatedById
+}
+```
+
+Adjustable knobs, all admin-tunable so Pavel can monitor and correct course: turn attribution or
+re-anchoring on/off, drop the ≥-original floor if it ever proves too strict, restrict which aspects
+are offered, and tune the abuse-flag threshold (a partner whose notes are re-anchored above
+`reanchorFlagRate`, past `reanchorFlagMinNotes`, surfaces for review — catching both a manufacturer
+pushing blame onto partners and a partner genuinely underperforming).
 
 ### 3.5 Where it plugs into the existing flow
 The delivery+3d combined ask (FEEDBACK_MODULE §6.3) already runs: rate partners → review product.
@@ -278,29 +305,38 @@ them on the card before pinning → routing/Bayesian ranking consumes the same s
 
 ## Part 6 — Build checklist (additive; slots into the existing stages)
 
-**RA-A. Aspect engine + model (CW — collision-free)**
-- [ ] `ReviewAspect` enum + `ReviewAspectNote` model (additive; batch with next migration) — **[CW builds, PAVEL migrates]**
-- [ ] `resolveAspectPartners(orderId)` — pure read over the order graph → `{ aspect → {partnerServiceId, role, visibility} }`, offering only aspects present on the order (unit-tested) — **[CW]**
-- [ ] Visibility-snapshot helper reusing the partner-rating policy table — **[CW]**
+**RA-A. Aspect engine + model (CW — collision-free) — BUILT 2026-07-06 (CW), awaiting PAVEL migration**
+- [x] `ReviewAspect` enum + `ReviewAspectNote` model + `ReviewAttributionSetting` singleton (additive) — `packages/db/prisma/schema.prisma` — **[PAVEL migrates]**
+- [x] `resolveAspectPartners(legs)` + `availableAspects` / `resolveOneAspect` — pure, deterministic; offers PRODUCT always + partner aspects with a resolvable leg (PACKAGING falls back co-packer→manufacturer); decoupled from `DispatchType` via normalized `{role, partnerServiceId}` legs — `packages/orders/src/review-aspects.ts`
+- [x] `visibilityForRole` (printer/mfr PUBLIC, co-packer/FC ADMIN_SELF) — snapshot at capture
+- [x] §3.2a fork engine: `shouldOfferAttributionFork`, `validateReanchorRating` (≥-original floor), `applyAttributionOutcome` (PRODUCT/MIX/PARTNER) + `applyOfferedAspects` admin filter + `DEFAULT_ATTRIBUTION_CONTROLS`
+- [x] 19 logic checks pass (vitest suite `review-aspects.test.ts` + node type-strip run; vitest can't execute in the CW sandbox — rollup native-binary mismatch — so verified via `node --experimental-strip-types`)
 
-**RA-B. Review composer (progressive attribution)**
-- [ ] Detractor-trigger (≤3★ or "something went wrong" link) opens aspect chips (order-filtered) — **[CW]**
-- [ ] Per-aspect micro-note fields; submit fans out to `ReviewAspectNote` with routed partnerServiceId + audit — **[CW]**
-- [ ] Product stars/body remain product-scoped; routing shown to the creator ("this note goes to your printer") — **[CW]**
-- [ ] **Fair re-anchoring (§3.2a, V1):** ≤3★ + tagged aspect → the three-way fork; "partner — product was fine" re-anchors the product-only star (≥ original guard), opens the partner's dimensional rating, sets `reanchored`, audits; review card shows the quiet "attributed to [aspect]" line — **[CW]**
+**RA-B. Review composer (progressive attribution) — BUILT 2026-07-06 (CW)**
+- [x] Detractor-trigger (≤3★ or "something went wrong" link) opens aspect chips (order-filtered) — `RateOrderClient.tsx`
+- [x] Per-aspect micro-note fields; submit fans out to `ReviewAspectNote` with server-re-resolved partnerServiceId + visibility snapshot + audit — `actions.ts` (`submitProductReview`)
+- [x] Product stars/body remain product-scoped; routing shown to the creator (aspect label · partner name) — `page.tsx` builds legs + resolves aspects
+- [x] **Fair re-anchoring (§3.2a, V1):** the three-way fork; "partner — product was fine" re-anchors the product-only star (≥-original guard, server-re-checked), sets `reanchored`, audits; replace-in-place notes (idempotent re-submit)
 
-**RA-C. Partner + admin surfaces**
-- [ ] Partner dashboard: aspect notes join the "Your rating" card comment stream (role-scoped) — **[CW]**
-- [ ] Admin Feedback surface: `ReviewAspectNote` in the same moderation queue (PUBLISHED/FLAGGED/HIDDEN + reason + audit) — **[CW]**
+**RA-C. Partner surfacing — BUILT 2026-07-06 (CW)**
+- [x] Partner dashboard: aspect notes render as a "Flagged by creators" section on the "Your rating" card (role-scoped, PUBLISHED only) — `YourRatingCard.tsx` + `dashboard/page.tsx`
 
-**RA-D. Print-provider card reviews modal (question 3)**
-- [ ] Card: "★ x · N reviews" affordance deep-opens the modal to Reviews (below min-N → "New") — **[CW]**
-- [ ] Provider Details modal: Reviews section (dimension bars + public printer-aspect notes + rating comments, verified badge) — **[CW]**
+**RA-D. Print-provider card reviews modal (question 3) — BUILT 2026-07-06 (CW)**
+- [x] Card: "See N reviews" affordance deep-opens the Provider Details modal, scrolled to Reviews (below min-N → "New") — `PrintProvidersSection.tsx`
+- [x] Provider Details modal: Reviews section (dimension bars + public printer-aspect notes + printer rating comments, "Verified order" badge) — printer-role signal only, never product reviews — `print-providers.ts` + modal
+
+**RA-E. Admin controls (one place — existing Review/Feedback surface) — BUILT 2026-07-06 (CW)**
+- [x] `Attribution` tab on `/notifications-center/feedback`: `AttributionControls` (enable / re-anchor / floor / offered aspects / abuse-flag rate + min-notes → `ReviewAttributionSetting` upsert, audited)
+- [x] Monitoring: aspect-note count, re-anchored count + %, flagged-partner list (re-anchor share ≥ threshold past min-notes)
+- [x] `ReviewAspectNote` moderation table in the same surface (Hide-with-reason / Restore, audited) — `AspectNoteModerationButtons` + `moderateAspectNote`
+
+**Verification — 2026-07-06:** `@ilaunchify/orders` + creator/marketing/partner/admin apps all `tsc --noEmit` clean; engine 19 checks pass. Migration ran (Pavel). Audit gained `ReviewAspectNote` + `ReviewAttributionSetting` entity types.
 
 **Later (V1.5+)**
 - [ ] `partnerReply` extended to aspect notes (public printer response) — **[V1.5]**
+- [ ] Studio print-spec pinned-provider / per-flavor indication — **[CODE — canvas hot zone]**
 
-**Suggested order:** RA-A → RA-B → RA-D → RA-C. RA-A is buildable immediately and gates the rest.
+**Build order (done):** RA-A → RA-B → RA-D → RA-C → RA-E.
 
 ## Sources
 - eBay detailed seller ratings (4 aspects): https://www.ebay.com/help/buying/resolving-issues-sellers/seller-ratings?id=4023

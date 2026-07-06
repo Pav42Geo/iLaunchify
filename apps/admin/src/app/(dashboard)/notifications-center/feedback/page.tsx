@@ -13,9 +13,11 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
+import { DEFAULT_ATTRIBUTION_CONTROLS } from '@ilaunchify/orders'
 import { cn } from '@ilaunchify/ui'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
-import { TriageButtons, ReviewModerationButtons } from './FeedbackRowActions'
+import { TriageButtons, ReviewModerationButtons, AspectNoteModerationButtons } from './FeedbackRowActions'
+import { AttributionControls } from './AttributionControls'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Feedback — Admin' }
@@ -44,6 +46,7 @@ export default async function FeedbackPage({
   const { subject, status, score, view, page } = await searchParams
   const pageNum = Math.max(1, Number(page) || 1)
   const showReviews = view === 'reviews'
+  const showAttribution = view === 'attribution'
   const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
   // ---- KPIs (30d window) ----------------------------------------------------
@@ -84,6 +87,28 @@ export default async function FeedbackPage({
       : [],
   ])
 
+  // Attribution tab loads (only when the tab is open).
+  const [attrSettings, aspectNotes, totalNotes, reanchoredNotes, noteAgg, reanchorAgg] = await Promise.all([
+    showAttribution ? prisma.reviewAttributionSetting.findUnique({ where: { id: 1 } }) : null,
+    showAttribution ? prisma.reviewAspectNote.findMany({ orderBy: { createdAt: 'desc' }, take: PAGE_SIZE }) : [],
+    showAttribution ? prisma.reviewAspectNote.count() : 0,
+    showAttribution ? prisma.reviewAspectNote.count({ where: { reanchored: true } }) : 0,
+    showAttribution
+      ? prisma.reviewAspectNote.groupBy({
+          by: ['partnerServiceId'],
+          _count: { _all: true },
+          where: { partnerServiceId: { not: null } },
+        })
+      : [],
+    showAttribution
+      ? prisma.reviewAspectNote.groupBy({
+          by: ['partnerServiceId'],
+          _count: { _all: true },
+          where: { reanchored: true, partnerServiceId: { not: null } },
+        })
+      : [],
+  ])
+
   // Author emails (soft FKs) in one lookup.
   const userIds = [
     ...new Set([...responses.map((r) => r.userId).filter((x): x is string => !!x), ...reviews.map((r) => r.creatorUserId)]),
@@ -92,6 +117,50 @@ export default async function FeedbackPage({
     ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } })
     : []
   const emailById = new Map(users.map((u) => [u.id, u.email]))
+
+  // ---- Attribution tab (docs/REVIEW_ATTRIBUTION_MODEL.md §3.4a) -------------
+  const controlsValue = {
+    attributionEnabled: attrSettings?.attributionEnabled ?? DEFAULT_ATTRIBUTION_CONTROLS.attributionEnabled,
+    reanchorEnabled: attrSettings?.reanchorEnabled ?? DEFAULT_ATTRIBUTION_CONTROLS.reanchorEnabled,
+    enforceReanchorFloor: attrSettings?.enforceReanchorFloor ?? DEFAULT_ATTRIBUTION_CONTROLS.enforceReanchorFloor,
+    offeredAspects:
+      attrSettings && attrSettings.offeredAspects.length > 0
+        ? attrSettings.offeredAspects
+        : [...DEFAULT_ATTRIBUTION_CONTROLS.offeredAspects],
+    reanchorFlagRate: attrSettings?.reanchorFlagRate ?? DEFAULT_ATTRIBUTION_CONTROLS.reanchorFlagRate,
+    reanchorFlagMinNotes: attrSettings?.reanchorFlagMinNotes ?? DEFAULT_ATTRIBUTION_CONTROLS.reanchorFlagMinNotes,
+  }
+  const reanchorByService = new Map(reanchorAgg.map((g) => [g.partnerServiceId as string, g._count._all]))
+  const flaggedPartners = noteAgg
+    .filter(
+      (g) =>
+        g._count._all >= controlsValue.reanchorFlagMinNotes &&
+        (reanchorByService.get(g.partnerServiceId as string) ?? 0) / g._count._all >= controlsValue.reanchorFlagRate,
+    )
+    .map((g) => ({
+      partnerServiceId: g.partnerServiceId as string,
+      total: g._count._all,
+      reanchored: reanchorByService.get(g.partnerServiceId as string) ?? 0,
+    }))
+  const attrServiceIds = [
+    ...new Set([
+      ...aspectNotes.map((n) => n.partnerServiceId).filter((x): x is string => !!x),
+      ...flaggedPartners.map((f) => f.partnerServiceId),
+    ]),
+  ]
+  const attrServices = attrServiceIds.length
+    ? await prisma.partnerService.findMany({
+        where: { id: { in: attrServiceIds } },
+        select: { id: true, partner: { select: { companyName: true } } },
+      })
+    : []
+  const companyByService = new Map(attrServices.map((s) => [s.id, s.partner.companyName]))
+  const ASPECT_LABEL: Record<string, string> = {
+    PRODUCT: 'Product',
+    PACKAGING: 'Packaging',
+    PRINTING: 'Printing',
+    FULFILLMENT: 'Delivery',
+  }
 
   const qs = (over: Record<string, string | undefined>) => {
     const p = new URLSearchParams()
@@ -128,7 +197,10 @@ export default async function FeedbackPage({
         <Link href={`/notifications-center/feedback${qs({ view: 'reviews', subject: undefined, status: undefined, score: undefined })}`} className={chip(showReviews)}>
           <Star className="mr-1 inline h-3 w-3" aria-hidden /> Reviews{flaggedReviews > 0 ? ` (${flaggedReviews} flagged)` : ''}
         </Link>
-        {!showReviews && (
+        <Link href={`/notifications-center/feedback${qs({ view: 'attribution', subject: undefined, status: undefined, score: undefined })}`} className={chip(showAttribution)}>
+          Attribution
+        </Link>
+        {!showReviews && !showAttribution && (
           <>
             <span className="mx-2 h-4 w-px bg-ink-200" aria-hidden="true" />
             {SUBJECTS.map((s) => (
@@ -152,7 +224,95 @@ export default async function FeedbackPage({
         )}
       </div>
 
-      {!showReviews ? (
+      {showAttribution ? (
+        <div className="space-y-6">
+          <AttributionControls value={controlsValue} />
+
+          <div className="grid grid-cols-3 gap-3">
+            <Kpi label="Aspect notes" value={totalNotes} icon={MessageSquareHeart} />
+            <Kpi
+              label="Re-anchored"
+              value={reanchoredNotes + (totalNotes > 0 ? ` · ${Math.round((reanchoredNotes / totalNotes) * 100)}%` : '')}
+              icon={ThumbsDown}
+            />
+            <Kpi
+              label="Flagged partners"
+              value={flaggedPartners.length}
+              icon={Inbox}
+              tone={flaggedPartners.length > 0 ? 'text-pink-700' : undefined}
+            />
+          </div>
+
+          {flaggedPartners.length > 0 && (
+            <div className="rounded-2xl border border-pink-200 bg-pink-50/60 p-4">
+              <h3 className="text-[12px] font-semibold uppercase tracking-wide text-pink-700">
+                High re-anchor rate — worth a look
+              </h3>
+              <p className="mt-0.5 text-[11.5px] text-ink-500">
+                A partner whose notes are re-anchored above the threshold — could be a genuine
+                pattern, or a creator/manufacturer pushing blame. Investigate, don&apos;t assume.
+              </p>
+              <ul className="mt-2 space-y-1 text-[13px] text-ink-700">
+                {flaggedPartners.map((f) => (
+                  <li key={f.partnerServiceId}>
+                    <span className="font-medium text-ink-900">
+                      {companyByService.get(f.partnerServiceId) ?? f.partnerServiceId.slice(-8)}
+                    </span>
+                    {' — '}
+                    {f.reanchored}/{f.total} notes re-anchored ({Math.round((f.reanchored / f.total) * 100)}%)
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="border-b border-ink-200 bg-[var(--bg-hero)] text-left text-[11px] font-medium uppercase tracking-[0.08em] text-ink-500">
+                  <th className="px-4 py-2.5">When</th>
+                  <th className="px-4 py-2.5">Aspect</th>
+                  <th className="px-4 py-2.5">Routed to</th>
+                  <th className="px-4 py-2.5">Note</th>
+                  <th className="px-4 py-2.5">Visibility</th>
+                  <th className="px-4 py-2.5">Status</th>
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink-100 align-top">
+                {aspectNotes.length === 0 && (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-ink-500">No aspect notes yet.</td></tr>
+                )}
+                {aspectNotes.map((n) => (
+                  <tr key={n.id} className="hover:bg-ink-50/60">
+                    <td className="whitespace-nowrap px-4 py-2.5 tabular-nums text-ink-500">
+                      {n.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {n.reanchored && (
+                        <span className="ml-1.5 rounded bg-pink-50 px-1 py-0.5 text-[10px] font-medium text-pink-700">re-anchored</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-ink-700">{ASPECT_LABEL[n.aspect] ?? n.aspect}</td>
+                    <td className="px-4 py-2.5 text-ink-700">
+                      {n.partnerServiceId ? (companyByService.get(n.partnerServiceId) ?? n.partnerServiceId.slice(-8)) : '—'}
+                      {n.role && <span className="ml-1 text-[10.5px] uppercase text-ink-400">{n.role}</span>}
+                    </td>
+                    <td className="max-w-[340px] px-4 py-2.5"><p className="line-clamp-2 text-ink-800">{n.body}</p></td>
+                    <td className="px-4 py-2.5">
+                      <span className="rounded bg-ink-100 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-600">{n.visibility}</span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={cn('rounded px-1.5 py-0.5 text-[10.5px] font-medium', n.status === 'PUBLISHED' ? 'bg-ink-100 text-ink-600' : n.status === 'FLAGGED' ? 'bg-warning-50 text-warning-900' : 'bg-danger-50 text-danger-600')}>
+                        {n.status.toLowerCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right"><AspectNoteModerationButtons noteId={n.id} status={n.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : !showReviews ? (
         <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
           <table className="w-full border-collapse text-[13px]">
             <thead>
@@ -258,7 +418,7 @@ export default async function FeedbackPage({
         </div>
       )}
 
-      {!showReviews && responseTotal > PAGE_SIZE && (
+      {!showReviews && !showAttribution && responseTotal > PAGE_SIZE && (
         <div className="flex justify-end gap-2 text-[12.5px]">
           {pageNum > 1 && <Link href={`/notifications-center/feedback${qs({ page: String(pageNum - 1) })}`} className={chip(false)}>← Prev</Link>}
           {pageNum * PAGE_SIZE < responseTotal && <Link href={`/notifications-center/feedback${qs({ page: String(pageNum + 1) })}`} className={chip(false)}>Next →</Link>}

@@ -68,3 +68,76 @@ export async function moderateReview(input: {
   revalidatePath('/notifications-center/feedback')
   return { ok: true }
 }
+
+// ---------------------------------------------------------------------------
+// Review-attribution (docs/REVIEW_ATTRIBUTION_MODEL.md) — aspect-note moderation
+// + admin controls singleton.
+// ---------------------------------------------------------------------------
+
+export async function moderateAspectNote(input: {
+  noteId: string
+  status: ReviewStatus
+  note?: string
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+  if (input.status === 'HIDDEN' && !input.note?.trim()) {
+    return { ok: false, error: 'Hiding a note requires a reason (audited)' }
+  }
+  const row = await prisma.reviewAspectNote.findUnique({ where: { id: input.noteId } })
+  if (!row) return { ok: false, error: 'Note not found' }
+  await prisma.reviewAspectNote.update({
+    where: { id: row.id },
+    data: {
+      status: input.status,
+      moderatedById: admin.id,
+      moderationNote: input.note?.trim().slice(0, 1000) || row.moderationNote,
+    },
+  })
+  await logAuditAs(admin, {
+    entityType: 'ReviewAspectNote',
+    entityId: row.id,
+    action: 'REVIEW_ASPECT_NOTE_MODERATED',
+    fromValue: row.status,
+    toValue: input.status,
+    payload: { aspect: row.aspect, partnerServiceId: row.partnerServiceId, note: input.note?.trim() || undefined },
+  })
+  revalidatePath('/notifications-center/feedback')
+  return { ok: true }
+}
+
+export async function updateAttributionControls(input: {
+  attributionEnabled: boolean
+  reanchorEnabled: boolean
+  enforceReanchorFloor: boolean
+  offeredAspects: string[]
+  reanchorFlagRate: number
+  reanchorFlagMinNotes: number
+}): Promise<Result> {
+  const admin = await requireRole('ADMIN')
+  const VALID = ['PACKAGING', 'PRINTING', 'FULFILLMENT']
+  const offered = input.offeredAspects.filter((a) => VALID.includes(a))
+  const rate = Math.min(1, Math.max(0, Number(input.reanchorFlagRate) || 0))
+  const minNotes = Math.max(1, Math.round(Number(input.reanchorFlagMinNotes) || 1))
+  const data = {
+    attributionEnabled: input.attributionEnabled,
+    reanchorEnabled: input.reanchorEnabled,
+    enforceReanchorFloor: input.enforceReanchorFloor,
+    offeredAspects: offered,
+    reanchorFlagRate: rate,
+    reanchorFlagMinNotes: minNotes,
+    updatedById: admin.id,
+  }
+  await prisma.reviewAttributionSetting.upsert({
+    where: { id: 1 },
+    update: data,
+    create: { id: 1, ...data },
+  })
+  await logAuditAs(admin, {
+    entityType: 'ReviewAttributionSetting',
+    entityId: '1',
+    action: 'REVIEW_ATTRIBUTION_CONTROLS_UPDATED',
+    payload: data,
+  })
+  revalidatePath('/notifications-center/feedback')
+  return { ok: true }
+}

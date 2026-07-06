@@ -8,7 +8,17 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { RATING_DIMENSIONS, ratedRoleForDispatchType, type DimensionScores } from '@ilaunchify/orders'
+import {
+  RATING_DIMENSIONS,
+  ratedRoleForDispatchType,
+  resolveAspectPartners,
+  applyOfferedAspects,
+  aspectDef,
+  DEFAULT_ATTRIBUTION_CONTROLS,
+  type DimensionScores,
+  type OrderLeg,
+  type ReviewAspect,
+} from '@ilaunchify/orders'
 import { RateOrderClient } from './RateOrderClient'
 
 export const dynamic = 'force-dynamic'
@@ -78,6 +88,46 @@ export default async function RateOrderPage({
     }
   })
 
+  // Aspect attribution (docs/REVIEW_ATTRIBUTION_MODEL.md §3) — offer chips that
+  // route a partner-specific gripe to the responsible partner, derived from the
+  // order graph. Admin-tunable via the ReviewAttributionSetting singleton.
+  const settings = await prisma.reviewAttributionSetting.findUnique({ where: { id: 1 } })
+  const attributionEnabled = settings?.attributionEnabled ?? DEFAULT_ATTRIBUTION_CONTROLS.attributionEnabled
+  const reanchorEnabled = settings?.reanchorEnabled ?? DEFAULT_ATTRIBUTION_CONTROLS.reanchorEnabled
+  const offeredAspects =
+    settings && settings.offeredAspects.length > 0
+      ? (settings.offeredAspects as ReviewAspect[])
+      : DEFAULT_ATTRIBUTION_CONTROLS.offeredAspects
+
+  const legs: OrderLeg[] = order.dispatches.map((d) => ({
+    role: ratedRoleForDispatchType(d.type),
+    partnerServiceId: d.partnerService.id,
+  }))
+  const serviceName = new Map(
+    order.dispatches.map((d) => [d.partnerService.id, d.partnerService.partner.companyName]),
+  )
+  const existingNotes =
+    existingReview && attributionEnabled
+      ? await prisma.reviewAspectNote.findMany({ where: { productReviewId: existingReview.id } })
+      : []
+  const noteByAspect = new Map(existingNotes.map((n) => [n.aspect as ReviewAspect, n.body]))
+
+  const attribution =
+    attributionEnabled && product
+      ? {
+          reanchorEnabled,
+          aspects: applyOfferedAspects(resolveAspectPartners(legs), offeredAspects)
+            .filter((r) => r.aspect !== 'PRODUCT' && r.partnerServiceId) // chips = partner aspects only
+            .map((r) => ({
+              aspect: r.aspect,
+              label: aspectDef(r.aspect).label,
+              prompt: aspectDef(r.aspect).prompt,
+              partnerName: serviceName.get(r.partnerServiceId!) ?? null,
+              existingBody: noteByAspect.get(r.aspect) ?? '',
+            })),
+        }
+      : null
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Link
@@ -108,6 +158,7 @@ export default async function RateOrderPage({
         <RateOrderClient
           orderId={order.id}
           cards={cards}
+          attribution={attribution}
           review={
             product
               ? {

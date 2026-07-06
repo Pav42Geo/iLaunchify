@@ -7,7 +7,7 @@
 // by findRouting step 0 at checkout; clicking the selected card deselects
 // (back to auto-routing by rating).
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { RatingStars, RatingBreakdownPopover } from '@ilaunchify/ui'
 import type { ProviderCardData, PrintProvidersView } from '@/lib/print-providers'
 import { selectPrintProvider } from './select-provider-action'
@@ -39,7 +39,19 @@ function Chip({ children }: { children: React.ReactNode }) {
   )
 }
 
-function DetailsModal({ p, onClose }: { p: ProviderCardData; onClose: () => void }) {
+function DetailsModal({
+  p,
+  scrollToReviews = false,
+  onClose,
+}: {
+  p: ProviderCardData
+  scrollToReviews?: boolean
+  onClose: () => void
+}) {
+  const reviewsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (scrollToReviews) reviewsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [scrollToReviews])
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/40 p-4"
@@ -112,11 +124,40 @@ function DetailsModal({ p, onClose }: { p: ProviderCardData; onClose: () => void
           <Chip>{p.substrateCount} material{p.substrateCount === 1 ? '' : 's'}</Chip>
         </div>
 
-        {p.rating.dims.length > 0 && (
-          <div className="mt-5 border-t border-ink-100 pt-4">
-            <RatingBreakdownPopover mean={p.rating.mean ?? 0} count={p.rating.count} dims={p.rating.dims} />
-          </div>
-        )}
+        {/* Reviews (docs/REVIEW_ATTRIBUTION_MODEL.md §5) — printer-role signal only */}
+        <div className="mt-5 border-t border-ink-100 pt-4" ref={reviewsRef}>
+          <h4 className="text-[11px] font-medium uppercase tracking-wide text-ink-500">
+            Reviews{p.rating.count > 0 ? ` · ${p.rating.count}` : ''}
+          </h4>
+          {p.rating.isNew ? (
+            <p className="mt-1 text-[12.5px] text-ink-500">
+              New — not enough ratings yet to summarize.
+            </p>
+          ) : (
+            p.rating.dims.length > 0 && (
+              <div className="mt-2">
+                <RatingBreakdownPopover mean={p.rating.mean ?? 0} count={p.rating.count} dims={p.rating.dims} />
+              </div>
+            )
+          )}
+          {p.reviewItems.length > 0 ? (
+            <ul className="mt-3 space-y-2.5">
+              {p.reviewItems.map((r, i) => (
+                <li key={i} className="rounded-xl border border-ink-100 bg-ink-50/40 p-3">
+                  <p className="text-[12.5px] text-ink-800">“{r.body}”</p>
+                  <div className="mt-1 flex items-center gap-2 text-[11px] text-ink-500">
+                    <span className="rounded bg-ink-100 px-1.5 py-0.5 font-medium text-ink-600">Verified order</span>
+                    <span>{new Date(r.date).toLocaleDateString()}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            !p.rating.isNew && (
+              <p className="mt-2 text-[12px] text-ink-500">No written reviews yet.</p>
+            )
+          )}
+        </div>
       </div>
     </div>
   )
@@ -136,6 +177,7 @@ export function PrintProvidersSection({
   canSelect?: boolean
 }) {
   const [detailsFor, setDetailsFor] = useState<ProviderCardData | null>(null)
+  const [openToReviews, setOpenToReviews] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedServiceId)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -198,6 +240,18 @@ export function PrintProvidersSection({
                 </RatingStars>
               </div>
               <h3 className="mt-0.5 font-display text-[16px] font-semibold text-ink-900">{p.companyName}</h3>
+              {p.rating.count > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenToReviews(true)
+                    setDetailsFor(p)
+                  }}
+                  className="mt-0.5 text-[12px] font-medium text-pink-700 underline decoration-pink-300 underline-offset-2 hover:decoration-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 rounded"
+                >
+                  See {p.rating.count} review{p.rating.count === 1 ? '' : 's'}
+                </button>
+              )}
             </div>
 
             <dl className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12.5px] text-ink-600">
@@ -227,7 +281,10 @@ export function PrintProvidersSection({
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setDetailsFor(p)}
+                onClick={() => {
+                  setOpenToReviews(false)
+                  setDetailsFor(p)
+                }}
                 className="rounded-full border border-ink-200 bg-white px-4 py-2 text-[13px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
               >
                 Provider info
@@ -263,7 +320,16 @@ export function PrintProvidersSection({
         </p>
       )}
 
-      {detailsFor && <DetailsModal p={detailsFor} onClose={() => setDetailsFor(null)} />}
+      {detailsFor && (
+        <DetailsModal
+          p={detailsFor}
+          scrollToReviews={openToReviews}
+          onClose={() => {
+            setDetailsFor(null)
+            setOpenToReviews(false)
+          }}
+        />
+      )}
     </section>
   )
 }

@@ -130,6 +130,8 @@ export const AUDIT_ENTITY_TYPES = [
   'FeedbackResponse', // account-form submissions + admin triage actions
   'PartnerRating', // creator → partner dimensional ratings (submit/edit)
   'ProductReview', // verified creator reviews (submit/edit/moderation)
+  'ReviewAspectNote', // review aspect attribution — partner-routed notes (docs/REVIEW_ATTRIBUTION_MODEL.md)
+  'ReviewAttributionSetting', // admin controls for the attribution layer
   'ProductPrintSelection', // creator's manual print-provider pick (PS-3)
   'RotationPolicy', // Smart Rotation Engine admin knobs (SR-1)
   'SampleVerdict', // creator's judgment of a delivered sample (SR-2.2)

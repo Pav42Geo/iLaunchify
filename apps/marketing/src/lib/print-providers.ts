@@ -34,6 +34,9 @@ export interface ProviderCardData {
   } | null
   dielineCount: number
   substrateCount: number
+  // Reviews (docs/REVIEW_ATTRIBUTION_MODEL.md §5): PRINTER-role signal only —
+  // public aspect notes + rating comments. Never product reviews.
+  reviewItems: Array<{ body: string; date: string; kind: 'rating' | 'note' }>
 }
 
 export interface PrintProvidersView {
@@ -155,6 +158,38 @@ export async function getPrintProviderCards(templateSlug: string): Promise<Print
       prodDays.set(d.partnerServiceId, arr)
     }
 
+    // Printer reviews (§5.1): public aspect notes + printer rating comments.
+    const svcIds = matching.map((s) => s.id)
+    const [aspectNotes, ratingComments] = svcIds.length
+      ? await Promise.all([
+          prisma.reviewAspectNote.findMany({
+            where: { partnerServiceId: { in: svcIds }, role: 'PRINTER', visibility: 'PUBLIC', status: 'PUBLISHED' },
+            select: { partnerServiceId: true, body: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 200,
+          }),
+          prisma.partnerRating.findMany({
+            where: { partnerServiceId: { in: svcIds }, role: 'PRINTER', comment: { not: null } },
+            select: { partnerServiceId: true, comment: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 200,
+          }),
+        ])
+      : [[], []]
+    const reviewsBySvc = new Map<string, Array<{ body: string; date: string; kind: 'rating' | 'note' }>>()
+    for (const n of aspectNotes) {
+      if (!n.partnerServiceId) continue
+      const arr = reviewsBySvc.get(n.partnerServiceId) ?? []
+      arr.push({ body: n.body, date: n.createdAt.toISOString(), kind: 'note' })
+      reviewsBySvc.set(n.partnerServiceId, arr)
+    }
+    for (const c of ratingComments) {
+      if (!c.comment) continue
+      const arr = reviewsBySvc.get(c.partnerServiceId) ?? []
+      arr.push({ body: c.comment, date: c.createdAt.toISOString(), kind: 'rating' })
+      reviewsBySvc.set(c.partnerServiceId, arr)
+    }
+
     const providers: ProviderCardData[] = matching.map((s) => {
       const offerings =
         templateTypeIds.length === 0
@@ -198,6 +233,9 @@ export async function getPrintProviderCards(templateSlug: string): Promise<Print
           : null,
         dielineCount: s.dielines.length,
         substrateCount: s.partnerServiceSubstrates.length,
+        reviewItems: (reviewsBySvc.get(s.id) ?? [])
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .slice(0, 12),
       }
     })
 

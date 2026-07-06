@@ -14,9 +14,18 @@ import {
   validateDimensionScores,
   overallFromDimensions,
   aggregateRatings,
+  resolveAspectPartners,
+  applyOfferedAspects,
+  applyAttributionOutcome,
+  shouldOfferAttributionFork,
+  validateReanchorRating,
+  DEFAULT_ATTRIBUTION_CONTROLS,
   RATING_EDIT_WINDOW_DAYS,
   type DimensionScores,
   type RatedRole,
+  type OrderLeg,
+  type ReviewAspect,
+  type AttributionOutcome,
 } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
@@ -158,14 +167,85 @@ export async function submitProductReview(formData: FormData): Promise<Result> {
   if (title.length < 3) return { ok: false, error: 'Give your review a title' }
   if (body.length < 10) return { ok: false, error: 'Tell other creators a bit more' }
 
+  // Aspect attribution payload (docs/REVIEW_ATTRIBUTION_MODEL.md §3). Optional.
+  const rawAspects = String(formData.get('aspects') ?? '')
+  const outcomeRaw = String(formData.get('attributionOutcome') ?? '')
+  const newProductRating = formData.get('newProductRating') != null ? Number(formData.get('newProductRating')) : undefined
+  let submittedNotes: Array<{ aspect: ReviewAspect; body: string }> = []
+  if (rawAspects) {
+    try {
+      const parsed = JSON.parse(rawAspects) as Array<{ aspect: string; body: string }>
+      submittedNotes = parsed
+        .filter((n) => n && typeof n.aspect === 'string' && typeof n.body === 'string' && n.body.trim())
+        .map((n) => ({ aspect: n.aspect as ReviewAspect, body: n.body.trim().slice(0, 300) }))
+    } catch {
+      return { ok: false, error: 'Could not read the partner notes — please retry' }
+    }
+  }
+
   const order = await prisma.order.findFirst({
     where: { id: orderId, creatorUserId: user.id },
-    include: { items: { select: { productId: true }, take: 1 } },
+    include: {
+      items: { select: { productId: true }, take: 1 },
+      dispatches: { include: { partnerService: { select: { id: true } } } },
+    },
   })
   const productId = order?.items[0]?.productId
   if (!order || !productId) return { ok: false, error: 'Order not found' }
   if (!order.deliveredAt && !['DELIVERED', 'COMPLETED'].includes(order.status)) {
     return { ok: false, error: 'You can review once the order is delivered' }
+  }
+
+  // Admin controls + order graph → resolve which aspects are valid and to whom
+  // they route. Re-resolved server-side; the client's routing is never trusted.
+  const settings = await prisma.reviewAttributionSetting.findUnique({ where: { id: 1 } })
+  const attributionEnabled = settings?.attributionEnabled ?? DEFAULT_ATTRIBUTION_CONTROLS.attributionEnabled
+  const reanchorEnabled = settings?.reanchorEnabled ?? DEFAULT_ATTRIBUTION_CONTROLS.reanchorEnabled
+  const enforceReanchorFloor = settings?.enforceReanchorFloor ?? DEFAULT_ATTRIBUTION_CONTROLS.enforceReanchorFloor
+  const offeredAspects =
+    settings && settings.offeredAspects.length > 0
+      ? (settings.offeredAspects as ReviewAspect[])
+      : DEFAULT_ATTRIBUTION_CONTROLS.offeredAspects
+
+  const legs: OrderLeg[] = order.dispatches.map((d) => ({
+    role: ratedRoleForDispatchType(d.type),
+    partnerServiceId: d.partnerService.id,
+  }))
+  const resolvedByAspect = new Map(
+    applyOfferedAspects(resolveAspectPartners(legs), offeredAspects)
+      .filter((r) => r.aspect !== 'PRODUCT' && r.partnerServiceId)
+      .map((r) => [r.aspect, r]),
+  )
+
+  // Keep only notes for aspects that actually resolve to a partner on this order.
+  const validNotes = attributionEnabled
+    ? submittedNotes.filter((n) => resolvedByAspect.has(n.aspect))
+    : []
+
+  // §3.2a fair re-anchor: decide the effective PRODUCT star. Never trust the
+  // client's math — recompute the guard here.
+  let effectiveRating = rating
+  let reanchored = false
+  if (attributionEnabled && reanchorEnabled && outcomeRaw && shouldOfferAttributionFork(rating, validNotes.map((n) => n.aspect))) {
+    const outcome = outcomeRaw as AttributionOutcome
+    if (outcome === 'PARTNER' && !enforceReanchorFloor) {
+      // Floor disabled by admin — accept any in-range product-only star.
+      if (newProductRating === undefined || !Number.isInteger(newProductRating) || newProductRating < 1 || newProductRating > 5) {
+        return { ok: false, error: 'Rate the product 1–5 stars' }
+      }
+      effectiveRating = newProductRating
+      reanchored = true
+    } else {
+      const res = applyAttributionOutcome({ outcome, originalRating: rating, newProductRating })
+      if (!res.ok) return { ok: false, error: res.error }
+      effectiveRating = res.result.productRating
+      reanchored = res.result.reanchored
+    }
+  }
+  // Belt-and-suspenders: if the floor is on and a re-star came through, re-check.
+  if (reanchored && enforceReanchorFloor) {
+    const g = validateReanchorRating(rating, effectiveRating)
+    if (!g.ok) return { ok: false, error: g.error }
   }
 
   const existing = await prisma.productReview.findUnique({
@@ -191,32 +271,68 @@ export async function submitProductReview(formData: FormData): Promise<Result> {
     photoKeys.push(key)
   }
 
+  let reviewId: string
   if (existing) {
     await prisma.productReview.update({
       where: { id: existing.id },
-      data: { rating, title, body, photoAssetIds: photoKeys.slice(0, MAX_PHOTOS) },
+      data: { rating: effectiveRating, title, body, photoAssetIds: photoKeys.slice(0, MAX_PHOTOS) },
     })
+    reviewId = existing.id
   } else {
-    await prisma.productReview.create({
+    const created = await prisma.productReview.create({
       data: {
         productId,
         creatorUserId: user.id,
         orderId: order.id,
-        rating,
+        rating: effectiveRating,
         title,
         body,
         photoAssetIds: photoKeys.slice(0, MAX_PHOTOS),
         editableUntil: new Date(Date.now() + REVIEW_EDIT_WINDOW_DAYS * 24 * 60 * 60 * 1000),
       },
     })
+    reviewId = created.id
   }
 
   await logAuditAs(user, {
     entityType: 'ProductReview',
     entityId: productId,
     action: existing ? 'PRODUCT_REVIEW_UPDATED' : 'PRODUCT_REVIEW_SUBMITTED',
-    payload: { orderId: order.id, rating, photoCount: photoKeys.length },
+    payload: { orderId: order.id, rating: effectiveRating, reanchored, photoCount: photoKeys.length },
   })
+
+  // ---- Aspect notes: replace-in-place (idempotent re-submit), route to the
+  // responsible partner, snapshot visibility from the role's policy (§3.2a). ----
+  if (attributionEnabled) {
+    await prisma.reviewAspectNote.deleteMany({ where: { productReviewId: reviewId } })
+    for (const note of validNotes) {
+      const r = resolvedByAspect.get(note.aspect)!
+      await prisma.reviewAspectNote.create({
+        data: {
+          productReviewId: reviewId,
+          aspect: note.aspect,
+          partnerServiceId: r.partnerServiceId,
+          role: r.role,
+          body: note.body,
+          visibility: r.visibility,
+          reanchored,
+        },
+      })
+      await logAuditAs(user, {
+        entityType: 'ReviewAspectNote',
+        entityId: reviewId,
+        action: 'REVIEW_ASPECT_NOTE_SUBMITTED',
+        payload: {
+          orderId: order.id,
+          aspect: note.aspect,
+          partnerServiceId: r.partnerServiceId,
+          role: r.role,
+          visibility: r.visibility,
+          reanchored,
+        },
+      })
+    }
+  }
 
   revalidatePath(`/orders/${orderId}/rate`)
   return { ok: true }

@@ -61,13 +61,28 @@ function StarRow({
   )
 }
 
+interface AspectDef {
+  aspect: string
+  label: string
+  prompt: string
+  partnerName: string | null
+  existingBody: string
+}
+
+interface Attribution {
+  reanchorEnabled: boolean
+  aspects: AspectDef[]
+}
+
 export function RateOrderClient({
   orderId,
   cards,
   review,
+  attribution,
 }: {
   orderId: string
   cards: CardDef[]
+  attribution?: Attribution | null
   review: {
     productId: string
     productName: string
@@ -89,6 +104,22 @@ export function RateOrderClient({
   const [revTitle, setRevTitle] = useState(review?.existing?.title ?? '')
   const [revBody, setRevBody] = useState(review?.existing?.body ?? '')
   const [photos, setPhotos] = useState<File[]>([])
+
+  // Aspect attribution (docs/REVIEW_ATTRIBUTION_MODEL.md §3.2). Progressive: chips
+  // stay hidden on a happy review and open on a low score or an explicit tap.
+  const aspectDefs = attribution?.aspects ?? []
+  const hasAspects = aspectDefs.length > 0
+  const [aspectsRequested, setAspectsRequested] = useState(false)
+  const [aspectNotes, setAspectNotes] = useState<Record<string, string>>(
+    Object.fromEntries(aspectDefs.map((a) => [a.aspect, a.existingBody])),
+  )
+  const [outcome, setOutcome] = useState<'' | 'PRODUCT' | 'MIX' | 'PARTNER'>('')
+  const [reanchorRating, setReanchorRating] = useState(0)
+
+  const isLow = revRating > 0 && revRating <= 3
+  const aspectsOpen = hasAspects && (aspectsRequested || isLow)
+  const taggedAspects = aspectDefs.filter((a) => (aspectNotes[a.aspect] ?? '').trim().length > 0)
+  const forkVisible = Boolean(attribution?.reanchorEnabled) && isLow && taggedAspects.length > 0
 
   function setDim(dispatchId: string, slug: string, v: number) {
     setScores((prev) => {
@@ -122,6 +153,14 @@ export function RateOrderClient({
   }
 
   function saveReview() {
+    if (forkVisible && outcome === '') {
+      toast.error('Was it the product, or how a partner handled it? Pick one below.')
+      return
+    }
+    if (forkVisible && outcome === 'PARTNER' && reanchorRating < revRating) {
+      toast.error('Give the product-only rating — it can only be the same or higher.')
+      return
+    }
     startTransition(async () => {
       const fd = new FormData()
       fd.set('orderId', orderId)
@@ -129,6 +168,13 @@ export function RateOrderClient({
       fd.set('title', revTitle)
       fd.set('body', revBody)
       for (const p of photos) fd.append('photos', p)
+      // Aspect attribution: only tagged (non-empty) partner notes travel.
+      const notes = taggedAspects.map((a) => ({ aspect: a.aspect, body: (aspectNotes[a.aspect] ?? '').trim() }))
+      if (notes.length > 0) fd.set('aspects', JSON.stringify(notes))
+      if (forkVisible) {
+        fd.set('attributionOutcome', outcome)
+        if (outcome === 'PARTNER') fd.set('newProductRating', String(reanchorRating))
+      }
       const r = await submitProductReview(fd)
       if (r.ok) {
         toast.success('Review published — other creators will see it on the product page')
@@ -244,6 +290,79 @@ export function RateOrderClient({
               placeholder="How's the quality? Did it match your design? What should other creators know?"
               className={inputCls}
             />
+
+            {/* ---- Aspect attribution (§3.2): route a partner gripe off the product ---- */}
+            {hasAspects && (
+              <div className="rounded-xl border border-ink-200 bg-ink-50/40 p-3.5">
+                {!aspectsOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setAspectsRequested(true)}
+                    className="text-[12.5px] font-medium text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 rounded"
+                  >
+                    Something about a partner’s work? Tell the right partner →
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-[12.5px] leading-relaxed text-ink-600">
+                      If part of this was a partner’s doing — printing, packaging, delivery — tell
+                      them directly. It routes to the responsible partner and won’t change your
+                      product’s stars.
+                    </p>
+                    {aspectDefs.map((a) => (
+                      <div key={a.aspect}>
+                        <label className="text-[12.5px] font-medium text-ink-800">
+                          {a.label}
+                          {a.partnerName ? <span className="text-ink-500"> · {a.partnerName}</span> : null}
+                        </label>
+                        <textarea
+                          value={aspectNotes[a.aspect] ?? ''}
+                          onChange={(e) => setAspectNotes((p) => ({ ...p, [a.aspect]: e.target.value }))}
+                          rows={2}
+                          maxLength={300}
+                          placeholder={a.prompt}
+                          className={`${inputCls} mt-1`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {forkVisible && (
+                  <div className="mt-3 space-y-2 rounded-xl border border-pink-200 bg-pink-50 p-3.5">
+                    <p className="text-[12.5px] font-semibold text-ink-900">
+                      Was the disappointment about the product, or how a partner handled it?
+                    </p>
+                    {([
+                      ['PRODUCT', 'Mostly the product'],
+                      ['MIX', 'A mix of both'],
+                      ['PARTNER', 'The partner — the product was fine'],
+                    ] as const).map(([val, label]) => (
+                      <label key={val} className="flex items-center gap-2 text-[12.5px] text-ink-700">
+                        <input
+                          type="radio"
+                          name="attr-outcome"
+                          checked={outcome === val}
+                          onChange={() => setOutcome(val)}
+                          className="accent-pink-600"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                    {outcome === 'PARTNER' && (
+                      <div className="mt-1 space-y-1">
+                        <p className="text-[12px] text-ink-600">
+                          Rate just the product — the partner issue routes separately, so this can
+                          only be the same or higher:
+                        </p>
+                        <StarRow label="Product-only rating" value={reanchorRating} onChange={setReanchorRating} />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <label className="block text-[12.5px] font-medium text-ink-700">
               Photos (up to 4{review.existing?.photoCount ? ` — ${review.existing.photoCount} already uploaded` : ''})
               <input
