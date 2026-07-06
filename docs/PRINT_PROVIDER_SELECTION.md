@@ -204,7 +204,98 @@ encode exactly this, so a "can" product with PSL decoration pairs a LABEL printe
 while DIRECT_PRINT pairs only can-capable printers. No new concept needed — just the §7.2
 enforcement depth.
 
-## §8 Build phases + ownership
+## §8 Application Point & Graph Completeness — "the honey problem" (added 2026-07-05)
+
+**The scenario (Pavel):** honey producer declares "I don't do labels" → printer prints them →
+creator picks an FC at checkout → labels and unlabeled honey both arrive at the FC → nobody
+sticks labels on jars. Unfinished product, platform-level failure.
+
+**The root cause is architectural, and it's already latent in the code:** the manifest addresses
+legs from `order.shipTo*` — the ORDER's destination — but a LABEL leg's true destination is
+wherever APPLICATION happens, which is a property of the GRAPH, not the order. And "labeling"
+today conflates two different capabilities: PRINTING labels and APPLYING them. The honey producer
+can't print, but almost certainly CAN apply at fill — those must be declared separately.
+
+Industry grounding: application is canonically the fill/pack node's job (primary/secondary
+co-packer applies labels; the orchestration doc's own reference graph says "labels applied at
+the co-packer"). Mature 3PLs DO offer labeling/kitting as a value-added service — so "the FC
+won't do it" is a per-service capability, not a law of nature. And multi-facility handoffs
+(kitting at one site, fulfillment at another) are the known cost/risk driver — exactly why the
+graph must minimize and explicitly cost every inter-partner move.
+
+### 8.1 Split the capability (extends §2)
+```
+// MANUFACTURING service:
+labelingMode      LabelingMode      // §2 — can they PRINT (produce decoration)
+labelApplication  ApplicationMode   // NEW — can they APPLY at fill: YES | NO (bulk-only shipper)
+// COPACKING service: appliesLabels Boolean @default(true)  (application is their core trade)
+// WAREHOUSE service: valueAddedServices — KITTING_LABELING flag (off for all FCs today, per
+//   Pavel; the field exists so a 3PL that offers relabel/kitting can declare it later)
+```
+Backfill: `labelApplication = YES` (matches today's implicit self-label behavior).
+
+### 8.2 The application-point resolver (pure, the "smart sync engine" core)
+`resolveApplicationPoint(graph) → nodeId | UNRESOLVED` — for every decorated component, the
+application point is the FIRST graph node downstream of decoration that (a) physically holds the
+unlabeled goods and (b) declares application capability:
+1. Manufacturer with `labelApplication=YES` → labels ship printer→manufacturer, applied at fill.
+   (The common case — today's behavior, now explicit.)
+2. Else a co-pack node in the graph (`appliesLabels`) → labels ship printer→co-packer; goods
+   manufacturer→co-packer; co-packer applies + packs.
+3. Else an FC with KITTING_LABELING → printer→FC (none qualify today — path exists, gated off).
+4. Else **UNRESOLVED** → the graph is INCOMPLETE. Hard-block: at product PUBLISH (manufacturer
+   declared no-apply and no co-pack route exists → product can't be listed with that decoration
+   method) and again at CHECKOUT pre-flight (belt + suspenders; also catches capability changes
+   between publish and order). Checkout offers the fixes: switch decoration method (e.g.
+   DIRECT_PRINT can, printed upstream, no application step), platform inserts a co-pack leg
+   (+quoted cost), or creator picks manufacturer-ships-finished (no FC inbound of raw labels).
+   NEVER silently proceed — an order that can't terminate in a finished product must be
+   unplaceable by construction.
+5. Ship-to independence invariant: the creator's FC pick at checkout changes the FINISHED-GOODS
+   destination ONLY. Label legs always address the application point. `scopeShipTo` (partner
+   packets) already redacts intermediate hops — this slots in as the layer that DECIDES the hops.
+
+`OrderDispatch` gains `shipToNodeId` (application point / next node), the dispatch-planner emits
+an inter-partner leg per hop, and the FC leg (packets G2, INBOUND_ASSIGNED) receives FINISHED
+goods only — unless step 3 is ever enabled.
+
+### 8.3 Shipping cost model (the smaller question, answered)
+Every inter-partner hop is a COSTED leg quoted at checkout (EasyPost rail already prices
+partner→destination): printer→applier freight, manufacturer→co-packer, applier→FC/creator.
+Creator sees **one Shipping line** in the total-cost summary (his preferred "combine both"),
+expandable to the per-hop breakdown ("Labels → Manufacturer $12.40 · Finished goods → FC
+$86.10"). Internally each hop stays a separate ledger item (per-partner cost attribution,
+refund math, and the multi-facility-handoff cost visibility the industry warns about). Print
+cost itself stays a production line item — never blended into shipping.
+
+### 8.4 Other graph-completeness cases the same validator catches
+- Variety pack: CARTON components but no assembler and manufacturer can't self-assemble →
+  same UNRESOLVED path (assembly-point resolver = the generalized twin of 9.2).
+- Shrink sleeves: application needs equipment (steam tunnel) — `labelApplication` can carry
+  per-method granularity later (`appliesMethods: DecorationMethod[]`) — a manufacturer may
+  apply PSL but not sleeves. V1: boolean + admin matrix note; extend when a real case lands.
+- Multi-printer orders (two decorated components, different printers): both label legs address
+  the SAME application point — the resolver already yields one node.
+- HOLD_AT_MANUFACTURER ship-to + no-apply manufacturer: caught at publish (fix = co-pack leg
+  that ships back, or block).
+- Buffer-inventory V2 (blank containers + printed labels, PRODUCTION_ORCHESTRATION Mode 3)
+  DEPENDS on this resolver — application at co-packer is that whole mode's premise. Building
+  8.2 now is a prerequisite investment in the V2 moat, not just a bug fix.
+
+### 8.5 Phase — PS-7 (with a scope guard)
+- **[CW]** `labelApplication`/`appliesLabels`/`valueAddedServices` schema + backfill (rides the
+  PS-1/PS-6 migration) + partner editor card fields
+- **[CW]** Pure `resolveApplicationPoint` + graph-completeness validator + unit tests (every 8.4
+  case) — `@ilaunchify/orders`
+- **[CODE-coordinated]** dispatch-planner + manifest: `shipToNodeId`, per-hop legs, publish +
+  checkout pre-flight gates (routing/manifest are shared-hot — single-writer handoff per repo rules)
+- **[CW]** checkout: one Shipping line + per-hop breakdown; UNRESOLVED fix-it flow copy
+- **[PAVEL]** policy sign-off: who eats the printer→applier freight (creator pays in total vs
+  platform margin) + the UNRESOLVED checkout fallback order
+PS-7's validator must land BEFORE PS-3 (manual printer pinning) goes live — pinning a printer
+into a graph with no application point would manufacture the honey problem on demand.
+
+## §9 Build phases + ownership
 
 - **PS-1** `labelingMode` + product override + `effectivePrintSourcing()` + backfill + partner
   editor card. **[CW schema/engine + editor card via partner-editor-card-builder conventions; PAVEL migrate]**
