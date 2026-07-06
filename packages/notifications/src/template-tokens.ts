@@ -60,12 +60,10 @@ export const EVENT_TOKEN_PALETTE: {
   // In-app P1 split of ORDER_NEEDS_ATTENTION (de-cast 2026-07-06 after push).
   ORDER_CANCELLATION_REQUESTED: ['orderId', 'orderRef'],
   ORDER_DISPUTE_OPENED: ['orderId', 'orderRef', 'category'],
-  // Cast-guard (coverage batch 2026-07-06): inline after db:push + db:generate.
-  ...({
-    PARTNER_TEAM_MEMBER_JOINED: ['memberName', 'memberEmail', 'isAdmin'],
-    CREATOR_CHANNEL_CONNECTED: ['channelName', 'shopName'],
-    CREATOR_CHANNEL_DISCONNECTED: ['channelName'],
-  } as unknown as Partial<{ [E in NotificationEvent]: readonly (keyof TemplateData[E] & string)[] }>),
+  // Coverage batch 2026-07-06 (de-cast after push).
+  PARTNER_TEAM_MEMBER_JOINED: ['memberName', 'memberEmail', 'isAdmin'],
+  CREATOR_CHANNEL_CONNECTED: ['channelName', 'shopName'],
+  CREATOR_CHANNEL_DISCONNECTED: ['channelName'],
   SECTION_VERIFIED: ['sectionType', 'companyName'],
   SECTION_NEEDS_CHANGES: ['sectionType', 'companyName', 'notes'],
   PARTNER_ACTIVATED: ['companyName'],

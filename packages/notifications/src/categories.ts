@@ -108,15 +108,11 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   // In-app P1 split of ORDER_NEEDS_ATTENTION (de-cast 2026-07-06 after push).
   ORDER_CANCELLATION_REQUESTED: 'cancellations',
   ORDER_DISPUTE_OPENED: 'cancellations',
-  // Cast-guard (coverage batch 2026-07-06, docs/POST_PUSH_CASTGUARD_CLEANUP.md):
-  // inline as plain keys + delete this spread after db:push + db:generate.
-  // 'account' (mandatory) on purpose — team joins + channel connects are
-  // security-relevant confirmations, like "new SSH key added".
-  ...({
-    PARTNER_TEAM_MEMBER_JOINED: 'account',
-    CREATOR_CHANNEL_CONNECTED: 'account',
-    CREATOR_CHANNEL_DISCONNECTED: 'account',
-  } as unknown as Partial<Record<NotificationEvent, NotificationCategorySlug>>),
+  // Coverage batch 2026-07-06 (de-cast after push). 'account' (mandatory) on
+  // purpose — team joins + channel connects are security-relevant confirmations.
+  PARTNER_TEAM_MEMBER_JOINED: 'account',
+  CREATOR_CHANNEL_CONNECTED: 'account',
+  CREATOR_CHANNEL_DISCONNECTED: 'account',
   // Account & security (mandatory)
   SECTION_VERIFIED: 'account',
   SECTION_NEEDS_CHANGES: 'account',

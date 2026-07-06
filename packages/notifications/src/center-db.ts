@@ -83,13 +83,13 @@ export async function getNotificationSound(): Promise<{ enabled: boolean; url: s
 
 /**
  * In-app behavior settings (admin → Notifications → In-app). Stored on the
- * same singleton row. autoArchiveDays is cast-guarded until the next push.
+ * same singleton row. De-cast 2026-07-06 after push.
  */
 export async function getInAppSettings(): Promise<{ autoArchiveDays: number }> {
   try {
-    const row = (await prisma.notificationBranding.findUnique({
+    const row = await prisma.notificationBranding.findUnique({
       where: { singletonKey: 'default' },
-    })) as { inAppAutoArchiveDays?: number } | null
+    })
     return { autoArchiveDays: row?.inAppAutoArchiveDays ?? 30 }
   } catch {
     return { autoArchiveDays: 30 }
@@ -116,12 +116,8 @@ export async function getTemplateOverride(
       ctaLabelOverride: row.ctaLabelOverride,
       feedbackPrompt: row.feedbackPrompt,
       coalesceWindowMinutes: row.coalesceWindowMinutes ?? null,
-      // Cast-guard (in-app template overrides, docs/POST_PUSH_CASTGUARD_CLEANUP.md):
-      // columns land with the next db:push + db:generate — read directly after.
-      inAppTitleOverride:
-        (row as { inAppTitleOverride?: string | null }).inAppTitleOverride ?? null,
-      inAppBodyOverride:
-        (row as { inAppBodyOverride?: string | null }).inAppBodyOverride ?? null,
+      inAppTitleOverride: row.inAppTitleOverride,
+      inAppBodyOverride: row.inAppBodyOverride,
       status: row.status,
       version: row.version,
     }

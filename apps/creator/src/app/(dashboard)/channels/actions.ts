@@ -8,14 +8,12 @@
 // server-side (1 / 3 / all — CHANNEL_CONNECTION_LIMITS). Everything audited.
 
 import { prisma } from '@ilaunchify/db'
-import type { NotificationEvent } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, channelConnectionLimit } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { resolveChannelAdapter, type ChannelCode } from '@ilaunchify/channels'
 
 /** Best-effort security-confirmation ping (coverage batch 2026-07-06). Lazy
- *  import + swallow — notifications never break a connect/disconnect. Cast
- *  until db:push + db:generate land the enum values. */
+ *  import + swallow — notifications never break a connect/disconnect. */
 async function notifyChannelEvent(
   userId: string,
   event: 'CREATOR_CHANNEL_CONNECTED' | 'CREATOR_CHANNEL_DISCONNECTED',
@@ -23,12 +21,7 @@ async function notifyChannelEvent(
 ): Promise<void> {
   try {
     const { dispatchNotification } = await import('@ilaunchify/notifications')
-    await dispatchNotification({
-      userId,
-      event: event as NotificationEvent,
-      data,
-      audience: 'creator',
-    })
+    await dispatchNotification({ userId, event, data, audience: 'creator' })
   } catch {
     /* best-effort */
   }

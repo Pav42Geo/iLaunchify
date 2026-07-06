@@ -3,8 +3,9 @@
 // Right cluster for the creator dashboard topbar (REBUILD R1.3 · menu v2
 // 2026-07-06, docs/ACCOUNT_MENUS_PROPOSAL.md).
 //
-// Heart · Notifications bell · BrandSwitcher (when ≥2 brands, fast-switch
-// path) · AppHeaderUserMenu v2 with tier-aware brand cards.
+// Heart · Notifications bell · AppHeaderUserMenu v2 with tier-aware brand
+// cards. (The standalone topbar BrandSwitcher was RETIRED — Pavel 2026-07-06;
+// the menu's brand cards are the one switching surface.)
 //
 // Menu contract (Pavel 2026-07-06): identity + brand cards + ONE work
 // shortcut (Orders) + account section. The sidebar owns the rest of nav —
@@ -24,8 +25,13 @@ import {
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
-import { BrandSwitcher, type BrandOption } from './BrandSwitcher'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+
+export interface BrandOption {
+  id: string
+  name: string
+  handle: string
+}
 
 interface Props {
   email: string
@@ -70,7 +76,6 @@ export function TopbarRight({
         <Heart strokeWidth={2} className="h-5 w-5" />
       </AppHeaderIconButton>
       <NotificationBell />
-      {brands.length > 1 && <BrandSwitcher brands={brands} activeBrandId={activeBrandId} />}
       <AppHeaderUserMenu
         user={{ name, email, tier }}
         tierLabels={{ maker: 'Maker', builder: 'Builder', agency: 'Agency' }}

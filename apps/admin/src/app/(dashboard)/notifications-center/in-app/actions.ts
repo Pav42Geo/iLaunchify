@@ -95,9 +95,7 @@ export async function saveInAppSettings(input: { autoArchiveDays: number }): Pro
   if (!Number.isInteger(days) || days < 1 || days > 365) {
     return { ok: false, error: 'Auto-archive must be a whole number of days between 1 and 365' }
   }
-  // Cast-guard (docs/POST_PUSH_CASTGUARD_CLEANUP.md): inAppAutoArchiveDays lands
-  // with the next db:push + db:generate — inline directly after regen.
-  const patch = { inAppAutoArchiveDays: days } as unknown as Record<string, never>
+  const patch = { inAppAutoArchiveDays: days }
   const row = await prisma.notificationBranding.upsert({
     where: { singletonKey: 'default' },
     create: { singletonKey: 'default', ...patch },

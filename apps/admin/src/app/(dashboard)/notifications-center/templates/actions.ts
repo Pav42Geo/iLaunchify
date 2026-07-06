@@ -86,11 +86,8 @@ export async function saveTemplateDraft(input: TemplateDraftInput): Promise<Resu
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
     feedbackPrompt: input.feedbackPrompt || null,
     coalesceWindowMinutes: input.coalesceWindowMinutes || null,
-    // Cast-guard (in-app overrides): inline after db:push + db:generate.
-    ...({
-      inAppTitleOverride: input.inAppTitleOverride?.trim() || null,
-      inAppBodyOverride: input.inAppBodyOverride?.trim() || null,
-    } as unknown as Record<string, never>),
+    inAppTitleOverride: input.inAppTitleOverride?.trim() || null,
+    inAppBodyOverride: input.inAppBodyOverride?.trim() || null,
     status: 'DRAFT' as const,
     updatedById: admin.id,
   }
@@ -116,13 +113,12 @@ export async function publishTemplate(event: NotificationEvent): Promise<Result>
   const admin = await requireRole('ADMIN')
   const row = await prisma.notificationTemplate.findUnique({ where: { event } })
   if (!row) return { ok: false, error: 'Nothing to publish — save a draft first' }
-  const rowInApp = row as { inAppTitleOverride?: string | null; inAppBodyOverride?: string | null }
   if (
     !row.subjectOverride &&
     !row.bodyMarkdown &&
     row.ctaMode === 'AUTO' &&
-    !rowInApp.inAppTitleOverride &&
-    !rowInApp.inAppBodyOverride
+    !row.inAppTitleOverride &&
+    !row.inAppBodyOverride
   ) {
     return { ok: false, error: 'The draft is empty — it would change nothing' }
   }
@@ -138,11 +134,8 @@ export async function publishTemplate(event: NotificationEvent): Promise<Result>
         bodyMarkdown: row.bodyMarkdown,
         ctaMode: row.ctaMode,
         ctaLabelOverride: row.ctaLabelOverride,
-        // Cast-guard (in-app overrides): inline after db:push + db:generate.
-        ...({
-          inAppTitleOverride: rowInApp.inAppTitleOverride ?? null,
-          inAppBodyOverride: rowInApp.inAppBodyOverride ?? null,
-        } as unknown as Record<string, never>),
+        inAppTitleOverride: row.inAppTitleOverride,
+        inAppBodyOverride: row.inAppBodyOverride,
         publishedById: admin.id,
       },
     }),
@@ -181,13 +174,8 @@ export async function rollbackTemplate(event: NotificationEvent, version: number
       bodyMarkdown: snap.bodyMarkdown,
       ctaMode: snap.ctaMode,
       ctaLabelOverride: snap.ctaLabelOverride,
-      // Cast-guard (in-app overrides): inline after db:push + db:generate.
-      ...({
-        inAppTitleOverride:
-          (snap as { inAppTitleOverride?: string | null }).inAppTitleOverride ?? null,
-        inAppBodyOverride:
-          (snap as { inAppBodyOverride?: string | null }).inAppBodyOverride ?? null,
-      } as unknown as Record<string, never>),
+      inAppTitleOverride: snap.inAppTitleOverride,
+      inAppBodyOverride: snap.inAppBodyOverride,
       status: 'PUBLISHED',
       version: snap.version,
       updatedById: admin.id,

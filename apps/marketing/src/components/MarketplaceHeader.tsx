@@ -28,7 +28,13 @@ import {
 } from '@ilaunchify/ui'
 import { getPublicBrandLogos, getLogoPlacement, type LogoPlacementKey } from '@ilaunchify/db'
 import { UserMenu, type UserMenuProps } from './UserMenu'
-import { BrandSwitcher, type Brand } from './BrandSwitcher'
+// BrandSwitcher RETIRED (Pavel 2026-07-06) — brand access lives in the menu.
+// Shape kept for the header props API (callers still pass brand lists).
+interface Brand {
+  id: string
+  name: string
+  colorHex: string
+}
 import { MarketplaceSearchBar } from './MarketplaceSearchBar'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
 import { creatorUrl } from '@/lib/app-urls'
@@ -120,9 +126,6 @@ export async function MarketplaceHeader({
             >
               <Bell strokeWidth={2} className="h-5 w-5" />
             </AppHeaderIconButton>
-            {brands.length > 1 && activeBrandId && (
-              <BrandSwitcher brands={brands} activeBrandId={activeBrandId} />
-            )}
             <UserMenu user={user!} />
           </>
         )

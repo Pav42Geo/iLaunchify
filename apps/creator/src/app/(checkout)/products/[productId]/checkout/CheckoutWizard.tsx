@@ -61,7 +61,7 @@ import { SubscribeChoiceRail } from './SubscribeChoiceRail'
 // but in its disabled form (one-time purchase + Continue only). Flip to true to
 // bring the upsell back.
 const SUBSCRIBE_AND_SAVE_FEATURE_ON = false
-import { BrandSwitcher, type BrandOption } from '@/components/nav/BrandSwitcher'
+import type { BrandOption } from '@/components/nav/TopbarRight'
 import {
   placeOrderFromCheckoutDraft,
   type PlaceOrderOptions,
@@ -665,9 +665,8 @@ function CheckoutHeaderRight({
       >
         <ShoppingCart strokeWidth={2} className="h-5 w-5" aria-hidden="true" />
       </Link>
-      {brands.length > 1 && (
-        <BrandSwitcher brands={brands} activeBrandId={activeBrandId} />
-      )}
+      {/* BrandSwitcher RETIRED (Pavel 2026-07-06) — mid-checkout brand
+          switching goes through the account menu's brand cards if ever needed. */}
       <AppHeaderUserMenu
         user={{
           name: user.name,

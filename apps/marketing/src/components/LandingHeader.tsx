@@ -22,8 +22,15 @@ import Link from 'next/link'
 import { Heart, Bell } from 'lucide-react'
 import { getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { UserMenu, type UserMenuProps } from './UserMenu'
-import { BrandSwitcher, type Brand } from './BrandSwitcher'
 import { LandingNavDropdown } from './LandingNavDropdown'
+
+// BrandSwitcher RETIRED (Pavel 2026-07-06) — brand access lives in the menu.
+// Shape kept for the header props API (callers still pass brand lists).
+interface Brand {
+  id: string
+  name: string
+  colorHex: string
+}
 import { creatorUrl, partnerUrl } from '@/lib/app-urls'
 
 export interface LandingHeaderProps {
@@ -150,9 +157,6 @@ export async function LandingHeader({
             >
               <Bell strokeWidth={2} className="h-5 w-5" />
             </AppHeaderIconButton>
-            {brands.length > 1 && activeBrandId && (
-              <BrandSwitcher brands={brands} activeBrandId={activeBrandId} />
-            )}
             <UserMenu user={user!} />
           </>
         )
