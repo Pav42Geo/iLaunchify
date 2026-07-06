@@ -15,6 +15,7 @@ import { requireCapability } from '@ilaunchify/auth'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { RoutingPreviewForm } from '../routing-preview/RoutingPreviewForm'
 import { RotationControls, type ProviderRow } from './RotationControls'
+import { RoutingManualButton } from './RoutingManual'
 import type { PolicyContext, RotationPolicyView } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -193,6 +194,7 @@ export default async function RoutingRotationPage() {
         eyebrow="Order settings"
         title="Routing & Rotation"
         description="Absolute control over who wins auto-routed work. Hard capability filters always run first; pinned picks are never rotated away. Policies are per service type and per context — samples are where rotation earns its keep, production is where consistency does."
+        actions={<RoutingManualButton />}
       />
 
       {/* KPI strip */}
