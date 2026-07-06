@@ -7,7 +7,9 @@ import {
   listNotificationsPage,
   countUnread,
   markAllRead,
+  markUnread,
   archiveNotification,
+  setCategoryPreferenceChecked,
   allCategories,
   eventsInCategory,
   isValidCategorySlug,
@@ -31,11 +33,30 @@ async function handleMarkAllRead() {
   revalidatePath('/notifications')
 }
 
-async function handleArchive(formData: FormData) {
+async function handleArchive(notificationId: string) {
   'use server'
   const user = await requireUser()
-  const notificationId = String(formData.get('notificationId') ?? '')
   if (notificationId) await archiveNotification({ userId: user.id, notificationId })
+  revalidatePath('/notifications')
+}
+
+async function handleMarkUnread(notificationId: string) {
+  'use server'
+  const user = await requireUser()
+  if (notificationId) await markUnread({ userId: user.id, notificationId })
+  revalidatePath('/notifications')
+}
+
+async function handleMuteCategory(categorySlug: string) {
+  'use server'
+  const user = await requireUser()
+  // Opt-outability is enforced inside (mandatory categories are rejected).
+  await setCategoryPreferenceChecked({
+    userId: user.id,
+    category: categorySlug,
+    channel: 'IN_APP',
+    enabled: false,
+  })
   revalidatePath('/notifications')
 }
 
@@ -91,7 +112,11 @@ export default async function NotificationsPage({
 
       <NotificationFeed
         accent="pink"
-        archiveAction={handleArchive}
+        rowActions={{
+          archive: handleArchive,
+          markUnread: handleMarkUnread,
+          muteCategory: handleMuteCategory,
+        }}
         basePath="/notifications"
         filter={filter}
         category={category}
@@ -106,6 +131,7 @@ export default async function NotificationsPage({
           createdAt: n.createdAt.toISOString(),
           categoryLabel: categoryConfig(categoryForEvent(n.event)).label,
           categorySlug: categoryForEvent(n.event),
+          optOutable: categoryConfig(categoryForEvent(n.event)).optOutable,
         }))}
       />
     </div>

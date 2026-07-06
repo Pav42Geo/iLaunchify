@@ -20,6 +20,7 @@ import { categoryForEvent, isCategoryOptOutable, shouldDeliver } from './categor
 import { missingPayloadKeys } from './payload-required'
 import {
   getCategoryPreferenceRows,
+  getInAppSettings,
   getNotificationBranding,
   getTemplateOverride,
   isEmailSuppressed,
@@ -201,8 +202,20 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
     // of stacking a new row. Per-event tuning lives on the admin Notification
     // Center template row (Pavel 2026-07-06).
     if (shouldDeliver(input.event, 'IN_APP', prefRows)) {
-      const windowMinutes = override?.coalesceWindowMinutes ?? 0
-      const groupKey = coalesceGroupKey(input.event, input.data)
+      let windowMinutes = override?.coalesceWindowMinutes ?? 0
+      let groupKey = coalesceGroupKey(input.event, input.data)
+      // In-app digest (audit §5 item 10): digest-flagged dispatches (P2
+      // reminders) merge into ONE row per category per day — the bell stays
+      // calm while the email digest does its thing. Admin toggle on
+      // Notifications → In-app.
+      if (input.digest) {
+        const { digestEnabled } = await getInAppSettings()
+        if (digestEnabled) {
+          const day = new Date().toISOString().slice(0, 10)
+          groupKey = `digest:${category}:${day}`
+          windowMinutes = 24 * 60
+        }
+      }
       tasks.push(
         writeInAppRow({
           userId: user.id,

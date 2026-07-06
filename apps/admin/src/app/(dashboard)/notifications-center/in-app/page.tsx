@@ -33,7 +33,10 @@ export default async function InAppNotificationsPage() {
         initialUrl={row?.soundUrl ?? null}
       />
 
-      <InAppSettingsCard initialAutoArchiveDays={settings.autoArchiveDays} />
+      <InAppSettingsCard
+        initialAutoArchiveDays={settings.autoArchiveDays}
+        initialDigestEnabled={settings.digestEnabled}
+      />
 
       <section className="rounded-2xl border border-ink-200 bg-white p-5">
         <h2 className="flex items-center gap-2 font-display text-[15px] font-semibold text-ink-900">

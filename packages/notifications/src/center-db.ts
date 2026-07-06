@@ -85,14 +85,22 @@ export async function getNotificationSound(): Promise<{ enabled: boolean; url: s
  * In-app behavior settings (admin → Notifications → In-app). Stored on the
  * same singleton row. De-cast 2026-07-06 after push.
  */
-export async function getInAppSettings(): Promise<{ autoArchiveDays: number }> {
+export async function getInAppSettings(): Promise<{
+  autoArchiveDays: number
+  digestEnabled: boolean
+}> {
   try {
     const row = await prisma.notificationBranding.findUnique({
       where: { singletonKey: 'default' },
     })
-    return { autoArchiveDays: row?.inAppAutoArchiveDays ?? 30 }
+    return {
+      autoArchiveDays: row?.inAppAutoArchiveDays ?? 30,
+      // Cast-guard (in-app digest): read directly after db:push + db:generate.
+      digestEnabled:
+        (row as { inAppDigestEnabled?: boolean } | null)?.inAppDigestEnabled ?? true,
+    }
   } catch {
-    return { autoArchiveDays: 30 }
+    return { autoArchiveDays: 30, digestEnabled: true }
   }
 }
 

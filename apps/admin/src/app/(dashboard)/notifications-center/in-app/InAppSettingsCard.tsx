@@ -9,14 +9,21 @@ import { toast } from 'sonner'
 import { Archive } from 'lucide-react'
 import { saveInAppSettings } from './actions'
 
-export function InAppSettingsCard({ initialAutoArchiveDays }: { initialAutoArchiveDays: number }) {
+export function InAppSettingsCard({
+  initialAutoArchiveDays,
+  initialDigestEnabled,
+}: {
+  initialAutoArchiveDays: number
+  initialDigestEnabled: boolean
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [days, setDays] = useState(String(initialAutoArchiveDays))
+  const [digest, setDigest] = useState(initialDigestEnabled)
 
   function save() {
     startTransition(async () => {
-      const r = await saveInAppSettings({ autoArchiveDays: Number(days) })
+      const r = await saveInAppSettings({ autoArchiveDays: Number(days), digestEnabled: digest })
       if (r.ok) {
         toast.success('In-app settings saved')
         router.refresh()
@@ -45,6 +52,21 @@ export function InAppSettingsCard({ initialAutoArchiveDays }: { initialAutoArchi
         <span className="mt-1 block text-[11px] font-normal text-ink-500">
           The daily sweep archives READ rows older than this — they leave the bell and feed
           but are never deleted. Unread rows are never auto-archived.
+        </span>
+      </label>
+      <label className="mt-4 flex max-w-md cursor-pointer items-start gap-2.5 text-[12px] font-medium text-ink-700">
+        <input
+          type="checkbox"
+          checked={digest}
+          onChange={(e) => setDigest(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-ink-300 text-pink-600 focus:ring-pink-500"
+        />
+        <span>
+          Daily digest merge
+          <span className="mt-0.5 block text-[11px] font-normal text-ink-500">
+            Digest-flagged reminders (low-priority P2 events) merge into one in-app row per
+            category per day instead of stacking. Realtime events are unaffected.
+          </span>
         </span>
       </label>
       <button

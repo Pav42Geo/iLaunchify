@@ -16,6 +16,7 @@ export {
   listNotificationsPage,
   countUnread,
   markRead,
+  markUnread,
   markAllRead,
   archiveNotification,
   autoArchiveRead,

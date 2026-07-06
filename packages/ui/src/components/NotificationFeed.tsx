@@ -8,9 +8,9 @@
 // passes serializable rows only.
 
 import Link from 'next/link'
-import { Archive } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { notificationCategoryMeta, toneClasses } from './notification-categories'
+import { NotificationRowActions } from './NotificationRowActions'
 
 export interface NotificationFeedItem {
   id: string
@@ -23,6 +23,8 @@ export interface NotificationFeedItem {
   categoryLabel: string
   /** Category slug — drives the row's icon + tone (notification-categories). */
   categorySlug?: string
+  /** Mandatory categories can't be muted from the overflow menu. */
+  optOutable?: boolean
 }
 
 export interface NotificationFeedProps {
@@ -39,9 +41,13 @@ export interface NotificationFeedProps {
   nextCursor: string | null
   /** Row accent. pink = creator, info = partner + admin. */
   accent?: 'pink' | 'info'
-  /** Server action archiving one row (reads `notificationId` from formData).
-      When present, each row gets an archive button (in-app P1). */
-  archiveAction?: (formData: FormData) => Promise<void>
+  /** Per-row overflow actions (in-app P3): mark unread · archive · mute
+      category. Server actions passed from the host page. */
+  rowActions?: {
+    archive: (notificationId: string) => Promise<void>
+    markUnread: (notificationId: string) => Promise<void>
+    muteCategory: (categorySlug: string) => Promise<void>
+  }
 }
 
 function buildHref(
@@ -64,7 +70,7 @@ export function NotificationFeed({
   basePath,
   nextCursor,
   accent = 'pink',
-  archiveAction,
+  rowActions,
 }: NotificationFeedProps) {
   const unreadRow =
     accent === 'pink' ? 'border-pink-200 bg-pink-50/30' : 'border-info-200 bg-info-50/30'
@@ -148,27 +154,26 @@ export function NotificationFeed({
                     {new Date(n.createdAt).toLocaleString()} · {n.categoryLabel}
                   </p>
                 </div>
-                {/* Spacer keeps text clear of the absolutely-positioned archive button. */}
-                {archiveAction && <div className="w-7 shrink-0" aria-hidden />}
+                {/* Spacer keeps text clear of the absolutely-positioned menu. */}
+                {rowActions && <div className="w-7 shrink-0" aria-hidden />}
               </div>
             )
             return (
               <li key={n.id} className="relative">
                 {n.link ? <Link href={n.link}>{inner}</Link> : inner}
-                {/* Sibling of the link (a form inside an <a> is invalid HTML and
-                    submitting would navigate) — overlaid on the row's top-right. */}
-                {archiveAction && (
-                  <form action={archiveAction} className="absolute right-3 top-3">
-                    <input type="hidden" name="notificationId" value={n.id} />
-                    <button
-                      type="submit"
-                      title="Archive"
-                      aria-label="Archive notification"
-                      className="rounded-md p-1.5 text-ink-300 transition-colors hover:bg-ink-100 hover:text-ink-700"
-                    >
-                      <Archive className="h-3.5 w-3.5" />
-                    </button>
-                  </form>
+                {/* Sibling of the link (interactive content inside an <a> is
+                    invalid HTML) — overlaid on the row's top-right. */}
+                {rowActions && (
+                  <div className="absolute right-3 top-3">
+                    <NotificationRowActions
+                      notificationId={n.id}
+                      isRead={!!n.readAt}
+                      categorySlug={n.categorySlug}
+                      categoryLabel={n.categoryLabel}
+                      optOutable={n.optOutable ?? false}
+                      actions={rowActions}
+                    />
+                  </div>
                 )}
               </li>
             )

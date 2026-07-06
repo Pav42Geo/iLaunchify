@@ -70,6 +70,17 @@ export async function countUnread(userId: string): Promise<number> {
   })
 }
 
+/** Flip a row back to unread (feed overflow menu). */
+export async function markUnread(params: {
+  userId: string
+  notificationId: string
+}): Promise<void> {
+  await prisma.notification.updateMany({
+    where: { id: params.notificationId, userId: params.userId, channel: 'IN_APP' },
+    data: { readAt: null },
+  })
+}
+
 /** Archive one row (hidden from bell + feed, never deleted). In-app P1. */
 export async function archiveNotification(params: {
   userId: string

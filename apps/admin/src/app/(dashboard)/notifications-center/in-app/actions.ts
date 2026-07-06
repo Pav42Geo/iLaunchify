@@ -88,14 +88,21 @@ export async function setNotificationSound(input: {
   return { ok: true }
 }
 
-/** Global in-app behavior — currently the auto-archive window (cron-consumed). */
-export async function saveInAppSettings(input: { autoArchiveDays: number }): Promise<Result> {
+/** Global in-app behavior — auto-archive window (cron-consumed) + daily digest merge. */
+export async function saveInAppSettings(input: {
+  autoArchiveDays: number
+  digestEnabled: boolean
+}): Promise<Result> {
   const admin = await requireRole('ADMIN')
   const days = input.autoArchiveDays
   if (!Number.isInteger(days) || days < 1 || days > 365) {
     return { ok: false, error: 'Auto-archive must be a whole number of days between 1 and 365' }
   }
-  const patch = { inAppAutoArchiveDays: days }
+  const patch = {
+    inAppAutoArchiveDays: days,
+    // Cast-guard (in-app digest): inline after db:push + db:generate.
+    ...({ inAppDigestEnabled: input.digestEnabled } as unknown as Record<string, never>),
+  }
   const row = await prisma.notificationBranding.upsert({
     where: { singletonKey: 'default' },
     create: { singletonKey: 'default', ...patch },
@@ -105,7 +112,7 @@ export async function saveInAppSettings(input: { autoArchiveDays: number }): Pro
     entityType: 'NotificationBranding',
     entityId: row.id,
     action: 'IN_APP_SETTINGS_UPDATED',
-    payload: { autoArchiveDays: days },
+    payload: { autoArchiveDays: days, digestEnabled: input.digestEnabled },
   })
   revalidatePath('/notifications-center/in-app')
   return { ok: true }

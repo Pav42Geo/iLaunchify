@@ -4533,6 +4533,9 @@ model NotificationBranding {
   // Auto-archive READ in-app rows after N days (admin → Notifications → In-app;
   // consumed by /api/cron/archive-notifications). Pavel 2026-07-06: default 30.
   inAppAutoArchiveDays Int     @default(30)
+  // Digest-flagged dispatches (input.digest — P2-severity reminders) merge into
+  // ONE in-app row per category per day instead of stacking (admin → In-app).
+  inAppDigestEnabled  Boolean  @default(true)
   updatedAt           DateTime @updatedAt
   updatedById         String? // soft FK → admin User
 }
