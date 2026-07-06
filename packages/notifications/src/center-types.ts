@@ -53,9 +53,20 @@ export interface CategoryPreferenceRow {
 // Branding singleton (global header + footer chrome)
 // ---------------------------------------------------------------------------
 
+/** One audience's header nav links (Amazon-style row under the logo). */
+export interface EmailHeaderLink {
+  label: string
+  url: string
+}
+
 export interface NotificationBrandingConfig {
   /** Absolute URL of the logo image; when absent the header renders the brand name. */
   logoUrl: string | null
+  /**
+   * Audience-aware header nav links (docs/FEEDBACK_MODULE.md §3.3), e.g.
+   * creator: My orders / Products / Support. Null = no link row (default).
+   */
+  headerLinks: Partial<Record<'creator' | 'partner' | 'admin', EmailHeaderLink[]>> | null
   /** Brand display name in the header (and fallback when no logo). */
   brandName: string
   /** Accent bar / highlight color. */

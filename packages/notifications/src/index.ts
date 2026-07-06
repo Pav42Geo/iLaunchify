@@ -41,6 +41,34 @@ export {
 export { applyUnsubscribeToken, type ApplyUnsubscribeResult } from './unsubscribe-apply'
 // Sample payloads for admin template preview + test-send (checklist D).
 export { samplePayloadForEvent } from './sample-payload'
+// Feedback module — pure engine (docs/FEEDBACK_MODULE.md, FB-A).
+export {
+  buildFeedbackToken,
+  verifyFeedbackToken,
+  buildFeedbackUrl,
+  buildFeedbackLinkPair,
+  FEEDBACK_TOKEN_MAX_AGE_MS,
+  type FeedbackScoreValue,
+  type FeedbackTokenPayload,
+  type VerifyFeedbackResult,
+} from './feedback-token'
+export {
+  FEEDBACK_PROMPTS,
+  isFeedbackPromptKey,
+  feedbackPrompt,
+  promptWindowMs,
+  promptTags,
+  type FeedbackPromptKey,
+  type FeedbackPromptConfig,
+  type FeedbackSubjectType,
+} from './feedback-prompts'
+export {
+  shouldRenderFeedbackBlock,
+  FEEDBACK_USER_COOLDOWN_DAYS,
+  type FeedbackEligibility,
+  type FeedbackEligibilityInput,
+} from './feedback-eligibility'
+export type { EmailHeaderLink } from './center-types'
 // Resend inbound webhook engine (checklist E) — Svix verify + parse + record.
 export {
   verifyResendWebhook,
