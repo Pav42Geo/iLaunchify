@@ -1239,6 +1239,11 @@ model PartnerService {
   // enter the auto-rotation pool.
   printAwards                      PrintAwardLog[]
   excludeFromAutoRotation          Boolean                           @default(false)
+  // SR-2.2 — printer declares it can run 1-unit pre-production samples
+  // (production MOQ doesn't apply to the sample pool; only sampleCapable
+  // printers enter it). Default true: most digital shops can; flexo/gravure
+  // partners untick it in the editor.
+  sampleCapable                    Boolean                           @default(true)
   // Partner Role Accounts P1 (docs/PARTNER_ROLE_ACCOUNTS.md §3.1.E) —
   // partner-declared unavailability windows; FC selection + dispatch routing
   // treat them as capacity = 0 (wired into fc-scorer in a later slice).
@@ -1319,6 +1324,51 @@ model ProductPrintSelection {
   @@index([partnerServiceId])
 }
 
+// ─── Sample verdict loop (SMART_ROTATION_ENGINE §2.6, SR-2.2) ────────────────
+
+enum SampleAspectVerdict {
+  APPROVED
+  REJECTED
+}
+
+/// The creator's judgment of a DELIVERED sample order — the moment that closes
+/// the pick-cycle. Product and print are judged SEPARATELY when the chain has
+/// a separate printer: approve print → the sample's printer becomes the pinned
+/// ProductPrintSelection (locked chain); reject print → ProductPrintExclusion
+/// + provider switch + re-sample. One verdict per sample order, editable until
+/// a production order books.
+model SampleVerdict {
+  id             String               @id @default(uuid())
+  orderId        String               @unique // the SAMPLE order judged
+  creatorUserId  String // soft FK → User
+  productId      String // soft FK → Product
+  productVerdict SampleAspectVerdict?
+  // Null when the chain has no separate printer (manufacturer prints in-house).
+  printVerdict   SampleAspectVerdict?
+  notes          String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([creatorUserId, productId])
+}
+
+/// "Not this printer again for this product" — written when a creator rejects
+/// a sample's print/packaging. Consumed by findRouting (excludeServiceIds),
+/// the sticky-reorder lookup, and the sample print-leg resolver. Per-creator,
+/// per-product: a bad fit here says nothing about other products.
+model ProductPrintExclusion {
+  id               String   @id @default(uuid())
+  creatorUserId    String // soft FK → User
+  productId        String // soft FK → Product
+  partnerServiceId String // soft FK → LABEL_PRINTING PartnerService
+  reason           String   @default("SAMPLE_REJECTED")
+  sourceOrderId    String? // the sample order that triggered it
+  createdAt        DateTime @default(now())
+
+  @@unique([creatorUserId, productId, partnerServiceId])
+  @@index([partnerServiceId])
+}
+
 // ─── Smart Rotation Engine (docs/SMART_ROTATION_ENGINE.md §2, SR-1) ──────────
 
 enum RotationMode {
@@ -1328,12 +1378,24 @@ enum RotationMode {
   BEST_ONLY // pool[0] always — rating winner-take-all
 }
 
+/// SR-2.2 — rotation policies are context-scoped: samples are the exposure/
+/// rotation moment (cheap failure, wide pool), replenishment runs prize
+/// consistency (sticky + BEST_ONLY defaults), DEFAULT covers bulk production.
+enum RotationOrderContext {
+  DEFAULT // bulk production orders
+  SAMPLE // pre-production sample orders
+  REPLENISHMENT // repeat/on-demand small runs (V2 buffer consumes this too)
+}
+
 /// One admin-controlled auto-rotation policy per service type. `enabled=false`
 /// (the default) preserves pre-SR routing behavior exactly — the engine only
 /// steers once an admin flips it on in Routing & Rotation. Every change audited.
 model RotationPolicy {
   id          String       @id @default(uuid())
-  serviceType ServiceType  @unique
+  serviceType ServiceType
+  // SR-2.2 — one policy per (serviceType, context). DEFAULT rules bulk; SAMPLE
+  // and REPLENISHMENT rows override when present (fallback to DEFAULT row).
+  context     RotationOrderContext @default(DEFAULT)
   enabled     Boolean      @default(false)
   poolSize    Int          @default(3) // rotate among top-N by ratingBayesian
   mode        RotationMode @default(EQUAL)
@@ -1348,6 +1410,8 @@ model RotationPolicy {
   stickyReorders  Boolean  @default(true) // reorders keep the SAME printer (color consistency)
   updatedAt   DateTime @updatedAt
   updatedById String?
+
+  @@unique([serviceType, context])
 }
 
 /// Every auto-rotation award on the print leg — mirror of FcAwardLog. The full

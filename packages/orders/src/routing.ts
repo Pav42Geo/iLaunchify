@@ -81,6 +81,19 @@ export async function findRouting(params: {
   creatorUserId?: string | null
 }): Promise<RoutingResult | RoutingFailure> {
   const excluded = new Set(params.excludeServiceIds ?? [])
+  // SR-2.2 — persistent per-(creator, product) print exclusions ("not this
+  // printer again"), written when a creator rejects a sample's print. Merged
+  // into the exclusion set BEFORE pinned validation, so a stale pin at an
+  // excluded printer surfaces pinnedPrintUnavailable instead of binding.
+  if (params.creatorUserId) {
+    const exclusions = await prisma.productPrintExclusion
+      .findMany({
+        where: { creatorUserId: params.creatorUserId, productId: params.productId },
+        select: { partnerServiceId: true },
+      })
+      .catch(() => [] as Array<{ partnerServiceId: string }>)
+    for (const e of exclusions) excluded.add(e.partnerServiceId)
+  }
   const product = await prisma.product.findUnique({
     where: { id: params.productId },
     include: {
@@ -384,6 +397,39 @@ const DEFAULT_ROTATION_POLICY: RotationPolicyInput = {
   stickyReorders: true,
 }
 
+/** SR-2.2 — context row wins; falls back to the DEFAULT row, then to off. */
+export async function loadRotationPolicy(
+  serviceType: 'LABEL_PRINTING' | 'WAREHOUSE' | 'MANUFACTURING',
+  context: 'DEFAULT' | 'SAMPLE' | 'REPLENISHMENT',
+) {
+  const row = await prisma.rotationPolicy
+    .findUnique({ where: { serviceType_context: { serviceType, context } } })
+    .catch(() => null)
+  if (row || context === 'DEFAULT') return row
+  return prisma.rotationPolicy
+    .findUnique({ where: { serviceType_context: { serviceType, context: 'DEFAULT' } } })
+    .catch(() => null)
+}
+
+/** Map a RotationPolicy row (or null) onto the pure engine's input shape. */
+export function policyInputOf(
+  policyRow: Awaited<ReturnType<typeof loadRotationPolicy>>,
+): RotationPolicyInput {
+  return policyRow
+    ? {
+        enabled: policyRow.enabled,
+        poolSize: policyRow.poolSize,
+        mode: policyRow.mode,
+        slotSharesPct: policyRow.slotSharesPct,
+        newProviderSharePct: policyRow.newProviderSharePct,
+        newProviderMaxOpen: policyRow.newProviderMaxOpen,
+        ratingFloor: policyRow.ratingFloor === null ? null : Number(policyRow.ratingFloor),
+        locationBiasPct: policyRow.locationBiasPct,
+        stickyReorders: policyRow.stickyReorders,
+      }
+    : DEFAULT_ROTATION_POLICY
+}
+
 async function rotatePrintShop(args: {
   eligible: Array<{
     id: string
@@ -398,22 +444,9 @@ async function rotatePrintShop(args: {
   const first = args.eligible[0]!
   const userIdOf = new Map(args.eligible.map((s) => [s.id, s.userId]))
 
-  const policyRow = await prisma.rotationPolicy
-    .findUnique({ where: { serviceType: 'LABEL_PRINTING' } })
-    .catch(() => null)
-  const policy: RotationPolicyInput = policyRow
-    ? {
-        enabled: policyRow.enabled,
-        poolSize: policyRow.poolSize,
-        mode: policyRow.mode,
-        slotSharesPct: policyRow.slotSharesPct,
-        newProviderSharePct: policyRow.newProviderSharePct,
-        newProviderMaxOpen: policyRow.newProviderMaxOpen,
-        ratingFloor: policyRow.ratingFloor === null ? null : Number(policyRow.ratingFloor),
-        locationBiasPct: policyRow.locationBiasPct,
-        stickyReorders: policyRow.stickyReorders,
-      }
-    : DEFAULT_ROTATION_POLICY
+  const policy: RotationPolicyInput = policyInputOf(
+    await loadRotationPolicy('LABEL_PRINTING', 'DEFAULT'),
+  )
 
   // Engine off → skip the award-history queries entirely (hot path stays lean).
   if (!policy.enabled) return { serviceId: first.id, userId: first.userId }
@@ -427,6 +460,10 @@ async function rotatePrintShop(args: {
       _max: { awardedAt: true },
     }),
     // Sticky reorder — the creator's last booked printer for THIS product.
+    // SR-2.2: sticky follows APPROVED chains only. A PRODUCTION order is an
+    // implicit approval (they bought the run); a SAMPLE order sticks ONLY when
+    // its verdict approved the print — a rejected or unjudged sample must
+    // never lock the chain.
     args.creatorUserId
       ? prisma.order.findFirst({
           where: {
@@ -435,10 +472,17 @@ async function rotatePrintShop(args: {
             items: { some: { productId: args.productId } },
           },
           orderBy: { createdAt: 'desc' },
-          select: { printProviderServiceId: true },
+          select: { id: true, orderType: true, printProviderServiceId: true },
         })
       : Promise.resolve(null),
   ])
+  let stickyProviderId = sticky?.printProviderServiceId ?? null
+  if (sticky && sticky.orderType === 'SAMPLE' && stickyProviderId) {
+    const verdict = await prisma.sampleVerdict
+      .findUnique({ where: { orderId: sticky.id }, select: { printVerdict: true } })
+      .catch(() => null)
+    if (verdict?.printVerdict !== 'APPROVED') stickyProviderId = null
+  }
   const openCounts = await prisma.printAwardLog.groupBy({
     by: ['partnerServiceId'],
     where: { partnerServiceId: { in: serviceIds }, awardedAt: { gte: windowStart } },
@@ -461,7 +505,7 @@ async function rotatePrintShop(args: {
   const rolls = { roll: Math.random(), poolRoll: Math.random() }
   const decision = selectRotatingProvider(candidates, {
     policy,
-    previousProviderServiceId: sticky?.printProviderServiceId ?? null,
+    previousProviderServiceId: stickyProviderId,
     ...rolls,
   })
   const winnerId = decision.winnerServiceId ?? first.id

@@ -132,6 +132,8 @@ export const AUDIT_ENTITY_TYPES = [
   'ProductReview', // verified creator reviews (submit/edit/moderation)
   'ProductPrintSelection', // creator's manual print-provider pick (PS-3)
   'RotationPolicy', // Smart Rotation Engine admin knobs (SR-1)
+  'SampleVerdict', // creator's judgment of a delivered sample (SR-2.2)
+  'ProductPrintExclusion', // "not this printer again" after sample rejection (SR-2.2)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

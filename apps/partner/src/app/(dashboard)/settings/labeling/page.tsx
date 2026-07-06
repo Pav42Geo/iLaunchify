@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { serviceOwnedBy } from '@/lib/partner-context'
-import { ProducingServiceCard, FcVasCard, type VasRowView } from './LabelingSettingsForm'
+import { ProducingServiceCard, FcVasCard, PrinterSampleCard, type VasRowView } from './LabelingSettingsForm'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Labeling & services — iLaunchify Partners' }
@@ -20,12 +20,13 @@ const SERVICE_LABEL: Record<string, string> = {
 export default async function LabelingSettingsPage() {
   const user = await requireUser()
   const services = await prisma.partnerService.findMany({
-    where: { AND: [serviceOwnedBy(user.id)], type: { in: ['MANUFACTURING', 'COPACKING', 'WAREHOUSE'] } },
+    where: { AND: [serviceOwnedBy(user.id)], type: { in: ['MANUFACTURING', 'COPACKING', 'WAREHOUSE', 'LABEL_PRINTING'] } },
     select: {
       id: true,
       type: true,
       labelingMode: true,
       appliesLabels: true,
+      sampleCapable: true,
       fcValueAddedServices: {
         orderBy: { jobType: 'asc' },
       },
@@ -33,8 +34,11 @@ export default async function LabelingSettingsPage() {
     orderBy: { type: 'asc' },
   })
 
-  const producing = services.filter((s) => (s.type as string) !== 'WAREHOUSE')
+  const producing = services.filter(
+    (s) => (s.type as string) !== 'WAREHOUSE' && (s.type as string) !== 'LABEL_PRINTING',
+  )
   const warehouses = services.filter((s) => (s.type as string) === 'WAREHOUSE')
+  const printers = services.filter((s) => (s.type as string) === 'LABEL_PRINTING')
 
   return (
     <div className="space-y-6">
@@ -70,6 +74,11 @@ export default async function LabelingSettingsPage() {
           }}
           label={SERVICE_LABEL[s.type as string] ?? (s.type as string)}
         />
+      ))}
+
+      {/* SR-2.2 — printers declare sample capability (sample rotation pool). */}
+      {printers.map((s) => (
+        <PrinterSampleCard key={s.id} serviceId={s.id} initialSampleCapable={s.sampleCapable} />
       ))}
 
       {warehouses.map((s) => (

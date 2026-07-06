@@ -164,6 +164,10 @@ export type {
   RotationContext,
   RotationDecision,
 } from './rotation'
+export { loadRotationPolicy, policyInputOf } from './routing'
+// SR-2.2 — sample print-leg resolver + verdict loop support.
+export { resolveSamplePrintLeg } from './sample-print'
+export type { SamplePrintLeg } from './sample-print'
 // Partner rating engine — dimensions + aggregation math (docs/FEEDBACK_MODULE.md §5).
 export {
   RATING_DIMENSIONS,

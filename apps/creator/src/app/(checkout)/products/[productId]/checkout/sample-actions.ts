@@ -18,7 +18,7 @@ import { prisma, getSampleSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { createCheckoutSession } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
-import { quoteSample, createOrderWithNumber, type SampleSelection, type SampleOption } from '@ilaunchify/orders'
+import { quoteSample, createOrderWithNumber, resolveSamplePrintLeg, effectivePrintSourcing, type SampleSelection, type SampleOption } from '@ilaunchify/orders'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -164,6 +164,29 @@ export async function createSampleOrder(
   const platformFeeCents = Math.floor((quote.subtotalCents * settings.samplePlatformFeeBps) / 10000)
   const totalCents = quote.subtotalCents + shippingCents + platformFeeCents
 
+  // --- 5b. SR-2.2 — BRANDED sample print leg. A branded sample of an
+  //         externally-printed product must exercise the EXACT printer who'd
+  //         produce the bulk run (pinned pick → SAMPLE-context rotation among
+  //         sampleCapable printers, sample-rejection exclusions applied).
+  //         Null = manufacturer improvises (IN_HOUSE, or no printer resolvable)
+  //         — recorded honestly in internalNotes.
+  let samplePrintLeg: Awaited<ReturnType<typeof resolveSamplePrintLeg>> = null
+  if (input.kind === 'BRANDED' && tpl?.manufacturerServiceId) {
+    const mfr = await prisma.partnerService
+      .findUnique({
+        where: { id: tpl.manufacturerServiceId },
+        select: { labelingMode: true },
+      })
+      .catch(() => null)
+    if (mfr && effectivePrintSourcing(product, mfr) !== 'IN_HOUSE') {
+      samplePrintLeg = await resolveSamplePrintLeg({
+        productId: product.id,
+        productTemplateId,
+        creatorUserId: user.id,
+      }).catch(() => null)
+    }
+  }
+
   // --- 6. Create the SAMPLE order (+ item). No MOQ check by design. -----------
   //         orderNumber stamped with a @unique P2002 retry (createOrderWithNumber).
   const order = await createOrderWithNumber((orderNumber) => (prisma as unknown as {
@@ -181,6 +204,9 @@ export async function createSampleOrder(
       taxCents: 0,
       totalCents,
       manufacturerServiceId: tpl?.manufacturerServiceId ?? null,
+      // SR-2.2 — the printer this branded sample exercises (verdict subject +
+      // sticky-continuity anchor). Null = manufacturer improvises the label.
+      printProviderServiceId: samplePrintLeg?.partnerServiceId ?? null,
       shipToType: 'CREATOR_ADDRESS',
       shipToContactName: s.contactName.trim(),
       shipToContactPhone: s.contactPhone ?? null,
@@ -190,7 +216,13 @@ export async function createSampleOrder(
       shipToState: s.state ?? null,
       shipToPostalCode: s.postalCode.trim(),
       shipToCountry: s.country?.trim() || 'US',
-      internalNotes: `SAMPLE · ${input.kind} · ${quote.unitCount} unit(s) · ${input.selection.mode}${input.kind === 'BRANDED' ? ' · not-for-resale ack' : ''}`,
+      internalNotes: `SAMPLE · ${input.kind} · ${quote.unitCount} unit(s) · ${input.selection.mode}${input.kind === 'BRANDED' ? ' · not-for-resale ack' : ''}${
+        samplePrintLeg
+          ? ` · print leg: PartnerService ${samplePrintLeg.partnerServiceId} (${samplePrintLeg.pinned ? 'creator pin' : 'rotation'}) — ops coordinates the 1-unit label run (SR-2.2 V1)`
+          : input.kind === 'BRANDED'
+            ? ' · print leg: manufacturer improvises (in-house or no external printer resolvable)'
+            : ''
+      }`,
       items: {
         create: {
           productId: product.id,
@@ -201,6 +233,19 @@ export async function createSampleOrder(
       },
     } as never,
   }))
+
+  // SR-2.2 — rotation picked the sample's printer: persist the decision.
+  if (samplePrintLeg?.awardPayload) {
+    await prisma.printAwardLog
+      .create({
+        data: {
+          partnerServiceId: samplePrintLeg.partnerServiceId,
+          orderId: order.id,
+          decisionJson: samplePrintLeg.awardPayload as never,
+        },
+      })
+      .catch(() => {/* best-effort */})
+  }
 
   await logAuditAs(user, {
     entityType: 'Order',

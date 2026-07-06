@@ -98,6 +98,28 @@ simulation ("next 100 orders: A 52 / B 29 / C 19") · **[Awards]** last-90-day a
 provider vs configured target, rotation-applied rate, new-provider share actual, deep-links to
 orders. KPI strip: pool depth · awards 30d · new-provider share · top-1 concentration.
 
+### 2.6 The sample verdict loop (SR-2.2, Pavel 2026-07-06)
+The sample is where rotation SHOULD happen; production is where it should stop. Samples decide
+the chain: the creator judges PRODUCT (manufacturer's craft) and PRINT/PACKAGING (printer's
+craft) SEPARATELY on delivery.
+- **Approve print** → the sample's printer becomes the pinned ProductPrintSelection (locked
+  chain — what the sample was for). Any prior rejection of that printer is superseded.
+- **Reject print** → ProductPrintExclusion (per creator+product, consumed by findRouting, the
+  sticky lookup, AND the sample resolver — never auto-routed again), any stale pin at that
+  printer clears, and the switch list offers sampleCapable alternatives → one click re-pins →
+  re-sample. No lock ever forms from a rejected sample.
+- **Sticky follows APPROVED chains only**: PRODUCTION orders imply approval; SAMPLE orders
+  stick only with an APPROVED print verdict.
+- **Sample print leg**: BRANDED samples of externally-printed products resolve a real printer
+  (pin → SAMPLE-context rotation among sampleCapable + exclusions applied); binding + award
+  log ship now, the physical 1-unit dispatch is ops-manual in V1 (noted in internalNotes).
+- **Contexts**: RotationPolicy is (serviceType, context)-scoped — DEFAULT (bulk) / SAMPLE /
+  REPLENISHMENT; context row wins, falls back to DEFAULT. Samples typically run a HIGHER
+  newProviderSharePct (cheapest failure in the system); replenishment runs sticky+BEST_ONLY.
+- **In-house manufacturers**: nothing to swap — the card says so honestly; notes reach the
+  manufacturer conversation.
+- Verdicts editable until a production order books; then locked (legal reproducibility).
+
 ### 2.4 Extra controls Pavel didn't list (recommended, cheap on this architecture)
 - **Per-provider kill switch** — `excludeFromAutoRotation` flag on PartnerService: out of the
   auto pool WITHOUT deactivating (manual/pinned still works). Ops pressure valve.
@@ -141,6 +163,33 @@ orders. KPI strip: pool depth · awards 30d · new-provider share · top-1 conce
   persists PrintAwardLog with orderId POST-order-create (best-effort, never aborts an order)
 - [x] Sticky-reorder lookup — creator's last Order with this product's printProviderServiceId,
   passed as `previousProviderServiceId`; `creatorUserId` param wired from checkout
+
+### SR-2.2 — sample verdict loop — **BUILT 2026-07-06 (CW; migrated)**
+- [x] Schema: `SampleVerdict` (one per sample order, product+print verdicts, notes),
+  `ProductPrintExclusion` (creator+product+service unique, reason, sourceOrder),
+  `PartnerService.sampleCapable` (default true), `RotationPolicy.context`
+  (DEFAULT/SAMPLE/REPLENISHMENT, unique serviceType+context) + audit entity types
+- [x] `resolveSamplePrintLeg` (packages/orders/sample-print.ts): pin → SAMPLE-context rotation
+  among sampleCapable ACTIVE printers, exclusions applied, no sticky (the sample IS the
+  rotation moment), policy.enabled stays authoritative; award payload returned
+- [x] `createSampleOrder` wires the print leg for BRANDED samples of externally-printed
+  products: `printProviderServiceId` set, PrintAwardLog written, internalNotes records
+  pin-vs-rotation + the V1 ops-manual note; IN_HOUSE/unbranded unchanged
+- [x] findRouting consumes persistent exclusions (merged pre-pinned-validation — a stale pin
+  at an excluded printer surfaces pinnedPrintUnavailable, never binds); sticky follows
+  APPROVED chains only (SAMPLE orders need an APPROVED print verdict)
+- [x] `loadRotationPolicy(serviceType, context)` + `policyInputOf` exported (SR-3 UI reuses)
+- [x] Creator verdict card on delivered sample orders: separate product/print judgments,
+  approve→pin toast, reject→exclusion + alternatives list (Bayesian-ordered, "New" labeled)
+  → switch pins + "Order a re-sample" CTA; in-house copy when nothing is swappable; verdict
+  locks once production books; all actions audited (SAMPLE_VERDICT_*, PRINT_PROVIDER_PINNED_
+  BY_SAMPLE_APPROVAL, PRINT_PROVIDER_EXCLUDED_BY_SAMPLE_REJECTION, PRINT_PROVIDER_SWITCHED_
+  AFTER_SAMPLE)
+- [x] Partner toggle: "We can print 1-unit pre-production samples" on /settings/labeling for
+  LABEL_PRINTING services (audited SAMPLE_CAPABILITY_CHANGED)
+- [ ] Follow-ups: sample print DISPATCH mechanics (ops-manual V1) · verdict email prompt via
+  Notification Center (sample delivered → "Judge your sample") · REPLENISHMENT context
+  detection at checkout (reorder heuristic)
 
 ### SR-3 — Routing & Rotation admin surface (pending)
 - [ ] v2 surface, 3 tabs (Print providers / FCs / Manufacturers): Policy editor (audited via

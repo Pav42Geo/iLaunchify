@@ -7,7 +7,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { saveLabelingCapabilities, saveVasService, removeVasService } from './actions'
+import { saveLabelingCapabilities, saveVasService, removeVasService, saveSampleCapable } from './actions'
 
 // ---------------------------------------------------------------------------
 
@@ -146,6 +146,63 @@ export function ProducingServiceCard({ service, label }: { service: ServiceView;
             When a separate printer produces labels, they ship to you for application. Turning
             this OFF means your products need a co-packer or qualified fulfillment center in the
             chain — orders that can't finish are blocked before payment.
+          </span>
+        </span>
+      </label>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Print service — sample capability (SR-2.2)
+// ---------------------------------------------------------------------------
+
+export function PrinterSampleCard({
+  serviceId,
+  initialSampleCapable,
+}: {
+  serviceId: string
+  initialSampleCapable: boolean
+}) {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const [capable, setCapable] = useState(initialSampleCapable)
+
+  return (
+    <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <h2 className="font-display text-[15px] font-semibold text-ink-900">
+        Label printing — sample runs
+      </h2>
+      <label className="mt-3 flex items-start gap-2.5">
+        <input
+          type="checkbox"
+          checked={capable}
+          disabled={pending}
+          onChange={(e) => {
+            const next = e.target.checked
+            setCapable(next)
+            startTransition(async () => {
+              const res = await saveSampleCapable({ serviceId, sampleCapable: next })
+              if (!res.ok) {
+                toast.error(res.error)
+                setCapable(!next)
+                return
+              }
+              toast.success('Saved.')
+              router.refresh()
+            })
+          }}
+          className="mt-0.5 accent-pink-600"
+        />
+        <span>
+          <span className="block text-[13.5px] font-medium text-ink-900">
+            We can print 1-unit pre-production samples
+          </span>
+          <span className="block text-[12px] text-ink-500">
+            Samples are how creators pick their printer — the sample&rsquo;s printer wins
+            the bulk run when approved. Digital presses usually can; untick this if your
+            process (flexo, gravure) makes single-unit runs impractical. Off = you skip the
+            sample pool but stay fully available for production orders.
           </span>
         </span>
       </label>

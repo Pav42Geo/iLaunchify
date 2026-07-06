@@ -80,6 +80,37 @@ export async function saveLabelingCapabilities(input: {
   return { ok: true }
 }
 
+// SR-2.2 — printer declares whether its floor can run 1-unit pre-production
+// samples (only sampleCapable printers enter the sample rotation pool).
+export async function saveSampleCapable(input: {
+  serviceId: string
+  sampleCapable: boolean
+}): Promise<Result> {
+  const actor = await requirePartnerActor()
+  if (!actor.ok) return { ok: false, error: 'Not authorized' }
+  const service = await prisma.partnerService.findFirst({
+    where: { id: input.serviceId, type: 'LABEL_PRINTING', partnerId: actor.partnerId },
+    select: { id: true, sampleCapable: true },
+  })
+  if (!service) return { ok: false, error: 'Service not found' }
+
+  await prisma.partnerService.update({
+    where: { id: service.id },
+    data: { sampleCapable: input.sampleCapable },
+  })
+  if (input.sampleCapable !== service.sampleCapable) {
+    await logAuditAs(actor.user, {
+      entityType: 'PartnerService',
+      entityId: service.id,
+      action: 'SAMPLE_CAPABILITY_CHANGED',
+      fromValue: String(service.sampleCapable),
+      toValue: String(input.sampleCapable),
+    })
+  }
+  revalidatePath('/settings/labeling')
+  return { ok: true }
+}
+
 export async function saveVasService(input: {
   serviceId: string
   jobType: FcVasJobType

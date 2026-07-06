@@ -53,6 +53,7 @@ import { DelayApprovalPrompt } from './DelayApprovalPrompt'
 import { StoredStockPanel } from './StoredStockPanel'
 import { getStoragePanelData } from './storage-panel-data'
 import { ProofApprovalPanel, type CreatorProofRoundView } from './ProofApprovalPanel'
+import { SampleVerdictCard } from './SampleVerdictCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -225,6 +226,50 @@ export default async function OrderDetailPage({
     (order.deliveredAt == null ||
       Date.now() - order.deliveredAt.getTime() <=
         orderSettings.disputeWindowDays * 24 * 60 * 60 * 1000)
+
+  // SR-2.2 — sample verdict card data: printer name (when a separate print
+  // leg exists), any existing verdict, and whether production already locked
+  // it. SAMPLE orders only, once delivered.
+  let sampleVerdictProps: {
+    orderId: string
+    productId: string
+    printPartnerName: string | null
+    initialProductVerdict: 'APPROVED' | 'REJECTED' | null
+    initialPrintVerdict: 'APPROVED' | 'REJECTED' | null
+    verdictLocked: boolean
+  } | null = null
+  if (order.orderType === 'SAMPLE' && isDelivered && product) {
+    const [printSvc, verdict, producedCount] = await Promise.all([
+      order.printProviderServiceId
+        ? prisma.partnerService.findUnique({
+            where: { id: order.printProviderServiceId },
+            select: { partner: { select: { companyName: true } } },
+          })
+        : Promise.resolve(null),
+      prisma.sampleVerdict
+        .findUnique({
+          where: { orderId: order.id },
+          select: { productVerdict: true, printVerdict: true },
+        })
+        .catch(() => null),
+      prisma.order.count({
+        where: {
+          creatorUserId: user.id,
+          orderType: 'PRODUCTION',
+          status: { notIn: ['CANCELLED'] },
+          items: { some: { productId: product.id } },
+        },
+      }),
+    ])
+    sampleVerdictProps = {
+      orderId: order.id,
+      productId: product.id,
+      printPartnerName: printSvc?.partner.companyName ?? null,
+      initialProductVerdict: verdict?.productVerdict ?? null,
+      initialPrintVerdict: verdict?.printVerdict ?? null,
+      verdictLocked: producedCount > 0,
+    }
+  }
 
   // Phase L1.2a — stored orders carry a StorageAgreement; the panel data
   // (agreement + accrual + release history + default address) is assembled
@@ -416,6 +461,10 @@ export default async function OrderDetailPage({
             })
           )}
         </section>
+
+        {/* SR-2.2 — sample verdict: the moment that locks or reopens the
+            production chain. Sample orders only, once delivered. */}
+        {sampleVerdictProps && <SampleVerdictCard {...sampleVerdictProps} />}
 
         {/* Feedback module §5 — rate-your-partners nudge once delivered */}
         {isDelivered && (
