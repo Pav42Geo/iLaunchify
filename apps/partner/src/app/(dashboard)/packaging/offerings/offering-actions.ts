@@ -70,6 +70,56 @@ function isUniqueViolation(err: unknown): boolean {
 // CREATE
 // -----------------------------------------------------------------------------
 
+// PS-2 capability hardening (docs/PRINT_PROVIDER_SELECTION.md §7.2) — feeds
+// eligiblePrintProviders. All optional/null = "not declared" (permissive),
+// EXCEPT foodContactSafe which is a HARD filter when the packaging demands it.
+export interface OfferingCapabilityInput {
+  printProcess?: 'DIGITAL' | 'OFFSET' | 'FLEXO' | 'GRAVURE' | 'SCREEN' | null
+  maxRunQty?: number | null
+  foodContactSafe?: boolean
+  minPrintWidthMm?: number | null
+  maxPrintWidthMm?: number | null
+  minPrintHeightMm?: number | null
+  maxPrintHeightMm?: number | null
+}
+
+function validateCapability(
+  cap: OfferingCapabilityInput | undefined,
+  moq: number,
+): { ok: true } | { ok: false; error: string } {
+  if (!cap) return { ok: true }
+  if (cap.maxRunQty != null) {
+    if (!Number.isInteger(cap.maxRunQty) || cap.maxRunQty < 1) {
+      return { ok: false, error: 'Max run must be a whole number ≥ 1.' }
+    }
+    if (cap.maxRunQty < moq) return { ok: false, error: 'Max run can’t be below your MOQ.' }
+  }
+  const dims = [cap.minPrintWidthMm, cap.maxPrintWidthMm, cap.minPrintHeightMm, cap.maxPrintHeightMm]
+  if (dims.some((d) => d != null && (!Number.isFinite(d) || d <= 0 || d > 10_000))) {
+    return { ok: false, error: 'Print dimensions must be between 0 and 10,000 mm.' }
+  }
+  if (cap.minPrintWidthMm != null && cap.maxPrintWidthMm != null && cap.minPrintWidthMm > cap.maxPrintWidthMm) {
+    return { ok: false, error: 'Min print width can’t exceed max.' }
+  }
+  if (cap.minPrintHeightMm != null && cap.maxPrintHeightMm != null && cap.minPrintHeightMm > cap.maxPrintHeightMm) {
+    return { ok: false, error: 'Min print height can’t exceed max.' }
+  }
+  return { ok: true }
+}
+
+function capabilityData(cap: OfferingCapabilityInput | undefined) {
+  if (!cap) return {}
+  return {
+    printProcess: cap.printProcess ?? null,
+    maxRunQty: cap.maxRunQty ?? null,
+    foodContactSafe: cap.foodContactSafe ?? false,
+    minPrintWidthMm: cap.minPrintWidthMm ?? null,
+    maxPrintWidthMm: cap.maxPrintWidthMm ?? null,
+    minPrintHeightMm: cap.minPrintHeightMm ?? null,
+    maxPrintHeightMm: cap.maxPrintHeightMm ?? null,
+  }
+}
+
 export interface CreateOfferingInput {
   partnerServiceId: string
   packagingTypeId: string
@@ -80,6 +130,7 @@ export interface CreateOfferingInput {
   pricingTiers: PricingTier[]
   status: OfferingStatus
   dielineId?: string | null
+  capability?: OfferingCapabilityInput
 }
 
 export async function createPackagingOffering(
@@ -127,6 +178,9 @@ export async function createPackagingOffering(
   )
   if (!dielineCheck.ok) return { ok: false, error: dielineCheck.error }
 
+  const capCheck = validateCapability(input.capability, moq)
+  if (!capCheck.ok) return { ok: false, error: capCheck.error }
+
   let offering
   try {
     offering = await prisma.partnerPackagingOffering.create({
@@ -135,6 +189,7 @@ export async function createPackagingOffering(
         packagingTypeId: input.packagingTypeId,
         decorationMethod: input.decorationMethod,
         dielineId: input.dielineId?.trim() || null,
+        ...capabilityData(input.capability),
         moq,
         leadTimeDays,
         fulfillmentMode: input.fulfillmentMode,
@@ -182,6 +237,7 @@ export interface UpdateOfferingInput {
   pricingTiers?: PricingTier[]
   status?: OfferingStatus
   dielineId?: string | null
+  capability?: OfferingCapabilityInput
 }
 
 export async function updatePackagingOffering(
@@ -234,6 +290,14 @@ export async function updatePackagingOffering(
     const validated = validatePricingTiers(patch.pricingTiers)
     if (!validated.ok) return { ok: false, error: validated.error }
     data.pricingTiers = validated.tiers as unknown as Prisma.InputJsonValue
+  }
+  if (patch.capability !== undefined) {
+    const capCheck = validateCapability(
+      patch.capability,
+      (data.moq as number | undefined) ?? (await prisma.partnerPackagingOffering.findUniqueOrThrow({ where: { id }, select: { moq: true } })).moq,
+    )
+    if (!capCheck.ok) return { ok: false, error: capCheck.error }
+    Object.assign(data, capabilityData(patch.capability))
   }
 
   await prisma.partnerPackagingOffering.update({ where: { id }, data })

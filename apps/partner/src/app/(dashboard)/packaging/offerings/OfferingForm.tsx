@@ -62,8 +62,25 @@ interface OfferingFormProps {
     status: OfferingStatus
     pricingTiers: PricingTier[]
     dielineId: string | null
+    // PS-2 capability hardening (docs/PRINT_PROVIDER_SELECTION.md §7.2)
+    printProcess?: string | null
+    maxRunQty?: number | null
+    foodContactSafe?: boolean
+    minPrintWidthMm?: number | null
+    maxPrintWidthMm?: number | null
+    minPrintHeightMm?: number | null
+    maxPrintHeightMm?: number | null
   }
 }
+
+const PRINT_PROCESSES = [
+  { value: '', label: 'Not declared' },
+  { value: 'DIGITAL', label: 'Digital (low MOQ, short runs)' },
+  { value: 'OFFSET', label: 'Offset (plates — high volume)' },
+  { value: 'FLEXO', label: 'Flexo (mid volume)' },
+  { value: 'GRAVURE', label: 'Gravure (very high volume)' },
+  { value: 'SCREEN', label: 'Screen' },
+] as const
 
 const BLANK_TIER: TierRow = { minQty: '1', pricePerUnit: '' }
 
@@ -93,6 +110,25 @@ export function OfferingForm({
   )
   const [status, setStatus] = useState<OfferingStatus>(initial?.status ?? 'DRAFT')
   const [dielineId, setDielineId] = useState(initial?.dielineId ?? '')
+  // PS-2 capability fields (§7.2) — empty string = "not declared" (permissive)
+  const [printProcess, setPrintProcess] = useState(initial?.printProcess ?? '')
+  const [maxRunQty, setMaxRunQty] = useState(initial?.maxRunQty != null ? String(initial.maxRunQty) : '')
+  const [foodContactSafe, setFoodContactSafe] = useState(initial?.foodContactSafe ?? false)
+  const [minW, setMinW] = useState(initial?.minPrintWidthMm != null ? String(initial.minPrintWidthMm) : '')
+  const [maxW, setMaxW] = useState(initial?.maxPrintWidthMm != null ? String(initial.maxPrintWidthMm) : '')
+  const [minH, setMinH] = useState(initial?.minPrintHeightMm != null ? String(initial.minPrintHeightMm) : '')
+  const [maxH, setMaxH] = useState(initial?.maxPrintHeightMm != null ? String(initial.maxPrintHeightMm) : '')
+
+  const num = (s: string) => (s.trim() === '' ? null : Number(s))
+  const capability = () => ({
+    printProcess: (printProcess || null) as 'DIGITAL' | 'OFFSET' | 'FLEXO' | 'GRAVURE' | 'SCREEN' | null,
+    maxRunQty: num(maxRunQty),
+    foodContactSafe,
+    minPrintWidthMm: num(minW),
+    maxPrintWidthMm: num(maxW),
+    minPrintHeightMm: num(minH),
+    maxPrintHeightMm: num(maxH),
+  })
   const [tiers, setTiers] = useState<TierRow[]>(
     initial?.pricingTiers?.length
       ? initial.pricingTiers.map((t) => ({
@@ -180,6 +216,7 @@ export function OfferingForm({
           pricingTiers,
           status,
           dielineId: dielineId.trim() || null,
+          capability: capability(),
         })
         if (!result.ok) return setError(result.error)
         toast.success('Offering created')
@@ -193,6 +230,7 @@ export function OfferingForm({
           pricingTiers,
           status,
           dielineId: dielineId.trim() || null,
+          capability: capability(),
         })
         if (!result.ok) return setError(result.error)
         toast.success('Saved')
@@ -355,6 +393,81 @@ export function OfferingForm({
             )
           })}
         </div>
+      </div>
+
+      {/* PS-2 — Print capabilities (docs/PRINT_PROVIDER_SELECTION.md §7.2).
+          These feed the pairing engine: undeclared = permissive, EXCEPT
+          food-contact which is a HARD requirement on direct-food packaging. */}
+      <div className="space-y-2 rounded-xl border border-ink-100 p-4">
+        <Label className="text-sm font-medium text-ink-900">Print capabilities</Label>
+        <p className="text-ui-caption text-ink-500">
+          Optional but powerful: these keep incompatible jobs from ever reaching you — no
+          quantity you can't run, no material you don't carry, no press-size surprises.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor="cap-process" className="text-ui-label text-ink-700">Print process</Label>
+            <select
+              id="cap-process"
+              value={printProcess ?? ''}
+              onChange={(e) => setPrintProcess(e.target.value)}
+              disabled={isPending}
+              className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+            >
+              {PRINT_PROCESSES.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cap-maxrun" className="text-ui-label text-ink-700">Max run quantity</Label>
+            <Input
+              id="cap-maxrun"
+              value={maxRunQty}
+              onChange={(e) => setMaxRunQty(e.target.value)}
+              inputMode="numeric"
+              placeholder="No ceiling"
+              disabled={isPending}
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="space-y-1">
+            <Label htmlFor="cap-minw" className="text-ui-label text-ink-700">Min width (mm)</Label>
+            <Input id="cap-minw" value={minW} onChange={(e) => setMinW(e.target.value)} inputMode="decimal" placeholder="—" disabled={isPending} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cap-maxw" className="text-ui-label text-ink-700">Max width (mm)</Label>
+            <Input id="cap-maxw" value={maxW} onChange={(e) => setMaxW(e.target.value)} inputMode="decimal" placeholder="—" disabled={isPending} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cap-minh" className="text-ui-label text-ink-700">Min height (mm)</Label>
+            <Input id="cap-minh" value={minH} onChange={(e) => setMinH(e.target.value)} inputMode="decimal" placeholder="—" disabled={isPending} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cap-maxh" className="text-ui-label text-ink-700">Max height (mm)</Label>
+            <Input id="cap-maxh" value={maxH} onChange={(e) => setMaxH(e.target.value)} inputMode="decimal" placeholder="—" disabled={isPending} />
+          </div>
+        </div>
+        <label className="flex items-start gap-2.5 pt-1">
+          <input
+            type="checkbox"
+            checked={foodContactSafe}
+            onChange={(e) => setFoodContactSafe(e.target.checked)}
+            disabled={isPending}
+            className="mt-0.5 accent-pink-600"
+          />
+          <span>
+            <span className="block text-[13px] font-medium text-ink-900">
+              Food-contact-safe ink system (low-migration)
+            </span>
+            <span className="block text-ui-caption text-ink-500">
+              FDA 21 CFR 175/176-aligned inks with documented cure validation. Required for
+              direct-food-contact packaging — jobs that need it are HARD-filtered to offerings
+              with this checked. Only declare it if your documentation backs it.
+            </span>
+          </span>
+        </label>
       </div>
 
       {/* Pricing tiers */}

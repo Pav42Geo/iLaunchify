@@ -19,6 +19,8 @@ import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/s
 import { RatingStars, RatingBreakdownPopover } from '@ilaunchify/ui'
 import { getTemplateRatingAndReviews, type TemplateLiveRating } from '@/lib/template-reviews'
 import { TemplateReviewsSection } from './TemplateReviewsSection'
+import { getPrintProviderCards } from '@/lib/print-providers'
+import { PrintProvidersSection } from './PrintProvidersSection'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
 import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
 import { getTemplateFlavorRecipes } from '@/lib/flavor-recipe-detail'
@@ -100,6 +102,10 @@ export default async function ProductDetailPage({
   // Live manufacturer rating + verified creator reviews (fail-soft — fixture
   // templates render the legacy RatingRow, no reviews section).
   const { rating: liveRating, reviews } = await getTemplateRatingAndReviews(template.slug)
+
+  // PS-2 — print-provider cards, gated by effectivePrintSourcing (§2): null
+  // for IN_HOUSE manufacturers and fixture templates. Read-only until PS-3.
+  const printProviders = await getPrintProviderCards(template.slug)
 
   // Recipe-derived ingredients + Nutrition Facts — computed from the template's
   // real recipe slots via the nutrition engine (FOOD domain). Overrides the
@@ -376,6 +382,10 @@ export default async function ProductDetailPage({
           compliance={<ComplianceTab detail={detail} certs={certs} />}
         />
       </section>
+
+      {/* PRINT PROVIDERS (docs/PRINT_PROVIDER_SELECTION.md §3, PS-2) — only
+          when the manufacturer's labelingMode allows external print. */}
+      {printProviders && <PrintProvidersSection view={printProviders} />}
 
       {/* CREATOR REVIEWS (docs/FEEDBACK_MODULE.md §6.2) — verified-only,
           anchored for the stars popover's "See Creator Reviews" link. */}

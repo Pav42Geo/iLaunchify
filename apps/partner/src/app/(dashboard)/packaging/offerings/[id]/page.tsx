@@ -66,6 +66,14 @@ export default async function EditOfferingPage({
           status: offering.status,
           pricingTiers: tiers,
           dielineId: offering.dielineId,
+          // PS-2 capability fields (§7.2)
+          printProcess: offering.printProcess,
+          maxRunQty: offering.maxRunQty,
+          foodContactSafe: offering.foodContactSafe,
+          minPrintWidthMm: offering.minPrintWidthMm != null ? Number(offering.minPrintWidthMm) : null,
+          maxPrintWidthMm: offering.maxPrintWidthMm != null ? Number(offering.maxPrintWidthMm) : null,
+          minPrintHeightMm: offering.minPrintHeightMm != null ? Number(offering.minPrintHeightMm) : null,
+          maxPrintHeightMm: offering.maxPrintHeightMm != null ? Number(offering.maxPrintHeightMm) : null,
         }}
       />
     </div>

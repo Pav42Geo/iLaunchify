@@ -57,10 +57,13 @@ FC value-added services admin-verified before ACTIVE.
 - [x] **[PAVEL]** migration ran 2026-07-05 · remaining policy calls: printer→applier freight attribution; UNRESOLVED checkout fallback order (needed at PS-3, not before)
 - [ ] **[CW]** Offering capability wizard (printProcess/maxRun/foodContact/envelope/substrates on the offering editor) — with PS-2, where the fields become creator-visible
 
-## Stage 6 — provider cards (CW; read-only, no binding)
-- [ ] Cards on product detail (Bayesian stars/"New", price-from, real avg production time, capability chips) gated by `effectivePrintSourcing` (§3)
-- [ ] Provider Details modal (profile / output spec / die-cut / production / ratings) (§3)
-- [ ] Filtered-out transparency ("3 can't print this: reasons") + mismatch telemetry (§7.2.8)
+## Stage 6 — provider cards — **BUILT 2026-07-05 (CW; read-only, no binding)**
+- [x] Cards on product detail (`PrintProvidersSection` + `lib/print-providers.ts`): gated by `effectivePrintSourcing` (IN_HOUSE/fixture = no section), ops-filtered candidates, Bayesian-ordered display w/ RatingStars+"New", price-from (min tier), MOQ-from, **measured** avg production time (LABEL dispatches 90d) w/ quoted-lead fallback, decoration/food-contact chips; EXTERNAL_REQUIRED vs ALLOWED copy (§3)
+- [x] Provider Details modal (rating breakdown, measured vs quoted times, output spec, process/decoration chips, dieline+material counts) — onboarding data only, no new entry (§3). "Select this provider" deliberately absent until PS-3
+- [x] Filtered-out transparency (format-mismatch + blackout count line; full 8-filter reason breakdown lands at PS-3 where job facts exist) (§7.3)
+- [x] Offering capability wizard: `printProcess` / `maxRunQty` (≥MOQ validated) / dimensional envelope / **food-contact-safe declaration** (HARD-filter warning copy) on the offering create/edit form + actions validation (§7.2)
+- [ ] Mismatch telemetry aggregation (admin) — with PS-3 decline-reason wiring (§7.2.8)
+- **[PAVEL]** `pnpm install` (marketing gained `@ilaunchify/orders`)
 
 ## Stage 7 — selection binding (CW + CODE coordination)
 - [ ] `ProductPrintSelection` + checkout print-line surfacing + picker modal (§4) **[CW]**
