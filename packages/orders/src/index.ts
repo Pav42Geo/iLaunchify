@@ -158,6 +158,7 @@ export type {
 // Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8a).
 export {
   computeTemplatePrintCoverage,
+  recomputeTemplateCoverage,
   buildCapabilityTuples,
   loadCapabilityShortlist,
 } from './print-coverage'

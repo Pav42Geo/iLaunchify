@@ -553,6 +553,22 @@ shortlisting, broadcast, re-broadcast, unpark — all automatic.
     ("available again — finish + order"). Waiting creators = in-flight (DRAFT/IN_REVIEW/COMPLIANT)
     Products on the template → Brand → CreatorProfile.userId. Fail-soft.
   - [ ] **[PAVEL]** the `COVERAGE_RESTORED` enum value rides the SAME db:push.
+- **PS-8 follow-up — denormalized coverage cache** · CODE COMPLETE 2026-07-06 (CW)
+  - [x] `ProductTemplate.printCoverage Int?` + `printCoverageAt DateTime?` — cached count of
+    ops-gated printers (null = IN_HOUSE / not computed). `recomputeTemplateCoverage(templateId)`
+    computes via `computeTemplatePrintCoverage` + persists (cast-guarded write until the column
+    lands on the client — getOrderSettings pre-push pattern).
+  - [x] Kept fresh at the points that already compute coverage: `broadcastCapabilityRequestsForTemplate`
+    (every publish-gate / recovery / re-broadcast), admin approve gate, and the nightly cron
+    drop-watch (all PUBLISHED). Publish GATE still computes live — the cache is for reads, not the gate.
+  - [x] Admin dashboard now exact + cheap: **"fragile" = `count(printCoverage = 1)`** (replaced the
+    PAUSED-count proxy), uncovered = `count(printCoverage = 0)` — both simple counts, no per-template
+    scan. 5 KPIs now match §10.4 (uncovered · fragile · open RFQs · claims awaiting · median).
+  - Staleness: an offering change that triggers no broadcast (e.g. a printer adds a covering
+    offering to an already-covered template) refreshes the cache only at the nightly cron — fine
+    for a dashboard KPI; the live gate is unaffected.
+  - [ ] **[PAVEL]** `printCoverage`/`printCoverageAt` columns ride the SAME db:push; after
+    `db:generate` the cast-guards in print-coverage.ts + print-coverage/data.ts can be de-cast.
 
 ## §9 Build phases + ownership
 

@@ -5,7 +5,7 @@
 // re-broadcast, unpark — runs automatically.
 
 import Link from 'next/link'
-import { AlertTriangle, Megaphone, Handshake, PauseCircle, Timer } from 'lucide-react'
+import { AlertTriangle, Megaphone, Handshake, ShieldAlert, Timer } from 'lucide-react'
 import { KpiWidget } from '@ilaunchify/ui'
 import { requireCapability } from '@ilaunchify/auth'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
@@ -47,6 +47,13 @@ export default async function PrintCoveragePage() {
           icon={AlertTriangle}
           sublabel="have an open request"
         />
+        <KpiWidget
+          label="Fragile (coverage 1)"
+          value={kpis.fragile}
+          tone={kpis.fragile > 0 ? 'warning' : 'success'}
+          icon={ShieldAlert}
+          sublabel="one printer away from a gap"
+        />
         <KpiWidget label="Open RFQs" value={kpis.openRfqs} tone="ink" icon={Megaphone} />
         <KpiWidget
           label="Claims awaiting"
@@ -54,12 +61,6 @@ export default async function PrintCoveragePage() {
           tone={kpis.claimsAwaiting > 0 ? 'info' : 'ink'}
           icon={Handshake}
           sublabel="printer finishing an offering"
-        />
-        <KpiWidget
-          label="Paused for coverage"
-          value={kpis.pausedForCoverage}
-          tone={kpis.pausedForCoverage > 0 ? 'danger' : 'success'}
-          icon={PauseCircle}
         />
         <KpiWidget
           label="Median time to coverage"

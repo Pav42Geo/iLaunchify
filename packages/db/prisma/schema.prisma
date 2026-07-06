@@ -3917,6 +3917,14 @@ model ProductTemplate {
   // C4 — grace-window marker: a cert attached to this product expired; product
   // needs a refreshed cert. Null = healthy.
   certRefreshNeededAt        DateTime?
+  // Print Coverage cache (docs/PRINT_PROVIDER_SELECTION.md §10.1, PS-8 follow-up).
+  // Denormalized count of DISTINCT ops-gated printers that can produce this
+  // template's packaging (recomputeTemplateCoverage). null = not applicable
+  // (IN_HOUSE / not yet computed). Kept fresh on approve, every RFQ/recovery
+  // event, and nightly; the publish GATE still computes live, this is for the
+  // admin dashboard (exact "fragile" = coverage 1) + avoiding re-scans.
+  printCoverage              Int?
+  printCoverageAt            DateTime?
   // Phrase engine (2026-06-05) — free-form manufacturer-answered product-fact
   // flags, e.g. {makesStructureFunctionClaims:true}. Consumed by PhraseRule
   // conditions of kind PRODUCT_FACT.

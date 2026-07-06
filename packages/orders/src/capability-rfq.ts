@@ -16,7 +16,7 @@
 import { prisma } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
 import {
-  computeTemplatePrintCoverage,
+  recomputeTemplateCoverage,
   buildCapabilityTuples,
   loadCapabilityShortlist,
 } from './print-coverage'
@@ -68,7 +68,9 @@ export async function broadcastCapabilityRequestsForTemplate(
   }
 
   try {
-    const coverage = await computeTemplatePrintCoverage(templateId)
+    // Compute + persist the coverage cache (keeps ProductTemplate.printCoverage
+    // fresh on every publish-gate / recovery / re-broadcast pass).
+    const coverage = await recomputeTemplateCoverage(templateId)
     if (!coverage.applicable) return EMPTY
 
     // Coverage restored (or never lost) → close lingering requests + unpark.

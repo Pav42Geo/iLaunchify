@@ -140,6 +140,40 @@ export async function computeTemplatePrintCoverage(
 }
 
 /**
+ * Compute a template's coverage AND persist it to the denormalized
+ * `ProductTemplate.printCoverage` cache (§10.1). Returns the fresh coverage so
+ * callers that also need the value (publish gate, cron) don't double-compute.
+ * The column powers the admin dashboard's exact "fragile" (coverage 1) count and
+ * lets other surfaces read coverage without re-scanning. `printCoverage = null`
+ * when not applicable (IN_HOUSE / template missing).
+ *
+ * NOTE: cast-guarded write until `db:push` lands the column on the generated
+ * client (same pattern as getOrderSettings' pre-push fields). Best-effort — a
+ * failed cache write never fails the caller.
+ */
+export async function recomputeTemplateCoverage(
+  templateId: string,
+): Promise<TemplatePrintCoverage> {
+  const cov = await computeTemplatePrintCoverage(templateId)
+  try {
+    await (
+      prisma.productTemplate as unknown as {
+        update: (a: unknown) => Promise<unknown>
+      }
+    ).update({
+      where: { id: templateId },
+      data: {
+        printCoverage: cov.applicable ? cov.coverage : null,
+        printCoverageAt: new Date(),
+      },
+    })
+  } catch {
+    /* cache write best-effort — pre-push the column may not exist yet */
+  }
+  return cov
+}
+
+/**
  * Build the denormalized RFQ tuple(s) for a template (§10.2). One tuple per
  * required packaging type (the PrintCapabilityRequest unique key is
  * templateId+packagingTypeId). decorationMethod/substrate/dieline stay null at

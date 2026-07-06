@@ -18,7 +18,7 @@ import { requireRole, requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { recordNicheAssignment, suggestPhrases, recordPhraseAssignment } from '@ilaunchify/marketplace'
 import {
-  computeTemplatePrintCoverage,
+  recomputeTemplateCoverage,
   broadcastCapabilityRequestsForTemplate,
 } from '@ilaunchify/orders'
 import type { PhraseRequirement } from '@ilaunchify/db'
@@ -72,7 +72,7 @@ export async function approveProductTemplate(productTemplateId: string): Promise
   // fully-covered templates pass straight through (coverage.applicable=false or
   // coverage>0). Fails soft — a coverage/broadcast hiccup never blocks a valid
   // publish (returns applicable=false).
-  const coverage = await computeTemplatePrintCoverage(productTemplateId)
+  const coverage = await recomputeTemplateCoverage(productTemplateId)
   if (coverage.applicable && coverage.uncovered) {
     const rfq = await broadcastCapabilityRequestsForTemplate(productTemplateId, {
       reason: 'PUBLISH_GATE',

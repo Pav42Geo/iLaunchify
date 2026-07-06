@@ -26,9 +26,9 @@ export interface CoverageRequestRow {
 
 export interface CoverageKpis {
   uncoveredTemplates: number
+  fragile: number
   openRfqs: number
   claimsAwaiting: number
-  pausedForCoverage: number
   medianDaysToCoverage: number | null
 }
 
@@ -40,39 +40,43 @@ export interface CoverageDashboard {
 const PAGE = 100
 
 export async function loadCoverageDashboard(): Promise<CoverageDashboard> {
-  const [requests, openReqs, claimsAwaiting, pausedForCoverage, fulfilled] = await Promise.all([
-    prisma.printCapabilityRequest.findMany({
-      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-      take: PAGE,
-      select: {
-        id: true,
-        productTemplateId: true,
-        packagingTypeId: true,
-        status: true,
-        manufacturerRegion: true,
-        notifiedServiceIds: true,
-        createdAt: true,
-        expiresAt: true,
-        _count: { select: { claims: true } },
-      },
-    }),
-    // Uncovered = distinct templates with an OPEN or CLAIMED request (exact — a
-    // request only exists because coverage hit 0).
-    prisma.printCapabilityRequest.findMany({
-      where: { status: { in: ['OPEN', 'CLAIMED'] } },
-      select: { productTemplateId: true, status: true },
-    }),
-    prisma.printCapabilityClaim.count({
-      where: { status: { in: ['SUBMITTED', 'OFFERING_DRAFTED'] } },
-    }),
-    prisma.productTemplate.count({ where: { status: 'PAUSED' } }),
-    prisma.printCapabilityRequest.findMany({
-      where: { status: 'FULFILLED' },
-      select: { createdAt: true, updatedAt: true },
-      take: 500,
-      orderBy: { updatedAt: 'desc' },
-    }),
-  ])
+  // uncovered/fragile read the denormalized ProductTemplate.printCoverage cache
+  // (exact + cheap; recomputeTemplateCoverage keeps it fresh). Cast-guarded until
+  // db:push lands the column on the generated client.
+  const tplModel = prisma.productTemplate as unknown as {
+    count: (a: unknown) => Promise<number>
+  }
+
+  const [requests, uncoveredTemplates, fragile, openRfqs, claimsAwaiting, fulfilled] =
+    await Promise.all([
+      prisma.printCapabilityRequest.findMany({
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        take: PAGE,
+        select: {
+          id: true,
+          productTemplateId: true,
+          packagingTypeId: true,
+          status: true,
+          manufacturerRegion: true,
+          notifiedServiceIds: true,
+          createdAt: true,
+          expiresAt: true,
+          _count: { select: { claims: true } },
+        },
+      }),
+      tplModel.count({ where: { printCoverage: 0 } }),
+      tplModel.count({ where: { printCoverage: 1 } }),
+      prisma.printCapabilityRequest.count({ where: { status: 'OPEN' } }),
+      prisma.printCapabilityClaim.count({
+        where: { status: { in: ['SUBMITTED', 'OFFERING_DRAFTED'] } },
+      }),
+      prisma.printCapabilityRequest.findMany({
+        where: { status: 'FULFILLED' },
+        select: { createdAt: true, updatedAt: true },
+        take: 500,
+        orderBy: { updatedAt: 'desc' },
+      }),
+    ])
 
   // Labels for the visible request set.
   const typeIds = [...new Set(requests.map((r) => r.packagingTypeId))]
@@ -108,9 +112,6 @@ export async function loadCoverageDashboard(): Promise<CoverageDashboard> {
     expiresAt: r.expiresAt ? r.expiresAt.toISOString() : null,
   }))
 
-  const uncoveredTemplates = new Set(openReqs.map((r) => r.productTemplateId)).size
-  const openRfqs = openReqs.filter((r) => r.status === 'OPEN').length
-
   // Median time-to-coverage from FULFILLED requests (createdAt → updatedAt).
   const durationsDays = fulfilled
     .map((f) => (f.updatedAt.getTime() - f.createdAt.getTime()) / (24 * 60 * 60 * 1000))
@@ -130,9 +131,9 @@ export async function loadCoverageDashboard(): Promise<CoverageDashboard> {
   return {
     kpis: {
       uncoveredTemplates,
+      fragile,
       openRfqs,
       claimsAwaiting,
-      pausedForCoverage,
       medianDaysToCoverage,
     },
     rows,

@@ -19,7 +19,7 @@
 import { prisma } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
 import {
-  computeTemplatePrintCoverage,
+  recomputeTemplateCoverage,
   broadcastCapabilityRequestsForTemplate,
   recoverTemplateCoverage,
 } from '@ilaunchify/orders'
@@ -71,7 +71,9 @@ export async function runPrintCoverageSweep(): Promise<PrintCoverageSweepResult>
   for (const tpl of published) {
     result.templatesChecked += 1
     try {
-      const coverage = await computeTemplatePrintCoverage(tpl.id)
+      // Recompute + persist the printCoverage cache for every published template
+      // (this nightly pass is what keeps the dashboard's fragile/uncovered exact).
+      const coverage = await recomputeTemplateCoverage(tpl.id)
       if (!coverage.applicable || !coverage.uncovered) continue
 
       // Auto-PAUSE ordering (reversible; coverage return re-lists) + broadcast.
