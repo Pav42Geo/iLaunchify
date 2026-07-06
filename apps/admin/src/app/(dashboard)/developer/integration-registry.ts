@@ -142,7 +142,8 @@ export const INTEGRATIONS: IntegrationDef[] = [
     rotationDays: 365,
     envVars: [
       { name: 'NOTIFICATION_UNSUBSCRIBE_SECRET', kind: 'secret', required: false, note: 'Any long random string (e.g. `openssl rand -hex 32`)' },
-      { name: 'NEXT_PUBLIC_MARKETING_URL', kind: 'public', required: false, note: 'Host serving /unsubscribe + /unsubscribe/one-click (defaults to localhost:3010 in dev)' },
+      { name: 'FEEDBACK_TOKEN_SECRET', kind: 'secret', required: false, note: 'Signs one-click feedback tokens (vote-in-the-link). Emails omit the feedback block until set. Rotating expires links in sent emails.' },
+      { name: 'NEXT_PUBLIC_MARKETING_URL', kind: 'public', required: false, note: 'Host serving /unsubscribe, /unsubscribe/one-click + /feedback (defaults to localhost:3010 in dev)' },
     ],
     appLinks: [
       { label: 'Branding (footer copy)', href: '/notifications-center/branding' },

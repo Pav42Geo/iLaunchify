@@ -118,6 +118,12 @@ export const EVENT_TOKEN_PALETTE: {
   CREATOR_DISPATCH_PROGRESS: ['orderId', 'partnerName', 'kind', 'summary', 'note'],
 }
 
+// Feedback module — CAST-GUARDED ASSIGNMENT until db:generate adds
+// CREATOR_RATE_PARTNERS to the generated enum (then move into the literal
+// above and drop the cast — POST_PUSH_CASTGUARD pattern).
+;(EVENT_TOKEN_PALETTE as unknown as Record<string, readonly string[]>)['CREATOR_RATE_PARTNERS'] =
+  ['orderId', 'productName', 'partnerCount', 'reminder']
+
 /** Tokens the admin can insert for one event (the editor's palette). */
 export function tokenPaletteForEvent(event: NotificationEvent): readonly string[] {
   return EVENT_TOKEN_PALETTE[event]

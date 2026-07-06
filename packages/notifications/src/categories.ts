@@ -162,6 +162,10 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   DISPATCH_SLA_AT_RISK: 'reminders',
   // F — job progress
   CREATOR_DISPATCH_PROGRESS: 'orders',
+  // Feedback module — rating/review solicitation is a nudge, never mandatory.
+  // CAST-GUARDED KEY until db:generate adds CREATOR_RATE_PARTNERS to the
+  // generated enum (then drop the cast — POST_PUSH_CASTGUARD pattern).
+  ['CREATOR_RATE_PARTNERS' as NotificationEvent]: 'reminders',
 }
 
 export function categoryForEvent(event: NotificationEvent): NotificationCategorySlug {

@@ -131,6 +131,14 @@ export interface TemplateData {
   // entry keeps the TemplateData index total and carries the copy through
   // whenever it migrates to dispatchNotification.
   CREATOR_STOCK_ALERT: { title?: string; body?: string; productName?: string; alertState?: string }
+  // Feedback module (docs/FEEDBACK_MODULE.md §5/§6) — delivery+3d combined ask.
+  // `reminder` flips the copy for the single +10d nudge (same event, no new enum).
+  CREATOR_RATE_PARTNERS: {
+    orderId: string
+    productName?: string
+    partnerCount: number
+    reminder?: boolean
+  }
   // F — job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3)
   CREATOR_DISPATCH_PROGRESS: {
     orderId: string
@@ -584,6 +592,20 @@ export function renderTemplate<E extends NotificationEvent>(
           ? `Your ${d.suspendedCapability} eligibility is paused until a renewed document is verified.`
           : 'Upload a renewed document to restore full eligibility.',
         link: d.href,
+      }
+    }
+    case 'CREATOR_RATE_PARTNERS': {
+      const d = data as TemplateData['CREATOR_RATE_PARTNERS']
+      const what = d.productName ?? `order #${d.orderId.slice(-8)}`
+      return {
+        title: d.reminder
+          ? `Still time to rate your partners on ${what}`
+          : `How did your partners do on ${what}?`,
+        body:
+          d.partnerCount === 1
+            ? 'Your rating helps great partners win more work — and helps us keep quality high. It takes under a minute, and you can review your product while you’re there.'
+            : `${d.partnerCount} partners worked on this order. Your ratings help great partners win more work — and you can review your product while you're there. Under a minute.`,
+        link: `/orders/${d.orderId}/rate`,
       }
     }
     case 'CREATOR_DISPATCH_PROGRESS': {

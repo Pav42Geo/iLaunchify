@@ -1209,6 +1209,15 @@ model PartnerService {
   facilityLat                      Float? // node coordinates for nearest-eligible selection
   facilityLng                      Float?
   receivingSpecJson                Json? // FC receiving requirements (appointment rules, pallet spec, label placement)
+  // ---- Partner rating aggregates (docs/FEEDBACK_MODULE.md §5.3–5.4) ----
+  // Denormalized from PartnerRating on every write; SERVICE-scoped. Display
+  // uses ratingMean+ratingCount ("New" below min-N=3); ranking/badging uses
+  // ratingBayesian ((C·m + Σ)/(C + n), C=10, per-role prior m). Late/edited
+  // ratings recompute the same way — the recompute is the single writer.
+  ratingMean                       Decimal?                          @db.Decimal(3, 2)
+  ratingBayesian                   Decimal?                          @db.Decimal(4, 3)
+  ratingCount                      Int                               @default(0)
+  ratingDims                       Json? // { quality: {mean, n}, … } per-dimension aggregates
   // Logistics L0 back-relations
   storageAgreements                StorageAgreement[]
   fcAwards                         FcAwardLog[]
@@ -4260,6 +4269,8 @@ enum NotificationEvent {
   CREATOR_STOCK_ALERT // stock alert state ESCALATED (LOW/CRITICAL/STOCKOUT) or recovered to HEALTHY
   // F — job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3)
   CREATOR_DISPATCH_PROGRESS // partner posted a progress update / revised ETA on a dispatch
+  // Feedback module (docs/FEEDBACK_MODULE.md §5/§6) — delivery+3d combined ask
+  CREATOR_RATE_PARTNERS // rate your partners + review your product (single +10d reminder reuses it)
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -4355,6 +4366,9 @@ model NotificationBranding {
   preferenceCenterUrl String?
   fromName            String?
   replyToEmail        String?
+  // Audience-aware header nav links (docs/FEEDBACK_MODULE.md §3.3):
+  // { creator: [{label,url}…], partner: […], admin: […] }. Null = no link row.
+  headerLinks         Json?
   updatedAt           DateTime @updatedAt
   updatedById         String? // soft FK → admin User
 }
@@ -4371,6 +4385,10 @@ model NotificationTemplate {
   bodyMarkdown     String? // markdown-lite: **bold**, [label](url), blank-line paragraphs
   ctaMode          NotificationCtaMode           @default(AUTO)
   ctaLabelOverride String?
+  // Feedback module (docs/FEEDBACK_MODULE.md §3.3): FEEDBACK_PROMPTS key —
+  // renders the one-click thumbs block on this event's emails (eligibility-
+  // gated at send). Null = no block.
+  feedbackPrompt   String?
   status           NotificationTemplateStatus    @default(DRAFT)
   version          Int                           @default(1)
   createdAt        DateTime                      @default(now())
@@ -4410,6 +4428,130 @@ model NotificationCategory {
   optOutable      Boolean
   defaultChannels NotificationChannel[]
   updatedAt       DateTime              @updatedAt
+}
+
+// ============================================================================
+// FEEDBACK / RATINGS / REVIEWS (docs/FEEDBACK_MODULE.md, 2026-07-05)
+// One-click feedback (vote-in-the-link), per-partner dimensional ratings
+// (service-scoped, Bayesian-ranked), verified creator product reviews.
+// Soft FKs throughout (order/dispatch/service/user ids) — keeps the migration
+// additive and the hot models untouched; integrity is by construction (rows
+// are only written behind verified flows).
+// ============================================================================
+
+enum FeedbackScore {
+  UP
+  DOWN
+}
+
+enum FeedbackSource {
+  EMAIL_ONE_CLICK // signed token from an email's feedback block
+  FEEDBACK_PAGE // enrich page (tags/comment after the click)
+  IN_APP // in-app moment prompts (V1.5)
+  ACCOUNT_FORM // the always-on settings/feedback form
+}
+
+enum FeedbackTriageStatus {
+  NEW
+  REVIEWED
+  ACTIONED
+  DISMISSED
+}
+
+// One row per (user, subject, prompt) — re-clicks UPDATE (mind-change allowed).
+// General PLATFORM/IDEA submissions have subjectId null (repeatable — NULLs
+// are distinct in the unique index).
+model FeedbackResponse {
+  id              String               @id @default(uuid())
+  userId          String? // soft FK → User (always set for token/authed paths)
+  role            String? // CREATOR | PARTNER | ADMIN — denormalized at write
+  subjectType     String // FeedbackSubjectType (code registry): DELIVERY | ORDER | … | PLATFORM | IDEA
+  subjectId       String? // orderId / dispatchId / ticketId; null for PLATFORM/IDEA
+  promptKey       String // FEEDBACK_PROMPTS key (code registry)
+  score           FeedbackScore? // null for text-only account feedback
+  tags            String[] // enrich-page chips chosen
+  comment         String?
+  source          FeedbackSource
+  late            Boolean              @default(false) // past the prompt's soft window — excluded from aggregates
+  status          FeedbackTriageStatus @default(NEW)
+  supportTicketId String? // soft FK — set when DOWN+comment auto-opened a ticket
+  reviewedById    String? // soft FK → admin User
+  reviewNote      String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@unique([userId, subjectType, subjectId, promptKey])
+  @@index([status, createdAt])
+  @@index([subjectType, createdAt])
+}
+
+// Admin overrides over the CODE prompt registry (feedback-prompts.ts). Null
+// field = code default; rows never invent new prompt keys.
+model FeedbackPromptSetting {
+  id              String   @id @default(uuid())
+  promptKey       String   @unique
+  enabled         Boolean?
+  windowDays      Int?
+  autoTicketOnDown Boolean?
+  updatedAt       DateTime @updatedAt
+  updatedById     String? // soft FK → admin User
+}
+
+// ---------------------------------------------------------------------------
+// Partner ratings — creator → per-partner dimensional stars (docs §5).
+// SERVICE-scoped (never company-level); one rating per (creator, dispatch);
+// overall = derived mean of dimensions (no separate overall question — halo).
+// ---------------------------------------------------------------------------
+
+model PartnerRating {
+  id               String   @id @default(uuid())
+  orderId          String // soft FK → Order
+  dispatchId       String // soft FK → OrderDispatch
+  partnerServiceId String // soft FK → PartnerService (the rated SERVICE)
+  creatorUserId    String // soft FK → User
+  role             String // MANUFACTURER | PRINTER | COPACKER | WAREHOUSE (denormalized)
+  dimensions       Json // { quality: 5, consistency: 4, … } — RATING_DIMENSIONS slugs
+  overall          Decimal  @db.Decimal(3, 2) // derived mean, stored for cheap aggregation
+  comment          String?
+  editableUntil    DateTime // first-submit + 30d mind-change window
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([creatorUserId, dispatchId])
+  @@index([partnerServiceId, createdAt])
+  @@index([orderId])
+}
+
+// ---------------------------------------------------------------------------
+// Creator product reviews — verified by construction (docs §6): requires a
+// DELIVERED order for THAT product; shows only on that product's detail page.
+// ---------------------------------------------------------------------------
+
+enum ReviewStatus {
+  PUBLISHED
+  FLAGGED // reported / awaiting moderation look
+  HIDDEN // admin-hidden with reason (audited)
+}
+
+model ProductReview {
+  id             String       @id @default(uuid())
+  productId      String // soft FK → Product
+  creatorUserId  String // soft FK → User
+  orderId        String // soft FK → the qualifying DELIVERED Order
+  rating         Int // 1–5 — the PRODUCT stars (distinct from partner ratings)
+  title          String
+  body           String
+  photoAssetIds  String[] // creator uploads (R2; public URLs resolved at display)
+  status         ReviewStatus @default(PUBLISHED)
+  partnerReply   String? // V1.5 — manufacturer's public response
+  moderatedById  String? // soft FK → admin User
+  moderationNote String?
+  editableUntil  DateTime // author edit/delete window (30d)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([creatorUserId, productId])
+  @@index([productId, status, createdAt])
 }
 
 // Mirror of Resend delivery lifecycle events (send + webhook) — powers the

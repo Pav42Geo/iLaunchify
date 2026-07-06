@@ -21,14 +21,14 @@ FC value-added services admin-verified before ACTIVE.
 - [x] Shell upgrades (additive resolver options): one-click feedback block (👍/👎 table buttons, text-part fallback) · audience header nav links (`branding.headerLinks`, max 4) · hero/product imagery (`imageUrls`: 1 = hero, 2–4 = row, https-only, non-https dropped) — `resolve-content.ts`, `center-types.ts`
 - [x] Selftests — `feedback.selftest.ts` (30 checks) + existing suites still green; all apps typecheck
 
-## Stage 2 — one migration: FB-B + FB-F + FB-G schema (CW writes, PAVEL runs)
-- [ ] `FeedbackResponse` + `FeedbackPromptSetting` + enums (FEEDBACK_MODULE §3.2)
-- [ ] `PartnerRating` + `PartnerService` aggregate columns (§5.4)
-- [ ] `ProductReview` + `ReviewStatus` (§6.1)
-- [ ] `NotificationTemplate.feedbackPrompt` + `NotificationBranding.headerLinks`
-- [ ] `CREATOR_RATE_PARTNERS` + review/rating notification events (enum + templates + categories + palettes)
-- [ ] **[PAVEL]** `db:push` → `db:generate` → `.next` clear · env `FEEDBACK_TOKEN_SECRET` · register in `/developer`
-- [ ] post-generate de-cast (single-file pattern)
+## Stage 2 — one migration: FB-B + FB-F + FB-G schema — **schema written 2026-07-05 (CW), awaiting PAVEL migration**
+- [x] `FeedbackResponse` (unique per user×subject×prompt, re-click updates; PLATFORM/IDEA repeatable via null subject) + `FeedbackPromptSetting` overrides + enums (`FeedbackScore/Source/TriageStatus`)
+- [x] `PartnerRating` (unique per creator×dispatch, `dimensions Json`, derived `overall`, 30d `editableUntil`) + `PartnerService` aggregates (`ratingMean/ratingBayesian/ratingCount/ratingDims`)
+- [x] `ProductReview` (unique per creator×product, photos, `ReviewStatus` PUBLISHED/FLAGGED/HIDDEN, `partnerReply` V1.5 slot)
+- [x] `NotificationTemplate.feedbackPrompt` + `NotificationBranding.headerLinks Json`
+- [x] `CREATOR_RATE_PARTNERS` event (enum + template w/ reminder variant + category `reminders` + palette; enum-key casts marked for post-generate cleanup) + `FEEDBACK_TOKEN_SECRET` in `/developer` registry + `.env.example`
+- [ ] **[PAVEL]** `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart · add `FEEDBACK_TOKEN_SECRET` to `.env.local`
+- [ ] **[CW]** post-generate de-cast (`categories.ts` / `template-tokens.ts` enum keys)
 
 ## Stage 3 — feedback + rating + review surfaces (CW)
 - [ ] Marketing `/feedback` token page (GET-records vote → tags + comment enrich; late/invalid states) (FB-C)
