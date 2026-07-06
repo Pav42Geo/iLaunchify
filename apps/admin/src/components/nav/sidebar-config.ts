@@ -28,6 +28,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { Capability } from '@ilaunchify/auth'
 import {
+  BellRing,
   Box,
   Database,
   LayoutDashboard,
@@ -317,7 +318,9 @@ const PRIMARY: SidebarRegion = {
           icon: Mail,
           children: [
             { kind: 'item', label: 'Templates', icon: LayoutTemplate, href: '/notifications-center/templates', capability: 'platform:admin' },
-            { kind: 'item', label: 'Branding', icon: Palette, href: '/notifications-center/branding', capability: 'platform:admin' },
+            // In-app channel controls — sound ping + feed hygiene (Pavel 2026-07-06).
+            { kind: 'item', label: 'In-app', icon: BellRing, href: '/notifications-center/in-app', capability: 'platform:admin' },
+            { kind: 'item', label: 'Email branding', icon: Palette, href: '/notifications-center/branding', capability: 'platform:admin' },
             { kind: 'item', label: 'Deliverability', icon: Mail, href: '/notifications-center/deliverability', capability: 'platform:admin' },
             // Feedback module Stage 4 (docs/FEEDBACK_MODULE.md §3.6, 2026-07-05)
             { kind: 'item', label: 'Feedback', icon: Inbox, href: '/notifications-center/feedback', capability: 'platform:admin' },

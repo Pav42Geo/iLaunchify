@@ -106,86 +106,8 @@ export async function saveBranding(input: BrandingInput): Promise<Result> {
   return { ok: true }
 }
 
-// ---------------------------------------------------------------------------
-// In-app notification sound (Pavel 2026-07-06) — the bell's ping. Admin can
-// toggle it, upload a custom mp3 (R2, same rail as Theme Studio logos), or
-// reset to the bundled default (/sounds/notification.mp3 in every app).
-// soundEnabled/soundUrl writes are cast-guarded until db:push + db:generate.
-// ---------------------------------------------------------------------------
-
-const SOUND_MAX_BYTES = 1 * 1024 * 1024 // 1 MB — a ping should be tiny
-const SOUND_MIMES = new Set(['audio/mpeg', 'audio/mp3'])
-
-export async function uploadNotificationSound(
-  formData: FormData,
-): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
-  const admin = await requireRole('ADMIN')
-  const file = formData.get('file')
-  if (!(file instanceof File) || file.size === 0) return { ok: false, error: 'Pick an mp3 file.' }
-  if (file.size > SOUND_MAX_BYTES) return { ok: false, error: 'File too large (max 1 MB).' }
-  if (!SOUND_MIMES.has(file.type)) return { ok: false, error: 'Upload an MP3 (audio/mpeg).' }
-
-  const { uploadFile } = await import('@ilaunchify/storage')
-  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const key = `platform/notification-sound/${Date.now()}-${safe}`
-  let upload
-  try {
-    upload = await uploadFile({
-      key,
-      body: Buffer.from(await file.arrayBuffer()),
-      contentType: 'audio/mpeg',
-      cacheControl: 'public, max-age=31536000, immutable',
-      contentDisposition: 'inline',
-    })
-  } catch (err) {
-    return { ok: false, error: `Upload failed: ${(err as Error).message}` }
-  }
-
-  const publicBase = (process.env.R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_URL)?.replace(/\/$/, '')
-  if (!publicBase) {
-    return { ok: false, error: 'R2_PUBLIC_BASE_URL is not configured — the sound needs a public URL.' }
-  }
-  const url = `${publicBase}/${upload.key}`
-
-  const row = await prisma.notificationBranding.upsert({
-    where: { singletonKey: 'default' },
-    create: { singletonKey: 'default', ...({ soundUrl: url } as unknown as Record<string, never>) },
-    update: { updatedById: admin.id, ...({ soundUrl: url } as unknown as Record<string, never>) },
-  })
-  await logAuditAs(admin, {
-    entityType: 'NotificationBranding',
-    entityId: row.id,
-    action: 'NOTIFICATION_SOUND_UPLOADED',
-    payload: { key: upload.key, sizeBytes: upload.sizeBytes },
-  })
-  revalidatePath('/notifications-center/branding')
-  return { ok: true, url }
-}
-
-/** Toggle the ping on/off, or reset to the bundled default sound. */
-export async function setNotificationSound(input: {
-  enabled: boolean
-  resetToDefault?: boolean
-}): Promise<Result> {
-  const admin = await requireRole('ADMIN')
-  const patch = {
-    soundEnabled: input.enabled,
-    ...(input.resetToDefault ? { soundUrl: null } : {}),
-  } as unknown as Record<string, never>
-  const row = await prisma.notificationBranding.upsert({
-    where: { singletonKey: 'default' },
-    create: { singletonKey: 'default', ...patch },
-    update: { updatedById: admin.id, ...patch },
-  })
-  await logAuditAs(admin, {
-    entityType: 'NotificationBranding',
-    entityId: row.id,
-    action: 'NOTIFICATION_SOUND_UPDATED',
-    payload: { enabled: input.enabled, resetToDefault: input.resetToDefault ?? false },
-  })
-  revalidatePath('/notifications-center/branding')
-  return { ok: true }
-}
+// The in-app sound actions moved to ../in-app/actions.ts (Pavel 2026-07-06 —
+// the in-app channel got its own control page; this file is email chrome only).
 
 /** Render the shell preview for UNSAVED form state (same path as real sends). */
 export async function previewBranding(input: BrandingInput): Promise<{ html: string }> {

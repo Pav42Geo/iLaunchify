@@ -34,6 +34,7 @@ export {
 export {
   getNotificationBranding,
   getNotificationSound,
+  getInAppSettings,
   getTemplateOverride,
   getCategoryPreferenceRows,
   setCategoryPreference,

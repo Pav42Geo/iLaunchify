@@ -74,11 +74,7 @@ export async function saveTemplateDraft(input: TemplateDraftInput): Promise<Resu
     ctaMode: input.ctaMode,
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
     feedbackPrompt: input.feedbackPrompt || null,
-    // Cast-guard (in-app P2): column lands with the next db:push + db:generate.
-    ...({ coalesceWindowMinutes: input.coalesceWindowMinutes || null } as unknown as Record<
-      string,
-      never
-    >),
+    coalesceWindowMinutes: input.coalesceWindowMinutes || null,
     status: 'DRAFT' as const,
     updatedById: admin.id,
   }

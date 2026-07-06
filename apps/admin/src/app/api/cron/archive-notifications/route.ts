@@ -8,12 +8,10 @@
 // Schedule example (vercel.json): { "path": "/api/cron/archive-notifications", "schedule": "0 4 * * *" }
 
 import { NextRequest, NextResponse } from 'next/server'
-import { autoArchiveRead } from '@ilaunchify/notifications'
+import { autoArchiveRead, getInAppSettings } from '@ilaunchify/notifications'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-
-const ARCHIVE_AFTER_DAYS = 30
 
 export async function POST(req: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -25,8 +23,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { count } = await autoArchiveRead(ARCHIVE_AFTER_DAYS)
-    return NextResponse.json({ ok: true, archived: count, olderThanDays: ARCHIVE_AFTER_DAYS })
+    // Window is admin-tunable: Notifications → In-app (default 30 days).
+    const { autoArchiveDays } = await getInAppSettings()
+    const { count } = await autoArchiveRead(autoArchiveDays)
+    return NextResponse.json({ ok: true, archived: count, olderThanDays: autoArchiveDays })
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }

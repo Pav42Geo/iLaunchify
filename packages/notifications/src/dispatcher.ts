@@ -348,23 +348,22 @@ async function writeInAppRow(params: {
   groupKey: string | null
   windowMinutes: number
 }): Promise<void> {
-  const groupKeyData = { groupKey: params.groupKey } as unknown as Record<string, never>
+  // De-cast 2026-07-06 after push — groupKey is in the client.
 
   if (params.groupKey && params.windowMinutes > 0) {
     const windowStart = new Date(Date.now() - params.windowMinutes * 60_000)
-    const existing = (await prisma.notification.findFirst({
+    const existing = await prisma.notification.findFirst({
       where: {
         userId: params.userId,
         channel: 'IN_APP',
         readAt: null,
         archivedAt: null,
         createdAt: { gte: windowStart },
-        // Cast-guard: groupKey lands with the next db:push + db:generate.
-        ...({ groupKey: params.groupKey } as unknown as Record<string, never>),
+        groupKey: params.groupKey,
       },
       orderBy: { createdAt: 'desc' },
       select: { id: true, payload: true },
-    })) as { id: string; payload: unknown } | null
+    })
 
     if (existing) {
       const prev = (existing.payload ?? {}) as Record<string, unknown>
@@ -392,7 +391,7 @@ async function writeInAppRow(params: {
       body: params.body ?? null,
       link: params.link ?? null,
       payload: params.payload as never,
-      ...groupKeyData,
+      groupKey: params.groupKey,
     },
   })
 }

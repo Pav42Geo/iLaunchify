@@ -68,17 +68,31 @@ export async function getNotificationBranding(): Promise<Partial<NotificationBra
  * In-app notification sound config (Pavel 2026-07-06) — read by the feed APIs
  * so the bell knows whether/what to play. url null = the app's bundled default
  * (/sounds/notification.mp3). Graceful default: enabled with default sound.
- * Cast-guard (docs/POST_PUSH_CASTGUARD_CLEANUP.md): columns land with the next
- * db:push + db:generate — read directly after regen.
+ * De-cast 2026-07-06 after push.
  */
 export async function getNotificationSound(): Promise<{ enabled: boolean; url: string | null }> {
   try {
-    const row = (await prisma.notificationBranding.findUnique({
+    const row = await prisma.notificationBranding.findUnique({
       where: { singletonKey: 'default' },
-    })) as { soundEnabled?: boolean; soundUrl?: string | null } | null
+    })
     return { enabled: row?.soundEnabled ?? true, url: row?.soundUrl ?? null }
   } catch {
     return { enabled: true, url: null }
+  }
+}
+
+/**
+ * In-app behavior settings (admin → Notifications → In-app). Stored on the
+ * same singleton row. autoArchiveDays is cast-guarded until the next push.
+ */
+export async function getInAppSettings(): Promise<{ autoArchiveDays: number }> {
+  try {
+    const row = (await prisma.notificationBranding.findUnique({
+      where: { singletonKey: 'default' },
+    })) as { inAppAutoArchiveDays?: number } | null
+    return { autoArchiveDays: row?.inAppAutoArchiveDays ?? 30 }
+  } catch {
+    return { autoArchiveDays: 30 }
   }
 }
 
@@ -101,10 +115,7 @@ export async function getTemplateOverride(
       ctaMode: row.ctaMode,
       ctaLabelOverride: row.ctaLabelOverride,
       feedbackPrompt: row.feedbackPrompt,
-      // Cast-guard (in-app P2, docs/POST_PUSH_CASTGUARD_CLEANUP.md): column lands
-      // with the next db:push + db:generate — read directly after regen.
-      coalesceWindowMinutes:
-        (row as { coalesceWindowMinutes?: number | null }).coalesceWindowMinutes ?? null,
+      coalesceWindowMinutes: row.coalesceWindowMinutes ?? null,
       status: row.status,
       version: row.version,
     }

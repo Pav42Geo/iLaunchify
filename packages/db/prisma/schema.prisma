@@ -4472,6 +4472,9 @@ model NotificationBranding {
   // each app's bundled default /sounds/notification.mp3.
   soundEnabled        Boolean  @default(true)
   soundUrl            String?
+  // Auto-archive READ in-app rows after N days (admin → Notifications → In-app;
+  // consumed by /api/cron/archive-notifications). Pavel 2026-07-06: default 30.
+  inAppAutoArchiveDays Int     @default(30)
   updatedAt           DateTime @updatedAt
   updatedById         String? // soft FK → admin User
 }
