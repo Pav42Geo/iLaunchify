@@ -34,6 +34,10 @@ interface Props {
   // provider" pick). Annotates the Label-printing line so the pick stays
   // visible right up to payment. Null = auto-routed.
   pinnedPrintProvider?: { companyName: string } | null
+  // PS-3c — FC-labeling fee/unit when "Finalize labeling at this center" is
+  // ticked on a qualifying FC. Null = no fee line. Display-only; placeOrder
+  // re-derives the charge server-side.
+  fcLabelingFeeCentsPerUnit?: number | null
 }
 
 export function OrderSummary({
@@ -42,6 +46,7 @@ export function OrderSummary({
   shipping,
   currentStep: _currentStep,
   pinnedPrintProvider = null,
+  fcLabelingFeeCentsPerUnit = null,
 }: Props) {
   const qty = state.production.quantity ?? 0
   const hasEstimate = !!estimate && estimate.quantity > 0
@@ -65,8 +70,12 @@ export function OrderSummary({
       : 0
   const subtotalAfterSavingsCents =
     (estimate?.totalBeforeShippingAndTaxCents ?? 0) - subscriptionSavingsCents
+  // PS-3c — FC labeling is billed per PHYSICAL unit (packs × units-per-pack).
+  const physicalUnits = qty * (state.production.pack?.unitsPerPack ?? 1)
+  const fcLabelingCents =
+    fcLabelingFeeCentsPerUnit != null ? fcLabelingFeeCentsPerUnit * physicalUnits : 0
   const grandTotalCents =
-    subtotalAfterSavingsCents + (shipping?.shippingCents ?? 0)
+    subtotalAfterSavingsCents + fcLabelingCents + (shipping?.shippingCents ?? 0)
 
   return (
     <div className="space-y-3">
@@ -156,6 +165,12 @@ export function OrderSummary({
             label={`Subscription savings (${(subscriptionDiscountBp / 100).toFixed(0)}%)`}
             value={`−${formatCents(subscriptionSavingsCents)}`}
             tone="savings"
+          />
+        )}
+        {fcLabelingCents > 0 && (
+          <Row
+            label={`FC labeling × ${physicalUnits.toLocaleString()}`}
+            value={formatCents(fcLabelingCents)}
           />
         )}
         <Row

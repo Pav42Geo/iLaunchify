@@ -51,6 +51,11 @@ import {
   type SuggestedFcOption,
   type WarehouseOption,
 } from '../fulfillment-actions'
+import {
+  loadFcLabelingOffers,
+  type FcLabelingContext,
+  type FcLabelingOffer,
+} from '../labeling-actions'
 
 interface Props {
   productId: string
@@ -61,6 +66,10 @@ interface Props {
   onShippingEstimate?: (
     estimate: { shippingCents: number; leadTimeBusinessDays: number } | null,
   ) => void
+  // PS-3c — lifts the ACTIVE FC-labeling fee (creator ticked the box on a
+  // qualifying FC) to the wizard so the OrderSummary can show the line.
+  // Null = no fee in play.
+  onFcLabelingFee?: (feeCentsPerUnit: number | null) => void
 }
 
 export function CheckoutStep({
@@ -70,12 +79,17 @@ export function CheckoutStep({
   onChange,
   onFulfillmentChange,
   onShippingEstimate,
+  onFcLabelingFee,
 }: Props) {
   const [options, setOptions] = useState<FulfillmentOptions | null>(null)
   // L1b — the four-destination-card payload (eligibility + disabled copy +
   // suggested FC + hold-at-manufacturer fee card). Display data only; the
   // Pay action re-runs the same eligibility server-side.
   const [destinations, setDestinations] = useState<DestinationOptionsPayload | null>(null)
+  // PS-3c (§8.1a) — FC "Can finalize labeling here" offers. Empty unless this
+  // order needs application downstream of the manufacturer. Display data only;
+  // the Pay action re-derives eligibility + fee server-side.
+  const [labeling, setLabeling] = useState<FcLabelingContext | null>(null)
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -85,16 +99,43 @@ export function CheckoutStep({
     Promise.all([
       listFulfillmentOptions(productId),
       listDestinationOptions(productId),
-    ]).then(([fulfillment, destination]) => {
+      loadFcLabelingOffers(productId),
+    ]).then(([fulfillment, destination, labelingRes]) => {
       if (cancelled) return
       if (fulfillment.ok) setOptions(fulfillment.data)
       if (destination.ok) setDestinations(destination.data)
+      if (labelingRes.ok) setLabeling(labelingRes.data)
       setLoadingOptions(false)
     })
     return () => {
       cancelled = true
     }
   }, [productId, reloadKey])
+
+  // PS-3c — the FC the order would actually land at (explicit pick, or the
+  // suggested node for CLOSEST_WAREHOUSE), and its verified RELABEL offer.
+  const effectiveFcId =
+    draft.fulfillment.shipToType === 'SPECIFIC_WAREHOUSE'
+      ? draft.fulfillment.warehousePartnerServiceId
+      : draft.fulfillment.shipToType === 'CLOSEST_WAREHOUSE'
+        ? (destinations?.suggestedFc?.partnerServiceId ?? null)
+        : null
+  const effectiveFcOffer: FcLabelingOffer | null =
+    (effectiveFcId &&
+      labeling?.needsExternalApplication &&
+      labeling.offers.find((o) => o.partnerServiceId === effectiveFcId)) ||
+    null
+
+  // Lift the applied fee for the right-rail summary (null when the box is off,
+  // the FC doesn't qualify, or ship-to isn't an FC at all).
+  useEffect(() => {
+    if (!onFcLabelingFee) return
+    onFcLabelingFee(
+      effectiveFcOffer && draft.fulfillment.labelingAtFc
+        ? effectiveFcOffer.feeCentsPerUnit
+        : null,
+    )
+  }, [onFcLabelingFee, effectiveFcOffer, draft.fulfillment.labelingAtFc])
 
   // Re-estimate shipping when ship-to or quantity changes. Same wiring
   // the standalone FulfillmentStep used pre-R8 — the lift target is the
@@ -159,6 +200,8 @@ export function CheckoutStep({
             onChange={onFulfillmentChange}
             options={options}
             destinations={destinations}
+            labeling={labeling}
+            effectiveFcOffer={effectiveFcOffer}
             loading={loadingOptions}
             productId={productId}
             onSavedNewAddress={() => setReloadKey((k) => k + 1)}
@@ -267,6 +310,8 @@ function ShipToPicker({
   onChange,
   options,
   destinations,
+  labeling,
+  effectiveFcOffer,
   loading,
   productId,
   onSavedNewAddress,
@@ -275,6 +320,8 @@ function ShipToPicker({
   onChange: (patch: Partial<FulfillmentState>) => void
   options: FulfillmentOptions | null
   destinations: DestinationOptionsPayload | null
+  labeling: FcLabelingContext | null
+  effectiveFcOffer: FcLabelingOffer | null
   loading: boolean
   productId: string
   onSavedNewAddress: () => void
@@ -432,6 +479,8 @@ function ShipToPicker({
               onChange={onChange}
               options={options}
               suggestedFc={destinations?.suggestedFc ?? null}
+              labeling={labeling}
+              effectiveFcOffer={effectiveFcOffer}
             />
           ) : selectedCard === 'CHANNEL_INBOUND' ? (
             <ChannelInboundBlock
@@ -591,13 +640,23 @@ function FulfillmentCenterBlock({
   onChange,
   options,
   suggestedFc,
+  labeling,
+  effectiveFcOffer,
 }: {
   state: FulfillmentState
   onChange: (patch: Partial<FulfillmentState>) => void
   options: FulfillmentOptions | null
   suggestedFc: SuggestedFcOption | null
+  labeling: FcLabelingContext | null
+  effectiveFcOffer: FcLabelingOffer | null
 }) {
   const choosingOther = state.shipToType === 'SPECIFIC_WAREHOUSE'
+  // PS-3c — warehouses with a verified RELABEL offer for this order's method.
+  const labelingFcIds = new Set(
+    labeling?.needsExternalApplication
+      ? labeling.offers.map((o) => o.partnerServiceId)
+      : [],
+  )
   if (!suggestedFc && (options?.warehouses.length ?? 0) === 0) {
     return (
       <p className="text-sm text-ink-500">
@@ -616,6 +675,9 @@ function FulfillmentCenterBlock({
               We suggest <strong>{suggestedFc.partnerName}</strong> —{' '}
               {suggestedFc.rationale}
             </span>
+            {labelingFcIds.has(suggestedFc.partnerServiceId) && (
+              <FcLabelingBadge />
+            )}
           </div>
           <p className="text-[11.5px] text-ink-500">
             {suggestedFc.city &&
@@ -652,10 +714,50 @@ function FulfillmentCenterBlock({
         <SpecificWarehouseBlock
           options={options}
           pickedId={state.warehousePartnerServiceId}
-          onPick={(id) => onChange({ warehousePartnerServiceId: id })}
+          onPick={(id) => onChange({ warehousePartnerServiceId: id, labelingAtFc: null })}
+          labelingFcIds={labelingFcIds}
         />
       )}
+
+      {/* PS-3c (§8.1a) — "Finalize labeling here": ONLY when this order needs
+          application downstream of the manufacturer AND the effective FC's
+          RELABEL capability is admin-verified for this decoration method.
+          Labels never route to an FC by destination — this checkbox is the
+          explicit choice that creates the label leg. */}
+      {effectiveFcOffer && (
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-ink-200 bg-white p-3.5">
+          <Checkbox
+            checked={state.labelingAtFc === true}
+            onChange={(e) => onChange({ labelingAtFc: e.target.checked })}
+          />
+          <span className="min-w-0 text-[12.5px] leading-snug">
+            <span className="font-semibold text-ink-900">
+              Finalize labeling at this center
+            </span>{' '}
+            <span className="text-ink-600">
+              (+${(effectiveFcOffer.feeCentsPerUnit / 100).toFixed(2)}/unit
+              {effectiveFcOffer.minUnits > 1
+                ? ` · min ${effectiveFcOffer.minUnits.toLocaleString()} units`
+                : ''}
+              {` · +${effectiveFcOffer.leadTimeDays} day${effectiveFcOffer.leadTimeDays === 1 ? '' : 's'}`}
+              ). Your manufacturer doesn&rsquo;t apply labels for this product —
+              this center&rsquo;s verified relabel line will. Otherwise the labels
+              ship to the manufacturer for finishing before the run leaves.
+            </span>
+          </span>
+        </label>
+      )}
     </div>
+  )
+}
+
+// PS-3c — capability badge, rendered ONLY next to FCs whose verified RELABEL
+// VAS covers this order's decoration method.
+function FcLabelingBadge() {
+  return (
+    <span className="flex-shrink-0 rounded-full bg-pink-50 px-1.5 py-[1px] text-[9.5px] font-semibold uppercase tracking-wider text-pink-700 ring-1 ring-pink-200">
+      Can finalize labeling here
+    </span>
   )
 }
 
@@ -878,10 +980,12 @@ function SpecificWarehouseBlock({
   options,
   pickedId,
   onPick,
+  labelingFcIds,
 }: {
   options: FulfillmentOptions | null
   pickedId: string | null
   onPick: (id: string) => void
+  labelingFcIds: Set<string>
 }) {
   const list = options?.warehouses ?? []
   if (list.length === 0) {
@@ -895,6 +999,7 @@ function SpecificWarehouseBlock({
           warehouse={w}
           selected={pickedId === w.id}
           onClick={() => onPick(w.id)}
+          canFinalizeLabeling={labelingFcIds.has(w.id)}
         />
       ))}
     </div>
@@ -905,10 +1010,12 @@ function WarehouseCard({
   warehouse,
   selected,
   onClick,
+  canFinalizeLabeling = false,
 }: {
   warehouse: WarehouseOption
   selected: boolean
   onClick: () => void
+  canFinalizeLabeling?: boolean
 }) {
   return (
     <button
@@ -922,8 +1029,11 @@ function WarehouseCard({
       }
     >
       <div className="min-w-0 flex-1">
-        <div className="text-ui-value text-ink-900">
-          {warehouse.partnerName}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-ui-value text-ink-900">
+            {warehouse.partnerName}
+          </span>
+          {canFinalizeLabeling && <FcLabelingBadge />}
         </div>
         <div className="text-xs text-ink-500">
           {warehouse.city && `${warehouse.city}, `}

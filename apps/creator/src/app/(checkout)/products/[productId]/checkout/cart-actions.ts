@@ -64,6 +64,7 @@ import {
 import type { CheckoutDraftState } from './types'
 import { checkProductRestrictions } from './restriction-actions'
 import { quoteCarrierShipping } from './fulfillment-actions'
+import { computeFcLabelingContext } from './labeling-actions'
 import { loadProductLabelCompliance } from '@/lib/dieline-compliance'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
@@ -445,6 +446,45 @@ export async function placeOrderFromCheckoutDraft(
     }
   }
 
+  // --- 4a-ter. PS-3c FC labeling fee (§8.1a) ----------------------------------
+  //             Server-side re-derivation of the SAME eligibility the checkout
+  //             badge used (shared computeFcLabelingContext — badge and charge
+  //             can never disagree). The flag is ignored unless the ship-to FC
+  //             holds a verified RELABEL offer for this order's method AND the
+  //             order actually needs downstream application.
+  let fcLabelingCents = 0
+  let fcLabelingFeePerUnitCents: number | null = null
+  if (
+    state.fulfillment.labelingAtFc === true &&
+    shipTo.data.shipToType === 'WAREHOUSE_PARTNER' &&
+    shipTo.data.shipToPartnerServiceId
+  ) {
+    const labelingCtx = await computeFcLabelingContext({
+      productId: product.id,
+      printSourcingMode: product.printSourcingMode ?? null,
+      manufacturerServiceId: product.productTemplate?.manufacturerServiceId ?? null,
+    })
+    const offer = labelingCtx.needsExternalApplication
+      ? labelingCtx.offers.find(
+          (o) => o.partnerServiceId === shipTo.data.shipToPartnerServiceId,
+        )
+      : undefined
+    if (offer) {
+      const physicalUnits = qty * Math.max(1, packPersist?.packUnitsPerPack ?? 1)
+      if (physicalUnits < offer.minUnits) {
+        return {
+          ok: false,
+          error: `This center's labeling line has a ${offer.minUnits.toLocaleString()}-unit minimum — increase the run or untick "Finalize labeling at this center".`,
+        }
+      }
+      fcLabelingFeePerUnitCents = offer.feeCentsPerUnit
+      fcLabelingCents = offer.feeCentsPerUnit * physicalUnits
+    }
+    // No verified offer → the flag is stale (FC changed, admin unverified, or
+    // the manufacturer applies after all). Proceed WITHOUT the fee — the
+    // default path (labels finish at the manufacturer) still stands.
+  }
+
   // --- 4b. Risk Center capacity gate (M5-prep) --------------------------------
   //         Inert until CAPACITY_OVERCOMMIT is promoted to GATE on
   //         /risk/detectors. When it fires, the creator gets the three honest
@@ -565,9 +605,12 @@ export async function placeOrderFromCheckoutDraft(
 
   // --- 7. Platform fee (admin-tunable; falls back to PLATFORM_FEE_BPS) --------
   const feeBps = orderSettings.productionFeeBps ?? PLATFORM_FEE_BPS
-  const feeBase = productionTotalCents + shippingCents
+  // PS-3c — the FC labeling fee is a production service: it joins the fee base
+  // and the subtotal, not the shipping line.
+  const feeBase = productionTotalCents + fcLabelingCents + shippingCents
   const platformFeeCents = Math.floor(feeBase * (feeBps / 10000))
-  const grossTotalCents = productionTotalCents + shippingCents + platformFeeCents
+  const grossTotalCents =
+    productionTotalCents + fcLabelingCents + shippingCents + platformFeeCents
 
   // --- 7b. Sample credit (Pavel 2026-06-10) — a paid sample mints credit toward
   //         the creator's first production order. Decision: platform-funded +
@@ -685,6 +728,10 @@ export async function placeOrderFromCheckoutDraft(
     productionSubtotalCents,
     productionTotalCents,
     dispatchSubtotal,
+    fcLabelingCents,
+    fcLabelingFeePerUnitCents,
+    fcLabelingPartnerServiceId:
+      fcLabelingCents > 0 ? (shipTo.data.shipToPartnerServiceId ?? null) : null,
   })
 
   // Phase G8 — lock the exact DesignVersion sold so the partner-side
@@ -730,7 +777,8 @@ export async function placeOrderFromCheckoutDraft(
         brandId: product.brandId,
         creatorUserId: user.id,
         status: 'PENDING_PAYMENT',
-        subtotalCents: productionTotalCents,
+        // PS-3c — subtotal carries the FC labeling fee (production service).
+        subtotalCents: productionTotalCents + fcLabelingCents,
         shippingCents,
         taxCents: 0,
         totalCents,
@@ -909,7 +957,8 @@ export async function placeOrderFromCheckoutDraft(
       brandId: product.brandId,
       productId: product.id,
       quantity: qty,
-      subtotalCents: productionTotalCents,
+      subtotalCents: productionTotalCents + fcLabelingCents,
+      fcLabelingCents,
       shippingCents,
       platformFeeCents,
       sampleCreditAppliedCents,
@@ -1831,12 +1880,22 @@ function buildInternalNotes(args: {
   productionSubtotalCents: number
   productionTotalCents: number
   dispatchSubtotal: number
+  fcLabelingCents?: number
+  fcLabelingFeePerUnitCents?: number | null
+  fcLabelingPartnerServiceId?: string | null
 }): string {
   const lines: string[] = []
   if (args.promo) lines.push(`Promo: ${args.promo}`)
   lines.push(
     `Wizard production subtotal: ${args.productionSubtotalCents}c · Dispatch basis: ${args.dispatchSubtotal}c · Booked: ${args.productionTotalCents}c`,
   )
+  // PS-3c (§8.1a) — the creator explicitly chose FC labeling; manifest
+  // generation + the dispatch label leg read this application point.
+  if (args.fcLabelingCents && args.fcLabelingCents > 0) {
+    lines.push(
+      `FC labeling: ${args.fcLabelingCents}c (${args.fcLabelingFeePerUnitCents}c/unit) at PartnerService ${args.fcLabelingPartnerServiceId} — creator opted in at checkout`,
+    )
+  }
   if (args.state.production.substrateSlug)
     lines.push(`Substrate: ${args.state.production.substrateSlug}`)
   if (args.state.production.packagingMaterialSlug)

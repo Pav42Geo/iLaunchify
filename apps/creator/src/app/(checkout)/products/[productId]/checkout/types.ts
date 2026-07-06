@@ -135,6 +135,12 @@ export interface FulfillmentState {
   // For CHANNEL_INBOUND (Phase L3a) — the creator's CONNECTED
   // ChannelConnection.id the run ships into. Optional so pre-L3 drafts load.
   channelConnectionId?: string | null
+  // PS-3c (§8.1a) — "Finalize labeling at this center". Only meaningful when
+  // ship-to is a warehouse whose verified RELABEL VAS covers this order's
+  // decoration method AND the order needs downstream application; the server
+  // re-derives eligibility at Pay and ignores the flag otherwise. Optional so
+  // pre-PS-3 drafts load.
+  labelingAtFc?: boolean | null
 }
 
 export interface NewAddressInput {

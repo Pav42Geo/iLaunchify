@@ -141,6 +141,10 @@ export function CheckoutWizard({
     shippingCents: number
     leadTimeBusinessDays: number
   } | null>(null)
+  // PS-3c — the FC-labeling fee/unit lifted from CheckoutStep when the creator
+  // ticks "Finalize labeling at this center" on a qualifying FC. Display-only;
+  // placeOrder re-derives the fee server-side.
+  const [fcLabelingFeeCentsPerUnit, setFcLabelingFeeCentsPerUnit] = useState<number | null>(null)
   const [isSaving, startSaving] = useTransition()
   // R8.d-rail-fix — place-order state lifted from CheckoutStep so the
   // pink Place-your-order button can live in the right rail (top of
@@ -529,6 +533,7 @@ export function CheckoutWizard({
               onChange={(patch) => patchState('cart', patch)}
               onFulfillmentChange={(patch) => patchState('fulfillment', patch)}
               onShippingEstimate={setShipping}
+              onFcLabelingFee={setFcLabelingFeeCentsPerUnit}
             />
           )}
 
@@ -605,6 +610,7 @@ export function CheckoutWizard({
             shipping={shipping}
             currentStep={currentStep}
             pinnedPrintProvider={pinnedPrintProvider}
+            fcLabelingFeeCentsPerUnit={fcLabelingFeeCentsPerUnit}
           />
         </aside>
       </main>
