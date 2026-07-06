@@ -370,16 +370,8 @@ export async function placeOrderFromCheckoutDraft(
   // pick from the marketplace cards — template-scoped, resolved per creator.
   // findRouting hard-filter-validates it; on failure the result carries
   // pinnedPrintUnavailable (surfaced by the fuller PS-3 checkout pre-flight).
-  // CAST-GUARDED until db:generate adds ProductPrintSelection (this site +
-  // the select action — de-cast post-migration).
   const pinnedSelection = product.productTemplateId
-    ? await (
-        prisma as unknown as {
-          productPrintSelection: {
-            findUnique: (a: unknown) => Promise<{ partnerServiceId: string } | null>
-          }
-        }
-      ).productPrintSelection
+    ? await prisma.productPrintSelection
         .findUnique({
           where: {
             creatorUserId_productTemplateId: {

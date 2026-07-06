@@ -5,9 +5,6 @@
 // printer for products built from this template, consumed by findRouting
 // step 0 at checkout (hard-filter validated there — the pin is a preference,
 // never a bypass). Audited.
-//
-// CAST-GUARDED until db:generate adds ProductPrintSelection (this action +
-// the checkout lookup — de-cast post-migration).
 
 import { prisma } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -15,16 +12,6 @@ import { getMarketingSession } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true; selected: boolean } | { ok: false; error: string }
-
-function selectionDb() {
-  return prisma as unknown as {
-    productPrintSelection: {
-      upsert: (a: unknown) => Promise<{ id: string }>
-      findUnique: (a: unknown) => Promise<{ id: string; partnerServiceId: string } | null>
-      delete: (a: unknown) => Promise<unknown>
-    }
-  }
-}
 
 export async function selectPrintProvider(input: {
   templateSlug: string
@@ -57,7 +44,7 @@ export async function selectPrintProvider(input: {
   })
   if (!service) return { ok: false, error: 'This provider is not currently available' }
 
-  const existing = await selectionDb().productPrintSelection.findUnique({
+  const existing = await prisma.productPrintSelection.findUnique({
     where: {
       creatorUserId_productTemplateId: {
         creatorUserId: user.id,
@@ -69,7 +56,7 @@ export async function selectPrintProvider(input: {
 
   // Clicking the already-selected provider DESELECTS (back to auto-routing).
   if (existing?.partnerServiceId === input.partnerServiceId) {
-    await selectionDb().productPrintSelection.delete({ where: { id: existing.id } })
+    await prisma.productPrintSelection.delete({ where: { id: existing.id } })
     await logAuditAs(user, {
       entityType: 'ProductPrintSelection',
       entityId: existing.id,
@@ -80,7 +67,7 @@ export async function selectPrintProvider(input: {
     return { ok: true, selected: false }
   }
 
-  const row = await selectionDb().productPrintSelection.upsert({
+  const row = await prisma.productPrintSelection.upsert({
     where: {
       creatorUserId_productTemplateId: {
         creatorUserId: user.id,
@@ -117,7 +104,7 @@ export async function getMyPrintSelection(templateSlug: string): Promise<string 
       select: { id: true },
     })
     if (!template) return null
-    const row = await selectionDb().productPrintSelection.findUnique({
+    const row = await prisma.productPrintSelection.findUnique({
       where: {
         creatorUserId_productTemplateId: {
           creatorUserId: user.id,
