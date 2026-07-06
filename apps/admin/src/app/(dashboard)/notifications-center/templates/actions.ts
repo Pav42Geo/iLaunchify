@@ -33,6 +33,8 @@ export interface TemplateDraftInput {
   ctaLabelOverride: string | null
   /** FEEDBACK_PROMPTS key — one-click thumbs block on this event (Stage 4). */
   feedbackPrompt: string | null
+  /** In-app P2 — coalescing window in minutes (0/null = off, max 1440). */
+  coalesceWindowMinutes: number | null
 }
 
 function validateDraft(input: TemplateDraftInput): string | null {
@@ -51,6 +53,12 @@ function validateDraft(input: TemplateDraftInput): string | null {
   }
   if ((input.subjectOverride?.length ?? 0) > 300) return 'Subject too long (300 max)'
   if ((input.bodyMarkdown?.length ?? 0) > 5000) return 'Body too long (5000 max)'
+  if (input.coalesceWindowMinutes != null) {
+    const w = input.coalesceWindowMinutes
+    if (!Number.isInteger(w) || w < 0 || w > 1440) {
+      return 'Coalescing window must be a whole number of minutes between 0 and 1440'
+    }
+  }
   return null
 }
 
@@ -66,6 +74,11 @@ export async function saveTemplateDraft(input: TemplateDraftInput): Promise<Resu
     ctaMode: input.ctaMode,
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
     feedbackPrompt: input.feedbackPrompt || null,
+    // Cast-guard (in-app P2): column lands with the next db:push + db:generate.
+    ...({ coalesceWindowMinutes: input.coalesceWindowMinutes || null } as unknown as Record<
+      string,
+      never
+    >),
     status: 'DRAFT' as const,
     updatedById: admin.id,
   }
@@ -220,6 +233,7 @@ export async function previewTemplate(input: TemplateDraftInput): Promise<
     ctaMode: input.ctaMode,
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
     feedbackPrompt: input.feedbackPrompt || null,
+    coalesceWindowMinutes: input.coalesceWindowMinutes ?? null,
     status: 'DRAFT',
     version: 0,
   }

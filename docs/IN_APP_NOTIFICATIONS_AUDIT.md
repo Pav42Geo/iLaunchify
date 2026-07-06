@@ -126,11 +126,25 @@ queues); cancel/dispute actions emit them; `ORDER_NEEDS_ATTENTION` kept for exis
 the two ops sweeps (inbound-receipt / release-ship overdue).
 
 ### P2 — grouping + realtime
-8. Server-side coalescing window (e.g. same event + same order within 10 min → one row,
-   "Riverside Print declined 3 dispatches") — needs a `groupKey` column (additive).
-9. SSE endpoint (`/api/notifications/stream`) replacing polling — Next route handler streaming;
-   polling stays as fallback. (WebSockets overkill for V1 scale.)
-10. In-app digest option for `reminders`/`inventory` categories (currently email-only digest).
+8. Coalescing — ✅ BUILT 2026-07-06, **GATED on db:push + db:generate** (`Notification.groupKey`
+   + `NotificationTemplate.coalesceWindowMinutes`). groupKey = `{event}:{subjectId}`
+   (dispatchId → orderId → ticketId → instanceId → orderRef). While an unread, unarchived
+   same-group row exists in-window, dispatch MERGES: fresh copy + "(N updates)" + bumped to
+   the top. Window is per-event on the admin Templates editor (0/off default, max 1440min) —
+   Pavel's decision. Cast-guards to de-cast after push: dispatcher writeInAppRow, center-db
+   getTemplateOverride, templates actions/pages.
+9. SSE — ✅ BUILT 2026-07-06. `/api/notifications/stream` in all 3 apps (10s server-side check,
+   55s rotation, heartbeat); shared bell is EventSource-first with transparent reconnect and
+   jittered-poll fallback when the stream is unreachable.
+10. In-app digest option for `reminders`/`inventory` categories (currently email-only digest). (open)
+
+### Sound ping (Pavel 2026-07-06) — ✅ BUILT, same schema gate
+`NotificationBranding.soundEnabled` (default on) + `soundUrl` (admin-uploaded mp3 via the
+Theme-Studio R2 rail; null = bundled default `/sounds/notification.mp3`, a synthesized gentle
+two-tone pop — not a bell). Managed on Notification Center → Branding (`NotificationSoundCard`:
+on/off, upload ≤1MB mp3, preview, reset). Feed APIs return `sound {enabled,url}`; the shared
+bell plays at 0.6 volume ONLY when the unread count rises after initial load (autoplay
+rejections swallowed). Custom upload requires `R2_PUBLIC_BASE_URL`.
 
 ### P3 — nice-to-have
 11. Snooze ("remind me tomorrow") — Linear-style, `snoozedUntil` column.

@@ -32,7 +32,12 @@ export interface NotificationBellItem {
 interface FeedResponse {
   notifications: NotificationBellItem[]
   unread: number
+  /** Admin-managed ping (Notification Center → Branding). url null = the
+      app's bundled default /sounds/notification.mp3. */
+  sound?: { enabled: boolean; url: string | null }
 }
+
+const DEFAULT_SOUND_URL = '/sounds/notification.mp3'
 
 export interface NotificationBellProps {
   /** Accent for unread dot / row tint / focus ring. pink = creator, info = partner + admin. */
@@ -41,6 +46,9 @@ export interface NotificationBellProps {
   badgeTone?: 'accent' | 'danger'
   /** Feed endpoint returning { notifications, unread }. */
   feedUrl?: string
+  /** SSE endpoint (in-app P2). When reachable, replaces polling — the bell
+      refreshes on server push. Falls back to jittered polling on failure. */
+  streamUrl?: string
   /** "View all" target. */
   viewAllHref?: string
   emptyText?: string
@@ -66,6 +74,7 @@ export function NotificationBell({
   accent = 'pink',
   badgeTone = 'accent',
   feedUrl = '/api/notifications/feed',
+  streamUrl = '/api/notifications/stream',
   viewAllHref = '/notifications',
   emptyText = 'No notifications yet.',
   markRead,
@@ -74,32 +83,77 @@ export function NotificationBell({
   const [open, setOpen] = React.useState(false)
   const [data, setData] = React.useState<FeedResponse>({ notifications: [], unread: 0 })
   const [isPending, startTransition] = React.useTransition()
+  // Previous unread count — null until the first fetch so the initial load
+  // never pings (only a RISING count does).
+  const prevUnread = React.useRef<number | null>(null)
 
   const refresh = React.useCallback(async () => {
     try {
       const res = await fetch(feedUrl, { cache: 'no-store' })
-      if (res.ok) setData((await res.json()) as FeedResponse)
+      if (!res.ok) return
+      const next = (await res.json()) as FeedResponse
+      // Sound ping (admin-managed): play when the unread count rises after
+      // the initial load. Autoplay may be blocked pre-interaction — swallow.
+      if (
+        prevUnread.current !== null &&
+        next.unread > prevUnread.current &&
+        (next.sound?.enabled ?? false)
+      ) {
+        try {
+          const audio = new Audio(next.sound?.url ?? DEFAULT_SOUND_URL)
+          audio.volume = 0.6
+          void audio.play().catch(() => {})
+        } catch {
+          // Audio unavailable (SSR guard / odd browser) — stay silent.
+        }
+      }
+      prevUnread.current = next.unread
+      setData(next)
     } catch {
       // Silent — the bell must never break the page.
     }
   }, [feedUrl])
 
-  // Jittered poll, paused while the tab is hidden.
+  // Live updates (in-app P2): SSE first — the stream endpoint pushes whenever
+  // the unread signature changes and EventSource auto-reconnects when the
+  // serverless stream rotates. If SSE is unavailable/permanently closed, fall
+  // back to the jittered poll (paused while the tab is hidden).
   React.useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined
+    let es: EventSource | null = null
     let cancelled = false
+    let polling = false
 
-    function schedule() {
+    function schedulePoll() {
+      if (cancelled) return
+      polling = true
       const delay = POLL_BASE_MS + (Math.random() * 2 - 1) * POLL_JITTER_MS
       timer = setTimeout(async () => {
         if (cancelled) return
         if (!document.hidden) await refresh()
-        schedule()
+        schedulePoll()
       }, delay)
     }
 
     void refresh()
-    schedule()
+
+    if (streamUrl && typeof window !== 'undefined' && 'EventSource' in window) {
+      es = new EventSource(streamUrl)
+      es.onmessage = () => {
+        if (!cancelled) void refresh()
+      }
+      es.onerror = () => {
+        // Transient errors auto-reconnect; only a CLOSED source means the
+        // endpoint is unavailable (404/401/proxy) → fall back to polling.
+        if (es && es.readyState === EventSource.CLOSED && !polling) {
+          es.close()
+          es = null
+          schedulePoll()
+        }
+      }
+    } else {
+      schedulePoll()
+    }
 
     function onVisible() {
       if (!document.hidden) void refresh()
@@ -108,9 +162,10 @@ export function NotificationBell({
     return () => {
       cancelled = true
       if (timer) clearTimeout(timer)
+      if (es) es.close()
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [refresh])
+  }, [refresh, streamUrl])
 
   React.useEffect(() => {
     if (!open) return

@@ -4380,6 +4380,10 @@ model Notification {
   // In-app P1 — user archived the row (or the 30d auto-archive sweep did).
   // Archived rows are hidden from the bell + feed but never deleted.
   archivedAt  DateTime?
+  // In-app P2 coalescing — "{event}:{subjectId}". While an UNREAD row with the
+  // same (userId, groupKey) exists inside the event's coalesce window, repeat
+  // dispatches merge into it instead of stacking new rows. Null = never merged.
+  groupKey    String?
   // Free-form context (entity ids the receiver may want to navigate to)
   payload     Json?
   createdAt   DateTime            @default(now())
@@ -4389,6 +4393,7 @@ model Notification {
   @@index([userId, readAt]) // unread feed query
   @@index([userId, createdAt]) // chronological feed
   @@index([userId, archivedAt]) // active-feed filter (in-app P1)
+  @@index([userId, groupKey]) // coalescing lookup (in-app P2)
   @@index([event])
 }
 
@@ -4462,6 +4467,11 @@ model NotificationBranding {
   // Audience-aware header nav links (docs/FEEDBACK_MODULE.md §3.3):
   // { creator: [{label,url}…], partner: […], admin: […] }. Null = no link row.
   headerLinks         Json?
+  // In-app notification sound (Pavel 2026-07-06) — played by the bell when the
+  // unread count rises. soundUrl = admin-uploaded mp3 (R2 public URL); null =
+  // each app's bundled default /sounds/notification.mp3.
+  soundEnabled        Boolean  @default(true)
+  soundUrl            String?
   updatedAt           DateTime @updatedAt
   updatedById         String? // soft FK → admin User
 }
@@ -4482,6 +4492,10 @@ model NotificationTemplate {
   // renders the one-click thumbs block on this event's emails (eligibility-
   // gated at send). Null = no block.
   feedbackPrompt   String?
+  // In-app P2 coalescing window in minutes (Pavel 2026-07-06: per-event tuning
+  // lives HERE, on the Center template row — not a global constant). Null/0 =
+  // coalescing off for this event. Applies to IN_APP only.
+  coalesceWindowMinutes Int?
   status           NotificationTemplateStatus    @default(DRAFT)
   version          Int                           @default(1)
   createdAt        DateTime                      @default(now())

@@ -34,6 +34,8 @@ export interface TemplateRowView {
   ctaMode: CtaMode
   ctaLabelOverride: string | null
   feedbackPrompt: string | null
+  /** In-app P2 — coalescing window in minutes (0/null = off). */
+  coalesceWindowMinutes: number | null
   status: 'DRAFT' | 'PUBLISHED'
   version: number
 }
@@ -61,6 +63,7 @@ export function TemplateEditor({
   const [ctaMode, setCtaMode] = useState<CtaMode>(row?.ctaMode ?? 'AUTO')
   const [ctaLabel, setCtaLabel] = useState(row?.ctaLabelOverride ?? '')
   const [fbPrompt, setFbPrompt] = useState(row?.feedbackPrompt ?? '')
+  const [coalesceMin, setCoalesceMin] = useState(String(row?.coalesceWindowMinutes ?? ''))
   const [preview, setPreview] = useState<EmailTemplatePreviewContent>(initialPreview)
   const bodyRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -75,6 +78,7 @@ export function TemplateEditor({
       ctaMode,
       ctaLabelOverride: ctaLabel || null,
       feedbackPrompt: fbPrompt || null,
+      coalesceWindowMinutes: coalesceMin.trim() ? Number(coalesceMin) : null,
     }
   }
 
@@ -191,6 +195,27 @@ export function TemplateEditor({
               </span>
             </label>
           )}
+
+          {/* In-app coalescing window (P2, Pavel 2026-07-06: per-event tuning). */}
+          <label className="mt-3 block text-[12px] font-medium text-ink-700">
+            In-app coalescing window (minutes)
+            <input
+              type="number"
+              min={0}
+              max={1440}
+              step={1}
+              value={coalesceMin}
+              onChange={(e) => setCoalesceMin(e.target.value)}
+              placeholder="0 = off"
+              className={inputCls}
+            />
+            <span className="mt-1 block text-[11px] font-normal text-ink-500">
+              While an unread in-app notification for the same order/dispatch/ticket
+              exists inside this window, repeat events merge into it (&quot;(N updates)&quot;)
+              instead of stacking rows. Saved with the draft; applies immediately —
+              in-app only, email unaffected.
+            </span>
+          </label>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <button type="button" disabled={pending} onClick={refreshPreview} className={`${btn} border border-ink-200 bg-white text-ink-700 hover:border-ink-400`}>

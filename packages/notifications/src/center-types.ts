@@ -111,6 +111,12 @@ export interface NotificationTemplateOverride {
    * emails, eligibility-gated at send (docs/FEEDBACK_MODULE.md §3.3). Null = none.
    */
   feedbackPrompt: string | null
+  /**
+   * In-app P2 coalescing window in minutes (per-event tuning, Pavel 2026-07-06).
+   * Null/0 = coalescing off. Applies to IN_APP only; takes effect regardless of
+   * status (it's a delivery knob, not template copy).
+   */
+  coalesceWindowMinutes: number | null
   /** Only PUBLISHED rows take effect; DRAFT rows are preview-only. */
   status: TemplateStatus
   version: number

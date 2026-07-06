@@ -9,6 +9,7 @@ import {
 } from '@ilaunchify/notifications'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { BrandingForm } from './BrandingForm'
+import { NotificationSoundCard } from './NotificationSoundCard'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Email branding — Admin' }
@@ -66,6 +67,11 @@ export default async function BrandingPage() {
         initial={branding}
         initialPreviewHtml={previewHtml}
         placementLogoUrl={placementLogo}
+      />
+      {/* In-app channel: the bell's ping (cast-guarded reads until db:push + generate). */}
+      <NotificationSoundCard
+        initialEnabled={(row as { soundEnabled?: boolean } | null)?.soundEnabled ?? true}
+        initialUrl={(row as { soundUrl?: string | null } | null)?.soundUrl ?? null}
       />
     </div>
   )

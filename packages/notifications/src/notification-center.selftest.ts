@@ -197,6 +197,7 @@ const override: NotificationTemplateOverride = {
   ctaMode: 'CUSTOM',
   ctaLabelOverride: 'Accept {{brandName}} job',
   feedbackPrompt: null,
+  coalesceWindowMinutes: null,
   status: 'PUBLISHED',
   version: 2,
 }

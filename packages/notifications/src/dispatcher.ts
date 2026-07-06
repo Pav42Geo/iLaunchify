@@ -193,18 +193,26 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
     // IN_APP — write the row, regardless of quiet hours (notification center
     // is the place users go *to* see what's pending). Group-preference gated;
     // mandatory categories always pass.
+    //
+    // Coalescing (in-app P2, docs/IN_APP_NOTIFICATIONS_AUDIT.md §5 item 8):
+    // when the event's Center template sets coalesceWindowMinutes and an
+    // UNREAD, unarchived row with the same groupKey exists inside the window,
+    // merge into it (fresh copy + "(N updates)" + bumped to the top) instead
+    // of stacking a new row. Per-event tuning lives on the admin Notification
+    // Center template row (Pavel 2026-07-06).
     if (shouldDeliver(input.event, 'IN_APP', prefRows)) {
+      const windowMinutes = override?.coalesceWindowMinutes ?? 0
+      const groupKey = coalesceGroupKey(input.event, input.data)
       tasks.push(
-        prisma.notification.create({
-          data: {
-            userId: user.id,
-            event: input.event,
-            channel: 'IN_APP',
-            title: content.inApp.title,
-            body: content.inApp.body,
-            link: content.inApp.link,
-            payload: input.data as never,
-          },
+        writeInAppRow({
+          userId: user.id,
+          event: input.event,
+          title: content.inApp.title,
+          body: content.inApp.body,
+          link: content.inApp.link,
+          payload: input.data,
+          groupKey,
+          windowMinutes,
         }),
       )
     }
@@ -304,4 +312,87 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
     // eslint-disable-next-line no-console
     console.error('[notifications] dispatcher failed', err)
   }
+}
+
+// =============================================================================
+// IN_APP coalescing (in-app P2)
+// =============================================================================
+
+// Subject-id payload keys, in specificity order — the first present wins.
+const SUBJECT_KEYS = ['dispatchId', 'orderId', 'ticketId', 'instanceId', 'orderRef'] as const
+
+/** "{event}:{subjectId}", or null when the payload has no recognizable subject
+ *  (no subject → no safe merge → always a fresh row). */
+function coalesceGroupKey(
+  event: NotificationEvent,
+  data: Record<string, unknown>,
+): string | null {
+  for (const key of SUBJECT_KEYS) {
+    const v = data[key]
+    if (typeof v === 'string' && v) return `${event}:${v}`
+  }
+  return null
+}
+
+/** Create the IN_APP row, or merge into an existing unread row in-window.
+ *  Merged rows get fresh copy, an "(N updates)" suffix, and a bumped
+ *  createdAt so they surface at the top of the bell/feed. groupKey writes are
+ *  cast-guarded until db:push + db:generate land the column. */
+async function writeInAppRow(params: {
+  userId: string
+  event: NotificationEvent
+  title: string
+  body: string | null | undefined
+  link: string | null | undefined
+  payload: Record<string, unknown>
+  groupKey: string | null
+  windowMinutes: number
+}): Promise<void> {
+  const groupKeyData = { groupKey: params.groupKey } as unknown as Record<string, never>
+
+  if (params.groupKey && params.windowMinutes > 0) {
+    const windowStart = new Date(Date.now() - params.windowMinutes * 60_000)
+    const existing = (await prisma.notification.findFirst({
+      where: {
+        userId: params.userId,
+        channel: 'IN_APP',
+        readAt: null,
+        archivedAt: null,
+        createdAt: { gte: windowStart },
+        // Cast-guard: groupKey lands with the next db:push + db:generate.
+        ...({ groupKey: params.groupKey } as unknown as Record<string, never>),
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, payload: true },
+    })) as { id: string; payload: unknown } | null
+
+    if (existing) {
+      const prev = (existing.payload ?? {}) as Record<string, unknown>
+      const count = (typeof prev.coalescedCount === 'number' ? prev.coalescedCount : 1) + 1
+      await prisma.notification.update({
+        where: { id: existing.id },
+        data: {
+          title: `${params.title} (${count} updates)`,
+          body: params.body ?? null,
+          link: params.link ?? null,
+          payload: { ...params.payload, coalescedCount: count } as never,
+          createdAt: new Date(), // bump to the top of the feed
+        },
+      })
+      return
+    }
+  }
+
+  await prisma.notification.create({
+    data: {
+      userId: params.userId,
+      event: params.event,
+      channel: 'IN_APP',
+      title: params.title,
+      body: params.body ?? null,
+      link: params.link ?? null,
+      payload: params.payload as never,
+      ...groupKeyData,
+    },
+  })
 }

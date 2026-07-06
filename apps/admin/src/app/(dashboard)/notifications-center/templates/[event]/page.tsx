@@ -58,6 +58,9 @@ export default async function TemplateEditorPage({
           ctaMode: row.ctaMode,
           ctaLabelOverride: row.ctaLabelOverride,
           feedbackPrompt: row.feedbackPrompt,
+          // Cast-guard (in-app P2): read directly after db:push + db:generate.
+          coalesceWindowMinutes:
+            (row as { coalesceWindowMinutes?: number | null }).coalesceWindowMinutes ?? null,
           status: row.status,
           version: row.version,
         }
@@ -95,6 +98,10 @@ export default async function TemplateEditorPage({
                 ctaMode: row.ctaMode,
                 ctaLabelOverride: row.ctaLabelOverride,
                 feedbackPrompt: row.feedbackPrompt,
+                // Cast-guard (in-app P2): read directly after db:push + db:generate.
+                coalesceWindowMinutes:
+                  (row as { coalesceWindowMinutes?: number | null }).coalesceWindowMinutes ??
+                  null,
                 status: row.status,
                 version: row.version,
               }

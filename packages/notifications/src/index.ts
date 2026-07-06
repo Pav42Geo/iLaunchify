@@ -33,6 +33,7 @@ export {
 // Center control-plane DB access (cast-guarded until db:generate — center-db.ts).
 export {
   getNotificationBranding,
+  getNotificationSound,
   getTemplateOverride,
   getCategoryPreferenceRows,
   setCategoryPreference,
