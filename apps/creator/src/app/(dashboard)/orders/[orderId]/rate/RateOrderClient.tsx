@@ -8,7 +8,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Star } from 'lucide-react'
+import { Star, Heart } from 'lucide-react'
 import { submitPartnerRatings, submitProductReview } from './actions'
 
 type Dimensions = Record<string, number>
@@ -145,6 +145,22 @@ export function RateOrderClient({
 
   return (
     <div className="space-y-6">
+      {/* ---- Responsibility note: ratings drive partner standing + routing ---- */}
+      <aside className="flex gap-3 rounded-2xl border border-pink-200 bg-pink-50 p-4">
+        <Heart className="mt-0.5 h-5 w-5 shrink-0 fill-pink-600 text-pink-600" aria-hidden="true" />
+        <div>
+          <h2 className="font-display text-[14.5px] font-semibold text-ink-900">
+            Your honest rating matters
+          </h2>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-ink-600">
+            These scores are how partners build their reputation and earn future orders on
+            iLaunchify — a real part of their growth. Please rate fairly, from your actual
+            experience: it helps great partners get recognized and keeps quality high for every
+            creator.
+          </p>
+        </div>
+      </aside>
+
       {/* ---- Partner rating cards ---- */}
       {cards.map((c) => {
         const locked = c.existing ? !c.existing.editable : false
