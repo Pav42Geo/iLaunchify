@@ -229,10 +229,44 @@ graph must minimize and explicitly cost every inter-partner move.
 labelingMode      LabelingMode      // §2 — can they PRINT (produce decoration)
 labelApplication  ApplicationMode   // NEW — can they APPLY at fill: YES | NO (bulk-only shipper)
 // COPACKING service: appliesLabels Boolean @default(true)  (application is their core trade)
-// WAREHOUSE service: valueAddedServices — KITTING_LABELING flag (off for all FCs today, per
-//   Pavel; the field exists so a 3PL that offers relabel/kitting can declare it later)
 ```
 Backfill: `labelApplication = YES` (matches today's implicit self-label behavior).
+
+### 8.1a FC value-added services — declarable job catalog (NEW; audited 2026-07-05: does not exist)
+The WAREHOUSE service's L0 block (storage classes, hazmat, fees, fcCertifications, capacity,
+receivingSpecJson) has NO value-added declaration today — we add one, following the same
+typed-capability + fee pattern L0 established (pickFeeCents/packFeeCents precedent):
+
+```prisma
+enum FcVasJobType {
+  RELABEL          // apply/replace product labels (the honey-problem rescue)
+  KITTING          // combine components into sellable kits
+  LIGHT_ASSEMBLY   // simple assembly, no production equipment
+  BAGGING_BUNDLING // polybag, shrink-band, multipack banding
+  DISPLAY_BUILDS   // retail display assembly
+  REWORK           // correction jobs (wrong label, market-specific swap)
+}
+
+model FcValueAddedService {
+  id / partnerServiceId (WAREHOUSE svc)
+  jobType          FcVasJobType
+  // For RELABEL: which application methods the floor can run — a steam tunnel
+  // (SHRINK_SLEEVE) is real equipment; hand-applying PSL is not.
+  labelMethods     DecorationMethod[] // meaningful for RELABEL; [] otherwise
+  feeCentsPerUnit  Int
+  minUnits         Int      @default(1)
+  leadTimeDays     Int      @default(2)
+  notes            String?
+  status           OfferingStatus @default(DRAFT) // same publish gate as offerings
+  @@unique([partnerServiceId, jobType])
+}
+```
+Declared in the partner FC editor (same card conventions: autosave + FSM + audit + admin
+verification before ACTIVE — a false RELABEL claim is exactly the platform loss §7 exists to
+prevent, so VAS rows get verified like certifications). These rows are what makes resolver
+step 3 REAL instead of gated-off: an FC is an eligible application point only with an ACTIVE
+RELABEL row whose `labelMethods` cover the component's decoration method — mirroring
+`eligiblePrintProviders`, capability-first, never vibes.
 
 ### 8.2 The application-point resolver (pure, the "smart sync engine" core)
 `resolveApplicationPoint(graph) → nodeId | UNRESOLVED` — for every decorated component, the
@@ -242,7 +276,15 @@ unlabeled goods and (b) declares application capability:
    (The common case — today's behavior, now explicit.)
 2. Else a co-pack node in the graph (`appliesLabels`) → labels ship printer→co-packer; goods
    manufacturer→co-packer; co-packer applies + packs.
-3. Else an FC with KITTING_LABELING → printer→FC (none qualify today — path exists, gated off).
+3. Else an FC with an ACTIVE `FcValueAddedService` RELABEL row covering the decoration method
+   (8.1a) → printer→FC, FC finalizes (+VAS fee quoted into the total). At checkout, the FC
+   picker marks qualifying FCs "Can finalize labeling here"; non-qualifying FCs stay pickable
+   ONLY when the graph is already finished upstream. **Priority note (Pavel's read, confirmed
+   with one nuance):** manufacturer-finalizes is the DEFAULT whenever the manufacturer can apply
+   — fewest hops, lowest freight, goods already in hand — and the FC-finalize choice surfaces
+   only when the graph NEEDS it (no-apply manufacturer, no co-pack leg) or the creator's chosen
+   FC qualifies and they explicitly opt into it (e.g. it's faster). We never route labels to an
+   FC "because it's the destination".
 4. Else **UNRESOLVED** → the graph is INCOMPLETE. Hard-block: at product PUBLISH (manufacturer
    declared no-apply and no co-pack route exists → product can't be listed with that decoration
    method) and again at CHECKOUT pre-flight (belt + suspenders; also catches capability changes
@@ -283,8 +325,11 @@ cost itself stays a production line item — never blended into shipping.
   8.2 now is a prerequisite investment in the V2 moat, not just a bug fix.
 
 ### 8.5 Phase — PS-7 (with a scope guard)
-- **[CW]** `labelApplication`/`appliesLabels`/`valueAddedServices` schema + backfill (rides the
-  PS-1/PS-6 migration) + partner editor card fields
+- **[CW]** `labelApplication`/`appliesLabels` + `FcValueAddedService` model (8.1a) schema +
+  backfill (rides the PS-1/PS-6 migration) + partner editor cards (FC VAS card admin-verified
+  before ACTIVE)
+- **[CW]** Checkout FC picker: "Can finalize labeling here" qualification badge + VAS fee line
+  in the total; resolver step 3 consumes ACTIVE VAS rows
 - **[CW]** Pure `resolveApplicationPoint` + graph-completeness validator + unit tests (every 8.4
   case) — `@ilaunchify/orders`
 - **[CODE-coordinated]** dispatch-planner + manifest: `shipToNodeId`, per-hop legs, publish +
