@@ -162,6 +162,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Partner ramp', icon: BadgeCheck, href: '/partners/ramp', capability: 'partners:approve' },
         // — Catalog & product review —
         { kind: 'item', label: 'Product approvals', icon: Package, href: '/products?tab=new', badgeKey: 'products.pending' },
+        { kind: 'item', label: 'Print coverage', icon: PackageX, href: '/print-coverage', capability: 'reviews:write' },
         { kind: 'item', label: 'Category review', icon: Tag, href: '/categories/review', badgeKey: 'categoryReview.pending', capability: 'catalog:write' },
         { kind: 'item', label: 'Ingredient queue', icon: FlaskConical, href: '/ingredients', badgeKey: 'ingredients.pending' },
         { kind: 'item', label: 'Accessory verification', icon: Gift, href: '/accessories' },

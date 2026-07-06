@@ -517,8 +517,26 @@ shortlisting, broadcast, re-broadcast, unpark — all automatic.
     any PAUSED template whose coverage returns via the claim path — acceptable at V1 volume).
   - [ ] **[PAVEL]** rides the SAME db:push as PS-8a/PS-8b (no new schema — reuses the models +
     enum). `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next`.
-- **PS-8d — admin Coverage dashboard** (v2 surface, §10.4) + Design Studio guard copy
-  ("printing being re-arranged") on coverage-dropped templates
+- **PS-8d — admin Coverage dashboard** · CODE COMPLETE 2026-07-06 (CW); migration pending Pavel
+  - [x] `/print-coverage` v2 admin surface (Inbox group, `reviews:write`): AdminPageHeader hero +
+    5-KPI strip (uncovered templates · open RFQs · claims awaiting · paused-for-coverage ·
+    median time-to-coverage) + capability-requests table (template deep-link, packaging, status
+    chip, claim/notified counts, region, age). Cheap loader — derives from request/claim rows +
+    a PAUSED count; no per-template coverage scan on load.
+  - [x] Row nudges (`reviews:write`, audited): **Re-broadcast** (→ next printer band now) +
+    **Extend** (+14d, reopens EXPIRED). Everything else stays automatic.
+  - Note: swapped §10.4's "fragile (coverage 1)" KPI for "paused for coverage" — exact + cheap;
+    a true coverage-1 count needs a denormalized `printCoverage` column (follow-up), since
+    scanning every template's coverage on dashboard load doesn't scale.
+  - [ ] **[CODE — Studio/checkout, canvas hot zone]** "printing being re-arranged" guard copy on
+    a coverage-dropped template mid-design. Trigger: `ProductTemplate.status === 'PAUSED'` with an
+    OPEN/CLAIMED `PrintCapabilityRequest` for it. Copy: *"Printing for this product is being
+    re-arranged — you can keep designing, but ordering is paused for a moment while we line up a
+    printer. We'll email you the moment it's back."* Placement is Studio/checkout (Code's zone) —
+    §10.1 makes this structurally rare (activation gates on coverage), so it's defense-in-depth;
+    the §8 UNRESOLVED validator at Pay is the hard backstop. Marketplace detail already drops
+    PAUSED templates from listings (loader filters `status==='PUBLISHED'`).
+  - [ ] **[PAVEL]** rides the SAME db:push as PS-8a/8b/8c (no new schema).
 
 ## §9 Build phases + ownership
 
