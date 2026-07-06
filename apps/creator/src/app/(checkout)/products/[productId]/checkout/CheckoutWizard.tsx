@@ -62,8 +62,13 @@ import { SubscribeChoiceRail } from './SubscribeChoiceRail'
 // bring the upsell back.
 const SUBSCRIBE_AND_SAVE_FEATURE_ON = false
 import { BrandSwitcher, type BrandOption } from '@/components/nav/BrandSwitcher'
-import { placeOrderFromCheckoutDraft, type PlaceOrderOptions } from './cart-actions'
+import {
+  placeOrderFromCheckoutDraft,
+  type PlaceOrderOptions,
+  type PinnedPrintGateInfo,
+} from './cart-actions'
 import { CapacityGatePanel } from './CapacityGatePanel'
+import { PinnedPrintGatePanel } from './PinnedPrintGatePanel'
 import type { CapacityGateInfo } from '@ilaunchify/orders'
 import { applyOrderAdjustment } from './adjust-actions'
 import type { CostBreakdown } from './production-actions'
@@ -98,6 +103,10 @@ interface Props {
   // design. Non-empty → notice + Pay disabled (mirrors restrictions); the server
   // action hard-blocks regardless. DIELINE_FRAME_EDITOR_SPEC §5.
   labelIssues: LabelFrameIssue[]
+  // PS-3 — the creator's pinned print provider (marketplace pick) for this
+  // product's template, display name only. Null = auto-routed. Server-loaded;
+  // placeOrder re-validates and the pinned-print gate fires if it went stale.
+  pinnedPrintProvider: { companyName: string } | null
 }
 
 export function CheckoutWizard({
@@ -117,6 +126,7 @@ export function CheckoutWizard({
   subscribeAndSaveEnabled,
   restrictions,
   labelIssues,
+  pinnedPrintProvider,
 }: Props) {
   const router = useRouter()
   const isRestricted = restrictions.length > 0
@@ -140,8 +150,15 @@ export function CheckoutWizard({
   // Risk Center capacity gate (M5-prep) — set when the server declines the
   // order with honest options; only possible once the detector runs in GATE.
   const [capacityGate, setCapacityGate] = useState<CapacityGateInfo | null>(null)
+  // PS-3 pinned-print gate — set when the creator's pinned print provider
+  // failed routing validation. Never silently rerouted: the creator either
+  // consciously accepts the auto-routed provider or bails to re-pick.
+  const [pinnedPrintGate, setPinnedPrintGate] = useState<PinnedPrintGateInfo | null>(null)
 
-  function placeOrder(capacityAck?: PlaceOrderOptions['capacityAck']) {
+  function placeOrder(
+    capacityAck?: PlaceOrderOptions['capacityAck'],
+    pinnedPrintAck?: PlaceOrderOptions['pinnedPrintAck'],
+  ) {
     if (isRestricted) {
       toast.error(
         'This product is in a restricted category iLaunchify doesn’t support yet.',
@@ -183,10 +200,15 @@ export function CheckoutWizard({
       const result = await placeOrderFromCheckoutDraft(productId, {
         complianceAck: ack,
         capacityAck: capacityAck ?? null,
+        pinnedPrintAck: pinnedPrintAck ?? null,
       })
       if (!result.ok) {
         if ('capacityGate' in result && result.capacityGate) {
           setCapacityGate(result.capacityGate)
+          return
+        }
+        if ('pinnedPrintGate' in result && result.pinnedPrintGate) {
+          setPinnedPrintGate(result.pinnedPrintGate)
           return
         }
         toast.error(result.error)
@@ -220,6 +242,12 @@ export function CheckoutWizard({
       suggestedEtaMonth: gate?.suggestedEtaMonth ?? null,
       acknowledgedAt: new Date().toISOString(),
     })
+  }
+
+  // PS-3 pinned-print gate — creator consciously accepts auto-routing.
+  function gateAcceptAutoRoutedPrinter() {
+    setPinnedPrintGate(null)
+    placeOrder(undefined, { acknowledgedAt: new Date().toISOString() })
   }
 
   function patchState<K extends keyof CheckoutDraftState>(
@@ -299,6 +327,16 @@ export function CheckoutWizard({
           onReduceQty={gateReduceQty}
           onProceedExtendedEta={gateProceedExtendedEta}
           onClose={() => setCapacityGate(null)}
+        />
+      )}
+      {/* PS-3 — pinned print provider failed validation: conscious choice
+          before payment, never a silent reroute. */}
+      {pinnedPrintGate && (
+        <PinnedPrintGatePanel
+          gate={pinnedPrintGate}
+          busy={isPaying}
+          onAcceptAutoRouted={gateAcceptAutoRoutedPrinter}
+          onClose={() => setPinnedPrintGate(null)}
         />
       )}
       {/* H3.1 — adjust-mode banner stays */}
@@ -566,6 +604,7 @@ export function CheckoutWizard({
             estimate={estimate}
             shipping={shipping}
             currentStep={currentStep}
+            pinnedPrintProvider={pinnedPrintProvider}
           />
         </aside>
       </main>

@@ -30,6 +30,10 @@ interface Props {
   // the API even after the Subscribe stub was removed so wizard callers
   // don't need a follow-up patch.
   currentStep?: WizardStepIndex
+  // PS-3 — the creator's pinned print provider (marketplace "Select this
+  // provider" pick). Annotates the Label-printing line so the pick stays
+  // visible right up to payment. Null = auto-routed.
+  pinnedPrintProvider?: { companyName: string } | null
 }
 
 export function OrderSummary({
@@ -37,6 +41,7 @@ export function OrderSummary({
   estimate,
   shipping,
   currentStep: _currentStep,
+  pinnedPrintProvider = null,
 }: Props) {
   const qty = state.production.quantity ?? 0
   const hasEstimate = !!estimate && estimate.quantity > 0
@@ -92,6 +97,15 @@ export function OrderSummary({
           }
           dimmed={!hasEstimate}
         />
+        {pinnedPrintProvider && (
+          <div className="-mt-1 pl-0.5 text-[11.5px] text-ink-500">
+            Printed by{' '}
+            <span className="font-medium text-ink-700">
+              {pinnedPrintProvider.companyName}
+            </span>{' '}
+            — your pick
+          </div>
+        )}
         <Row
           label={`Packaging${qty ? ` × ${qty}` : ''}`}
           value={

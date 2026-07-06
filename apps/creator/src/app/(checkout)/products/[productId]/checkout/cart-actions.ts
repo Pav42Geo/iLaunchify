@@ -86,6 +86,13 @@ export interface PlaceOrderOptions {
     suggestedEtaMonth: string | null
     acknowledgedAt: string
   } | null
+  /** PS-3 (PRINT_PROVIDER_SELECTION §4). Set when the creator's pinned print
+   *  provider failed routing validation and the creator consciously accepted
+   *  the auto-routed provider instead. Never silent — the gate below fires
+   *  first, always before payment. */
+  pinnedPrintAck?: {
+    acknowledgedAt: string
+  } | null
 }
 
 /** placeOrder failure that carries the capacity-gate options for the UI. */
@@ -95,10 +102,26 @@ export type PlaceOrderCapacityGate = {
   capacityGate: CapacityGateInfo
 }
 
+/** PS-3 — placeOrder failure carrying the pinned-printer reroute notice. */
+export type PinnedPrintGateInfo = {
+  /** The provider the creator picked on the marketplace card (name may be
+   *  null if the service row vanished entirely). */
+  pinnedProviderName: string | null
+  /** Where auto-routing would send the print job instead. */
+  autoProviderName: string | null
+}
+export type PlaceOrderPinnedPrintGate = {
+  ok: false
+  error: string
+  pinnedPrintGate: PinnedPrintGateInfo
+}
+
 export async function placeOrderFromCheckoutDraft(
   productId: string,
   options: PlaceOrderOptions,
-): Promise<Result<{ checkoutUrl: string; orderId: string }> | PlaceOrderCapacityGate> {
+): Promise<
+  Result<{ checkoutUrl: string; orderId: string }> | PlaceOrderCapacityGate | PlaceOrderPinnedPrintGate
+> {
   const user = await requireUser()
   if (user.role !== 'CREATOR') {
     return { ok: false, error: 'Only creators can place production orders.' }
@@ -392,6 +415,35 @@ export async function placeOrderFromCheckoutDraft(
     pinnedPrintServiceId: pinnedSelection?.partnerServiceId ?? null,
   })
   if (!routing.ok) return { ok: false, error: routing.message }
+
+  // --- 4a-bis. PS-3 pinned-printer gate (PRINT_PROVIDER_SELECTION §4) ---------
+  //             The creator picked a printer on the marketplace card, but it
+  //             failed routing's hard filters right now (blackout, deactivated,
+  //             Stripe hold, no ACTIVE offering). We NEVER silently reroute a
+  //             manual pick — surface both names and let the creator consciously
+  //             accept the auto-routed provider (or bail and re-pick).
+  if (routing.pinnedPrintUnavailable && !options.pinnedPrintAck) {
+    const [pinnedSvc, autoSvc] = await Promise.all([
+      pinnedSelection?.partnerServiceId
+        ? prisma.partnerService.findUnique({
+            where: { id: pinnedSelection.partnerServiceId },
+            select: { partner: { select: { companyName: true } } },
+          })
+        : Promise.resolve(null),
+      prisma.partnerService.findUnique({
+        where: { id: routing.labelPrintingServiceId },
+        select: { partner: { select: { companyName: true } } },
+      }),
+    ])
+    return {
+      ok: false,
+      error: 'Your selected print provider is currently unavailable.',
+      pinnedPrintGate: {
+        pinnedProviderName: pinnedSvc?.partner.companyName ?? null,
+        autoProviderName: autoSvc?.partner.companyName ?? null,
+      },
+    }
+  }
 
   // --- 4b. Risk Center capacity gate (M5-prep) --------------------------------
   //         Inert until CAPACITY_OVERCOMMIT is promoted to GATE on
@@ -969,6 +1021,20 @@ export async function placeOrderFromCheckoutDraft(
         suggestedEtaMonth: options.capacityAck.suggestedEtaMonth,
         acknowledgedAt: options.capacityAck.acknowledgedAt,
         orderUnits: qty * unitsPerQtyStep,
+      },
+    }).catch(() => {/* best-effort */})
+  }
+  // PS-3 — the creator consciously accepted auto-routing after their pinned
+  // print provider failed validation: record the informed consent.
+  if (options.pinnedPrintAck && routing.pinnedPrintUnavailable) {
+    await logAuditAs(user, {
+      entityType: 'Order',
+      entityId: order.id,
+      action: 'ORDER_PINNED_PRINT_REROUTE_ACKED',
+      payload: {
+        pinnedPartnerServiceId: pinnedSelection?.partnerServiceId ?? null,
+        routedPartnerServiceId: routing.labelPrintingServiceId,
+        acknowledgedAt: options.pinnedPrintAck.acknowledgedAt,
       },
     }).catch(() => {/* best-effort */})
   }

@@ -41,10 +41,39 @@ export default async function CheckoutPage({ params }: PageProps) {
     select: {
       id: true,
       name: true,
+      productTemplateId: true,
       brand: { select: { id: true, name: true } },
     },
   })
   if (!product) notFound()
+
+  // PS-3 (PRINT_PROVIDER_SELECTION §4) — the creator's pinned print provider
+  // for this product's template, resolved to a display name for the Order
+  // Summary. Display-only here: findRouting re-validates the pin at placeOrder
+  // and the pinned-print gate fires before payment if it's no longer available.
+  const pinnedPrintProvider = product.productTemplateId
+    ? await prisma.productPrintSelection
+        .findUnique({
+          where: {
+            creatorUserId_productTemplateId: {
+              creatorUserId: user.id,
+              productTemplateId: product.productTemplateId,
+            },
+          },
+          select: { partnerServiceId: true },
+        })
+        .then((sel) =>
+          sel
+            ? prisma.partnerService
+                .findUnique({
+                  where: { id: sel.partnerServiceId },
+                  select: { partner: { select: { companyName: true } } },
+                })
+                .then((svc) => (svc ? { companyName: svc.partner.companyName } : null))
+            : null,
+        )
+        .catch(() => null)
+    : null
 
   // Header data — mirrors DashboardTopbar so the header right-cluster
   // (Heart / Bell / Brand switcher / Account / Cart) looks identical to
@@ -137,6 +166,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       headerBrands={brandsRows}
       headerActiveBrandId={activeBrandId}
       headerHasUnreadNotifications={unreadCount > 0}
+      pinnedPrintProvider={pinnedPrintProvider}
       creatorTier={creatorTier}
       subscribeAndSaveEnabled={subscribeAndSaveEnabled}
       restrictions={restrictions}
