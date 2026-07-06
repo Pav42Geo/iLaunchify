@@ -47,13 +47,13 @@ FC value-added services admin-verified before ACTIVE.
 - [x] Templates editor: **feedbackPrompt** select (opt-outable events only) + live preview renders the sample 👍/👎 block · Branding: **headerLinks** editor (3 audiences × ≤4 links, validated, `Prisma.JsonNull` clearing) + creator-set preview (FB-D)
 - [x] Review moderation: Reviews tab on the Feedback surface (hide-with-reason → audited, restore, approve-flagged) + creator-ratings rollup + low-ratings(≤2, 30d) alert row in the existing P3 `PartnerScorecard` (FB-D/F)
 
-## Stage 5 — one migration: PS-1 + PS-6 + PS-7 schema + pure engines (CW writes, PAVEL runs)
-- [ ] `LabelingMode` + `Product.printSourcingMode` + backfill EXTERNAL_ALLOWED (§2)
-- [ ] `labelApplication` / `appliesLabels` + `FcValueAddedService` catalog (§8.1/8.1a)
-- [ ] Offering: `printProcess`, `maxRunQty`, `foodContactSafe`, dimensional envelope, substrate validation (§7.2)
-- [ ] Pure engines: `effectivePrintSourcing` · `eligiblePrintProviders` (8 filters, machine-readable reasons) · `resolveApplicationPoint` + graph-completeness validator (§2/§7.3/§8.2) — unit-tested incl. every §8.4 case
-- [ ] Partner editor cards: labeling mode · capability wizard · FC VAS card (admin-verified → ACTIVE)
-- [ ] **[PAVEL]** migration run + policy: printer→applier freight attribution; UNRESOLVED checkout fallback order
+## Stage 5 — one migration: PS-1 + PS-6 + PS-7 schema + pure engines — **schema + engines built 2026-07-05 (CW), awaiting PAVEL migration**
+- [x] `LabelingMode` enum + `PartnerService.labelingMode @default(EXTERNAL_ALLOWED)` (backfill = today's behavior) + `Product.printSourcingMode` override (§2)
+- [x] `PartnerService.appliesLabels @default(true)` (one column serves MANUFACTURING + COPACKING) + `FcValueAddedService` catalog (`FcVasJobType` ×6, `labelMethods` per RELABEL, fee/minUnits/leadTime, `OfferingStatus` DRAFT→admin-verified ACTIVE) (§8.1/8.1a)
+- [x] Offering capability columns: `printProcess` enum, `maxRunQty`, `foodContactSafe @default(false)` (HARD filter), min/max print width+height envelope, `substrateIds` (§7.2)
+- [x] Pure engines (`@ilaunchify/orders`): `effectivePrintSourcing` (+ `showsPrintProviderCards`/`allowsSelfLabelFallback`) · `eligiblePrintProviders` (8 layered hard filters, machine-readable reasons + `INELIGIBILITY_COPY`, physics-invalid flags the JOB) · `resolveApplicationPoint` + `validateGraphCompleteness` (honey problem: mfr → co-packer → verified-FC → UNRESOLVED; "labels never route to an FC by destination" and "mfr wins over qualified FC" both test-pinned) — vitest suite + 19 compiled node checks green
+- [ ] **[CW next pass]** Partner editor cards: labeling mode · capability wizard · FC VAS card (admin-verified → ACTIVE) — build after migration on typed client (required BEFORE PS-2 cards render)
+- [ ] **[PAVEL]** migration run (`db:push` → `db:generate` → `.next` clear) + policy calls: printer→applier freight attribution; UNRESOLVED checkout fallback order
 
 ## Stage 6 — provider cards (CW; read-only, no binding)
 - [ ] Cards on product detail (Bayesian stars/"New", price-from, real avg production time, capability chips) gated by `effectivePrintSourcing` (§3)

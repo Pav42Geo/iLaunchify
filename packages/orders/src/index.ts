@@ -125,6 +125,33 @@ export type {
   TimelineEntryKind,
   OrderTimelineEntry,
 } from './dispatch-timeline'
+// Print-provider selection engines (docs/PRINT_PROVIDER_SELECTION.md §2/§7/§8).
+export {
+  effectivePrintSourcing,
+  showsPrintProviderCards,
+  allowsSelfLabelFallback,
+} from './print-sourcing'
+export type { LabelingModeValue, PrintSourcingProduct, PrintSourcingService } from './print-sourcing'
+export { eligiblePrintProviders, INELIGIBILITY_COPY } from './print-eligibility'
+export type {
+  PrintJobRequirements,
+  PrintProviderCandidate,
+  DecorationCompatibilityRow,
+  PrintIneligibilityReason,
+  PrintEligibilityResult,
+} from './print-eligibility'
+export {
+  resolveApplicationPoint,
+  validateGraphCompleteness,
+  APPLIED_DECORATIONS,
+} from './application-point'
+export type {
+  ApplicationGraphInput,
+  ApplicationPointResult,
+  GraphCompletenessInput,
+  GraphCompletenessResult,
+  GraphIncompleteness,
+} from './application-point'
 // Partner rating engine — dimensions + aggregation math (docs/FEEDBACK_MODULE.md §5).
 export {
   RATING_DIMENSIONS,

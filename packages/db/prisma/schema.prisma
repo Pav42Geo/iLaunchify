@@ -1209,6 +1209,19 @@ model PartnerService {
   facilityLat                      Float? // node coordinates for nearest-eligible selection
   facilityLng                      Float?
   receivingSpecJson                Json? // FC receiving requirements (appointment rules, pallet spec, label placement)
+  // ---- Print sourcing + label application (docs/PRINT_PROVIDER_SELECTION.md §2/§8.1) ----
+  // labelingMode: can this MANUFACTURING service PRINT its own decoration?
+  // Explicit declaration replacing the implicit routing fallback — the single
+  // signal that shows/hides provider cards, gates routing, and drives
+  // cancellation policy via effectivePrintSourcing(). Changing it is audited
+  // (LABELING_MODE_CHANGED). Backfill EXTERNAL_ALLOWED = today's behavior.
+  labelingMode                     LabelingMode                      @default(EXTERNAL_ALLOWED)
+  // appliesLabels: can this service APPLY labels at fill/pack? Distinct from
+  // printing (the honey problem, §8.1): a producer who can't print can almost
+  // always stick a label at fill. Meaningful on MANUFACTURING + COPACKING;
+  // FCs declare application via FcValueAddedService RELABEL rows instead.
+  appliesLabels                    Boolean                           @default(true)
+  fcValueAddedServices             FcValueAddedService[]
   // ---- Partner rating aggregates (docs/FEEDBACK_MODULE.md §5.3–5.4) ----
   // Denormalized from PartnerRating on every write; SERVICE-scoped. Display
   // uses ratingMean+ratingCount ("New" below min-N=3); ranking/badging uses
@@ -1231,6 +1244,57 @@ model PartnerService {
   updatedAt                        DateTime                          @updatedAt
 
   @@unique([partnerId, type]) // one service per type per partner
+}
+
+// ============================================================================
+// PRINT SOURCING + FC VALUE-ADDED SERVICES (docs/PRINT_PROVIDER_SELECTION.md)
+// ============================================================================
+
+enum LabelingMode {
+  IN_HOUSE // manufacturer prints/labels everything they make — never show provider cards
+  EXTERNAL_ALLOWED // can self-label, but external printers may be chosen (default — today's behavior)
+  EXTERNAL_REQUIRED // does NOT print — a print partner is mandatory (publish/checkout pre-flight enforced)
+}
+
+enum PrintProcess {
+  DIGITAL // minimal setup — low MOQ, short lead (from ~50 pcs / 5–14d)
+  OFFSET // plates + press setup — high MOQ, long lead (thousands / 10–45d)
+  FLEXO // mid MOQ (hundreds / 7–21d)
+  GRAVURE // very high volume (shrink sleeves etc.)
+  SCREEN
+}
+
+// FC declarable value-added jobs (§8.1a) — what makes resolver step 3 real.
+// Rows are admin-VERIFIED before ACTIVE (a false RELABEL claim is exactly the
+// platform loss §7 exists to prevent).
+enum FcVasJobType {
+  RELABEL // apply/replace product labels (the honey-problem rescue)
+  KITTING // combine components into sellable kits
+  LIGHT_ASSEMBLY // simple assembly, no production equipment
+  BAGGING_BUNDLING // polybag, shrink-band, multipack banding
+  DISPLAY_BUILDS // retail display assembly
+  REWORK // correction jobs (wrong label, market-specific swap)
+}
+
+model FcValueAddedService {
+  id               String               @id @default(uuid())
+  partnerServiceId String // WAREHOUSE service
+  jobType          FcVasJobType
+  // For RELABEL: which application methods the floor can run — a steam tunnel
+  // (SHRINK_SLEEVE) is real equipment; hand-applying PSL is not. [] otherwise.
+  labelMethods     DecorationMethod[]
+  feeCentsPerUnit  Int
+  minUnits         Int                  @default(1)
+  leadTimeDays     Int                  @default(2)
+  notes            String?
+  status           OfferingStatus       @default(DRAFT) // ACTIVE only after admin verification
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerServiceId, jobType])
+  @@index([jobType, status])
 }
 
 /// Partner-declared unavailability window (vacation, maintenance, peak
@@ -1523,6 +1587,9 @@ model Product {
   // additive; new flows require it).
   productTemplateId       String?
   variantId               String?
+  // Print sourcing per-product override (PRINT_PROVIDER_SELECTION §2) —
+  // manufacturer-set; null = the manufacturing service's labelingMode default.
+  printSourcingMode       LabelingMode?
   // ---- Creator selection (docs/SELECTION_THREADING_AUDIT.md) ----
   // The flavor subset the creator picked on the product detail page (of the template's full
   // FlavorPreset pool). Scopes the Design Studio + checkout to the creator's choice so a creator
@@ -5776,6 +5843,19 @@ model PartnerPackagingOffering {
   leadTimeDays     Int              @default(14)
   pricingTiers     Json             @default("[]") // [{minQty:Int, pricePerUnitCents:Int}] — single Json (Cockroach-safe)
   fulfillmentMode  FulfillmentMode  @default(BOTH)
+  // ---- Capability hardening (PRINT_PROVIDER_SELECTION §7.2, 2026-07-05) ----
+  // All nullable = "not declared" (eligibility treats undeclared as permissive
+  // EXCEPT foodContactSafe, which is a HARD filter when the packaging demands it).
+  printProcess     PrintProcess? // explains MOQ/lead to creators; estimating input
+  maxRunQty        Int? // run ceiling — eligibility checks moq ≤ qty ≤ maxRunQty
+  foodContactSafe  Boolean          @default(false) // low-migration/food-safe inks (FDA 21 CFR 175/176) — HARD filter
+  minPrintWidthMm  Decimal?         @db.Decimal(10, 3) // dimensional envelope — dieline must fit the press
+  maxPrintWidthMm  Decimal?         @db.Decimal(10, 3)
+  minPrintHeightMm Decimal?         @db.Decimal(10, 3)
+  maxPrintHeightMm Decimal?         @db.Decimal(10, 3)
+  // Substrates this offering runs (soft FKs → Substrate; validated against
+  // PartnerServiceSubstrate at listing time). [] = not declared.
+  substrateIds     String[]
   status           OfferingStatus   @default(DRAFT)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
