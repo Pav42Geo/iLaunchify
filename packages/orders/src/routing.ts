@@ -444,8 +444,27 @@ async function rotatePrintShop(args: {
   const first = args.eligible[0]!
   const userIdOf = new Map(args.eligible.map((s) => [s.id, s.userId]))
 
+  // SR-2.2 context detection — a creator with a prior booked PRODUCTION order
+  // for this product is REPLENISHING (consistency beats price; admins typically
+  // run sticky + BEST_ONLY there). First-time buyers get the DEFAULT policy.
+  // One cheap indexed count; falls back to DEFAULT when no creator context.
+  let context: 'DEFAULT' | 'REPLENISHMENT' = 'DEFAULT'
+  if (args.creatorUserId) {
+    const produced = await prisma.order
+      .count({
+        where: {
+          creatorUserId: args.creatorUserId,
+          orderType: 'PRODUCTION',
+          status: { notIn: ['CANCELLED'] },
+          items: { some: { productId: args.productId } },
+        },
+      })
+      .catch(() => 0)
+    if (produced > 0) context = 'REPLENISHMENT'
+  }
+
   const policy: RotationPolicyInput = policyInputOf(
-    await loadRotationPolicy('LABEL_PRINTING', 'DEFAULT'),
+    await loadRotationPolicy('LABEL_PRINTING', context),
   )
 
   // Engine off → skip the award-history queries entirely (hot path stays lean).

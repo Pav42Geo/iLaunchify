@@ -125,6 +125,8 @@ export const EVENT_TOKEN_PALETTE: {
   CREATOR_DISPATCH_PROGRESS: ['orderId', 'partnerName', 'kind', 'summary', 'note'],
   // Feedback module — delivery+3d combined ask
   CREATOR_RATE_PARTNERS: ['orderId', 'productName', 'partnerCount', 'reminder'],
+  // SR-2.2 — judge-your-sample prompt
+  CREATOR_SAMPLE_VERDICT: ['orderId', 'productName', 'printPartnerName', 'reminder'],
 }
 
 /** Tokens the admin can insert for one event (the editor's palette). */

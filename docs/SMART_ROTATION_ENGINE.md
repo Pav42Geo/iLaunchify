@@ -187,9 +187,16 @@ craft) SEPARATELY on delivery.
   AFTER_SAMPLE)
 - [x] Partner toggle: "We can print 1-unit pre-production samples" on /settings/labeling for
   LABEL_PRINTING services (audited SAMPLE_CAPABILITY_CHANGED)
-- [ ] Follow-ups: sample print DISPATCH mechanics (ops-manual V1) · verdict email prompt via
-  Notification Center (sample delivered → "Judge your sample") · REPLENISHMENT context
-  detection at checkout (reorder heuristic)
+- [x] Verdict email (sprint closeout 2026-07-06): `CREATOR_SAMPLE_VERDICT` event (reminders
+  category, tokens orderId/productName/printPartnerName/reminder, print-aware copy) +
+  `/api/cron/sample-verdict` (delivered+1d ask, +7d single reminder, Notification-row ledger,
+  verdict = closed = no nudge) + vercel.json cron entries (also added the missing
+  rate-partners schedule)
+- [x] REPLENISHMENT detection (sprint closeout 2026-07-06): `rotatePrintShop` counts prior
+  booked PRODUCTION orders for (creator, product) → loads the REPLENISHMENT policy row
+  (falls back to DEFAULT); first-time buyers rotate, repeat buyers get consistency-tuned
+  policy
+- [ ] Follow-up: sample print DISPATCH mechanics (ops-manual V1)
 
 ### SR-3 — Routing & Rotation admin surface — **BUILT 2026-07-06 (CW)**
 - [x] `/routing-rotation` (sidebar: Settings → Order Settings → Routing & Rotation), 3 tabs:

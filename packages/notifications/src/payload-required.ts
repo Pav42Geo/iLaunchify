@@ -71,6 +71,7 @@ export const REQUIRED_PAYLOAD_KEYS: {
   CREATOR_STOCK_ALERT: [],
   CREATOR_RATE_PARTNERS: ['orderId', 'partnerCount'],
   CREATOR_DISPATCH_PROGRESS: ['orderId', 'partnerName', 'kind', 'summary'],
+  CREATOR_SAMPLE_VERDICT: ['orderId'],
 }
 
 /**

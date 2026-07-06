@@ -172,6 +172,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   CREATOR_DISPATCH_PROGRESS: 'orders',
   // Feedback module — rating/review solicitation is a nudge, never mandatory.
   CREATOR_RATE_PARTNERS: 'reminders',
+  // SR-2.2 — judge-your-sample prompt (verdict locks or reopens the chain).
+  CREATOR_SAMPLE_VERDICT: 'reminders',
 }
 
 export function categoryForEvent(event: NotificationEvent): NotificationCategorySlug {

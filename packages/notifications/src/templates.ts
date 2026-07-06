@@ -155,6 +155,14 @@ export interface TemplateData {
     summary: string // pre-formatted line, e.g. "updated the delivery estimate to Jul 20, 2026"
     note?: string
   }
+  // SR-2.2 (docs/SMART_ROTATION_ENGINE.md §2.6) — delivered sample, no verdict.
+  // `reminder` flips the copy for the single +7d nudge (same event).
+  CREATOR_SAMPLE_VERDICT: {
+    orderId: string
+    productName?: string
+    printPartnerName?: string
+    reminder?: boolean
+  }
 }
 
 function fmtSection(sectionType: string): string {
@@ -666,6 +674,19 @@ export function renderTemplate<E extends NotificationEvent>(
         body: d.note
           ? `"${d.note.slice(0, 200)}" — see the running timeline on your order.`
           : `Order #${d.orderId.slice(-8)} has a new production update — see the running timeline on your order.`,
+        link: `/orders/${d.orderId}`,
+      }
+    }
+    case 'CREATOR_SAMPLE_VERDICT': {
+      const d = data as TemplateData['CREATOR_SAMPLE_VERDICT']
+      const what = d.productName ?? `sample #${d.orderId.slice(-8)}`
+      return {
+        title: d.reminder
+          ? `Your ${what} sample is still waiting on a verdict`
+          : `Your ${what} sample arrived — how does it look?`,
+        body: d.printPartnerName
+          ? `Judge the product and the print separately: happy with ${d.printPartnerName}'s print and we lock them in for your production run — not happy, and you can try another provider before ordering bulk. Two clicks.`
+          : 'Approve it and your production chain is locked in — or tell us what fell short before you order bulk. Two clicks.',
         link: `/orders/${d.orderId}`,
       }
     }

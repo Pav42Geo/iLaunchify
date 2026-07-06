@@ -4471,6 +4471,8 @@ enum NotificationEvent {
   CREATOR_DISPATCH_PROGRESS // partner posted a progress update / revised ETA on a dispatch
   // Feedback module (docs/FEEDBACK_MODULE.md §5/§6) — delivery+3d combined ask
   CREATOR_RATE_PARTNERS // rate your partners + review your product (single +10d reminder reuses it)
+  // SR-2.2 (docs/SMART_ROTATION_ENGINE.md §2.6) — delivered sample, no verdict yet
+  CREATOR_SAMPLE_VERDICT // judge your sample: approve locks the chain, reject reopens the pick
   // In-app P1 (docs/IN_APP_NOTIFICATIONS_AUDIT.md §4) — split out of the generic
   // ORDER_NEEDS_ATTENTION so admins can tell what happened without clicking.
   // ORDER_NEEDS_ATTENTION stays (existing rows reference it + ops sweeps still use it).
