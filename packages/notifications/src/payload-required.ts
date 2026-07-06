@@ -72,6 +72,7 @@ export const REQUIRED_PAYLOAD_KEYS: {
   CREATOR_RATE_PARTNERS: ['orderId', 'partnerCount'],
   CREATOR_DISPATCH_PROGRESS: ['orderId', 'partnerName', 'kind', 'summary'],
   CREATOR_SAMPLE_VERDICT: ['orderId'],
+  PARTNER_CAPABILITY_RFQ: ['packagingLabel', 'href'],
 }
 
 /**

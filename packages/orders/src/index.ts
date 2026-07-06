@@ -163,6 +163,12 @@ export {
 } from './print-coverage'
 export type { TemplatePrintCoverage } from './print-coverage'
 export { rankCapabilityShortlist } from './capability-shortlist'
+export {
+  broadcastCapabilityRequestsForTemplate,
+  RFQ_SHORTLIST_SIZE,
+  RFQ_EXPIRY_DAYS,
+} from './capability-rfq'
+export type { CapabilityBroadcastResult, RfqBroadcastReason } from './capability-rfq'
 export type {
   CapabilityRequirementTuple,
   ShortlistCandidate,

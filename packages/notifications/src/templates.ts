@@ -163,6 +163,16 @@ export interface TemplateData {
     printPartnerName?: string
     reminder?: boolean
   }
+  // PS-8b (docs/PRINT_PROVIDER_SELECTION.md §10.2) — claimable capability RFQ
+  // broadcast to a shortlisted printer. Partial disclosure: spec + run band +
+  // region only, never creator designs / brand / manufacturer identity.
+  PARTNER_CAPABILITY_RFQ: {
+    packagingLabel: string
+    decorationLabel?: string
+    runBand?: string
+    region?: string
+    href: string
+  }
 }
 
 function fmtSection(sectionType: string): string {
@@ -688,6 +698,15 @@ export function renderTemplate<E extends NotificationEvent>(
           ? `Judge the product and the print separately: happy with ${d.printPartnerName}'s print and we lock them in for your production run — not happy, and you can try another provider before ordering bulk. Two clicks.`
           : 'Approve it and your production chain is locked in — or tell us what fell short before you order bulk. Two clicks.',
         link: `/orders/${d.orderId}`,
+      }
+    }
+    case 'PARTNER_CAPABILITY_RFQ': {
+      const d = data as TemplateData['PARTNER_CAPABILITY_RFQ']
+      const what = d.decorationLabel ? `${d.decorationLabel} for ${d.packagingLabel}` : d.packagingLabel
+      return {
+        title: `A manufacturer needs ${what} printing`,
+        body: `You already run compatible presses${d.region ? ` near ${d.region}` : ''} — claim this job to add it to your catalog${d.runBand ? ` (${d.runBand} units)` : ''}. You'll see the full spec once you claim; designs stay private until then.`,
+        link: d.href,
       }
     }
     default:

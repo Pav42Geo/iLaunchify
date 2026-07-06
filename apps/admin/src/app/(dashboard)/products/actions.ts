@@ -17,6 +17,10 @@ import { prisma } from '@ilaunchify/db'
 import { requireRole, requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { recordNicheAssignment, suggestPhrases, recordPhraseAssignment } from '@ilaunchify/marketplace'
+import {
+  computeTemplatePrintCoverage,
+  broadcastCapabilityRequestsForTemplate,
+} from '@ilaunchify/orders'
 import type { PhraseRequirement } from '@ilaunchify/db'
 import {
   FORMAT_OPTIONS,
@@ -60,6 +64,31 @@ export async function approveProductTemplate(productTemplateId: string): Promise
     tpl.status !== 'UNDER_REVIEW'
   ) {
     return { ok: false, error: `Cannot publish from ${tpl.status}.` }
+  }
+
+  // §10.1 activation gate — a non-IN_HOUSE template cannot reach PUBLISHED with
+  // print coverage 0. It parks in review; we auto-broadcast the capability RFQ so
+  // supply is already being recruited before the admin looks again. IN_HOUSE and
+  // fully-covered templates pass straight through (coverage.applicable=false or
+  // coverage>0). Fails soft — a coverage/broadcast hiccup never blocks a valid
+  // publish (returns applicable=false).
+  const coverage = await computeTemplatePrintCoverage(productTemplateId)
+  if (coverage.applicable && coverage.uncovered) {
+    const rfq = await broadcastCapabilityRequestsForTemplate(productTemplateId, {
+      reason: 'PUBLISH_GATE',
+    })
+    await logAuditAs(admin, {
+      entityType: 'ProductTemplate',
+      entityId: productTemplateId,
+      action: 'PRODUCT_TEMPLATE_PUBLISH_BLOCKED_NO_COVERAGE',
+      fromValue: tpl.status,
+      payload: { name: tpl.name, requestsOpen: rfq.requestsOpen, notified: rfq.notified },
+    })
+    return {
+      ok: false,
+      error:
+        'Print coverage: 0 — no active printer can produce this template yet. A capability request has been broadcast to qualified printers; it will publish once one is verified.',
+    }
   }
 
   await prisma.$transaction(async (tx) => {

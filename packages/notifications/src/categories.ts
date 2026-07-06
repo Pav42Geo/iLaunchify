@@ -174,6 +174,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   CREATOR_RATE_PARTNERS: 'reminders',
   // SR-2.2 — judge-your-sample prompt (verdict locks or reopens the chain).
   CREATOR_SAMPLE_VERDICT: 'reminders',
+  // PS-8b — capability RFQ broadcast (a claimable job opportunity — a nudge).
+  PARTNER_CAPABILITY_RFQ: 'reminders',
 }
 
 export function categoryForEvent(event: NotificationEvent): NotificationCategorySlug {

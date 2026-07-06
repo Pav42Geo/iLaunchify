@@ -127,6 +127,8 @@ export const EVENT_TOKEN_PALETTE: {
   CREATOR_RATE_PARTNERS: ['orderId', 'productName', 'partnerCount', 'reminder'],
   // SR-2.2 — judge-your-sample prompt
   CREATOR_SAMPLE_VERDICT: ['orderId', 'productName', 'printPartnerName', 'reminder'],
+  // PS-8b — capability RFQ broadcast
+  PARTNER_CAPABILITY_RFQ: ['packagingLabel', 'decorationLabel', 'runBand', 'region', 'href'],
 }
 
 /** Tokens the admin can insert for one event (the editor's palette). */

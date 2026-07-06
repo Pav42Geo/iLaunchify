@@ -473,13 +473,30 @@ shortlisting, broadcast, re-broadcast, unpark — all automatic.
     models are still UNMIGRATED. Nothing in PS-8a references them at runtime yet, so the code
     compiles and ships without the migration; PS-8b (RFQ create/broadcast) is the first
     consumer and MUST NOT merge before the push.
-- **PS-8b — gate + broadcast**: approve action in apps/admin products/actions.ts (~line 35-68,
-  PENDING_REVIEW→PUBLISHED) blocks publish at coverage 0 for non-IN_HOUSE + auto-creates the
-  RFQ; coverage-drop watch (offering deactivate/blackout/churn → auto-PAUSE + RFQ + notify);
-  new NotificationEvent `PARTNER_CAPABILITY_RFQ` (+ registry entries in packages/notifications:
-  categories/payload-required/template-tokens/templates — CREATOR_SAMPLE_VERDICT is the
-  4-file precedent); cron sweep (apps/creator/api/cron precedent w/ CRON_SECRET; weekly
-  re-broadcast to the next band via notifiedServiceIds)
+- **PS-8b — gate + broadcast** · CODE COMPLETE 2026-07-06 (CW); migration pending Pavel
+  - [x] `PARTNER_CAPABILITY_RFQ` NotificationEvent (schema enum + 4-file registry:
+    categories='reminders', payload-required, template-tokens, templates TemplateData +
+    partner-copy switch case — partial disclosure: spec/run-band/region only, no designs).
+  - [x] `broadcastCapabilityRequestsForTemplate(templateId)` in packages/orders/capability-rfq.ts
+    — coverage→uncovered→upsert OPEN request per packaging type→rank next un-notified band
+    (loadCapabilityShortlist, exclude notifiedServiceIds)→dispatchToPartnerService→push ledger→
+    system audit. Idempotent (ledger walks the next band); coverage≥1 closes lingering requests
+    FULFILLED. Fails soft (never aborts a publish/cron). dispatch via dynamic import (no cycle).
+  - [x] Publish gate: `approveProductTemplate` blocks PUBLISHED when coverage applicable &&
+    uncovered, auto-broadcasts the RFQ, audits PRODUCT_TEMPLATE_PUBLISH_BLOCKED_NO_COVERAGE,
+    returns honest copy. IN_HOUSE / covered templates pass straight through.
+  - [x] Cron sweep `apps/admin/api/cron/print-coverage` (+ worker `lib/print-coverage-worker.ts`,
+    CRON_SECRET, vercel.json `0 9 * * *`): (1) coverage-drop watch — PUBLISHED non-IN_HOUSE →
+    coverage 0 → auto-PAUSE + RFQ + audit; (2) weekly re-broadcast — OPEN requests idle ≥7d walk
+    the next band; (3) expiry — past-window OPEN → EXPIRED (ops escalation).
+  - Follow-ups (not blocking): event-driven coverage-drop hook on offering deactivate/blackout
+    (nightly sweep is the safety net today); manufacturer/admin "paused for coverage"
+    notification (printers ARE notified via the RFQ — the recruitment path); real partner claim
+    route for the RFQ link (currently `/dashboard`, PS-8c swaps it in).
+  - [ ] **[PAVEL]** Migration: `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next`. This
+    migration lands BOTH the PS-8a tables (PrintCapabilityRequest/Claim) AND the new
+    `PARTNER_CAPABILITY_RFQ` enum value. Code was typechecked against a LOCALLY-patched client
+    (sandbox can't regenerate — Linux, no engine); your regenerate is the real source of truth.
 - **PS-8c — partner claim flow**: partner-dashboard card + "I can produce this" action →
   claim row + pre-filled DRAFT PartnerPackagingOffering (tuple → §7.2 wizard fields) →
   existing admin verification flips ACTIVE → claim VERIFIED → request FULFILLED → template

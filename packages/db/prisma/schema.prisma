@@ -4550,6 +4550,9 @@ enum NotificationEvent {
   PARTNER_TEAM_MEMBER_JOINED // invitee accepted — tell the inviter
   CREATOR_CHANNEL_CONNECTED // sales channel connected (security-relevant confirmation)
   CREATOR_CHANNEL_DISCONNECTED // sales channel disconnected
+  // Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8b) —
+  // broadcast to shortlisted printers when a template's print coverage hits 0.
+  PARTNER_CAPABILITY_RFQ // a manufacturer needs printing you could produce — claim the job
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
