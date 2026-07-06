@@ -107,7 +107,13 @@ export default async function PartnerDashboardLayout({ children }: { children: R
 
   return (
     <div className="flex h-screen flex-col">
-      <PartnerTopbar user={user} companyName={partner.companyName} />
+      {/* showMyApplication: the menu row only exists pre-activation (Pavel 2026-07-06). */}
+      <PartnerTopbar
+        user={user}
+        companyName={partner.companyName}
+        tier={partner.tier}
+        showMyApplication={restricted}
+      />
       <div className="flex min-h-0 flex-1">
         {/* The /products/new builder hides the sidebar + neutralizes this
             padding via a body.gb-active class (mount-scoped, so it reverts on

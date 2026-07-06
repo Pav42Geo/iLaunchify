@@ -13,9 +13,15 @@ import { PartnerTopbarRight } from './PartnerTopbarRight'
 export async function PartnerTopbar({
   user,
   companyName,
+  tier = null,
+  showMyApplication = false,
 }: {
   user: User
   companyName: string
+  /** Partner subscription tier — rendered as an info-only chip in the menu. */
+  tier?: 'VERIFIED' | 'TRUSTED' | 'PREMIER' | null
+  /** True while the partner is pre-activation (menu shows "My application"). */
+  showMyApplication?: boolean
 }) {
   const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement('partnerHeader')])
   const brand =
@@ -40,6 +46,8 @@ export async function PartnerTopbar({
             email={user.email}
             name={user.name ?? null}
             companyName={companyName}
+            tier={tier}
+            showMyApplication={showMyApplication}
           />
         </>
       }

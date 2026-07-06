@@ -1,19 +1,25 @@
 'use client'
 
-// Right cluster for the partner dashboard topbar (REBUILD R1.3).
+// Right cluster for the partner dashboard topbar (REBUILD R1.3 · menu v2
+// 2026-07-06, docs/ACCOUNT_MENUS_PROPOSAL.md).
 //
-// Notification bell + AppHeaderUserMenu with partner-specific items.
-// Ink-toned avatar (vs creator's pink) signals the audience.
+// Notification bell + AppHeaderUserMenu v2. Ink-toned avatar (vs creator's
+// pink) signals the audience.
+//
+// Menu contract (Pavel 2026-07-06): identity + status chip + company card +
+// ONE work shortcut (My products) + account section. The role-skinned
+// sidebar owns the rest of nav — don't add rows back without a decision.
+//
+// Status chip is INFO-ONLY per the locked partner-tier rule: label the tier,
+// never attach benefit copy ("Premier gets X").
 
 import { AppHeaderUserMenu } from '@ilaunchify/ui'
 import {
-  LayoutDashboard,
   Package,
-  Boxes,
-  ShoppingBag,
-  Award,
   FileText,
   CreditCard,
+  Receipt,
+  Users,
   Settings,
   HelpCircle,
 } from 'lucide-react'
@@ -24,34 +30,50 @@ interface Props {
   email: string
   name: string | null
   companyName: string
+  /** Partner subscription tier (PartnerTier). Rendered as an info-only chip. */
+  tier?: 'VERIFIED' | 'TRUSTED' | 'PREMIER' | null
+  /** Show the "My application" row — only while the partner is still in the
+      onboarding/approval funnel. Hidden post-activation (Pavel 2026-07-06). */
+  showMyApplication?: boolean
 }
 
-export function PartnerTopbarRight({ email, name, companyName }: Props) {
+const TIER_CHIP_LABEL: Record<NonNullable<Props['tier']>, string> = {
+  VERIFIED: '✓ Verified partner',
+  TRUSTED: '✓ Trusted partner',
+  PREMIER: '✓ Premier partner',
+}
+
+export function PartnerTopbarRight({
+  email,
+  name,
+  companyName,
+  tier = null,
+  showMyApplication = false,
+}: Props) {
   return (
     <>
       <NotificationBell />
       <AppHeaderUserMenu
-        user={{
-          name: name ?? companyName,
-          email,
-          activeBrandName: companyName,
-        }}
-        activeBrandHref="/settings"
+        user={{ name: name ?? companyName, email }}
         avatarTone="ink"
+        roleChip={tier ? { label: TIER_CHIP_LABEL[tier], tone: 'ink' } : undefined}
+        contextCard={{ label: 'Company', name: companyName, href: '/settings' }}
         sections={[
           {
             items: [
-              { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+              // The ONE work shortcut (Pavel 2026-07-06) — sidebar owns the rest.
               { label: 'My products', href: '/products', icon: Package },
-              { label: 'Packaging', href: '/packaging', icon: Boxes },
-              { label: 'Orders', href: '/orders', icon: ShoppingBag },
-              { label: 'Certifications', href: '/certifications', icon: Award },
             ],
           },
           {
+            label: 'Account',
             items: [
-              { label: 'My application', href: '/my-application', icon: FileText },
+              ...(showMyApplication
+                ? [{ label: 'My application', href: '/my-application', icon: FileText }]
+                : []),
+              { label: 'Billing', href: '/settings/billing', icon: Receipt },
               { label: 'Payments', href: '/payments', icon: CreditCard },
+              { label: 'Team', href: '/settings/team', icon: Users },
               { label: 'Settings', href: '/settings', icon: Settings },
             ],
           },
