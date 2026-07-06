@@ -248,6 +248,10 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       productTemplate: {
         select: {
           id: true,
+          // PS-8 — template status drives the coverage-paused banner. When the
+          // nightly sweep finds a published template with zero print coverage it
+          // flips status → PAUSED and re-broadcasts a capability RFQ.
+          status: true,
           labelingType: true,
           phraseFacts: true,
           // Product details drawer — owner-pinned manufacturer + pricing/MOQ summary.
@@ -476,6 +480,25 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
     ),
   }).map((h) => h.label)
 
+  // PS-8 (docs/HANDOFF-TO-CODE-coverage-guard-copy.md) — defense-in-depth: if a
+  // template a creator is mid-design on was auto-PAUSED for lost print coverage
+  // (and still has an OPEN/CLAIMED capability RFQ), show a reassuring banner and
+  // block ordering while the printer is being re-arranged. Deliberately rare —
+  // §10.1's activation gate stops a creator ever *starting* an uncoverable
+  // product. .catch guards the query pre-migration (tables land with db:push).
+  const coveragePausedTemplateId = product.productTemplate?.id ?? null
+  const pausedForCoverage =
+    product.productTemplate?.status === 'PAUSED' &&
+    coveragePausedTemplateId != null &&
+    (await prisma.printCapabilityRequest
+      .count({
+        where: {
+          productTemplateId: coveragePausedTemplateId,
+          status: { in: ['OPEN', 'CLAIMED'] },
+        },
+      })
+      .catch(() => 0)) > 0
+
   // Dieline Phase B — resolve the product's die-line frames + context so the
   // canvas can render frame guides + run the staleness/bounds gate.
   const dielineFrames = await loadDielineFrames(productId, user.id)
@@ -557,6 +580,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       creatorTier={creatorTier}
       partnerPrintSpec={partnerPrintSpec}
       restrictionLabels={restrictionLabels}
+      pausedForCoverage={pausedForCoverage}
       retailIdentity={{
         gtin: product.gtin,
         internalSku: product.internalSku,

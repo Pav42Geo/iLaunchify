@@ -159,6 +159,7 @@ import {
   Redo2,
   ShieldCheck,
   ShieldAlert,
+  Printer,
   Eye,
   Download,
   Wand2,
@@ -303,6 +304,15 @@ interface Props {
    */
   restrictionLabels?: string[]
   /**
+   * PS-8 (docs/HANDOFF-TO-CODE-coverage-guard-copy.md) — true when this
+   * product's template was auto-PAUSED after losing all print coverage and
+   * still has an OPEN/CLAIMED capability RFQ. Surfaces a reassuring,
+   * non-blocking banner ("printing is being re-arranged") and disables the
+   * order/checkout CTA while a new printer is lined up. Defense-in-depth and
+   * deliberately rare; the canvas stays fully usable.
+   */
+  pausedForCoverage?: boolean
+  /**
    * Retail identity (GTIN / internal SKU / barcode mode) — relocated from the
    * retired product hub (2026-06-18) into the Product panel. Persisted on the
    * Product; the Dieline barcode frame keys off barcodeMode/gtin.
@@ -435,6 +445,7 @@ export function CanvasLayoutShell({
   creatorTier = 'maker',
   partnerPrintSpec = null,
   restrictionLabels = [],
+  pausedForCoverage = false,
   retailIdentity,
   dielineFrames,
   mockups,
@@ -1333,6 +1344,27 @@ export function CanvasLayoutShell({
             It&rsquo;s in a category that requires licensing iLaunchify doesn&rsquo;t
             support yet — you can keep designing, but checkout is disabled. This is
             not legal advice.
+          </p>
+        </div>
+      )}
+
+      {/* PS-8 coverage-paused banner (docs/HANDOFF-TO-CODE-coverage-guard-copy.md).
+          The template lost print coverage and was auto-PAUSED while a capability
+          RFQ lines up a new printer. Reassuring + non-blocking: the canvas stays
+          fully usable, only ordering is held. role="status" (not alert) — it's
+          informational, not an error. */}
+      {pausedForCoverage && (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 border-b border-info-300 bg-info-50 px-4 py-2.5 text-info-900"
+        >
+          <Printer className="mt-0.5 h-4 w-4 shrink-0 text-info-600" aria-hidden="true" />
+          <p className="text-[12px] leading-relaxed">
+            <span className="font-semibold">
+              Printing for this product is being re-arranged.
+            </span>{' '}
+            You can keep designing — ordering is paused for a moment while we line
+            up a printer. We&rsquo;ll email you the moment it&rsquo;s back.
           </p>
         </div>
       )}

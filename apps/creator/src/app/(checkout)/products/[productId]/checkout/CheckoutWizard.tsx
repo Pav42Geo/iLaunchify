@@ -76,6 +76,7 @@ import type { CostBreakdown } from './production-actions'
 import type { ReviewSnapshot } from './review-actions'
 import { RestrictedProductNotice } from './RestrictedProductNotice'
 import { LabelComplianceNotice, type LabelFrameIssue } from './LabelComplianceNotice'
+import { CoveragePausedNotice } from './CoveragePausedNotice'
 import type { RestrictionHit } from '@ilaunchify/marketplace'
 
 interface Props {
@@ -104,6 +105,11 @@ interface Props {
   // design. Non-empty → notice + Pay disabled (mirrors restrictions); the server
   // action hard-blocks regardless. DIELINE_FRAME_EDITOR_SPEC §5.
   labelIssues: LabelFrameIssue[]
+  // PS-8 — the product's template was auto-PAUSED for lost print coverage and
+  // still has an OPEN/CLAIMED capability RFQ. Non-empty → reassuring banner +
+  // Pay disabled while a printer is lined up (docs/HANDOFF-TO-CODE-coverage-guard-copy.md).
+  // The §8 UNRESOLVED validator hard-blocks server-side regardless.
+  pausedForCoverage: boolean
   // PS-3 — the creator's pinned print provider (marketplace pick) for this
   // product's template, display name only. Null = auto-routed. Server-loaded;
   // placeOrder re-validates and the pinned-print gate fires if it went stale.
@@ -127,11 +133,13 @@ export function CheckoutWizard({
   subscribeAndSaveEnabled,
   restrictions,
   labelIssues,
+  pausedForCoverage,
   pinnedPrintProvider,
 }: Props) {
   const router = useRouter()
   const isRestricted = restrictions.length > 0
   const isLabelIncomplete = labelIssues.length > 0
+  const isCoveragePaused = pausedForCoverage
   const [state, setState] = useState<CheckoutDraftState>(initialState)
   const [currentStep, setCurrentStep] = useState<WizardStepIndex>(initialStep)
   const [completedSteps, setCompletedSteps] = useState<WizardStepIndex[]>(
@@ -175,6 +183,12 @@ export function CheckoutWizard({
     if (isLabelIncomplete) {
       toast.error(
         'This label is missing required elements for its packaging — finish it in the Design Studio before ordering.',
+      )
+      return
+    }
+    if (isCoveragePaused) {
+      toast.error(
+        'Printing for this product is being re-arranged — ordering is paused while we line up a printer. We’ll email you the moment it’s back.',
       )
       return
     }
@@ -506,6 +520,14 @@ export function CheckoutWizard({
         </div>
       )}
 
+      {/* PS-8 coverage-paused notice — template lost print coverage and is being
+          re-arranged; ordering is held while a capability RFQ lines up a printer. */}
+      {isCoveragePaused && (
+        <div className="mx-auto max-w-6xl px-6 pt-6">
+          <CoveragePausedNotice />
+        </div>
+      )}
+
       {/* Body */}
       <main className="mx-auto grid max-w-6xl gap-8 px-6 py-8 lg:grid-cols-[1fr,340px]">
         {/* Active step */}
@@ -586,6 +608,7 @@ export function CheckoutWizard({
               isAdjustment={isAdjustment}
               isRestricted={isRestricted}
               isLabelIncomplete={isLabelIncomplete}
+              isCoveragePaused={isCoveragePaused}
               onPlaceOrder={() => placeOrder()}
             />
           )}
@@ -822,12 +845,14 @@ function PlaceOrderCard({
   isAdjustment,
   isRestricted,
   isLabelIncomplete,
+  isCoveragePaused,
   onPlaceOrder,
 }: {
   isPaying: boolean
   isAdjustment: boolean
   isRestricted: boolean
   isLabelIncomplete: boolean
+  isCoveragePaused: boolean
   onPlaceOrder: () => void
 }) {
   return (
@@ -835,13 +860,15 @@ function PlaceOrderCard({
       <button
         type="button"
         onClick={onPlaceOrder}
-        disabled={isPaying || isRestricted || isLabelIncomplete}
+        disabled={isPaying || isRestricted || isLabelIncomplete || isCoveragePaused}
         className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-pink-500 px-5 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-white shadow-sm hover:bg-pink-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2 disabled:opacity-50"
       >
         {isRestricted ? (
           'Ordering unavailable'
         ) : isLabelIncomplete ? (
           'Finish label to order'
+        ) : isCoveragePaused ? (
+          'Ordering paused'
         ) : isPaying ? (
           <>
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />

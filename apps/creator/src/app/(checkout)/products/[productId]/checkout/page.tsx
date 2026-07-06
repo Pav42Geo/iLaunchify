@@ -115,6 +115,30 @@ export default async function CheckoutPage({ params }: PageProps) {
   // wizard shows the notice + disables Pay; the server action hard-blocks too.
   const restrictions = await checkProductRestrictions(productId)
 
+  // PS-8 (docs/HANDOFF-TO-CODE-coverage-guard-copy.md) — if this product's
+  // template was auto-PAUSED for lost print coverage (and still has an
+  // OPEN/CLAIMED capability RFQ), the wizard shows a reassuring banner and blocks
+  // Pay while a new printer is lined up. Defense-in-depth: the §8 UNRESOLVED
+  // validator is the hard backstop, but this friendly copy comes first. .catch
+  // guards both queries pre-migration (tables land with the PS-8 db:push).
+  const pausedForCoverage = product.productTemplateId
+    ? await prisma.productTemplate
+        .findUnique({
+          where: { id: product.productTemplateId },
+          select: { status: true },
+        })
+        .then(async (tpl) =>
+          tpl?.status === 'PAUSED' &&
+          (await prisma.printCapabilityRequest.count({
+            where: {
+              productTemplateId: product.productTemplateId as string,
+              status: { in: ['OPEN', 'CLAIMED'] },
+            },
+          })) > 0,
+        )
+        .catch(() => false)
+    : false
+
   // Die-line label-frame compliance (DIELINE_FRAME_EDITOR_SPEC §5). When the
   // product's die-line declares required frames the saved design is missing,
   // the wizard shows the notice + disables Pay; placeOrderFromCheckoutDraft
@@ -171,6 +195,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       subscribeAndSaveEnabled={subscribeAndSaveEnabled}
       restrictions={restrictions}
       labelIssues={labelIssues}
+      pausedForCoverage={pausedForCoverage}
     />
   )
 }
