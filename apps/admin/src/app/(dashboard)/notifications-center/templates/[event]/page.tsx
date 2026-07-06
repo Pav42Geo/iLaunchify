@@ -12,6 +12,7 @@ import type { NotificationEvent } from '@ilaunchify/db'
 import {
   EVENT_CATEGORY,
   NOTIFICATION_CATEGORIES,
+  FEEDBACK_PROMPTS,
   categoryForEvent,
   tokenPaletteForEvent,
   samplePayloadForEvent,
@@ -93,10 +94,18 @@ export default async function TemplateEditorPage({
                 bodyMarkdown: row.bodyMarkdown,
                 ctaMode: row.ctaMode,
                 ctaLabelOverride: row.ctaLabelOverride,
+                feedbackPrompt: row.feedbackPrompt,
                 status: row.status,
                 version: row.version,
               }
             : null
+        }
+        feedbackPrompts={
+          // Feedback blocks only make sense on opt-outable events; the
+          // eligibility gate would drop them on mandatory categories anyway.
+          category.optOutable
+            ? Object.values(FEEDBACK_PROMPTS).map((p) => ({ key: p.key, question: p.question }))
+            : []
         }
         versions={(row?.versions ?? []).map((v) => ({
           version: v.version,

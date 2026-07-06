@@ -18,6 +18,10 @@ export interface ScorecardData {
   // Risk Center M3 — nightly Partner Reliability Score (worst service).
   prs?: number | null
   prsBand?: string | null
+  // Feedback module §5.4 — creator ratings rollup (service-scoped; display
+  // shows mean + count; the Bayesian score stays internal to ranking).
+  ratings?: Array<{ serviceLabel: string; mean: number | null; count: number }>
+  lowRatings30d?: number // overall ≤ 2 in the last 30d — the alert signal
 }
 
 const PRS_PILL: Record<string, string> = {
@@ -63,6 +67,20 @@ export function PartnerScorecard({ data }: { data: ScorecardData }) {
         </div>
       )}
       <dl className="mt-3 space-y-2 text-[12.5px]">
+        {/* Feedback module §5.4 — service-scoped creator ratings */}
+        {data.ratings
+          ?.filter((r) => r.count > 0)
+          .map((r) => (
+            <Row
+              key={r.serviceLabel}
+              label={`★ ${r.serviceLabel} rating`}
+              value={r.mean != null ? `${r.mean.toFixed(1)} · ${r.count}` : `New · ${r.count}`}
+              warn={r.mean != null && r.count >= 3 && r.mean < 3.5}
+            />
+          ))}
+        {(data.lowRatings30d ?? 0) > 0 && (
+          <Row label="Low ratings (≤2, 30d)" value={String(data.lowRatings30d)} warn />
+        )}
         <Row label="Completed dispatches" value={data.delivered.toLocaleString()} />
         <Row
           label="Accept rate"

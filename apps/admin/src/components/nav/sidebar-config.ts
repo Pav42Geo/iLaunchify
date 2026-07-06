@@ -319,6 +319,8 @@ const PRIMARY: SidebarRegion = {
             { kind: 'item', label: 'Templates', icon: LayoutTemplate, href: '/notifications-center/templates', capability: 'platform:admin' },
             { kind: 'item', label: 'Branding', icon: Palette, href: '/notifications-center/branding', capability: 'platform:admin' },
             { kind: 'item', label: 'Deliverability', icon: Mail, href: '/notifications-center/deliverability', capability: 'platform:admin' },
+            // Feedback module Stage 4 (docs/FEEDBACK_MODULE.md §3.6, 2026-07-05)
+            { kind: 'item', label: 'Feedback', icon: Inbox, href: '/notifications-center/feedback', capability: 'platform:admin' },
             { kind: 'item', label: 'Log', icon: History, href: '/notifications-center/log', capability: 'platform:admin' },
           ],
         },

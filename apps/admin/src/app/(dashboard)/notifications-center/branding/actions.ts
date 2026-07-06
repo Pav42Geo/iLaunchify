@@ -5,7 +5,7 @@
 // identity, accent/ink, footer text, unsubscribe/preferences copy + link,
 // from-name, reply-to. Absent row = the LOCKED design-system defaults.
 
-import { prisma, resolveLogoForPlacement } from '@ilaunchify/db'
+import { prisma, resolveLogoForPlacement, Prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import {
@@ -27,6 +27,21 @@ export interface BrandingInput {
   preferenceCenterUrl: string | null
   fromName: string | null
   replyToEmail: string | null
+  /** Audience-aware header nav links (Amazon-style, ≤4 each) — Stage 4. */
+  headerLinks: Partial<Record<'creator' | 'partner' | 'admin', Array<{ label: string; url: string }>>> | null
+}
+
+function validateHeaderLinks(links: BrandingInput['headerLinks']): string | null {
+  if (!links) return null
+  for (const [audience, rows] of Object.entries(links)) {
+    if (!rows) continue
+    if (rows.length > 4) return `Max 4 header links per audience (${audience})`
+    for (const l of rows) {
+      if (!l.label.trim() || l.label.length > 30) return `Header link labels must be 1–30 chars (${audience})`
+      if (!/^https?:\/\//.test(l.url)) return `Header link URLs must be absolute (${audience}: "${l.label}")`
+    }
+  }
+  return null
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -45,8 +60,23 @@ export async function saveBranding(input: BrandingInput): Promise<Result> {
   if (input.replyToEmail && !input.replyToEmail.includes('@')) {
     return { ok: false, error: 'Reply-to must be an email address' }
   }
+  const linkError = validateHeaderLinks(input.headerLinks)
+  if (linkError) return { ok: false, error: linkError }
+
+  // Drop empty rows/audiences; null when nothing remains.
+  const cleanedLinks = input.headerLinks
+    ? Object.fromEntries(
+        Object.entries(input.headerLinks)
+          .map(([a, rows]) => [a, (rows ?? []).filter((l) => l.label.trim() && l.url.trim())])
+          .filter(([, rows]) => (rows as unknown[]).length > 0),
+      )
+    : null
 
   const data = {
+    headerLinks:
+      cleanedLinks && Object.keys(cleanedLinks).length > 0
+        ? (cleanedLinks as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
     logoUrl: input.logoUrl?.trim() || null,
     brandName: input.brandName.trim(),
     accentHex: input.accentHex,
@@ -98,6 +128,7 @@ export async function previewBranding(input: BrandingInput): Promise<{ html: str
         'Your order for **Daily Greens Powder** (#12345678) is one step closer to production.\n\nWe’ll keep you posted at every step.',
       cta: { label: 'View order', url: 'https://example.com/orders/1' },
       unsubscribeUrl: 'https://example.com/unsubscribe?token=preview',
+      audience: 'creator', // header links preview from the creator set
     }),
   }
 }

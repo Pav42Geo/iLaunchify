@@ -33,6 +33,7 @@ export interface TemplateRowView {
   bodyMarkdown: string | null
   ctaMode: CtaMode
   ctaLabelOverride: string | null
+  feedbackPrompt: string | null
   status: 'DRAFT' | 'PUBLISHED'
   version: number
 }
@@ -43,12 +44,15 @@ export function TemplateEditor({
   row,
   versions,
   initialPreview,
+  feedbackPrompts = [],
 }: {
   event: NotificationEvent
   tokens: string[]
   row: TemplateRowView | null
   versions: Array<{ version: number; publishedAt: string }>
   initialPreview: EmailTemplatePreviewContent
+  /** Registry prompts for the feedback-block select (key + question). */
+  feedbackPrompts?: Array<{ key: string; question: string }>
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -56,6 +60,7 @@ export function TemplateEditor({
   const [body, setBody] = useState(row?.bodyMarkdown ?? '')
   const [ctaMode, setCtaMode] = useState<CtaMode>(row?.ctaMode ?? 'AUTO')
   const [ctaLabel, setCtaLabel] = useState(row?.ctaLabelOverride ?? '')
+  const [fbPrompt, setFbPrompt] = useState(row?.feedbackPrompt ?? '')
   const [preview, setPreview] = useState<EmailTemplatePreviewContent>(initialPreview)
   const bodyRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -69,6 +74,7 @@ export function TemplateEditor({
       bodyMarkdown: body || null,
       ctaMode,
       ctaLabelOverride: ctaLabel || null,
+      feedbackPrompt: fbPrompt || null,
     }
   }
 
@@ -167,6 +173,24 @@ export function TemplateEditor({
               </label>
             )}
           </div>
+
+          {feedbackPrompts.length > 0 && (
+            <label className="mt-3 block text-[12px] font-medium text-ink-700">
+              Feedback block (one-click 👍/👎)
+              <select value={fbPrompt} onChange={(e) => setFbPrompt(e.target.value)} className={inputCls}>
+                <option value="">None</option>
+                {feedbackPrompts.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.question} ({p.key})
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[11px] font-normal text-ink-500">
+                Eligibility-gated at send: never on mandatory categories, one ask per subject,
+                14-day per-user cooldown. The vote rides in the link.
+              </span>
+            </label>
+          )}
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <button type="button" disabled={pending} onClick={refreshPreview} className={`${btn} border border-ink-200 bg-white text-ink-700 hover:border-ink-400`}>

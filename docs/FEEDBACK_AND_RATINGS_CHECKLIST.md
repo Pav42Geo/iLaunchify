@@ -41,10 +41,11 @@ FC value-added services admin-verified before ACTIVE.
 - [x] `RatingStars` + `RatingBreakdownPopover` (@ilaunchify/ui, brand-pink stars, fractional fill, "New" below min-N) — marketplace detail header now renders the LIVE manufacturer aggregate (via `manufacturerServiceId`; reviews joined via `Product.productTemplateId`), fixture RatingRow kept as fallback (FB-F)
 - [x] Partner dashboard "Your rating" card (per-service overall + dimension bars + latest creator comments — the creators'-eye mirror) (FB-F)
 
-## Stage 4 — admin (CW)
-- [ ] Notifications → **Feedback** surface (KPIs, chips, triage, auto-ticket on DOWN+comment) (FB-D)
-- [ ] Templates editor: feedbackPrompt field · Branding: headerLinks editor (FB-D)
-- [ ] Review moderation (FLAGGED/HIDDEN + audit) + ratings rollup on partner detail (FB-D/F)
+## Stage 4 — admin — **BUILT 2026-07-05 (CW)**
+- [x] Notifications → **Feedback** surface `/notifications-center/feedback` (sidebar item added): KPIs (responses 30d, CSAT %, response rate from `feedback-prompt:` EmailDelivery stamps, open NEW, auto-tickets), subject/status/score chips, triage buttons (REVIEWED/ACTIONED/DISMISSED, audited), ticket deep links (FB-D)
+- [x] Auto-ticket on 👎+comment — fires at enrich time in the marketing `/feedback` action via W2-SUP `createTicket` (setting-overridable per prompt, once per response, Order entity-linked, best-effort); marketing gained the `@ilaunchify/support` dep (**[PAVEL]** `pnpm install` persists the symlink) (FB-D)
+- [x] Templates editor: **feedbackPrompt** select (opt-outable events only) + live preview renders the sample 👍/👎 block · Branding: **headerLinks** editor (3 audiences × ≤4 links, validated, `Prisma.JsonNull` clearing) + creator-set preview (FB-D)
+- [x] Review moderation: Reviews tab on the Feedback surface (hide-with-reason → audited, restore, approve-flagged) + creator-ratings rollup + low-ratings(≤2, 30d) alert row in the existing P3 `PartnerScorecard` (FB-D/F)
 
 ## Stage 5 — one migration: PS-1 + PS-6 + PS-7 schema + pure engines (CW writes, PAVEL runs)
 - [ ] `LabelingMode` + `Product.printSourcingMode` + backfill EXTERNAL_ALLOWED (§2)

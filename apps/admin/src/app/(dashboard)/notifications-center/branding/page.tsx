@@ -28,6 +28,8 @@ export default async function BrandingPage() {
     ...(row
       ? {
           logoUrl: row.logoUrl,
+          headerLinks:
+            (row.headerLinks as NotificationBrandingConfig['headerLinks'] | null) ?? null,
           brandName: row.brandName,
           accentHex: row.accentHex,
           inkHex: row.inkHex,

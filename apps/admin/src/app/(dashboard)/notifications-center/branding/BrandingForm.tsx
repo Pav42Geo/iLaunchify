@@ -125,6 +125,61 @@ export function BrandingForm({
           Preference center URL
           <input value={form.preferenceCenterUrl ?? ''} onChange={(e) => set('preferenceCenterUrl', e.target.value || null)} placeholder="https://app.ilaunchify.com/settings/notifications" className={inputCls} />
         </label>
+
+        {/* Header nav links (Stage 4) — Amazon-style row under the logo, per audience */}
+        <div className="mt-4">
+          <div className="text-[12px] font-medium text-ink-700">Header nav links (max 4 per audience)</div>
+          <p className="mt-0.5 text-[11px] text-ink-500">
+            Slim link row under the logo — e.g. creator: My orders / Products / Support. Preview
+            shows the creator set.
+          </p>
+          {(['creator', 'partner', 'admin'] as const).map((aud) => {
+            const rows = form.headerLinks?.[aud] ?? []
+            const setRows = (next: Array<{ label: string; url: string }>) =>
+              set('headerLinks', { ...(form.headerLinks ?? {}), [aud]: next })
+            return (
+              <div key={aud} className="mt-2 rounded-xl border border-ink-100 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">{aud}</span>
+                  {rows.length < 4 && (
+                    <button
+                      type="button"
+                      onClick={() => setRows([...rows, { label: '', url: '' }])}
+                      className="text-[11.5px] font-medium text-pink-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                    >
+                      + Add link
+                    </button>
+                  )}
+                </div>
+                {rows.map((l, i) => (
+                  <div key={i} className="mt-2 flex gap-2">
+                    <input
+                      value={l.label}
+                      onChange={(e) => setRows(rows.map((r, j) => (j === i ? { ...r, label: e.target.value } : r)))}
+                      placeholder="Label"
+                      maxLength={30}
+                      className={`${inputCls} mt-0 w-36`}
+                    />
+                    <input
+                      value={l.url}
+                      onChange={(e) => setRows(rows.map((r, j) => (j === i ? { ...r, url: e.target.value } : r)))}
+                      placeholder="https://…"
+                      className={`${inputCls} mt-0 flex-1`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setRows(rows.filter((_, j) => j !== i))}
+                      aria-label={`Remove ${aud} link ${i + 1}`}
+                      className="shrink-0 rounded-lg border border-ink-200 px-2 text-[12px] text-ink-500 hover:border-danger-600 hover:text-danger-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+        </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className={label}>
             From name

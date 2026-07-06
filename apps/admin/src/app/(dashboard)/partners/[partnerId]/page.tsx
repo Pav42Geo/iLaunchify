@@ -193,6 +193,9 @@ export default async function PartnerDetail({ params }: PageProps) {
           status: true,
           disclosureLevel: true,
           createdAt: true,
+          // Feedback module §5.4 — scorecard ratings rollup
+          ratingMean: true,
+          ratingCount: true,
         },
         orderBy: { type: 'asc' },
       },
@@ -328,6 +331,21 @@ export default async function PartnerDetail({ params }: PageProps) {
     // pre-push RiskCenter tables — scorecard renders without PRS
   }
 
+  // Feedback module §5.4 — creator-ratings rollup + low-rating alert count.
+  const SERVICE_RATING_LABEL: Record<string, string> = {
+    MANUFACTURING: 'Manufacturing',
+    LABEL_PRINTING: 'Print',
+    COPACKING: 'Co-packing',
+    WAREHOUSE: 'Fulfillment',
+  }
+  const lowRatings30d = await prisma.partnerRating.count({
+    where: {
+      partnerServiceId: { in: serviceIds },
+      overall: { lte: 2 },
+      createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+    },
+  })
+
   const scorecard = {
     delivered: deliveredCount,
     acceptRatePct:
@@ -339,6 +357,12 @@ export default async function PartnerDetail({ params }: PageProps) {
       yieldPcts.length > 0 ? yieldPcts.reduce((a, b) => a + b, 0) / yieldPcts.length : null,
     prs,
     prsBand,
+    ratings: partner.services.map((s) => ({
+      serviceLabel: SERVICE_RATING_LABEL[s.type as string] ?? s.type,
+      mean: s.ratingMean != null ? Number(s.ratingMean) : null,
+      count: s.ratingCount,
+    })),
+    lowRatings30d,
   }
 
   // Aggregate stats for the quick-stats card

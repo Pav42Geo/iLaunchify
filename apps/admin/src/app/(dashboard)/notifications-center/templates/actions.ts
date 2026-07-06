@@ -15,6 +15,8 @@ import {
   unknownTokens,
   getNotificationBranding,
   sendTransactionalEmail,
+  isFeedbackPromptKey,
+  feedbackPrompt,
   type NotificationTemplateOverride,
 } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
@@ -29,10 +31,15 @@ export interface TemplateDraftInput {
   bodyMarkdown: string | null
   ctaMode: 'AUTO' | 'CUSTOM' | 'NONE'
   ctaLabelOverride: string | null
+  /** FEEDBACK_PROMPTS key — one-click thumbs block on this event (Stage 4). */
+  feedbackPrompt: string | null
 }
 
 function validateDraft(input: TemplateDraftInput): string | null {
   if (!CTA_MODES.has(input.ctaMode)) return 'Invalid CTA mode'
+  if (input.feedbackPrompt && !isFeedbackPromptKey(input.feedbackPrompt)) {
+    return 'Unknown feedback prompt'
+  }
   if (input.ctaMode === 'CUSTOM' && !input.ctaLabelOverride?.trim()) {
     return 'Custom CTA needs a label'
   }
@@ -58,6 +65,7 @@ export async function saveTemplateDraft(input: TemplateDraftInput): Promise<Resu
     bodyMarkdown: input.bodyMarkdown?.trim() || null,
     ctaMode: input.ctaMode,
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
+    feedbackPrompt: input.feedbackPrompt || null,
     status: 'DRAFT' as const,
     updatedById: admin.id,
   }
@@ -211,7 +219,7 @@ export async function previewTemplate(input: TemplateDraftInput): Promise<
     bodyMarkdown: input.bodyMarkdown?.trim() || null,
     ctaMode: input.ctaMode,
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
-    feedbackPrompt: null, // Stage 4 adds the editor field; preview shows the block then
+    feedbackPrompt: input.feedbackPrompt || null,
     status: 'DRAFT',
     version: 0,
   }
@@ -219,7 +227,18 @@ export async function previewTemplate(input: TemplateDraftInput): Promise<
     templateOverride: override,
     branding,
     preview: true,
+    audience: 'creator', // shows header links in preview when branding has them
     unsubscribeUrl: 'https://ilaunchify.example/unsubscribe?token=preview',
+    // Sample feedback block — the real send builds signed links; the preview
+    // just shows what the block looks like.
+    feedback:
+      input.feedbackPrompt && isFeedbackPromptKey(input.feedbackPrompt)
+        ? {
+            question: feedbackPrompt(input.feedbackPrompt).question,
+            upUrl: 'https://ilaunchify.example/feedback?token=preview-up',
+            downUrl: 'https://ilaunchify.example/feedback?token=preview-down',
+          }
+        : undefined,
   })
   return {
     ok: true,
