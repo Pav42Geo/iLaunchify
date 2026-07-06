@@ -26,6 +26,14 @@ export interface RoutingResult {
   manufacturingUserId: string
   labelPrintingServiceId: string
   labelPrintingUserId: string
+  /**
+   * PS-3 (PRINT_PROVIDER_SELECTION §4): true when the creator's pinned print
+   * provider was requested but failed validation and routing fell through to
+   * normal resolution. Checkout MUST surface this before payment ("your
+   * printer is unavailable — pick another or let us route it") — a silent
+   * substitution is the §4 anti-pattern.
+   */
+  pinnedPrintUnavailable?: boolean
 }
 
 export type RoutingFailure =
@@ -50,6 +58,11 @@ export async function findRouting(params: {
   /** PartnerService ids already tried (declined / timed out) — excluded so a
    *  manual or future auto-reroute never re-picks a partner that already failed. */
   excludeServiceIds?: string[]
+  /** PS-3 step 0 (PRINT_PROVIDER_SELECTION §4): the creator's manual pick
+   *  (ProductPrintSelection). Callers resolve it per (creator, template) and
+   *  pass it in; findRouting validates it against the SAME hard filters as
+   *  every other path — a pin is a preference, never a bypass. */
+  pinnedPrintServiceId?: string | null
 }): Promise<RoutingResult | RoutingFailure> {
   const excluded = new Set(params.excludeServiceIds ?? [])
   const product = await prisma.product.findUnique({
@@ -189,6 +202,40 @@ export async function findRouting(params: {
   }
 
   // -------- Print / decoration provider --------
+  // PS-3 STEP 0 (PRINT_PROVIDER_SELECTION §4): the creator's pinned provider,
+  // validated against the SAME hard filters as every other path (active svc +
+  // partner + Stripe, not excluded, no live blackout, ≥1 ACTIVE offering).
+  // Valid → bind exactly that provider. Invalid → fall through and FLAG the
+  // result (pinnedPrintUnavailable) so checkout surfaces it before payment —
+  // never a silent substitution.
+  let pinnedPrintUnavailable = false
+  if (params.pinnedPrintServiceId) {
+    const now = new Date()
+    const pinned = excluded.has(params.pinnedPrintServiceId)
+      ? null
+      : await prisma.partnerService.findFirst({
+          where: {
+            id: params.pinnedPrintServiceId,
+            type: 'LABEL_PRINTING',
+            status: 'ACTIVE',
+            partner: { status: 'ACTIVE', user: { stripeAccountStatus: 'ACTIVE' } },
+            packagingOfferings: { some: { status: 'ACTIVE' } },
+            blackoutDates: { none: { startsOn: { lte: now }, endsOn: { gte: now } } },
+          },
+          include: { partner: { select: { userId: true } } },
+        })
+    if (pinned) {
+      return {
+        ok: true,
+        manufacturingServiceId: manufacturer.id,
+        manufacturingUserId: manufacturer.partner.userId,
+        labelPrintingServiceId: pinned.id,
+        labelPrintingUserId: pinned.partner.userId,
+      }
+    }
+    pinnedPrintUnavailable = true
+  }
+
   // Honor the offering the product already SELECTED at configuration time
   // (capability-matched against the partner's PartnerPackagingOffering then —
   // packagingType × decorationMethod × dieline). This is the correct binding;
@@ -213,6 +260,7 @@ export async function findRouting(params: {
       manufacturingUserId: manufacturer.partner.userId,
       labelPrintingServiceId: chosenPrintSvc.id,
       labelPrintingUserId: chosenPrintSvc.partner.userId,
+      ...(pinnedPrintUnavailable ? { pinnedPrintUnavailable: true } : {}),
     }
   }
 
@@ -274,6 +322,7 @@ export async function findRouting(params: {
     manufacturingUserId: manufacturer.partner.userId,
     labelPrintingServiceId: printSvcId,
     labelPrintingUserId: printUserId,
+    ...(pinnedPrintUnavailable ? { pinnedPrintUnavailable: true } : {}),
   }
 }
 

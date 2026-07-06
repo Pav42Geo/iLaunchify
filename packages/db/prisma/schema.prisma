@@ -1297,6 +1297,23 @@ model FcValueAddedService {
   @@index([jobType, status])
 }
 
+// Creator's manual print-provider pick (PRINT_PROVIDER_SELECTION §4, PS-3).
+// TEMPLATE-scoped (not product-scoped): the pick happens on the marketplace
+// template page before any Product row exists, and survives re-orders as the
+// creator's default for products built from that template. findRouting step 0
+// consumes it (hard-filter validated — never a blind bind).
+model ProductPrintSelection {
+  id                String   @id @default(uuid())
+  productTemplateId String // soft FK → ProductTemplate
+  creatorUserId     String // soft FK → User
+  partnerServiceId  String // soft FK → LABEL_PRINTING PartnerService
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([creatorUserId, productTemplateId])
+  @@index([partnerServiceId])
+}
+
 /// Partner-declared unavailability window (vacation, maintenance, peak
 /// embargo). Applies per service; date-only semantics (whole days).
 model PartnerBlackoutDate {

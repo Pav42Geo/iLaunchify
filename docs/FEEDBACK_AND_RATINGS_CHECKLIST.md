@@ -63,11 +63,11 @@ FC value-added services admin-verified before ACTIVE.
 - [x] Filtered-out transparency (format-mismatch + blackout count line; full 8-filter reason breakdown lands at PS-3 where job facts exist) (§7.3)
 - [x] Offering capability wizard: `printProcess` / `maxRunQty` (≥MOQ validated) / dimensional envelope / **food-contact-safe declaration** (HARD-filter warning copy) on the offering create/edit form + actions validation (§7.2)
 - [ ] Mismatch telemetry aggregation (admin) — with PS-3 decline-reason wiring (§7.2.8)
-- **[PAVEL]** `pnpm install` (marketing gained `@ilaunchify/orders`)
+- **[PAVEL]** `pnpm install` (marketing gained `@ilaunchify/orders`, then `@ilaunchify/audit` at PS-3)
 
-## Stage 7 — selection binding (CW + CODE coordination)
-- [ ] `ProductPrintSelection` + checkout print-line surfacing + picker modal (§4) **[CW]**
-- [ ] `findRouting` step 0 (pinned, hard-filter validated) + pinned-reroute approval flow (§4) **[CW, routing.ts handoff with CODE]**
+## Stage 7 — selection binding (CW + CODE coordination) — **CORE BUILT 2026-07-06 (CW)**
+- [x] `ProductPrintSelection` (template-scoped, `@@unique(creatorUserId, productTemplateId)`, soft FKs) + "Select this provider" button/action on the marketplace provider cards — select / change / click-again-to-deselect, live-printer re-validated server-side, audited (PRINT_PROVIDER_SELECTED/CHANGED/DESELECTED), selected-card ring + "we route automatically" copy for the unpinned path (§4). Checkout print-line surfacing of the pin + picker modal still open **[CW]**
+- [x] `findRouting` step 0: pinned printer validated against the same hard ops gate (ACTIVE svc/partner/Stripe, ≥1 ACTIVE offering, no live blackout, not excluded) → binds exactly; otherwise falls through to auto-routing with `pinnedPrintUnavailable` flag on the result — the pin is a preference, never a filter bypass (§4). Checkout wired via cart-actions cast-guarded lookup. Pinned-reroute approval flow + pre-payment unavailable notice still open **[CW, routing.ts handoff with CODE]**
 - [ ] Studio print-spec pinned-provider indication **[CODE — canvas hot zone]**
 - [ ] Publish + checkout graph pre-flight gates · per-hop shipping (one line + breakdown) · FC "Can finalize labeling here" badge + VAS fee (§8) **[CW; checkout/manifest touchpoints coordinated]**
 - ⚠ Gate: §8 validator MUST be live before pinning ships.

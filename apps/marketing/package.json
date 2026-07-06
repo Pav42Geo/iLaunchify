@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^8.45.0",
+    "@ilaunchify/audit": "workspace:*",
     "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/academy": "workspace:*",
     "@ilaunchify/db": "workspace:*",

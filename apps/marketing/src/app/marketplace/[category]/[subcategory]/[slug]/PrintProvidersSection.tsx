@@ -1,13 +1,16 @@
 'use client'
 
-// Print-provider cards (docs/PRINT_PROVIDER_SELECTION.md §3, PS-2 — read-only).
+// Print-provider cards (docs/PRINT_PROVIDER_SELECTION.md §3 + §4).
 // Printify's pattern, our rails: big rating first, real production numbers,
 // Provider Details modal fed entirely from onboarding data. "Select this
-// provider" ships with PS-3 (binding) — until then the cards inform.
+// provider" (PS-3) pins the creator's printer for this template — consumed
+// by findRouting step 0 at checkout; clicking the selected card deselects
+// (back to auto-routing by rating).
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { RatingStars, RatingBreakdownPopover } from '@ilaunchify/ui'
 import type { ProviderCardData, PrintProvidersView } from '@/lib/print-providers'
+import { selectPrintProvider } from './select-provider-action'
 
 const PROCESS_LABEL: Record<string, string> = {
   DIGITAL: 'Digital',
@@ -119,10 +122,40 @@ function DetailsModal({ p, onClose }: { p: ProviderCardData; onClose: () => void
   )
 }
 
-export function PrintProvidersSection({ view }: { view: PrintProvidersView }) {
+export function PrintProvidersSection({
+  view,
+  templateSlug,
+  initialSelectedServiceId = null,
+  canSelect = false,
+}: {
+  view: PrintProvidersView
+  templateSlug: string
+  /** The signed-in creator's current pick for this template (server-read). */
+  initialSelectedServiceId?: string | null
+  /** True only for signed-in creators — guests see cards without the button. */
+  canSelect?: boolean
+}) {
   const [detailsFor, setDetailsFor] = useState<ProviderCardData | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedServiceId)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [, startTransition] = useTransition()
 
   if (view.providers.length === 0 && view.filteredOutCount === 0) return null
+
+  function handleSelect(serviceId: string) {
+    setError(null)
+    setPendingId(serviceId)
+    startTransition(async () => {
+      const res = await selectPrintProvider({ templateSlug, partnerServiceId: serviceId })
+      if (res.ok) {
+        setSelectedId(res.selected ? serviceId : null)
+      } else {
+        setError(res.error)
+      }
+      setPendingId(null)
+    })
+  }
 
   return (
     <section id="print-providers" className="max-w-[1640px] mx-auto px-8 mb-24 scroll-mt-24">
@@ -132,13 +165,28 @@ export function PrintProvidersSection({ view }: { view: PrintProvidersView }) {
           ? 'This manufacturer works with independent print partners — one of these providers will print your labels and decoration.'
           : 'This manufacturer can print in-house, or one of these independent providers can handle your labels and decoration.'}{' '}
         Ratings come only from creators with delivered orders.
+        {canSelect && (
+          <>
+            {' '}
+            Pick one to make it your printer for this product, or leave it to us — we route to the
+            best-rated available provider automatically.
+          </>
+        )}
       </p>
+
+      {error && (
+        <p role="alert" className="mb-4 rounded-xl border border-pink-200 bg-pink-50 px-4 py-2.5 text-[13px] text-pink-700">
+          {error}
+        </p>
+      )}
 
       <div className="space-y-3">
         {view.providers.map((p) => (
           <article
             key={p.serviceId}
-            className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-ink-200 bg-white px-5 py-4"
+            className={`flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border bg-white px-5 py-4 ${
+              selectedId === p.serviceId ? 'border-pink-600 ring-1 ring-pink-600' : 'border-ink-200'
+            }`}
           >
             {/* Big score first — the Printify pattern */}
             <div className="min-w-[220px]">
@@ -176,7 +224,7 @@ export function PrintProvidersSection({ view }: { view: PrintProvidersView }) {
               {p.foodContactSafe && <Chip>Food-contact inks</Chip>}
             </div>
 
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setDetailsFor(p)}
@@ -184,7 +232,25 @@ export function PrintProvidersSection({ view }: { view: PrintProvidersView }) {
               >
                 Provider info
               </button>
-              {/* "Select this provider" lands with PS-3 (binding). */}
+              {canSelect && (
+                <button
+                  type="button"
+                  onClick={() => handleSelect(p.serviceId)}
+                  disabled={pendingId !== null}
+                  aria-pressed={selectedId === p.serviceId}
+                  className={`rounded-full px-4 py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60 ${
+                    selectedId === p.serviceId
+                      ? 'bg-pink-600 text-white hover:bg-pink-700'
+                      : 'bg-ink-900 text-white hover:bg-ink-700'
+                  }`}
+                >
+                  {pendingId === p.serviceId
+                    ? 'Saving…'
+                    : selectedId === p.serviceId
+                      ? '✓ Selected'
+                      : 'Select this provider'}
+                </button>
+              )}
             </div>
           </article>
         ))}

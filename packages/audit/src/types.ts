@@ -130,6 +130,7 @@ export const AUDIT_ENTITY_TYPES = [
   'FeedbackResponse', // account-form submissions + admin triage actions
   'PartnerRating', // creator → partner dimensional ratings (submit/edit)
   'ProductReview', // verified creator reviews (submit/edit/moderation)
+  'ProductPrintSelection', // creator's manual print-provider pick (PS-3)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

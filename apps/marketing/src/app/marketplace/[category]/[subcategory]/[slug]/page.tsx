@@ -21,6 +21,7 @@ import { getTemplateRatingAndReviews, type TemplateLiveRating } from '@/lib/temp
 import { TemplateReviewsSection } from './TemplateReviewsSection'
 import { getPrintProviderCards } from '@/lib/print-providers'
 import { PrintProvidersSection } from './PrintProvidersSection'
+import { getMyPrintSelection } from './select-provider-action'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
 import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
 import { getTemplateFlavorRecipes } from '@/lib/flavor-recipe-detail'
@@ -103,9 +104,15 @@ export default async function ProductDetailPage({
   // templates render the legacy RatingRow, no reviews section).
   const { rating: liveRating, reviews } = await getTemplateRatingAndReviews(template.slug)
 
-  // PS-2 — print-provider cards, gated by effectivePrintSourcing (§2): null
-  // for IN_HOUSE manufacturers and fixture templates. Read-only until PS-3.
+  // PS-2/PS-3 — print-provider cards, gated by effectivePrintSourcing (§2):
+  // null for IN_HOUSE manufacturers and fixture templates.
   const printProviders = await getPrintProviderCards(template.slug)
+
+  // PS-3 — the signed-in creator's pinned printer for this template (null for
+  // guests / partners / no pick). Feeds the "Select this provider" buttons.
+  const canSelectProvider = session?.user?.role === 'CREATOR'
+  const myPrintSelectionId =
+    printProviders && canSelectProvider ? await getMyPrintSelection(template.slug) : null
 
   // Recipe-derived ingredients + Nutrition Facts — computed from the template's
   // real recipe slots via the nutrition engine (FOOD domain). Overrides the
@@ -383,9 +390,16 @@ export default async function ProductDetailPage({
         />
       </section>
 
-      {/* PRINT PROVIDERS (docs/PRINT_PROVIDER_SELECTION.md §3, PS-2) — only
+      {/* PRINT PROVIDERS (docs/PRINT_PROVIDER_SELECTION.md §3 + §4) — only
           when the manufacturer's labelingMode allows external print. */}
-      {printProviders && <PrintProvidersSection view={printProviders} />}
+      {printProviders && (
+        <PrintProvidersSection
+          view={printProviders}
+          templateSlug={template.slug}
+          initialSelectedServiceId={myPrintSelectionId}
+          canSelect={canSelectProvider}
+        />
+      )}
 
       {/* CREATOR REVIEWS (docs/FEEDBACK_MODULE.md §6.2) — verified-only,
           anchored for the stars popover's "See Creator Reviews" link. */}

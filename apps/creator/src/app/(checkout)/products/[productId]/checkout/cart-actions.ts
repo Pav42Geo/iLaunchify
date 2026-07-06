@@ -366,12 +366,38 @@ export async function placeOrderFromCheckoutDraft(
     where: { brandId: product.brandId, isPrimary: true },
     select: { marketId: true },
   })
+  // PS-3 step 0 (PRINT_PROVIDER_SELECTION §4): the creator's manual printer
+  // pick from the marketplace cards — template-scoped, resolved per creator.
+  // findRouting hard-filter-validates it; on failure the result carries
+  // pinnedPrintUnavailable (surfaced by the fuller PS-3 checkout pre-flight).
+  // CAST-GUARDED until db:generate adds ProductPrintSelection (this site +
+  // the select action — de-cast post-migration).
+  const pinnedSelection = product.productTemplateId
+    ? await (
+        prisma as unknown as {
+          productPrintSelection: {
+            findUnique: (a: unknown) => Promise<{ partnerServiceId: string } | null>
+          }
+        }
+      ).productPrintSelection
+        .findUnique({
+          where: {
+            creatorUserId_productTemplateId: {
+              creatorUserId: user.id,
+              productTemplateId: product.productTemplateId,
+            },
+          },
+          select: { partnerServiceId: true },
+        })
+        .catch(() => null)
+    : null
   const routing = await findRouting({
     productId: product.id,
     quantity: qty,
     templateId: product.productTemplateId,
     destinationRegionId: product.brand.operatingRegionId,
     targetMarketId: primaryMarket?.marketId ?? null,
+    pinnedPrintServiceId: pinnedSelection?.partnerServiceId ?? null,
   })
   if (!routing.ok) return { ok: false, error: routing.message }
 
