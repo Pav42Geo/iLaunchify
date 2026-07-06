@@ -145,22 +145,15 @@ export async function computeTemplatePrintCoverage(
  * callers that also need the value (publish gate, cron) don't double-compute.
  * The column powers the admin dashboard's exact "fragile" (coverage 1) count and
  * lets other surfaces read coverage without re-scanning. `printCoverage = null`
- * when not applicable (IN_HOUSE / template missing).
- *
- * NOTE: cast-guarded write until `db:push` lands the column on the generated
- * client (same pattern as getOrderSettings' pre-push fields). Best-effort — a
- * failed cache write never fails the caller.
+ * when not applicable (IN_HOUSE / template missing). Best-effort — a failed cache
+ * write never fails the caller (e.g. a deleted template mid-recompute).
  */
 export async function recomputeTemplateCoverage(
   templateId: string,
 ): Promise<TemplatePrintCoverage> {
   const cov = await computeTemplatePrintCoverage(templateId)
   try {
-    await (
-      prisma.productTemplate as unknown as {
-        update: (a: unknown) => Promise<unknown>
-      }
-    ).update({
+    await prisma.productTemplate.update({
       where: { id: templateId },
       data: {
         printCoverage: cov.applicable ? cov.coverage : null,
@@ -168,7 +161,7 @@ export async function recomputeTemplateCoverage(
       },
     })
   } catch {
-    /* cache write best-effort — pre-push the column may not exist yet */
+    /* cache write best-effort */
   }
   return cov
 }

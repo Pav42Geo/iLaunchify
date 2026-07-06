@@ -41,12 +41,7 @@ const PAGE = 100
 
 export async function loadCoverageDashboard(): Promise<CoverageDashboard> {
   // uncovered/fragile read the denormalized ProductTemplate.printCoverage cache
-  // (exact + cheap; recomputeTemplateCoverage keeps it fresh). Cast-guarded until
-  // db:push lands the column on the generated client.
-  const tplModel = prisma.productTemplate as unknown as {
-    count: (a: unknown) => Promise<number>
-  }
-
+  // (exact + cheap; recomputeTemplateCoverage keeps it fresh).
   const [requests, uncoveredTemplates, fragile, openRfqs, claimsAwaiting, fulfilled] =
     await Promise.all([
       prisma.printCapabilityRequest.findMany({
@@ -64,8 +59,8 @@ export async function loadCoverageDashboard(): Promise<CoverageDashboard> {
           _count: { select: { claims: true } },
         },
       }),
-      tplModel.count({ where: { printCoverage: 0 } }),
-      tplModel.count({ where: { printCoverage: 1 } }),
+      prisma.productTemplate.count({ where: { printCoverage: 0 } }),
+      prisma.productTemplate.count({ where: { printCoverage: 1 } }),
       prisma.printCapabilityRequest.count({ where: { status: 'OPEN' } }),
       prisma.printCapabilityClaim.count({
         where: { status: { in: ['SUBMITTED', 'OFFERING_DRAFTED'] } },
