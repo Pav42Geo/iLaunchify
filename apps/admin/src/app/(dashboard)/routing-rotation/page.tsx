@@ -10,7 +10,7 @@
 //
 // Absorbs /routing-preview (that route now redirects here).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { RoutingPreviewForm } from '../routing-preview/RoutingPreviewForm'
@@ -59,7 +59,7 @@ export default async function RoutingRotationPage() {
   await requireCapability('billing:write')
 
   const since90 = new Date(Date.now() - 90 * 86_400_000)
-  const [policies, printers, awards, settings, products] = await Promise.all([
+  const [policies, printers, awards, settings, products, orderSettings] = await Promise.all([
     prisma.rotationPolicy.findMany(),
     prisma.partnerService.findMany({
       where: { type: 'LABEL_PRINTING', status: 'ACTIVE', partner: { status: 'ACTIVE' } },
@@ -102,6 +102,9 @@ export default async function RoutingRotationPage() {
       orderBy: { name: 'asc' },
       take: 200,
     }),
+    // Routing knobs absorbed from the retired Partner Routing page — the single
+    // OrderSettings the engine already reads (match weights + lifecycle timers).
+    getOrderSettings(),
   ])
 
   // Award analytics — 90d shares + decision-path mix (JS aggregate; V1 volume).
@@ -187,6 +190,17 @@ export default async function RoutingRotationPage() {
           rotation: settings?.fcRotationWeightPct ?? 10,
           storageMatch: settings?.fcStorageMatchWeightPct ?? 10,
           bandPct: settings?.fcRotationBandPct ?? 5,
+        }}
+        mfrWeights={{
+          capabilityWeightPct: orderSettings.capabilityWeightPct,
+          proximityWeightPct: orderSettings.proximityWeightPct,
+          certWeightPct: orderSettings.certWeightPct,
+        }}
+        lifecycle={{
+          acceptWindowHours: orderSettings.acceptWindowHours,
+          maxReroutes: orderSettings.maxReroutes,
+          autoCancelAfterHours: orderSettings.autoCancelAfterHours,
+          changeoverDays: orderSettings.changeoverDays,
         }}
         manufacturerPreview={<RoutingPreviewFormWrapper />}
       />

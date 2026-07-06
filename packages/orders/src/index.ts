@@ -21,6 +21,9 @@ export {
   assertDispatchTransition,
   DEFAULT_ACCEPT_WINDOW_HOURS,
   MAX_REROUTES,
+  resolveMaxReroutes,
+  rerouteBudgetRemaining,
+  canReroute,
 } from './dispatch-fsm'
 export { computeTransferPlan } from './transfer-planner'
 export {

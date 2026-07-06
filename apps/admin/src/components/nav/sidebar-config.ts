@@ -280,8 +280,9 @@ const PRIMARY: SidebarRegion = {
           icon: ShoppingBag,
           children: [
             { kind: 'item', label: 'Fees & Commissions', icon: DollarSign, href: '/order-settings/fees', capability: 'billing:write' },
-            { kind: 'item', label: 'Partner Routing', icon: Workflow, href: '/order-settings/routing', capability: 'billing:write' },
-            // SR-3 — unified rotation control room; absorbed /routing-preview (redirects).
+            // SR-3 — unified rotation control room; absorbed /routing-preview AND the
+            // old Partner Routing page (both redirect here). Single source of truth
+            // for rotation policy + manufacturer match weights + dispatch lifecycle.
             { kind: 'item', label: 'Routing & Rotation', icon: Workflow, href: '/routing-rotation', capability: 'billing:write' },
             { kind: 'item', label: 'Shipping & Fulfillment', icon: Truck, href: '/order-settings/shipping', capability: 'billing:write' },
             { kind: 'item', label: 'Cancellations & Refunds', icon: RotateCcw, href: '/order-settings/cancellations', capability: 'refunds:approve' },

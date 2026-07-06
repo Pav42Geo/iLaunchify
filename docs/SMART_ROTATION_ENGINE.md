@@ -215,8 +215,20 @@ craft) SEPARATELY on delivery.
   excluded count
 - [x] /routing-preview retired → redirect (form + action files stay; /routing-rotation imports
   them); sidebar entry swapped
+- [x] **Partner Routing page retired → merged (2026-07-06, CW).** `/order-settings/routing`
+  now redirects to `/routing-rotation`; sidebar entry removed. The center is the single source
+  of truth: **Manufacturers tab** gained an editable match-weights form (capability/proximity/
+  cert → `saveManufacturerWeights`), and a new **Dispatch lifecycle tab** holds the
+  post-assignment timers (accept window · max reroutes · auto-cancel · changeover days →
+  `saveDispatchLifecycle`). Both forward to the same `saveOrderSettings` writer every engine
+  consumer already reads — no config forked. `maxReroutes` is now settings-driven at its single
+  definition point (`resolveMaxReroutes`/`rerouteBudgetRemaining`/`canReroute` in dispatch-fsm,
+  6 tests) instead of a hardcoded literal; **live reroute enforcement is still pending the
+  Week-8 `transitionDispatch` implementation** (V1 reroute is manual — the knob is stored + the
+  cap is resolved, but nothing increments/blocks on it in production yet).
 - [ ] SR-3 polish backlog: filtered-out-with-reasons list in preview (needs §7 job facts) ·
-  awards deep-link to orders · configured-vs-actual variance alert
+  awards deep-link to orders · configured-vs-actual variance alert · retire the now-unused
+  `RoutingForm` export in OrderSettingsForms.tsx (harmless, left in place)
 
 ### SR-4 — FC adoption (pending)
 - [ ] FC tab: poolSize/mode/new-node share layered on the existing scorer band

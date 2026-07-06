@@ -19,6 +19,7 @@ import {
   type RotationPolicyInput,
 } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
+import { saveOrderSettings } from '../order-settings/actions'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -338,4 +339,46 @@ export async function runPrintRotationPreview(input: {
       runs,
     },
   }
+}
+
+// ─── OrderSettings routing knobs — absorbed from the retired Partner Routing page ──
+// The Routing & Rotation center is now the single home for who-wins-the-work
+// (rotation policy + manufacturer match weights) AND the post-assignment dispatch
+// lifecycle timers. Both forward to the SAME OrderSettings writer every engine
+// consumer already reads (saveOrderSettings — clamped + audited), so there's one
+// source of truth; we only add a /routing-rotation revalidate on top.
+
+export interface ManufacturerWeightsInput {
+  capabilityWeightPct: number
+  proximityWeightPct: number
+  certWeightPct: number
+}
+
+/** Manufacturer match weights (capability / proximity / certification). A
+ *  template's manufacturer is fixed by ownership — these only arbitrate
+ *  multi-manufacturer templates. */
+export async function saveManufacturerWeights(
+  input: ManufacturerWeightsInput,
+): Promise<Result<null>> {
+  const r = await saveOrderSettings({ ...input }, 'routing')
+  revalidatePath('/routing-rotation')
+  return r.ok ? { ok: true, data: null } : { ok: false, error: r.error }
+}
+
+export interface DispatchLifecycleInput {
+  acceptWindowHours: number
+  maxReroutes: number
+  autoCancelAfterHours: number
+  changeoverDays: number
+}
+
+/** Post-assignment lifecycle timers: accept window, reroute cap, auto-cancel age,
+ *  and the multi-flavor changeover lead. (maxReroutes is stored + resolved by the
+ *  engine's resolveMaxReroutes; live enforcement lands with the dispatch FSM.) */
+export async function saveDispatchLifecycle(
+  input: DispatchLifecycleInput,
+): Promise<Result<null>> {
+  const r = await saveOrderSettings({ ...input }, 'routing')
+  revalidatePath('/routing-rotation')
+  return r.ok ? { ok: true, data: null } : { ok: false, error: r.error }
 }

@@ -10,11 +10,25 @@ import { toast } from 'sonner'
 import {
   runPrintRotationPreview,
   saveRotationPolicy,
+  saveManufacturerWeights,
+  saveDispatchLifecycle,
   setExcludeFromAutoRotation,
   type PolicyContext,
   type PrintPreviewResult,
   type RotationPolicyView,
 } from './actions'
+
+export interface ManufacturerWeights {
+  capabilityWeightPct: number
+  proximityWeightPct: number
+  certWeightPct: number
+}
+export interface DispatchLifecycle {
+  acceptWindowHours: number
+  maxReroutes: number
+  autoCancelAfterHours: number
+  changeoverDays: number
+}
 
 export interface ProviderRow {
   partnerServiceId: string
@@ -52,6 +66,8 @@ export function RotationControls({
   providers,
   products,
   fcWeights,
+  mfrWeights,
+  lifecycle,
   manufacturerPreview,
 }: {
   printPolicies: RotationPolicyView[]
@@ -67,9 +83,11 @@ export function RotationControls({
     storageMatch: number
     bandPct: number
   }
+  mfrWeights: ManufacturerWeights
+  lifecycle: DispatchLifecycle
   manufacturerPreview: ReactNode
 }) {
-  const [tab, setTab] = useState<'PRINT' | 'FC' | 'MFR'>('PRINT')
+  const [tab, setTab] = useState<'PRINT' | 'FC' | 'MFR' | 'LIFECYCLE'>('PRINT')
 
   return (
     <div className="space-y-5">
@@ -80,6 +98,7 @@ export function RotationControls({
             ['PRINT', 'Print providers'],
             ['FC', 'Fulfillment centers'],
             ['MFR', 'Manufacturers'],
+            ['LIFECYCLE', 'Dispatch lifecycle'],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -149,22 +168,212 @@ export function RotationControls({
 
       {tab === 'MFR' && (
         <div className="space-y-5">
-          <section className="rounded-2xl border border-ink-200 bg-white p-5">
-            <h2 className="font-display text-[15px] font-semibold text-ink-900">
-              Manufacturer match weights
-            </h2>
-            <p className="mt-1 text-[12.5px] text-ink-600">
-              Capability / proximity / certification weights live at{' '}
-              <a href="/order-settings/routing" className="font-medium text-pink-700 hover:underline">
-                Order settings → Partner Routing
-              </a>
-              . A template&rsquo;s manufacturer is fixed by ownership — the scorer only
-              arbitrates multi-manufacturer templates, so no rotation applies here.
-            </p>
-          </section>
+          <ManufacturerWeightsEditor initial={mfrWeights} />
           {manufacturerPreview}
         </div>
       )}
+
+      {tab === 'LIFECYCLE' && <DispatchLifecycleEditor initial={lifecycle} />}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Manufacturer match weights (absorbed from the retired Partner Routing page)
+// ---------------------------------------------------------------------------
+
+function ManufacturerWeightsEditor({ initial }: { initial: ManufacturerWeights }) {
+  const [w, setW] = useState(initial)
+  const [isSaving, startSaving] = useTransition()
+  const sum = w.capabilityWeightPct + w.proximityWeightPct + w.certWeightPct
+  const norm = (n: number) => (sum > 0 ? `${Math.round((n / sum) * 100)}%` : '—')
+
+  function patch(key: keyof ManufacturerWeights, value: number) {
+    setW((prev) => ({ ...prev, [key]: Math.max(0, Math.min(100, value || 0)) }))
+  }
+  function save() {
+    startSaving(async () => {
+      const res = await saveManufacturerWeights(w)
+      if (!res.ok) return void toast.error(res.error)
+      toast.success('Manufacturer match weights saved.')
+    })
+  }
+
+  const rows: Array<[keyof ManufacturerWeights, string, string]> = [
+    ['capabilityWeightPct', 'Capability', 'Capacity headroom above the order qty'],
+    ['proximityWeightPct', 'Proximity', 'Region / country closeness to the destination'],
+    ['certWeightPct', 'Certification', 'Holds an active cert for the target market'],
+  ]
+  const inputCls =
+    'w-24 rounded-lg border border-ink-200 px-2.5 py-1.5 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500'
+
+  return (
+    <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <h2 className="font-display text-[15px] font-semibold text-ink-900">
+        Manufacturer match weights
+      </h2>
+      <p className="mt-1 text-[12.5px] text-ink-600">
+        How the engine ranks manufacturers for a dispatch. Weights are relative — renormalized
+        over the dimensions that apply to each order. A template&rsquo;s manufacturer is fixed by
+        ownership, so this only arbitrates multi-manufacturer templates (no rotation here).
+      </p>
+      <div className="mt-4 space-y-3">
+        {rows.map(([key, label, hint]) => (
+          <div key={key} className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[13px] font-medium text-ink-800">{label}</div>
+              <div className="text-[11.5px] text-ink-500">
+                {hint} · {norm(w[key])} effective
+              </div>
+            </div>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={w[key]}
+              onChange={(e) => patch(key, parseInt(e.target.value, 10))}
+              className={inputCls}
+              aria-label={`${label} weight`}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={save}
+          disabled={isSaving}
+          className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60"
+        >
+          {isSaving ? 'Saving…' : 'Save weights'}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Dispatch lifecycle timers (absorbed from the retired Partner Routing page)
+// ---------------------------------------------------------------------------
+
+function DispatchLifecycleEditor({ initial }: { initial: DispatchLifecycle }) {
+  const [v, setV] = useState(initial)
+  const [isSaving, startSaving] = useTransition()
+
+  function patch(key: keyof DispatchLifecycle, value: number, min: number) {
+    setV((prev) => ({ ...prev, [key]: Math.max(min, Math.floor(value) || min) }))
+  }
+  function save() {
+    startSaving(async () => {
+      const res = await saveDispatchLifecycle(v)
+      if (!res.ok) return void toast.error(res.error)
+      toast.success('Dispatch lifecycle settings saved.')
+    })
+  }
+
+  const inputCls =
+    'w-28 rounded-lg border border-ink-200 px-2.5 py-1.5 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500'
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+        <h2 className="font-display text-[15px] font-semibold text-ink-900">Dispatch windows</h2>
+        <p className="mt-1 text-[12.5px] text-ink-600">
+          What happens after a dispatch is assigned — how long partners get to accept, the reroute
+          budget, and when an unpaid order auto-cancels. (Selection is the other tabs; this is
+          lifecycle.)
+        </p>
+        <div className="mt-4 space-y-3">
+          <LifecycleField
+            label="Partner accept window (hours)"
+            hint="Time a partner has to accept a dispatch before it times out."
+          >
+            <input
+              type="number"
+              min={1}
+              max={720}
+              value={v.acceptWindowHours}
+              onChange={(e) => patch('acceptWindowHours', parseInt(e.target.value, 10), 1)}
+              className={inputCls}
+            />
+          </LifecycleField>
+          <LifecycleField
+            label="Max auto-reroutes"
+            hint="Reroute budget per dispatch. Stored + resolved by the engine (resolveMaxReroutes); live enforcement lands with the dispatch-transition FSM (V1 reroute is manual)."
+          >
+            <input
+              type="number"
+              min={0}
+              max={20}
+              value={v.maxReroutes}
+              onChange={(e) => patch('maxReroutes', parseInt(e.target.value, 10), 0)}
+              className={inputCls}
+            />
+          </LifecycleField>
+          <LifecycleField
+            label="Auto-cancel after (hours)"
+            hint="Unpaid orders auto-cancel past this age (auto-cancel cron)."
+          >
+            <input
+              type="number"
+              min={1}
+              max={2160}
+              value={v.autoCancelAfterHours}
+              onChange={(e) => patch('autoCancelAfterHours', parseInt(e.target.value, 10), 1)}
+              className={inputCls}
+            />
+          </LifecycleField>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+        <h2 className="font-display text-[15px] font-semibold text-ink-900">Lead time</h2>
+        <p className="mt-1 text-[12.5px] text-ink-600">Production-time model for multi-flavor packs.</p>
+        <div className="mt-4 space-y-3">
+          <LifecycleField
+            label="Changeover days per extra flavor"
+            hint="A variety pack in N flavors quotes lead = base + (N−1) × this, covering the line changeover. Single-flavor orders add nothing."
+          >
+            <input
+              type="number"
+              min={0}
+              max={60}
+              value={v.changeoverDays}
+              onChange={(e) => patch('changeoverDays', parseInt(e.target.value, 10), 0)}
+              className={inputCls}
+            />
+          </LifecycleField>
+        </div>
+      </section>
+
+      <div className="flex justify-end">
+        <button
+          onClick={save}
+          disabled={isSaving}
+          className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60"
+        >
+          {isSaving ? 'Saving…' : 'Save lifecycle settings'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function LifecycleField({
+  label,
+  hint,
+  children,
+}: {
+  label: string
+  hint: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium text-ink-800">{label}</div>
+        <div className="text-[11.5px] text-ink-500">{hint}</div>
+      </div>
+      {children}
     </div>
   )
 }

@@ -1,20 +1,14 @@
-import { getOrderSettings } from '../actions'
-import { RoutingForm } from '../OrderSettingsForms'
-import { AdminPageHeader } from '@/components/AdminPageHeader'
+// Partner Routing & Dispatch RETIRED 2026-07-06 — folded into the unified
+// Routing & Rotation control room (docs/SMART_ROTATION_ENGINE.md §2.3). Match
+// weights now live on the Manufacturers tab; accept window / reroute cap /
+// auto-cancel / changeover on the Dispatch lifecycle tab. This route redirects
+// so old links + bookmarks land on the single source of truth (mirrors how
+// /routing-preview was absorbed).
+
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Partner Routing — Admin' }
 
-export default async function OrderRoutingPage() {
-  const settings = await getOrderSettings()
-  return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        eyebrow="Order settings"
-        title="Partner Routing & Dispatch"
-        description="Accept windows, reroute limits, auto-cancel timing, and how partners are scored for a dispatch."
-      />
-      <RoutingForm initial={settings} />
-    </div>
-  )
+export default function RetiredPartnerRoutingPage() {
+  redirect('/routing-rotation')
 }
