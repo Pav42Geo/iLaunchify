@@ -672,8 +672,8 @@ export function renderTemplate<E extends NotificationEvent>(
           : `How did your partners do on ${what}?`,
         body:
           d.partnerCount === 1
-            ? 'Your rating helps great partners win more work — and helps us keep quality high. It takes under a minute, and you can review your product while you’re there.'
-            : `${d.partnerCount} partners worked on this order. Your ratings help great partners win more work — and you can review your product while you're there. Under a minute.`,
+            ? 'Your honest rating shapes how partners grow here — it reflects their standing and helps route future orders to the best of them. Please rate fairly, from your real experience. Under a minute, and you can review your product while you’re there.'
+            : `${d.partnerCount} partners worked on this order. Your honest ratings shape how they grow here — reflecting their standing and routing future work to the best partners. Please rate fairly, from your real experience; you can review your product too. Under a minute.`,
         link: `/orders/${d.orderId}/rate`,
       }
     }
