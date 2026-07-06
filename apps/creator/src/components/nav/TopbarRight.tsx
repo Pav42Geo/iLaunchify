@@ -54,7 +54,7 @@ export function TopbarRight({
           activeBrandName: activeBrand?.name ?? null,
         }}
         tierLabels={{ maker: 'Maker', builder: 'Builder', agency: 'Agency' }}
-        manageTierHref="/settings/profile"
+        manageTierHref="/settings/plan"
         activeBrandHref="/brands"
         avatarTone="pink"
         sections={[
@@ -68,7 +68,7 @@ export function TopbarRight({
           },
           {
             items: [
-              { label: 'Channels', href: '/settings/channels', icon: Plug },
+              { label: 'Channels', href: '/channels', icon: Plug },
               { label: 'Payments', href: '/settings/payouts', icon: CreditCard },
               { label: 'Settings', href: '/settings', icon: Settings },
             ],

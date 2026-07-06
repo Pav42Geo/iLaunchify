@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iLaunchify — Account Menus v2 mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF2E63; --pink-50:#FFF0F4; --pink-100:#FFE0E9; --pink-700:#D91A4C;
+    --ink-900:#101014; --ink-700:#3A3A44; --ink-500:#6E6E7A; --ink-400:#9494A0;
+    --ink-200:#E4E4EA; --ink-100:#F0F0F4; --ink-50:#F7F7FA;
+    --neon:#B5FF3D; --cream:#F3EFE8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--cream);color:var(--ink-900);padding:40px 32px 80px}
+  h1{font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;margin-bottom:6px}
+  .sub{color:var(--ink-500);font-size:14px;margin-bottom:36px}
+  .cols{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+  .col{flex:0 0 auto}
+  .col h2{font-family:'Bricolage Grotesque',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px}
+  .col .note{font-size:12px;color:var(--ink-500);margin-bottom:14px;max-width:340px;line-height:1.5}
+  /* ---- menu chrome ---- */
+  .menu{width:320px;background:#fff;border:1px solid var(--ink-200);border-radius:14px;box-shadow:0 16px 40px rgba(16,16,20,.12);padding:8px 0;overflow:hidden}
+  .menu.wide{width:360px}
+  .idhead{padding:12px 16px;border-bottom:1px solid var(--ink-100)}
+  .idhead .nm{font-size:14px;font-weight:600}
+  .idhead .em{font-size:12px;color:var(--ink-500);margin-top:2px}
+  .chip{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;text-decoration:none}
+  .chip.pink{background:var(--pink-50);color:var(--pink-700)}
+  .chip.pink .mg{opacity:.6;font-weight:500;text-transform:none;letter-spacing:0}
+  .chip.ink{background:var(--ink-100);color:var(--ink-700)}
+  .chip.role{background:var(--ink-900);color:var(--neon)}
+  .sec{border-top:1px solid var(--ink-100);margin-top:6px;padding-top:6px}
+  .slab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-400);padding:6px 16px 4px}
+  .row{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:13px;color:var(--ink-700);text-decoration:none;cursor:pointer;background:none;border:none;width:100%;text-align:left;font-family:inherit}
+  .row:hover{background:var(--ink-50)}
+  .row svg{width:16px;height:16px;stroke:var(--ink-500);flex:0 0 auto}
+  .row .grow{flex:1}
+  .row .chev{color:var(--ink-400);font-size:14px}
+  .row.signout{color:var(--ink-700)}
+  /* ---- brand cards (creator) ---- */
+  .bcard{display:flex;align-items:center;gap:10px;margin:6px 10px 0;padding:9px 10px;border:1px solid var(--ink-200);border-radius:10px;cursor:pointer;background:#fff}
+  .bcard:hover{border-color:var(--pink);background:var(--pink-50)}
+  .bcard.active{border-color:var(--pink);box-shadow:0 0 0 1px var(--pink)}
+  .bsw{width:32px;height:32px;border-radius:8px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff}
+  .bcard .bn{font-size:13px;font-weight:600;line-height:1.2}
+  .bcard .bh{font-size:11px;color:var(--ink-500)}
+  .bcard .ck{margin-left:auto;color:var(--pink);font-weight:800;font-size:14px}
+  .bcard .mgl{margin-left:auto;font-size:11px;color:var(--ink-400)}
+  .addbrand{display:flex;align-items:center;gap:8px;margin:8px 10px 2px;padding:8px 10px;border:1px dashed var(--ink-200);border-radius:10px;font-size:12.5px;color:var(--ink-500);cursor:pointer;background:none;width:calc(100% - 20px);font-family:inherit}
+  .addbrand:hover{border-color:var(--pink);color:var(--pink-700)}
+  .upnudge{margin:8px 12px 2px;padding:9px 12px;border-radius:10px;background:var(--ink-900);color:#fff;font-size:12px;line-height:1.45}
+  .upnudge b{color:var(--neon)}
+  .tiertoggle{display:inline-flex;gap:4px;margin-bottom:12px;background:#fff;border:1px solid var(--ink-200);border-radius:999px;padding:3px}
+  .tiertoggle button{border:none;background:none;font:600 12px Inter;padding:5px 14px;border-radius:999px;cursor:pointer;color:var(--ink-500)}
+  .tiertoggle button.on{background:var(--ink-900);color:#fff}
+  /* ---- company card (partner) ---- */
+  .ccard{display:flex;align-items:center;gap:10px;margin:8px 10px 2px;padding:9px 10px;border:1px solid var(--ink-200);border-radius:10px;cursor:pointer}
+  .ccard:hover{background:var(--ink-50)}
+  .ccard .bsw{background:var(--ink-900);border-radius:8px}
+  .ccard .lab{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-400)}
+  .ccard .bn{font-size:13px;font-weight:600}
+  /* ---- admin shortcuts ---- */
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px 12px 4px}
+  .tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px 10px;border:1px solid var(--ink-200);border-radius:10px;font-size:11px;font-weight:600;color:var(--ink-700);cursor:pointer;background:#fff;font-family:inherit}
+  .tile:hover{background:var(--ink-50)}
+  .tile svg{width:18px;height:18px;stroke:var(--ink-700)}
+  .badge{position:absolute;top:6px;right:8px;background:var(--pink);color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px}
+  /* ---- sliding panels (admin) ---- */
+  .slider{position:relative;overflow:hidden}
+  .panel{transition:transform .22s cubic-bezier(.4,0,.2,1)}
+  .panel.away{position:absolute;inset:0;transform:translateX(-100%)}
+  .panel.sub{position:absolute;top:0;left:0;width:100%;transform:translateX(100%);background:#fff}
+  .slider.drilled .panel.main{transform:translateX(-100%)}
+  .slider.drilled .panel.sub.open{transform:translateX(0);position:relative}
+  .back{display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:13px;font-weight:700;border-bottom:1px solid var(--ink-100);cursor:pointer;background:none;border-left:none;border-right:none;border-top:none;width:100%;font-family:inherit;font-family:'Bricolage Grotesque',sans-serif}
+  .back:hover{background:var(--ink-50)}
+  .src{font-size:10.5px;color:var(--ink-400);padding:8px 16px 4px;font-style:italic}
+</style>
+</head>
+<body>
+<h1>Account menus v2 <span style="color:var(--pink)">·</span> mockup</h1>
+<p class="sub">Creator (brand cards, tier-aware) · Partner (company card + status chip) · Admin (Facebook-style panel with sliding submenus, derived from sidebar-config). All interactive — click around.</p>
+
+<div class="cols">
+
+  <!-- ============ CREATOR ============ -->
+  <div class="col">
+    <h2>Creator</h2>
+    <p class="note">Brand cards replace the lone "Active brand" chip. Toggle the tier to see Maker's upgrade nudge vs Builder/Agency cards. Nav rows removed — sidebar owns them.</p>
+    <div class="tiertoggle" id="tt">
+      <button data-t="maker" onclick="setTier('maker')">Maker</button>
+      <button data-t="builder" class="on" onclick="setTier('builder')">Builder</button>
+      <button data-t="agency" onclick="setTier('agency')">Agency</button>
+    </div>
+    <div class="menu">
+      <div class="idhead">
+        <div class="nm">Mia Torres</div>
+        <div class="em">mia@sunbeamco.com</div>
+        <a class="chip pink" href="#">♛ <span id="tierlbl">Builder</span> plan <span class="mg">· Manage → /settings/plan</span></a>
+      </div>
+      <div class="slab" style="padding-top:10px">Your brands</div>
+      <div id="brands"></div>
+      <div id="brandcta"></div>
+      <div class="sec">
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span class="grow">Plan &amp; billing</span></a>
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span class="grow">Payments</span></a>
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M9 7V4h6v3M5 7h14v13H5zM9 12h6"/></svg><span class="grow">Channels → /channels hub</span></a>
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg><span class="grow">Notifications</span></a>
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="grow">Settings</span></a>
+      </div>
+      <div class="sec">
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/></svg><span class="grow">Help &amp; support</span></a>
+        <button class="row signout"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PARTNER ============ -->
+  <div class="col">
+    <h2>Partner</h2>
+    <p class="note">Company card (ink, correct semantics) replaces the pink "Active brand" chip. Status chip is info-only — no benefit copy. Nav rows removed — the role-skinned sidebar owns them.</p>
+    <div style="height:41px"></div>
+    <div class="menu">
+      <div class="idhead">
+        <div class="nm">Dan Kowalski</div>
+        <div class="em">dan@peakpackco.com</div>
+        <span class="chip ink">✓ Trusted partner</span>
+      </div>
+      <div class="ccard">
+        <span class="bsw">P</span>
+        <span><span class="lab">Company</span><br><span class="bn">Peak Pack Co.</span></span>
+        <span class="chev" style="margin-left:auto;color:var(--ink-400)">›</span>
+      </div>
+      <div class="sec">
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg><span class="grow">Company profile</span></a>
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><span class="grow">Billing</span></a>
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span class="grow">Payments</span></a>
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/><circle cx="9" cy="7" r="4"/></svg><span class="grow">Team</span></a>
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="grow">Settings</span></a>
+      </div>
+      <div class="sec">
+        <a class="row" href="#"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/></svg><span class="grow">Help &amp; support</span></a>
+        <button class="row signout"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ADMIN ============ -->
+  <div class="col">
+    <h2>Admin — Facebook-style</h2>
+    <p class="note">Role chip from RBAC · shortcut grid (badge-bearing work queues) · sliding submenus <b>generated from sidebar-config.ts</b> so labels can never drift. Click "Settings &amp; configuration".</p>
+    <div style="height:41px"></div>
+    <div class="menu wide">
+      <div class="slider" id="slider">
+        <div class="panel main">
+          <div class="idhead">
+            <div class="nm">Pavel Georgiev</div>
+            <div class="em">georgiev.pavel@gmail.com</div>
+            <span class="chip role">⬢ Super Admin</span>
+          </div>
+          <div class="slab" style="padding-top:10px">Shortcuts</div>
+          <div class="grid">
+            <button class="tile"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</button>
+            <button class="tile"><span class="badge">14</span><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>Inbox</button>
+            <button class="tile"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/></svg>Orders</button>
+            <button class="tile"><span class="badge">3</span><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4M12 16h.01"/></svg>Risk Inbox</button>
+            <button class="tile"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"/><circle cx="11.5" cy="14.5" r="2.5"/><path d="M13.25 16.25L15 18"/></svg>Audit Log</button>
+            <button class="tile"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M14.83 9.17l4.24-4.24M9.17 14.83l-4.24 4.24"/></svg>Support</button>
+          </div>
+          <div class="sec">
+            <button class="row" onclick="drill('settings')"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8L7 17M17 7l2.8-2.8"/></svg><span class="grow">Settings &amp; configuration</span><span class="chev">›</span></button>
+            <button class="row" onclick="drill('apps')"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M12 2l9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5"/></svg><span class="grow">Applications</span><span class="chev">›</span></button>
+            <button class="row"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/></svg><span class="grow">Help &amp; support</span><span class="chev">›</span></button>
+          </div>
+          <div class="sec">
+            <button class="row signout"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.75"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>Sign out</button>
+          </div>
+        </div>
+
+        <div class="panel sub" id="sub-settings">
+          <button class="back" onclick="undrill()">‹ &nbsp;Settings &amp; configuration</button>
+          <div class="src">generated from sidebar-config → Settings group (capability-filtered)</div>
+          <a class="row" href="#">Tiers &amp; Plans</a>
+          <a class="row" href="#">Product Domains</a>
+          <a class="row" href="#">Risk Center</a>
+          <a class="row" href="#">Support Policy</a>
+          <a class="row" href="#"><span class="grow">Order Settings</span><span class="chev">›</span></a>
+          <a class="row" href="#">Markets &amp; Regions</a>
+          <a class="row" href="#">Theme Studio</a>
+          <a class="row" href="#"><span class="grow">Integrations &amp; API</span><span class="chev">›</span></a>
+          <a class="row" href="#">Security &amp; Access</a>
+          <a class="row" href="#"><span class="grow">Notifications</span><span class="chev">›</span></a>
+          <a class="row" href="#"><span class="grow">Compliance &amp; Data Rights</span><span class="chev">›</span></a>
+          <a class="row" href="#">Audit Log</a>
+        </div>
+
+        <div class="panel sub" id="sub-apps">
+          <button class="back" onclick="undrill()">‹ &nbsp;Applications</button>
+          <div class="src">generated from sidebar-config → APPLICATIONS region</div>
+          <a class="row" href="#"><span class="grow">Design Studio</span><span class="chev">›</span></a>
+          <a class="row" href="#"><span class="grow">Packaging Studio</span><span class="chev">›</span></a>
+          <a class="row" href="#"><span class="grow">Marketplace</span><span class="chev">›</span></a>
+          <a class="row" href="#"><span class="grow">Academy</span><span class="chev">›</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- creator tier toggle ----
+  const BRANDS=[
+    {n:'Sunbeam Co.',h:'sunbeam',c:'linear-gradient(135deg,#FF7EA8,#FF2E63)'},
+    {n:'Hearth & Oat',h:'hearthoat',c:'linear-gradient(135deg,#7B8CFF,#4A3AFF)'},
+    {n:'Peak Fuel',h:'peakfuel',c:'linear-gradient(135deg,#3DDCA0,#0FA96F)'}
+  ];
+  function setTier(t){
+    document.querySelectorAll('#tt button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+    document.getElementById('tierlbl').textContent=t[0].toUpperCase()+t.slice(1);
+    const n=t==='maker'?1:3;
+    document.getElementById('brands').innerHTML=BRANDS.slice(0,n).map((b,i)=>`
+      <div class="bcard${i===0?' active':''}">
+        <span class="bsw" style="background:${b.c}">${b.n[0]}</span>
+        <span><span class="bn">${b.n}</span><br><span class="bh">/${b.h}</span></span>
+        ${i===0?'<span class="ck">✓</span>':'<span class="mgl">switch</span>'}
+      </div>`).join('');
+    document.getElementById('brandcta').innerHTML = t==='maker'
+      ? `<div class="upnudge">Want another brand? <b>Upgrade to Builder</b> to run multiple brands. → /settings/plan</div>`
+      : `<button class="addbrand">＋ &nbsp;Add brand → /brands/new</button>`;
+  }
+  setTier('builder');
+  // ---- admin drill ----
+  function drill(id){
+    document.getElementById('slider').classList.add('drilled');
+    document.getElementById('sub-'+id).classList.add('open');
+  }
+  function undrill(){
+    document.getElementById('slider').classList.remove('drilled');
+    document.querySelectorAll('.panel.sub').forEach(p=>p.classList.remove('open'));
+  }
+</script>
+</body>
+</html>

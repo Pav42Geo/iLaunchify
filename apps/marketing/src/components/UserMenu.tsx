@@ -122,7 +122,7 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
             )}
             {user.tier && (
               <a
-                href={creatorUrl('/settings/profile')}
+                href={creatorUrl('/settings/plan')}
                 className="inline-flex items-center gap-1.5 mt-2.5 text-[11px] font-bold uppercase tracking-[0.06em] bg-pink-50 text-pink-700 px-2.5 py-1 rounded-pill hover:bg-pink-100 transition-colors group"
               >
                 <Crown strokeWidth={2.5} className="w-3 h-3" />
@@ -168,7 +168,7 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
           <MenuLink href={creatorUrl('/products')} icon={Package} crossApp>
             My products
           </MenuLink>
-          <MenuLink href={creatorUrl('/products')} icon={Truck} crossApp>
+          <MenuLink href={creatorUrl('/orders')} icon={Truck} crossApp>
             Production orders
           </MenuLink>
 
@@ -181,13 +181,14 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
           <MenuLink href={creatorUrl('/settings/payouts')} icon={CreditCard} crossApp>
             Payments
           </MenuLink>
-          <MenuLink href={creatorUrl('/settings/profile')} icon={Settings} crossApp>
+          <MenuLink href={creatorUrl('/settings')} icon={Settings} crossApp>
             Settings
           </MenuLink>
 
           <div className="border-t border-ink-100 my-1" />
 
-          <MenuLink href="/help" icon={HelpCircle} onClick={() => setOpen(false)}>
+          {/* Marketing has no /help route — send to the creator app's help center. */}
+          <MenuLink href={creatorUrl('/help')} icon={HelpCircle} crossApp>
             Help &amp; support
           </MenuLink>
 
