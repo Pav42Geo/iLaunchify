@@ -32,6 +32,10 @@ import {
   LIST_UNSUBSCRIBE_POST,
 } from './unsubscribe'
 import { isInQuietHours } from './preferences'
+import { buildFeedbackLinkPair } from './feedback-token'
+import { FEEDBACK_PROMPTS, isFeedbackPromptKey } from './feedback-prompts'
+import { shouldRenderFeedbackBlock } from './feedback-eligibility'
+import { getFeedbackSignals, getPromptSetting, subjectIdFromPayload } from './feedback-db'
 
 export interface DispatchInput {
   userId: string
@@ -127,11 +131,49 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
       ? buildOneClickUnsubscribeUrl(unsubscribeBaseUrl(), unsubscribeToken)
       : undefined
 
+    // One-click feedback block (docs/FEEDBACK_MODULE.md §3.3): template opts
+    // in via feedbackPrompt; eligibility (fatigue/mandatory/subject rules)
+    // decides per-send; the vote rides in the links. Any failure → no block.
+    let feedbackOpt: { question: string; upUrl: string; downUrl: string } | undefined
+    const feedbackSecret = process.env.FEEDBACK_TOKEN_SECRET
+    const promptKey = override?.feedbackPrompt
+    if (promptKey && feedbackSecret && isFeedbackPromptKey(promptKey)) {
+      try {
+        const subject = subjectIdFromPayload(promptKey, input.data)
+        if (subject) {
+          const [setting, signals] = await Promise.all([
+            getPromptSetting(promptKey),
+            getFeedbackSignals({ userId: user.id, promptKey, ...subject }),
+          ])
+          const eligibility = shouldRenderFeedbackBlock({
+            promptKey,
+            event: input.event,
+            promptEnabled: setting?.enabled,
+            subjectId: subject.subjectId,
+            ...signals,
+          })
+          if (eligibility.render) {
+            const pair = buildFeedbackLinkPair({
+              userId: user.id,
+              promptKey,
+              ...subject,
+              secret: feedbackSecret,
+              baseUrl: unsubscribeBaseUrl(),
+            })
+            feedbackOpt = { question: FEEDBACK_PROMPTS[promptKey].question, ...pair }
+          }
+        }
+      } catch {
+        // feedback is garnish — never block the send
+      }
+    }
+
     const content = resolveNotificationContent(input.event, input.data, {
       templateOverride: override,
       branding,
       audience,
       unsubscribeUrl,
+      feedback: feedbackOpt,
     })
 
     const tasks: Promise<unknown>[] = []
@@ -228,6 +270,8 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
               toEmail: user.email,
               providerMessageId: result.data?.id ?? null,
               status: 'SENT',
+              // Response-rate denominator: which sends carried a feedback ask.
+              detail: feedbackOpt && promptKey ? `feedback-prompt:${promptKey}` : null,
             })
           } catch (err) {
             await prisma.notification

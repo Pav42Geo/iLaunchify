@@ -16,6 +16,9 @@ import { ProductAccordion } from '@/components/ProductAccordion'
 import { RecipeNutritionStudio } from '@/components/RecipeNutritionStudio'
 import { ProductCarousel } from '@/components/ProductCarousel'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
+import { RatingStars, RatingBreakdownPopover } from '@ilaunchify/ui'
+import { getTemplateRatingAndReviews, type TemplateLiveRating } from '@/lib/template-reviews'
+import { TemplateReviewsSection } from './TemplateReviewsSection'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
 import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
 import { getTemplateFlavorRecipes } from '@/lib/flavor-recipe-detail'
@@ -93,6 +96,10 @@ export default async function ProductDetailPage({
   // marketingDetail + longDescription→about) so real templates carry their own.
   // Flavors are overridden from the DB flavor pool below.
   const baseDetail = { ...findTemplateDetail(template.slug), ...(await getTemplateDetailOverrides(template.slug)) }
+
+  // Live manufacturer rating + verified creator reviews (fail-soft — fixture
+  // templates render the legacy RatingRow, no reviews section).
+  const { rating: liveRating, reviews } = await getTemplateRatingAndReviews(template.slug)
 
   // Recipe-derived ingredients + Nutrition Facts — computed from the template's
   // real recipe slots via the nutrition engine (FOOD domain). Overrides the
@@ -336,6 +343,8 @@ export default async function ProductDetailPage({
                 detail={detail}
                 certs={certs}
                 accordionRows={accordionRows}
+                liveRating={liveRating}
+                hasReviews={reviews.length > 0}
               />
             }
           />
@@ -367,6 +376,10 @@ export default async function ProductDetailPage({
           compliance={<ComplianceTab detail={detail} certs={certs} />}
         />
       </section>
+
+      {/* CREATOR REVIEWS (docs/FEEDBACK_MODULE.md §6.2) — verified-only,
+          anchored for the stars popover's "See Creator Reviews" link. */}
+      <TemplateReviewsSection reviews={reviews} />
 
       {/* RELATED */}
       {related.length > 0 && (
@@ -444,6 +457,8 @@ function IdentityColumn({
   detail,
   certs,
   accordionRows,
+  liveRating,
+  hasReviews,
 }: {
   template: SampleTemplate
   detail: ReturnType<typeof findTemplateDetail>
@@ -455,6 +470,8 @@ function IdentityColumn({
     unconditional?: boolean
   }>
   accordionRows: { id: string; title: string; body: React.ReactNode }[]
+  liveRating: TemplateLiveRating | null
+  hasReviews: boolean
 }) {
   return (
     <>
@@ -465,10 +482,26 @@ function IdentityColumn({
         {template.title}
       </h1>
 
-      {/* Rating + social proof — ★★★★★ 4.8 · N launches (prototype). Pink stars
-          per the prototype's `.star{color:var(--pink)}`. Real data: ratingAvg
-          drives the score, ratingCount the launch count; "New" when unrated. */}
-      <RatingRow ratingAvg={template.ratingAvg} launches={template.ratingCount ?? 0} />
+      {/* Rating + social proof (docs/FEEDBACK_MODULE.md §5.4): live manufacturer
+          rating (Bayesian-backed aggregate) with the Amazon-style dimension
+          popover + "See Creator Reviews" anchor when real ratings exist;
+          otherwise the legacy fixture row ("New" when unrated). */}
+      {liveRating ? (
+        <div className="mb-3">
+          <RatingStars mean={liveRating.mean} count={liveRating.count} isNew={liveRating.isNew}>
+            {!liveRating.isNew && (
+              <RatingBreakdownPopover
+                mean={liveRating.mean}
+                count={liveRating.count}
+                dims={liveRating.dims}
+                reviewsHref={hasReviews ? '#creator-reviews' : undefined}
+              />
+            )}
+          </RatingStars>
+        </div>
+      ) : (
+        <RatingRow ratingAvg={template.ratingAvg} launches={template.ratingCount ?? 0} />
+      )}
 
       {/* Key-facts card — DIRECTLY under the title. Format · MOQ · Lead ·
           Process (the manufacturer's production method). Process reads real

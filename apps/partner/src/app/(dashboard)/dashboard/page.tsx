@@ -38,6 +38,24 @@ import {
 } from 'lucide-react'
 import { ActiveWelcomeModal } from './ActiveWelcomeModal'
 import { homeEyebrow, heroQuickActions } from '@/lib/role-skins'
+import { YourRatingCard, type ServiceRatingView, type RatingCommentView } from './YourRatingCard'
+
+// Feedback module §5.4 — display labels for the "Your rating" card.
+const SERVICE_RATING_LABEL: Record<string, string> = {
+  MANUFACTURING: 'Manufacturing',
+  LABEL_PRINTING: 'Print services',
+  COPACKING: 'Co-packing',
+  WAREHOUSE: 'Fulfillment',
+}
+const RATING_ROLE_LABEL: Record<string, string> = {
+  MANUFACTURER: 'Manufacturing',
+  PRINTER: 'Print',
+  COPACKER: 'Co-packing',
+  WAREHOUSE: 'Fulfillment',
+}
+function humanizeDim(slug: string): string {
+  return slug.replace(/[-_]/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+}
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Dashboard — Partners' }
@@ -75,7 +93,14 @@ export default async function ProviderDashboardHome() {
     include: {
       services: {
         where: { id: { in: access.serviceIds } },
-        select: { id: true, type: true },
+        select: {
+          id: true,
+          type: true,
+          // Feedback module §5.4 — the "Your rating" card
+          ratingMean: true,
+          ratingCount: true,
+          ratingDims: true,
+        },
       },
       certificateInstances: {
         select: {
@@ -89,6 +114,30 @@ export default async function ProviderDashboardHome() {
   })
   if (!partner) return null
   const serviceIds = partner.services.map((s) => s.id)
+
+  // Feedback module §5.4 — rating views + latest creator comments.
+  const ratingServices: ServiceRatingView[] = partner.services.map((s) => ({
+    serviceLabel: SERVICE_RATING_LABEL[s.type as string] ?? s.type,
+    mean: s.ratingMean != null ? Number(s.ratingMean) : null,
+    count: s.ratingCount,
+    isNew: s.ratingCount > 0 && s.ratingCount < 3,
+    dims: Object.entries(
+      (s.ratingDims ?? {}) as Record<string, { mean: number; n: number }>,
+    ).map(([slug, v]) => ({ label: humanizeDim(slug), mean: v.mean, n: v.n })),
+  }))
+  const ratingComments: RatingCommentView[] = (
+    await prisma.partnerRating.findMany({
+      where: { partnerServiceId: { in: serviceIds }, comment: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: { comment: true, overall: true, role: true, createdAt: true },
+    })
+  ).map((r) => ({
+    comment: r.comment!,
+    overall: Number(r.overall),
+    roleLabel: RATING_ROLE_LABEL[r.role] ?? r.role,
+    createdAt: r.createdAt.toISOString(),
+  }))
 
   // Role skin (docs/PARTNER_ROLE_ACCOUNTS.md §2) — copy, quick actions and the
   // FC inbound queue all derive from this user's workable service types.
@@ -429,6 +478,11 @@ export default async function ProviderDashboardHome() {
           footerLink={{ href: '/payments', label: 'Payments' }}
           span={5}
         />
+      </section>
+
+      {/* Row 4 — Feedback module §5.4: what creators see, mirrored back */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <YourRatingCard services={ratingServices} comments={ratingComments} span={12} />
       </section>
     </div>
   )

@@ -7,6 +7,7 @@ import {
   CreditCard,
   Wallet,
   Bell,
+  MessageSquareHeart,
   Store,
   ShieldCheck,
   ReceiptText,
@@ -182,6 +183,13 @@ export default async function SettingsPage() {
           href="/settings/notifications"
           cta="Manage notifications"
           description="Choose which order, partner, and support updates you receive — in-app and by email — and set quiet hours."
+        />
+        <SettingCard
+          icon={<MessageSquareHeart className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Give feedback"
+          href="/settings/feedback"
+          cta="Share feedback"
+          description="Tell us what's working, what broke, or what we should build next. Always open — a human reads every one."
         />
       </Section>
     </div>

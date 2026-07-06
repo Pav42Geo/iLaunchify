@@ -56,6 +56,7 @@ export default async function TemplateEditorPage({
           bodyMarkdown: row.bodyMarkdown,
           ctaMode: row.ctaMode,
           ctaLabelOverride: row.ctaLabelOverride,
+          feedbackPrompt: row.feedbackPrompt,
           status: row.status,
           version: row.version,
         }

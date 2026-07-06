@@ -125,6 +125,26 @@ export type {
   TimelineEntryKind,
   OrderTimelineEntry,
 } from './dispatch-timeline'
+// Partner rating engine — dimensions + aggregation math (docs/FEEDBACK_MODULE.md §5).
+export {
+  RATING_DIMENSIONS,
+  ratedRoleForDispatchType,
+  validateDimensionScores,
+  overallFromDimensions,
+  aggregateRatings,
+  BAYESIAN_C,
+  MIN_RATINGS_FOR_DISPLAY,
+  RATING_EDIT_WINDOW_DAYS,
+  RATE_PARTNERS_ASK_AFTER_DAYS,
+  RATE_PARTNERS_REMIND_AFTER_DAYS,
+} from './partner-rating'
+export type {
+  RatedRole,
+  RatingDimensionDef,
+  DimensionScores,
+  RatingAggregate,
+  RatingLike,
+} from './partner-rating'
 export { recomputeAggregateApprovalStatus, computeAggregateStatus } from './aggregate-approval'
 export type { AggregateStatus } from './aggregate-approval'
 export {

@@ -106,6 +106,11 @@ export interface NotificationTemplateOverride {
   ctaMode: TemplateCtaMode
   /** Used when ctaMode is CUSTOM. */
   ctaLabelOverride: string | null
+  /**
+   * FEEDBACK_PROMPTS key — renders the one-click thumbs block on this event's
+   * emails, eligibility-gated at send (docs/FEEDBACK_MODULE.md §3.3). Null = none.
+   */
+  feedbackPrompt: string | null
   /** Only PUBLISHED rows take effect; DRAFT rows are preview-only. */
   status: TemplateStatus
   version: number

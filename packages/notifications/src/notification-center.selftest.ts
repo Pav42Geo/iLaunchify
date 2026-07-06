@@ -196,6 +196,7 @@ const override: NotificationTemplateOverride = {
   bodyMarkdown: 'Order **{{orderId}}** is waiting.\n\nAccept it in your dashboard.',
   ctaMode: 'CUSTOM',
   ctaLabelOverride: 'Accept {{brandName}} job',
+  feedbackPrompt: null,
   status: 'PUBLISHED',
   version: 2,
 }

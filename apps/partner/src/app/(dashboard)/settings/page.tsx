@@ -4,6 +4,7 @@ import {
   Wallet,
   CreditCard,
   Bell,
+  MessageSquareHeart,
   ShieldCheck,
   FileText,
   SlidersHorizontal,
@@ -206,6 +207,13 @@ export default async function SettingsPage() {
           href="/certifications"
           cta="Manage certifications"
           description="Keep your facility and product certifications current — they gate marketplace eligibility and partner trust."
+        />
+        <SettingCard
+          icon={<MessageSquareHeart className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Give feedback"
+          href="/settings/feedback"
+          cta="Share feedback"
+          description="Tell us what's working, what broke, or what we should build next. Always open — a human reads every one."
         />
       </Section>
     </div>

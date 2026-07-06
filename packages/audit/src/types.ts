@@ -126,6 +126,10 @@ export const AUDIT_ENTITY_TYPES = [
   'NotificationTemplate', // per-event body override — draft/publish/rollback/enable
   'NotificationBranding', // global email chrome singleton
   'NotificationPreference', // user category × channel opt-outs (incl. one-click unsubscribe)
+  // Feedback module (docs/FEEDBACK_MODULE.md, 2026-07-05)
+  'FeedbackResponse', // account-form submissions + admin triage actions
+  'PartnerRating', // creator → partner dimensional ratings (submit/edit)
+  'ProductReview', // verified creator reviews (submit/edit/moderation)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

@@ -211,6 +211,7 @@ export async function previewTemplate(input: TemplateDraftInput): Promise<
     bodyMarkdown: input.bodyMarkdown?.trim() || null,
     ctaMode: input.ctaMode,
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
+    feedbackPrompt: null, // Stage 4 adds the editor field; preview shows the block then
     status: 'DRAFT',
     version: 0,
   }

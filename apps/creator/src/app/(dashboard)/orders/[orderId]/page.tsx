@@ -417,6 +417,29 @@ export default async function OrderDetailPage({
           )}
         </section>
 
+        {/* Feedback module §5 — rate-your-partners nudge once delivered */}
+        {isDelivered && (
+          <Link
+            href={`/orders/${order.id}/rate`}
+            className="flex items-center justify-between gap-3 rounded-xl border border-ink-200 bg-[var(--bg-hero)] px-4 py-3 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="h-4 w-4 text-pink-700" aria-hidden="true" />
+              <div>
+                <div className="text-[13.5px] font-semibold text-ink-900">
+                  How did your partners do?
+                </div>
+                <div className="text-[12px] text-ink-600">
+                  Rate each partner + review your product — under a minute, shapes who wins work.
+                </div>
+              </div>
+            </div>
+            <span className="shrink-0 rounded-full bg-ink-900 px-3.5 py-1.5 text-[12px] font-semibold text-white">
+              Rate now
+            </span>
+          </Link>
+        )}
+
         {/* F — live production timeline: FSM state stamps + partner progress
             updates (notes / revised ETAs / milestones) merged into one running
             story (docs/EMAIL_NOTIFICATION_CENTER.md Part 3). */}

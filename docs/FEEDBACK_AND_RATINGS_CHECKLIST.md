@@ -30,16 +30,16 @@ FC value-added services admin-verified before ACTIVE.
 - [ ] **[PAVEL]** `pnpm db:push` → `pnpm db:generate` → `rm -rf apps/*/.next` → restart · add `FEEDBACK_TOKEN_SECRET` to `.env.local`
 - [ ] **[CW]** post-generate de-cast (`categories.ts` / `template-tokens.ts` enum keys)
 
-## Stage 3 — feedback + rating + review surfaces (CW)
-- [ ] Marketing `/feedback` token page (GET-records vote → tags + comment enrich; late/invalid states) (FB-C)
-- [ ] Creator + partner `settings/feedback` general form + menu items (FB-C)
-- [ ] Dispatcher wiring: feedback block on outcome events, recency-gated; EmailDelivery prompt stamp (FB-B)
-- [ ] `RATING_DIMENSIONS` registry + pure aggregation engine (means, Bayesian C=10, min-N) (FB-F)
-- [ ] Creator rating page (card per dispatch, star rows) + delivered-order nudge + submit action (audit + aggregate recompute) (FB-F)
-- [ ] Delivery+3d cron (rating+review combined email, +10d single reminder) (FB-F/G)
-- [ ] Review step (stars/title/body/photos) + product-page reviews section + stars popover "See Creator Reviews" + explainer (FB-G)
-- [ ] `RatingStars` + `RatingBreakdownPopover` (@ilaunchify/ui) — replace hardcoded product-detail stars (FB-F)
-- [ ] Partner dashboard "Your rating" card (FB-F)
+## Stage 3 — feedback + rating + review surfaces — **BUILT 2026-07-05 (CW)**
+- [x] Marketing `/feedback` token page — GET records the vote (re-click = "updated"), score-appropriate tag chips + comment enrich (token re-verified as auth), late banner, invalid → guidance (FB-C)
+- [x] Creator + partner `settings/feedback` general form (Experience/Bug vs Idea, optional thumbs, audited) + Settings cards in both apps (FB-C)
+- [x] Dispatcher wiring: `feedbackPrompt` templates render the block, eligibility-gated (fatigue/mandatory/subject/recency via `getFeedbackSignals`), links via `buildFeedbackLinkPair`; EmailDelivery stamped `feedback-prompt:<key>` (response-rate denominator) (FB-B)
+- [x] `RATING_DIMENSIONS` registry (4 concrete metrics × 4 roles) + pure aggregation engine (per-response overall = dim mean; display mean; Bayesian C=10 w/ per-role prior; min-N=3 "New") — `packages/orders/src/partner-rating.ts` + vitest + node math checks (FB-F)
+- [x] Creator rating page `/orders/[orderId]/rate` (card per DELIVERED dispatch, tap-a-star rows w/ sublabels, optional comment, 30d edit window) + delivered-order "Rate now" nudge + submit action (ownership + state gates, audit, single-writer aggregate recompute onto PartnerService) (FB-F)
+- [x] Delivery+3d cron `api/cron/rate-partners` (CREATOR_RATE_PARTNERS, +10d single reminder, Notification-row ledger = idempotent, skips engaged orders, 60d lookback bound) (FB-F/G)
+- [x] Review step (stars/title/body/photos → R2 `reviews/…` keys, 4×10MB cap) + product-page `#creator-reviews` section (verified-only copy, histogram, photo lightbox links, "Verified order" badge) + stars popover "See Creator Reviews" anchor (FB-G)
+- [x] `RatingStars` + `RatingBreakdownPopover` (@ilaunchify/ui, brand-pink stars, fractional fill, "New" below min-N) — marketplace detail header now renders the LIVE manufacturer aggregate (via `manufacturerServiceId`; reviews joined via `Product.productTemplateId`), fixture RatingRow kept as fallback (FB-F)
+- [x] Partner dashboard "Your rating" card (per-service overall + dimension bars + latest creator comments — the creators'-eye mirror) (FB-F)
 
 ## Stage 4 — admin (CW)
 - [ ] Notifications → **Feedback** surface (KPIs, chips, triage, auto-ticket on DOWN+comment) (FB-D)

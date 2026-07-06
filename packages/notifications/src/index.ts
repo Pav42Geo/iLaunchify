@@ -68,6 +68,15 @@ export {
   type FeedbackEligibility,
   type FeedbackEligibilityInput,
 } from './feedback-eligibility'
+// Feedback DB layer (FB-B/C) — vote/enrich/account-form + dispatcher signals.
+export {
+  recordFeedbackVote,
+  enrichFeedback,
+  submitAccountFeedback,
+  getFeedbackSignals,
+  getPromptSetting,
+  subjectIdFromPayload,
+} from './feedback-db'
 export type { EmailHeaderLink } from './center-types'
 // Resend inbound webhook engine (checklist E) — Svix verify + parse + record.
 export {

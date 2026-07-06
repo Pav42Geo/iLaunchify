@@ -48,6 +48,7 @@ export async function getNotificationBranding(): Promise<Partial<NotificationBra
     if (!row) return placementLogo ? { logoUrl: placementLogo } : null
     return {
       logoUrl: row.logoUrl ?? placementLogo,
+      headerLinks: (row.headerLinks as NotificationBrandingConfig['headerLinks'] | null) ?? null,
       brandName: row.brandName,
       accentHex: row.accentHex,
       inkHex: row.inkHex,
@@ -81,6 +82,7 @@ export async function getTemplateOverride(
       bodyMarkdown: row.bodyMarkdown,
       ctaMode: row.ctaMode,
       ctaLabelOverride: row.ctaLabelOverride,
+      feedbackPrompt: row.feedbackPrompt,
       status: row.status,
       version: row.version,
     }
