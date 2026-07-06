@@ -12,6 +12,7 @@ import {
   saveRotationPolicy,
   saveManufacturerWeights,
   saveDispatchLifecycle,
+  saveFcWeights,
   setExcludeFromAutoRotation,
   type PolicyContext,
   type PrintPreviewResult,
@@ -127,37 +128,7 @@ export function RotationControls({
 
       {tab === 'FC' && (
         <div className="space-y-5">
-          <section className="rounded-2xl border border-ink-200 bg-white p-5">
-            <h2 className="font-display text-[15px] font-semibold text-ink-900">
-              FC scorer weights (live)
-            </h2>
-            <p className="mt-1 text-[12.5px] text-ink-600">
-              The V1.5 weighted scorer + rotation band stays authoritative for FC selection
-              until SR-4 layers pool/mode controls on top. Edit weights at{' '}
-              <a href="/order-settings/shipping" className="font-medium text-pink-700 hover:underline">
-                Order settings → Shipping &amp; Fulfillment
-              </a>
-              .
-            </p>
-            <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-2 text-[13px] sm:grid-cols-4">
-              {(
-                [
-                  ['Cost', fcWeights.cost],
-                  ['Distance', fcWeights.distance],
-                  ['SLA', fcWeights.sla],
-                  ['Capacity', fcWeights.capacity],
-                  ['Rotation fairness', fcWeights.rotation],
-                  ['Storage match', fcWeights.storageMatch],
-                  ['Indifference band', `${fcWeights.bandPct}%`],
-                ] as const
-              ).map(([label, v]) => (
-                <div key={label}>
-                  <dt className="text-[11px] uppercase tracking-wide text-ink-500">{label}</dt>
-                  <dd className="font-semibold text-ink-900">{v}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+          <FcWeightsEditor initial={fcWeights} />
           <section className="rounded-2xl border border-dashed border-ink-300 bg-ink-50/40 p-5 text-[13px] text-ink-500">
             SR-4 — pool size / split mode / new-node exposure for FCs lands here, driven by the
             WAREHOUSE policy row (currently {fcPolicy.exists ? 'created' : 'not created'},{' '}
@@ -630,6 +601,119 @@ function PolicyForm({ initial }: { initial: RotationPolicyView }) {
         </button>
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// FC scorer weights — now editable in the center (was a dead pointer)
+// ---------------------------------------------------------------------------
+
+function FcWeightsEditor({
+  initial,
+}: {
+  initial: {
+    cost: number
+    distance: number
+    sla: number
+    capacity: number
+    rotation: number
+    storageMatch: number
+    bandPct: number
+  }
+}) {
+  const [w, setW] = useState(initial)
+  const [isSaving, startSaving] = useTransition()
+  const weightSum = w.cost + w.distance + w.sla + w.capacity + w.rotation + w.storageMatch
+  const norm = (n: number) => (weightSum > 0 ? `${Math.round((n / weightSum) * 100)}%` : '—')
+
+  function patch(key: keyof typeof w, value: number) {
+    setW((prev) => ({ ...prev, [key]: Math.max(0, Math.min(100, value || 0)) }))
+  }
+  function save() {
+    startSaving(async () => {
+      const res = await saveFcWeights({
+        fcCostWeightPct: w.cost,
+        fcDistanceWeightPct: w.distance,
+        fcSlaWeightPct: w.sla,
+        fcCapacityWeightPct: w.capacity,
+        fcRotationWeightPct: w.rotation,
+        fcStorageMatchWeightPct: w.storageMatch,
+        fcRotationBandPct: w.bandPct,
+      })
+      if (!res.ok) return void toast.error(res.error)
+      toast.success('FC scorer weights saved — live at checkout.')
+    })
+  }
+
+  const inputCls =
+    'w-24 rounded-lg border border-ink-200 px-2.5 py-1.5 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500'
+
+  // [key, label, hint, renormalized?] — SLA shows a note (no per-node data in V1.5).
+  const rows: Array<[keyof typeof w, string, string, boolean]> = [
+    ['cost', 'Cost', 'Freight cost proxy (distance stands in until real quotes)', true],
+    ['distance', 'Distance', 'Manufacturer → FC proximity', true],
+    ['sla', 'SLA', 'No per-node SLA data yet — auto-drops from the mix', false],
+    ['capacity', 'Capacity', 'Receiving headroom vs. order size', true],
+    ['rotation', 'Rotation fairness', 'Least-recently-awarded within the band', true],
+    ['storageMatch', 'Storage match', 'Temp/hazmat class fit', true],
+  ]
+
+  return (
+    <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <h2 className="font-display text-[15px] font-semibold text-ink-900">FC scorer weights</h2>
+      <p className="mt-1 text-[12.5px] text-ink-600">
+        The weighted scorer for fulfillment-center selection (live at checkout). Weights are
+        relative — renormalized over the dimensions that have data for each order.
+      </p>
+      <div className="mt-4 space-y-3">
+        {rows.map(([key, label, hint, renorm]) => (
+          <div key={key} className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[13px] font-medium text-ink-800">{label}</div>
+              <div className="text-[11.5px] text-ink-500">
+                {hint}
+                {renorm ? ` · ${norm(w[key])} effective` : ''}
+              </div>
+            </div>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={w[key]}
+              onChange={(e) => patch(key, parseInt(e.target.value, 10))}
+              className={inputCls}
+              aria-label={`${label} weight`}
+            />
+          </div>
+        ))}
+        <div className="flex items-center justify-between gap-4 border-t border-ink-100 pt-3">
+          <div className="min-w-0">
+            <div className="text-[13px] font-medium text-ink-800">Indifference band %</div>
+            <div className="text-[11.5px] text-ink-500">
+              Candidates within this % of the best score rotate (least-recently-awarded wins)
+            </div>
+          </div>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={w.bandPct}
+            onChange={(e) => patch('bandPct', parseInt(e.target.value, 10))}
+            className={inputCls}
+            aria-label="Indifference band percent"
+          />
+        </div>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={save}
+          disabled={isSaving}
+          className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60"
+        >
+          {isSaving ? 'Saving…' : 'Save FC weights'}
+        </button>
+      </div>
+    </section>
   )
 }
 

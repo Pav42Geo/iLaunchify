@@ -365,6 +365,48 @@ export async function saveManufacturerWeights(
   return r.ok ? { ok: true, data: null } : { ok: false, error: r.error }
 }
 
+export interface FcWeightsInput {
+  fcCostWeightPct: number
+  fcDistanceWeightPct: number
+  fcSlaWeightPct: number
+  fcCapacityWeightPct: number
+  fcRotationWeightPct: number
+  fcStorageMatchWeightPct: number
+  fcRotationBandPct: number
+}
+
+/** FC scorer weights + indifference band — consumed live by checkout FC
+ *  selection (readFcScoringWeights). Previously editable nowhere (the pointer to
+ *  Order settings was dead); now the FC tab owns them. Admin-gated + audited. */
+export async function saveFcWeights(input: FcWeightsInput): Promise<Result<null>> {
+  const gate = await requireCapability('billing:write')
+  const clamp = (n: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, Math.floor(Number(n) || 0)))
+  const data = {
+    fcCostWeightPct: clamp(input.fcCostWeightPct, 0, 100),
+    fcDistanceWeightPct: clamp(input.fcDistanceWeightPct, 0, 100),
+    fcSlaWeightPct: clamp(input.fcSlaWeightPct, 0, 100),
+    fcCapacityWeightPct: clamp(input.fcCapacityWeightPct, 0, 100),
+    fcRotationWeightPct: clamp(input.fcRotationWeightPct, 0, 100),
+    fcStorageMatchWeightPct: clamp(input.fcStorageMatchWeightPct, 0, 100),
+    fcRotationBandPct: clamp(input.fcRotationBandPct, 0, 100),
+    updatedById: gate.id,
+  }
+  await prisma.orderSettings.upsert({
+    where: { id: 'default' },
+    update: data,
+    create: { id: 'default', ...data },
+  })
+  await logAuditAs(gate, {
+    entityType: 'OrderSettings',
+    entityId: 'default',
+    action: 'FC_SCORING_WEIGHTS_SAVED',
+    payload: data,
+  })
+  revalidatePath('/routing-rotation')
+  return { ok: true, data: null }
+}
+
 export interface DispatchLifecycleInput {
   acceptWindowHours: number
   maxReroutes: number
