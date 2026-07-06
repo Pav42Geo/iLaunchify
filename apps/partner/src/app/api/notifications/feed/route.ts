@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server'
 import { auth } from '@ilaunchify/auth'
-import { listNotifications, countUnread } from '@ilaunchify/notifications'
+import { listNotifications, countUnread, categoryForEvent } from '@ilaunchify/notifications'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -17,5 +17,9 @@ export async function GET() {
     listNotifications(session.user.id, { limit: 20 }),
     countUnread(session.user.id),
   ])
-  return NextResponse.json({ notifications, unread })
+  return NextResponse.json({
+    // category drives the bell row's glyph + tone (in-app P1 §4).
+    notifications: notifications.map((n) => ({ ...n, category: categoryForEvent(n.event) })),
+    unread,
+  })
 }

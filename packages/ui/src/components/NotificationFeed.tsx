@@ -8,8 +8,9 @@
 // passes serializable rows only.
 
 import Link from 'next/link'
-import { Mail, Inbox, Archive } from 'lucide-react'
+import { Archive } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { notificationCategoryMeta, toneClasses } from './notification-categories'
 
 export interface NotificationFeedItem {
   id: string
@@ -20,6 +21,8 @@ export interface NotificationFeedItem {
   createdAt: string
   /** Human category label ("Orders", "Support") — shown in row meta. */
   categoryLabel: string
+  /** Category slug — drives the row's icon + tone (notification-categories). */
+  categorySlug?: string
 }
 
 export interface NotificationFeedProps {
@@ -63,7 +66,6 @@ export function NotificationFeed({
   accent = 'pink',
   archiveAction,
 }: NotificationFeedProps) {
-  const unreadIcon = accent === 'pink' ? 'text-pink-600' : 'text-info-600'
   const unreadRow =
     accent === 'pink' ? 'border-pink-200 bg-pink-50/30' : 'border-info-200 bg-info-50/30'
   const chipOn = 'bg-ink-900 text-white border-ink-900'
@@ -115,6 +117,8 @@ export function NotificationFeed({
         <ul className="space-y-2">
           {items.map((n) => {
             const isUnread = !n.readAt
+            const meta = notificationCategoryMeta(n.categorySlug)
+            const tone = toneClasses(meta.tone)
             const inner = (
               <div
                 className={cn(
@@ -123,12 +127,17 @@ export function NotificationFeed({
                   n.link && 'hover:bg-ink-50',
                 )}
               >
-                <div className="mt-0.5 shrink-0">
-                  {isUnread ? (
-                    <Mail className={cn('h-4 w-4', unreadIcon)} />
-                  ) : (
-                    <Inbox className="h-4 w-4 text-ink-300" />
+                {/* Category glyph — tone-tinted chip (in-app P1 §4); muted once read. */}
+                <div
+                  className={cn(
+                    'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+                    isUnread ? tone.chip : 'bg-ink-50',
                   )}
+                >
+                  <meta.icon
+                    strokeWidth={1.75}
+                    className={cn('h-4 w-4', isUnread ? tone.icon : 'text-ink-300')}
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className={cn('text-[14px] text-ink-900', isUnread && 'font-semibold')}>

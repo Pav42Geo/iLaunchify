@@ -15,7 +15,6 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma, getOrderSettings } from '@ilaunchify/db'
-import type { NotificationEvent } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import {
   computeCancellationOutcome,
@@ -149,7 +148,7 @@ export async function requestOrderCancellation({
     admins.map((a) =>
       dispatchNotification({
         userId: a.id,
-        event: 'ORDER_CANCELLATION_REQUESTED' as NotificationEvent,
+        event: 'ORDER_CANCELLATION_REQUESTED',
         data: { orderId: order.id },
         audience: 'admin',
       }),

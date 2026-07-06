@@ -13,8 +13,9 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { Bell, Check, CheckCheck } from 'lucide-react'
+import { Bell, CheckCheck } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { notificationCategoryMeta, toneClasses } from './notification-categories'
 
 export interface NotificationBellItem {
   id: string
@@ -24,6 +25,8 @@ export interface NotificationBellItem {
   link: string | null
   readAt: string | null
   createdAt: string
+  /** Category slug (feed API computes it) — drives the row glyph + tone. */
+  category?: string
 }
 
 interface FeedResponse {
@@ -188,6 +191,8 @@ export function NotificationBell({
               <ul className="divide-y divide-ink-100">
                 {data.notifications.slice(0, 8).map((n) => {
                   const isUnread = !n.readAt
+                  const meta = notificationCategoryMeta(n.category)
+                  const tone = toneClasses(meta.tone)
                   const content = (
                     <div
                       className={cn(
@@ -195,11 +200,26 @@ export function NotificationBell({
                         isUnread && accentTint,
                       )}
                     >
-                      <div className="mt-1 shrink-0">
-                        {isUnread ? (
-                          <span className={cn('block h-2 w-2 rounded-full', accentDot)} />
-                        ) : (
-                          <Check className="h-3 w-3 text-ink-300" />
+                      {/* Category glyph (in-app P1 §4) + unread dot overlay. */}
+                      <div className="relative mt-0.5 shrink-0">
+                        <span
+                          className={cn(
+                            'flex h-7 w-7 items-center justify-center rounded-lg',
+                            isUnread ? tone.chip : 'bg-ink-50',
+                          )}
+                        >
+                          <meta.icon
+                            strokeWidth={1.75}
+                            className={cn('h-4 w-4', isUnread ? tone.icon : 'text-ink-300')}
+                          />
+                        </span>
+                        {isUnread && (
+                          <span
+                            className={cn(
+                              'absolute -right-0.5 -top-0.5 block h-2 w-2 rounded-full ring-2 ring-white',
+                              accentDot,
+                            )}
+                          />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">

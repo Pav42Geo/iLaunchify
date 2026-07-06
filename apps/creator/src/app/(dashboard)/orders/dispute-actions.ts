@@ -25,7 +25,7 @@ async function notifyAdminsDisputeOpened(orderId: string, category?: string): Pr
     admins.map((a) =>
       dispatchNotification({
         userId: a.id,
-        event: 'ORDER_DISPUTE_OPENED' as NotificationEvent,
+        event: 'ORDER_DISPUTE_OPENED',
         data: { orderId, ...(category ? { category } : {}) },
         audience: 'admin',
       }),

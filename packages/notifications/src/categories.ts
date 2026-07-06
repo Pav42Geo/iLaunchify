@@ -105,13 +105,9 @@ export const NOTIFICATION_CATEGORIES: Record<
  * that's intentional (every event MUST belong to exactly one group).
  */
 export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug> = {
-  // Cast-guard (in-app P1 split, docs/POST_PUSH_CASTGUARD_CLEANUP.md): these two
-  // enum values land with the next db:push + db:generate — inline them as plain
-  // keys and delete this spread once the client knows them.
-  ...({
-    ORDER_CANCELLATION_REQUESTED: 'cancellations',
-    ORDER_DISPUTE_OPENED: 'cancellations',
-  } as unknown as Partial<Record<NotificationEvent, NotificationCategorySlug>>),
+  // In-app P1 split of ORDER_NEEDS_ATTENTION (de-cast 2026-07-06 after push).
+  ORDER_CANCELLATION_REQUESTED: 'cancellations',
+  ORDER_DISPUTE_OPENED: 'cancellations',
   // Account & security (mandatory)
   SECTION_VERIFIED: 'account',
   SECTION_NEEDS_CHANGES: 'account',

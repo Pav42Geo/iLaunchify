@@ -106,8 +106,19 @@ Every IN_APP template conforms to:
    (admin app, CRON_SECRET, suggested daily 04:00); bell + feed + unread count exclude archived.
    ⚠️ Until the push runs, archive buttons + the new events fail at runtime (dispatcher
    swallows event errors; archive updateMany will error) — run the incantation before testing.
-6. Zod payload schemas per event in `packages/notifications`. (open)
-7. Category icon + tone accent on bell/feed rows (per §4). (open)
+6. Payload validation — ✅ DONE 2026-07-06. `payload-required.ts`: compile-checked
+   REQUIRED_PAYLOAD_KEYS map (keys verified against TemplateData) + `missingPayloadKeys()`
+   guard in the dispatcher — console.error on missing required keys, never blocks delivery.
+   (zod skipped deliberately: not a package dep; existence checks at the dispatch seam
+   catch the actual failure mode — "undefined" rendered into copy.)
+7. Category icon + tone — ✅ DONE 2026-07-06. `packages/ui notification-categories.tsx`
+   (slug → lucide glyph + tone: action=pink / danger=money-SLA / info=ink) rendered on
+   bell rows (glyph chip + unread dot overlay) and feed rows; feed APIs + pages now carry
+   the category slug.
+
+NOTE: Pavel ran db:push + db:generate mid-build — all P1 cast-guards were de-cast same day
+(query.ts, categories.ts, template-tokens.ts, payload-required.ts, both emit sites). No
+cleanup debt remains from this phase.
 
 P0 item 4 also ✅ BUILT 2026-07-06 (same gate): `ORDER_CANCELLATION_REQUESTED` +
 `ORDER_DISPUTE_OPENED` enum values + templates (deep-link to /cancellations and /disputes

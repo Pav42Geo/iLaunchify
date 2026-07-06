@@ -105,6 +105,7 @@ export default async function NotificationsPage({
           readAt: n.readAt ? n.readAt.toISOString() : null,
           createdAt: n.createdAt.toISOString(),
           categoryLabel: categoryConfig(categoryForEvent(n.event)).label,
+          categorySlug: categoryForEvent(n.event),
         }))}
       />
     </div>

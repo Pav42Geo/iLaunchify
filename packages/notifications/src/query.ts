@@ -3,12 +3,9 @@
 import { prisma } from '@ilaunchify/db'
 import type { Notification, NotificationEvent } from '@ilaunchify/db'
 
-// Cast-guard (in-app P1, docs/POST_PUSH_CASTGUARD_CLEANUP.md): Notification.archivedAt
-// lands with the next `pnpm db:push && pnpm db:generate`. The Record<string, never>
-// spread typechecks against the stale client; inline `archivedAt: null` directly and
-// delete these once the client knows the column.
-const NOT_ARCHIVED = { archivedAt: null } as unknown as Record<string, never>
-const SET_ARCHIVED = () => ({ archivedAt: new Date() }) as unknown as Record<string, never>
+// De-cast 2026-07-06 (was cast-guarded pre-push) — archivedAt is in the client.
+const NOT_ARCHIVED = { archivedAt: null } as const
+const SET_ARCHIVED = () => ({ archivedAt: new Date() })
 
 /**
  * In-app notifications for a user, newest first. Defaults to a 50-row cap

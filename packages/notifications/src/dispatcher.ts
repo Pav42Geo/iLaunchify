@@ -17,6 +17,7 @@ import { Resend } from 'resend'
 import type { NotificationEvent } from '@ilaunchify/db'
 import { resolveNotificationContent } from './resolve-content'
 import { categoryForEvent, isCategoryOptOutable, shouldDeliver } from './categories'
+import { missingPayloadKeys } from './payload-required'
 import {
   getCategoryPreferenceRows,
   getNotificationBranding,
@@ -104,6 +105,17 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
         : user.role === 'CREATOR'
           ? 'creator'
           : 'partner')
+
+    // Payload guard (in-app P1) — warn loudly on missing required keys so a
+    // bad dispatch call can't silently render "undefined" into user-facing
+    // copy. Never blocks delivery (notifications must not break business ops).
+    const missing = missingPayloadKeys(input.event, input.data)
+    if (missing.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[notifications] ${input.event} payload is missing required key(s): ${missing.join(', ')} — template will render incomplete copy`,
+      )
+    }
 
     const category = categoryForEvent(input.event)
     const optOutable = isCategoryOptOutable(category)
