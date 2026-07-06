@@ -1,23 +1,29 @@
 'use client'
 
-// Right cluster for the creator dashboard topbar (REBUILD R1.3).
+// Right cluster for the creator dashboard topbar (REBUILD R1.3 · menu v2
+// 2026-07-06, docs/ACCOUNT_MENUS_PROPOSAL.md).
 //
-// Heart · Notifications bell · BrandSwitcher (when ≥2 brands) ·
-// AppHeaderUserMenu with creator-specific menu items.
+// Heart · Notifications bell · BrandSwitcher (when ≥2 brands, fast-switch
+// path) · AppHeaderUserMenu v2 with tier-aware brand cards.
+//
+// Menu contract (Pavel 2026-07-06): identity + brand cards + ONE work
+// shortcut (Orders) + account section. The sidebar owns the rest of nav —
+// don't add rows back without a decision.
 
 import { AppHeaderIconButton, AppHeaderUserMenu } from '@ilaunchify/ui'
 import {
   Heart,
-  LayoutDashboard,
-  Layers,
-  Package,
   ShoppingBag,
   Plug,
   CreditCard,
+  Crown,
+  Bell,
   Settings,
   HelpCircle,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useTransition } from 'react'
 import { BrandSwitcher, type BrandOption } from './BrandSwitcher'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 
@@ -29,7 +35,15 @@ interface Props {
   /** @deprecated — the live NotificationBell polls its own unread count. */
   hasUnreadNotifications?: boolean
   tier?: 'maker' | 'builder' | 'agency' | null
+  /** Brand-kit cap for the tier (BRAND_LIMITS[tier].kits). Infinity-safe:
+      pass Number.POSITIVE_INFINITY for agency. */
+  brandCap?: number
 }
+
+// Same cookie the BrandSwitcher writes — brand-scoped server components
+// re-read it after router.refresh().
+const COOKIE_NAME = 'active_brand_id'
+const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 
 export function TopbarRight({
   email,
@@ -37,8 +51,19 @@ export function TopbarRight({
   brands,
   activeBrandId,
   tier = null,
+  brandCap,
 }: Props) {
-  const activeBrand = brands.find((b) => b.id === activeBrandId) ?? brands[0]
+  const router = useRouter()
+  const [, startTransition] = useTransition()
+
+  function switchBrand(brandId: string) {
+    document.cookie = `${COOKIE_NAME}=${encodeURIComponent(brandId)}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`
+    startTransition(() => router.refresh())
+  }
+
+  const cap = brandCap ?? (tier === 'maker' ? 1 : tier === 'builder' ? 3 : Infinity)
+  const atCap = brands.length >= cap
+
   return (
     <>
       <AppHeaderIconButton aria-label="Favorites">
@@ -47,29 +72,43 @@ export function TopbarRight({
       <NotificationBell />
       {brands.length > 1 && <BrandSwitcher brands={brands} activeBrandId={activeBrandId} />}
       <AppHeaderUserMenu
-        user={{
-          name,
-          email,
-          tier,
-          activeBrandName: activeBrand?.name ?? null,
-        }}
+        user={{ name, email, tier }}
         tierLabels={{ maker: 'Maker', builder: 'Builder', agency: 'Agency' }}
         manageTierHref="/settings/plan"
-        activeBrandHref="/brands"
         avatarTone="pink"
+        brandCards={{
+          brands,
+          activeBrandId,
+          onSelect: switchBrand,
+          manageHref: (id) => `/brands/${id}`,
+          viewAllHref: '/brands',
+          // Under cap → Add brand; Maker at cap → upgrade nudge.
+          ...(atCap
+            ? tier === 'maker'
+              ? {
+                  upgradeNudge: {
+                    text: 'Want another brand?',
+                    cta: 'Upgrade to Builder →',
+                    href: '/settings/plan',
+                  },
+                }
+              : {}
+            : { addBrandHref: '/brands/new' }),
+        }}
         sections={[
           {
             items: [
-              { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-              { label: 'My brands', href: '/brands', icon: Layers },
-              { label: 'My products', href: '/products', icon: Package },
+              // The ONE work shortcut (Pavel 2026-07-06) — sidebar owns the rest.
               { label: 'Orders', href: '/orders', icon: ShoppingBag },
             ],
           },
           {
+            label: 'Account',
             items: [
-              { label: 'Channels', href: '/channels', icon: Plug },
+              { label: 'Plan & billing', href: '/settings/plan', icon: Crown },
               { label: 'Payments', href: '/settings/payouts', icon: CreditCard },
+              { label: 'Channels', href: '/channels', icon: Plug },
+              { label: 'Notifications', href: '/settings/notifications', icon: Bell },
               { label: 'Settings', href: '/settings', icon: Settings },
             ],
           },

@@ -12,7 +12,7 @@
 
 import { cookies } from 'next/headers'
 import { prisma, getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
-import type { User } from '@ilaunchify/auth'
+import { brandLimits, normalizeTier, type TierKey, type User } from '@ilaunchify/auth'
 import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
 import { TopbarRight } from './TopbarRight'
 
@@ -22,10 +22,12 @@ export async function DashboardTopbar({ user }: { user: User }) {
   // Load brands for the switcher. Admin users impersonating /creator
   // won't have a CreatorProfile — gracefully render the bare topbar.
   let brands: { id: string; name: string; handle: string }[] = []
+  let tier: TierKey | null = null
   if (user.role === 'CREATOR') {
     const profile = await prisma.creatorProfile.findUnique({
       where: { userId: user.id },
       select: {
+        subscriptionTier: true,
         brands: {
           select: { id: true, name: true, handle: true },
           orderBy: { createdAt: 'asc' },
@@ -33,6 +35,7 @@ export async function DashboardTopbar({ user }: { user: User }) {
       },
     })
     brands = profile?.brands ?? []
+    tier = profile ? normalizeTier(profile.subscriptionTier ?? null) : null
   }
 
   // Notification dot — check for any unread bell-channel notification.
@@ -65,6 +68,8 @@ export async function DashboardTopbar({ user }: { user: User }) {
           brands={brands}
           activeBrandId={activeBrandId}
           hasUnreadNotifications={unreadCount > 0}
+          tier={tier}
+          brandCap={tier ? brandLimits(tier).kits : undefined}
         />
       }
     />
