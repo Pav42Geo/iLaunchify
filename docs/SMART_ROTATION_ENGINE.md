@@ -191,12 +191,25 @@ craft) SEPARATELY on delivery.
   Notification Center (sample delivered → "Judge your sample") · REPLENISHMENT context
   detection at checkout (reorder heuristic)
 
-### SR-3 — Routing & Rotation admin surface (pending)
-- [ ] v2 surface, 3 tabs (Print providers / FCs / Manufacturers): Policy editor (audited via
-  logAuditAs), Preview dry-run w/ ratings + filtered-out reasons + 100-run split simulation,
-  Awards analytics (actual share vs configured, rotation-applied rate, new-provider share)
-- [ ] Fold /order-settings/routing weights in; retire /routing-preview (redirect)
-- [ ] Per-provider kill switch toggle on partner service detail
+### SR-3 — Routing & Rotation admin surface — **BUILT 2026-07-06 (CW)**
+- [x] `/routing-rotation` (sidebar: Settings → Order Settings → Routing & Rotation), 3 tabs:
+  **Print providers** — context-scoped policy editor (DEFAULT/SAMPLE/REPLENISHMENT sub-tabs:
+  enable switch, Top-3/Top-5/custom pool, EQUAL/RANDOM/WEIGHTED_EXACT/BEST_ONLY w/ exact-%
+  input validated to sum 100, new-provider share + open-award cap, rating floor, location
+  bias, sticky toggle; saves audited ROTATION_POLICY_SAVED) · dry-run preview (product + qty +
+  context → the EXACT production engine over 100 evenly-spaced rolls, deterministic; shows
+  ratings, pool membership, share bars; honestly reports CONFIG_BOUND / NO_DIE_CUT /
+  OWNER_SELF_LABEL bindings + engine-off legacy pick) · providers table (rating, 90d awards +
+  actual share, sampleCapable, per-provider kill switch audited AUTO_ROTATION_EXCLUDED/
+  REINSTATED). **FCs** — live scorer weights + band read panel (edit stays at Order settings;
+  SR-4 stub notes the WAREHOUSE policy row state). **Manufacturers** — match-weights pointer +
+  the absorbed routing preview
+- [x] KPI strip: active printers · auto-awards 90d · top-1 concentration · new-provider share ·
+  excluded count
+- [x] /routing-preview retired → redirect (form + action files stay; /routing-rotation imports
+  them); sidebar entry swapped
+- [ ] SR-3 polish backlog: filtered-out-with-reasons list in preview (needs §7 job facts) ·
+  awards deep-link to orders · configured-vs-actual variance alert
 
 ### SR-4 — FC adoption (pending)
 - [ ] FC tab: poolSize/mode/new-node share layered on the existing scorer band

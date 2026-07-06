@@ -1,52 +1,10 @@
-// B4 — admin Routing preview tool. Pick a product + quantity (+ optional
-// destination region + target market) and see the ranked manufacturer
-// candidates with their capability/proximity/cert score breakdown. Makes the
-// orchestration routing transparent for ops.
+// RETIRED 2026-07-06 (SR-3) — the routing preview was absorbed into the
+// unified Routing & Rotation control room (Manufacturers tab). The form
+// component + action in this directory stay: /routing-rotation imports them.
+// Old bookmarks land here and follow the redirect.
 
-import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
-import { AdminPageHeader } from '@/components/AdminPageHeader'
-import { RoutingPreviewForm } from './RoutingPreviewForm'
+import { redirect } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Routing preview — iLaunchify Admin' }
-
-export default async function RoutingPreviewPage() {
-  await requireRole('ADMIN')
-
-  const [products, markets, regions] = await Promise.all([
-    prisma.product.findMany({
-      where: { category: { in: ['FOOD', 'SUPPLEMENT'] } },
-      select: { id: true, name: true, category: true },
-      orderBy: { name: 'asc' },
-      take: 200,
-    }),
-    prisma.market.findMany({ select: { id: true, code: true, name: true }, orderBy: { code: 'asc' } }),
-    prisma.region.findMany({
-      where: { isActive: true },
-      select: { id: true, code: true, name: true },
-      orderBy: { code: 'asc' },
-      take: 100,
-    }),
-  ])
-
-  // De-dupe products by name (the seed has many near-identical Whey rows).
-  const seen = new Set<string>()
-  const uniqueProducts = products.filter((p) => {
-    if (seen.has(p.name)) return false
-    seen.add(p.name)
-    return true
-  })
-
-  return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        eyebrow="Order settings"
-        title="Routing preview"
-        description="See which manufacturers the orchestration engine would rank for an order — with the capability, proximity, and certification scores behind each pick. Hard gates (category fit, MOQ range, payouts) filter first; survivors are scored."
-      />
-
-      <RoutingPreviewForm products={uniqueProducts} markets={markets} regions={regions} />
-    </div>
-  )
+export default function RetiredRoutingPreviewPage() {
+  redirect('/routing-rotation')
 }

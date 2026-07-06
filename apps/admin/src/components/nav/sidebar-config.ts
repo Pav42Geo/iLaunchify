@@ -281,7 +281,8 @@ const PRIMARY: SidebarRegion = {
           children: [
             { kind: 'item', label: 'Fees & Commissions', icon: DollarSign, href: '/order-settings/fees', capability: 'billing:write' },
             { kind: 'item', label: 'Partner Routing', icon: Workflow, href: '/order-settings/routing', capability: 'billing:write' },
-            { kind: 'item', label: 'Routing preview', icon: Workflow, href: '/routing-preview', capability: 'billing:write' },
+            // SR-3 — unified rotation control room; absorbed /routing-preview (redirects).
+            { kind: 'item', label: 'Routing & Rotation', icon: Workflow, href: '/routing-rotation', capability: 'billing:write' },
             { kind: 'item', label: 'Shipping & Fulfillment', icon: Truck, href: '/order-settings/shipping', capability: 'billing:write' },
             { kind: 'item', label: 'Cancellations & Refunds', icon: RotateCcw, href: '/order-settings/cancellations', capability: 'refunds:approve' },
             { kind: 'item', label: 'Scoped Overrides', icon: Layers, href: '/order-settings/overrides', capability: 'billing:write' },
