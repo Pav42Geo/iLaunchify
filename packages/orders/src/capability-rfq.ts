@@ -192,6 +192,95 @@ export async function broadcastCapabilityRequestsForTemplate(
   }
 }
 
+// ─── Coverage restored — unpark + notify (PS-8 follow-up) ────────────────────
+
+export interface CoverageRecoveryResult {
+  /** Coverage is now ≥1 for the template (requests closed FULFILLED). */
+  recovered: boolean
+  /** A PAUSED-for-coverage template was re-listed PUBLISHED (and notified). */
+  unparked: boolean
+}
+
+/** Notify the manufacturer + any creators mid-design that a paused-for-coverage
+ *  template is orderable again (§10.1). One event, role-branched copy. Fail-soft. */
+async function notifyCoverageRestored(templateId: string): Promise<void> {
+  try {
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: templateId },
+      select: { name: true, manufacturerServiceId: true },
+    })
+    if (!tpl) return
+
+    const { dispatchNotification, dispatchToPartnerService } = await import('@ilaunchify/notifications')
+
+    if (tpl.manufacturerServiceId) {
+      await dispatchToPartnerService(tpl.manufacturerServiceId, {
+        event: 'COVERAGE_RESTORED',
+        audience: 'partner',
+        data: { productName: tpl.name, role: 'manufacturer', href: '/products' },
+      }).catch(() => 0)
+    }
+
+    // Waiting creators — anyone with an in-flight (not-yet-ordered) product on it.
+    const products = await prisma.product.findMany({
+      where: {
+        productTemplateId: templateId,
+        status: { in: ['DRAFT', 'IN_REVIEW', 'COMPLIANT'] },
+      },
+      select: { brand: { select: { creatorProfile: { select: { userId: true } } } } },
+    })
+    const userIds = [...new Set(products.map((p) => p.brand.creatorProfile.userId))]
+    for (const userId of userIds) {
+      await dispatchNotification({
+        userId,
+        event: 'COVERAGE_RESTORED',
+        audience: 'creator',
+        data: { productName: tpl.name, role: 'creator', href: '/products' },
+      }).catch(() => {})
+    }
+  } catch {
+    /* notification hiccup never blocks recovery */
+  }
+}
+
+/**
+ * Recompute a template's coverage and, if it's back, close its requests and
+ * re-list it if it was PAUSED for coverage (notifying manufacturer + creators).
+ * The SINGLE unpark path — reached from a claim's offering activating (below) AND
+ * the nightly cron recovery sweep, so coverage restored by ANY printer (not only
+ * a claimer) re-lists the product. Never throws.
+ */
+export async function recoverTemplateCoverage(templateId: string): Promise<CoverageRecoveryResult> {
+  try {
+    // coverage ≥1 closes OPEN/CLAIMED requests FULFILLED via the broadcast's ≥1 path.
+    const cov = await broadcastCapabilityRequestsForTemplate(templateId, { reason: 'REBROADCAST' })
+    if (!cov.applicable || cov.coverage === 0) return { recovered: false, unparked: false }
+
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: templateId },
+      select: { status: true, name: true },
+    })
+    if (tpl?.status !== 'PAUSED') return { recovered: true, unparked: false }
+
+    await prisma.productTemplate.update({
+      where: { id: templateId },
+      data: { status: 'PUBLISHED' },
+    })
+    await logSystemAudit({
+      entityType: 'ProductTemplate',
+      entityId: templateId,
+      action: 'PRODUCT_TEMPLATE_UNPARKED_COVERAGE_RESTORED',
+      fromValue: 'PAUSED',
+      toValue: 'PUBLISHED',
+      payload: { name: tpl.name },
+    })
+    await notifyCoverageRestored(templateId)
+    return { recovered: true, unparked: true }
+  } catch {
+    return { recovered: false, unparked: false }
+  }
+}
+
 export interface ClaimResolutionResult {
   /** True when the activated offering belonged to a capability claim. */
   wasClaim: boolean
@@ -237,43 +326,22 @@ export async function resolveCapabilityClaimOnOfferingActivated(
       })
     }
 
-    // Recompute coverage — coverage ≥1 closes OPEN/CLAIMED requests FULFILLED.
-    const cov = await broadcastCapabilityRequestsForTemplate(request.productTemplateId, {
-      reason: 'REBROADCAST',
-    })
-    const coverageRestored = cov.applicable && cov.coverage > 0
-
-    let unparked = false
-    if (coverageRestored) {
-      const tpl = await prisma.productTemplate.findUnique({
-        where: { id: request.productTemplateId },
-        select: { status: true, name: true },
-      })
-      if (tpl?.status === 'PAUSED') {
-        await prisma.productTemplate.update({
-          where: { id: request.productTemplateId },
-          data: { status: 'PUBLISHED' },
-        })
-        unparked = true
-        await logSystemAudit({
-          entityType: 'ProductTemplate',
-          entityId: request.productTemplateId,
-          action: 'PRODUCT_TEMPLATE_UNPARKED_COVERAGE_RESTORED',
-          fromValue: 'PAUSED',
-          toValue: 'PUBLISHED',
-          payload: { name: tpl.name, offeringId },
-        })
-      }
-    }
+    // Recompute coverage + unpark/notify through the SINGLE recovery path.
+    const recovery = await recoverTemplateCoverage(request.productTemplateId)
 
     await logSystemAudit({
       entityType: 'PrintCapabilityClaim',
       entityId: claim.id,
       action: 'CAPABILITY_CLAIM_VERIFIED',
-      payload: { offeringId, templateId: request.productTemplateId, coverageRestored, unparked },
+      payload: {
+        offeringId,
+        templateId: request.productTemplateId,
+        coverageRestored: recovery.recovered,
+        unparked: recovery.unparked,
+      },
     })
 
-    return { wasClaim: true, coverageRestored, unparked }
+    return { wasClaim: true, coverageRestored: recovery.recovered, unparked: recovery.unparked }
   } catch {
     return NONE
   }

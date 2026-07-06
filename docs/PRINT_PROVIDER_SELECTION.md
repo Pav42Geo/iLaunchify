@@ -537,6 +537,22 @@ shortlisting, broadcast, re-broadcast, unpark — all automatic.
     the §8 UNRESOLVED validator at Pay is the hard backstop. Marketplace detail already drops
     PAUSED templates from listings (loader filters `status==='PUBLISHED'`).
   - [ ] **[PAVEL]** rides the SAME db:push as PS-8a/8b/8c (no new schema).
+- **PS-8 follow-up — coverage-restored loop** · CODE COMPLETE 2026-07-06 (CW)
+  - [x] `recoverTemplateCoverage(templateId)` (packages/orders/capability-rfq.ts) — the SINGLE
+    unpark path: recompute coverage → close requests FULFILLED → re-list a PAUSED-for-coverage
+    template (PUBLISHED) → notify. `resolveCapabilityClaimOnOfferingActivated` now delegates to it
+    (de-duped its inline unpark).
+  - [x] Fixes a real gap: coverage restored by a NON-claim offering activation (any printer adding
+    a covering offering) previously left the template stuck PAUSED — the cron never un-paused. New
+    **recovery pass (step 0)** in the print-coverage cron sweeps PAUSED-for-coverage templates
+    (those with a live OPEN/CLAIMED request) through `recoverTemplateCoverage`, so ANY path back to
+    coverage re-lists the product. Guarded to templates with a live request → never re-lists an
+    admin's unrelated manual pause.
+  - [x] `COVERAGE_RESTORED` NotificationEvent (schema enum + 4-file registry, category `orders`),
+    ONE event with role-branched copy: manufacturer ("back on the marketplace") vs waiting creators
+    ("available again — finish + order"). Waiting creators = in-flight (DRAFT/IN_REVIEW/COMPLIANT)
+    Products on the template → Brand → CreatorProfile.userId. Fail-soft.
+  - [ ] **[PAVEL]** the `COVERAGE_RESTORED` enum value rides the SAME db:push.
 
 ## §9 Build phases + ownership
 

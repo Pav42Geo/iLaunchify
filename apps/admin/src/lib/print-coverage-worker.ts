@@ -21,6 +21,7 @@ import { logSystemAudit } from '@ilaunchify/audit'
 import {
   computeTemplatePrintCoverage,
   broadcastCapabilityRequestsForTemplate,
+  recoverTemplateCoverage,
 } from '@ilaunchify/orders'
 
 const REBROADCAST_AFTER_DAYS = 7
@@ -30,6 +31,7 @@ export interface PrintCoverageSweepResult {
   paused: number
   broadcastsFired: number
   rebroadcasts: number
+  recovered: number
   expired: number
 }
 
@@ -39,7 +41,26 @@ export async function runPrintCoverageSweep(): Promise<PrintCoverageSweepResult>
     paused: 0,
     broadcastsFired: 0,
     rebroadcasts: 0,
+    recovered: 0,
     expired: 0,
+  }
+
+  // ── 0. Recovery — re-list PAUSED-for-coverage templates whose coverage is back ──
+  // Closes the gap where coverage returns via a NON-claim offering activation
+  // (the claim path already unparks inline). Only touches templates paused with a
+  // live request, so an admin's unrelated manual pause is never re-listed here.
+  const pausedForCoverage = await prisma.printCapabilityRequest.findMany({
+    where: { status: { in: ['OPEN', 'CLAIMED'] } },
+    select: { productTemplateId: true },
+  })
+  const pausedTemplateIds = [...new Set(pausedForCoverage.map((r) => r.productTemplateId))]
+  for (const templateId of pausedTemplateIds) {
+    try {
+      const rec = await recoverTemplateCoverage(templateId)
+      if (rec.unparked) result.recovered += 1
+    } catch {
+      /* non-fatal */
+    }
   }
 
   // ── 1. Coverage-drop watch over PUBLISHED templates ──────────────────────

@@ -4553,6 +4553,9 @@ enum NotificationEvent {
   // Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8b) —
   // broadcast to shortlisted printers when a template's print coverage hits 0.
   PARTNER_CAPABILITY_RFQ // a manufacturer needs printing you could produce — claim the job
+  // Coverage restored (§10.1) — a paused-for-coverage template is live again.
+  // One event, role-branched copy (manufacturer vs waiting creator).
+  COVERAGE_RESTORED // printing is sorted — your product is orderable again
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

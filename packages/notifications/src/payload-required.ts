@@ -73,6 +73,7 @@ export const REQUIRED_PAYLOAD_KEYS: {
   CREATOR_DISPATCH_PROGRESS: ['orderId', 'partnerName', 'kind', 'summary'],
   CREATOR_SAMPLE_VERDICT: ['orderId'],
   PARTNER_CAPABILITY_RFQ: ['packagingLabel', 'href'],
+  COVERAGE_RESTORED: ['productName', 'href'],
 }
 
 /**

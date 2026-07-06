@@ -173,6 +173,14 @@ export interface TemplateData {
     region?: string
     href: string
   }
+  // PS-8 follow-up — a paused-for-coverage template is orderable again. One event,
+  // role-branched copy: 'manufacturer' (their product re-listed) vs 'creator'
+  // (finish your design + order).
+  COVERAGE_RESTORED: {
+    productName: string
+    role: 'manufacturer' | 'creator'
+    href: string
+  }
 }
 
 function fmtSection(sectionType: string): string {
@@ -708,6 +716,20 @@ export function renderTemplate<E extends NotificationEvent>(
         body: `You already run compatible presses${d.region ? ` near ${d.region}` : ''} — claim this job to add it to your catalog${d.runBand ? ` (${d.runBand} units)` : ''}. You'll see the full spec once you claim; designs stay private until then.`,
         link: d.href,
       }
+    }
+    case 'COVERAGE_RESTORED': {
+      const d = data as TemplateData['COVERAGE_RESTORED']
+      return d.role === 'manufacturer'
+        ? {
+            title: `${d.productName} is back on the marketplace`,
+            body: 'A printer now covers its printing, so it\'s live and orderable again. No action needed — just letting you know.',
+            link: d.href,
+          }
+        : {
+            title: `${d.productName} is available again`,
+            body: 'Printing is sorted — pick up your design and place your order whenever you\'re ready.',
+            link: d.href,
+          }
     }
     default:
       return { title: `${event}`, body: '' }

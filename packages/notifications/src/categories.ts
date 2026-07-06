@@ -176,6 +176,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   CREATOR_SAMPLE_VERDICT: 'reminders',
   // PS-8b — capability RFQ broadcast (a claimable job opportunity — a nudge).
   PARTNER_CAPABILITY_RFQ: 'reminders',
+  // PS-8 follow-up — paused-for-coverage template is orderable again.
+  COVERAGE_RESTORED: 'orders',
 }
 
 export function categoryForEvent(event: NotificationEvent): NotificationCategorySlug {

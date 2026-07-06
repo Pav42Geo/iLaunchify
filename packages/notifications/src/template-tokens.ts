@@ -129,6 +129,8 @@ export const EVENT_TOKEN_PALETTE: {
   CREATOR_SAMPLE_VERDICT: ['orderId', 'productName', 'printPartnerName', 'reminder'],
   // PS-8b — capability RFQ broadcast
   PARTNER_CAPABILITY_RFQ: ['packagingLabel', 'decorationLabel', 'runBand', 'region', 'href'],
+  // PS-8 follow-up — coverage restored (role-branched)
+  COVERAGE_RESTORED: ['productName', 'role', 'href'],
 }
 
 /** Tokens the admin can insert for one event (the editor's palette). */
