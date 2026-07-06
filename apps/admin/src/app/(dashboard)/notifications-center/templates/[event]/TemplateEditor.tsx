@@ -36,6 +36,9 @@ export interface TemplateRowView {
   feedbackPrompt: string | null
   /** In-app P2 — coalescing window in minutes (0/null = off). */
   coalesceWindowMinutes: number | null
+  /** In-app row overrides — null mirrors the email copy (Pavel 2026-07-06). */
+  inAppTitleOverride: string | null
+  inAppBodyOverride: string | null
   status: 'DRAFT' | 'PUBLISHED'
   version: number
 }
@@ -64,6 +67,8 @@ export function TemplateEditor({
   const [ctaLabel, setCtaLabel] = useState(row?.ctaLabelOverride ?? '')
   const [fbPrompt, setFbPrompt] = useState(row?.feedbackPrompt ?? '')
   const [coalesceMin, setCoalesceMin] = useState(String(row?.coalesceWindowMinutes ?? ''))
+  const [inAppTitle, setInAppTitle] = useState(row?.inAppTitleOverride ?? '')
+  const [inAppBody, setInAppBody] = useState(row?.inAppBodyOverride ?? '')
   const [preview, setPreview] = useState<EmailTemplatePreviewContent>(initialPreview)
   const bodyRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -79,6 +84,8 @@ export function TemplateEditor({
       ctaLabelOverride: ctaLabel || null,
       feedbackPrompt: fbPrompt || null,
       coalesceWindowMinutes: coalesceMin.trim() ? Number(coalesceMin) : null,
+      inAppTitleOverride: inAppTitle || null,
+      inAppBodyOverride: inAppBody || null,
     }
   }
 
@@ -195,6 +202,56 @@ export function TemplateEditor({
               </span>
             </label>
           )}
+
+          {/* In-app row override (Pavel 2026-07-06: first-class, same lifecycle).
+              Empty = the bell/feed row mirrors the email subject/body above. */}
+          <div className="mt-4 rounded-xl border border-ink-100 bg-ink-50/50 p-3">
+            <div className="text-[12px] font-semibold text-ink-800">In-app row override</div>
+            <p className="mt-0.5 text-[11px] text-ink-500">
+              The bell/feed copy. Empty fields mirror the email subject/body. Same{' '}
+              {'{{token}}'} substitution; keep it short — title ≤120, body ≤240.
+            </p>
+            <label className="mt-2 block text-[12px] font-medium text-ink-700">
+              Title
+              <input
+                value={inAppTitle}
+                onChange={(e) => setInAppTitle(e.target.value)}
+                maxLength={120}
+                placeholder="Mirrors the email subject"
+                className={inputCls}
+              />
+            </label>
+            <label className="mt-2 block text-[12px] font-medium text-ink-700">
+              Body
+              <textarea
+                value={inAppBody}
+                onChange={(e) => setInAppBody(e.target.value)}
+                maxLength={240}
+                rows={2}
+                placeholder="Mirrors the email body"
+                className={inputCls}
+              />
+            </label>
+            {/* Live bell-row preview (refreshes with the Refresh preview button). */}
+            {preview.inApp && (
+              <div className="mt-3 rounded-lg border border-ink-200 bg-white px-3 py-2.5">
+                <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ink-400">
+                  Bell preview
+                </div>
+                <div className="mt-1 flex gap-2.5">
+                  <span className="mt-0.5 block h-2 w-2 shrink-0 rounded-full bg-pink-600" />
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] font-semibold text-ink-900">
+                      {preview.inApp.title}
+                    </div>
+                    <div className="line-clamp-2 text-[12px] text-ink-500">
+                      {preview.inApp.body}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* In-app coalescing window (P2, Pavel 2026-07-06: per-event tuning). */}
           <label className="mt-3 block text-[12px] font-medium text-ink-700">

@@ -35,6 +35,9 @@ export interface TemplateDraftInput {
   feedbackPrompt: string | null
   /** In-app P2 — coalescing window in minutes (0/null = off, max 1440). */
   coalesceWindowMinutes: number | null
+  /** In-app row overrides (Pavel 2026-07-06). Null = mirror the email copy. */
+  inAppTitleOverride: string | null
+  inAppBodyOverride: string | null
 }
 
 function validateDraft(input: TemplateDraftInput): string | null {
@@ -45,7 +48,15 @@ function validateDraft(input: TemplateDraftInput): string | null {
   if (input.ctaMode === 'CUSTOM' && !input.ctaLabelOverride?.trim()) {
     return 'Custom CTA needs a label'
   }
-  for (const field of [input.subjectOverride, input.bodyMarkdown, input.ctaLabelOverride]) {
+  if ((input.inAppTitleOverride?.length ?? 0) > 120) return 'In-app title too long (120 max)'
+  if ((input.inAppBodyOverride?.length ?? 0) > 240) return 'In-app body too long (240 max)'
+  for (const field of [
+    input.subjectOverride,
+    input.bodyMarkdown,
+    input.ctaLabelOverride,
+    input.inAppTitleOverride,
+    input.inAppBodyOverride,
+  ]) {
     if (field) {
       const bad = unknownTokens(field, input.event)
       if (bad.length > 0) return `Unknown token${bad.length > 1 ? 's' : ''}: ${bad.join(', ')}`
@@ -75,6 +86,11 @@ export async function saveTemplateDraft(input: TemplateDraftInput): Promise<Resu
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
     feedbackPrompt: input.feedbackPrompt || null,
     coalesceWindowMinutes: input.coalesceWindowMinutes || null,
+    // Cast-guard (in-app overrides): inline after db:push + db:generate.
+    ...({
+      inAppTitleOverride: input.inAppTitleOverride?.trim() || null,
+      inAppBodyOverride: input.inAppBodyOverride?.trim() || null,
+    } as unknown as Record<string, never>),
     status: 'DRAFT' as const,
     updatedById: admin.id,
   }
@@ -100,7 +116,14 @@ export async function publishTemplate(event: NotificationEvent): Promise<Result>
   const admin = await requireRole('ADMIN')
   const row = await prisma.notificationTemplate.findUnique({ where: { event } })
   if (!row) return { ok: false, error: 'Nothing to publish — save a draft first' }
-  if (!row.subjectOverride && !row.bodyMarkdown && row.ctaMode === 'AUTO') {
+  const rowInApp = row as { inAppTitleOverride?: string | null; inAppBodyOverride?: string | null }
+  if (
+    !row.subjectOverride &&
+    !row.bodyMarkdown &&
+    row.ctaMode === 'AUTO' &&
+    !rowInApp.inAppTitleOverride &&
+    !rowInApp.inAppBodyOverride
+  ) {
     return { ok: false, error: 'The draft is empty — it would change nothing' }
   }
 
@@ -115,6 +138,11 @@ export async function publishTemplate(event: NotificationEvent): Promise<Result>
         bodyMarkdown: row.bodyMarkdown,
         ctaMode: row.ctaMode,
         ctaLabelOverride: row.ctaLabelOverride,
+        // Cast-guard (in-app overrides): inline after db:push + db:generate.
+        ...({
+          inAppTitleOverride: rowInApp.inAppTitleOverride ?? null,
+          inAppBodyOverride: rowInApp.inAppBodyOverride ?? null,
+        } as unknown as Record<string, never>),
         publishedById: admin.id,
       },
     }),
@@ -153,6 +181,13 @@ export async function rollbackTemplate(event: NotificationEvent, version: number
       bodyMarkdown: snap.bodyMarkdown,
       ctaMode: snap.ctaMode,
       ctaLabelOverride: snap.ctaLabelOverride,
+      // Cast-guard (in-app overrides): inline after db:push + db:generate.
+      ...({
+        inAppTitleOverride:
+          (snap as { inAppTitleOverride?: string | null }).inAppTitleOverride ?? null,
+        inAppBodyOverride:
+          (snap as { inAppBodyOverride?: string | null }).inAppBodyOverride ?? null,
+      } as unknown as Record<string, never>),
       status: 'PUBLISHED',
       version: snap.version,
       updatedById: admin.id,
@@ -230,6 +265,8 @@ export async function previewTemplate(input: TemplateDraftInput): Promise<
     ctaLabelOverride: input.ctaLabelOverride?.trim() || null,
     feedbackPrompt: input.feedbackPrompt || null,
     coalesceWindowMinutes: input.coalesceWindowMinutes ?? null,
+    inAppTitleOverride: input.inAppTitleOverride?.trim() || null,
+    inAppBodyOverride: input.inAppBodyOverride?.trim() || null,
     status: 'DRAFT',
     version: 0,
   }

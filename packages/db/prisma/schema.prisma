@@ -4491,6 +4491,11 @@ model NotificationTemplate {
   bodyMarkdown     String? // markdown-lite: **bold**, [label](url), blank-line paragraphs
   ctaMode          NotificationCtaMode           @default(AUTO)
   ctaLabelOverride String?
+  // In-app channel overrides (Pavel 2026-07-06 — first-class, same lifecycle).
+  // Null = the bell/feed row mirrors the email subject/body (or code template).
+  // Tokens substitute the same way; body is markdown-lite → stripped to text.
+  inAppTitleOverride String?
+  inAppBodyOverride  String?
   // Feedback module (docs/FEEDBACK_MODULE.md §3.3): FEEDBACK_PROMPTS key —
   // renders the one-click thumbs block on this event's emails (eligibility-
   // gated at send). Null = no block.
@@ -4517,6 +4522,9 @@ model NotificationTemplateVersion {
   bodyMarkdown     String?
   ctaMode          NotificationCtaMode
   ctaLabelOverride String?
+  // In-app overrides snapshot (rollback fidelity — Pavel 2026-07-06).
+  inAppTitleOverride String?
+  inAppBodyOverride  String?
   publishedAt      DateTime             @default(now())
   publishedById    String? // soft FK → admin User
 

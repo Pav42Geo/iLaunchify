@@ -59,6 +59,11 @@ export default async function TemplateEditorPage({
           ctaLabelOverride: row.ctaLabelOverride,
           feedbackPrompt: row.feedbackPrompt,
           coalesceWindowMinutes: row.coalesceWindowMinutes ?? null,
+          // Cast-guard (in-app overrides): read directly after db:push + db:generate.
+          inAppTitleOverride:
+            (row as { inAppTitleOverride?: string | null }).inAppTitleOverride ?? null,
+          inAppBodyOverride:
+            (row as { inAppBodyOverride?: string | null }).inAppBodyOverride ?? null,
           status: row.status,
           version: row.version,
         }
@@ -97,6 +102,11 @@ export default async function TemplateEditorPage({
                 ctaLabelOverride: row.ctaLabelOverride,
                 feedbackPrompt: row.feedbackPrompt,
                 coalesceWindowMinutes: row.coalesceWindowMinutes ?? null,
+                // Cast-guard (in-app overrides): read directly after db:push + generate.
+                inAppTitleOverride:
+                  (row as { inAppTitleOverride?: string | null }).inAppTitleOverride ?? null,
+                inAppBodyOverride:
+                  (row as { inAppBodyOverride?: string | null }).inAppBodyOverride ?? null,
                 status: row.status,
                 version: row.version,
               }

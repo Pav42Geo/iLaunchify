@@ -116,6 +116,12 @@ export async function getTemplateOverride(
       ctaLabelOverride: row.ctaLabelOverride,
       feedbackPrompt: row.feedbackPrompt,
       coalesceWindowMinutes: row.coalesceWindowMinutes ?? null,
+      // Cast-guard (in-app template overrides, docs/POST_PUSH_CASTGUARD_CLEANUP.md):
+      // columns land with the next db:push + db:generate — read directly after.
+      inAppTitleOverride:
+        (row as { inAppTitleOverride?: string | null }).inAppTitleOverride ?? null,
+      inAppBodyOverride:
+        (row as { inAppBodyOverride?: string | null }).inAppBodyOverride ?? null,
       status: row.status,
       version: row.version,
     }

@@ -184,11 +184,21 @@ export function resolveNotificationContent(
     feedback: opts.feedback,
   })
 
+  // --- in-app row (Pavel 2026-07-06: first-class per-event overrides) --------
+  // Dedicated overrides win; otherwise the row mirrors the (possibly email-
+  // overridden) subject/body. Same token substitution; body stripped to text.
+  const inAppTitle = override?.inAppTitleOverride
+    ? substituteTokens(override.inAppTitleOverride, payload)
+    : subject
+  const inAppBody = override?.inAppBodyOverride
+    ? markdownLiteToText(substituteTokens(override.inAppBodyOverride, payload))
+    : bodyText
+
   return {
     subject,
     html,
     text,
-    inApp: { title: subject, body: bodyText, link: code.link },
+    inApp: { title: inAppTitle, body: inAppBody, link: code.link },
     cta,
   }
 }

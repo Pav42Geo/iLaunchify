@@ -107,6 +107,13 @@ export interface NotificationTemplateOverride {
   /** Used when ctaMode is CUSTOM. */
   ctaLabelOverride: string | null
   /**
+   * In-app channel overrides (Pavel 2026-07-06). Null = the bell/feed row
+   * mirrors the email subject/body (or the code template). `{{token}}`
+   * substitution applies; body is markdown-lite, stripped to text for the row.
+   */
+  inAppTitleOverride: string | null
+  inAppBodyOverride: string | null
+  /**
    * FEEDBACK_PROMPTS key — renders the one-click thumbs block on this event's
    * emails, eligibility-gated at send (docs/FEEDBACK_MODULE.md §3.3). Null = none.
    */
