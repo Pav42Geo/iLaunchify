@@ -246,7 +246,77 @@ model PartnerRating {
   auto-ticket). Feeds the P3 scorecard next to defect rate.
 - Ratings are FIRST-PARTY marketplace data (creator ↔ partner), never end-buyer data.
 
-## Part 6 — Build checklist
+### 5.5 Ratings are SERVICE-scoped (the co-packer answer)
+A partner company can run several services (a co-packer that also manufactures and prints).
+**Ratings attach to the `PartnerService`, never the company** — the model already gives us this
+(`partnerServiceId` key). One company = up to three independent, role-scoped ratings, each shown
+only in its role's context:
+
+| Role | Rating shown where | Visibility (Pavel 2026-07-05) |
+|---|---|---|
+| MANUFACTURING | Product detail page stars + popover; marketplace listings | **Public** |
+| LABEL_PRINTING | Print-provider cards (docs/PRINT_PROVIDER_SELECTION.md); drives print routing | **Public** — competition is the point |
+| COPACKING | Admin partner detail + routing views; partner's own dashboard card; future co-packer directory | **Admin + self** until a co-packer selection surface exists (co-pack legs are auto-derived from CARTON/SHIPPER components today — no creator-facing pick to inform yet) |
+| WAREHOUSE (FC) | Admin logistics/FC scorer views; partner's own dashboard | **Admin + self** (Pavel: admin-only for now); the FC scorer can consume the Bayesian score as a quality input later |
+
+Co-packers get rated per co-pack DISPATCH with the co-packer dimensions (Assembly, Packaging,
+Accuracy, Speed) in the same delivery+3d flow — the creator sees one card per dispatch, so a
+company doing two jobs on one order gets two role-scoped rating cards. No blended company score
+anywhere: blending would let a great manufacturing record mask sloppy co-packing.
+
+## Part 6 — Creator Reviews (verified, per-product, Amazon-style)
+
+**The lock (Pavel 2026-07-05):** nobody can review a product except a creator with a DELIVERED
+order for THAT product, and the review appears ONLY on that product's detail page. Verified by
+construction, like ratings — the review row requires the (creator, product, order) linkage, so
+there is no "random user" path at all.
+
+### 6.1 Model + rules
+```
+model ProductReview {
+  id / productId / creatorUserId / orderId (the qualifying DELIVERED order)
+  rating       Int      // 1–5 stars (the product-level stars — distinct from partner ratings)
+  title        String
+  body         String
+  photoAssetIds String[] // creator-uploaded photos (R2; public URLs for display)
+  status       ReviewStatus @default(PUBLISHED) // PUBLISHED | HIDDEN | FLAGGED (admin moderation)
+  partnerReply String?  // V1.5 — the manufacturer's public response (Amazon seller-reply model)
+  createdAt / updatedAt / editableUntil
+  @@unique([creatorUserId, productId]) // one review per creator per product (any qualifying order)
+  @@index([productId, status, createdAt])
+}
+```
+- Editable/deletable by the author for 30 days; photos capped (e.g. 6, 10MB each, image-only).
+- Moderation: admin can HIDE with a reason (AuditLog); no paid placement, no partner edits —
+  the "How creator reviews work" explainer states both (trust copy, Amazon-style page).
+- The product-level review stars are SEPARATE from the per-partner dimensional ratings (Part 5):
+  reviews judge the PRODUCT the creator branded; partner ratings judge each partner's execution.
+  Both are collected in the same flow (6.3) so it's one ask for the creator.
+
+### 6.2 Display (product detail page, marketing + marketplace)
+- Stars summary popover (the existing Amazon-style histogram): mean + count + 5→1 star bars +
+  **"See Creator Reviews"** link that anchor-scrolls to the reviews section on the same page.
+- Reviews section: histogram recap, "How creator reviews work" link, then review cards
+  (stars, title, body, photos lightbox, creator display name + "Verified order" badge, date).
+  Sort: most recent default; "with photos" filter when volume justifies it.
+- Below min-N (3 reviews) the section shows the reviews without the histogram; the header stars
+  come from Part 5 manufacturer ratings until review volume exists (single-stars rule: never
+  show two competing star numbers in the page header — header = manufacturer rating,
+  reviews section = product review stars, clearly labeled).
+
+### 6.3 Ask timing (research answer)
+Pavel's instinct is right — and the data agrees: don't ask on the delivery email itself.
+- Everyday/physical goods: 5–7 days post-delivery is the sweet spot; ~77% of reviews that will
+  ever be written are written within a week of use. Supplements/skincare EFFECTS need 2–4 weeks —
+  but that's the END-CONSUMER lens. Our reviewers are creators judging PRODUCTION quality
+  (branding, print, packaging, spec adherence) — assessable on unboxing + first inspection.
+- **So: ONE combined flow at delivery + 3 days** (the Part 5 email): rate partners (star rows)
+  → then "Review your product" step (stars + title + body + photos) on the same page. One ask,
+  no competing emails (fatigue rule), timed inside the day-5–7 response peak. Single reminder
+  at +10 days if neither part was completed. A "Write a review" CTA also lives permanently on
+  the creator's delivered-order page — no expiry, ever (Part 2 policy).
+
+## Part 7 — Build checklist
 
 ### FB-A. Pure engine (CW — collision-free, lands first)
 - [ ] **[CW]** Feedback token build/verify (HMAC v1, score-in-token, `{ok, late}` verify) + URL builders — `packages/notifications/src/feedback-token.ts`
@@ -280,6 +350,14 @@ model PartnerRating {
 - [ ] **[CW]** Partner dashboard "Your rating" card (overall + dimension bars + recent comments)
 - [ ] **[CW]** Admin: ratings in the Feedback surface + partner-detail rollup; ≤2-overall alert path
 - [ ] **[PAVEL]** decide public-display policy for non-manufacturer roles (printer/co-packer/FC ratings: marketplace-public vs partner+admin-only)
+
+### FB-G. Creator Reviews (Part 6)
+- [ ] **[CW]** `ProductReview` model + `ReviewStatus` (additive; same migration batch as FB-B/F)
+- [ ] **[CW]** Combined delivery+3d page gains the "Review your product" step (stars + title + body + photo upload via @ilaunchify/storage; 30-day edit window)
+- [ ] **[CW]** Product detail page: reviews section (histogram recap, cards, photos lightbox, "Verified order" badge) + "See Creator Reviews" anchor in the stars popover + "How creator reviews work" explainer page
+- [ ] **[CW]** Permanent "Write a review" CTA on the creator's delivered-order page (no expiry)
+- [ ] **[CW]** Admin moderation: FLAGGED/HIDDEN states + reason + audit in the Feedback surface
+- [ ] **[V1.5]** `partnerReply` — manufacturer public response (Amazon seller-reply model)
 
 ### FB-E. Follow-ups (V1.5+)
 - [ ] Event wiring for imagery (product mockup URLs on order/dispatch payloads — needs public asset URLs)
