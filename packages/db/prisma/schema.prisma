@@ -1369,6 +1369,72 @@ model ProductPrintExclusion {
   @@index([partnerServiceId])
 }
 
+// ─── Print Coverage & Capability RFQ (PRINT_PROVIDER_SELECTION §10, PS-8) ────
+
+enum CapabilityRequestStatus {
+  OPEN // broadcast to the shortlist; re-broadcasts weekly to the next band
+  CLAIMED // ≥1 claim submitted; stays claimable until an offering verifies
+  FULFILLED // a claim's offering went ACTIVE — coverage restored
+  EXPIRED // window elapsed with no verified claim → ops escalation (the ONLY manual touch)
+}
+
+enum CapabilityClaimStatus {
+  SUBMITTED // printer clicked "I can produce this"
+  OFFERING_DRAFTED // pre-filled DRAFT PartnerPackagingOffering created
+  VERIFIED // admin verified the offering ACTIVE — claim delivered
+  WITHDRAWN // printer backed out
+}
+
+/// One open request per uncovered template requirement tuple (§10.2). The
+/// tuple is DENORMALIZED so shortlisted printers see the spec without template
+/// access (partial disclosure: no designs, no brand, no manufacturer identity
+/// until a claim verifies). Generated automatically at coverage 0 — at
+/// template submit or by coverage drop — never by hand.
+model PrintCapabilityRequest {
+  id                  String                  @id @default(uuid())
+  productTemplateId   String // soft FK → ProductTemplate
+  packagingTypeId     String // soft FK → PackagingType
+  dielineId           String? // soft FK → PackagingDieline
+  decorationMethod    DecorationMethod?
+  printProcessHint    PrintProcess? // from the §7 physics matrix, when derivable
+  substrateFamily     String? // family label, not exact id — claimers declare their own
+  runBandMin          Int                     @default(1) // manufacturer MOQ context
+  runBandMax          Int?
+  foodContactRequired Boolean                 @default(false)
+  manufacturerRegion  String? // region label for geo adjacency — NOT the manufacturer identity
+  status              CapabilityRequestStatus @default(OPEN)
+  /// Shortlisted service ids already notified (broadcast ledger — weekly
+  /// re-broadcast walks the next band, never re-emails the same printer).
+  notifiedServiceIds  String[]
+  expiresAt           DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  claims PrintCapabilityClaim[]
+
+  @@unique([productTemplateId, packagingTypeId])
+  @@index([status, createdAt])
+}
+
+/// A printer's "I can produce this" on an open request. Claim → pre-filled
+/// DRAFT offering → the EXISTING §7.2 wizard + admin verification path →
+/// ACTIVE → coverage recomputes → request FULFILLED. Zero re-typing, zero
+/// new review machinery.
+model PrintCapabilityClaim {
+  id               String                @id @default(uuid())
+  requestId        String
+  partnerServiceId String // soft FK → LABEL_PRINTING PartnerService
+  status           CapabilityClaimStatus @default(SUBMITTED)
+  offeringId       String? // soft FK → the PartnerPackagingOffering the claim produced
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  request PrintCapabilityRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, partnerServiceId])
+  @@index([partnerServiceId, status])
+}
+
 // ─── Smart Rotation Engine (docs/SMART_ROTATION_ENGINE.md §2, SR-1) ──────────
 
 enum RotationMode {

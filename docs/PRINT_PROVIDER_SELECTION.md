@@ -445,6 +445,39 @@ median time-to-coverage. Rows deep-link to template + claim list. Admin's only j
 offerings (existing flow) and optionally nudge/extend an expiring request. Detection,
 shortlisting, broadcast, re-broadcast, unpark — all automatic.
 
+### 10.5 Execution checklist (PS-8, started 2026-07-06)
+- **PS-8a — schema + engines** · IN PROGRESS (handed off mid-stage)
+  - [x] Schema drafted in packages/db/prisma/schema.prisma (UNMIGRATED — no code references
+    it yet): `CapabilityRequestStatus` + `CapabilityClaimStatus` enums,
+    `PrintCapabilityRequest` (denormalized tuple, `notifiedServiceIds` broadcast ledger,
+    unique templateId+packagingTypeId), `PrintCapabilityClaim` (unique request+service,
+    offeringId link)
+  - [ ] `packages/orders/src/print-coverage.ts`: `computeTemplatePrintCoverage(templateId)` —
+    template → manufacturerServiceId → effectivePrintSourcing (IN_HOUSE = not applicable) →
+    template packagingTypeIds (via packagingSystems → packagingSystem.packagingTypeId) →
+    DISTINCT ops-gated printers with an ACTIVE offering on those types (svc+partner ACTIVE,
+    Stripe ACTIVE, no live blackout). Mirror apps/marketing/src/lib/print-providers.ts
+    candidate derivation.
+  - [ ] Pure adjacency shortlist `rankCapabilityShortlist(candidates, tuple)` — (a) same
+    decorationMethod on a DIFFERENT packagingType > (b) same packagingType different method >
+    (c) same printProcess (physics matrix) > (d) geo (manufacturerRegion match) > (e) rating.
+    Deterministic, tested (compiled-node pattern — vitest can't run in the Cowork sandbox).
+  - [ ] Audit entity types: 'PrintCapabilityRequest', 'PrintCapabilityClaim'
+  - [ ] Migration handoff (db:push + generate + .next clear)
+- **PS-8b — gate + broadcast**: approve action in apps/admin products/actions.ts (~line 35-68,
+  PENDING_REVIEW→PUBLISHED) blocks publish at coverage 0 for non-IN_HOUSE + auto-creates the
+  RFQ; coverage-drop watch (offering deactivate/blackout/churn → auto-PAUSE + RFQ + notify);
+  new NotificationEvent `PARTNER_CAPABILITY_RFQ` (+ registry entries in packages/notifications:
+  categories/payload-required/template-tokens/templates — CREATOR_SAMPLE_VERDICT is the
+  4-file precedent); cron sweep (apps/creator/api/cron precedent w/ CRON_SECRET; weekly
+  re-broadcast to the next band via notifiedServiceIds)
+- **PS-8c — partner claim flow**: partner-dashboard card + "I can produce this" action →
+  claim row + pre-filled DRAFT PartnerPackagingOffering (tuple → §7.2 wizard fields) →
+  existing admin verification flips ACTIVE → claim VERIFIED → request FULFILLED → template
+  auto-unparks → manufacturer + waiting creators notified
+- **PS-8d — admin Coverage dashboard** (v2 surface, §10.4) + Design Studio guard copy
+  ("printing being re-arranged") on coverage-dropped templates
+
 ## §9 Build phases + ownership
 
 - **PS-1** `labelingMode` + product override + `effectivePrintSourcing()` + backfill + partner
