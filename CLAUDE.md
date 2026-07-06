@@ -130,6 +130,9 @@ Larger specs in `docs/`:
 - `MARKETPLACE_DESIGN.md` — 4-layer taxonomy detail
 - `PRODUCTION_ORCHESTRATION.md` — multi-partner workflow graph
 - `LOGISTICS_AND_FULFILLMENT.md` — LOCKED L1–L9 + BUILT L0–L4a (2026-07-02) · 4 ship-to types (incl. HOLD_AT_MANUFACTURER + CHANNEL_INBOUND), FC network + scorer, EasyPost rail, channel gates. Everything admin-gated via LogisticsSetting (admin → Logistics → Gates); temp class + hazmat are HARD filters, never weights. SP-API/ShipBob/insurance blocked on external accounts. FNSKU-in-dieline = Studio = Code's zone (HANDOFF-TO-CODE-fnsku-in-dieline.md).
+- `PRINT_PROVIDER_SELECTION.md` — Printify-model provider cards + selection binding (PS-1→PS-3d BUILT 2026-07-06: sourcing signal, capability model §7, honey-problem application point §8, pinned picks + reroute gate, FC finalize-labeling, per-hop shipping) · §10 Print Coverage + Capability RFQ specced · §5 rotation superseded by SMART_ROTATION_ENGINE.md
+- `SMART_ROTATION_ENGINE.md` — admin-controlled auto-rotation (RotationPolicy: top-N by Bayesian rating, EQUAL/RANDOM/WEIGHTED_EXACT/BEST_ONLY, new-provider ramp, floor, location bias, sticky reorders, kill switch, PrintAwardLog) · SR-1 pure engine BUILT 2026-07-06, `enabled=false` until flipped; execution checklist in §3
+- `FEEDBACK_MODULE.md` + `FEEDBACK_AND_RATINGS_CHECKLIST.md` — thumbs feedback rail, partner ratings (Bayesian, pink stars), verified creator reviews · Stages 1–7 BUILT 2026-07-06
 - `MULTI_PARTNER_APPROVAL_WORKFLOW.md` — H1 spec
 - `MANUFACTURER_PRODUCT_BUILDER.md` — partner editor card spec
 - `DESIGN_SYSTEM.md` — full tokens + components

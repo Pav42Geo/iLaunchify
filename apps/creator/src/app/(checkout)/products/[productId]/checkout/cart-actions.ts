@@ -17,7 +17,7 @@
 // On webhook completion the existing @ilaunchify/payments handler flips
 // Order → PAID and createDispatches() fires routing.
 
-import { prisma, getSampleSettings, resolveOrderSettings, getLogisticsSettings, isLogisticsEnabled, isStorageClassEnabled } from '@ilaunchify/db'
+import { prisma, Prisma, getSampleSettings, resolveOrderSettings, getLogisticsSettings, isLogisticsEnabled, isStorageClassEnabled } from '@ilaunchify/db'
 import {
   evaluateChannelInboundGates,
   decidePlacementSplits,
@@ -415,6 +415,9 @@ export async function placeOrderFromCheckoutDraft(
     destinationRegionId: product.brand.operatingRegionId,
     targetMarketId: primaryMarket?.marketId ?? null,
     pinnedPrintServiceId: pinnedSelection?.partnerServiceId ?? null,
+    // SR-2 — sticky reorders: the engine keeps this creator's repeat orders of
+    // the same product on the SAME printer (color consistency) when possible.
+    creatorUserId: user.id,
   })
   if (!routing.ok) return { ok: false, error: routing.message }
 
@@ -1086,6 +1089,20 @@ export async function placeOrderFromCheckoutDraft(
         orderUnits: qty * unitsPerQtyStep,
       },
     }).catch(() => {/* best-effort */})
+  }
+  // SR-2 — the rotation engine picked this printer (commodity shop, not a
+  // deliberate binding): persist the full decision to PrintAwardLog now that
+  // the order exists. Best-effort — analytics must never abort an order.
+  if (routing.printAwardDecision) {
+    await prisma.printAwardLog
+      .create({
+        data: {
+          partnerServiceId: routing.labelPrintingServiceId,
+          orderId: order.id,
+          decisionJson: routing.printAwardDecision as Prisma.InputJsonValue,
+        },
+      })
+      .catch(() => {/* best-effort */})
   }
   // PS-3 — the creator consciously accepted auto-routing after their pinned
   // print provider failed validation: record the informed consent.

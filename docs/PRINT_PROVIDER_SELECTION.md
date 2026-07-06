@@ -101,6 +101,11 @@ Rendered ONLY when `effectivePrintSourcing ≠ IN_HOUSE`. Printify-style, non-in
 
 ## §5 Auto-routing by rating (when the creator doesn't pick)
 
+> **SUPERSEDED 2026-07-06 by `docs/SMART_ROTATION_ENGINE.md`** — the sketch below grew into the
+> full admin-controlled engine (RotationPolicy: top-N pool, EQUAL/RANDOM/WEIGHTED_EXACT/
+> BEST_ONLY split, new-provider ramp + cap, rating floor, location bias, sticky reorders,
+> kill switch, PrintAwardLog). SR-1 (schema + pure engine) BUILT; read that doc, not this §.
+
 Replaces the legacy commodity-shop ordering in fallback #2 (and ranks `EXTERNAL_*` candidates
 generally):
 - Hard filters (unchanged, never rating-based) → **rank by Bayesian rating score** (+ tie-breakers:

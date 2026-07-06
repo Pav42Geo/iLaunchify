@@ -16,6 +16,12 @@ import { generateOrderManifest } from './manifest'
 import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
+import {
+  selectRotatingProvider,
+  buildRotationAwardPayload,
+  type RotationCandidate,
+  type RotationPolicyInput,
+} from './rotation'
 
 // Re-exported for back-compat: estimateDispatchCosts now lives in the pure planner.
 export { estimateDispatchCosts } from './dispatch-planner'
@@ -34,6 +40,13 @@ export interface RoutingResult {
    * substitution is the §4 anti-pattern.
    */
   pinnedPrintUnavailable?: boolean
+  /**
+   * SR-2 (SMART_ROTATION_ENGINE §2.2): present ONLY when the rotation engine
+   * (not a pinned/config-bound/owner path) picked the printer. Callers persist
+   * it to PrintAwardLog with the orderId once the order exists — routing runs
+   * pre-payment, so the log write belongs to the order-create side.
+   */
+  printAwardDecision?: Record<string, unknown>
 }
 
 export type RoutingFailure =
@@ -63,6 +76,9 @@ export async function findRouting(params: {
    *  pass it in; findRouting validates it against the SAME hard filters as
    *  every other path — a pin is a preference, never a bypass. */
   pinnedPrintServiceId?: string | null
+  /** SR-2 — enables the sticky-reorder lookup (the creator's last printer for
+   *  this product). Optional: absent = no stickiness, engine still rotates. */
+  creatorUserId?: string | null
 }): Promise<RoutingResult | RoutingFailure> {
   const excluded = new Set(params.excludeServiceIds ?? [])
   const product = await prisma.product.findUnique({
@@ -275,6 +291,8 @@ export async function findRouting(params: {
   // collapse to a single dispatch when the manufacturer self-labels.)
   let printSvcId = manufacturer.id
   let printUserId = manufacturer.partner.userId
+  // SR-2 — set only when the rotation engine (not a deliberate binding) decides.
+  let printAwardDecision: Record<string, unknown> | undefined
 
   const dieCutTemplateId = product.template?.dieCutTemplateId
   if (dieCutTemplateId) {
@@ -307,12 +325,32 @@ export async function findRouting(params: {
     })
 
     // D3 — prefer the OWNING manufacturer's OWN print service when it qualifies,
-    // before shopping other printers (minimizes splitting the order).
-    const printProvider =
-      eligiblePrinters.find((s) => s.partnerId === manufacturer.partnerId) ?? eligiblePrinters[0]
-    if (printProvider) {
-      printSvcId = printProvider.id
-      printUserId = printProvider.partner.userId
+    // before shopping other printers (minimizes splitting the order). This is a
+    // deliberate binding, not shopping — the rotation engine never overrides it.
+    const ownerPrint = eligiblePrinters.find((s) => s.partnerId === manufacturer.partnerId)
+    if (ownerPrint) {
+      printSvcId = ownerPrint.id
+      printUserId = ownerPrint.partner.userId
+    } else if (eligiblePrinters.length > 0) {
+      // SR-2 (SMART_ROTATION_ENGINE §2.2) — the commodity shop. Replaces the
+      // old arbitrary `eligiblePrinters[0]`: hard filters already ran above;
+      // the engine handles sticky reorders, the new-provider ramp, the rating
+      // pool and the admin-configured split. Policy `enabled=false` (or no
+      // policy row) reproduces the legacy first-candidate pick exactly.
+      const decided = await rotatePrintShop({
+        eligible: eligiblePrinters.map((s) => ({
+          id: s.id,
+          userId: s.partner.userId,
+          ratingBayesian: s.ratingBayesian === null ? null : Number(s.ratingBayesian),
+          ratingCount: s.ratingCount,
+          excludeFromAutoRotation: s.excludeFromAutoRotation,
+        })),
+        productId: params.productId,
+        creatorUserId: params.creatorUserId ?? null,
+      })
+      printSvcId = decided.serviceId
+      printUserId = decided.userId
+      if (decided.awardPayload) printAwardDecision = decided.awardPayload
     }
   }
 
@@ -323,6 +361,114 @@ export async function findRouting(params: {
     labelPrintingServiceId: printSvcId,
     labelPrintingUserId: printUserId,
     ...(pinnedPrintUnavailable ? { pinnedPrintUnavailable: true } : {}),
+    ...(printAwardDecision ? { printAwardDecision } : {}),
+  }
+}
+
+// ─── SR-2 helpers (SMART_ROTATION_ENGINE §2.2) ───────────────────────────────
+
+/** MIN_RATINGS_FOR_DISPLAY mirror (partner-rating.ts) — below = "New". */
+const ROTATION_NEW_BELOW_RATINGS = 3
+/** Open-award proxy window for the new-provider concurrent cap (days). */
+const ROTATION_OPEN_AWARD_WINDOW_DAYS = 30
+
+const DEFAULT_ROTATION_POLICY: RotationPolicyInput = {
+  enabled: false, // no policy row / engine off → legacy first-candidate behavior
+  poolSize: 3,
+  mode: 'EQUAL',
+  slotSharesPct: [],
+  newProviderSharePct: 10,
+  newProviderMaxOpen: 2,
+  ratingFloor: null,
+  locationBiasPct: 0,
+  stickyReorders: true,
+}
+
+async function rotatePrintShop(args: {
+  eligible: Array<{
+    id: string
+    userId: string
+    ratingBayesian: number | null
+    ratingCount: number
+    excludeFromAutoRotation: boolean
+  }>
+  productId: string
+  creatorUserId: string | null
+}): Promise<{ serviceId: string; userId: string; awardPayload?: Record<string, unknown> }> {
+  const first = args.eligible[0]!
+  const userIdOf = new Map(args.eligible.map((s) => [s.id, s.userId]))
+
+  const policyRow = await prisma.rotationPolicy
+    .findUnique({ where: { serviceType: 'LABEL_PRINTING' } })
+    .catch(() => null)
+  const policy: RotationPolicyInput = policyRow
+    ? {
+        enabled: policyRow.enabled,
+        poolSize: policyRow.poolSize,
+        mode: policyRow.mode,
+        slotSharesPct: policyRow.slotSharesPct,
+        newProviderSharePct: policyRow.newProviderSharePct,
+        newProviderMaxOpen: policyRow.newProviderMaxOpen,
+        ratingFloor: policyRow.ratingFloor === null ? null : Number(policyRow.ratingFloor),
+        locationBiasPct: policyRow.locationBiasPct,
+        stickyReorders: policyRow.stickyReorders,
+      }
+    : DEFAULT_ROTATION_POLICY
+
+  // Engine off → skip the award-history queries entirely (hot path stays lean).
+  if (!policy.enabled) return { serviceId: first.id, userId: first.userId }
+
+  const serviceIds = args.eligible.map((s) => s.id)
+  const windowStart = new Date(Date.now() - ROTATION_OPEN_AWARD_WINDOW_DAYS * 86_400_000)
+  const [awardAgg, sticky] = await Promise.all([
+    prisma.printAwardLog.groupBy({
+      by: ['partnerServiceId'],
+      where: { partnerServiceId: { in: serviceIds } },
+      _max: { awardedAt: true },
+    }),
+    // Sticky reorder — the creator's last booked printer for THIS product.
+    args.creatorUserId
+      ? prisma.order.findFirst({
+          where: {
+            creatorUserId: args.creatorUserId,
+            printProviderServiceId: { not: null },
+            items: { some: { productId: args.productId } },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { printProviderServiceId: true },
+        })
+      : Promise.resolve(null),
+  ])
+  const openCounts = await prisma.printAwardLog.groupBy({
+    by: ['partnerServiceId'],
+    where: { partnerServiceId: { in: serviceIds }, awardedAt: { gte: windowStart } },
+    _count: { _all: true },
+  })
+  const lastAwardBy = new Map(awardAgg.map((a) => [a.partnerServiceId, a._max.awardedAt]))
+  const openBy = new Map(openCounts.map((a) => [a.partnerServiceId, a._count._all]))
+
+  const candidates: RotationCandidate[] = args.eligible.map((s) => ({
+    serviceId: s.id,
+    ratingBayesian: s.ratingBayesian,
+    ratingCount: s.ratingCount,
+    isNew: s.ratingCount < ROTATION_NEW_BELOW_RATINGS,
+    excludeFromAutoRotation: s.excludeFromAutoRotation,
+    distanceMiles: null, // geo enrichment lands with SR-2.1 (locationBiasPct drops until then)
+    openAwardCount: openBy.get(s.id) ?? 0,
+    lastAwardedAt: lastAwardBy.get(s.id) ?? null,
+  }))
+
+  const rolls = { roll: Math.random(), poolRoll: Math.random() }
+  const decision = selectRotatingProvider(candidates, {
+    policy,
+    previousProviderServiceId: sticky?.printProviderServiceId ?? null,
+    ...rolls,
+  })
+  const winnerId = decision.winnerServiceId ?? first.id
+  return {
+    serviceId: winnerId,
+    userId: userIdOf.get(winnerId) ?? first.userId,
+    awardPayload: buildRotationAwardPayload(decision, policy, rolls) as Record<string, unknown>,
   }
 }
 

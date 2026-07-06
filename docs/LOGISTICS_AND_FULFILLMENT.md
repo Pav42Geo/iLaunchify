@@ -7,6 +7,9 @@
 > doc-gated ship panel + inbound queue + admin shipments (L1.1) · storage accrual + stock releases + admin FC override (L1.2) ·
 > EasyPost rail + tracking webhooks + checkout quotes + admin carriers (L2) · channel gates + FNSKU capture + CHANNEL_INBOUND + admin channel-plans, SP-API stubbed (L3) ·
 > V1.5 weighted FC scorer + rotation band + creator /inventory (L4a).
+> **2026-07-06:** FC rotation controls unify under the Smart Rotation Engine
+> (docs/SMART_ROTATION_ENGINE.md) — SR-4 layers poolSize/mode/new-node-share on the scorer
+> band; fc-scorer weights + band stay authoritative until SR-4 ships.
 > **Blocked externally:** Amazon SP-API dev approval → OAuth + live plan confirmation · EasyPost account/env → flip `carrier:easypost` ·
 > ShipBob master agreement → FulfillmentConnector (L4) · insurance verification (docs/SHIPPING_INSURANCE_VERIFICATION.md) → flip `insurance` ·
 > WFS/FBT adapters (L4, need seller API credentials). FNSKU-in-dieline = Code's zone (docs/HANDOFF-TO-CODE-fnsku-in-dieline.md).

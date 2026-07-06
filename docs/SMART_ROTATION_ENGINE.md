@@ -130,11 +130,17 @@ orders. KPI strip: pool depth · awards 30d · new-provider share · top-1 conce
   statistical check → exactly 5000/3000/2000 on 50/30/20
 - [ ] **[PAVEL]** migrate: `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next`
 
-### SR-2 — routing wiring (pending)
-- [ ] findRouting print leg: replace `eligiblePrinters[0]` with hard-filters →
-  `selectRotatingProvider` (policy + candidates loaded; pinned/config-bound paths untouched)
-- [ ] PrintAwardLog write on every auto-award (+ orderId backfill at order create)
-- [ ] Sticky-reorder lookup (creator+product last LABEL dispatch provider)
+### SR-2 — routing wiring — **BUILT 2026-07-06 (CW)**
+- [x] findRouting print leg: `eligiblePrinters[0]` replaced by `rotatePrintShop()` — loads the
+  LABEL_PRINTING RotationPolicy (no row / disabled → legacy first-candidate, zero extra queries
+  on the hot path), enriches survivors with ratingBayesian/ratingCount/isNew(<3)/kill-switch/
+  lastAwardedAt/openAwardCount(30d window proxy), runs `selectRotatingProvider`. Deliberate
+  bindings untouched: pinned (PS-3), config-bound offering, D3 owner-print preference all
+  bypass rotation. `distanceMiles=null` until SR-2.1 geo enrichment (bias dimension drops)
+- [x] `RoutingResult.printAwardDecision` — decision payload returned to the caller; cart-actions
+  persists PrintAwardLog with orderId POST-order-create (best-effort, never aborts an order)
+- [x] Sticky-reorder lookup — creator's last Order with this product's printProviderServiceId,
+  passed as `previousProviderServiceId`; `creatorUserId` param wired from checkout
 
 ### SR-3 — Routing & Rotation admin surface (pending)
 - [ ] v2 surface, 3 tabs (Print providers / FCs / Manufacturers): Policy editor (audited via
