@@ -219,6 +219,31 @@ export type {
   RatingAggregate,
   RatingLike,
 } from './partner-rating'
+// Review aspect-attribution (docs/REVIEW_ATTRIBUTION_MODEL.md)
+export {
+  REVIEW_ASPECTS,
+  aspectDef,
+  visibilityForRole,
+  resolveAspectPartners,
+  availableAspects,
+  resolveOneAspect,
+  REANCHOR_TRIGGER_MAX_STARS,
+  shouldOfferAttributionFork,
+  validateReanchorRating,
+  applyAttributionOutcome,
+  applyOfferedAspects,
+  DEFAULT_ATTRIBUTION_CONTROLS,
+} from './review-aspects'
+export type {
+  ReviewAspect,
+  AspectVisibility,
+  AspectDef,
+  OrderLeg,
+  ResolvedAspect,
+  AttributionOutcome,
+  AttributionResult,
+  ReviewAttributionControls,
+} from './review-aspects'
 export { recomputeAggregateApprovalStatus, computeAggregateStatus } from './aggregate-approval'
 export type { AggregateStatus } from './aggregate-approval'
 export {

@@ -4884,6 +4884,55 @@ model ProductReview {
   @@index([productId, status, createdAt])
 }
 
+// ---------------------------------------------------------------------------
+// Review aspect attribution (docs/REVIEW_ATTRIBUTION_MODEL.md). A product review
+// is product-scoped; a criticism about a partner's execution (printing/packaging/
+// fulfillment) routes to that partner as a note WITHOUT smearing the product star.
+// aspect → partnerServiceId is resolved from the order graph at capture; visibility
+// is snapshotted from the role's policy (printer/mfr PUBLIC; co-packer/FC ADMIN_SELF).
+// ---------------------------------------------------------------------------
+
+enum ReviewAspect {
+  PRODUCT // the branded product itself (no partner)
+  PACKAGING // co-packer, or manufacturer if they packed
+  PRINTING // the printer service on this order
+  FULFILLMENT // the FC / warehouse
+}
+
+model ReviewAspectNote {
+  id               String       @id @default(uuid())
+  productReviewId  String // parent review (carries the verified creator×product×order linkage)
+  aspect           ReviewAspect
+  partnerServiceId String? // resolved from the order graph; null for PRODUCT
+  role             String? // MANUFACTURER | PRINTER | COPACKER | WAREHOUSE (denormalized)
+  body             String // the micro-note (≤300)
+  visibility       String // PUBLIC | ADMIN_SELF — snapshotted from the role's policy at capture
+  status           ReviewStatus @default(PUBLISHED) // reuse the review moderation states
+  reanchored       Boolean      @default(false) // creator re-anchored the product star to this partner (§3.2a)
+  moderatedById    String? // soft FK → admin User
+  moderationNote   String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([partnerServiceId, status, createdAt])
+  @@index([productReviewId])
+}
+
+// Admin controls for the attribution layer (singleton, id=1 pattern like
+// OrderSettings). The resolver falls back to DEFAULT_ATTRIBUTION_CONTROLS when a
+// field is unset. Adjustable from the existing Review/Feedback admin surface.
+model ReviewAttributionSetting {
+  id                   Int      @id @default(1)
+  attributionEnabled   Boolean  @default(true)
+  reanchorEnabled      Boolean  @default(true)
+  enforceReanchorFloor Boolean  @default(true)
+  offeredAspects       String[] // ReviewAspect keys creators may tag (PRODUCT always implicit)
+  reanchorFlagRate     Float    @default(0.5) // flag a partner above this re-anchor share
+  reanchorFlagMinNotes Int      @default(10) // small-sample guard before the flag can fire
+  updatedAt            DateTime @updatedAt
+  updatedById          String?
+}
+
 // Mirror of Resend delivery lifecycle events (send + webhook) — powers the
 // Deliverability admin surface and the bounce/complaint suppression signal.
 model EmailDelivery {
