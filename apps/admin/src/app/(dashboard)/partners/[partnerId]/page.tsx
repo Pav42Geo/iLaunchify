@@ -65,6 +65,7 @@ import { ServiceToggleButton } from './ServiceToggleButton'
 import { computeOverallStatus, SECTION_LABEL, ALL_SECTIONS } from '@/lib/verification'
 import { STATUS_LABEL as PARTNER_STATUS_LABEL } from '@/lib/partner-fsm'
 import { PartnerScorecard } from './PartnerScorecard'
+import { VasVerificationList } from './VasVerificationList'
 
 export const dynamic = 'force-dynamic'
 
@@ -338,6 +339,23 @@ export default async function PartnerDetail({ params }: PageProps) {
     COPACKING: 'Co-packing',
     WAREHOUSE: 'Fulfillment',
   }
+  // PS §8.1a — FC value-added service declarations awaiting/holding verification.
+  const vasRows = (
+    await prisma.fcValueAddedService.findMany({
+      where: { partnerServiceId: { in: serviceIds } },
+      orderBy: [{ status: 'asc' }, { jobType: 'asc' }],
+    })
+  ).map((v) => ({
+    id: v.id,
+    jobType: v.jobType as string,
+    labelMethods: v.labelMethods as string[],
+    feeCentsPerUnit: v.feeCentsPerUnit,
+    minUnits: v.minUnits,
+    leadTimeDays: v.leadTimeDays,
+    notes: v.notes,
+    status: v.status as string,
+  }))
+
   const lowRatings30d = await prisma.partnerRating.count({
     where: {
       partnerServiceId: { in: serviceIds },
@@ -528,6 +546,8 @@ export default async function PartnerDetail({ params }: PageProps) {
           />
 
           <PartnerScorecard data={scorecard} />
+          {/* PS §8.1a — FC VAS verification (ACTIVE = eligible application point) */}
+          <VasVerificationList rows={vasRows} />
 
           <Card icon={Sparkles} title="Partner tier" subtitle="Display only · no behavioral binding V1" compact>
             <PartnerTierPill

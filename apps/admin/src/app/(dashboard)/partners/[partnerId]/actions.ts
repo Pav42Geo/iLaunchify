@@ -266,3 +266,38 @@ export async function togglePartnerService(input: {
   revalidatePath(`/partners/${service.partnerId}`)
   return { ok: true }
 }
+
+// -----------------------------------------------------------------------------
+// FC value-added service verification (docs/PRINT_PROVIDER_SELECTION.md §8.1a).
+// Partner declarations stay DRAFT until an admin verifies — ACTIVE rows make
+// the FC an eligible application point (resolver step 3), so a false RELABEL
+// claim is exactly the platform loss the pairing engine exists to prevent.
+// -----------------------------------------------------------------------------
+
+export async function verifyFcVas(input: {
+  vasId: string
+  approve: boolean
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = await requireCapability('platform:admin')
+  const row = await prisma.fcValueAddedService.findUnique({
+    where: { id: input.vasId },
+    include: { partnerService: { select: { id: true, partnerId: true } } },
+  })
+  if (!row) return { ok: false, error: 'VAS row not found' }
+
+  const nextStatus = input.approve ? ('ACTIVE' as const) : ('DRAFT' as const)
+  await prisma.fcValueAddedService.update({
+    where: { id: row.id },
+    data: { status: nextStatus },
+  })
+
+  await logAuditAs(admin, {
+    entityType: 'PartnerService',
+    entityId: row.partnerService.id,
+    action: input.approve ? 'FC_VAS_VERIFIED' : 'FC_VAS_REJECTED',
+    payload: { vasId: row.id, jobType: row.jobType, labelMethods: row.labelMethods },
+  })
+
+  revalidatePath(`/partners/${row.partnerService.partnerId}`)
+  return { ok: true }
+}

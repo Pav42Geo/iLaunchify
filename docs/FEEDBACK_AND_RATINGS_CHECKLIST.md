@@ -52,8 +52,10 @@ FC value-added services admin-verified before ACTIVE.
 - [x] `PartnerService.appliesLabels @default(true)` (one column serves MANUFACTURING + COPACKING) + `FcValueAddedService` catalog (`FcVasJobType` ×6, `labelMethods` per RELABEL, fee/minUnits/leadTime, `OfferingStatus` DRAFT→admin-verified ACTIVE) (§8.1/8.1a)
 - [x] Offering capability columns: `printProcess` enum, `maxRunQty`, `foodContactSafe @default(false)` (HARD filter), min/max print width+height envelope, `substrateIds` (§7.2)
 - [x] Pure engines (`@ilaunchify/orders`): `effectivePrintSourcing` (+ `showsPrintProviderCards`/`allowsSelfLabelFallback`) · `eligiblePrintProviders` (8 layered hard filters, machine-readable reasons + `INELIGIBILITY_COPY`, physics-invalid flags the JOB) · `resolveApplicationPoint` + `validateGraphCompleteness` (honey problem: mfr → co-packer → verified-FC → UNRESOLVED; "labels never route to an FC by destination" and "mfr wins over qualified FC" both test-pinned) — vitest suite + 19 compiled node checks green
-- [ ] **[CW next pass]** Partner editor cards: labeling mode · capability wizard · FC VAS card (admin-verified → ACTIVE) — build after migration on typed client (required BEFORE PS-2 cards render)
-- [ ] **[PAVEL]** migration run (`db:push` → `db:generate` → `.next` clear) + policy calls: printer→applier freight attribution; UNRESOLVED checkout fallback order
+- [x] Partner editor cards (`/settings/labeling`, hub card added): manufacturing labeling-mode radio (audited `LABELING_MODE_CHANGED` — "the event that specifies it") + applies-labels toggle (mfr/copack, audited) + FC VAS declarations (job catalog, per-method RELABEL chips, fee/min/lead; any partner edit returns the row to DRAFT) — `requirePartnerActor` service-scoped auth
+- [x] Admin VAS verification: `verifyFcVas` action + `VasVerificationList` on the partner detail rail (Verify→ACTIVE / Revoke, audited) — the §8.1a "admin-verified before ACTIVE" gate
+- [x] **[PAVEL]** migration ran 2026-07-05 · remaining policy calls: printer→applier freight attribution; UNRESOLVED checkout fallback order (needed at PS-3, not before)
+- [ ] **[CW]** Offering capability wizard (printProcess/maxRun/foodContact/envelope/substrates on the offering editor) — with PS-2, where the fields become creator-visible
 
 ## Stage 6 — provider cards (CW; read-only, no binding)
 - [ ] Cards on product detail (Bayesian stars/"New", price-from, real avg production time, capability chips) gated by `effectivePrintSourcing` (§3)

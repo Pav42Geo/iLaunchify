@@ -5,6 +5,7 @@ import {
   CreditCard,
   Bell,
   MessageSquareHeart,
+  Tags,
   ShieldCheck,
   FileText,
   SlidersHorizontal,
@@ -207,6 +208,13 @@ export default async function SettingsPage() {
           href="/certifications"
           cta="Manage certifications"
           description="Keep your facility and product certifications current — they gate marketplace eligibility and partner trust."
+        />
+        <SettingCard
+          icon={<Tags className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Labeling & services"
+          href="/settings/labeling"
+          cta="Manage capabilities"
+          description="Who prints your decoration, whether you apply labels at fill, and fulfillment value-added services — the declarations that drive routing."
         />
         <SettingCard
           icon={<MessageSquareHeart className="h-[18px] w-[18px]" aria-hidden="true" />}
