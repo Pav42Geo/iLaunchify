@@ -25,8 +25,8 @@ import {
 export const RFQ_SHORTLIST_SIZE = 10
 /** Open window before an unclaimed request escalates to ops (§10.2). */
 export const RFQ_EXPIRY_DAYS = 14
-/** Partner-app landing for a claim. PS-8c swaps in the real capability inbox. */
-const PARTNER_CLAIM_PATH = '/dashboard'
+/** Partner-app landing for a claim — the capability inbox (PS-8c). */
+const PARTNER_CLAIM_PATH = '/capability-requests'
 
 export type RfqBroadcastReason = 'PUBLISH_GATE' | 'COVERAGE_DROP' | 'REBROADCAST'
 
@@ -189,5 +189,92 @@ export async function broadcastCapabilityRequestsForTemplate(
     }
   } catch {
     return EMPTY
+  }
+}
+
+export interface ClaimResolutionResult {
+  /** True when the activated offering belonged to a capability claim. */
+  wasClaim: boolean
+  /** True when coverage is now ≥1 (request FULFILLED, template unparked). */
+  coverageRestored: boolean
+  /** True when a PAUSED-for-coverage template was re-listed (PUBLISHED). */
+  unparked: boolean
+}
+
+/**
+ * Called when a PartnerPackagingOffering reaches ACTIVE (PS-8c). If that offering
+ * fulfils a capability claim, close the loop: claim VERIFIED → coverage recomputes
+ * (request FULFILLED via the ≥1 path) → a template PAUSED for coverage is re-listed.
+ * No-op for ordinary offerings. Never throws — a notification/coverage hiccup must
+ * never fail the partner's "activate offering" action.
+ *
+ * Unpark caveat (V1): we re-list any PAUSED template whose coverage returns through
+ * this claim path. A template an admin paused for an UNRELATED reason and that also
+ * had an open request could be re-listed early — acceptable at V1 volume; a
+ * distinct "paused reason" flag would remove the ambiguity later.
+ */
+export async function resolveCapabilityClaimOnOfferingActivated(
+  offeringId: string,
+): Promise<ClaimResolutionResult> {
+  const NONE: ClaimResolutionResult = { wasClaim: false, coverageRestored: false, unparked: false }
+  try {
+    const claim = await prisma.printCapabilityClaim.findFirst({
+      where: { offeringId },
+      select: { id: true, requestId: true, status: true },
+    })
+    if (!claim) return NONE
+
+    const request = await prisma.printCapabilityRequest.findUnique({
+      where: { id: claim.requestId },
+      select: { productTemplateId: true },
+    })
+    if (!request) return NONE
+
+    if (claim.status !== 'VERIFIED') {
+      await prisma.printCapabilityClaim.update({
+        where: { id: claim.id },
+        data: { status: 'VERIFIED' },
+      })
+    }
+
+    // Recompute coverage — coverage ≥1 closes OPEN/CLAIMED requests FULFILLED.
+    const cov = await broadcastCapabilityRequestsForTemplate(request.productTemplateId, {
+      reason: 'REBROADCAST',
+    })
+    const coverageRestored = cov.applicable && cov.coverage > 0
+
+    let unparked = false
+    if (coverageRestored) {
+      const tpl = await prisma.productTemplate.findUnique({
+        where: { id: request.productTemplateId },
+        select: { status: true, name: true },
+      })
+      if (tpl?.status === 'PAUSED') {
+        await prisma.productTemplate.update({
+          where: { id: request.productTemplateId },
+          data: { status: 'PUBLISHED' },
+        })
+        unparked = true
+        await logSystemAudit({
+          entityType: 'ProductTemplate',
+          entityId: request.productTemplateId,
+          action: 'PRODUCT_TEMPLATE_UNPARKED_COVERAGE_RESTORED',
+          fromValue: 'PAUSED',
+          toValue: 'PUBLISHED',
+          payload: { name: tpl.name, offeringId },
+        })
+      }
+    }
+
+    await logSystemAudit({
+      entityType: 'PrintCapabilityClaim',
+      entityId: claim.id,
+      action: 'CAPABILITY_CLAIM_VERIFIED',
+      payload: { offeringId, templateId: request.productTemplateId, coverageRestored, unparked },
+    })
+
+    return { wasClaim: true, coverageRestored, unparked }
+  } catch {
+    return NONE
   }
 }

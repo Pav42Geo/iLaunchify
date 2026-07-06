@@ -497,10 +497,26 @@ shortlisting, broadcast, re-broadcast, unpark — all automatic.
     migration lands BOTH the PS-8a tables (PrintCapabilityRequest/Claim) AND the new
     `PARTNER_CAPABILITY_RFQ` enum value. Code was typechecked against a LOCALLY-patched client
     (sandbox can't regenerate — Linux, no engine); your regenerate is the real source of truth.
-- **PS-8c — partner claim flow**: partner-dashboard card + "I can produce this" action →
-  claim row + pre-filled DRAFT PartnerPackagingOffering (tuple → §7.2 wizard fields) →
-  existing admin verification flips ACTIVE → claim VERIFIED → request FULFILLED → template
-  auto-unparks → manufacturer + waiting creators notified
+- **PS-8c — partner claim flow** · CODE COMPLETE 2026-07-06 (CW); migration pending Pavel
+  - [x] Partner capability inbox `/capability-requests` (LABEL_PRINTING role-nav entry, Megaphone):
+    lists OPEN requests the service was shortlisted for (notifiedServiceIds `has`) and hasn't
+    claimed; partial disclosure (packaging label + run band + region + compatible decorations
+    from the physics matrix — no designs/brand/manufacturer). `data.ts` + client claim card.
+  - [x] `claimCapabilityRequest(requestId, decorationMethod)` — validates OPEN + shortlisted +
+    physics-compatible → find-or-create DRAFT PartnerPackagingOffering (service × type ×
+    decoration, zero re-typing) → upsert claim OFFERING_DRAFTED + offeringId → request CLAIMED →
+    audit → redirect into the EXISTING §7.2 offering editor to finish pricing/MOQ.
+  - [x] Verification = self-activation (offerings are partner-activated; there is NO admin
+    offering-review step — the doc's "admin verification" was aspirational). Hook
+    `resolveCapabilityClaimOnOfferingActivated(offeringId)` runs on every offering→ACTIVE
+    transition (create/update/setOfferingStatus): claim VERIFIED → coverage recompute (request
+    FULFILLED via the ≥1 path) → PAUSED-for-coverage template re-listed PUBLISHED. Fail-soft.
+  - Follow-ups (not blocking): manufacturer + waiting-creator "coverage restored" notification
+    (structural close is done; the notify is unbuilt); a distinct "paused reason" flag so
+    auto-unpark can't re-list a template an admin paused for an unrelated reason (V1 re-lists
+    any PAUSED template whose coverage returns via the claim path — acceptable at V1 volume).
+  - [ ] **[PAVEL]** rides the SAME db:push as PS-8a/PS-8b (no new schema — reuses the models +
+    enum). `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next`.
 - **PS-8d — admin Coverage dashboard** (v2 surface, §10.4) + Design Studio guard copy
   ("printing being re-arranged") on coverage-dropped templates
 

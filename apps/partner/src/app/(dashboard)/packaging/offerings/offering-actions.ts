@@ -22,6 +22,7 @@ import type {
 } from '@ilaunchify/db'
 import { requirePartnerActor } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { resolveCapabilityClaimOnOfferingActivated } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 import { validatePricingTiers, type PricingTier } from './constants'
 
@@ -221,6 +222,11 @@ export async function createPackagingOffering(
     },
   })
 
+  // PS-8c — an offering created directly ACTIVE may fulfil a capability claim.
+  if (input.status === 'ACTIVE') {
+    await resolveCapabilityClaimOnOfferingActivated(offering.id)
+  }
+
   revalidatePath('/packaging/offerings')
   return { ok: true, data: { id: offering.id } }
 }
@@ -311,6 +317,12 @@ export async function updatePackagingOffering(
     payload: { partnerId: ctx.partnerId, fields: Object.keys(data) },
   })
 
+  // PS-8c — activating an offering may fulfil a capability claim (verify → restore
+  // coverage → unpark the manufacturer's template).
+  if (patch.status === 'ACTIVE' && existing.status !== 'ACTIVE') {
+    await resolveCapabilityClaimOnOfferingActivated(id)
+  }
+
   revalidatePath('/packaging/offerings')
   revalidatePath(`/packaging/offerings/${id}`)
   return { ok: true }
@@ -341,6 +353,11 @@ export async function setOfferingStatus(id: string, to: OfferingStatus): Promise
     toValue: to,
     payload: { partnerId: ctx.partnerId },
   })
+
+  // PS-8c — activation may fulfil a capability claim.
+  if (to === 'ACTIVE' && existing.status !== 'ACTIVE') {
+    await resolveCapabilityClaimOnOfferingActivated(id)
+  }
 
   revalidatePath('/packaging/offerings')
   revalidatePath(`/packaging/offerings/${id}`)

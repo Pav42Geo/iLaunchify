@@ -30,6 +30,7 @@ import {
   Receipt,
   Zap,
   Gauge,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -70,6 +71,7 @@ const NAV_PRODUCTS: PartnerNavItem = { href: '/products', label: 'Products', ico
 const NAV_SERVICES: PartnerNavItem = { href: '/services', label: 'Services', icon: Wrench }
 const NAV_PACKAGING: PartnerNavItem = { href: '/packaging', label: 'Packaging', icon: Box }
 const NAV_PRINT_SPEC: PartnerNavItem = { href: '/print-spec', label: 'Prepress output', icon: Printer }
+const NAV_CAPABILITY: PartnerNavItem = { href: '/capability-requests', label: 'Capability requests', icon: Megaphone }
 const NAV_ACCESSORIES: PartnerNavItem = { href: '/accessories', label: 'Accessories', icon: Gift }
 const NAV_CERTIFICATIONS: PartnerNavItem = { href: '/certifications', label: 'Certifications', icon: Award }
 const NAV_PAYMENTS: PartnerNavItem = { href: '/payments', label: 'Payments', icon: DollarSign }
@@ -112,6 +114,8 @@ export function roleNavFor(
     nav.push(NAV_SERVICES)
     if (producing) nav.push(NAV_PACKAGING)
     if (prepress) nav.push(NAV_PRINT_SPEC)
+    // PS-8c — claimable capability RFQs (printers who can produce uncovered specs).
+    if (has('LABEL_PRINTING')) nav.push(NAV_CAPABILITY)
     if (producing) nav.push(NAV_ACCESSORIES)
     nav.push(NAV_CERTIFICATIONS, NAV_PAYMENTS)
     if (fulfillment) nav.push(NAV_BILLING)
