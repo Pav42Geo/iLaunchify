@@ -178,6 +178,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   PARTNER_CAPABILITY_RFQ: 'reminders',
   // PS-8 follow-up — paused-for-coverage template is orderable again.
   COVERAGE_RESTORED: 'orders',
+  // MM-7 — fee grace/promo started (positive change to their platform fee).
+  MANUFACTURER_FEE_GRANT_STARTED: 'billing',
 }
 
 export function categoryForEvent(event: NotificationEvent): NotificationCategorySlug {

@@ -181,6 +181,13 @@ export interface TemplateData {
     role: 'manufacturer' | 'creator'
     href: string
   }
+  // MM-7 — fee grace/promo started for a manufacturer.
+  MANUFACTURER_FEE_GRANT_STARTED: {
+    feePct: string // e.g. "0%"
+    endsAt: string // ISO — window end
+    global: boolean // true = welcome/global grace, false = hand-picked grant
+    href: string
+  }
 }
 
 function fmtSection(sectionType: string): string {
@@ -730,6 +737,14 @@ export function renderTemplate<E extends NotificationEvent>(
             body: 'Printing is sorted — pick up your design and place your order whenever you\'re ready.',
             link: d.href,
           }
+    }
+    case 'MANUFACTURER_FEE_GRANT_STARTED': {
+      const d = data as TemplateData['MANUFACTURER_FEE_GRANT_STARTED']
+      return {
+        title: `You're at ${d.feePct} platform fee${d.feePct === '0%' ? ' — on us' : ''}`,
+        body: `${d.global ? 'Welcome! As a new manufacturer you' : 'You'}'ve been placed on a ${d.feePct} platform fee through ${fmtDate(d.endsAt)}. Your badge is unaffected — this is a fee grace on top of your standing. No action needed.`,
+        link: d.href,
+      }
     }
     default:
       return { title: `${event}`, body: '' }

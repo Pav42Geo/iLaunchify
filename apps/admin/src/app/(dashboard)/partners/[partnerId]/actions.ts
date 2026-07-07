@@ -19,6 +19,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
+import { addDuration, feeBpsToPct, type GraceUnit } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 import type { PartnerStatus } from '@ilaunchify/db'
 import {
@@ -133,6 +134,24 @@ export async function promotePartnerStatus({
       data: { companyName: partner.companyName },
       audience: 'partner',
     })
+  }
+
+  // MM-7 — welcome fee grace: on first activation, if global grace is on, tell
+  // the new manufacturer they're on a reduced fee for the window (once; never a
+  // recurring reminder). Fire-and-forget — notification issues never block ops.
+  if (toStatus === 'ACTIVE' && (fromStatus === 'OPERATIONALLY_CONFIGURED' || fromStatus === 'UNDER_REVIEW')) {
+    const gp = await prisma.meritPolicy
+      .findUnique({ where: { id: 1 }, select: { feeGraceEnabled: true, feeGraceValue: true, feeGraceUnit: true, feeGraceFeeBps: true } })
+      .catch(() => null)
+    if (gp?.feeGraceEnabled && gp.feeGraceValue > 0) {
+      const endsAt = addDuration(new Date(), gp.feeGraceValue, gp.feeGraceUnit as GraceUnit)
+      await dispatchNotification({
+        userId: partner.userId,
+        event: 'MANUFACTURER_FEE_GRANT_STARTED',
+        audience: 'partner',
+        data: { feePct: feeBpsToPct(gp.feeGraceFeeBps), endsAt: endsAt.toISOString(), global: true, href: '/standing' },
+      }).catch(() => undefined)
+    }
   }
 
   revalidatePath('/partners')

@@ -11,7 +11,8 @@
 import { prisma } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { addDuration, type GraceUnit } from '@ilaunchify/orders'
+import { addDuration, feeBpsToPct, type GraceUnit } from '@ilaunchify/orders'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true; message?: string } | { ok: false; error: string }
@@ -56,11 +57,28 @@ export async function createFeeGrants(input: {
   const startsAt = new Date()
   const endsAt = addDuration(startsAt, Math.round(input.value), input.unit)
   try {
+    // Resolve each service's owning user so we can tell them the good news.
+    const owners = await prisma.partnerService
+      .findMany({ where: { id: { in: ids } }, select: { id: true, partner: { select: { userId: true } } } })
+      .catch(() => [] as Array<{ id: string; partner: { userId: string } }>)
+    const ownerByService = new Map(owners.map((o) => [o.id, o.partner.userId]))
+    const feePct = feeBpsToPct(Math.round(input.feeBps))
+
     for (const sid of ids) {
       const g = await prisma.manufacturerFeeGrant.create({
         data: { partnerServiceId: sid, feeBps: Math.round(input.feeBps), startsAt, endsAt, reason: input.reason?.slice(0, 300) ?? null, createdById: admin.id },
       })
       await logAuditAs(admin, { entityType: 'ManufacturerFeeGrant', entityId: g.id, action: 'FEE_GRANT_CREATED', payload: { partnerServiceId: sid, feeBps: input.feeBps, endsAt } })
+      // Notify the manufacturer their fee grace started (once per grant; never throws).
+      const userId = ownerByService.get(sid)
+      if (userId) {
+        await dispatchNotification({
+          userId,
+          event: 'MANUFACTURER_FEE_GRANT_STARTED',
+          audience: 'partner',
+          data: { feePct, endsAt: endsAt.toISOString(), global: false, href: '/standing' },
+        }).catch(() => undefined)
+      }
     }
     revalidatePath('/merit')
     return { ok: true, message: `Fee grant applied to ${ids.length} manufacturer${ids.length === 1 ? '' : 's'}.` }

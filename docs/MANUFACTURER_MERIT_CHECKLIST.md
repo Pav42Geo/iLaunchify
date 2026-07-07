@@ -153,7 +153,16 @@ engine's FEE, not its scoring. Precedence: **manual grant > global grace > badge
 - [ ] **[PAVEL]** `db:push` + `db:generate` (MeritPolicy grace cols + ManufacturerFeeGrant + FeeGraceUnit
   enum + Partner.activatedAt) → `rm -rf apps/*/.next` → restart. Then de-cast the shims in
   `fee-grace-actions.ts`, both `data.ts` loaders, and the activation hook.
-- [ ] **[FOLLOW-UP, small]** One in-app notification when a grant STARTS ("you've earned X% through
-  <date>") + a welcome line when global grace kicks in at activation; optional single email for manual
-  grants. Deliberately NOT a recurring "days left" reminder (that's nagging). CW judgment: worth doing,
-  low-noise; not built this pass to keep MM-7c tight.
+## MM-7 notification · Grant-start notice — CODE COMPLETE 2026-07-06 (CW), gated on regenerate
+- [x] New `NotificationEvent.MANUFACTURER_FEE_GRANT_STARTED` (schema) → category **billing** (BOTH
+  channels) + template (in-app + email copy, "You're at X% platform fee … through <date>") + payload
+  shape `{ feePct, endsAt, global, href }` + required-keys + token palette. One event, `global` flag
+  branches welcome vs. hand-picked copy.
+- [x] Fires from **manual grants** (`createFeeGrants` → each granted manufacturer's owner user) AND on
+  **first activation** when global grace is on (`partners/[partnerId]/actions.ts`, `global: true`).
+  Fire-and-forget (never blocks the grant/activation). Deliberately once-per-grant — NO recurring
+  "days left" reminder (that's nagging).
+- [ ] **[PAVEL]** `db:push` + `db:generate` to land the enum value (Notification.event column + client
+  union), then `rm -rf apps/*/.next` → restart. Until then tsc flags the 5 new-event references
+  (expected — same "add event → regenerate" pattern as PARTNER_CAPABILITY_RFQ / COVERAGE_RESTORED);
+  the sandbox can't fetch the Prisma engine to regenerate here. No code changes needed after generate.

@@ -4697,6 +4697,9 @@ enum NotificationEvent {
   // Coverage restored (§10.1) — a paused-for-coverage template is live again.
   // One event, role-branched copy (manufacturer vs waiting creator).
   COVERAGE_RESTORED // printing is sorted — your product is orderable again
+  // MM-7 — a fee grace / promo grant started for a manufacturer (0% or reduced
+  // platform fee for a window). Positive, once-per-grant; never a recurring reminder.
+  MANUFACTURER_FEE_GRANT_STARTED
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
