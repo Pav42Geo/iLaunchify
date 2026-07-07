@@ -135,9 +135,14 @@ export function ProductCard({
   // Wire the heart to real favoriting when a FavoritesProvider + templateId are
   // present; otherwise fall back to the controlled favorited/onFavorite props.
   const cardFav = useCardFavorite(templateId)
+  // Cross-app links must be a plain <a> — a same-app <Link> pointing at another
+  // app (e.g. a creator on /favorites opening a marketplace template) 404s.
+  // Absolute URLs → anchor; relative marketplace URLs keep <Link>.
+  const isExternal = /^https?:\/\//.test(href)
+  const Wrapper = (isExternal ? 'a' : Link) as React.ElementType
 
   return (
-    <Link
+    <Wrapper
       href={href}
       className={cn(
         'group flex flex-col bg-[var(--bg-surface)] border border-[var(--card-border)] rounded-[var(--card-radius)] overflow-hidden ' +
@@ -220,7 +225,7 @@ export function ProductCard({
           <Stat value={fmtMoney(pricePerUnit)} label="per unit" align="right" accent />
         </div>
       </div>
-    </Link>
+    </Wrapper>
   )
 }
 

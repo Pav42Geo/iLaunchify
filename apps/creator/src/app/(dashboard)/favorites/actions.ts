@@ -90,6 +90,18 @@ export async function toggleFavorite(input: {
   return { ok: true, saved: true }
 }
 
+/**
+ * Adapter matching the ui FavoritesProvider's saveAction signature, so the
+ * canonical <ProductCard> heart on /favorites (a creator surface) removes the
+ * favorite. Wraps toggleFavorite for the PRODUCT_TEMPLATE kind.
+ */
+export async function toggleTemplateFavorite(input: {
+  templateId: string
+}): Promise<{ ok: boolean; saved?: boolean; reason?: string }> {
+  const r = await toggleFavorite({ kind: 'PRODUCT_TEMPLATE', targetId: input.templateId })
+  return r.ok ? { ok: true, saved: r.saved } : { ok: false, reason: 'ERROR' }
+}
+
 /** The current creator's favorited own-Product ids (for rendering Save state on cards). */
 export async function getFavoritedProductIds(): Promise<Set<string>> {
   const ctx = await currentCreatorId()
