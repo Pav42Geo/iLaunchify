@@ -76,6 +76,8 @@ export interface PersonalProduct extends SearchProduct {
 
 export interface PersonalResponse {
   items: PersonalProduct[]
+  /** True when a logged-in creator — drives guest vs personalized empty state. */
+  authenticated: boolean
 }
 
 export interface SearchResponse {
@@ -269,6 +271,16 @@ export function categoryName(slug: string): string | undefined {
 /** Display name for a niche slug (empty-focus scope label). */
 export function nicheName(slug: string): string | undefined {
   return NICHES.find((n) => n.slug === slug)?.name
+}
+
+/** Categories to show as a "Browse categories" card carousel (guest focus). */
+export function browseCategories(limit = 12): SearchCategory[] {
+  return CATEGORY_TREE.slice(0, limit).map((c) => ({
+    slug: c.slug,
+    name: c.name,
+    icon: c.icon,
+    href: `/marketplace/${c.slug}`,
+  }))
 }
 
 /** Niches to show as "Browse by niche" chips on empty focus. */

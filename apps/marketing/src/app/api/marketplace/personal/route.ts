@@ -16,14 +16,14 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET(): Promise<Response> {
-  const empty: PersonalResponse = { items: [] }
+  const empty: PersonalResponse = { items: [], authenticated: false }
   try {
     const session = await getMarketingSession()
     if (!session?.user || session.user.role !== 'CREATOR') {
       return NextResponse.json(empty, { headers: { 'Cache-Control': 'no-store' } })
     }
     const items = await getPersonalProducts(session.user.id)
-    return NextResponse.json({ items } satisfies PersonalResponse, {
+    return NextResponse.json({ items, authenticated: true } satisfies PersonalResponse, {
       headers: { 'Cache-Control': 'no-store' },
     })
   } catch {

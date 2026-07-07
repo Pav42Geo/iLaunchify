@@ -5,7 +5,12 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import {
   TRENDING_QUERIES,
   browseNiches,
+  browseCategories,
   scoreText,
+  matchCategories,
+  matchNiches,
+  categoryName,
+  nicheName,
   type SearchResponse,
   type SearchProduct,
   type SearchCategory,
@@ -46,6 +51,7 @@ export type NavType =
   | 'recent'
   | 'trending'
   | 'browse'
+  | 'browseCategory'
 
 export interface NavItem {
   index: number
@@ -129,9 +135,12 @@ export interface UseMarketplaceSearch {
     recentItems: NavItem[]
     trendingItems: NavItem[]
     browseItems: NavItem[]
+    browseCategoryItems: NavItem[]
   }
   hasResults: boolean
   showZero: boolean
+  /** True when a logged-in creator (drives guest vs personalized empty state). */
+  authenticated: boolean
 }
 
 export function useMarketplaceSearch(opts: {
@@ -163,9 +172,9 @@ export function useMarketplaceSearch(opts: {
   const [active, setActive] = React.useState(-1)
   const [recent, setRecent] = React.useState<string[]>([])
   const [popular, setPopular] = React.useState<SearchProduct[]>([])
-  const [popularLabel, setPopularLabel] = React.useState<string | undefined>(undefined)
   const [recentProducts, setRecentProducts] = React.useState<SearchProduct[]>([])
   const [personal, setPersonal] = React.useState<PersonalProduct[]>([])
+  const [authenticated, setAuthenticated] = React.useState(false)
 
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const reqIdRef = React.useRef(0)
@@ -191,7 +200,9 @@ export function useMarketplaceSearch(opts: {
     fetch('/api/marketplace/personal')
       .then((r) => r.json())
       .then((d: PersonalResponse) => {
-        if (alive) setPersonal(Array.isArray(d.items) ? d.items : [])
+        if (!alive) return
+        setPersonal(Array.isArray(d.items) ? d.items : [])
+        setAuthenticated(!!d.authenticated)
       })
       .catch(() => {})
     return () => {
@@ -199,27 +210,48 @@ export function useMarketplaceSearch(opts: {
     }
   }, [])
 
+  // Intent scope — with no page scope, infer a category/niche from the most
+  // recent search so the empty-focus carousel becomes "Trending in {X}".
+  const lastSearch = recent[0] ?? ''
+  const searchScope = React.useMemo(() => {
+    if (scope.category || scope.niche || !lastSearch) return null
+    const cat = matchCategories(lastSearch, 1)[0]
+    if (cat) return { category: cat.slug, name: cat.name }
+    const nic = matchNiches(lastSearch, 1)[0]
+    if (nic) return { niche: nic.slug, name: nic.name }
+    return null
+  }, [scope, lastSearch])
+
+  const fetchCategory = scope.category ?? searchScope?.category
+  const fetchNiche = scope.niche ?? searchScope?.niche
+
+  const popularTitle = React.useMemo(() => {
+    if (scope.category) return `Popular in ${categoryName(scope.category) ?? 'this category'}`
+    if (scope.niche) return `Popular in ${nicheName(scope.niche) ?? 'this niche'}`
+    if (searchScope) return `Trending in ${searchScope.name}`
+    return 'Popular right now'
+  }, [scope, searchScope])
+
   // Fetch "Popular right now" products so the empty-focus panel shows real
   // products immediately (before the user types), scoped to the category/niche
-  // the user is currently browsing. Re-runs when that scope changes. Silent —
-  // falls back to chips on failure.
+  // the user is currently browsing (or inferred from their last search).
+  // Re-runs when that scope changes. Silent — falls back to chips on failure.
   React.useEffect(() => {
     let alive = true
     const params = new URLSearchParams({ q: '' })
-    if (scope.category) params.set('category', scope.category)
-    else if (scope.niche) params.set('niche', scope.niche)
+    if (fetchCategory) params.set('category', fetchCategory)
+    else if (fetchNiche) params.set('niche', fetchNiche)
     fetch(`/api/marketplace/search?${params.toString()}`)
       .then((r) => r.json())
       .then((d: SearchResponse) => {
         if (!alive) return
         setPopular(Array.isArray(d.products) ? d.products : [])
-        setPopularLabel(d.popularLabel)
       })
       .catch(() => {})
     return () => {
       alive = false
     }
-  }, [scope.category, scope.niche])
+  }, [fetchCategory, fetchNiche])
 
   const refreshRecent = React.useCallback(() => {
     setRecent(readRecent())
@@ -327,8 +359,12 @@ export function useMarketplaceSearch(opts: {
     const push = (item: Omit<NavItem, 'index'>) => items.push({ ...item, index: items.length })
 
     if (isEmpty) {
-      for (const p of recentProducts) push({ type: 'recentProduct', product: p, run: () => selectProduct(p) })
+      // Guests get a "Browse categories" carousel for discovery (no personal data).
+      if (!authenticated) {
+        for (const c of browseCategories()) push({ type: 'browseCategory', category: c, run: () => routeToHref(c.href) })
+      }
       for (const p of popular) push({ type: 'product', product: p, run: () => selectProduct(p) })
+      for (const p of recentProducts) push({ type: 'recentProduct', product: p, run: () => selectProduct(p) })
       for (const r of recent) push({ type: 'recent', label: r, run: () => submit(r) })
       for (const t of TRENDING_QUERIES) push({ type: 'trending', label: t, run: () => submit(t) })
       for (const n of browseNiches()) push({ type: 'browse', niche: n, run: () => routeToHref(n.href) })
@@ -363,7 +399,7 @@ export function useMarketplaceSearch(opts: {
       for (const s of results.suggestions) push({ type: 'suggestion', label: s, run: () => submit(s) })
     }
     return items
-  }, [isEmpty, popular, personal, recentProducts, recent, results, trimmed, submit, routeToHref, selectProduct])
+  }, [isEmpty, authenticated, popular, personal, recentProducts, recent, results, trimmed, submit, routeToHref, selectProduct])
 
   const handleKeyNav = React.useCallback(
     (e: React.KeyboardEvent): boolean => {
@@ -404,6 +440,7 @@ export function useMarketplaceSearch(opts: {
       recentItems: nav.filter((n) => n.type === 'recent'),
       trendingItems: nav.filter((n) => n.type === 'trending'),
       browseItems: nav.filter((n) => n.type === 'browse'),
+      browseCategoryItems: nav.filter((n) => n.type === 'browseCategory'),
     }),
     [nav],
   )
@@ -421,7 +458,7 @@ export function useMarketplaceSearch(opts: {
     loading,
     results,
     recent,
-    popularLabel,
+    popularLabel: popularTitle,
     nav,
     active,
     setActive,
@@ -434,5 +471,6 @@ export function useMarketplaceSearch(opts: {
     groups,
     hasResults,
     showZero,
+    authenticated,
   }
 }

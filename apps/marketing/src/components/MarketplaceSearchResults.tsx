@@ -1,9 +1,10 @@
 'use client'
 
 import * as React from 'react'
-import { Search, Clock, TrendingUp, CornerDownLeft, ChevronLeft, ChevronRight, Heart, RotateCw } from 'lucide-react'
+import { Search, Clock, TrendingUp, CornerDownLeft, ChevronLeft, ChevronRight, Heart, RotateCw, LogIn } from 'lucide-react'
 import { productGradient } from '@ilaunchify/ui'
 import { highlightSegments } from '@/lib/marketplace-search'
+import { creatorUrl } from '@/lib/app-urls'
 import type { NavItem, UseMarketplaceSearch } from './useMarketplaceSearch'
 
 /**
@@ -278,11 +279,14 @@ function ProductMiniCard({
   tone,
   active,
   setActive,
+  sm = false,
 }: {
   item: NavItem
   tone: Tone
   active: number
   setActive: (i: number) => void
+  /** Compact variant — used by the smaller "Last viewed" carousel. */
+  sm?: boolean
 }) {
   const p = item.product!
   const on = active === item.index
@@ -294,12 +298,12 @@ function ProductMiniCard({
       aria-selected={on}
       onMouseEnter={() => setActive(item.index)}
       onClick={item.run}
-      className={`shrink-0 w-[132px] snap-start rounded-xl p-1.5 text-left transition-colors ${
+      className={`shrink-0 snap-start rounded-xl p-1.5 text-left transition-colors ${sm ? 'w-[104px]' : 'w-[132px]'} ${
         on ? tone.rowActive : tone.rowHover
       }`}
     >
       <span
-        className="flex h-[100px] w-full items-center justify-center overflow-hidden rounded-lg text-[30px] leading-none"
+        className={`flex w-full items-center justify-center overflow-hidden rounded-lg leading-none ${sm ? 'h-[72px] text-[22px]' : 'h-[100px] text-[30px]'}`}
         style={{ background: gradientFor(p.gradient) }}
       >
         {p.imageUrl ? (
@@ -309,10 +313,12 @@ function ProductMiniCard({
           <span aria-hidden>{p.icon}</span>
         )}
       </span>
-      <span className={`mt-1.5 block min-h-[32px] text-[12.5px] font-semibold leading-tight line-clamp-2 ${tone.productName}`}>
+      <span
+        className={`mt-1.5 block font-semibold leading-tight line-clamp-2 ${tone.productName} ${sm ? 'min-h-[28px] text-[11.5px]' : 'min-h-[32px] text-[12.5px]'}`}
+      >
         {p.title}
       </span>
-      <span className={`mt-1 block text-[12.5px] font-bold ${tone.productName}`}>
+      <span className={`mt-1 block font-bold ${tone.productName} ${sm ? 'text-[11.5px]' : 'text-[12.5px]'}`}>
         ${p.pricePerUnit.toFixed(2)}
         <span className={`text-[10.5px] font-medium ${tone.priceMuted}`}>/unit</span>
       </span>
@@ -397,22 +403,20 @@ function PersonalRow({
 }
 
 /**
- * PopularCarousel — horizontal mini-card row with edge fades + scroll arrows.
- * Arrows and the fade on each side appear only when there's more to scroll that
- * way, so a short row shows neither. Edge padding keeps cards off the panel edge.
+ * ScrollRow — horizontal scroller with edge fades + scroll arrows that appear
+ * only when there's overflow that way. Wraps any card children; `itemsKey`
+ * (e.g. child count) re-checks overflow when the contents change.
  */
-function PopularCarousel({
-  items,
-  tone,
+function ScrollRow({
   theme,
-  active,
-  setActive,
+  sm = false,
+  itemsKey,
+  children,
 }: {
-  items: NavItem[]
-  tone: Tone
   theme: Theme
-  active: number
-  setActive: (i: number) => void
+  sm?: boolean
+  itemsKey: number
+  children: React.ReactNode
 }) {
   const ref = React.useRef<HTMLDivElement>(null)
   const [canLeft, setCanLeft] = React.useState(false)
@@ -432,10 +436,11 @@ function PopularCarousel({
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [update, items.length])
+  }, [update, itemsKey])
 
-  const scrollByDir = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * 264, behavior: 'smooth' })
+  const scrollByDir = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * (sm ? 220 : 264), behavior: 'smooth' })
 
+  const arrowTop = sm ? 'top-[42px]' : 'top-[54px]'
   const fadeFrom = theme === 'dark' ? 'from-ink-900' : 'from-white'
   const arrowCls =
     theme === 'dark'
@@ -449,9 +454,7 @@ function PopularCarousel({
         onScroll={update}
         className="flex snap-x gap-2 overflow-x-auto scroll-smooth px-[18px] pb-2 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {items.map((item) => (
-          <ProductMiniCard key={item.product!.slug} item={item} tone={tone} active={active} setActive={setActive} />
-        ))}
+        {children}
       </div>
 
       {canLeft && (
@@ -461,7 +464,7 @@ function PopularCarousel({
             type="button"
             aria-label="Scroll left"
             onClick={() => scrollByDir(-1)}
-            className={`absolute left-1.5 top-[54px] z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition-colors ${arrowCls}`}
+            className={`absolute left-1.5 ${arrowTop} z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition-colors ${arrowCls}`}
           >
             <ChevronLeft className="h-4 w-4" strokeWidth={2.25} />
           </button>
@@ -474,13 +477,99 @@ function PopularCarousel({
             type="button"
             aria-label="Scroll right"
             onClick={() => scrollByDir(1)}
-            className={`absolute right-1.5 top-[54px] z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition-colors ${arrowCls}`}
+            className={`absolute right-1.5 ${arrowTop} z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition-colors ${arrowCls}`}
           >
             <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
           </button>
         </>
       )}
     </div>
+  )
+}
+
+/** PopularCarousel — product mini-cards in a ScrollRow. `sm` for the compact row. */
+function PopularCarousel({
+  items,
+  tone,
+  theme,
+  active,
+  setActive,
+  sm = false,
+}: {
+  items: NavItem[]
+  tone: Tone
+  theme: Theme
+  active: number
+  setActive: (i: number) => void
+  sm?: boolean
+}) {
+  return (
+    <ScrollRow theme={theme} sm={sm} itemsKey={items.length}>
+      {items.map((item) => (
+        <ProductMiniCard key={item.product!.slug} item={item} tone={tone} active={active} setActive={setActive} sm={sm} />
+      ))}
+    </ScrollRow>
+  )
+}
+
+/** CategoryCard — a "Browse categories" tile (emoji over a neutral surface). */
+function CategoryCard({
+  item,
+  tone,
+  theme,
+  active,
+  setActive,
+}: {
+  item: NavItem
+  tone: Tone
+  theme: Theme
+  active: number
+  setActive: (i: number) => void
+}) {
+  const c = item.category!
+  const on = active === item.index
+  return (
+    <button
+      type="button"
+      data-idx={item.index}
+      role="option"
+      aria-selected={on}
+      onMouseEnter={() => setActive(item.index)}
+      onClick={item.run}
+      className={`shrink-0 w-[120px] snap-start rounded-xl p-1.5 text-left transition-colors ${on ? tone.rowActive : tone.rowHover}`}
+    >
+      <span
+        className={`flex h-[76px] w-full items-center justify-center rounded-lg text-[32px] leading-none ${theme === 'dark' ? 'bg-white/[0.06]' : 'bg-ink-100'}`}
+      >
+        <span aria-hidden>{c.icon}</span>
+      </span>
+      <span className={`mt-1.5 block min-h-[30px] text-[12px] font-semibold leading-tight line-clamp-2 ${tone.productName}`}>
+        {c.name}
+      </span>
+    </button>
+  )
+}
+
+/** CategoryCarousel — Browse-categories tiles in a ScrollRow (guest discovery). */
+function CategoryCarousel({
+  items,
+  tone,
+  theme,
+  active,
+  setActive,
+}: {
+  items: NavItem[]
+  tone: Tone
+  theme: Theme
+  active: number
+  setActive: (i: number) => void
+}) {
+  return (
+    <ScrollRow theme={theme} itemsKey={items.length}>
+      {items.map((item) => (
+        <CategoryCard key={item.category!.slug} item={item} tone={tone} theme={theme} active={active} setActive={setActive} />
+      ))}
+    </ScrollRow>
   )
 }
 
@@ -492,8 +581,8 @@ export function MarketplaceSearchResults({
   theme: Theme
 }) {
   const tone = TONES[theme]
-  const { trimmed, isEmpty, loading, results, active, setActive, clearRecent, groups, hasResults, showZero } = search
-  const { products, personalItems, recentProductItems, jumpTo, suggestions, recentItems, trendingItems, browseItems } = groups
+  const { trimmed, isEmpty, loading, results, active, setActive, clearRecent, groups, hasResults, showZero, authenticated } = search
+  const { products, personalItems, recentProductItems, jumpTo, suggestions, recentItems, trendingItems, browseItems, browseCategoryItems } = groups
   const hasPersonal = personalItems.length > 0
   // Don't show the zero-state when the user has a personal ("For you") match.
   const showZeroFinal = showZero && !hasPersonal
@@ -510,6 +599,22 @@ export function MarketplaceSearchResults({
       {/* EMPTY STATE */}
       {isEmpty && (
         <div className="pb-2">
+          {browseCategoryItems.length > 0 && (
+            <>
+              {header('Browse categories')}
+              <CategoryCarousel items={browseCategoryItems} tone={tone} theme={theme} active={active} setActive={setActive} />
+              <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
+            </>
+          )}
+
+          {products.length > 0 && (
+            <>
+              {header(search.popularLabel ?? 'Popular right now')}
+              <PopularCarousel items={products} tone={tone} theme={theme} active={active} setActive={setActive} />
+              <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
+            </>
+          )}
+
           {recentProductItems.length > 0 && (
             <>
               {header(
@@ -522,15 +627,7 @@ export function MarketplaceSearchResults({
                   Clear
                 </button>,
               )}
-              <PopularCarousel items={recentProductItems} tone={tone} theme={theme} active={active} setActive={setActive} />
-              <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
-            </>
-          )}
-
-          {products.length > 0 && (
-            <>
-              {header(search.popularLabel ?? 'Popular right now')}
-              <PopularCarousel items={products} tone={tone} theme={theme} active={active} setActive={setActive} />
+              <PopularCarousel items={recentProductItems} tone={tone} theme={theme} active={active} setActive={setActive} sm />
               <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
             </>
           )}
@@ -577,6 +674,32 @@ export function MarketplaceSearchResults({
               </ChipButton>
             ))}
           </div>
+
+          {/* Guest conversion nudge — surfaces the personalization they're missing. */}
+          {!authenticated && (
+            <>
+              <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
+              <a
+                href={creatorUrl('/login')}
+                className={`mx-1.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${tone.rowHover}`}
+              >
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${theme === 'dark' ? 'bg-white/10 text-neon-500' : 'bg-pink-50 text-pink-700'}`}
+                >
+                  <LogIn className="h-4 w-4" strokeWidth={2.25} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block text-[13.5px] font-semibold ${tone.productName}`}>
+                    Sign in to see your saved items &amp; reorder
+                  </span>
+                  <span className={`block truncate text-[12px] ${tone.metaMuted}`}>
+                    Your favorites and past orders, right in search.
+                  </span>
+                </span>
+                <ChevronRight className={`h-4 w-4 shrink-0 ${tone.icon}`} strokeWidth={2} />
+              </a>
+            </>
+          )}
         </div>
       )}
 
