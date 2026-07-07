@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Search, Clock, TrendingUp, CornerDownLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Clock, TrendingUp, CornerDownLeft, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 import { productGradient } from '@ilaunchify/ui'
 import { highlightSegments } from '@/lib/marketplace-search'
 import type { NavItem, UseMarketplaceSearch } from './useMarketplaceSearch'
@@ -331,12 +331,15 @@ function PopularCarousel({
   theme,
   active,
   setActive,
+  onSeeAll,
 }: {
   items: NavItem[]
   tone: Tone
   theme: Theme
   active: number
   setActive: (i: number) => void
+  /** When set, a trailing "See all" card is appended that calls this. */
+  onSeeAll?: () => void
 }) {
   const ref = React.useRef<HTMLDivElement>(null)
   const [canLeft, setCanLeft] = React.useState(false)
@@ -376,6 +379,28 @@ function PopularCarousel({
         {items.map((item) => (
           <ProductMiniCard key={item.product!.slug} item={item} tone={tone} active={active} setActive={setActive} />
         ))}
+        {onSeeAll && (
+          <button
+            type="button"
+            onClick={onSeeAll}
+            aria-label="See all products"
+            className={`group shrink-0 w-[132px] snap-start rounded-xl p-1.5 text-left transition-colors ${tone.rowHover}`}
+          >
+            <span
+              className={`flex h-[100px] w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed ${
+                theme === 'dark'
+                  ? 'border-white/20 bg-white/[0.03] text-white/70 group-hover:border-neon-500 group-hover:text-neon-500'
+                  : 'border-ink-300 bg-ink-50 text-ink-500 group-hover:border-pink-500 group-hover:text-pink-700'
+              }`}
+            >
+              <ArrowRight className="h-6 w-6" strokeWidth={2} />
+            </span>
+            <span className={`mt-1.5 block min-h-[32px] text-[12.5px] font-semibold leading-tight ${tone.productName}`}>
+              See all
+            </span>
+            <span className={`mt-1 block text-[11.5px] font-medium ${tone.priceMuted}`}>View marketplace</span>
+          </button>
+        )}
       </div>
 
       {canLeft && (
@@ -433,7 +458,16 @@ export function MarketplaceSearchResults({
         <div className="pb-2">
           {recentProductItems.length > 0 && (
             <>
-              {header('Recently viewed')}
+              {header(
+                'Recently viewed',
+                <button
+                  type="button"
+                  onClick={search.clearRecentProducts}
+                  className={`cursor-pointer text-[11px] font-semibold normal-case tracking-normal ${tone.clearBtn}`}
+                >
+                  Clear
+                </button>,
+              )}
               <PopularCarousel items={recentProductItems} tone={tone} theme={theme} active={active} setActive={setActive} />
               <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
             </>
@@ -442,7 +476,14 @@ export function MarketplaceSearchResults({
           {products.length > 0 && (
             <>
               {header(search.popularLabel ?? 'Popular right now')}
-              <PopularCarousel items={products} tone={tone} theme={theme} active={active} setActive={setActive} />
+              <PopularCarousel
+                items={products}
+                tone={tone}
+                theme={theme}
+                active={active}
+                setActive={setActive}
+                onSeeAll={() => search.navigate(search.popularHref)}
+              />
               <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
             </>
           )}

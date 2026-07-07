@@ -52,7 +52,7 @@ export function MarketplaceCommandPalette() {
   // Keep the active row in view.
   React.useEffect(() => {
     if (search.active < 0 || !bodyRef.current) return
-    bodyRef.current.querySelector<HTMLElement>(`[data-idx="${search.active}"]`)?.scrollIntoView({ block: 'nearest' })
+    bodyRef.current.querySelector<HTMLElement>(`[data-idx="${search.active}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [search.active])
 
   if (!mounted || !open) return null

@@ -112,7 +112,12 @@ export interface UseMarketplaceSearch {
   submit: (text: string) => void
   clearInput: () => void
   clearRecent: () => void
+  clearRecentProducts: () => void
   refreshRecent: () => void
+  /** Route to a href (records nothing beyond the current query). */
+  navigate: (href: string) => void
+  /** "See all" target for the Popular carousel — the current category/niche scope, else /marketplace. */
+  popularHref: string
   /** Derived groups (contiguous slices of nav) for rendering. */
   groups: {
     products: NavItem[]
@@ -293,6 +298,17 @@ export function useMarketplaceSearch(opts: {
     writeRecent([])
   }, [])
 
+  const clearRecentProducts = React.useCallback(() => {
+    setRecentProducts([])
+    writeRecentProducts([])
+  }, [])
+
+  const popularHref = scope.category
+    ? `/marketplace/${scope.category}`
+    : scope.niche
+      ? `/marketplace?niche=${scope.niche}`
+      : '/marketplace'
+
   // Flat nav model — order matters (drives keyboard index + render order).
   const nav = React.useMemo<NavItem[]>(() => {
     const items: NavItem[] = []
@@ -378,7 +394,10 @@ export function useMarketplaceSearch(opts: {
     submit,
     clearInput,
     clearRecent,
+    clearRecentProducts,
     refreshRecent,
+    navigate: routeToHref,
+    popularHref,
     groups,
     hasResults,
     showZero,

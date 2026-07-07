@@ -45,7 +45,7 @@ export function MarketplaceSearchBar() {
   // Keep the active row scrolled into view.
   React.useEffect(() => {
     if (search.active < 0 || !panelRef.current) return
-    panelRef.current.querySelector<HTMLElement>(`[data-idx="${search.active}"]`)?.scrollIntoView({ block: 'nearest' })
+    panelRef.current.querySelector<HTMLElement>(`[data-idx="${search.active}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [search.active])
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
