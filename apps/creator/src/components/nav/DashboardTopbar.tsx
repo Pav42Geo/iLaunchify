@@ -33,12 +33,19 @@ export async function DashboardTopbar({ user }: { user: User }) {
           select: { id: true, name: true, handle: true },
           orderBy: { createdAt: 'asc' },
         },
-        _count: { select: { favorites: true } },
       },
     })
     brands = profile?.brands ?? []
     tier = profile ? normalizeTier(profile.subscriptionTier ?? null) : null
-    favoritesCount = profile?._count.favorites ?? 0
+    // Favorites badge count — guarded on its own so a stale Prisma client
+    // (before `db:push` + `db:generate` land the Favorite model, or before the
+    // `.next` bundle refreshes) degrades to 0 instead of taking down the whole
+    // dashboard. See CLAUDE.md stale-client gotcha.
+    try {
+      favoritesCount = await prisma.favorite.count({ where: { creator: { userId: user.id } } })
+    } catch {
+      favoritesCount = 0
+    }
   }
 
   // Notification dot — check for any unread bell-channel notification.

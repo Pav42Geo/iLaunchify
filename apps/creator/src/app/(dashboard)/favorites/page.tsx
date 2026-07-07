@@ -38,7 +38,11 @@ export default async function FavoritesPage({
       : null
 
   const favorites = profile
-    ? await prisma.favorite.findMany({
+    ? await (async () => {
+      // Guarded so a stale Prisma client (before the Favorite model lands via
+      // db:push + db:generate) renders an empty list instead of a 500.
+      try {
+        return await prisma.favorite.findMany({
         where: { creatorId: profile.id },
         orderBy: { createdAt: 'desc' },
         select: {
@@ -63,6 +67,10 @@ export default async function FavoritesPage({
           },
         },
       })
+      } catch {
+        return []
+      }
+    })()
     : []
 
   const templates = favorites.filter((f) => f.kind === 'PRODUCT_TEMPLATE' && f.productTemplate)

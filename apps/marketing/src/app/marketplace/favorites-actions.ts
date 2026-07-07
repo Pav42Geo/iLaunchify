@@ -95,15 +95,20 @@ export async function getFavoritedTemplateIds(templateIds: string[]): Promise<st
     select: { id: true },
   })
   if (!profile) return []
-  const rows = await prisma.favorite.findMany({
-    where: {
-      creatorId: profile.id,
-      kind: 'PRODUCT_TEMPLATE',
-      productTemplateId: { in: templateIds },
-    },
-    select: { productTemplateId: true },
-  })
-  return rows.map((r) => r.productTemplateId as string)
+  try {
+    const rows = await prisma.favorite.findMany({
+      where: {
+        creatorId: profile.id,
+        kind: 'PRODUCT_TEMPLATE',
+        productTemplateId: { in: templateIds },
+      },
+      select: { productTemplateId: true },
+    })
+    return rows.map((r) => r.productTemplateId as string)
+  } catch {
+    // Stale Prisma client before the Favorite model lands — degrade to none.
+    return []
+  }
 }
 
 /**
@@ -119,9 +124,15 @@ export async function getAllFavoritedTemplateIds(): Promise<string[]> {
     select: { id: true },
   })
   if (!profile) return []
-  const rows = await prisma.favorite.findMany({
-    where: { creatorId: profile.id, kind: 'PRODUCT_TEMPLATE', productTemplateId: { not: null } },
-    select: { productTemplateId: true },
-  })
-  return rows.map((r) => r.productTemplateId as string)
+  try {
+    const rows = await prisma.favorite.findMany({
+      where: { creatorId: profile.id, kind: 'PRODUCT_TEMPLATE', productTemplateId: { not: null } },
+      select: { productTemplateId: true },
+    })
+    return rows.map((r) => r.productTemplateId as string)
+  } catch {
+    // Stale Prisma client before the Favorite model lands — degrade to none so
+    // the marketplace layout never 500s.
+    return []
+  }
 }

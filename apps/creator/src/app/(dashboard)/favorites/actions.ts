@@ -94,11 +94,16 @@ export async function toggleFavorite(input: {
 export async function getFavoritedProductIds(): Promise<Set<string>> {
   const ctx = await currentCreatorId()
   if (!ctx) return new Set()
-  const rows = await prisma.favorite.findMany({
-    where: { creatorId: ctx.creatorId, kind: 'PRODUCT', productId: { not: null } },
-    select: { productId: true },
-  })
-  return new Set(rows.map((r) => r.productId as string))
+  try {
+    const rows = await prisma.favorite.findMany({
+      where: { creatorId: ctx.creatorId, kind: 'PRODUCT', productId: { not: null } },
+      select: { productId: true },
+    })
+    return new Set(rows.map((r) => r.productId as string))
+  } catch {
+    // Stale Prisma client before the Favorite model lands — no saved state.
+    return new Set()
+  }
 }
 
 /** Count for the header badge. */
@@ -145,6 +150,7 @@ export async function getFavoritesPreview(): Promise<FavoritesPreview> {
   const ctx = await currentCreatorId()
   if (!ctx) return { count: 0, items: [] }
 
+  try {
   const [count, rows] = await Promise.all([
     prisma.favorite.count({ where: { creatorId: ctx.creatorId } }),
     prisma.favorite.findMany({
@@ -200,4 +206,8 @@ export async function getFavoritesPreview(): Promise<FavoritesPreview> {
   }
 
   return { count, items }
+  } catch {
+    // Stale Prisma client before the Favorite model lands — empty peek.
+    return { count: 0, items: [] }
+  }
 }
