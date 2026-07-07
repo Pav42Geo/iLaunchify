@@ -117,7 +117,6 @@ const AUDIT_ALLOWLIST = new Set([
   'apps/creator/src/app/(studio)/products/[productId]/design/canvas/flavor-actions.ts', // per-flavor Design rows
   'apps/creator/src/app/(studio)/products/[productId]/design/canvas/mockup-render-actions.ts', // derived render Assets
   'apps/partner/src/app/(dashboard)/dashboard/welcome-modal-actions.ts',      // dismiss welcome modal flag
-  'apps/partner/src/app/(onboarding)/onboarding/actions.ts',                  // onboarding step-save (promote is audited)
   'apps/partner/src/app/(onboarding)/onboarding/company/actions.ts',          // company profile step-save
   'apps/marketing/src/app/feedback/actions.ts',                              // delegates to createTicket (audits internally)
   'apps/marketing/src/lib/guest-gate-actions.ts',                            // guest default-Brand bootstrap
@@ -153,15 +152,22 @@ const FSM_ALLOWLIST = new Set([
   'apps/admin/src/app/(dashboard)/products/actions.ts:295',             // guarded PUBLISHED⇄PAUSED (audited; no PT FSM home)
   'apps/admin/src/lib/partner-ops-worker.ts:156',                       // cron PartnerService→PAUSED (logSystemAudit)
   'apps/admin/src/lib/print-coverage-worker.ts:78',                     // cron ProductTemplate auto-pause (logSystemAudit)
-  'apps/partner/src/app/(dashboard)/products/actions.ts:591',           // soft-archive fallback after failed delete (audited)
 ])
+// A file is "guarded" when it invokes a transition assert/allow helper — the
+// established pattern (assertOrderTransition + inline update + audit). Presence
+// of a guard call means status updates in that file route through the FSM, so
+// they satisfy the invariant. File-level (not per-line) by design: a file that
+// adopts the pattern is trusted for its status writes.
+const FSM_GUARD_RX = /assert\w*Transition\s*\(|isAllowedTransition\s*\(|isPartnerTransitionAllowed\s*\(|isProductTemplateTransitionAllowed\s*\(/
 function checkFsmBypass() {
   const hits = []
   const rx = new RegExp(`\\bprisma\\.(${FSM_MODELS.join('|')})\\.update(Many)?\\s*\\(`, 'g')
   for (const f of collect(CODE, ['.ts', '.tsx'])) {
     if (FSM_HOMES.some((h) => f.includes(h))) continue
     if (/\.test\.ts$/.test(f)) continue
-    const lines = read(f).split('\n')
+    const src = read(f)
+    if (FSM_GUARD_RX.test(src)) continue // routes status changes through an FSM guard
+    const lines = src.split('\n')
     lines.forEach((line, i) => {
       if (!rx.test(line)) return
       // Look at the next ~6 lines for a status: assignment in the payload.

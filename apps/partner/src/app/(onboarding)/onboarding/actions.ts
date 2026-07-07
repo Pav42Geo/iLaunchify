@@ -8,6 +8,8 @@
 
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { logAuditAs } from '@ilaunchify/audit'
+import { assertPartnerTransition } from '@ilaunchify/orders'
 import type { ServiceType } from '@ilaunchify/db'
 import { revalidatePath } from 'next/cache'
 
@@ -366,6 +368,7 @@ export async function submitForReview() {
   // Promote — only from DRAFT / LEAD / IN_PROGRESS. Already-submitted partners
   // are a no-op (their existing section status is preserved).
   if (['DRAFT', 'LEAD', 'IN_PROGRESS', 'INVITED'].includes(partner.status)) {
+    assertPartnerTransition(partner.status, 'IDENTITY_PENDING_REVIEW')
     await prisma.partner.update({
       where: { id: partner.id },
       data: {
@@ -374,6 +377,17 @@ export async function submitForReview() {
         statusChangedById: user.id,
         statusChangeReason: 'Partner submitted onboarding for review',
       },
+    })
+
+    // AuditLog the lifecycle transition (the statusChanged* columns are a UI
+    // trail, not the append-only audit record). 2026-07-06.
+    await logAuditAs(user, {
+      entityType: 'Partner',
+      entityId: partner.id,
+      action: 'PARTNER_SUBMIT_ONBOARDING',
+      fromValue: partner.status,
+      toValue: 'IDENTITY_PENDING_REVIEW',
+      payload: { via: 'onboarding/submit' },
     })
 
     // Tell admins a partner finished onboarding and is ready for review. Best-effort,

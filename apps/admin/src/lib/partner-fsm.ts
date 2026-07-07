@@ -20,47 +20,19 @@
 // docs/PARTNER_ONBOARDING.md §3 has the full FSM diagram.
 
 import type { PartnerStatus } from '@ilaunchify/db'
+import { PARTNER_ALLOWED_TRANSITIONS } from '@ilaunchify/orders'
 
 /**
  * Whitelist of partner-status transitions admin may drive.
  *
- * Key = source status; value = list of destinations the admin UI offers.
- *
- * NOT modeled here (handled elsewhere):
- *   - LEAD → IDENTITY_PENDING_REVIEW (partner-driven via submitForReview)
- *   - INVITED → LEAD (partner first-login bootstrap)
- *
- * Verification-section gating (e.g., must have all BUSINESS/DOCUMENTS verified
- * before IDENTITY_VERIFIED) is enforced in the server action, NOT here — this
- * table just lists structurally valid edges.
+ * SINGLE SOURCE OF TRUTH moved to packages/orders/src/partner-fsm.ts (2026-07-06)
+ * so the partner app's own onboarding transitions can share the same table
+ * instead of bypassing the FSM. This re-exports it under the legacy name the
+ * admin UI + tests already import. Section-level gating is still enforced in the
+ * server action, not here.
  */
-export const ALLOWED_TRANSITIONS: Partial<Record<PartnerStatus, PartnerStatus[]>> = {
-  // Pre-submit — admin can move a stalled lead back to active editing if needed
-  LEAD: ['IDENTITY_PENDING_REVIEW', 'TERMINATED'],
-
-  // Identity review
-  IDENTITY_PENDING_REVIEW: ['IDENTITY_VERIFIED', 'LEAD', 'TERMINATED'],
-  IDENTITY_VERIFIED: ['OPS_PENDING_REVIEW', 'IDENTITY_PENDING_REVIEW', 'TERMINATED'],
-
-  // Ops review
-  OPS_PENDING_REVIEW: ['OPERATIONALLY_CONFIGURED', 'IDENTITY_VERIFIED', 'TERMINATED'],
-  OPERATIONALLY_CONFIGURED: ['ACTIVE', 'OPS_PENDING_REVIEW', 'TERMINATED'],
-
-  // Live
-  ACTIVE: ['PAUSED', 'SUSPENDED', 'TERMINATED'],
-  INTEGRATION_ENHANCED: ['PAUSED', 'SUSPENDED', 'TERMINATED'],
-  PAUSED: ['ACTIVE', 'SUSPENDED', 'TERMINATED'],
-  SUSPENDED: ['ACTIVE', 'TERMINATED'],
-
-  // Terminal
-  TERMINATED: [],
-
-  // Legacy bridges (Phase-A rows that pre-date the 10-state model)
-  DRAFT: ['IDENTITY_PENDING_REVIEW', 'TERMINATED'],
-  INVITED: ['LEAD', 'TERMINATED'],
-  IN_PROGRESS: ['IDENTITY_PENDING_REVIEW', 'TERMINATED'],
-  UNDER_REVIEW: ['ACTIVE', 'IDENTITY_PENDING_REVIEW', 'TERMINATED'],
-}
+export const ALLOWED_TRANSITIONS: Partial<Record<PartnerStatus, PartnerStatus[]>> =
+  PARTNER_ALLOWED_TRANSITIONS
 
 /**
  * Human-readable label for each status.

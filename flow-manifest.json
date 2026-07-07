@@ -75,10 +75,10 @@
         },
         {
           "step": "state",
-          "where": "product status FSM",
+          "where": "@ilaunchify/orders assertProductTemplateTransition",
           "emits": "DRAFT→PENDING_REVIEW→PUBLISHED",
           "guards": [
-            "FSM helper (GAP: no packages ProductTemplate FSM home yet)",
+            "assertProductTemplateTransition (FSM home added 2026-07-06)",
             "@ilaunchify/audit"
           ]
         },
@@ -113,7 +113,7 @@
     {
       "id": "partner",
       "title": "Partner onboarding → activation → tier",
-      "note": "The Partner lifecycle FSM currently lives only in apps/admin/src/lib/partner-fsm.ts; partner-app onboarding transitions bypass it (known GAP).",
+      "note": "Partner FSM table now shared in @ilaunchify/orders (assertPartnerTransition); admin re-exports it. Onboarding submit is guarded + audited (2026-07-06). Still open: partners/apply genesis not audited; review/actions.ts submits to legacy UNDER_REVIEW (parallel path — needs a canonical decision); layout.tsx flips INVITED→IN_PROGRESS in a render (should move to a server action).",
       "hops": [
         {
           "step": "apply",
@@ -125,10 +125,10 @@
         },
         {
           "step": "onboard",
-          "where": "apps/partner/(onboarding)",
+          "where": "apps/partner/(onboarding) → @ilaunchify/orders assertPartnerTransition",
           "emits": "10-state activation FSM",
           "guards": [
-            "partner-fsm (GAP: bypassed)",
+            "assertPartnerTransition (shared 2026-07-06)",
             "@ilaunchify/audit"
           ]
         },
@@ -196,7 +196,7 @@
       "exportSurface": 4,
       "consumedBy": {
         "apps/admin": 78,
-        "apps/partner": 44,
+        "apps/partner": 45,
         "apps/creator": 33,
         "packages/orders": 3,
         "packages/marketplace": 2,
@@ -258,7 +258,7 @@
         "apps/creator": 120,
         "apps/marketing": 32,
         "packages/notifications": 16,
-        "packages/orders": 14,
+        "packages/orders": 16,
         "packages/payments": 10,
         "packages/auth": 8,
         "packages/marketplace": 6,
@@ -350,17 +350,17 @@
         "@ilaunchify/risk",
         "@ilaunchify/types"
       ],
-      "exportSurface": 80,
+      "exportSurface": 82,
       "consumedBy": {
-        "apps/admin": 22,
+        "apps/admin": 23,
         "apps/creator": 18,
-        "apps/partner": 7,
+        "apps/partner": 9,
         "packages/ui": 4,
         "apps/marketing": 3,
         "packages/payments": 2,
         "packages/db": 1
       },
-      "role": "Order routing (owner-pinned manufacturing) + manifest gen + FC selection (fc-selector/fc-scorer) + order-fsm/dispatch-fsm."
+      "role": "Fulfillment + entity-lifecycle domain: order routing (owner-pinned) + FC selection + order-fsm/dispatch-fsm + the shared ProductTemplate & Partner FSM homes (assertProductTemplateTransition / assertPartnerTransition)."
     },
     "@ilaunchify/packaging-3d": {
       "dir": "packages/packaging-3d",

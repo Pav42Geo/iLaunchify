@@ -16,6 +16,19 @@ export {
   transitionOrder,
   assertOrderTransition,
 } from './order-fsm'
+// Entity lifecycle FSM homes (2026-07-06). Shared allowed-transition tables +
+// assert guards for ProductTemplate and Partner status changes — call the assert
+// before any inline prisma.update({ status }), then write the AuditLog.
+export {
+  PRODUCT_TEMPLATE_TRANSITIONS,
+  isProductTemplateTransitionAllowed,
+  assertProductTemplateTransition,
+} from './product-template-fsm'
+export {
+  PARTNER_ALLOWED_TRANSITIONS,
+  isPartnerTransitionAllowed,
+  assertPartnerTransition,
+} from './partner-fsm'
 export {
   transitionDispatch,
   assertDispatchTransition,

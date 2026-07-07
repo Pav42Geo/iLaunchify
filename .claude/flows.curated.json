@@ -9,7 +9,7 @@
     "@ilaunchify/payments": "Stripe Connect + Subscriptions.",
     "@ilaunchify/marketplace": "suggestNiches() engine + recordNicheAssignment(). Taxonomy assignment.",
     "@ilaunchify/notifications": "Dispatcher + Resend. Every user-facing state change should emit here.",
-    "@ilaunchify/orders": "Order routing (owner-pinned manufacturing) + manifest gen + FC selection (fc-selector/fc-scorer) + order-fsm/dispatch-fsm.",
+    "@ilaunchify/orders": "Fulfillment + entity-lifecycle domain: order routing (owner-pinned) + FC selection + order-fsm/dispatch-fsm + the shared ProductTemplate & Partner FSM homes (assertProductTemplateTransition / assertPartnerTransition).",
     "@ilaunchify/shipping": "Logistics substrate: classifier, carrier eligibility + rate shop, EasyPost gateway, dispatch gates, channel-inbound gates. Prisma-free by design.",
     "@ilaunchify/channels": "ChannelAdapter seam (Shopify/TikTok/Amazon/Walmart) + on-demand enablement gate.",
     "@ilaunchify/nutrition": "FDA label math — single source. calculateLabel + toPanelData.",
@@ -44,7 +44,7 @@
       "title": "Product creation → publish",
       "hops": [
         { "step": "new-product", "where": "apps/creator/products/new", "emits": "ProductTemplate + FlavorPreset overlays", "guards": ["domain↔category binding", "@ilaunchify/auth"] },
-        { "step": "state", "where": "product status FSM", "emits": "DRAFT→PENDING_REVIEW→PUBLISHED", "guards": ["FSM helper (GAP: no packages ProductTemplate FSM home yet)", "@ilaunchify/audit"] },
+        { "step": "state", "where": "@ilaunchify/orders assertProductTemplateTransition", "emits": "DRAFT→PENDING_REVIEW→PUBLISHED", "guards": ["assertProductTemplateTransition (FSM home added 2026-07-06)", "@ilaunchify/audit"] },
         { "step": "taxonomy", "where": "@ilaunchify/marketplace suggestNiches", "emits": "niche assignment", "guards": ["NicheAssignmentAudit", "marketplace-taxonomy-guardian"] },
         { "step": "label", "where": "@ilaunchify/nutrition + compliance-client", "emits": "FDA panel + validation", "guards": ["deterministic vector — theme-immune"] },
         { "step": "publish", "where": "apps/marketing/marketplace", "emits": "public listing read", "guards": ["PUBLISHED only", "empty-DB fixture is fallback ONLY"] }
@@ -53,10 +53,10 @@
     {
       "id": "partner",
       "title": "Partner onboarding → activation → tier",
-      "note": "The Partner lifecycle FSM currently lives only in apps/admin/src/lib/partner-fsm.ts; partner-app onboarding transitions bypass it (known GAP).",
+      "note": "Partner FSM table now shared in @ilaunchify/orders (assertPartnerTransition); admin re-exports it. Onboarding submit is guarded + audited (2026-07-06). Still open: partners/apply genesis not audited; review/actions.ts submits to legacy UNDER_REVIEW (parallel path — needs a canonical decision); layout.tsx flips INVITED→IN_PROGRESS in a render (should move to a server action).",
       "hops": [
         { "step": "apply", "where": "apps/partner/partners/apply", "emits": "User + Partner (LEAD) + PartnerService", "guards": ["@ilaunchify/audit (GAP: not audited)"] },
-        { "step": "onboard", "where": "apps/partner/(onboarding)", "emits": "10-state activation FSM", "guards": ["partner-fsm (GAP: bypassed)", "@ilaunchify/audit"] },
+        { "step": "onboard", "where": "apps/partner/(onboarding) → @ilaunchify/orders assertPartnerTransition", "emits": "10-state activation FSM", "guards": ["assertPartnerTransition (shared 2026-07-06)", "@ilaunchify/audit"] },
         { "step": "merit", "where": "merit engine", "emits": "Partner.tier (VERIFIED/TRUSTED/PREMIER)", "guards": ["earned, never sold", "binds production fee"] }
       ]
     }
