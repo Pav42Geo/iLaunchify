@@ -13,11 +13,13 @@ import {
   recommendBadgeChange,
   deriveCohortFromSignals,
   loadManufacturerMeritSignals,
+  standingFrozen,
   DEFAULT_MERIT_POLICY,
   type MeritSignals,
   type MeritPolicy,
   type MeritBadge,
   type BadgeSnapshotRef,
+  type RatingAppealStatus,
 } from '@ilaunchify/orders'
 
 export interface MeritSweepResult {
@@ -92,6 +94,17 @@ export async function runMeritSnapshotSweep(now: Date = new Date()): Promise<Mer
       const inGrace = r.signals.monthsActive * 30 < graceDays
       const merit = computeMeritScore({ ...r.signals, inGrace }, policy, cohort)
 
+      // MM-4 — an OPEN rating appeal freezes standing (defers demotion). The
+      // appeal FSM/freeze rule is pure; here we just feed it the open appeals.
+      // Cast-guarded until the MM-4a RatingAppeal table migrates (no appeals →
+      // frozen=false, so this is inert until MM-4b wires the file/adjudicate flow).
+      const openAppeals = await (prisma as unknown as {
+        ratingAppeal: { findMany: (a: unknown) => Promise<Array<{ status: RatingAppealStatus }>> }
+      }).ratingAppeal
+        .findMany({ where: { partnerServiceId: r.serviceId, status: { in: ['SUBMITTED', 'UNDER_REVIEW'] } }, select: { status: true } })
+        .catch(() => [] as Array<{ status: RatingAppealStatus }>)
+      const demoteBlocked = inGrace || standingFrozen(openAppeals)
+
       await snapWriter.create({
         data: {
           partnerServiceId: r.serviceId,
@@ -116,7 +129,7 @@ export async function runMeritSnapshotSweep(now: Date = new Date()): Promise<Mer
         .catch(() => [] as BadgeSnapshotRef[])
 
       const rec = recommendBadgeChange(r.currentBadge, history, policy, {
-        now, promoteSustainDays, demoteMissDays, inGrace,
+        now, promoteSustainDays, demoteMissDays, inGrace: demoteBlocked,
       })
       if (rec.action === 'PROMOTE') result.wouldPromote += 1
       if (rec.action === 'DEMOTE') result.wouldDemote += 1

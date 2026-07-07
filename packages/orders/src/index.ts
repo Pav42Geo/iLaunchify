@@ -330,6 +330,20 @@ export type {
   BadgeSnapshotRef,
 } from './merit'
 export { loadManufacturerMeritSignals, deriveCohortFromSignals } from './merit-signals'
+// Rating Appeal — fairness layer (docs/MANUFACTURER_MERIT_ENGINE.md Part 5, MM-4).
+export {
+  canTransitionAppeal,
+  assertAppealTransition,
+  isOpenAppeal,
+  outcomeChangesAggregate,
+  standingFrozen,
+  appealDeadlines,
+  appealSlaState,
+  OPEN_APPEAL_STATUSES,
+  AGGREGATE_CHANGING_OUTCOMES,
+  DEFAULT_APPEAL_SLA,
+} from './rating-appeal'
+export type { RatingAppealStatus, AppealSlaPolicy, AppealSlaState } from './rating-appeal'
 
 // Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
 export {

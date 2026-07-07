@@ -1492,6 +1492,39 @@ model PartnerMeritSnapshot {
   @@index([qualifiedBadge])
 }
 
+// ─── Rating Appeal — merit fairness layer (docs/MANUFACTURER_MERIT_ENGINE.md §5, MM-4) ──
+// A manufacturer contests a rating they believe misjudged them. Filing FREEZES
+// standing (blocks demotion) while open; only an admin EXCLUDE/REATTRIBUTE removes
+// the rating from the aggregate. Pure FSM/SLA/freeze in @ilaunchify/orders/rating-appeal.ts.
+
+enum RatingAppealStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  UPHELD // rating stands
+  EXCLUDED // removed from the aggregate
+  REATTRIBUTED // cause routed elsewhere — removed from this partner
+  WITHDRAWN
+}
+
+model RatingAppeal {
+  id               String             @id @default(uuid())
+  ratingId         String // soft FK → PartnerRating being contested
+  partnerServiceId String // soft FK → the appellant MANUFACTURING service
+  filedByUserId    String // soft FK → partner user who filed
+  reason           String // the manufacturer's case (≤1000)
+  status           RatingAppealStatus @default(SUBMITTED)
+  adminNote        String? // adjudicator's closing note
+  adjudicatedById  String? // soft FK → admin User
+  acknowledgedAt   DateTime? // moved to UNDER_REVIEW
+  resolvedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@unique([ratingId, partnerServiceId]) // one appeal per rating per service
+  @@index([partnerServiceId, status])
+  @@index([status, createdAt])
+}
+
 // ─── Smart Rotation Engine (docs/SMART_ROTATION_ENGINE.md §2, SR-1) ──────────
 
 enum RotationMode {
@@ -4901,6 +4934,11 @@ model PartnerRating {
   overall          Decimal  @db.Decimal(3, 2) // derived mean, stored for cheap aggregation
   comment          String?
   editableUntil    DateTime // first-submit + 30d mind-change window
+  // MM-4 — set when an admin upholds an appeal that EXCLUDES/REATTRIBUTES this
+  // rating. The aggregate recompute filters `excludedAt: null`, so an excluded
+  // rating stops counting against the manufacturer without being deleted (audit trail).
+  excludedAt       DateTime?
+  excludedReason   String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

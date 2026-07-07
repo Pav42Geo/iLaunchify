@@ -63,12 +63,23 @@ Rule of the build: **MM-1→MM-4 change no economics and are reversible. Only MM
 - Note: manual per-manufacturer override already exists (`/admin/tiers` changePartnerTier);
   console links standing → that flow rather than duplicating it.
 
-## MM-4 · Fairness / appeal flow *(CW + PAVEL policy)*
-- [ ] `RATING_APPEAL` reason on the existing dispute/ticket rails + provisional hold.
-- [ ] Admin uphold / exclude / re-attribute → rating-aggregate recompute (existing path).
-- [ ] Standing-freeze while an outcome-affecting appeal is open; demotion deferral.
-- [ ] Appeal SLA timers + notifications; bad-faith-rater pattern flag.
-- [ ] **[PAVEL]** SLA numbers + adjudicator capability.
+## MM-4a · Fairness / appeal ENGINE — CODE COMPLETE 2026-07-06 (CW)
+- [x] Pure `rating-appeal.ts`: appeal FSM (`canTransitionAppeal`/`assertAppealTransition`), SLA
+  (`appealDeadlines`, `appealSlaState` ack→resolve escalation), `standingFrozen` (open appeal
+  blocks demotion). 5 tests (636/0).
+- [x] Schema (UNMIGRATED): `RatingAppeal` + `RatingAppealStatus` enum; `PartnerRating.excludedAt`/
+  `excludedReason` (aggregate recompute will filter `excludedAt: null` → excluded rating stops
+  counting without deletion). Audit type `RatingAppeal`.
+- [x] Standing-freeze wired into the merit sweep — an OPEN appeal defers demotion (cast-guarded
+  until migrate; inert until MM-4b creates appeals).
+- [ ] **[PAVEL]** migrate (RatingAppeal + PartnerRating cols).
+
+## MM-4b · Appeal actions + UI (next)
+- [ ] Partner: file appeal on a rating (within window, one per rating). Admin: adjudicate
+  (uphold / exclude / re-attribute) → set `excludedAt` + shared `recomputePartnerRatingAggregate`
+  (extract from creator rate/actions, filter excluded). Appeal inbox + SLA badges.
+- [ ] Warning + resolution notifications; bad-faith-rater pattern flag into admin Feedback/Risk.
+- [ ] **[PAVEL]** SLA numbers (default ack 2d / resolve 7d) + adjudicator capability.
 
 ## MM-5 · Benefit binding *(CW builds; **PAVEL money sign-off**)*
 - [ ] Confirm today's fee incidence in the Stripe split (`application_fee`).

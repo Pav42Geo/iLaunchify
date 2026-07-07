@@ -139,9 +139,10 @@ export const AUDIT_ENTITY_TYPES = [
   // Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8)
   'PrintCapabilityRequest', // auto-broadcast RFQ for an uncovered template requirement tuple
   'PrintCapabilityClaim', // a printer's "I can produce this" → offering → verification
-  // Manufacturer Merit Engine (docs/MANUFACTURER_MERIT_ENGINE.md, MM-1)
+  // Manufacturer Merit Engine (docs/MANUFACTURER_MERIT_ENGINE.md, MM-1/MM-4)
   'MeritPolicy', // admin weights/thresholds/fees for manufacturer standing
   'PartnerMeritSnapshot', // computed per-manufacturer standing + badge (shadow → live)
+  'RatingAppeal', // manufacturer contests a rating; admin uphold/exclude/reattribute (MM-4)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
