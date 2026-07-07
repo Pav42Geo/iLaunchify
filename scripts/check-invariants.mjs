@@ -107,9 +107,25 @@ function checkCrossAppLink() {
 // ilaunchify-security-architecture-locked.
 // =============================================================================
 const PRISMA_WRITE = /\bprisma\.\w+\.(create|update|delete|upsert|createMany|updateMany|deleteMany)\b/
+// Reviewed exceptions (triaged 2026-07-06) — ephemeral/scratch state, onboarding
+// step-saves, version-tracked Studio canvas writes, or writes that delegate to a
+// service/FSM that audits internally. Everything NOT here is the real backlog.
+const AUDIT_ALLOWLIST = new Set([
+  'apps/creator/src/app/(checkout)/products/[productId]/checkout/actions.ts', // CheckoutDraft scratch state
+  'apps/creator/src/app/(dashboard)/_actions/checklist-actions.ts',           // onboardingProgress JSON
+  'apps/creator/src/app/(studio)/products/[productId]/design/canvas/actions.ts',        // Design/DesignVersion (version-tracked)
+  'apps/creator/src/app/(studio)/products/[productId]/design/canvas/flavor-actions.ts', // per-flavor Design rows
+  'apps/creator/src/app/(studio)/products/[productId]/design/canvas/mockup-render-actions.ts', // derived render Assets
+  'apps/partner/src/app/(dashboard)/dashboard/welcome-modal-actions.ts',      // dismiss welcome modal flag
+  'apps/partner/src/app/(onboarding)/onboarding/actions.ts',                  // onboarding step-save (promote is audited)
+  'apps/partner/src/app/(onboarding)/onboarding/company/actions.ts',          // company profile step-save
+  'apps/marketing/src/app/feedback/actions.ts',                              // delegates to createTicket (audits internally)
+  'apps/marketing/src/lib/guest-gate-actions.ts',                            // guest default-Brand bootstrap
+])
 function checkMutationHasAudit() {
   const hits = []
   for (const f of collect(APPS.map((a) => `${a}/src`), ['.ts', '.tsx'])) {
+    if (AUDIT_ALLOWLIST.has(f)) continue
     const src = read(f)
     if (!/['"]use server['"]/.test(src)) continue
     if (!PRISMA_WRITE.test(src)) continue
@@ -129,6 +145,16 @@ function checkMutationHasAudit() {
 // =============================================================================
 const FSM_HOMES = ['packages/orders/', 'packages/academy/', 'packages/support/', 'packages/db/prisma/seed']
 const FSM_MODELS = ['order', 'dispatch', 'productTemplate', 'partner', 'partnerService', 'ticket']
+// Reviewed exceptions (triaged 2026-07-06) — service-level toggles that audit
+// inline, or non-lifecycle status columns. Keyed by file:line; if the line moves
+// the entry goes stale and re-warns for re-review, which is the intended behavior.
+const FSM_ALLOWLIST = new Set([
+  'apps/admin/src/app/(dashboard)/partners/[partnerId]/actions.ts:270', // PartnerService ACTIVE/PAUSED toggle (audited)
+  'apps/admin/src/app/(dashboard)/products/actions.ts:295',             // guarded PUBLISHED⇄PAUSED (audited; no PT FSM home)
+  'apps/admin/src/lib/partner-ops-worker.ts:156',                       // cron PartnerService→PAUSED (logSystemAudit)
+  'apps/admin/src/lib/print-coverage-worker.ts:78',                     // cron ProductTemplate auto-pause (logSystemAudit)
+  'apps/partner/src/app/(dashboard)/products/actions.ts:591',           // soft-archive fallback after failed delete (audited)
+])
 function checkFsmBypass() {
   const hits = []
   const rx = new RegExp(`\\bprisma\\.(${FSM_MODELS.join('|')})\\.update(Many)?\\s*\\(`, 'g')
@@ -140,7 +166,7 @@ function checkFsmBypass() {
       if (!rx.test(line)) return
       // Look at the next ~6 lines for a status: assignment in the payload.
       const window = lines.slice(i, i + 6).join('\n')
-      if (/\bstatus\s*:/.test(window)) {
+      if (/\bstatus\s*:/.test(window) && !FSM_ALLOWLIST.has(`${f}:${i + 1}`)) {
         hits.push(`${f}:${i + 1}  raw prisma.update sets status — route through an FSM helper`)
       }
     })

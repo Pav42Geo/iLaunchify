@@ -1,0 +1,499 @@
+{
+  "generatedAt": "2026-07-07",
+  "generator": "scripts/build-flow-manifest.mjs",
+  "packageCount": 23,
+  "drift": {
+    "packagesMissingCuratedRole": [],
+    "curatedRefsToMissingPackages": []
+  },
+  "flows": [
+    {
+      "id": "order",
+      "title": "Order fulfillment (the orchestration trunk)",
+      "note": "Manufacturing is OWNER-PINNED (ProductTemplate.manufacturerServiceId); only commodity legs route. Do not touch findRouting until D1–D4 are locked.",
+      "hops": [
+        {
+          "step": "checkout",
+          "where": "apps/creator/(checkout)",
+          "emits": "Order + payment intent",
+          "guards": [
+            "@ilaunchify/auth ownership",
+            "@ilaunchify/risk capacity gate",
+            "@ilaunchify/plans fee"
+          ]
+        },
+        {
+          "step": "route",
+          "where": "@ilaunchify/orders",
+          "emits": "workflow graph + manifest",
+          "guards": [
+            "order-fsm",
+            "@ilaunchify/audit"
+          ]
+        },
+        {
+          "step": "select-fc",
+          "where": "@ilaunchify/orders fc-selector/fc-scorer",
+          "emits": "FC assignment",
+          "guards": [
+            "temp/hazmat HARD filters"
+          ]
+        },
+        {
+          "step": "ship",
+          "where": "@ilaunchify/shipping",
+          "emits": "dispatch docs + carrier rate",
+          "guards": [
+            "dispatch-fsm",
+            "dispatch gates",
+            "LogisticsSetting admin gate"
+          ]
+        },
+        {
+          "step": "channel-inbound",
+          "where": "@ilaunchify/channels",
+          "emits": "channel go-live",
+          "guards": [
+            "channel-inbound gate",
+            "OnDemandEnablement gate"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "product",
+      "title": "Product creation → publish",
+      "hops": [
+        {
+          "step": "new-product",
+          "where": "apps/creator/products/new",
+          "emits": "ProductTemplate + FlavorPreset overlays",
+          "guards": [
+            "domain↔category binding",
+            "@ilaunchify/auth"
+          ]
+        },
+        {
+          "step": "state",
+          "where": "product status FSM",
+          "emits": "DRAFT→PENDING_REVIEW→PUBLISHED",
+          "guards": [
+            "FSM helper (GAP: no packages ProductTemplate FSM home yet)",
+            "@ilaunchify/audit"
+          ]
+        },
+        {
+          "step": "taxonomy",
+          "where": "@ilaunchify/marketplace suggestNiches",
+          "emits": "niche assignment",
+          "guards": [
+            "NicheAssignmentAudit",
+            "marketplace-taxonomy-guardian"
+          ]
+        },
+        {
+          "step": "label",
+          "where": "@ilaunchify/nutrition + compliance-client",
+          "emits": "FDA panel + validation",
+          "guards": [
+            "deterministic vector — theme-immune"
+          ]
+        },
+        {
+          "step": "publish",
+          "where": "apps/marketing/marketplace",
+          "emits": "public listing read",
+          "guards": [
+            "PUBLISHED only",
+            "empty-DB fixture is fallback ONLY"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "partner",
+      "title": "Partner onboarding → activation → tier",
+      "note": "The Partner lifecycle FSM currently lives only in apps/admin/src/lib/partner-fsm.ts; partner-app onboarding transitions bypass it (known GAP).",
+      "hops": [
+        {
+          "step": "apply",
+          "where": "apps/partner/partners/apply",
+          "emits": "User + Partner (LEAD) + PartnerService",
+          "guards": [
+            "@ilaunchify/audit (GAP: not audited)"
+          ]
+        },
+        {
+          "step": "onboard",
+          "where": "apps/partner/(onboarding)",
+          "emits": "10-state activation FSM",
+          "guards": [
+            "partner-fsm (GAP: bypassed)",
+            "@ilaunchify/audit"
+          ]
+        },
+        {
+          "step": "merit",
+          "where": "merit engine",
+          "emits": "Partner.tier (VERIFIED/TRUSTED/PREMIER)",
+          "guards": [
+            "earned, never sold",
+            "binds production fee"
+          ]
+        }
+      ]
+    }
+  ],
+  "substrate": {
+    "//": "Cross-cutting concerns every write touches. A build that skips one is the most common 'unwired' failure.",
+    "everyMutation": "@ilaunchify/audit (AuditLog row)",
+    "everyStateChange": "an FSM helper (order-fsm / dispatch-fsm / partner-fsm / academy fsm / support)",
+    "everyServerAction": "@ilaunchify/auth centralized ownership guard (tenant isolation = threat #1)",
+    "everyBillableOrGate": "@ilaunchify/plans (tier/fee lookup)",
+    "everyUserFacingEvent": "@ilaunchify/notifications (in-app + email)",
+    "everyRegionalRule": "Market (jurisdiction) + Region (geography), never hardcoded US"
+  },
+  "packages": {
+    "@ilaunchify/academy": {
+      "dir": "packages/academy",
+      "dependsOn": [
+        "@ilaunchify/audit",
+        "@ilaunchify/db"
+      ],
+      "exportSurface": 8,
+      "consumedBy": {
+        "apps/marketing": 4,
+        "apps/admin": 3
+      },
+      "role": "Two learning sites CMS + three-level model + fsm."
+    },
+    "@ilaunchify/ai": {
+      "dir": "packages/ai",
+      "dependsOn": [],
+      "exportSurface": 4,
+      "consumedBy": {
+        "apps/partner": 2
+      },
+      "role": "LLM client + recipe parsing (parseRecipe) + prompts + telemetry. Haiku-backed."
+    },
+    "@ilaunchify/ai-design": {
+      "dir": "packages/ai-design",
+      "dependsOn": [],
+      "exportSurface": 4,
+      "consumedBy": {
+        "apps/creator": 3,
+        "apps/admin": 2,
+        "packages/db": 1,
+        "packages/ui": 1
+      },
+      "role": "AI packaging / design generation."
+    },
+    "@ilaunchify/audit": {
+      "dir": "packages/audit",
+      "dependsOn": [
+        "@ilaunchify/db"
+      ],
+      "exportSurface": 4,
+      "consumedBy": {
+        "apps/admin": 78,
+        "apps/partner": 44,
+        "apps/creator": 33,
+        "packages/orders": 3,
+        "packages/marketplace": 2,
+        "apps/marketing": 1,
+        "packages/academy": 1,
+        "packages/auth": 1,
+        "packages/payments": 1,
+        "packages/support": 1
+      },
+      "role": "Append-only AuditLog writer (logAudit/logAuditAs/logSystemAudit). Every mutation must call it."
+    },
+    "@ilaunchify/auth": {
+      "dir": "packages/auth",
+      "dependsOn": [
+        "@ilaunchify/audit",
+        "@ilaunchify/db"
+      ],
+      "exportSurface": 17,
+      "consumedBy": {
+        "apps/admin": 163,
+        "apps/partner": 120,
+        "apps/creator": 117,
+        "apps/marketing": 6,
+        "packages/db": 2,
+        "packages/payments": 2,
+        "packages/imagegen": 1,
+        "packages/marketplace": 1
+      },
+      "role": "Auth.js v5 + tier helpers + centralized ownership guards (tenant isolation = threat #1)."
+    },
+    "@ilaunchify/channels": {
+      "dir": "packages/channels",
+      "dependsOn": [],
+      "exportSurface": 8,
+      "consumedBy": {
+        "apps/creator": 6,
+        "packages/packaging-3d": 1
+      },
+      "role": "ChannelAdapter seam (Shopify/TikTok/Amazon/Walmart) + on-demand enablement gate."
+    },
+    "@ilaunchify/compliance-client": {
+      "dir": "packages/compliance-client",
+      "dependsOn": [
+        "@ilaunchify/types"
+      ],
+      "exportSurface": 1,
+      "consumedBy": {
+        "apps/creator": 1
+      },
+      "role": "FDA rule packs + label validator (calls the Python service)."
+    },
+    "@ilaunchify/db": {
+      "dir": "packages/db",
+      "dependsOn": [],
+      "exportSurface": 33,
+      "consumedBy": {
+        "apps/admin": 248,
+        "apps/partner": 147,
+        "apps/creator": 120,
+        "apps/marketing": 32,
+        "packages/notifications": 16,
+        "packages/orders": 14,
+        "packages/payments": 10,
+        "packages/auth": 8,
+        "packages/marketplace": 6,
+        "packages/support": 4,
+        "packages/academy": 3,
+        "packages/audit": 3,
+        "packages/plans": 1,
+        "packages/types": 1,
+        "packages/ui": 1
+      },
+      "role": "Prisma schema + CockroachDB client + seeds. Substrate for everything."
+    },
+    "@ilaunchify/imagegen": {
+      "dir": "packages/imagegen",
+      "dependsOn": [],
+      "exportSurface": 8,
+      "consumedBy": {
+        "apps/creator": 4,
+        "apps/admin": 2,
+        "packages/channels": 1
+      },
+      "role": "AI image generation."
+    },
+    "@ilaunchify/logger": {
+      "dir": "packages/logger",
+      "dependsOn": [],
+      "exportSurface": 5,
+      "consumedBy": {
+        "packages/payments": 1
+      },
+      "role": "Structured logging."
+    },
+    "@ilaunchify/marketplace": {
+      "dir": "packages/marketplace",
+      "dependsOn": [
+        "@ilaunchify/db"
+      ],
+      "exportSurface": 9,
+      "consumedBy": {
+        "apps/creator": 6,
+        "apps/admin": 5,
+        "apps/partner": 3,
+        "apps/marketing": 1,
+        "packages/ui": 1
+      },
+      "role": "suggestNiches() engine + recordNicheAssignment(). Taxonomy assignment."
+    },
+    "@ilaunchify/notifications": {
+      "dir": "packages/notifications",
+      "dependsOn": [
+        "@ilaunchify/db"
+      ],
+      "exportSurface": 23,
+      "consumedBy": {
+        "apps/admin": 30,
+        "apps/creator": 16,
+        "apps/partner": 15,
+        "apps/marketing": 4,
+        "packages/orders": 4,
+        "packages/payments": 2,
+        "packages/db": 1,
+        "packages/support": 1,
+        "packages/ui": 1
+      },
+      "role": "Dispatcher + Resend. Every user-facing state change should emit here."
+    },
+    "@ilaunchify/nutrition": {
+      "dir": "packages/nutrition",
+      "dependsOn": [
+        "@ilaunchify/types"
+      ],
+      "exportSurface": 17,
+      "consumedBy": {
+        "apps/creator": 5,
+        "apps/marketing": 5,
+        "apps/partner": 5,
+        "packages/ui": 2,
+        "apps/admin": 1,
+        "packages/db": 1
+      },
+      "role": "FDA label math — single source. calculateLabel + toPanelData."
+    },
+    "@ilaunchify/orders": {
+      "dir": "packages/orders",
+      "dependsOn": [
+        "@ilaunchify/audit",
+        "@ilaunchify/db",
+        "@ilaunchify/notifications",
+        "@ilaunchify/risk",
+        "@ilaunchify/types"
+      ],
+      "exportSurface": 80,
+      "consumedBy": {
+        "apps/admin": 22,
+        "apps/creator": 18,
+        "apps/partner": 7,
+        "packages/ui": 4,
+        "apps/marketing": 3,
+        "packages/payments": 2,
+        "packages/db": 1
+      },
+      "role": "Order routing (owner-pinned manufacturing) + manifest gen + FC selection (fc-selector/fc-scorer) + order-fsm/dispatch-fsm."
+    },
+    "@ilaunchify/packaging-3d": {
+      "dir": "packages/packaging-3d",
+      "dependsOn": [],
+      "exportSurface": 10,
+      "consumedBy": {
+        "apps/creator": 3,
+        "packages/ui": 1
+      },
+      "role": "In-house 3D packaging generator (pure, DI'd)."
+    },
+    "@ilaunchify/payments": {
+      "dir": "packages/payments",
+      "dependsOn": [
+        "@ilaunchify/audit",
+        "@ilaunchify/auth",
+        "@ilaunchify/db",
+        "@ilaunchify/logger",
+        "@ilaunchify/notifications",
+        "@ilaunchify/orders",
+        "@ilaunchify/plans",
+        "@ilaunchify/types"
+      ],
+      "exportSurface": 20,
+      "consumedBy": {
+        "apps/creator": 12,
+        "apps/admin": 4,
+        "apps/partner": 4
+      },
+      "role": "Stripe Connect + Subscriptions."
+    },
+    "@ilaunchify/plans": {
+      "dir": "packages/plans",
+      "dependsOn": [
+        "@ilaunchify/db"
+      ],
+      "exportSurface": 6,
+      "consumedBy": {
+        "apps/creator": 10,
+        "apps/partner": 4,
+        "apps/marketing": 3,
+        "apps/admin": 1,
+        "packages/imagegen": 1,
+        "packages/payments": 1
+      },
+      "role": "Tier / plan / fee lookups. Every billable or gated action consults it."
+    },
+    "@ilaunchify/risk": {
+      "dir": "packages/risk",
+      "dependsOn": [],
+      "exportSurface": 5,
+      "consumedBy": {
+        "apps/admin": 5,
+        "packages/orders": 1
+      },
+      "role": "Risk taxonomy + PRS + MONITOR→WARN→GATE→ACT ladder; capacity gate at checkout."
+    },
+    "@ilaunchify/shipping": {
+      "dir": "packages/shipping",
+      "dependsOn": [],
+      "exportSurface": 13,
+      "consumedBy": {
+        "apps/partner": 10,
+        "apps/admin": 3,
+        "apps/creator": 3
+      },
+      "role": "Logistics substrate: classifier, carrier eligibility + rate shop, EasyPost gateway, dispatch gates, channel-inbound gates. Prisma-free by design."
+    },
+    "@ilaunchify/storage": {
+      "dir": "packages/storage",
+      "dependsOn": [],
+      "exportSurface": 4,
+      "consumedBy": {
+        "apps/admin": 21,
+        "apps/partner": 19,
+        "apps/creator": 16
+      },
+      "role": "Asset storage / presigned uploads."
+    },
+    "@ilaunchify/support": {
+      "dir": "packages/support",
+      "dependsOn": [
+        "@ilaunchify/audit",
+        "@ilaunchify/db",
+        "@ilaunchify/notifications"
+      ],
+      "exportSurface": 6,
+      "consumedBy": {
+        "apps/admin": 7,
+        "apps/creator": 4,
+        "apps/partner": 4,
+        "apps/marketing": 1,
+        "packages/db": 1
+      },
+      "role": "Ticket model + FSM."
+    },
+    "@ilaunchify/types": {
+      "dir": "packages/types",
+      "dependsOn": [],
+      "exportSurface": 6,
+      "consumedBy": {
+        "apps/marketing": 9,
+        "apps/creator": 7,
+        "apps/partner": 7,
+        "packages/ui": 6,
+        "apps/admin": 3,
+        "packages/nutrition": 2,
+        "packages/compliance-client": 1,
+        "packages/orders": 1
+      },
+      "role": "Shared cross-package types."
+    },
+    "@ilaunchify/ui": {
+      "dir": "packages/ui",
+      "dependsOn": [
+        "@ilaunchify/ai-design",
+        "@ilaunchify/types"
+      ],
+      "exportSurface": 133,
+      "consumedBy": {
+        "apps/admin": 164,
+        "apps/creator": 130,
+        "apps/partner": 113,
+        "apps/marketing": 42,
+        "packages/nutrition": 3,
+        "packages/ai-design": 2,
+        "packages/auth": 1,
+        "packages/db": 1,
+        "packages/notifications": 1,
+        "packages/orders": 1,
+        "packages/types": 1
+      },
+      "role": "Shared primitives, fonts, theme.css, tailwind preset."
+    }
+  }
+}

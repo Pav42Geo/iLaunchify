@@ -14,7 +14,9 @@ The platform is an orchestration engine, not a bag of features (memory: `ilaunch
 2. `.claude/memory/MEMORY.md` (index) — then open the 2–4 memory files whose hooks match the touched surface.
 3. The diff or the files named by the caller. If given only a description, `git diff --stat` and `git diff` to see what actually changed (Bash).
 
-Then locate the change on the flow graph. The trunk flows are:
+4. `flow-manifest.json` (repo root) — the machine-readable map: every package's role, what it `dependsOn`, and who `consumedBy` it (with counts). Use it to find the real consumers of anything you changed — faster and more complete than grepping. Regenerate it with `pnpm manifest` if it looks stale.
+
+Then locate the change on the flow graph. The trunk flows (also in `flow-manifest.json` → `flows`) are:
 - **Order:** checkout → `packages/orders` routing (owner-pinned manufacturing, memory `ilaunchify-routing-owner-pinned`) → `fc-selector`/`fc-scorer` → `packages/shipping` (classifier → carrier → dispatch gates → channel-inbound) → `packages/channels`.
 - **Product:** New-Product flow → FSM (`packages/orders/order-fsm`, product state) → taxonomy assignment (`packages/marketplace/suggestNiches`) → publish → marketplace read.
 - **Partner:** onboarding 10-state activation FSM → merit engine → tier → fee.

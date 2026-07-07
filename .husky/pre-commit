@@ -12,3 +12,13 @@ if command -v gitleaks >/dev/null 2>&1; then
 else
   echo "ℹ gitleaks not installed — skipping secret scan (brew install gitleaks)"
 fi
+
+# Platform invariant guard — scripts/check-invariants.mjs (2026-07-06).
+# Hard invariants (@db.Text, cross-app <Link>) block the commit; heuristic
+# warnings print but never block. Fast, dependency-free, safe to run every time.
+node scripts/check-invariants.mjs || {
+  echo ""
+  echo "✖ Platform invariant violated (see above). Fix it, or if it's a"
+  echo "  considered exception, add it to the allowlist in the script."
+  exit 1
+}

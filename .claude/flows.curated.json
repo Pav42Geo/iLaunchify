@@ -1,0 +1,73 @@
+{
+  "//": "Hand-authored intent layer for the flow manifest. The generator (scripts/build-flow-manifest.mjs) computes the dependency + consumer graph automatically; THIS file encodes what imports can't reveal — package roles and the ordered trunk flows. Edit this when a flow's shape changes; re-run `pnpm manifest`. Sources: CLAUDE.md, docs/PRODUCTION_ORCHESTRATION.md, docs/LOGISTICS_AND_FULFILLMENT.md, .claude/memory.",
+  "roles": {
+    "@ilaunchify/db": "Prisma schema + CockroachDB client + seeds. Substrate for everything.",
+    "@ilaunchify/ui": "Shared primitives, fonts, theme.css, tailwind preset.",
+    "@ilaunchify/auth": "Auth.js v5 + tier helpers + centralized ownership guards (tenant isolation = threat #1).",
+    "@ilaunchify/audit": "Append-only AuditLog writer (logAudit/logAuditAs/logSystemAudit). Every mutation must call it.",
+    "@ilaunchify/plans": "Tier / plan / fee lookups. Every billable or gated action consults it.",
+    "@ilaunchify/payments": "Stripe Connect + Subscriptions.",
+    "@ilaunchify/marketplace": "suggestNiches() engine + recordNicheAssignment(). Taxonomy assignment.",
+    "@ilaunchify/notifications": "Dispatcher + Resend. Every user-facing state change should emit here.",
+    "@ilaunchify/orders": "Order routing (owner-pinned manufacturing) + manifest gen + FC selection (fc-selector/fc-scorer) + order-fsm/dispatch-fsm.",
+    "@ilaunchify/shipping": "Logistics substrate: classifier, carrier eligibility + rate shop, EasyPost gateway, dispatch gates, channel-inbound gates. Prisma-free by design.",
+    "@ilaunchify/channels": "ChannelAdapter seam (Shopify/TikTok/Amazon/Walmart) + on-demand enablement gate.",
+    "@ilaunchify/nutrition": "FDA label math — single source. calculateLabel + toPanelData.",
+    "@ilaunchify/compliance-client": "FDA rule packs + label validator (calls the Python service).",
+    "@ilaunchify/risk": "Risk taxonomy + PRS + MONITOR→WARN→GATE→ACT ladder; capacity gate at checkout.",
+    "@ilaunchify/support": "Ticket model + FSM.",
+    "@ilaunchify/academy": "Two learning sites CMS + three-level model + fsm.",
+    "@ilaunchify/storage": "Asset storage / presigned uploads.",
+    "@ilaunchify/imagegen": "AI image generation.",
+    "@ilaunchify/ai": "LLM client + recipe parsing (parseRecipe) + prompts + telemetry. Haiku-backed.",
+    "@ilaunchify/ai-design": "AI packaging / design generation.",
+    "@ilaunchify/packaging-3d": "In-house 3D packaging generator (pure, DI'd).",
+    "@ilaunchify/types": "Shared cross-package types.",
+    "@ilaunchify/logger": "Structured logging.",
+    "@ilaunchify/security": "Threat-model helpers, rate limits, headers."
+  },
+  "flows": [
+    {
+      "id": "order",
+      "title": "Order fulfillment (the orchestration trunk)",
+      "note": "Manufacturing is OWNER-PINNED (ProductTemplate.manufacturerServiceId); only commodity legs route. Do not touch findRouting until D1–D4 are locked.",
+      "hops": [
+        { "step": "checkout", "where": "apps/creator/(checkout)", "emits": "Order + payment intent", "guards": ["@ilaunchify/auth ownership", "@ilaunchify/risk capacity gate", "@ilaunchify/plans fee"] },
+        { "step": "route", "where": "@ilaunchify/orders", "emits": "workflow graph + manifest", "guards": ["order-fsm", "@ilaunchify/audit"] },
+        { "step": "select-fc", "where": "@ilaunchify/orders fc-selector/fc-scorer", "emits": "FC assignment", "guards": ["temp/hazmat HARD filters"] },
+        { "step": "ship", "where": "@ilaunchify/shipping", "emits": "dispatch docs + carrier rate", "guards": ["dispatch-fsm", "dispatch gates", "LogisticsSetting admin gate"] },
+        { "step": "channel-inbound", "where": "@ilaunchify/channels", "emits": "channel go-live", "guards": ["channel-inbound gate", "OnDemandEnablement gate"] }
+      ]
+    },
+    {
+      "id": "product",
+      "title": "Product creation → publish",
+      "hops": [
+        { "step": "new-product", "where": "apps/creator/products/new", "emits": "ProductTemplate + FlavorPreset overlays", "guards": ["domain↔category binding", "@ilaunchify/auth"] },
+        { "step": "state", "where": "product status FSM", "emits": "DRAFT→PENDING_REVIEW→PUBLISHED", "guards": ["FSM helper (GAP: no packages ProductTemplate FSM home yet)", "@ilaunchify/audit"] },
+        { "step": "taxonomy", "where": "@ilaunchify/marketplace suggestNiches", "emits": "niche assignment", "guards": ["NicheAssignmentAudit", "marketplace-taxonomy-guardian"] },
+        { "step": "label", "where": "@ilaunchify/nutrition + compliance-client", "emits": "FDA panel + validation", "guards": ["deterministic vector — theme-immune"] },
+        { "step": "publish", "where": "apps/marketing/marketplace", "emits": "public listing read", "guards": ["PUBLISHED only", "empty-DB fixture is fallback ONLY"] }
+      ]
+    },
+    {
+      "id": "partner",
+      "title": "Partner onboarding → activation → tier",
+      "note": "The Partner lifecycle FSM currently lives only in apps/admin/src/lib/partner-fsm.ts; partner-app onboarding transitions bypass it (known GAP).",
+      "hops": [
+        { "step": "apply", "where": "apps/partner/partners/apply", "emits": "User + Partner (LEAD) + PartnerService", "guards": ["@ilaunchify/audit (GAP: not audited)"] },
+        { "step": "onboard", "where": "apps/partner/(onboarding)", "emits": "10-state activation FSM", "guards": ["partner-fsm (GAP: bypassed)", "@ilaunchify/audit"] },
+        { "step": "merit", "where": "merit engine", "emits": "Partner.tier (VERIFIED/TRUSTED/PREMIER)", "guards": ["earned, never sold", "binds production fee"] }
+      ]
+    }
+  ],
+  "substrate": {
+    "//": "Cross-cutting concerns every write touches. A build that skips one is the most common 'unwired' failure.",
+    "everyMutation": "@ilaunchify/audit (AuditLog row)",
+    "everyStateChange": "an FSM helper (order-fsm / dispatch-fsm / partner-fsm / academy fsm / support)",
+    "everyServerAction": "@ilaunchify/auth centralized ownership guard (tenant isolation = threat #1)",
+    "everyBillableOrGate": "@ilaunchify/plans (tier/fee lookup)",
+    "everyUserFacingEvent": "@ilaunchify/notifications (in-app + email)",
+    "everyRegionalRule": "Market (jurisdiction) + Region (geography), never hardcoded US"
+  }
+}

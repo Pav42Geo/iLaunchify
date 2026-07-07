@@ -46,6 +46,17 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Check platform invariants
+        # Deterministic architecture guard (scripts/check-invariants.mjs).
+        # Hard invariants (@db.Text, cross-app <Link>) fail the build; heuristic
+        # warnings report but don't block. Flip to `--strict` once the warning
+        # baseline is burned down (see the allowlist in the script).
+        run: pnpm check:invariants
+
+      - name: Flow manifest is current
+        # Fails if package deps/imports changed without regenerating the map.
+        run: pnpm manifest --check
+
       - name: Type-check
         run: pnpm type-check
 

@@ -14,6 +14,7 @@
     "lint": "turbo run lint",
     "check:colors": "node scripts/check-no-raw-tailwind-colors.mjs",
     "check:invariants": "node scripts/check-invariants.mjs",
+    "manifest": "node scripts/build-flow-manifest.mjs",
     "test": "turbo run test",
     "type-check": "turbo run type-check",
     "clean": "turbo run clean && rm -rf node_modules .turbo",
