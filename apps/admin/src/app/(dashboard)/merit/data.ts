@@ -39,6 +39,22 @@ export interface MeritConsole {
   /** OrderSettings base production fee (bps) — what everyone pays in shadow mode. */
   baseProductionFeeBps: number
   baseProductionFeePct: string
+  /** MM-7 — global fee-grace policy + manual grants + the manufacturer picker. */
+  feeGrace: { enabled: boolean; value: number; unit: 'DAYS' | 'MONTHS'; feeBps: number; feePct: string }
+  grants: FeeGrantRow[]
+  manufacturers: { serviceId: string; name: string }[]
+}
+
+export interface FeeGrantRow {
+  id: string
+  serviceId: string
+  companyName: string
+  feeBps: number
+  feePct: string
+  startsAt: string
+  endsAt: string
+  active: boolean // not revoked and within window
+  revoked: boolean
 }
 
 export async function loadMeritConsole(): Promise<MeritConsole> {
@@ -124,10 +140,46 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
   })
   rows.sort((a, b) => b.meritScore - a.meritScore)
 
+  // MM-7 — fee-grace policy (cast-guarded until the migration lands the columns).
+  const pg = policyRow as unknown as { feeGraceEnabled?: boolean; feeGraceValue?: number; feeGraceUnit?: 'DAYS' | 'MONTHS'; feeGraceFeeBps?: number } | null
+  const feeGrace = {
+    enabled: pg?.feeGraceEnabled ?? false,
+    value: pg?.feeGraceValue ?? 3,
+    unit: pg?.feeGraceUnit ?? 'MONTHS',
+    feeBps: pg?.feeGraceFeeBps ?? 0,
+    feePct: feeBpsToPct(pg?.feeGraceFeeBps ?? 0),
+  }
+
+  // All active manufacturers (dropdown for manual grants) + existing grants.
+  const mfrs = await prisma.partnerService
+    .findMany({ where: { type: 'MANUFACTURING', status: 'ACTIVE' }, select: { id: true, partner: { select: { companyName: true } } }, orderBy: { partner: { companyName: 'asc' } } })
+    .catch(() => [])
+  const manufacturers = mfrs.map((m) => ({ serviceId: m.id, name: m.partner.companyName }))
+  const nameByService = new Map(manufacturers.map((m) => [m.serviceId, m.name]))
+
+  const grantRows = await (prisma as unknown as {
+    manufacturerFeeGrant: { findMany: (a: unknown) => Promise<Array<{ id: string; partnerServiceId: string; feeBps: number; startsAt: Date; endsAt: Date; revokedAt: Date | null }>> }
+  }).manufacturerFeeGrant
+    .findMany({ orderBy: { createdAt: 'desc' }, take: 200 })
+    .catch(() => [] as Array<{ id: string; partnerServiceId: string; feeBps: number; startsAt: Date; endsAt: Date; revokedAt: Date | null }>)
+  const nowMs = Date.now()
+  const grants: FeeGrantRow[] = grantRows.map((g) => ({
+    id: g.id,
+    serviceId: g.partnerServiceId,
+    companyName: nameByService.get(g.partnerServiceId) ?? '(unknown)',
+    feeBps: g.feeBps,
+    feePct: feeBpsToPct(g.feeBps),
+    startsAt: g.startsAt.toISOString(),
+    endsAt: g.endsAt.toISOString(),
+    active: g.revokedAt == null && g.startsAt.getTime() <= nowMs && g.endsAt.getTime() > nowMs,
+    revoked: g.revokedAt != null,
+  }))
+
   return {
     policy, enabled, windows, rows, distribution, mismatches,
     hasSnapshots: snaps.length > 0,
     baseProductionFeeBps,
     baseProductionFeePct: feeBpsToPct(baseProductionFeeBps),
+    feeGrace, grants, manufacturers,
   }
 }

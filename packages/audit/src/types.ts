@@ -143,6 +143,7 @@ export const AUDIT_ENTITY_TYPES = [
   'MeritPolicy', // admin weights/thresholds/fees for manufacturer standing
   'PartnerMeritSnapshot', // computed per-manufacturer standing + badge (shadow → live)
   'RatingAppeal', // manufacturer contests a rating; admin uphold/exclude/reattribute (MM-4)
+  'ManufacturerFeeGrant', // time-bound fee grace / promo for a manufacturer (MM-7)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

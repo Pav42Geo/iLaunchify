@@ -8,6 +8,7 @@ import { requireCapability } from '@ilaunchify/auth'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { loadMeritConsole, type MeritRow } from './data'
 import { MeritConsole } from './MeritConsole'
+import { FeeGracePanel } from './FeeGracePanel'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Manufacturer standing — Admin' }
@@ -54,6 +55,12 @@ export default async function MeritPage() {
           promoteSustainDays: c.windows.promoteSustainDays, demoteMissDays: c.windows.demoteMissDays, graceDays: c.windows.graceDays,
           enabled: c.enabled,
         }}
+      />
+
+      <FeeGracePanel
+        initial={{ enabled: c.feeGrace.enabled, value: c.feeGrace.value, unit: c.feeGrace.unit, feeBps: c.feeGrace.feeBps }}
+        grants={c.grants}
+        manufacturers={c.manufacturers}
       />
 
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">

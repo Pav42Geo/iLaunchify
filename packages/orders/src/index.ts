@@ -346,8 +346,9 @@ export {
 export type { RatingAppealStatus, AppealSlaPolicy, AppealSlaState } from './rating-appeal'
 export { recomputePartnerRatingAggregate } from './partner-rating-recompute'
 // MM-5 — badge → production-fee resolution (shadow-safe, reversible).
-export { resolveManufacturerFeeBps, feeBpsToPct } from './merit-fee'
-export type { FeeSource, ResolvedManufacturerFee } from './merit-fee'
+// MM-7 — fee-grace / promo layer (global grace + manual grants).
+export { resolveManufacturerFeeBps, feeBpsToPct, resolveActivePromo, addMonths, addDays, addDuration } from './merit-fee'
+export type { FeeSource, ResolvedManufacturerFee, PromoSource, GraceUnit, GracePolicy, FeeGrantLike, ActivePromo } from './merit-fee'
 
 // Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
 export {

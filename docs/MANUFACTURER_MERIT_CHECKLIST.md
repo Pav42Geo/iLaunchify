@@ -130,3 +130,30 @@ Rule of the build: **MM-1→MM-4 change no economics and are reversible. Only MM
 - [x] Verify: partner tsc clean; 642/0 pure suites.
 - Note: standing is manufacturing-only (mirrors the sweep filter). It's distinct from `/performance`
   (Risk Center reliability score) — separate engines, separate surfaces, by design.
+
+## MM-7 · Fee grace & promotions — CODE COMPLETE 2026-07-06 (CW)
+Admin can skip the merit fee for a window at an editable rate. Badge stays Verified — skipping the
+engine's FEE, not its scoring. Precedence: **manual grant > global grace > badge fee > base**.
+- [x] Pure layer (`packages/orders/merit-fee.ts`): `resolveActivePromo` (manual grant wins > global
+  grace, computed from activation), `resolveManufacturerFeeBps` extended with `promoFeeBps` (PROMO
+  source wins), `addMonths`/`addDays`/`addDuration` (UTC, unit-aware — **days OR months**). 15 tests
+  (656/0). Exports incl. `GraceUnit`/`GracePolicy`/`FeeGrantLike`/`ActivePromo`.
+- [x] Schema (UNMIGRATED): `MeritPolicy.feeGrace{Enabled,Value,Unit,FeeBps}` + `FeeGraceUnit` enum
+  (DAYS|MONTHS); `ManufacturerFeeGrant` (per-service, feeBps, starts/endsAt, reason, revoke); set-once
+  `Partner.activatedAt`. Audit type `ManufacturerFeeGrant`.
+- [x] Admin **"Fee grace & promotions"** panel on `/merit` (`FeeGracePanel` + `fee-grace-actions.ts`):
+  global toggle + duration (days/months) + editable % ; manual grants with a **searchable, live-filter
+  multi-select** of manufacturers + %/duration/reason ; grants table with revoke. All cast-guarded +
+  audited.
+- [x] Activation hook: `partners/[partnerId]/actions.ts` stamps `activatedAt` once on first ACTIVE
+  (`updateMany where activatedAt: null`, cast-guarded).
+- [x] Partner standing page reflects the active promo — pink "Fee grace active — you're at X% through
+  <date>" banner + fee line uses the promo rate (`resolveActivePromo` folded into `feeNow`).
+- [x] Verify: orders + admin + partner tsc clean; 656/0 pure suites.
+- [ ] **[PAVEL]** `db:push` + `db:generate` (MeritPolicy grace cols + ManufacturerFeeGrant + FeeGraceUnit
+  enum + Partner.activatedAt) → `rm -rf apps/*/.next` → restart. Then de-cast the shims in
+  `fee-grace-actions.ts`, both `data.ts` loaders, and the activation hook.
+- [ ] **[FOLLOW-UP, small]** One in-app notification when a grant STARTS ("you've earned X% through
+  <date>") + a welcome line when global grace kicks in at activation; optional single email for manual
+  grants. Deliberately NOT a recurring "days left" reminder (that's nagging). CW judgment: worth doing,
+  low-noise; not built this pass to keep MM-7c tight.

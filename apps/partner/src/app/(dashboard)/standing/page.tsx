@@ -167,9 +167,17 @@ function ServiceStanding({ s, live }: { s: StandingView; live: boolean }) {
             </div>
           )}
 
+          {s.promo && (
+            <div className="mt-4 rounded-xl border border-pink-200 bg-pink-50 px-4 py-2.5">
+              <p className="text-[12.5px] font-semibold text-pink-800">
+                🎉 Fee grace active — you&rsquo;re at {s.promo.feePct} platform fee
+                {s.promo.source === 'GLOBAL_GRACE' ? ' (welcome offer)' : ''} through {new Date(s.promo.endsAt).toLocaleDateString()}.
+              </p>
+            </div>
+          )}
           <p className="mt-4 text-[12px] text-ink-500">
             Fee today: <strong className="text-ink-700">{s.feeNowPct}</strong>
-            {s.feeProjectedPct !== s.feeNowPct && (
+            {!s.promo && s.feeProjectedPct !== s.feeNowPct && (
               <> · at {s.projectedBadge}: <strong className="text-pink-700">{s.feeProjectedPct}</strong></>
             )}
             {' '}· {s.ordersCompleted} orders · {s.monthsActive} mo active

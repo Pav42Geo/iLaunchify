@@ -915,6 +915,9 @@ model Partner {
   statusChangedAt         DateTime?
   statusChangedById       String? // User who triggered the last status change (null for SYSTEM)
   statusChangeReason      String?
+  // MM-7 — set ONCE on first ACTIVE transition (never overwritten by pause/resume).
+  // Anchors the live-computed global fee-grace window (activatedAt + graceMonths).
+  activatedAt             DateTime?
   // R15.a — Production-partner subscription tier (Verified → Trusted →
   // Premier per PLATFORM_SPEC §Tier 1). Default VERIFIED but only
   // meaningful once `status` flips to ACTIVE — every gate at the call
@@ -1468,8 +1471,43 @@ model MeritPolicy {
   graceDays              Int      @default(60)
   // Shadow-mode master switch — false = compute snapshots but never change tier.
   enabled                Boolean  @default(false)
+  // MM-7 · Global fee grace — every manufacturer gets `feeGraceValue`
+  // days/months from activation at `feeGraceFeeBps` (default 0 = free).
+  // Live-computed from Partner.activatedAt, so changing it instantly re-prices
+  // everyone. A manual ManufacturerFeeGrant overrides this. Badge stays Verified
+  // while active. (Distinct from `graceDays` above, which is HYSTERESIS grace.)
+  feeGraceEnabled        Boolean      @default(false)
+  feeGraceValue          Int          @default(3)
+  feeGraceUnit           FeeGraceUnit @default(MONTHS)
+  feeGraceFeeBps         Int          @default(0)
   updatedAt              DateTime @updatedAt
   updatedById            String?
+}
+
+enum FeeGraceUnit {
+  DAYS
+  MONTHS
+}
+
+// ─── Manufacturer fee grant — hand-picked, time-bound promo (MM-7) ──────────
+// The admin skips the merit fee for a specific manufacturer for a window at an
+// editable rate (0 = free). Used for early-bird partners or when the global
+// grace toggle is off. Wins over global grace + badge fee while active.
+model ManufacturerFeeGrant {
+  id               String    @id @default(uuid())
+  partnerServiceId String // soft FK → MANUFACTURING PartnerService
+  feeBps           Int       @default(0) // 0 = free; editable
+  startsAt         DateTime  @default(now())
+  endsAt           DateTime // startsAt + N months (computed at create)
+  reason           String?
+  createdById      String? // admin who granted (null = system)
+  revokedAt        DateTime?
+  revokedById      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([partnerServiceId, endsAt])
+  @@index([revokedAt])
 }
 
 model PartnerMeritSnapshot {

@@ -9,9 +9,12 @@ import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import {
   DEFAULT_MERIT_POLICY,
   resolveManufacturerFeeBps,
+  resolveActivePromo,
   feeBpsToPct,
   type MeritPolicy,
   type MeritBadge,
+  type GraceUnit,
+  type FeeGrantLike,
 } from '@ilaunchify/orders'
 
 export interface StandingPillar {
@@ -45,6 +48,8 @@ export interface StandingView {
   monthsActive: number
   feeNowPct: string
   feeProjectedPct: string
+  /** Active fee grace/promo, if any — overrides the fee for a window. */
+  promo: { feePct: string; source: 'MANUAL_GRANT' | 'GLOBAL_GRACE'; endsAt: string } | null
 }
 
 export interface StandingPage {
@@ -93,6 +98,11 @@ export async function loadStandingPage(): Promise<StandingPage> {
   const live = policyRow?.enabled ?? false
   const baseFeeBps = (await getOrderSettings().catch(() => null))?.productionFeeBps ?? 500
 
+  // MM-7 — global fee-grace policy (cast-guarded until the migration lands).
+  const pg = policyRow as unknown as { feeGraceEnabled?: boolean; feeGraceValue?: number; feeGraceUnit?: GraceUnit; feeGraceFeeBps?: number } | null
+  const grace = { enabled: pg?.feeGraceEnabled ?? false, value: pg?.feeGraceValue ?? 0, unit: (pg?.feeGraceUnit ?? 'MONTHS') as GraceUnit, feeBps: pg?.feeGraceFeeBps ?? 0 }
+  const now = new Date()
+
   const feeLadder: StandingPage['feeLadder'] = [
     { badge: 'VERIFIED', label: 'Verified', pct: feeBpsToPct(policy.feeBpsByBadge.VERIFIED), blurb: 'Everyone starts here on day one.' },
     { badge: 'TRUSTED', label: 'Trusted', pct: feeBpsToPct(policy.feeBpsByBadge.TRUSTED), blurb: 'Proven volume and quality over time.' },
@@ -108,6 +118,18 @@ export async function loadStandingPage(): Promise<StandingPage> {
     select: { id: true, type: true, partner: { select: { tier: true } } },
   })
   if (services.length === 0) return empty
+  const svcIdList = services.map((s) => s.id)
+
+  // MM-7 — activation anchor (global grace) + manual grants (both cast-guarded).
+  const activatedAt =
+    (await (prisma as unknown as { partner: { findUnique: (a: unknown) => Promise<{ activatedAt: Date | null } | null> } }).partner
+      .findUnique({ where: { id: access.partnerId }, select: { activatedAt: true } })
+      .catch(() => null))?.activatedAt ?? null
+  const allGrants = await (prisma as unknown as {
+    manufacturerFeeGrant: { findMany: (a: unknown) => Promise<Array<{ partnerServiceId: string; feeBps: number; startsAt: Date; endsAt: Date; revokedAt: Date | null }>> }
+  }).manufacturerFeeGrant
+    .findMany({ where: { partnerServiceId: { in: svcIdList }, revokedAt: null } })
+    .catch(() => [] as Array<{ partnerServiceId: string; feeBps: number; startsAt: Date; endsAt: Date; revokedAt: Date | null }>)
 
   const views: StandingView[] = []
   for (const svc of services) {
@@ -116,7 +138,10 @@ export async function loadStandingPage(): Promise<StandingPage> {
       .catch(() => null)
     const currentBadge = (svc.partner.tier ?? 'VERIFIED') as MeritBadge
     const projectedBadge = (snap?.qualifiedBadge ?? currentBadge) as MeritBadge
-    const feeNow = resolveManufacturerFeeBps({ baseProductionFeeBps: baseFeeBps, badge: currentBadge, policy, enabled: live })
+    // Active promo for this service (manual grant wins > global grace) overrides the fee.
+    const manualGrants: FeeGrantLike[] = allGrants.filter((g) => g.partnerServiceId === svc.id).map((g) => ({ feeBps: g.feeBps, startsAt: g.startsAt, endsAt: g.endsAt, revokedAt: g.revokedAt }))
+    const activePromo = resolveActivePromo({ now, activatedAt, grace, manualGrants })
+    const feeNow = resolveManufacturerFeeBps({ baseProductionFeeBps: baseFeeBps, badge: currentBadge, policy, enabled: live, promoFeeBps: activePromo?.feeBps ?? null })
     const feeProjected = resolveManufacturerFeeBps({ baseProductionFeeBps: baseFeeBps, badge: projectedBadge, policy, enabled: true })
     const pillarScores: Record<string, number | null> = snap
       ? { craft: Number(snap.craftScore), reliability: Number(snap.reliabilityScore), contribution: Number(snap.contributionScore), standing: Number(snap.standingScore) }
@@ -140,11 +165,12 @@ export async function loadStandingPage(): Promise<StandingPage> {
       monthsActive: snap?.monthsActive ?? 0,
       feeNowPct: feeBpsToPct(feeNow.bps),
       feeProjectedPct: feeBpsToPct(feeProjected.bps),
+      promo: activePromo ? { feePct: feeBpsToPct(activePromo.feeBps), source: activePromo.source, endsAt: activePromo.endsAt.toISOString() } : null,
     })
   }
 
   // Recent ratings the manufacturer can contest.
-  const svcIds = services.map((s) => s.id)
+  const svcIds = svcIdList
   const ratings = await prisma.partnerRating.findMany({
     where: { partnerServiceId: { in: svcIds } },
     orderBy: { createdAt: 'desc' },
