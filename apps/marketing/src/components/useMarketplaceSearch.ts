@@ -5,10 +5,13 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import {
   TRENDING_QUERIES,
   browseNiches,
+  scoreText,
   type SearchResponse,
   type SearchProduct,
   type SearchCategory,
   type SearchNiche,
+  type PersonalProduct,
+  type PersonalResponse,
 } from '@/lib/marketplace-search'
 
 /**
@@ -35,6 +38,7 @@ const DEBOUNCE_MS = 140
 
 export type NavType =
   | 'product'
+  | 'personal'
   | 'recentProduct'
   | 'category'
   | 'niche'
@@ -48,6 +52,7 @@ export interface NavItem {
   type: NavType
   run: () => void
   product?: SearchProduct
+  personal?: PersonalProduct
   category?: SearchCategory
   niche?: SearchNiche
   label?: string
@@ -114,13 +119,10 @@ export interface UseMarketplaceSearch {
   clearRecent: () => void
   clearRecentProducts: () => void
   refreshRecent: () => void
-  /** Route to a href (records nothing beyond the current query). */
-  navigate: (href: string) => void
-  /** "See all" target for the Popular carousel — the current category/niche scope, else /marketplace. */
-  popularHref: string
   /** Derived groups (contiguous slices of nav) for rendering. */
   groups: {
     products: NavItem[]
+    personalItems: NavItem[]
     recentProductItems: NavItem[]
     jumpTo: NavItem[]
     suggestions: NavItem[]
@@ -163,6 +165,7 @@ export function useMarketplaceSearch(opts: {
   const [popular, setPopular] = React.useState<SearchProduct[]>([])
   const [popularLabel, setPopularLabel] = React.useState<string | undefined>(undefined)
   const [recentProducts, setRecentProducts] = React.useState<SearchProduct[]>([])
+  const [personal, setPersonal] = React.useState<PersonalProduct[]>([])
 
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const reqIdRef = React.useRef(0)
@@ -179,6 +182,21 @@ export function useMarketplaceSearch(opts: {
   React.useEffect(() => {
     setRecent(readRecent())
     setRecentProducts(readRecentProducts())
+  }, [])
+
+  // Fetch the creator's personal corpus once (favorited + previously ordered),
+  // matched client-side as they type. Guests get []. Silent on failure.
+  React.useEffect(() => {
+    let alive = true
+    fetch('/api/marketplace/personal')
+      .then((r) => r.json())
+      .then((d: PersonalResponse) => {
+        if (alive) setPersonal(Array.isArray(d.items) ? d.items : [])
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
   }, [])
 
   // Fetch "Popular right now" products so the empty-focus panel shows real
@@ -303,12 +321,6 @@ export function useMarketplaceSearch(opts: {
     writeRecentProducts([])
   }, [])
 
-  const popularHref = scope.category
-    ? `/marketplace/${scope.category}`
-    : scope.niche
-      ? `/marketplace?niche=${scope.niche}`
-      : '/marketplace'
-
   // Flat nav model — order matters (drives keyboard index + render order).
   const nav = React.useMemo<NavItem[]>(() => {
     const items: NavItem[] = []
@@ -323,13 +335,35 @@ export function useMarketplaceSearch(opts: {
       return items
     }
     if (results) {
-      for (const p of results.products) push({ type: 'product', product: p, run: () => selectProduct(p) })
+      // "For you" — the creator's own favorited/ordered products that match the
+      // query, surfaced above generic results.
+      const hay = (p: PersonalProduct) => [p.title, p.niche, ...p.tags].join(' ')
+      const personalMatches = personal
+        .map((p) => ({ p, s: scoreText(trimmed, hay(p)) }))
+        .filter((x) => x.s > 0)
+        .sort((a, b) => b.s - a.s)
+        .slice(0, 4)
+        .map((x) => x.p)
+      const matchedSlugs = new Set(personalMatches.map((p) => p.slug))
+      for (const p of personalMatches) push({ type: 'personal', product: p, personal: p, run: () => selectProduct(p) })
+
+      // Behavioral re-rank: generic results the creator has already touched
+      // (personal corpus or recently viewed) float to the top; the rest keep
+      // the server's merit order. Personal matches are removed (shown above).
+      const knownSlugs = new Set<string>([...personal.map((p) => p.slug), ...recentProducts.map((p) => p.slug)])
+      const generic = results.products.filter((p) => !matchedSlugs.has(p.slug))
+      const ranked = [
+        ...generic.filter((p) => knownSlugs.has(p.slug)),
+        ...generic.filter((p) => !knownSlugs.has(p.slug)),
+      ]
+      for (const p of ranked) push({ type: 'product', product: p, run: () => selectProduct(p) })
+
       for (const c of results.categories) push({ type: 'category', category: c, run: () => routeToHref(c.href) })
       for (const n of results.niches) push({ type: 'niche', niche: n, run: () => routeToHref(n.href) })
       for (const s of results.suggestions) push({ type: 'suggestion', label: s, run: () => submit(s) })
     }
     return items
-  }, [isEmpty, popular, recentProducts, recent, results, submit, routeToHref, selectProduct])
+  }, [isEmpty, popular, personal, recentProducts, recent, results, trimmed, submit, routeToHref, selectProduct])
 
   const handleKeyNav = React.useCallback(
     (e: React.KeyboardEvent): boolean => {
@@ -363,6 +397,7 @@ export function useMarketplaceSearch(opts: {
   const groups = React.useMemo(
     () => ({
       products: nav.filter((n) => n.type === 'product'),
+      personalItems: nav.filter((n) => n.type === 'personal'),
       recentProductItems: nav.filter((n) => n.type === 'recentProduct'),
       jumpTo: nav.filter((n) => n.type === 'category' || n.type === 'niche'),
       suggestions: nav.filter((n) => n.type === 'suggestion'),
@@ -396,8 +431,6 @@ export function useMarketplaceSearch(opts: {
     clearRecent,
     clearRecentProducts,
     refreshRecent,
-    navigate: routeToHref,
-    popularHref,
     groups,
     hasResults,
     showZero,

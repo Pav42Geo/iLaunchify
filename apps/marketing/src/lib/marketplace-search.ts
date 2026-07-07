@@ -62,6 +62,22 @@ export interface SearchNiche {
   href: string
 }
 
+/**
+ * A product from the logged-in creator's own history — favorited and/or
+ * previously ordered. Drives the "For you" layer (Saved tag / Reorder action)
+ * and the behavioral re-rank of generic results.
+ */
+export interface PersonalProduct extends SearchProduct {
+  /** In the creator's Favorites. */
+  saved?: boolean
+  /** ISO date of the most recent order of this template, when previously ordered. */
+  reorderedAt?: string
+}
+
+export interface PersonalResponse {
+  items: PersonalProduct[]
+}
+
 export interface SearchResponse {
   query: string
   products: SearchProduct[]

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Search, Clock, TrendingUp, CornerDownLeft, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
+import { Search, Clock, TrendingUp, CornerDownLeft, ChevronLeft, ChevronRight, Heart, RotateCw } from 'lucide-react'
 import { productGradient } from '@ilaunchify/ui'
 import { highlightSegments } from '@/lib/marketplace-search'
 import type { NavItem, UseMarketplaceSearch } from './useMarketplaceSearch'
@@ -321,6 +321,82 @@ function ProductMiniCard({
 }
 
 /**
+ * PersonalRow — a "For you" result: the creator's own favorited / previously
+ * ordered product. Reorder items get a black-pill "Reorder" CTA + "Ordered {date}";
+ * saved-only items get a ♥ Saved tag. Row click opens the product.
+ */
+function PersonalRow({
+  item,
+  tone,
+  theme,
+  active,
+  setActive,
+  query,
+}: {
+  item: NavItem
+  tone: Tone
+  theme: Theme
+  active: number
+  setActive: (i: number) => void
+  query: string
+}) {
+  const p = item.personal!
+  const orderedLabel = p.reorderedAt
+    ? new Date(p.reorderedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : null
+  const reorderPill =
+    theme === 'dark' ? 'bg-neon-500 text-ink-900' : 'bg-ink-900 text-white'
+  return (
+    <button
+      type="button"
+      data-idx={item.index}
+      role="option"
+      aria-selected={active === item.index}
+      onMouseEnter={() => setActive(item.index)}
+      onClick={item.run}
+      className={`mx-1.5 flex w-[calc(100%-12px)] items-center gap-3.5 rounded-xl px-3 py-2 text-left ${
+        active === item.index ? tone.rowActive : tone.rowHover
+      }`}
+    >
+      <span
+        className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[11px] text-[24px] leading-none"
+        style={{ background: gradientFor(p.gradient) }}
+      >
+        {p.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <span aria-hidden>{p.icon}</span>
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate text-[14.5px] font-semibold ${tone.productName}`}>
+          <Highlight text={p.title} query={query} markClass={tone.mark} />
+        </span>
+        <span className={`mt-0.5 flex items-center gap-1.5 truncate text-[12.5px] ${tone.metaMuted}`}>
+          {orderedLabel ? (
+            <span className="truncate">Ordered {orderedLabel}</span>
+          ) : (
+            <span className={`flex items-center gap-1 ${theme === 'dark' ? 'text-neon-500' : 'text-pink-700'}`}>
+              <Heart className="h-3 w-3 fill-current" strokeWidth={0} /> Saved
+            </span>
+          )}
+          <span className={tone.priceMuted}>·</span>
+          <span>${p.pricePerUnit.toFixed(2)}/unit</span>
+        </span>
+      </span>
+      {p.reorderedAt ? (
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-pill px-2.5 py-1 text-[11px] font-semibold ${reorderPill}`}>
+          <RotateCw className="h-3 w-3" strokeWidth={2.5} /> Reorder
+        </span>
+      ) : (
+        <Heart className={`h-4 w-4 shrink-0 ${theme === 'dark' ? 'text-neon-500' : 'text-pink-600'} fill-current`} strokeWidth={0} />
+      )}
+    </button>
+  )
+}
+
+/**
  * PopularCarousel — horizontal mini-card row with edge fades + scroll arrows.
  * Arrows and the fade on each side appear only when there's more to scroll that
  * way, so a short row shows neither. Edge padding keeps cards off the panel edge.
@@ -331,15 +407,12 @@ function PopularCarousel({
   theme,
   active,
   setActive,
-  onSeeAll,
 }: {
   items: NavItem[]
   tone: Tone
   theme: Theme
   active: number
   setActive: (i: number) => void
-  /** When set, a trailing "See all" card is appended that calls this. */
-  onSeeAll?: () => void
 }) {
   const ref = React.useRef<HTMLDivElement>(null)
   const [canLeft, setCanLeft] = React.useState(false)
@@ -379,28 +452,6 @@ function PopularCarousel({
         {items.map((item) => (
           <ProductMiniCard key={item.product!.slug} item={item} tone={tone} active={active} setActive={setActive} />
         ))}
-        {onSeeAll && (
-          <button
-            type="button"
-            onClick={onSeeAll}
-            aria-label="See all products"
-            className={`group shrink-0 w-[132px] snap-start rounded-xl p-1.5 text-left transition-colors ${tone.rowHover}`}
-          >
-            <span
-              className={`flex h-[100px] w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed ${
-                theme === 'dark'
-                  ? 'border-white/20 bg-white/[0.03] text-white/70 group-hover:border-neon-500 group-hover:text-neon-500'
-                  : 'border-ink-300 bg-ink-50 text-ink-500 group-hover:border-pink-500 group-hover:text-pink-700'
-              }`}
-            >
-              <ArrowRight className="h-6 w-6" strokeWidth={2} />
-            </span>
-            <span className={`mt-1.5 block min-h-[32px] text-[12.5px] font-semibold leading-tight ${tone.productName}`}>
-              See all
-            </span>
-            <span className={`mt-1 block text-[11.5px] font-medium ${tone.priceMuted}`}>View marketplace</span>
-          </button>
-        )}
       </div>
 
       {canLeft && (
@@ -442,7 +493,10 @@ export function MarketplaceSearchResults({
 }) {
   const tone = TONES[theme]
   const { trimmed, isEmpty, loading, results, active, setActive, clearRecent, groups, hasResults, showZero } = search
-  const { products, recentProductItems, jumpTo, suggestions, recentItems, trendingItems, browseItems } = groups
+  const { products, personalItems, recentProductItems, jumpTo, suggestions, recentItems, trendingItems, browseItems } = groups
+  const hasPersonal = personalItems.length > 0
+  // Don't show the zero-state when the user has a personal ("For you") match.
+  const showZeroFinal = showZero && !hasPersonal
 
   const header = (label: string, right?: React.ReactNode) => (
     <div className={`flex items-center justify-between px-[18px] pb-1.5 pt-3.5 text-[11px] font-bold uppercase tracking-[0.08em] ${tone.header}`}>
@@ -476,14 +530,7 @@ export function MarketplaceSearchResults({
           {products.length > 0 && (
             <>
               {header(search.popularLabel ?? 'Popular right now')}
-              <PopularCarousel
-                items={products}
-                tone={tone}
-                theme={theme}
-                active={active}
-                setActive={setActive}
-                onSeeAll={() => search.navigate(search.popularHref)}
-              />
+              <PopularCarousel items={products} tone={tone} theme={theme} active={active} setActive={setActive} />
               <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
             </>
           )}
@@ -530,6 +577,17 @@ export function MarketplaceSearchResults({
               </ChipButton>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* FOR YOU — the creator's own favorited / previously ordered matches */}
+      {!isEmpty && hasPersonal && (
+        <div className="pb-1">
+          {header('For you')}
+          {personalItems.map((item) => (
+            <PersonalRow key={item.personal!.slug} item={item} tone={tone} theme={theme} active={active} setActive={setActive} query={trimmed} />
+          ))}
+          {(hasResults || loading) && <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />}
         </div>
       )}
 
@@ -596,7 +654,7 @@ export function MarketplaceSearchResults({
       )}
 
       {/* ZERO STATE */}
-      {showZero && (
+      {showZeroFinal && (
         <div className="px-6 pb-8 pt-7 text-center">
           <div className="text-[32px]">🔍</div>
           <h3 className={`mt-2.5 text-[16px] font-bold ${tone.zeroTitle}`}>No products match “{trimmed}”</h3>
@@ -618,7 +676,7 @@ export function MarketplaceSearchResults({
       )}
 
       {/* FOOTER */}
-      {(hasResults || isEmpty || showZero) && (
+      {(hasResults || isEmpty || showZeroFinal || hasPersonal) && (
         <div className={`sticky bottom-0 flex items-center justify-between border-t px-[18px] py-2.5 text-[12px] backdrop-blur ${tone.footer}`}>
           <div className="flex gap-3.5">
             <span className="flex items-center gap-1.5"><Kbd tone={tone}>↑↓</Kbd> navigate</span>
