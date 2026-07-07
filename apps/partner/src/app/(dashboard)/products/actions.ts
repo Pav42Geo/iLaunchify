@@ -15,6 +15,7 @@ import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+import { checkListingCapacity } from '@/lib/listing-cap'
 
 type Result<T = void> =
   | (T extends void ? { ok: true } : { ok: true; data: T })
@@ -102,6 +103,10 @@ export async function createDraftFromStepper(
   if (!input.containerFormat.trim()) {
     return { ok: false, error: 'Describe the container (e.g. "16oz jar").' }
   }
+
+  // PT-4 — earned-badge product-listing cap (docs/PARTNER_TIER_VS_MERIT.md).
+  const cap = await checkListingCapacity(partner.id, partner.services.map((s) => s.id))
+  if (!cap.ok) return { ok: false, error: cap.error }
 
   // Slug uniqueness — derive from name + partner id suffix so reuse is fine.
   const baseSlug = slugify(input.name)
@@ -767,6 +772,10 @@ export async function cloneTemplate(input: {
       }))
     if (!owned) return { ok: false, error: 'You can only clone your own templates.' }
   }
+
+  // PT-4 — a clone is a new listing; it counts against the earned-badge cap.
+  const cloneCap = await checkListingCapacity(partner.id, partner.services.map((s) => s.id))
+  if (!cloneCap.ok) return { ok: false, error: cloneCap.error }
 
   // -------- Slug generation (unique) --------
   const newName = input.newName.trim() || `${source.name} (copy)`

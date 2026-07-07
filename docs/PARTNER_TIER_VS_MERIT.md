@@ -18,10 +18,14 @@
   Added an info banner on the partner plan editor (`/tiers/plan/[code]`) stating pricing + fee rules
   are **not** the live source for partner tiers (edit the badge fee in the Merit console); perks are
   what the earned badge unlocks. No fee-path code change needed.
-- [ ] **PT-4 — Perk enforcement (DEFERRED, honest).** `PlanFeature` perks (product-listing cap,
-  marketplace badge, featured, rate-card eligibility) have **no live enforcement seam today** — e.g.
-  the "up to 3 listings at Verified" from PLATFORM_SPEC isn't gated anywhere yet. The perk *config*
-  exists on the earned badge's plan; wiring a consumer is a future build (don't fabricate a gate).
+- [x] **PT-4 — Perk enforcement (first perk: product-listing cap).** `apps/partner/lib/listing-cap.ts`
+  → `checkListingCapacity(partnerId, serviceIds)` resolves the earned badge's `max_active_listings`
+  perk (`partnerTierToPlanCode` + `getFeatureLimit`; null = unlimited, fail-OPEN if unconfigured) and
+  counts non-archived/-rejected templates. Wired into **both** create paths in
+  `products/actions.ts` (`createDraftFromStepper` + clone) with a badge-aware message ("reached your
+  N-product limit for the <badge> badge — earn a higher standing…"). The other perks (premier badge on
+  listings, routing priority, featured) have config on the plan but their consumers are separate
+  future slices. Optional follow-up: a proactive "N of M listings used" indicator on the products page.
 - [x] **PT-5 — Docs.** CLAUDE.md §Tiers updated (supersedes "no behavioral binding"); partner tiers
   earned via Merit, creator plans stay paid.
 
