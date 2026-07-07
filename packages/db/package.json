@@ -21,6 +21,7 @@
     "seed:template-library": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-template-library.ts",
     "seed:dsld-mirror": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-dsld-mirror.ts",
     "seed:variety-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-variety-demo.ts",
+    "seed:demo-reviews": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-demo-reviews.ts",
     "seed:packing-types": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/run-packing-types.ts",
     "seed:packaging-forms": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-packaging-forms.ts",
     "seed:logistics": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-logistics.ts",

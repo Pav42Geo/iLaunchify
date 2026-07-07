@@ -448,55 +448,49 @@ function Breadcrumb({
    on-brand; renders the real ratingAvg when present, otherwise a quiet "New".
    `launches` is the ratingCount today (closest existing metric) — swap for a
    dedicated launch count when one lands. Server component, no interactivity. */
-function RatingRow({
-  ratingAvg,
-  launches,
-  manufacturerBadge,
-}: {
-  ratingAvg?: number | null
-  launches: number
-  manufacturerBadge?: 'TRUSTED' | 'PREMIER' | null
-}) {
-  const hasRating = ratingAvg != null || launches > 0
-  if (!hasRating && !manufacturerBadge) return null
+function RatingRow({ ratingAvg, launches }: { ratingAvg?: number | null; launches: number }) {
+  if (ratingAvg == null && launches <= 0) return null
   const filled = ratingAvg != null ? Math.round(ratingAvg) : 0
   return (
-    <div className="mb-3 space-y-1.5">
-      {hasRating && (
-        <div className="flex items-center gap-2 text-[13px] text-ink-500">
-          {ratingAvg != null ? (
-            <>
-              <span className="inline-flex text-[14px] leading-none" aria-hidden>
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <span key={i} className={i < filled ? 'text-pink-600' : 'text-ink-200'}>
-                    ★
-                  </span>
-                ))}
+    <div className="mb-3 flex items-center gap-2 text-[13px] text-ink-500">
+      {ratingAvg != null ? (
+        <>
+          <span className="inline-flex text-[14px] leading-none" aria-hidden>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <span key={i} className={i < filled ? 'text-pink-600' : 'text-ink-200'}>
+                ★
               </span>
-              <span className="font-semibold tabular-nums text-ink-800">{ratingAvg.toFixed(1)}</span>
-              {launches > 0 && <span>· {launches.toLocaleString()} launches</span>}
-            </>
-          ) : (
-            <span>New · {launches.toLocaleString()} launches</span>
-          )}
-        </div>
-      )}
-      {/* Earned manufacturer standing — anonymous trust tier (no partner identity). */}
-      {manufacturerBadge && (
-        <div className="flex items-center gap-1.5 text-[12.5px] text-ink-500">
-          <span>Manufacturer:</span>
-          <span
-            className={
-              'inline-flex items-center rounded-full border px-2 py-[1px] text-[10.5px] font-semibold uppercase tracking-wide ' +
-              (manufacturerBadge === 'PREMIER'
-                ? 'border-pink-200 bg-pink-50 text-pink-800'
-                : 'border-info-200 bg-info-50 text-info-800')
-            }
-          >
-            {manufacturerBadge === 'PREMIER' ? 'Premier' : 'Trusted'}
+            ))}
           </span>
-        </div>
+          <span className="font-semibold tabular-nums text-ink-800">{ratingAvg.toFixed(1)}</span>
+          {launches > 0 && <span>· {launches.toLocaleString()} launches</span>}
+        </>
+      ) : (
+        <span>New · {launches.toLocaleString()} launches</span>
       )}
+    </div>
+  )
+}
+
+/* Earned manufacturer standing — an ANONYMOUS trust tier under the rating
+   (docs/PARTNER_TIER_VS_MERIT.md perk model). Renders in both rating branches.
+   Badge only — never the partner's name/location/link (orchestration thesis).
+   Hidden for Verified / no-manufacturer. */
+function ManufacturerBadgeLine({ badge }: { badge?: 'TRUSTED' | 'PREMIER' | null }) {
+  if (!badge) return null
+  return (
+    <div className="mb-3 -mt-1 flex items-center gap-1.5 text-[12.5px] text-ink-500">
+      <span>Manufacturer:</span>
+      <span
+        className={
+          'inline-flex items-center rounded-full border px-2 py-[1px] text-[10.5px] font-semibold uppercase tracking-wide ' +
+          (badge === 'PREMIER'
+            ? 'border-pink-200 bg-pink-50 text-pink-800'
+            : 'border-info-200 bg-info-50 text-info-800')
+        }
+      >
+        {badge === 'PREMIER' ? 'Premier' : 'Trusted'}
+      </span>
     </div>
   )
 }
@@ -553,8 +547,11 @@ function IdentityColumn({
           </RatingStars>
         </div>
       ) : (
-        <RatingRow ratingAvg={template.ratingAvg} launches={template.ratingCount ?? 0} manufacturerBadge={template.manufacturerBadge} />
+        <RatingRow ratingAvg={template.ratingAvg} launches={template.ratingCount ?? 0} />
       )}
+
+      {/* Anonymous earned-standing tier — shows under whichever rating element renders. */}
+      <ManufacturerBadgeLine badge={template.manufacturerBadge} />
 
       {/* Key-facts card — DIRECTLY under the title. Format · MOQ · Lead ·
           Process (the manufacturer's production method). Process reads real
