@@ -3,8 +3,8 @@
 // shadow-mode sweep) + the current MeritPolicy. Read-only; the console tunes the
 // policy and simulates against these snapshots without recomputing signals.
 
-import { prisma } from '@ilaunchify/db'
-import { DEFAULT_MERIT_POLICY, type MeritPolicy, type MeritBadge } from '@ilaunchify/orders'
+import { prisma, getOrderSettings } from '@ilaunchify/db'
+import { DEFAULT_MERIT_POLICY, resolveManufacturerFeeBps, feeBpsToPct, type MeritPolicy, type MeritBadge } from '@ilaunchify/orders'
 
 export interface MeritRow {
   serviceId: string
@@ -18,6 +18,12 @@ export interface MeritRow {
   defectRatePer100: number | null
   gaps: string[]
   computedAt: string
+  /** Fee this manufacturer pays TODAY (base rate while shadow; current badge if live). */
+  feeNowPct: string
+  /** Fee they WOULD pay if the engine went live at their qualified badge. */
+  feeIfLivePct: string
+  /** True when going live would change this manufacturer's fee. */
+  feeWouldChange: boolean
 }
 
 export interface MeritConsole {
@@ -30,6 +36,9 @@ export interface MeritConsole {
   /** Where the qualified badge differs from the current hand-set tier. */
   mismatches: number
   hasSnapshots: boolean
+  /** OrderSettings base production fee (bps) — what everyone pays in shadow mode. */
+  baseProductionFeeBps: number
+  baseProductionFeePct: string
 }
 
 export async function loadMeritConsole(): Promise<MeritConsole> {
@@ -53,6 +62,10 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
     graceDays: policyRow?.graceDays ?? 60,
   }
   const enabled = policyRow?.enabled ?? false
+
+  // Base production fee (bps) from OrderSettings — the rate everyone pays while
+  // the engine is in shadow. The badge fees only apply once `enabled` flips.
+  const baseProductionFeeBps = (await getOrderSettings().catch(() => null))?.productionFeeBps ?? 500
 
   // Latest snapshot per manufacturer service.
   const snaps = await prisma.partnerMeritSnapshot
@@ -83,6 +96,10 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
     const qualifiedBadge = s.qualifiedBadge as MeritBadge
     distribution[qualifiedBadge] += 1
     if (qualifiedBadge !== currentBadge) mismatches += 1
+    // Fee today (respects the live/shadow flag) vs. the fee they'd pay if the
+    // engine went live at their QUALIFIED badge — the revenue-impact preview.
+    const feeNow = resolveManufacturerFeeBps({ baseProductionFeeBps, badge: currentBadge, policy, enabled })
+    const feeIfLive = resolveManufacturerFeeBps({ baseProductionFeeBps, badge: qualifiedBadge, policy, enabled: true })
     return {
       serviceId: s.partnerServiceId,
       companyName: svc?.partner.companyName ?? '(unknown)',
@@ -100,9 +117,17 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
       defectRatePer100: s.defectRatePer100 == null ? null : Number(s.defectRatePer100),
       gaps: Array.isArray(s.gapsJson) ? (s.gapsJson as string[]) : [],
       computedAt: s.computedAt.toISOString(),
+      feeNowPct: feeBpsToPct(feeNow.bps),
+      feeIfLivePct: feeBpsToPct(feeIfLive.bps),
+      feeWouldChange: feeIfLive.bps !== feeNow.bps,
     }
   })
   rows.sort((a, b) => b.meritScore - a.meritScore)
 
-  return { policy, enabled, windows, rows, distribution, mismatches, hasSnapshots: snaps.length > 0 }
+  return {
+    policy, enabled, windows, rows, distribution, mismatches,
+    hasSnapshots: snaps.length > 0,
+    baseProductionFeeBps,
+    baseProductionFeePct: feeBpsToPct(baseProductionFeeBps),
+  }
 }

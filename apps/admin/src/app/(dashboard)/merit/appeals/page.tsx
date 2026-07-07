@@ -39,11 +39,11 @@ export default async function AppealsPage() {
         description="A manufacturer can contest a rating they believe is unfair or misattributed. While an appeal is open, their standing is frozen against demotion. Upholding keeps the rating; excluding or re-attributing removes it from their aggregate and recomputes standing — every outcome is audited."
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiWidget label="Open" value={inbox.open} tone={inbox.open > 0 ? 'info' : 'ink'} icon={Inbox} sublabel="awaiting adjudication" />
-        <KpiWidget label="Ack overdue" value={inbox.ackOverdue} tone={inbox.ackOverdue > 0 ? 'warning' : 'success'} icon={Clock} sublabel="past 2-day acknowledge SLA" />
-        <KpiWidget label="Resolve overdue" value={inbox.resolveOverdue} tone={inbox.resolveOverdue > 0 ? 'warning' : 'success'} icon={AlertTriangle} sublabel="past 7-day resolve SLA" />
-        <KpiWidget label="Resolved" value={inbox.resolved} tone="ink" icon={CheckCircle2} sublabel="closed all-time" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12">
+        <KpiWidget span={3} label="Open" value={inbox.open} tone={inbox.open > 0 ? 'info' : 'ink'} icon={Inbox} sublabel="awaiting adjudication" />
+        <KpiWidget span={3} label="Ack overdue" value={inbox.ackOverdue} tone={inbox.ackOverdue > 0 ? 'warning' : 'success'} icon={Clock} sublabel="past 2-day acknowledge SLA" />
+        <KpiWidget span={3} label="Resolve overdue" value={inbox.resolveOverdue} tone={inbox.resolveOverdue > 0 ? 'warning' : 'success'} icon={AlertTriangle} sublabel="past 7-day resolve SLA" />
+        <KpiWidget span={3} label="Resolved" value={inbox.resolved} tone="ink" icon={CheckCircle2} sublabel="closed all-time" />
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">

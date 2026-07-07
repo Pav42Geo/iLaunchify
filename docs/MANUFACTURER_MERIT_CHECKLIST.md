@@ -97,9 +97,22 @@ Rule of the build: **MM-1→MM-4 change no economics and are reversible. Only MM
   the `fileRatingAppeal` action is ready for it now.
 
 ## MM-5 · Benefit binding *(CW builds; **PAVEL money sign-off**)*
-- [ ] Confirm today's fee incidence in the Stripe split (`application_fee`).
-- [ ] Partner-tier scope on OrderSettings override → production fee resolves per badge
-  (4.5 / 2.5 / 0%), audited + reversible.
+- [x] **Pure resolver** `packages/orders/merit-fee.ts` — `resolveManufacturerFeeBps({base, badge,
+  policy, enabled})` → the production-fee bps for a manufacturer's leg. SHADOW-SAFE: returns the
+  base OrderSettings fee unchanged while `enabled=false`; resolves from the badge (Verified 450 /
+  Trusted 250 / Premier 0) when live. Reversible with no migration; unknown badge → base, never
+  throws. `feeBpsToPct` helper. 6 tests (642/0). Exported from orders index.
+- [x] **Fee preview** in the merit console standing table — per manufacturer "Fee now → if live"
+  (base today, badge fee if the engine went live at their qualified badge; pink when it changes) +
+  a header note stating the base rate while shadow. No live charging touched.
+- [ ] **[PAVEL]** Confirm today's fee incidence in the Stripe split (`application_fee`). NOTE (CW
+  audit): `computeApplicationFee(subtotal, rateBp)` exists + is tested in `packages/payments/fees.ts`
+  but is **not yet called in the live checkout path** — the production fee isn't wired into a real
+  Stripe charge anywhere today. So binding badge→fee is safe to stage; going live means (a) wiring
+  `computeApplicationFee` into checkout with the badge-resolved `rateBp`, then (b) flipping
+  `MeritPolicy.enabled`. Confirm the platform (not the manufacturer) bears the fee in the split.
+- [ ] Wire `resolveManufacturerFeeBps` → `computeApplicationFee` rateBp at the checkout/transfer
+  point (per manufacturer leg), audited *(gated on the incidence confirmation above)*.
 - [ ] Optional Premier routing nudge (scoring.ts, gated) + Premier marketplace listing badge.
 - [ ] Flip badge assignment shadow → live after a shadow period + simulator review.
 

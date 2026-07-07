@@ -34,12 +34,12 @@ export default async function MeritPage() {
         description="Fair, multi-signal merit — Craft, Reliability, Contribution, Standing — earns the badge (Verified → Trusted → Premier) that unlocks the fee tier. Running in SHADOW: the engine proposes standing nightly but never changes a tier or fee until you flip it live (MM-5)."
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiWidget label="Verified" value={c.distribution.VERIFIED} tone="ink" icon={ShieldCheck} sublabel="entry · 4.5% fee" />
-        <KpiWidget label="Trusted" value={c.distribution.TRUSTED} tone="info" icon={Award} sublabel="proven · 2.5% fee" />
-        <KpiWidget label="Premier" value={c.distribution.PREMIER} tone="pink" icon={Star} sublabel="top · 0% fee" />
-        <KpiWidget label="Would change" value={c.mismatches} tone={c.mismatches > 0 ? 'warning' : 'success'} icon={GitCompareArrows} sublabel="qualified ≠ current tier" />
-        <KpiWidget label="Engine" value={c.enabled ? 'On (shadow)' : 'Off'} tone="ink" icon={Database} sublabel={c.hasSnapshots ? 'nightly snapshots' : 'no snapshots yet'} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-10">
+        <KpiWidget span={2} label="Verified" value={c.distribution.VERIFIED} tone="ink" icon={ShieldCheck} sublabel="entry · 4.5% fee" />
+        <KpiWidget span={2} label="Trusted" value={c.distribution.TRUSTED} tone="info" icon={Award} sublabel="proven · 2.5% fee" />
+        <KpiWidget span={2} label="Premier" value={c.distribution.PREMIER} tone="pink" icon={Star} sublabel="top · 0% fee" />
+        <KpiWidget span={2} label="Would change" value={c.mismatches} tone={c.mismatches > 0 ? 'warning' : 'success'} icon={GitCompareArrows} sublabel="qualified ≠ current tier" />
+        <KpiWidget span={2} label="Engine" value={c.enabled ? 'On (shadow)' : 'Off'} tone="ink" icon={Database} sublabel={c.hasSnapshots ? 'nightly snapshots' : 'no snapshots yet'} />
       </div>
 
       <MeritConsole
@@ -57,8 +57,13 @@ export default async function MeritPage() {
       />
 
       <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <div className="border-b border-ink-100 bg-[var(--bg-hero)] px-5 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-ink-100 bg-[var(--bg-hero)] px-5 py-3">
           <h2 className="font-display text-[14px] font-semibold text-ink-900">Standing (latest snapshot per manufacturer)</h2>
+          <span className="text-[11.5px] text-ink-500">
+            {c.enabled
+              ? <>Engine <strong className="text-ink-700">live</strong> — fee resolves from the badge.</>
+              : <>Shadow: everyone pays the base <strong className="text-ink-700">{c.baseProductionFeePct}</strong> production fee. &ldquo;If live&rdquo; previews the badge fee.</>}
+          </span>
         </div>
         {!c.hasSnapshots ? (
           <p className="px-5 py-10 text-center text-[13px] text-ink-500">
@@ -73,6 +78,7 @@ export default async function MeritPage() {
                 <th className="px-3 py-2.5 font-semibold">Score</th>
                 <th className="px-3 py-2.5 font-semibold">Craft/Rel/Contrib/Stand</th>
                 <th className="px-3 py-2.5 font-semibold">Orders</th>
+                <th className="px-3 py-2.5 font-semibold">Fee now → if live</th>
                 <th className="px-5 py-2.5 font-semibold">Next step</th>
               </tr>
             </thead>
@@ -96,6 +102,15 @@ export default async function MeritPage() {
                     {r.pillars.craft}/{r.pillars.reliability}/{r.pillars.contribution}/{r.pillars.standing}
                   </td>
                   <td className="px-3 py-2.5 tabular-nums text-ink-700">{r.ordersCompleted}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-[12px]">
+                    <span className="text-ink-700">{r.feeNowPct}</span>
+                    {r.feeWouldChange && (
+                      <>
+                        <span className="mx-1 text-ink-400">→</span>
+                        <span className="font-semibold text-pink-700">{r.feeIfLivePct}</span>
+                      </>
+                    )}
+                  </td>
                   <td className="px-5 py-2.5 text-[12px] text-ink-500">{r.gaps[0] ?? '—'}</td>
                 </tr>
               ))}

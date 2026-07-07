@@ -208,8 +208,6 @@ const PRIMARY: SidebarRegion = {
       children: [
         { kind: 'item', label: 'Creators', icon: Users, href: '/creators' },
         { kind: 'item', label: 'Partners', icon: Building2, href: '/partners' },
-        { kind: 'item', label: 'Manufacturer standing', icon: Award, href: '/merit', capability: 'billing:write' },
-        { kind: 'item', label: 'Rating appeals', icon: Scale, href: '/merit/appeals', capability: 'reviews:write' },
         { kind: 'item', label: 'Admins', icon: Shield, href: '/admins', capability: 'users:admin' },
         { kind: 'item', label: 'Roles & Permissions', icon: Shield, href: '/roles', capability: 'users:admin' },
       ],
@@ -271,6 +269,10 @@ const PRIMARY: SidebarRegion = {
       icon: ShieldCheck,
       children: [
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers', capability: 'tiers:write' },
+        // Manufacturer merit — standing → badge → fee tier lives next to Tiers & Plans
+        // (Pavel 2026-07-06: it's pricing policy, not user management).
+        { kind: 'item', label: 'Manufacturer standing', icon: Award, href: '/merit', capability: 'billing:write' },
+        { kind: 'item', label: 'Rating appeals', icon: Scale, href: '/merit/appeals', capability: 'reviews:write' },
         { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains', capability: 'platform:admin' },
         // Risk Center M2 — detector mode ladder + thresholds (also reachable
         // from the Risk Inbox header). Pavel 2026-07-05: mounted in Settings,

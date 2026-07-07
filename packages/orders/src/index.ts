@@ -345,6 +345,9 @@ export {
 } from './rating-appeal'
 export type { RatingAppealStatus, AppealSlaPolicy, AppealSlaState } from './rating-appeal'
 export { recomputePartnerRatingAggregate } from './partner-rating-recompute'
+// MM-5 — badge → production-fee resolution (shadow-safe, reversible).
+export { resolveManufacturerFeeBps, feeBpsToPct } from './merit-fee'
+export type { FeeSource, ResolvedManufacturerFee } from './merit-fee'
 
 // Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
 export {
