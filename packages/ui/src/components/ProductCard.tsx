@@ -7,6 +7,7 @@ import { productGradient, type ProductGradient } from '../tokens/colors'
 import { StatusPill } from './StatusPill'
 import { VerifyCheck } from './VerifyCheck'
 import { HeartFavorite } from './HeartFavorite'
+import { useCardFavorite } from './FavoritesContext'
 
 /**
  * ProductCard — renders a ProductTemplate object at card size.
@@ -50,6 +51,10 @@ export interface ProductCardTag {
 export interface ProductCardProps {
   /** Routes the card click — typically `/marketplace/{category}/{subcategory}/{slug}`. */
   href: string
+  /** Real ProductTemplate.id. When set AND a FavoritesProvider is present, the
+   *  heart wires to real per-creator favoriting; otherwise it falls back to the
+   *  favorited/onFavorite props below. docs/FAVORITES_MANAGEMENT.md §11. */
+  templateId?: string
   /** Title (template name). */
   title: string
   /** Caps niche label rendered above the title (e.g., "Wellness"). */
@@ -108,6 +113,7 @@ function fmtMoney(n: number): string {
 
 export function ProductCard({
   href,
+  templateId,
   title,
   niche,
   status,
@@ -126,6 +132,9 @@ export function ProductCard({
 }: ProductCardProps) {
   const gradientKey = gradient ?? stableGradient(title)
   const statusCfg = status ? STATUS_CONFIG[status] : null
+  // Wire the heart to real favoriting when a FavoritesProvider + templateId are
+  // present; otherwise fall back to the controlled favorited/onFavorite props.
+  const cardFav = useCardFavorite(templateId)
 
   return (
     <Link
@@ -171,8 +180,8 @@ export function ProductCard({
         </span>
         )}
         <HeartFavorite
-          value={favorited}
-          onToggle={onFavorite}
+          value={cardFav.enabled ? cardFav.saved : favorited}
+          onToggle={cardFav.enabled ? cardFav.toggle : onFavorite}
           className="absolute bottom-2.5 right-2.5"
         />
       </div>

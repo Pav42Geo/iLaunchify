@@ -105,3 +105,23 @@ export async function getFavoritedTemplateIds(templateIds: string[]): Promise<st
   })
   return rows.map((r) => r.productTemplateId as string)
 }
+
+/**
+ * Every template id the current creator has favorited — seeds the marketplace
+ * FavoritesProvider so grid-card hearts render their saved state on first paint.
+ * Empty for guests.
+ */
+export async function getAllFavoritedTemplateIds(): Promise<string[]> {
+  const session = await getMarketingSession()
+  if (!session?.user || session.user.role !== 'CREATOR') return []
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  })
+  if (!profile) return []
+  const rows = await prisma.favorite.findMany({
+    where: { creatorId: profile.id, kind: 'PRODUCT_TEMPLATE', productTemplateId: { not: null } },
+    select: { productTemplateId: true },
+  })
+  return rows.map((r) => r.productTemplateId as string)
+}
