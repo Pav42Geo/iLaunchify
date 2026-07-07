@@ -135,16 +135,38 @@ export function ProductDetailHero({
   const galleryHeroImage = flavorHeroUrl ?? selectedPackageImage
 
   return (
-    <section className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.15fr_1fr_380px] lg:gap-x-[26px] lg:gap-y-10">
-      {/* ZONE 1 — gallery (col 1, row 1) */}
-      <HeroGallery template={template} images={images} packageImage={galleryHeroImage} />
+    // Outer: on mobile a simple vertical stack; on desktop a 2-col grid
+    // [left | 380px rail]. The LEFT cell is its OWN nested grid (gallery+identity
+    // row, tabs row 2), so the tab strip's top is anchored to the gallery/identity
+    // row height ONLY. Previously the rail spanned both rows of a single 3-col
+    // grid; CSS grid redistributes a tall spanning item's height across the rows it
+    // spans, so a short tab (e.g. Compliance) let row 1 grow and the tab strip
+    // visibly jumped down on tab switch. Splitting the rail into its own
+    // non-spanning column removes that coupling.
+    <section className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-x-[26px]">
+      {/* LEFT — gallery + identity (+ tabs below). `contents` on mobile so the
+          three flow straight into the section stack (letting the buy-box rail sit
+          between identity and tabs via order); a nested grid on desktop. */}
+      <div className="contents lg:grid lg:grid-cols-[1.15fr_1fr] lg:items-start lg:gap-x-[26px] lg:gap-y-10 lg:col-start-1 lg:row-start-1">
+        {/* ZONE 1 — gallery (nested col 1, row 1) */}
+        <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1">
+          <HeroGallery template={template} images={images} packageImage={galleryHeroImage} />
+        </div>
 
-      {/* ZONE 2 — identity (col 2, row 1) */}
-      <div className="flex flex-col lg:col-start-2 lg:row-start-1">{identity}</div>
+        {/* ZONE 2 — identity (nested col 2, row 1) */}
+        <div className="order-2 flex flex-col lg:order-none lg:col-start-2 lg:row-start-1">{identity}</div>
 
-      {/* ZONE 3 — configure box + business card (col 3, spans BOTH rows so it
-          stays sticky beside the tabs below). */}
-      <div className="self-start lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-24">
+        {/* Below-fold content (product tabs) — nested row 2 under both left
+            columns, so its top sits just under the gallery/identity row and never
+            moves when the active tab's height changes. Mobile: last (order-4). */}
+        {belowFold && (
+          <div className="order-4 min-w-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-2">{belowFold}</div>
+        )}
+      </div>
+
+      {/* ZONE 3 — configure box + business card (right 380px column, sticky).
+          Mobile: sits between identity and the tabs (order-3). */}
+      <div className="order-3 self-start lg:order-none lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24">
         {sample ? (
           <SampleDrawer
             options={sample.options}
@@ -197,13 +219,6 @@ export function ProductDetailHero({
 
         <BusinessPromoCard />
       </div>
-
-      {/* Below-fold content (product tabs) — row 2 under the two left columns, so
-          the tall sticky right rail stays visible beside it while scrolling.
-          On mobile the grid is single-column, so this simply stacks last. */}
-      {belowFold && (
-        <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-2">{belowFold}</div>
-      )}
     </section>
   )
 }

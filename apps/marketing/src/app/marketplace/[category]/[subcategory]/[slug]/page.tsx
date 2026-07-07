@@ -102,7 +102,7 @@ export default async function ProductDetailPage({
 
   // Live manufacturer rating + verified creator reviews (fail-soft — fixture
   // templates render the legacy RatingRow, no reviews section).
-  const { rating: liveRating, reviews } = await getTemplateRatingAndReviews(template.slug)
+  const { rating: liveRating, reviews } = await getTemplateRatingAndReviews(template.slug, session?.user?.id)
 
   // PS-2/PS-3 — print-provider cards, gated by effectivePrintSourcing (§2):
   // null for IN_HOUSE manufacturers and fixture templates.

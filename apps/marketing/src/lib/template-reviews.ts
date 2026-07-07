@@ -24,7 +24,9 @@ export interface TemplateReview {
   authorName: string
   photoUrls: string[]
   createdAt: string // ISO
-  helpfulCount: number // "N people found this helpful"
+  helpfulCount: number // thumbs-up total ("N likes")
+  notHelpfulCount: number // thumbs-down total
+  myVote: 'up' | 'down' | null // the viewer's existing vote (null when signed-out)
 }
 
 // Display labels for manufacturer dimension slugs. KEEP IN SYNC with
@@ -43,7 +45,10 @@ function humanize(slug: string): string {
 
 const MIN_RATINGS_FOR_DISPLAY = 3 // mirrors @ilaunchify/orders MIN_RATINGS_FOR_DISPLAY
 
-export async function getTemplateRatingAndReviews(templateSlug: string): Promise<{
+export async function getTemplateRatingAndReviews(
+  templateSlug: string,
+  viewerUserId?: string,
+): Promise<{
   rating: TemplateLiveRating | null
   reviews: TemplateReview[]
 }> {
@@ -101,6 +106,25 @@ export async function getTemplateRatingAndReviews(templateSlug: string): Promise
       : []
     const nameById = new Map(users.map((u) => [u.id, u.name]))
 
+    // The viewer's own votes (for initial thumb state) — cast-guarded until the
+    // ReviewVote model lands with `prisma generate`. Signed-out → no votes.
+    const myVoteByReview = new Map<string, 'up' | 'down'>()
+    if (viewerUserId && reviewRows.length > 0) {
+      const votes = await (
+        prisma as unknown as {
+          reviewVote: {
+            findMany: (a: unknown) => Promise<{ reviewId: string; direction: string }[]>
+          }
+        }
+      ).reviewVote
+        .findMany({
+          where: { userId: viewerUserId, reviewId: { in: reviewRows.map((r) => r.id) } },
+          select: { reviewId: true, direction: true },
+        })
+        .catch(() => [] as { reviewId: string; direction: string }[])
+      for (const v of votes) myVoteByReview.set(v.reviewId, v.direction === 'UP' ? 'up' : 'down')
+    }
+
     const publicBase = (process.env.R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_URL)?.replace(/\/$/, '')
     const reviews: TemplateReview[] = reviewRows.map((r) => ({
       id: r.id,
@@ -111,6 +135,8 @@ export async function getTemplateRatingAndReviews(templateSlug: string): Promise
       photoUrls: publicBase ? r.photoAssetIds.map((k) => `${publicBase}/${k}`) : [],
       createdAt: r.createdAt.toISOString(),
       helpfulCount: (r as { helpfulCount?: number }).helpfulCount ?? 0,
+      notHelpfulCount: (r as { notHelpfulCount?: number }).notHelpfulCount ?? 0,
+      myVote: myVoteByReview.get(r.id) ?? null,
     }))
 
     return { rating, reviews }

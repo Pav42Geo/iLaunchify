@@ -158,16 +158,46 @@ export function TemplateReviewsSection({ reviews }: { reviews: TemplateReview[] 
 }
 
 function ReviewCard({ r }: { r: TemplateReview }) {
+  // Real one-vote-per-user: seed from the viewer's stored vote (r.myVote). A
+  // click optimistically toggles/switches, then reconciles with the server's
+  // authoritative counts (or reverts + prompts sign-in when signed-out).
   const [helpful, setHelpful] = useState(r.helpfulCount)
-  const [vote, setVote] = useState<null | 'up' | 'down'>(null)
+  const [vote, setVote] = useState<null | 'up' | 'down'>(r.myVote)
   const [pending, setPending] = useState(false)
+  const [needAuth, setNeedAuth] = useState(false)
 
   const cast = (dir: 'up' | 'down') => {
-    if (pending || vote) return // one vote per session
+    if (pending) return
+    const prevVote = vote
+    const prevHelpful = helpful
+
+    // Optimistic transition — only the "likes" (helpful) count is shown.
+    let nextVote: null | 'up' | 'down' = dir
+    let delta = 0
+    if (prevVote == null) delta = dir === 'up' ? 1 : 0
+    else if (prevVote === dir) {
+      nextVote = null // toggle off
+      delta = dir === 'up' ? -1 : 0
+    } else {
+      delta = dir === 'up' ? 1 : -1 // switch sides
+    }
+    setVote(nextVote)
+    if (delta !== 0) setHelpful((n) => Math.max(0, n + delta))
+    setNeedAuth(false)
     setPending(true)
-    setVote(dir)
-    if (dir === 'up') setHelpful((n) => n + 1)
-    void voteReview(r.id, dir).finally(() => setPending(false))
+
+    void voteReview(r.id, dir)
+      .then((res) => {
+        if (!res.ok) {
+          setVote(prevVote)
+          setHelpful(prevHelpful)
+          if (res.requiresAuth) setNeedAuth(true)
+          return
+        }
+        if (typeof res.helpfulCount === 'number') setHelpful(res.helpfulCount)
+        setVote(res.myVote ?? null)
+      })
+      .finally(() => setPending(false))
   }
 
   const voteBtn = (dir: 'up' | 'down') => {
@@ -177,7 +207,7 @@ function ReviewCard({ r }: { r: TemplateReview }) {
       <button
         type="button"
         onClick={() => cast(dir)}
-        disabled={!!vote || pending}
+        disabled={pending}
         aria-pressed={selected}
         aria-label={dir === 'up' ? 'Helpful' : 'Not helpful'}
         className={
@@ -187,7 +217,7 @@ function ReviewCard({ r }: { r: TemplateReview }) {
             ? dir === 'up'
               ? 'border-pink-300 bg-pink-50 text-pink-700'
               : 'border-ink-300 bg-ink-100 text-ink-700'
-            : 'border-ink-200 bg-white text-ink-500 hover:border-ink-300 hover:text-ink-800 disabled:opacity-50')
+            : 'border-ink-200 bg-white text-ink-500 hover:border-ink-300 hover:text-ink-800')
         }
       >
         <Icon className="h-4 w-4" />
@@ -222,15 +252,16 @@ function ReviewCard({ r }: { r: TemplateReview }) {
         </div>
       )}
       <div className="mt-3 flex items-center gap-3 text-[12px] text-ink-500">
-        {helpful > 0 && (
-          <span>
-            {helpful.toLocaleString()} {helpful === 1 ? 'person' : 'people'} found this helpful
-          </span>
-        )}
         <span className="flex items-center gap-1.5">
           {voteBtn('up')}
           {voteBtn('down')}
         </span>
+        {helpful > 0 && (
+          <span>
+            {helpful.toLocaleString()} {helpful === 1 ? 'like' : 'likes'}
+          </span>
+        )}
+        {needAuth && <span className="text-ink-400">Sign in to vote</span>}
       </div>
     </article>
   )

@@ -5022,6 +5022,28 @@ model ProductReview {
   @@index([productId, status, createdAt])
 }
 
+enum ReviewVoteDirection {
+  UP // "found this helpful" (drives helpfulCount)
+  DOWN // not helpful (drives notHelpfulCount)
+}
+
+// One helpfulness vote per (user, review) — the source of truth for real
+// one-vote-per-user. Toggling the same direction removes the vote; switching
+// direction moves the count. The aggregate counters live on ProductReview
+// (helpfulCount / notHelpfulCount) so display stays a cheap single-row read.
+// Soft FKs (userId, reviewId) match the ProductReview convention.
+model ReviewVote {
+  id        String              @id @default(uuid())
+  reviewId  String // soft FK → ProductReview
+  userId    String // soft FK → User
+  direction ReviewVoteDirection
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([userId, reviewId])
+  @@index([reviewId])
+}
+
 // ---------------------------------------------------------------------------
 // Review aspect attribution (docs/REVIEW_ATTRIBUTION_MODEL.md). A product review
 // is product-scoped; a criticism about a partner's execution (printing/packaging/
