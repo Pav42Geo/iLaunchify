@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from '@ilaunchify/db'
+import { logSystemAudit } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { z } from 'zod'
 
@@ -73,6 +74,13 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
   // Fan out PARTNER_APPLIED to every admin user. Notifications dispatcher
   // never throws, so this won't block the response if email is unconfigured.
   if (created.partner) {
+    logSystemAudit({
+      entityType: 'Partner',
+      entityId: created.partner.id,
+      action: 'PARTNER_LEAD_CREATE',
+      payload: { email: v.email, companyName: v.companyName, serviceType: v.serviceType },
+    })
+
     const admins = await prisma.user.findMany({
       where: { role: 'ADMIN' },
       select: { id: true },

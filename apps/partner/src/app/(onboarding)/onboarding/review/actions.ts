@@ -2,6 +2,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
 export async function submitForReview({ partnerId }: { partnerId: string }) {
@@ -30,6 +31,15 @@ export async function submitForReview({ partnerId }: { partnerId: string }) {
   await prisma.partner.update({
     where: { id: partner.id },
     data: { status: 'UNDER_REVIEW' },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'Partner',
+    entityId: partner.id,
+    action: 'PARTNER_SUBMIT_FOR_REVIEW',
+    fromValue: partner.status,
+    toValue: 'UNDER_REVIEW',
+    payload: { via: 'onboarding/review' },
   })
 
   revalidatePath('/onboarding')

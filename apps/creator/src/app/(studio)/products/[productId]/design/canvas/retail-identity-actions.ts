@@ -11,6 +11,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { validateGtin } from '@ilaunchify/ui'
 
 export type BarcodeMode = 'NONE' | 'RETAIL_UPC' | 'INTERNAL_SKU'
@@ -157,6 +158,13 @@ export async function saveProductIdentity(
       internalSku: input.internalSku?.trim() || null,
       barcodeMode: input.barcodeMode,
     },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'Product',
+    entityId: product.id,
+    action: 'RETAIL_IDENTITY_SET',
+    payload: { gtin: check.normalized ?? null, gtinSource: 'USER_PROVIDED' },
   })
 
   revalidatePath(`/products/${productId}/design/canvas`)

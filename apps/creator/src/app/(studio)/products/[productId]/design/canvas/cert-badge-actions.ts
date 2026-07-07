@@ -17,6 +17,7 @@
 import { prisma } from '@ilaunchify/db'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 
 /**
  * C7/C8 — an approved artwork variant of a cert badge (Color / B&W / Outline /
@@ -211,5 +212,11 @@ export async function setCertificationsSurface(
       data: { showsCertifications: true },
     }),
   ])
+  await logAuditAs(user, {
+    entityType: 'Design',
+    entityId: design.id,
+    action: 'CERT_SURFACE_SET',
+    payload: { productId: design.productId },
+  })
   return { ok: true }
 }

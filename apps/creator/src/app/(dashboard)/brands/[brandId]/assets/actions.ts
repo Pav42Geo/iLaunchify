@@ -46,8 +46,18 @@ import {
   nearestColorName,
   type HarmonyMethod,
 } from '@ilaunchify/ui'
+import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
+
+async function auditBrand(
+  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' },
+  brandId: string,
+  action: string,
+  payload?: Record<string, unknown>,
+) {
+  await logAuditAs(user, { entityType: 'Brand', entityId: brandId, action, payload })
+}
 
 const HEX_REGEX = /^#[0-9a-fA-F]{6}$/
 const MAX_SWATCHES = 2 // beyond the named primary/secondary/accent
@@ -141,6 +151,8 @@ export async function uploadLogoVariant(formData: FormData): Promise<Result<{ as
     data: { [VARIANT_TO_BRAND_FIELD[variant]]: asset.id },
   })
 
+  await auditBrand(user, brandId, 'BRAND_LOGO_SET', { variant, assetId: asset.id })
+
   revalidatePath(`/brands/${brandId}/assets`)
   return { ok: true, assetId: asset.id }
 }
@@ -149,13 +161,15 @@ export async function removeLogoVariant(input: {
   brandId: string
   variant: LogoVariant
 }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
 
   await prisma.brand.update({
     where: { id: input.brandId },
     data: { [VARIANT_TO_BRAND_FIELD[input.variant]]: null },
   })
+
+  await auditBrand(user, input.brandId, 'BRAND_LOGO_REMOVE', { variant: input.variant })
 
   // Note: we intentionally don't delete the Asset row — it stays in R2 + DB
   // as orphaned for a cleanup pass later (lazy GC). Avoids accidental loss.
@@ -173,8 +187,8 @@ export async function setBrandColors(input: {
   colorAccent: string | null
   brandSwatches: string[]
 }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
 
   // Validate hex format on every supplied color
   const all = [
@@ -202,6 +216,8 @@ export async function setBrandColors(input: {
     },
   })
 
+  await auditBrand(user, input.brandId, 'BRAND_COLORS_SET')
+
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }
@@ -212,8 +228,8 @@ export async function setBrandFonts(input: {
   brandId: string
   brandFontIds: string[]
 }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
 
   // Brand fonts are FONT_CATALOG family keys, or `custom:<id>` refs to an uploaded
   // BrandFont (Slice 1 + 2). Keep only known values — self-heals legacy TypographyFont
@@ -236,6 +252,8 @@ export async function setBrandFonts(input: {
     data: { brandFontIds: fontIds },
   })
 
+  await auditBrand(user, input.brandId, 'BRAND_FONTS_SET', { count: fontIds.length })
+
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }
@@ -246,14 +264,16 @@ export async function setBrandTagline(input: {
   brandId: string
   tagline: string
 }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
 
   const trimmed = input.tagline.trim().slice(0, 120)
   await prisma.brand.update({
     where: { id: input.brandId },
     data: { tagline: trimmed || null },
   })
+
+  await auditBrand(user, input.brandId, 'BRAND_TAGLINE_SET')
 
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
@@ -278,8 +298,8 @@ export async function saveBrandTextStyle(input: {
   textCase?: string | null
   colorRef?: string | null
 }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
   if (!TEXT_ROLES.includes(input.role)) return { ok: false, error: 'Unknown text style.' }
 
   // Validate the font ref if a non-empty one is provided. A null/empty fontKey means
@@ -321,6 +341,7 @@ export async function saveBrandTextStyle(input: {
   if (!ok) {
     return { ok: false, error: 'Text styles need a database update — run db push, then retry.' }
   }
+  await auditBrand(user, input.brandId, 'BRAND_TEXT_STYLE_SET', { role: input.role })
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }
@@ -365,14 +386,15 @@ function sanitizeSwatch(input: BrandSwatchInput): BrandSwatchInput | { error: st
 }
 
 export async function createPalette(input: { brandId: string; name: string }): Promise<Result<{ paletteId: string }>> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
   const name = input.name.trim().slice(0, 40) || 'Palette'
   if ((await countBrandPalettes(input.brandId)) >= MAX_PALETTES) {
     return { ok: false, error: `Up to ${MAX_PALETTES} palettes per brand.` }
   }
   const id = await createBrandPalette(input.brandId, name)
   if (!id) return { ok: false, error: 'Palettes need a database update — run db push, then retry.' }
+  await auditBrand(user, input.brandId, 'BRAND_PALETTE_CREATE', { paletteId: id })
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true, paletteId: id }
 }
@@ -382,19 +404,21 @@ export async function renamePalette(input: {
   paletteId: string
   name: string
 }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
   const ok = await renameBrandPalette(input.brandId, input.paletteId, input.name.trim().slice(0, 40) || 'Palette')
   if (!ok) return { ok: false, error: 'Could not rename that palette.' }
+  await auditBrand(user, input.brandId, 'BRAND_PALETTE_RENAME', { paletteId: input.paletteId })
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }
 
 export async function deletePalette(input: { brandId: string; paletteId: string }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
   const ok = await deleteBrandPalette(input.brandId, input.paletteId)
   if (!ok) return { ok: false, error: 'Could not delete that palette.' }
+  await auditBrand(user, input.brandId, 'BRAND_PALETTE_DELETE', { paletteId: input.paletteId })
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }
@@ -404,12 +428,13 @@ export async function addSwatch(input: {
   paletteId: string
   swatch: BrandSwatchInput
 }): Promise<Result<{ swatchId: string }>> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
   const clean = sanitizeSwatch(input.swatch)
   if ('error' in clean) return { ok: false, error: clean.error }
   const id = await addBrandSwatch(input.brandId, input.paletteId, clean)
   if (!id) return { ok: false, error: 'Could not add that color.' }
+  await auditBrand(user, input.brandId, 'BRAND_SWATCH_ADD', { paletteId: input.paletteId, swatchId: id })
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true, swatchId: id }
 }
@@ -419,21 +444,23 @@ export async function updateSwatch(input: {
   swatchId: string
   swatch: BrandSwatchInput
 }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
   const clean = sanitizeSwatch(input.swatch)
   if ('error' in clean) return { ok: false, error: clean.error }
   const ok = await updateBrandSwatch(input.brandId, input.swatchId, clean)
   if (!ok) return { ok: false, error: 'Could not update that color.' }
+  await auditBrand(user, input.brandId, 'BRAND_SWATCH_UPDATE', { swatchId: input.swatchId })
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }
 
 export async function removeSwatch(input: { brandId: string; swatchId: string }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
   const ok = await removeBrandSwatch(input.brandId, input.swatchId)
   if (!ok) return { ok: false, error: 'Could not remove that color.' }
+  await auditBrand(user, input.brandId, 'BRAND_SWATCH_REMOVE', { swatchId: input.swatchId })
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }
 }
@@ -613,6 +640,8 @@ export async function uploadBrandFont(
     return { ok: false, error: 'Could not save the font. Please try again.' }
   }
 
+  await auditBrand(user, brandId, 'BRAND_FONT_UPLOAD', { fontId, family })
+
   revalidatePath(`/brands/${brandId}/assets`)
   return { ok: true, fontId, family }
 }
@@ -622,8 +651,8 @@ export async function removeBrandFont(input: {
   brandId: string
   fontId: string
 }): Promise<Result> {
-  const { error } = await authorizeBrandAccess(input.brandId)
-  if (error) return { ok: false, error }
+  const { user, error } = await authorizeBrandAccess(input.brandId)
+  if (error || !user) return { ok: false, error: error ?? 'Brand not found.' }
 
   const removed = await deleteBrandFont(input.brandId, input.fontId)
   if (!removed) return { ok: false, error: 'Font not found.' }
@@ -640,6 +669,8 @@ export async function removeBrandFont(input: {
       data: { brandFontIds: brand.brandFontIds.filter((v) => v !== ref) },
     })
   }
+
+  await auditBrand(user, input.brandId, 'BRAND_FONT_REMOVE', { fontId: input.fontId })
 
   revalidatePath(`/brands/${input.brandId}/assets`)
   return { ok: true }

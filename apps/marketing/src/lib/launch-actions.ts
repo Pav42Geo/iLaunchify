@@ -14,6 +14,7 @@
 
 import { prisma, getOrderSettings, getOrCreateDefaultBrand } from '@ilaunchify/db'
 import type { DecorationMethod } from '@ilaunchify/db'
+import { logAudit } from '@ilaunchify/audit'
 import { auth } from '@ilaunchify/auth'
 import type { Session } from '@ilaunchify/auth'
 import { creatorUrl } from './app-urls'
@@ -221,6 +222,15 @@ async function resolveOrCreateProductForTemplate(
         // Recipe is created lazily by the customize / canvas flow.
       },
       select: { id: true },
+    })
+
+    logAudit({
+      entityType: 'Product',
+      entityId: product.id,
+      action: 'PRODUCT_CREATE',
+      actorId: userId,
+      actorRole: 'CREATOR',
+      payload: { templateId: template.id, via: 'launch' },
     })
 
     // Slice C8.2 — if the creator picked a decoration on the marketplace

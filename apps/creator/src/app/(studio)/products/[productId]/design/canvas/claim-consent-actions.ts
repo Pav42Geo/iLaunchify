@@ -7,6 +7,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { headers } from 'next/headers'
 import { CERT_CLAIM_CONSENT_VERSION } from './claim-consent'
 
@@ -96,6 +97,13 @@ export async function recordLabelClaimConsent(input: {
     },
   })
 
+  await logAuditAs(user, {
+    entityType: 'Product',
+    entityId: input.productId,
+    action: 'LABEL_CLAIM_CONSENT_GRANT',
+    payload: { productTemplateId: product.productTemplateId },
+  })
+
   return { ok: true, data: { consentId: created.id } }
 }
 
@@ -117,6 +125,14 @@ export async function revokeLabelClaimConsent(input: {
     },
     data: { revokedAt: new Date() },
   })
+
+  await logAuditAs(user, {
+    entityType: 'Product',
+    entityId: input.productId,
+    action: 'LABEL_CLAIM_CONSENT_REVOKE',
+    payload: { productTemplateId: product.productTemplateId },
+  })
+
   return { ok: true }
 }
 

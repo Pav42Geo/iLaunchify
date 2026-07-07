@@ -18,6 +18,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, brandLimits } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
 import { revalidatePath } from 'next/cache'
 
@@ -171,6 +172,13 @@ export async function createBrand(formData: FormData): Promise<CreateBrandResult
   } catch (err) {
     return { ok: false, error: `Could not create brand: ${(err as Error).message}` }
   }
+
+  await logAuditAs(user, {
+    entityType: 'Brand',
+    entityId: brandId,
+    action: 'BRAND_CREATE',
+    payload: { handle },
+  })
 
   // -------- Upload logo + create Asset row + link it on Brand --------
   // Outside the transaction so R2 outage doesn't roll back the brand row.
