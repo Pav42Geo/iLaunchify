@@ -344,6 +344,7 @@ export {
   DEFAULT_APPEAL_SLA,
 } from './rating-appeal'
 export type { RatingAppealStatus, AppealSlaPolicy, AppealSlaState } from './rating-appeal'
+export { recomputePartnerRatingAggregate } from './partner-rating-recompute'
 
 // Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
 export {

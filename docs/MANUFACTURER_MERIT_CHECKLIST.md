@@ -72,14 +72,29 @@ Rule of the build: **MM-1→MM-4 change no economics and are reversible. Only MM
   counting without deletion). Audit type `RatingAppeal`.
 - [x] Standing-freeze wired into the merit sweep — an OPEN appeal defers demotion (cast-guarded
   until migrate; inert until MM-4b creates appeals).
-- [ ] **[PAVEL]** migrate (RatingAppeal + PartnerRating cols).
+- [x] **[PAVEL]** migrate (RatingAppeal + PartnerRating cols) — DONE (client confirmed: 35 RatingAppeal
+  refs + 28 excludedAt refs); MM-4b builds against real types, worker de-cast.
 
-## MM-4b · Appeal actions + UI (next)
-- [ ] Partner: file appeal on a rating (within window, one per rating). Admin: adjudicate
-  (uphold / exclude / re-attribute) → set `excludedAt` + shared `recomputePartnerRatingAggregate`
-  (extract from creator rate/actions, filter excluded). Appeal inbox + SLA badges.
-- [ ] Warning + resolution notifications; bad-faith-rater pattern flag into admin Feedback/Risk.
-- [ ] **[PAVEL]** SLA numbers (default ack 2d / resolve 7d) + adjudicator capability.
+## MM-4b · Appeal actions + UI — CODE COMPLETE 2026-07-06 (CW)
+- [x] Shared single writer `packages/orders/partner-rating-recompute.ts`
+  (`recomputePartnerRatingAggregate`, filters `excludedAt: null`) — one source of truth for the
+  rating submit path AND the appeal-exclusion path. Exported from orders index.
+- [x] Admin adjudicate `merit/appeals/actions.ts`: `acknowledgeRatingAppeal` (→ UNDER_REVIEW) +
+  `adjudicateRatingAppeal` (UPHELD leaves rating; EXCLUDED/REATTRIBUTED set `excludedAt`+reason in a
+  tx, then recompute outside tx). FSM-guarded (`canTransitionAppeal`), `reviews:write`, audited.
+- [x] Appeal inbox `merit/appeals/{data,page}.tsx` + `AppealRowActions.tsx` — v2 surface, KPI strip
+  (open / ack-overdue / resolve-overdue / resolved), SLA badges (`appealSlaState`), per-row
+  acknowledge + 3 outcomes. Sidebar "Rating appeals" under Users & Roles (`reviews:write`).
+- [x] Partner file action `standing/actions.ts` (`fileRatingAppeal`): DENY-by-default ownership
+  (rating's service via `serviceOwnedBy`), one appeal per rating (compound unique), ≥20-char reason,
+  SUBMITTED + audit. Freezes standing (already wired in the sweep, MM-4a).
+- [x] Verify: orders + admin + partner tsc clean; 636/0 pure suites.
+- [ ] Warning + resolution notifications; bad-faith-rater pattern flag into admin Feedback/Risk
+  *(deferred — needs notification event + Risk hook; not blocking the loop)*.
+- [ ] **[PAVEL]** confirm SLA numbers (default ack 2d / resolve 7d, in `DEFAULT_APPEAL_SLA`) +
+  adjudicator capability (using `reviews:write` — change if you want a dedicated one).
+- Partner "Contest a rating" **entry point UI** lands with the "Your standing" card in **MM-6**;
+  the `fileRatingAppeal` action is ready for it now.
 
 ## MM-5 · Benefit binding *(CW builds; **PAVEL money sign-off**)*
 - [ ] Confirm today's fee incidence in the Stripe split (`application_fee`).

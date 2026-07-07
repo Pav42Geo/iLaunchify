@@ -96,11 +96,7 @@ export async function runMeritSnapshotSweep(now: Date = new Date()): Promise<Mer
 
       // MM-4 — an OPEN rating appeal freezes standing (defers demotion). The
       // appeal FSM/freeze rule is pure; here we just feed it the open appeals.
-      // Cast-guarded until the MM-4a RatingAppeal table migrates (no appeals →
-      // frozen=false, so this is inert until MM-4b wires the file/adjudicate flow).
-      const openAppeals = await (prisma as unknown as {
-        ratingAppeal: { findMany: (a: unknown) => Promise<Array<{ status: RatingAppealStatus }>> }
-      }).ratingAppeal
+      const openAppeals = await prisma.ratingAppeal
         .findMany({ where: { partnerServiceId: r.serviceId, status: { in: ['SUBMITTED', 'UNDER_REVIEW'] } }, select: { status: true } })
         .catch(() => [] as Array<{ status: RatingAppealStatus }>)
       const demoteBlocked = inGrace || standingFrozen(openAppeals)
