@@ -529,7 +529,7 @@ function ShortcutTile({
         </span>
       )}
       <shortcut.icon strokeWidth={1.75} className="h-[18px] w-[18px] text-ink-700" />
-      <span className="text-[11px] font-semibold text-ink-700">{shortcut.label}</span>
+      <span className="w-full text-center text-[11px] font-semibold leading-tight text-ink-700">{shortcut.label}</span>
     </>
   )
   const cls =
