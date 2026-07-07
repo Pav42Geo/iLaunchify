@@ -102,7 +102,24 @@ async function main() {
       .catch(() => undefined)
   }
 
-  console.log(`[demo-reviews] seeded ${reviewCount} reviews across ${templates.length} demo template(s); rated ${serviceIds.size} manufacturer service(s).`)
+  // DEMO badges — bump the demo manufacturers so the PDP standing pill + tooltip
+  // render (Verified is hidden). First partner → PREMIER, the rest → TRUSTED, so
+  // both badge styles are visible across the demo catalog.
+  const svcPartners = serviceIds.size
+    ? await prisma.partnerService.findMany({ where: { id: { in: [...serviceIds] } }, select: { partnerId: true } })
+    : []
+  const partnerIds = [...new Set(svcPartners.map((s) => s.partnerId))]
+  for (let i = 0; i < partnerIds.length; i++) {
+    const partnerId = partnerIds[i]
+    if (!partnerId) continue
+    await prisma.partner
+      .update({ where: { id: partnerId }, data: { tier: i === 0 ? 'PREMIER' : 'TRUSTED', tierChangedAt: new Date() } })
+      .catch(() => undefined)
+  }
+
+  console.log(
+    `[demo-reviews] seeded ${reviewCount} reviews across ${templates.length} demo template(s); rated ${serviceIds.size} service(s); badged ${partnerIds.length} manufacturer(s) (1 Premier, rest Trusted).`,
+  )
 }
 
 main()
