@@ -57,6 +57,17 @@ export function RatingStars({
 }) {
   const [open, setOpen] = React.useState(false)
 
+  // Once opened (hover or click) the popover is PINNED — it stays until the user
+  // dismisses it via the X or Escape (not on mouse-leave). See onMouseEnter below.
+  React.useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open])
+
   if (isNew || mean == null) {
     return (
       <span className={cn('inline-flex items-center gap-1.5 text-[12.5px] text-ink-500', className)}>
@@ -82,7 +93,6 @@ export function RatingStars({
     <span
       className="relative inline-block"
       onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
     >
       <button
         type="button"
@@ -94,8 +104,20 @@ export function RatingStars({
         {summary}
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-72 rounded-2xl border border-ink-200 bg-white p-4 shadow-lg">
-          {children}
+        <div
+          role="dialog"
+          aria-label="Rating breakdown"
+          className="absolute left-0 top-full z-30 mt-2 w-72 rounded-2xl border border-ink-200 bg-white p-4 shadow-lg"
+        >
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setOpen(false)}
+            className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[13px] leading-none text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+          >
+            ✕
+          </button>
+          <div className="pr-5">{children}</div>
         </div>
       )}
     </span>
