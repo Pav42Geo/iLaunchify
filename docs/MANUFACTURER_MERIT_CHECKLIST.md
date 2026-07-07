@@ -116,8 +116,17 @@ Rule of the build: **MM-1→MM-4 change no economics and are reversible. Only MM
 - [ ] Optional Premier routing nudge (scoring.ts, gated) + Premier marketplace listing badge.
 - [ ] Flip badge assignment shadow → live after a shadow period + simulator review.
 
-## MM-6 · Manufacturer-facing standing + Manual *(CW)*
-- [ ] Partner dashboard "Your standing" card (badge, pillar breakdown, next-badge path, fee,
-  appeal entry).
-- [ ] "How it works" manual for the Rate / Feedback / Review & Merit engine (modal + downloadable
-  PDF, Routing-manual pattern).
+## MM-6 · Manufacturer-facing standing + Manual — CODE COMPLETE 2026-07-06 (CW)
+- [x] Partner **"Your standing"** page (`apps/partner/.../standing/{data,page}.tsx`): badge (current +
+  labeled projection while shadow), 4-pillar breakdown with weights + bars, engine-computed "path to
+  the next badge", the fee ladder (Verified/Trusted/Premier) + the fee this shop pays now → at its
+  projected badge, and a "Recent ratings" list with a **Contest** entry (`ContestRatingButton` →
+  `fileRatingAppeal`). Honest: thin history holds neutral Verified standing; nothing punitive.
+- [x] Nav: `NAV_STANDING` ("Your standing", Medal) in the manufacturing/org-admin skin (role-skins.ts).
+- [x] **"How it works" manual** (`StandingManual.tsx`, Routing-manual pattern): modal + downloadable
+  PDF (`apps/partner/public/manufacturer-standing-manual.pdf`, pink-branded reportlab). Covers: start
+  equal, four pillars, Bayesian smoothing, rate-based (scale never hurts), badges→fees, slow/fair
+  hysteresis, contest→3 outcomes, freeze-while-open, and "never labeled bad". Button in the page hero.
+- [x] Verify: partner tsc clean; 642/0 pure suites.
+- Note: standing is manufacturing-only (mirrors the sweep filter). It's distinct from `/performance`
+  (Risk Center reliability score) — separate engines, separate surfaces, by design.

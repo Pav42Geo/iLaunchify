@@ -31,6 +31,7 @@ import {
   Zap,
   Gauge,
   Megaphone,
+  Medal,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -62,6 +63,9 @@ const NAV_ORDERS: PartnerNavItem = { href: '/orders', label: 'Orders', icon: Inb
 // Risk Center M3 — partner-visible reliability score with FULL component
 // breakdown (Pavel 2026-07-05). Operational surface: every member sees it.
 const NAV_PERFORMANCE: PartnerNavItem = { href: '/performance', label: 'Performance', icon: Gauge }
+// MM-6 — manufacturer merit standing (badge → fee tier). Manufacturing-only,
+// commercial (shows the fee it unlocks) → org-admin.
+const NAV_STANDING: PartnerNavItem = { href: '/standing', label: 'Your standing', icon: Medal }
 const NAV_INBOUND: PartnerNavItem = { href: '/inbound', label: 'Inbound', icon: PackageOpen }
 const NAV_INVENTORY: PartnerNavItem = { href: '/inventory', label: 'Inventory', icon: Boxes }
 const NAV_OUTBOUND: PartnerNavItem = { href: '/outbound', label: 'Outbound', icon: Send }
@@ -110,6 +114,7 @@ export function roleNavFor(
   const nav: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS, NAV_PERFORMANCE]
   if (fulfillment) nav.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
   if (isOrgAdmin) {
+    if (producing) nav.push(NAV_STANDING)
     if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)
     nav.push(NAV_SERVICES)
     if (producing) nav.push(NAV_PACKAGING)
