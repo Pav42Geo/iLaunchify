@@ -32,7 +32,14 @@ export async function AdminTopbar({ user }: { user: User }) {
           <AdminCenterNav />
         </div>
       }
-      right={<AdminTopbarRight email={user.email} name={user.name ?? null} />}
+      right={
+        <AdminTopbarRight
+          email={user.email}
+          name={user.name ?? null}
+          // Placeholder avatar until real profile-image upload lands.
+          image={user.image ?? 'https://i.pravatar.cc/120?img=68'}
+        />
+      }
     />
   )
 }

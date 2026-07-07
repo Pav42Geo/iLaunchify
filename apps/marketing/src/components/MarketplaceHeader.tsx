@@ -39,7 +39,7 @@ import { MarketplaceSearchBar } from './MarketplaceSearchBar'
 import { MarketplaceCommandPalette } from './MarketplaceCommandPalette'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
 import { MarketplaceFavoritesMenu } from './MarketplaceFavoritesMenu'
-import { getAllFavoritedTemplateIds } from '@/app/marketplace/favorites-actions'
+import { getFavoritesTotalCount } from '@/app/marketplace/favorites-actions'
 import { creatorUrl } from '@/lib/app-urls'
 import { NICHES } from '@/lib/niches'
 
@@ -95,7 +95,7 @@ export async function MarketplaceHeader({
 }: MarketplaceHeaderProps = {}) {
   const isGuest = !user
   // Favorites badge count — the peek/modal fetch the full cards on open.
-  const favoritesCount = isGuest ? 0 : (await getAllFavoritedTemplateIds()).length
+  const favoritesCount = isGuest ? 0 : await getFavoritesTotalCount()
   const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement(placementKey)])
   const brand =
     placement.kind === 'mark' ? (

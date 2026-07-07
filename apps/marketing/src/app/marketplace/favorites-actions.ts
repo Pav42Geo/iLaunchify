@@ -193,3 +193,176 @@ export async function getFavoritedTemplateCards(): Promise<ProductCardProps[]> {
     return []
   }
 }
+
+// ---------------------------------------------------------------------------
+// Rich marketplace favorites payload — one fetch feeds both the header peek
+// (mixed recent rows with tabs) AND the "See all" modal (canonical card grids).
+// Templates link WITHIN the marketplace (relative); the creator's own Products
+// link OUT to the dashboard Studio / checkout (absolute creatorUrl) — so
+// products redirect in a different direction (Pavel 2026-07-07).
+// ---------------------------------------------------------------------------
+
+const PRODUCT_STATUS_LABEL: Record<string, string> = {
+  DRAFT: 'Draft',
+  IN_REVIEW: 'In review',
+  COMPLIANT: 'Ready to order',
+  PUBLISHED: 'Live',
+  PAUSED: 'Paused',
+  ARCHIVED: 'Archived',
+}
+
+export interface MarketplaceFavRow {
+  kind: 'template' | 'product'
+  name: string
+  subtitle: string
+  icon: string
+  href: string
+  actionLabel: string
+  actionHref: string
+}
+
+export interface MarketplaceFavProductCard {
+  productId: string
+  name: string
+  brandName: string
+  status: string
+  /** Studio (absolute creatorUrl — leaves the marketplace). */
+  href: string
+  /** Checkout / reorder (absolute creatorUrl). */
+  reorderHref: string
+}
+
+export interface MarketplaceFavoritesData {
+  count: number
+  templateCount: number
+  productCount: number
+  recent: MarketplaceFavRow[]
+  templateCards: ProductCardProps[]
+  productCards: MarketplaceFavProductCard[]
+}
+
+const EMPTY_DATA: MarketplaceFavoritesData = {
+  count: 0,
+  templateCount: 0,
+  productCount: 0,
+  recent: [],
+  templateCards: [],
+  productCards: [],
+}
+
+/** Total favorites count (templates + products) for the header badge. */
+export async function getFavoritesTotalCount(): Promise<number> {
+  const session = await getMarketingSession()
+  if (!session?.user || session.user.role !== 'CREATOR') return 0
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  })
+  if (!profile) return 0
+  try {
+    return await prisma.favorite.count({ where: { creatorId: profile.id } })
+  } catch {
+    return 0
+  }
+}
+
+export async function getMarketplaceFavoritesData(): Promise<MarketplaceFavoritesData> {
+  const session = await getMarketingSession()
+  if (!session?.user || session.user.role !== 'CREATOR') return EMPTY_DATA
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  })
+  if (!profile) return EMPTY_DATA
+
+  try {
+    const rows = await prisma.favorite.findMany({
+      where: { creatorId: profile.id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        kind: true,
+        productTemplate: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            priceFloorCents: true,
+            subcategory: {
+              select: { slug: true, category: { select: { slug: true, name: true, mainCategory: true } } },
+            },
+            variants: { select: { moqMin: true, leadTimeDays: true } },
+          },
+        },
+        product: {
+          select: { id: true, name: true, status: true, brand: { select: { name: true } } },
+        },
+      },
+    })
+
+    const recent: MarketplaceFavRow[] = []
+    const templateCards: ProductCardProps[] = []
+    const productCards: MarketplaceFavProductCard[] = []
+
+    for (const r of rows) {
+      if (r.kind === 'PRODUCT_TEMPLATE' && r.productTemplate) {
+        const t = r.productTemplate
+        const href = `/marketplace/${t.subcategory.category.slug}/${t.subcategory.slug}/${t.slug}`
+        const icon = iconForNiche(t.name, t.subcategory.category.mainCategory)
+        const moqs = t.variants.map((v) => v.moqMin).filter((n): n is number => typeof n === 'number')
+        const leads = t.variants.map((v) => v.leadTimeDays).filter((n): n is number => typeof n === 'number')
+        templateCards.push({
+          href,
+          templateId: t.id,
+          title: t.name,
+          niche: t.subcategory.category.name,
+          icon,
+          minUnits: moqs.length ? Math.min(...moqs) : 500,
+          leadTimeDays: leads.length ? Math.min(...leads) : 14,
+          pricePerUnit: t.priceFloorCents / 100,
+          verified: true,
+        })
+        recent.push({
+          kind: 'template',
+          name: t.name,
+          subtitle: `${t.subcategory.category.name} · from $${(t.priceFloorCents / 100).toFixed(2)}`,
+          icon,
+          href,
+          actionLabel: 'Customize',
+          actionHref: href,
+        })
+      } else if (r.kind === 'PRODUCT' && r.product) {
+        const p = r.product
+        const studio = creatorUrl(`/products/${p.id}/design/canvas`)
+        const checkout = creatorUrl(`/products/${p.id}/checkout`)
+        productCards.push({
+          productId: p.id,
+          name: p.name,
+          brandName: p.brand.name,
+          status: p.status,
+          href: studio,
+          reorderHref: checkout,
+        })
+        recent.push({
+          kind: 'product',
+          name: p.name,
+          subtitle: `${p.brand.name} · ${PRODUCT_STATUS_LABEL[p.status] ?? p.status}`,
+          icon: '📦',
+          href: studio,
+          actionLabel: 'Reorder',
+          actionHref: checkout,
+        })
+      }
+    }
+
+    return {
+      count: rows.length,
+      templateCount: templateCards.length,
+      productCount: productCards.length,
+      recent,
+      templateCards,
+      productCards,
+    }
+  } catch {
+    return EMPTY_DATA
+  }
+}

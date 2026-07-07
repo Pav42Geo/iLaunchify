@@ -29,6 +29,8 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 interface Props {
   email: string
   name: string | null
+  /** Avatar photo URL. Hardcoded placeholder until real profile images land. */
+  image?: string | null
   companyName: string
   /** Partner subscription tier (PartnerTier). Rendered as an info-only chip. */
   tier?: 'VERIFIED' | 'TRUSTED' | 'PREMIER' | null
@@ -46,6 +48,7 @@ const TIER_CHIP_LABEL: Record<NonNullable<Props['tier']>, string> = {
 export function PartnerTopbarRight({
   email,
   name,
+  image,
   companyName,
   tier = null,
   showMyApplication = false,
@@ -54,7 +57,7 @@ export function PartnerTopbarRight({
     <>
       <NotificationBell />
       <AppHeaderUserMenu
-        user={{ name: name ?? companyName, email }}
+        user={{ name: name ?? companyName, email, image }}
         avatarTone="ink"
         roleChip={tier ? { label: TIER_CHIP_LABEL[tier], tone: 'ink' } : undefined}
         contextCard={{ label: 'Company', name: companyName, href: '/settings' }}

@@ -75,6 +75,8 @@ export async function DashboardTopbar({ user }: { user: User }) {
         <TopbarRight
           email={user.email}
           name={user.name ?? null}
+          // Placeholder avatar until real profile-image upload lands.
+          image={user.image ?? 'https://i.pravatar.cc/120?img=47'}
           brands={brands}
           activeBrandId={activeBrandId}
           hasUnreadNotifications={unreadCount > 0}

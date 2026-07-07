@@ -266,17 +266,34 @@ export function AppHeaderUserMenu({
             <SubPanel item={drilledItem} onBack={() => setDrill(null)} onNavigate={close} />
           ) : (
             <>
-              {/* Identity */}
-              <div className="border-b border-ink-100 px-4 py-3">
-                <div className="text-[14px] font-semibold leading-tight text-ink-900">
-                  {user.name ?? 'Welcome'}
-                </div>
-                {user.email && (
-                  <div className="mt-0.5 truncate text-[12px] text-ink-500">
-                    {user.email}
+              {/* Identity card */}
+              <div className="border-b border-ink-100 px-3 pb-3 pt-3">
+                <div className="flex items-center gap-3 rounded-xl border border-ink-200 bg-ink-50 px-3 py-2.5">
+                  <span
+                    className={cn(
+                      'flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-[15px] font-semibold text-white',
+                      avatarTone === 'pink' ? 'bg-pink-500' : 'bg-ink-900',
+                    )}
+                  >
+                    {user.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={user.image} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      initials
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[14px] font-semibold leading-tight text-ink-900">
+                      {user.name ?? 'Welcome'}
+                    </div>
+                    {user.email && (
+                      <div className="mt-0.5 truncate text-[12px] text-ink-500">
+                        {user.email}
+                      </div>
+                    )}
                   </div>
-                )}
-                <div className="flex flex-wrap items-center gap-1.5">
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 px-0.5">
                   {tierLabel && (
                     <a
                       href={manageTierHref ?? '#'}

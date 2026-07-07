@@ -37,6 +37,8 @@ import {
 interface Props {
   email: string
   name: string | null
+  /** Avatar photo URL. Hardcoded placeholder until real profile images land. */
+  image?: string | null
   /** Human RBAC role label (ADMIN_ROLE_LABEL) — resolved server-side. */
   roleLabel?: string | null
   /** Viewer capabilities — same pruning contract as AdminSidebarTree
@@ -123,7 +125,7 @@ function matchHref(pathname: string, candidates: ShortcutCandidate[]): string | 
   return best?.href ?? null
 }
 
-export function AdminTopbarRight({ email, name, roleLabel, capabilities, badges }: Props) {
+export function AdminTopbarRight({ email, name, image, roleLabel, capabilities, badges }: Props) {
   const caps = React.useMemo(
     () => (capabilities ? new Set(capabilities) : null),
     [capabilities],
@@ -197,7 +199,7 @@ export function AdminTopbarRight({ email, name, roleLabel, capabilities, badges 
     <>
       <NotificationBell />
       <AppHeaderUserMenu
-        user={{ name, email }}
+        user={{ name, email, image }}
         avatarTone="ink"
         width="wide"
         roleChip={roleLabel ? { label: roleLabel, tone: 'dark' } : undefined}

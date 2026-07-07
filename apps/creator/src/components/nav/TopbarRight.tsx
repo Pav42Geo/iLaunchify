@@ -36,6 +36,8 @@ export interface BrandOption {
 interface Props {
   email: string
   name: string | null
+  /** Avatar photo URL. Hardcoded placeholder until real profile images land. */
+  image?: string | null
   brands: BrandOption[]
   activeBrandId: string
   /** @deprecated — the live NotificationBell polls its own unread count. */
@@ -56,6 +58,7 @@ const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 export function TopbarRight({
   email,
   name,
+  image,
   brands,
   activeBrandId,
   tier = null,
@@ -78,7 +81,7 @@ export function TopbarRight({
       <FavoritesMenu favoritesCount={favoritesCount} />
       <NotificationBell />
       <AppHeaderUserMenu
-        user={{ name, email, tier }}
+        user={{ name, email, image, tier }}
         tierLabels={{ maker: 'Maker', builder: 'Builder', agency: 'Agency' }}
         manageTierHref="/settings/plan"
         avatarTone="pink"

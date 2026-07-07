@@ -5,6 +5,34 @@ import Link from 'next/link'
 import { cn } from '../lib/utils'
 import { productGradient, type ProductGradient } from '../tokens/colors'
 
+// Same-app <Link> for relative hrefs; plain <a> for absolute (cross-app) hrefs
+// — a same-app <Link> to another app 404s. Lets a Product favorite on the
+// marketplace link out to the dashboard Studio/checkout.
+function SmartLink({
+  href,
+  className,
+  children,
+  'aria-label': ariaLabel,
+}: {
+  href: string
+  className?: string
+  children: React.ReactNode
+  'aria-label'?: string
+}) {
+  if (/^https?:\/\//.test(href)) {
+    return (
+      <a href={href} className={className} aria-label={ariaLabel}>
+        {children}
+      </a>
+    )
+  }
+  return (
+    <Link href={href} className={className} aria-label={ariaLabel}>
+      {children}
+    </Link>
+  )
+}
+
 /**
  * ProductObjectCard — the canonical card view of a creator's own `Product`
  * object (OOUX_OBJECT_MAP.md §2.4 / §2.6). One shared component so a Product
@@ -82,7 +110,7 @@ export function ProductObjectCard({
         className,
       )}
     >
-      <Link href={href} className="relative flex aspect-square items-center justify-center" aria-label={name}>
+      <SmartLink href={href} className="relative flex aspect-square items-center justify-center" aria-label={name}>
         {st && (
           <span
             className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-[3px] text-[10.5px] font-semibold uppercase tracking-[0.04em]"
@@ -98,12 +126,12 @@ export function ProductObjectCard({
         ) : (
           <div className="absolute inset-0" style={{ background: productGradient[gradientKey] }} />
         )}
-      </Link>
+      </SmartLink>
 
       <div className="flex flex-1 flex-col gap-1 p-3 pb-3.5">
-        <Link href={href} className="truncate text-[15px] font-bold leading-tight tracking-[-0.01em] text-ink-900 hover:text-pink-700">
+        <SmartLink href={href} className="truncate text-[15px] font-bold leading-tight tracking-[-0.01em] text-ink-900 hover:text-pink-700">
           {name}
-        </Link>
+        </SmartLink>
         {brandName && <div className="truncate text-[12px] text-ink-500">{brandName}</div>}
 
         {badges && <div className="mt-1 flex flex-wrap items-center gap-1.5">{badges}</div>}
@@ -112,13 +140,13 @@ export function ProductObjectCard({
         {(primaryAction || actions) && (
           <div className="mt-auto flex items-center justify-between gap-2 pt-2.5">
             {primaryAction ? (
-              <Link
+              <SmartLink
                 href={primaryAction.href}
                 className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
               >
                 {primaryAction.icon}
                 {primaryAction.label}
-              </Link>
+              </SmartLink>
             ) : (
               <span />
             )}
