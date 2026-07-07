@@ -365,35 +365,34 @@ export default async function ProductDetailPage({
                 }
               />
             }
+            belowFold={
+              <div className="mt-2">
+                <ProductTabs
+                  overview={<OverviewTab template={template} detail={detail} />}
+                  recipe={
+                    <RecipeTab
+                      template={template}
+                      detail={detail}
+                      nutrientSource={nutrientSource}
+                      domain={recipeDetail.domain}
+                      recipeDetail={recipeDetail}
+                      hasRealRecipe={hasRealRecipe}
+                      flavors={flavorRecipes}
+                      flavorDomainFacts={flavorDomainFacts}
+                    />
+                  }
+                  packaging={<PackingTab detail={detail} />}
+                  compliance={<ComplianceTab detail={detail} certs={certs} />}
+                />
+              </div>
+            }
           />
         </div>
       </div>
 
-      {/* TABS — Overview · Recipe & nutrition · Packaging · Compliance &
-          certificates. Overview (default) restores the product's About copy +
-          the "About this item" key attributes. The Recipe tab combines
-          RecipeNutritionTab + the CustomizeRail (swaps, add-ons, live
-          "Contains", live Nutrition Facts) + the ingredients-tab
-          interactivity. */}
-      <section className="max-w-[1640px] mx-auto px-8 mb-20">
-        <ProductTabs
-          overview={<OverviewTab template={template} detail={detail} />}
-          recipe={
-            <RecipeTab
-              template={template}
-              detail={detail}
-              nutrientSource={nutrientSource}
-              domain={recipeDetail.domain}
-              recipeDetail={recipeDetail}
-              hasRealRecipe={hasRealRecipe}
-              flavors={flavorRecipes}
-              flavorDomainFacts={flavorDomainFacts}
-            />
-          }
-          packaging={<PackingTab detail={detail} />}
-          compliance={<ComplianceTab detail={detail} certs={certs} />}
-        />
-      </section>
+      {/* TABS moved INTO the hero's left column (below gallery+identity) via the
+          ProductDetailHero `belowFold` slot, so the tall sticky configure rail
+          stays visible beside them while scrolling. */}
 
       {/* PRINT PROVIDERS (docs/PRINT_PROVIDER_SELECTION.md §3 + §4) — only
           when the manufacturer's labelingMode allows external print. */}

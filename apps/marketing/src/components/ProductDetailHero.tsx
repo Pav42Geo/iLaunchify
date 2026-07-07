@@ -35,6 +35,10 @@ export interface ProductDetailHeroProps {
   images: string[]
   /** Server-rendered identity column (eyebrow, title, certs, chips, accordion). */
   identity: React.ReactNode
+  /** Content that flows UNDER the gallery+identity columns (e.g. the product
+   *  tabs), spanning only those two columns so the tall sticky right rail stays
+   *  visible beside it while scrolling. Stacks below everything on mobile. */
+  belowFold?: React.ReactNode
 
   // ----- configurator props (passed straight through) -----
   pricingRows: PricingTierRow[]
@@ -86,6 +90,7 @@ export function ProductDetailHero({
   detail,
   images,
   identity,
+  belowFold,
   pricingRows,
   viewerTier,
   isAuthenticated = false,
@@ -130,15 +135,16 @@ export function ProductDetailHero({
   const galleryHeroImage = flavorHeroUrl ?? selectedPackageImage
 
   return (
-    <section className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.15fr_1fr_380px] lg:gap-[26px]">
-      {/* ZONE 1 — gallery */}
+    <section className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.15fr_1fr_380px] lg:gap-x-[26px] lg:gap-y-10">
+      {/* ZONE 1 — gallery (col 1, row 1) */}
       <HeroGallery template={template} images={images} packageImage={galleryHeroImage} />
 
-      {/* ZONE 2 — identity (server-rendered) */}
-      <div className="flex flex-col">{identity}</div>
+      {/* ZONE 2 — identity (col 2, row 1) */}
+      <div className="flex flex-col lg:col-start-2 lg:row-start-1">{identity}</div>
 
-      {/* ZONE 3 — configure box + business card */}
-      <div className="self-start lg:sticky lg:top-24">
+      {/* ZONE 3 — configure box + business card (col 3, spans BOTH rows so it
+          stays sticky beside the tabs below). */}
+      <div className="self-start lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-24">
         {sample ? (
           <SampleDrawer
             options={sample.options}
@@ -191,6 +197,13 @@ export function ProductDetailHero({
 
         <BusinessPromoCard />
       </div>
+
+      {/* Below-fold content (product tabs) — row 2 under the two left columns, so
+          the tall sticky right rail stays visible beside it while scrolling.
+          On mobile the grid is single-column, so this simply stacks last. */}
+      {belowFold && (
+        <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-2">{belowFold}</div>
+      )}
     </section>
   )
 }
