@@ -71,6 +71,9 @@ export interface SearchResponse {
   suggestions: string[]
   /** Present only when nothing matched but a close term exists. */
   didYouMean?: string
+  /** Section title for the empty-focus product carousel — "Popular right now"
+   *  globally, or "Popular in {Niche}" when the user is browsing a niche. */
+  popularLabel?: string
 }
 
 /* ============ curated trending queries (empty-focus state) ============ */
@@ -240,6 +243,16 @@ export function matchNiches(query: string, limit = 3): SearchNiche[] {
       icon: n.icon,
       href: `/marketplace?niche=${n.slug}`,
     }))
+}
+
+/** Display name for a category slug (empty-focus scope label). */
+export function categoryName(slug: string): string | undefined {
+  return CATEGORY_TREE.find((c) => c.slug === slug)?.name
+}
+
+/** Display name for a niche slug (empty-focus scope label). */
+export function nicheName(slug: string): string | undefined {
+  return NICHES.find((n) => n.slug === slug)?.name
 }
 
 /** Niches to show as "Browse by niche" chips on empty focus. */

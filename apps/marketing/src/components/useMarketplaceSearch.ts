@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import {
   TRENDING_QUERIES,
   browseNiches,
@@ -71,6 +71,8 @@ export interface UseMarketplaceSearch {
   loading: boolean
   results: SearchResponse | null
   recent: string[]
+  /** Title for the empty-focus carousel — "Popular in {X}" when scoped, else undefined. */
+  popularLabel: string | undefined
   nav: NavItem[]
   active: number
   setActive: React.Dispatch<React.SetStateAction<number>>
@@ -103,6 +105,18 @@ export function useMarketplaceSearch(opts: {
 } = {}): UseMarketplaceSearch {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+
+  // Where is the user right now? A /marketplace/<category> path scopes the
+  // Popular carousel to that category; else a ?niche=<slug> scopes it to a
+  // niche; else it's global trending. (Category wins — it's the more specific.)
+  const nicheParam = searchParams.get('niche') ?? ''
+  const scope = React.useMemo(() => {
+    const parts = (pathname ?? '').split('/').filter(Boolean)
+    if (parts[0] === 'marketplace' && parts[1]) return { category: parts[1] as string }
+    if (nicheParam) return { niche: nicheParam }
+    return {} as { category?: string; niche?: string }
+  }, [pathname, nicheParam])
 
   const [value, setValue] = React.useState(opts.initialValue ?? '')
   const [results, setResults] = React.useState<SearchResponse | null>(null)
@@ -110,6 +124,7 @@ export function useMarketplaceSearch(opts: {
   const [active, setActive] = React.useState(-1)
   const [recent, setRecent] = React.useState<string[]>([])
   const [popular, setPopular] = React.useState<SearchProduct[]>([])
+  const [popularLabel, setPopularLabel] = React.useState<string | undefined>(undefined)
 
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const reqIdRef = React.useRef(0)
@@ -127,20 +142,27 @@ export function useMarketplaceSearch(opts: {
     setRecent(readRecent())
   }, [])
 
-  // Fetch "Popular right now" products once, so the empty-focus panel shows real
-  // products immediately (before the user types). Silent — falls back to chips.
+  // Fetch "Popular right now" products so the empty-focus panel shows real
+  // products immediately (before the user types), scoped to the category/niche
+  // the user is currently browsing. Re-runs when that scope changes. Silent —
+  // falls back to chips on failure.
   React.useEffect(() => {
     let alive = true
-    fetch('/api/marketplace/search?q=')
+    const params = new URLSearchParams({ q: '' })
+    if (scope.category) params.set('category', scope.category)
+    else if (scope.niche) params.set('niche', scope.niche)
+    fetch(`/api/marketplace/search?${params.toString()}`)
       .then((r) => r.json())
       .then((d: SearchResponse) => {
-        if (alive) setPopular(Array.isArray(d.products) ? d.products : [])
+        if (!alive) return
+        setPopular(Array.isArray(d.products) ? d.products : [])
+        setPopularLabel(d.popularLabel)
       })
       .catch(() => {})
     return () => {
       alive = false
     }
-  }, [])
+  }, [scope.category, scope.niche])
 
   const refreshRecent = React.useCallback(() => setRecent(readRecent()), [])
 
@@ -295,6 +317,7 @@ export function useMarketplaceSearch(opts: {
     loading,
     results,
     recent,
+    popularLabel,
     nav,
     active,
     setActive,

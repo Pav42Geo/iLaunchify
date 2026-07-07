@@ -268,6 +268,58 @@ function ProductRow({
   )
 }
 
+/**
+ * ProductMiniCard — compact card for the "Popular right now" horizontal
+ * carousel (Amazon "keep shopping for" pattern): thumbnail on top, name + price
+ * below. Fixed width so cards line up and scroll horizontally.
+ */
+function ProductMiniCard({
+  item,
+  tone,
+  active,
+  setActive,
+}: {
+  item: NavItem
+  tone: Tone
+  active: number
+  setActive: (i: number) => void
+}) {
+  const p = item.product!
+  const on = active === item.index
+  return (
+    <button
+      type="button"
+      data-idx={item.index}
+      role="option"
+      aria-selected={on}
+      onMouseEnter={() => setActive(item.index)}
+      onClick={item.run}
+      className={`shrink-0 w-[132px] snap-start rounded-xl p-1.5 text-left transition-colors ${
+        on ? tone.rowActive : tone.rowHover
+      }`}
+    >
+      <span
+        className="flex h-[100px] w-full items-center justify-center overflow-hidden rounded-lg text-[30px] leading-none"
+        style={{ background: gradientFor(p.gradient) }}
+      >
+        {p.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <span aria-hidden>{p.icon}</span>
+        )}
+      </span>
+      <span className={`mt-1.5 block min-h-[32px] text-[12.5px] font-semibold leading-tight line-clamp-2 ${tone.productName}`}>
+        {p.title}
+      </span>
+      <span className={`mt-1 block text-[12.5px] font-bold ${tone.productName}`}>
+        ${p.pricePerUnit.toFixed(2)}
+        <span className={`text-[10.5px] font-medium ${tone.priceMuted}`}>/unit</span>
+      </span>
+    </button>
+  )
+}
+
 export function MarketplaceSearchResults({
   search,
   theme,
@@ -293,10 +345,12 @@ export function MarketplaceSearchResults({
         <div className="pb-2">
           {products.length > 0 && (
             <>
-              {header('Popular right now')}
-              {products.map((item) => (
-                <ProductRow key={item.product!.slug} item={item} tone={tone} theme={theme} active={active} setActive={setActive} query={trimmed} />
-              ))}
+              {header(search.popularLabel ?? 'Popular right now')}
+              <div className="flex snap-x gap-2 overflow-x-auto px-[14px] pb-2 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {products.map((item) => (
+                  <ProductMiniCard key={item.product!.slug} item={item} tone={tone} active={active} setActive={setActive} />
+                ))}
+              </div>
               <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
             </>
           )}
