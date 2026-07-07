@@ -11,9 +11,8 @@
 // shortcut (Orders) + account section. The sidebar owns the rest of nav —
 // don't add rows back without a decision.
 
-import { AppHeaderIconButton, AppHeaderUserMenu } from '@ilaunchify/ui'
+import { AppHeaderUserMenu } from '@ilaunchify/ui'
 import {
-  Bookmark,
   ShoppingBag,
   Plug,
   CreditCard,
@@ -26,6 +25,7 @@ import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { FavoritesMenu } from '@/components/favorites/FavoritesMenu'
 
 export interface BrandOption {
   id: string
@@ -75,19 +75,7 @@ export function TopbarRight({
 
   return (
     <>
-      <span className="relative inline-flex">
-        <AppHeaderIconButton
-          aria-label={favoritesCount > 0 ? `Favorites (${favoritesCount} saved)` : 'Favorites'}
-          onClick={() => router.push('/favorites')}
-        >
-          <Bookmark strokeWidth={2} className="h-5 w-5" />
-        </AppHeaderIconButton>
-        {favoritesCount > 0 && (
-          <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-semibold leading-none text-white tabular-nums">
-            {favoritesCount > 9 ? '9+' : favoritesCount}
-          </span>
-        )}
-      </span>
+      <FavoritesMenu favoritesCount={favoritesCount} />
       <NotificationBell />
       <AppHeaderUserMenu
         user={{ name, email, tier }}

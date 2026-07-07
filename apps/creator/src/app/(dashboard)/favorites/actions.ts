@@ -12,6 +12,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+import { marketingUrl } from '@/lib/marketing-url'
 
 export type FavoritableKind = 'PRODUCT_TEMPLATE' | 'PRODUCT'
 
@@ -103,4 +104,100 @@ export async function getFavoritedProductIds(): Promise<Set<string>> {
 /** Count for the header badge. */
 export async function getFavoritesCount(creatorProfileId: string): Promise<number> {
   return prisma.favorite.count({ where: { creatorId: creatorProfileId } })
+}
+
+// ---------------------------------------------------------------------------
+// Header peek dropdown (docs/FAVORITES_MANAGEMENT.md §11) — fetched on open so
+// it's always fresh after a toggle elsewhere.
+// ---------------------------------------------------------------------------
+
+export interface FavoritePreviewItem {
+  favoriteId: string
+  kind: FavoritableKind
+  name: string
+  subtitle: string
+  /** Where the row / thumbnail links. Cross-app URLs are absolute (marketingUrl). */
+  href: string
+  /** Quick-action label + its href. */
+  actionLabel: 'Customize' | 'Reorder'
+  actionHref: string
+}
+
+export interface FavoritesPreview {
+  count: number
+  items: FavoritePreviewItem[]
+}
+
+const PRODUCT_STATUS_LABEL: Record<string, string> = {
+  DRAFT: 'Draft',
+  IN_REVIEW: 'In review',
+  COMPLIANT: 'Ready to order',
+  PUBLISHED: 'Live',
+  PAUSED: 'Paused',
+  ARCHIVED: 'Archived',
+}
+
+/**
+ * Recent favorites for the header peek panel. Returns up to 12 recent items
+ * (client filters by tab + caps the display) plus the total count.
+ */
+export async function getFavoritesPreview(): Promise<FavoritesPreview> {
+  const ctx = await currentCreatorId()
+  if (!ctx) return { count: 0, items: [] }
+
+  const [count, rows] = await Promise.all([
+    prisma.favorite.count({ where: { creatorId: ctx.creatorId } }),
+    prisma.favorite.findMany({
+      where: { creatorId: ctx.creatorId },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      select: {
+        id: true,
+        kind: true,
+        productTemplate: {
+          select: {
+            name: true,
+            slug: true,
+            priceFloorCents: true,
+            subcategory: { select: { slug: true, category: { select: { slug: true } } } },
+          },
+        },
+        product: {
+          select: { id: true, name: true, status: true, brand: { select: { name: true } } },
+        },
+      },
+    }),
+  ])
+
+  const items: FavoritePreviewItem[] = []
+  for (const r of rows) {
+    if (r.kind === 'PRODUCT_TEMPLATE' && r.productTemplate) {
+      const t = r.productTemplate
+      const href = marketingUrl(
+        `/marketplace/${t.subcategory.category.slug}/${t.subcategory.slug}/${t.slug}`,
+      )
+      items.push({
+        favoriteId: r.id,
+        kind: 'PRODUCT_TEMPLATE',
+        name: t.name,
+        subtitle: `from $${(t.priceFloorCents / 100).toFixed(2)} / unit`,
+        href,
+        actionLabel: 'Customize',
+        actionHref: href,
+      })
+    } else if (r.kind === 'PRODUCT' && r.product) {
+      const p = r.product
+      items.push({
+        favoriteId: r.id,
+        kind: 'PRODUCT',
+        name: p.name,
+        subtitle: `${p.brand.name} · ${PRODUCT_STATUS_LABEL[p.status] ?? p.status}`,
+        href: `/products/${p.id}/design/canvas`,
+        actionLabel: 'Reorder',
+        actionHref: `/products/${p.id}/checkout`,
+      })
+    }
+  }
+
+  return { count, items }
 }
