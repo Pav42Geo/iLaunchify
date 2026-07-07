@@ -166,8 +166,8 @@ export function RatingBreakdownPopover({
             <span className="w-24 shrink-0 text-[12px] text-ink-700">{d.label}</span>
             <span className="h-2 flex-1 overflow-hidden rounded-full bg-ink-100">
               <span
-                className="block h-full rounded-full bg-pink-600"
-                style={{ width: `${(d.mean / 5) * 100}%` }}
+                className="animate-fill-bar block h-full rounded-full bg-pink-600"
+                style={{ width: `${(d.mean / 5) * 100}%`, ['--fill-w' as string]: `${(d.mean / 5) * 100}%` } as React.CSSProperties}
               />
             </span>
             <span className="w-8 shrink-0 text-right text-[12px] font-medium tabular-nums text-ink-800">
@@ -192,7 +192,10 @@ export function RatingBreakdownPopover({
                 >
                   <span className="w-11 shrink-0 text-pink-700 group-hover:underline">{b.star} star</span>
                   <span className="h-2 flex-1 overflow-hidden rounded-full bg-ink-100">
-                    <span className="block h-full rounded-full bg-pink-600" style={{ width: `${pct}%` }} />
+                    <span
+                      className="animate-fill-bar block h-full rounded-full bg-pink-600"
+                      style={{ width: `${pct}%`, ['--fill-w' as string]: `${pct}%` } as React.CSSProperties}
+                    />
                   </span>
                   <span className="w-9 shrink-0 text-right tabular-nums group-hover:text-pink-700 group-hover:underline">
                     {pct}%

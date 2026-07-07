@@ -6,6 +6,7 @@
 // "See Creator Reviews" link scrolls here). Client component — clicking a star
 // row in the histogram filters the review list to that rating (Amazon behavior).
 
+import type { CSSProperties } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { TemplateReview } from '@/lib/template-reviews'
 
@@ -95,7 +96,10 @@ export function TemplateReviewsSection({ reviews }: { reviews: TemplateReview[] 
                     {b.star} star
                   </span>
                   <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-ink-100">
-                    <span className="block h-full rounded-full bg-pink-600" style={{ width: `${pct}%` }} />
+                    <span
+                      className="animate-fill-bar block h-full rounded-full bg-pink-600"
+                      style={{ width: `${pct}%`, ['--fill-w' as string]: `${pct}%` } as CSSProperties}
+                    />
                   </span>
                   <span className="w-10 shrink-0 text-right tabular-nums group-hover:text-pink-700 group-hover:underline">
                     {pct}%
