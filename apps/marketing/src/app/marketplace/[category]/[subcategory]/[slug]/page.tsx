@@ -500,8 +500,10 @@ function ManufacturerBadgeLine({ badge }: { badge?: 'TRUSTED' | 'PREMIER' | null
         <span
           role="tooltip"
           className={
-            'pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 w-64 -translate-x-1/2 ' +
-            'rounded-[var(--radius-lg)] border border-ink-200 bg-white px-3 py-2 text-[11.5px] font-normal normal-case leading-snug tracking-normal text-ink-600 shadow-lg ' +
+            // Amazon-style: white surface, clear gray border, generous padding,
+            // near-black text (design tokens).
+            'pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 w-[18rem] -translate-x-1/2 ' +
+            'rounded-[var(--radius-lg)] border border-ink-300 bg-white px-4 py-3 text-[12px] font-normal normal-case leading-relaxed tracking-normal text-ink-800 shadow-lg ' +
             'opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100'
           }
         >
