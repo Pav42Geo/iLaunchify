@@ -508,8 +508,19 @@ function buildOrderBy(sort?: MarketplaceSortKey) {
       return [{ createdAt: 'desc' as const }]
     case 'popular':
     default:
-      // V1: proxy popularity with createdAt desc until we track view counts.
-      return [{ createdAt: 'desc' as const }]
+      // Merit perk — marketplace ranking boost (docs/PARTNER_TIER_VS_MERIT.md
+      // "new perk model"): on the DEFAULT / recommended view, a manufacturer's
+      // earned badge lifts its products up (Premier > Trusted > Verified — the
+      // PartnerTier enum's declared order), then newest within a badge. A NUDGE,
+      // not a takeover: the explicit sorts (Newest / Price / MOQ / Lead-time) are
+      // left pure, so a new shop always surfaces there and within a badge recency
+      // wins. Inert while standing is uniform (all Verified during merit shadow) —
+      // it activates naturally as badges diverge. Products with no manufacturer
+      // pinned are an edge case (owner-pinned model) and simply order by createdAt.
+      return [
+        { manufacturerService: { partner: { tier: 'desc' as const } } },
+        { createdAt: 'desc' as const },
+      ]
   }
 }
 

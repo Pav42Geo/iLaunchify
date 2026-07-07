@@ -18,16 +18,51 @@
   Added an info banner on the partner plan editor (`/tiers/plan/[code]`) stating pricing + fee rules
   are **not** the live source for partner tiers (edit the badge fee in the Merit console); perks are
   what the earned badge unlocks. No fee-path code change needed.
-- [x] **PT-4 — Perk enforcement (first perk: product-listing cap).** `apps/partner/lib/listing-cap.ts`
-  → `checkListingCapacity(partnerId, serviceIds)` resolves the earned badge's `max_active_listings`
-  perk (`partnerTierToPlanCode` + `getFeatureLimit`; null = unlimited, fail-OPEN if unconfigured) and
-  counts non-archived/-rejected templates. Wired into **both** create paths in
-  `products/actions.ts` (`createDraftFromStepper` + clone) with a badge-aware message ("reached your
-  N-product limit for the <badge> badge — earn a higher standing…"). The other perks (premier badge on
-  listings, routing priority, featured) have config on the plan but their consumers are separate
-  future slices. Optional follow-up: a proactive "N of M listings used" indicator on the products page.
+- [x] **PT-4 — Perk enforcement — REVERTED (Pavel 2026-07-07).** A listing-cap gate was briefly wired,
+  then pulled: **manufacturers list freely regardless of badge; only the FEE scales with standing.**
+  The `checkListingCapacity` guard + `apps/partner/lib/listing-cap.ts` were removed (stray untracked
+  file may remain on disk — delete locally). The seeded `max_active_listings` perk (3/25/∞) is now
+  inert. Replaced by the **new perk model** below.
 - [x] **PT-5 — Docs.** CLAUDE.md §Tiers updated (supersedes "no behavioral binding"); partner tiers
   earned via Merit, creator plans stay paid.
+
+---
+
+## New perk model (PROPOSED, 2026-07-07) — earned rewards, not paid features
+
+Replaces the stale seeded ladder (the old 15-row `PlanFeature` set — listing caps, storage GB, seats,
+AI-parser caps, etc. — was subscription-flavored and is now **inert**). Design principle: a higher
+earned badge should make a manufacturer **more visible, win more of the routed work, and move faster**
+— never hide quality or bypass safety. The **fee is the anchor** (already live via Merit); the rest are
+visibility / work-allocation / speed rewards, each admin-tunable and each its own future enforcement slice.
+
+| Perk | Verified | Trusted | Premier | Enforcement seam |
+|---|---|---|---|---|
+| **Production fee** (anchor — LIVE) | 4.5% | 2.5% | 0% | ✅ built (Merit resolver) |
+| **Marketplace ranking boost** — default `/marketplace` sort weights higher badges up | none | boost | top | ✅ built 2026-07-07 (`templates.ts` buildOrderBy: default view orders by `manufacturerService.partner.tier desc` then newest; nudge only — explicit sorts pure; inert until standing diverges) |
+| **Standing badge on listings + profile** — Trusted/Premier shown on product cards | – | Trusted | Premier | exists (listing cards) |
+| **Featured eligibility** — curated Featured / niche-spotlight slots | – | limited | yes | needs build |
+| **Routing priority weight** — tie-break nudge in rotation (NEVER overrides hard filters) | 0 | 1 | 2 | exists (routing engine) |
+| **Reorder first-refusal** — repeat orders offered to the prior maker first | – | – | ✓ | needs build |
+| **Expedited product review** — shorter *discretionary* admin queue (compliance gates unchanged) | standard | priority | expedited | exists (approve flow) |
+| **Edit-live without full re-review** — minor edits to a live listing skip the queue | – | minor only | ✓ | exists (edit-review) |
+| **Faster payout** — shorter transfer hold after SHIPPED | standard | faster | fastest | needs build (Stripe) |
+| **Support SLA** | 48h | 24h | 4h | config only |
+| **Priority / beta feature access** | – | – | ✓ | config only |
+
+**Guardrails (non-negotiable):**
+1. **Ranking boost is a nudge, not a takeover** — a strong new Verified shop still surfaces (mirrors the
+   Merit engine keeping newcomers neutral, protecting cold-start).
+2. **Never hides quality or skips safety** — a badge lifts position but can't mask a bad rating;
+   "expedited review" speeds only the discretionary queue, never regulated compliance gates.
+3. **All values admin-tunable**; the badge is EARNED (Merit), never purchasable.
+
+**Highest-leverage first (have seams today):** production fee (done), marketplace ranking, visible
+standing badge. Those three alone make climbing worth it (cheaper *and* more discoverable → more orders).
+
+**Not yet built.** This is the target model; enforcement of each non-fee row is a separate opt-in slice.
+Also TODO: reseed / blank the partner `PlanFeature` + `FeeRule` rows (the old 15/12/8% commission and
+the inert perks) so the plan cards stop showing stale numbers.
 
 ---
 
