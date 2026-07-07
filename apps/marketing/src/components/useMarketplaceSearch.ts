@@ -109,6 +109,7 @@ export function useMarketplaceSearch(opts: {
   const [loading, setLoading] = React.useState(false)
   const [active, setActive] = React.useState(-1)
   const [recent, setRecent] = React.useState<string[]>([])
+  const [popular, setPopular] = React.useState<SearchProduct[]>([])
 
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const reqIdRef = React.useRef(0)
@@ -124,6 +125,21 @@ export function useMarketplaceSearch(opts: {
 
   React.useEffect(() => {
     setRecent(readRecent())
+  }, [])
+
+  // Fetch "Popular right now" products once, so the empty-focus panel shows real
+  // products immediately (before the user types). Silent — falls back to chips.
+  React.useEffect(() => {
+    let alive = true
+    fetch('/api/marketplace/search?q=')
+      .then((r) => r.json())
+      .then((d: SearchResponse) => {
+        if (alive) setPopular(Array.isArray(d.products) ? d.products : [])
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
   }, [])
 
   const refreshRecent = React.useCallback(() => setRecent(readRecent()), [])
@@ -210,6 +226,7 @@ export function useMarketplaceSearch(opts: {
     const push = (item: Omit<NavItem, 'index'>) => items.push({ ...item, index: items.length })
 
     if (isEmpty) {
+      for (const p of popular) push({ type: 'product', product: p, run: () => routeToHref(p.href) })
       for (const r of recent) push({ type: 'recent', label: r, run: () => submit(r) })
       for (const t of TRENDING_QUERIES) push({ type: 'trending', label: t, run: () => submit(t) })
       for (const n of browseNiches()) push({ type: 'browse', niche: n, run: () => routeToHref(n.href) })
@@ -222,7 +239,7 @@ export function useMarketplaceSearch(opts: {
       for (const s of results.suggestions) push({ type: 'suggestion', label: s, run: () => submit(s) })
     }
     return items
-  }, [isEmpty, recent, results, submit, routeToHref])
+  }, [isEmpty, popular, recent, results, submit, routeToHref])
 
   const handleKeyNav = React.useCallback(
     (e: React.KeyboardEvent): boolean => {

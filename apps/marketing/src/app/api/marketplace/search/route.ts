@@ -16,7 +16,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { getMarketplaceTemplates } from '@/lib/templates'
+import { getMarketplaceTemplates, getTrendingTemplates } from '@/lib/templates'
 import { templateToCardProps } from '@/lib/sample-templates'
 import {
   matchCategories,
@@ -34,17 +34,47 @@ export const runtime = 'nodejs'
 
 /** How many product rows the dropdown shows (mobile-friendly ceiling). */
 const PRODUCT_LIMIT = 6
+/** How many "Popular right now" products to show on empty focus. */
+const POPULAR_LIMIT = 4
+
+/** Map a catalog card template to the lightweight typeahead product shape. */
+function toSearchProduct(t: SampleTemplate): SearchProduct {
+  const card = templateToCardProps(t)
+  return {
+    slug: t.slug,
+    title: t.title,
+    niche: t.niche,
+    categorySlug: t.categorySlug,
+    subcategorySlug: t.subcategorySlug,
+    href: card.href,
+    icon: t.icon,
+    gradient: (t.gradient ?? 'pink') as string,
+    imageUrl: t.imageUrl,
+    pricePerUnit: t.pricePerUnit,
+    minUnits: t.minUnits,
+    leadTimeDays: t.leadTimeDays,
+    tags: (t.tags ?? []).slice(0, 3).map((tag) => tag.label),
+    badge: t.manufacturerBadge ?? null,
+  }
+}
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url)
   const q = (searchParams.get('q') ?? '').trim()
 
-  // Empty query → the client renders recent + trending locally; return an empty
-  // shell so a stray fetch is cheap and consistent.
+  // Empty query → return "Popular right now" products so the panel is useful the
+  // instant it opens (recent + trending chips are added client-side). Never
+  // throws: an empty products list just falls back to the chip-only panel.
   if (q.length < 1) {
+    let popular: SearchProduct[] = []
+    try {
+      popular = (await getTrendingTemplates(POPULAR_LIMIT)).map(toSearchProduct)
+    } catch (err) {
+      console.warn('[marketplace/search] popular query failed:', (err as Error).message)
+    }
     const empty: SearchResponse = {
       query: '',
-      products: [],
+      products: popular,
       categories: [],
       niches: [],
       suggestions: [],
@@ -80,25 +110,7 @@ export async function GET(request: Request): Promise<Response> {
       }
     }
 
-    products = [...collected.values()].map((t) => {
-      const card = templateToCardProps(t)
-      return {
-        slug: t.slug,
-        title: t.title,
-        niche: t.niche,
-        categorySlug: t.categorySlug,
-        subcategorySlug: t.subcategorySlug,
-        href: card.href,
-        icon: t.icon,
-        gradient: (t.gradient ?? 'pink') as string,
-        imageUrl: t.imageUrl,
-        pricePerUnit: t.pricePerUnit,
-        minUnits: t.minUnits,
-        leadTimeDays: t.leadTimeDays,
-        tags: (t.tags ?? []).slice(0, 3).map((tag) => tag.label),
-        badge: t.manufacturerBadge ?? null,
-      }
-    })
+    products = [...collected.values()].map(toSearchProduct)
   } catch (err) {
     // Never fail the typeahead — degrade to category/niche matches only.
     console.warn('[marketplace/search] product query failed:', (err as Error).message)

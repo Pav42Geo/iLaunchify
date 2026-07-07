@@ -291,6 +291,16 @@ export function MarketplaceSearchResults({
       {/* EMPTY STATE */}
       {isEmpty && (
         <div className="pb-2">
+          {products.length > 0 && (
+            <>
+              {header('Popular right now')}
+              {products.map((item) => (
+                <ProductRow key={item.product!.slug} item={item} tone={tone} theme={theme} active={active} setActive={setActive} query={trimmed} />
+              ))}
+              <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
+            </>
+          )}
+
           {recentItems.length > 0 && (
             <>
               {header(
