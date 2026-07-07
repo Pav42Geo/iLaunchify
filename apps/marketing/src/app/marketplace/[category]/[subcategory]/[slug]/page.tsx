@@ -478,18 +478,35 @@ function RatingRow({ ratingAvg, launches }: { ratingAvg?: number | null; launche
    Hidden for Verified / no-manufacturer. */
 function ManufacturerBadgeLine({ badge }: { badge?: 'TRUSTED' | 'PREMIER' | null }) {
   if (!badge) return null
+  const isPremier = badge === 'PREMIER'
+  const tip = isPremier
+    ? "Premier — iLaunchify's top manufacturer standing. Earned for sustained excellence across production quality, reliability, and order volume."
+    : 'Trusted — an earned manufacturer standing on iLaunchify, for proven order volume and consistently high production quality.'
   return (
     <div className="mb-3 -mt-1 flex items-center gap-1.5 text-[12.5px] text-ink-500">
       <span>Manufacturer:</span>
-      <span
-        className={
-          'inline-flex items-center rounded-full border px-2 py-[1px] text-[10.5px] font-semibold uppercase tracking-wide ' +
-          (badge === 'PREMIER'
-            ? 'border-pink-200 bg-pink-50 text-pink-800'
-            : 'border-info-200 bg-info-50 text-info-800')
-        }
-      >
-        {badge === 'PREMIER' ? 'Premier' : 'Trusted'}
+      {/* Hover/focus tooltip (CSS-only, design-token styled) explaining the badge. */}
+      <span className="group relative inline-flex" tabIndex={0}>
+        <span
+          className={
+            'inline-flex cursor-help items-center rounded-full border px-2 py-[1px] text-[10.5px] font-semibold uppercase tracking-wide ' +
+            (isPremier
+              ? 'border-pink-200 bg-pink-50 text-pink-800'
+              : 'border-info-200 bg-info-50 text-info-800')
+          }
+        >
+          {isPremier ? 'Premier' : 'Trusted'}
+        </span>
+        <span
+          role="tooltip"
+          className={
+            'pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 w-64 -translate-x-1/2 ' +
+            'rounded-[var(--radius-lg)] border border-ink-200 bg-white px-3 py-2 text-[11.5px] font-normal normal-case leading-snug tracking-normal text-ink-600 shadow-lg ' +
+            'opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100'
+          }
+        >
+          {tip}
+        </span>
       </span>
     </div>
   )
