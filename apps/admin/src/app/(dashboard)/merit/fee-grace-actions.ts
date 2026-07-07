@@ -25,7 +25,7 @@ export interface FeeGraceInput {
 }
 
 export async function saveFeeGracePolicy(input: FeeGraceInput): Promise<Result> {
-  const admin = await requireCapability('billing:write')
+  const admin = await requireCapability('merit:admin')
   if (!Number.isFinite(input.feeGraceValue) || input.feeGraceValue < 0) return { ok: false, error: 'Duration must be 0 or more.' }
   if (input.feeGraceFeeBps < 0 || input.feeGraceFeeBps > 10_000) return { ok: false, error: 'Grace fee must be between 0% and 100%.' }
   try {
@@ -49,7 +49,7 @@ export async function createFeeGrants(input: {
   unit: GraceUnit
   reason?: string
 }): Promise<Result> {
-  const admin = await requireCapability('billing:write')
+  const admin = await requireCapability('merit:admin')
   const ids = [...new Set(input.partnerServiceIds)].filter(Boolean)
   if (ids.length === 0) return { ok: false, error: 'Pick at least one manufacturer.' }
   if (input.feeBps < 0 || input.feeBps > 10_000) return { ok: false, error: 'Fee must be between 0% and 100%.' }
@@ -88,7 +88,7 @@ export async function createFeeGrants(input: {
 }
 
 export async function revokeFeeGrant(id: string): Promise<Result> {
-  const admin = await requireCapability('billing:write')
+  const admin = await requireCapability('merit:admin')
   try {
     await prisma.manufacturerFeeGrant.update({ where: { id }, data: { revokedAt: new Date(), revokedById: admin.id } })
     await logAuditAs(admin, { entityType: 'ManufacturerFeeGrant', entityId: id, action: 'FEE_GRANT_REVOKED' })

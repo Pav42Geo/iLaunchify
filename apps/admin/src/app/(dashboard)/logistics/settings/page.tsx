@@ -87,7 +87,7 @@ const GATE_META: Record<string, { label: string; group: string; description: str
 }
 
 export default async function LogisticsSettingsPage() {
-  await requireCapability('platform:admin')
+  await requireCapability('logistics:admin')
 
   const dbRows = await prisma.logisticsSetting.findMany()
   const byKey = new Map(dbRows.map((r) => [r.key, r]))

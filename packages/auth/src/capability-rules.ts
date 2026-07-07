@@ -25,6 +25,10 @@ export type Capability =
   | 'billing:read'
   | 'billing:write'
   | 'tiers:write'
+  | 'merit:admin' // manufacturer standing engine: policy, go-live switch, fee grace (MM)
+  | 'routing:admin' // routing & rotation engine: auto-routing, rotation policies, FC weights, dispatch lifecycle
+  | 'risk:admin' // risk center: detector modes + thresholds (MONITOR→GATE ladder)
+  | 'logistics:admin' // logistics gates: temp/hazmat/carrier eligibility toggles
   | 'compliance:read'
   | 'compliance:admin'
   | 'users:admin'
@@ -52,7 +56,8 @@ export const ALL_CAPABILITIES: Capability[] = [
   'refunds:propose', 'refunds:approve', 'refunds:execute',
   'creators:read', 'partners:read', 'partners:approve',
   'reviews:write', 'catalog:write', 'assets:write', 'academy:write',
-  'billing:read', 'billing:write', 'tiers:write',
+  'billing:read', 'billing:write', 'tiers:write', 'merit:admin',
+  'routing:admin', 'risk:admin', 'logistics:admin',
   'compliance:read', 'compliance:admin',
   'users:admin', 'security:admin', 'platform:admin', 'audit:read',
 ]

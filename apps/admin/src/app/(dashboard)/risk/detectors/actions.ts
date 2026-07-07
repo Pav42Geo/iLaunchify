@@ -29,7 +29,7 @@ export async function updateDetectorSetting({
   /** FP snapshot shown to the admin at save time — recorded for reproducibility. */
   fpStats?: { fired: number; falsePositives: number }
 }): Promise<Result> {
-  const admin = await requireCapability('platform:admin')
+  const admin = await requireCapability('risk:admin')
 
   if (!(ALL_DETECTOR_KEYS as string[]).includes(detectorKey)) {
     return { ok: false, error: 'Unknown detector' }

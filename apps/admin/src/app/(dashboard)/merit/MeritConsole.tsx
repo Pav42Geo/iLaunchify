@@ -7,7 +7,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { SlidersHorizontal, PlayCircle, Save } from 'lucide-react'
+import { SlidersHorizontal, PlayCircle, Save, Power } from 'lucide-react'
 import { saveMeritPolicy, runMeritSimulation, type MeritPolicyInput, type SimulationResult } from './actions'
 
 const inputCls =
@@ -58,7 +58,8 @@ export function MeritConsole({ initial }: { initial: MeritPolicyInput }) {
       </div>
       <p className="mt-1 text-[12.5px] text-ink-600">
         Tune the model, simulate the badge distribution over tonight&rsquo;s snapshots, then save.
-        Saving never changes a manufacturer&rsquo;s tier or fee — assignment flips live only at MM-5.
+        While the engine is in <strong>Shadow</strong>, saving changes nothing for manufacturers;
+        turning it <strong>Live</strong> assigns badges and applies badge fees on the next sweep and checkout.
       </p>
 
       <div className="mt-4 grid gap-5 lg:grid-cols-3">
@@ -94,17 +95,34 @@ export function MeritConsole({ initial }: { initial: MeritPolicyInput }) {
           <Num label="Verified" value={p.verifiedFeeBps} onChange={num('verifiedFeeBps')} hint={`${(p.verifiedFeeBps / 100).toFixed(2)}%`} />
           <Num label="Trusted" value={p.trustedFeeBps} onChange={num('trustedFeeBps')} hint={`${(p.trustedFeeBps / 100).toFixed(2)}%`} />
           <Num label="Premier" value={p.premierFeeBps} onChange={num('premierFeeBps')} hint={`${(p.premierFeeBps / 100).toFixed(2)}%`} />
-
-          <label className="mt-3 flex items-start gap-2.5 rounded-xl border border-ink-200 bg-ink-50/40 p-3">
-            <input type="checkbox" checked={p.enabled} onChange={(e) => set('enabled', e.target.checked)} className="mt-0.5 accent-pink-600" />
-            <span>
-              <span className="block text-[12.5px] font-semibold text-ink-900">Engine enabled</span>
-              <span className="block text-[11px] text-ink-500">
-                Off = pure shadow. Even ON, MM-2 never assigns — the tier/fee flip is MM-5.
-              </span>
-            </span>
-          </label>
         </div>
+      </div>
+
+      {/* Go-live switch — this is the lever that turns standing into real badges
+          and real fees. Weighted deliberately: calm while shadow, unmistakably
+          live when on. */}
+      <div className={`mt-5 flex items-center justify-between gap-4 rounded-2xl border p-4 ${p.enabled ? 'border-pink-300 bg-pink-50/60' : 'border-ink-200 bg-[var(--bg-hero)]'}`}>
+        <div className="flex items-center gap-3">
+          <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${p.enabled ? 'bg-pink-600 text-white' : 'bg-ink-100 text-ink-500'}`}>
+            <Power className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="flex items-center gap-2.5">
+            <h3 className="font-display text-[15px] font-semibold text-ink-900">Merit engine</h3>
+            <span className={`rounded-full px-2 py-[2px] text-[10.5px] font-semibold uppercase tracking-wide ${p.enabled ? 'bg-pink-100 text-pink-800' : 'bg-ink-100 text-ink-600'}`}>
+              {p.enabled ? 'Live' : 'Shadow'}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={p.enabled}
+          aria-label="Merit engine live"
+          onClick={() => set('enabled', !p.enabled)}
+          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 ${p.enabled ? 'bg-pink-600' : 'bg-ink-300'}`}
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${p.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
       </div>
 
       {sim && (

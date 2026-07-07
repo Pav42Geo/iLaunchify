@@ -67,7 +67,7 @@ export interface SimulationResult {
 
 /** Re-score every manufacturer's latest stored pillars under a candidate policy. */
 export async function runMeritSimulation(input: MeritPolicyInput): Promise<{ ok: true; data: SimulationResult } | { ok: false; error: string }> {
-  await requireCapability('billing:write')
+  await requireCapability('merit:admin')
   const invalid = validateMeritPolicy(toPolicy(input))
   if (invalid) return { ok: false, error: invalid }
   const policy = toPolicy(input)

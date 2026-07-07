@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Risk detectors — Admin' }
 
 export default async function RiskDetectorsPage() {
-  await requireCapability('platform:admin')
+  await requireCapability('risk:admin')
 
   const [settings, firedCounts, fpCounts] = await Promise.all([
     prisma.riskSetting.findMany(),

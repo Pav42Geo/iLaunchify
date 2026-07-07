@@ -47,7 +47,7 @@ export interface RotationPolicyView {
 }
 
 export async function saveRotationPolicy(input: RotationPolicyView): Promise<Result<null>> {
-  const gate = await requireCapability('billing:write')
+  const gate = await requireCapability('routing:admin')
   const policyInput: RotationPolicyInput = {
     enabled: input.enabled,
     poolSize: input.poolSize,
@@ -119,7 +119,7 @@ export async function setExcludeFromAutoRotation(input: {
   partnerServiceId: string
   exclude: boolean
 }): Promise<Result<null>> {
-  const gate = await requireCapability('billing:write')
+  const gate = await requireCapability('routing:admin')
   const svc = await prisma.partnerService.findUnique({
     where: { id: input.partnerServiceId },
     select: { id: true, excludeFromAutoRotation: true, partner: { select: { companyName: true } } },
@@ -172,7 +172,7 @@ export async function runPrintRotationPreview(input: {
   context: PolicyContext
   runs?: number
 }): Promise<Result<PrintPreviewResult>> {
-  await requireCapability('billing:write')
+  await requireCapability('routing:admin')
   const runs = Math.min(1000, Math.max(50, Math.floor(input.runs ?? 100)))
   const qty = Math.max(1, Math.floor(input.quantity || 0))
 
@@ -384,7 +384,7 @@ export interface FcWeightsInput {
  *  selection (readFcScoringWeights). Previously editable nowhere (the pointer to
  *  Order settings was dead); now the FC tab owns them. Admin-gated + audited. */
 export async function saveFcWeights(input: FcWeightsInput): Promise<Result<null>> {
-  const gate = await requireCapability('billing:write')
+  const gate = await requireCapability('routing:admin')
   const clamp = (n: number, min: number, max: number) =>
     Math.max(min, Math.min(max, Math.floor(Number(n) || 0)))
   const data = {
@@ -451,7 +451,7 @@ export async function runFcRotationPreview(input: {
   productId: string
   runs?: number
 }): Promise<Result<FcPreviewResult>> {
-  await requireCapability('billing:write')
+  await requireCapability('routing:admin')
   const runs = Math.min(1000, Math.max(50, Math.floor(input.runs ?? 100)))
 
   const product = await prisma.product.findUnique({

@@ -28,7 +28,7 @@ export interface LogisticsGatePatch {
  * a DB row exists.
  */
 export async function updateLogisticsGate(key: string, patch: LogisticsGatePatch): Promise<Result> {
-  const admin = await requireCapability('platform:admin')
+  const admin = await requireCapability('logistics:admin')
 
   if (!(LOGISTICS_GATE_KEYS as readonly string[]).includes(key)) {
     return { ok: false, error: 'Unknown logistics gate key.' }

@@ -243,7 +243,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Carriers', icon: Route, href: '/logistics/carriers' }, // Phase L2 — CarrierServiceRule matrix + integration status
         { kind: 'item', label: 'Fulfillment centers', icon: Warehouse, href: '/logistics/fulfillment-centers' },
         { kind: 'item', label: 'Channel plans', icon: PlaneTakeoff, href: '/logistics/channel-plans' }, // Phase L3b — ChannelInboundPlan (FBA/WFS/FBT)
-        { kind: 'item', label: 'Logistics gates', icon: SlidersHorizontal, href: '/logistics/settings', capability: 'platform:admin' },
+        { kind: 'item', label: 'Logistics gates', icon: SlidersHorizontal, href: '/logistics/settings', capability: 'logistics:admin' },
       ],
     },
     // ---- Finance — promoted to top-level (Pavel 2026-07-04) ------------------
@@ -271,13 +271,13 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Tiers & Plans', icon: Crown, href: '/tiers', capability: 'tiers:write' },
         // Manufacturer merit — standing → badge → fee tier lives next to Tiers & Plans
         // (Pavel 2026-07-06: it's pricing policy, not user management).
-        { kind: 'item', label: 'Manufacturer standing', icon: Award, href: '/merit', capability: 'billing:write' },
+        { kind: 'item', label: 'Manufacturer standing', icon: Award, href: '/merit', capability: 'merit:admin' },
         { kind: 'item', label: 'Rating appeals', icon: Scale, href: '/merit/appeals', capability: 'reviews:write' },
         { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains', capability: 'platform:admin' },
         // Risk Center M2 — detector mode ladder + thresholds (also reachable
         // from the Risk Inbox header). Pavel 2026-07-05: mounted in Settings,
         // labeled "Risk Center".
-        { kind: 'item', label: 'Risk Center', icon: ShieldAlert, href: '/risk/detectors', capability: 'platform:admin' },
+        { kind: 'item', label: 'Risk Center', icon: ShieldAlert, href: '/risk/detectors', capability: 'risk:admin' },
         { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy', capability: 'tickets:admin' },
         {
           kind: 'group',
@@ -288,7 +288,7 @@ const PRIMARY: SidebarRegion = {
             // SR-3 — unified rotation control room; absorbed /routing-preview AND the
             // old Partner Routing page (both redirect here). Single source of truth
             // for rotation policy + manufacturer match weights + dispatch lifecycle.
-            { kind: 'item', label: 'Routing & Rotation', icon: Workflow, href: '/routing-rotation', capability: 'billing:write' },
+            { kind: 'item', label: 'Routing & Rotation', icon: Workflow, href: '/routing-rotation', capability: 'routing:admin' },
             { kind: 'item', label: 'Shipping & Fulfillment', icon: Truck, href: '/order-settings/shipping', capability: 'billing:write' },
             { kind: 'item', label: 'Cancellations & Refunds', icon: RotateCcw, href: '/order-settings/cancellations', capability: 'refunds:approve' },
             { kind: 'item', label: 'Scoped Overrides', icon: Layers, href: '/order-settings/overrides', capability: 'billing:write' },

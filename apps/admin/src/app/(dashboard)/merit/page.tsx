@@ -9,6 +9,7 @@ import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { loadMeritConsole, type MeritRow } from './data'
 import { MeritConsole } from './MeritConsole'
 import { FeeGracePanel } from './FeeGracePanel'
+import { MeritManualButton } from './MeritManual'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Manufacturer standing — Admin' }
@@ -24,7 +25,9 @@ function Badge({ b }: { b: string }) {
 }
 
 export default async function MeritPage() {
-  await requireCapability('billing:write')
+  // Merit policy = fee-by-standing + the go-live switch. Gated on the dedicated
+  // `merit:admin` capability — super-admin-only by default, grantable in /roles.
+  await requireCapability('merit:admin')
   const c = await loadMeritConsole()
 
   return (
@@ -32,7 +35,8 @@ export default async function MeritPage() {
       <AdminPageHeader
         eyebrow="Manufacturers"
         title="Manufacturer standing"
-        description="Fair, multi-signal merit — Craft, Reliability, Contribution, Standing — earns the badge (Verified → Trusted → Premier) that unlocks the fee tier. Running in SHADOW: the engine proposes standing nightly but never changes a tier or fee until you flip it live (MM-5)."
+        description="Fair, multi-signal merit — Craft, Reliability, Contribution, Standing — earns the badge (Verified → Trusted → Premier) that unlocks the fee tier. In Shadow the engine proposes standing nightly but changes no tier or fee; switch it Live to assign badges and apply badge fees."
+        actions={<MeritManualButton />}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-10">

@@ -57,7 +57,7 @@ function toView(
 }
 
 export default async function RoutingRotationPage() {
-  await requireCapability('billing:write')
+  await requireCapability('routing:admin')
 
   const since90 = new Date(Date.now() - 90 * 86_400_000)
   const [policies, printers, awards, settings, products, orderSettings, fcAwardsRaw, warehouses] =
