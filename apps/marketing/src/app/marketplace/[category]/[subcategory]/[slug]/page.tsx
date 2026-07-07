@@ -16,7 +16,7 @@ import { ProductAccordion } from '@/components/ProductAccordion'
 import { RecipeNutritionStudio } from '@/components/RecipeNutritionStudio'
 import { ProductCarousel } from '@/components/ProductCarousel'
 import { CATEGORY_ROWS, templateToCardProps, type SampleTemplate } from '@/lib/sample-templates'
-import { RatingStars, RatingBreakdownPopover } from '@ilaunchify/ui'
+import { RatingStars, RatingBreakdownPopover, Tooltip } from '@ilaunchify/ui'
 import { getTemplateRatingAndReviews, type TemplateLiveRating } from '@/lib/template-reviews'
 import { TemplateReviewsSection } from './TemplateReviewsSection'
 import { getPrintProviderCards } from '@/lib/print-providers'
@@ -358,6 +358,11 @@ export default async function ProductDetailPage({
                 accordionRows={accordionRows}
                 liveRating={liveRating}
                 hasReviews={reviews.length > 0}
+                starBuckets={
+                  reviews.length > 0
+                    ? [5, 4, 3, 2, 1].map((s) => ({ star: s, n: reviews.filter((r) => r.rating === s).length }))
+                    : undefined
+                }
               />
             }
           />
@@ -485,8 +490,7 @@ function ManufacturerBadgeLine({ badge }: { badge?: 'TRUSTED' | 'PREMIER' | null
   return (
     <div className="mb-3 -mt-1 flex items-center gap-1.5 text-[12.5px] text-ink-500">
       <span>Manufacturer:</span>
-      {/* Hover/focus tooltip (CSS-only, design-token styled) explaining the badge. */}
-      <span className="group relative inline-flex" tabIndex={0}>
+      <Tooltip content={tip}>
         <span
           className={
             'inline-flex cursor-help items-center rounded-full border px-2 py-[1px] text-[10.5px] font-semibold uppercase tracking-wide ' +
@@ -497,19 +501,7 @@ function ManufacturerBadgeLine({ badge }: { badge?: 'TRUSTED' | 'PREMIER' | null
         >
           {isPremier ? 'Premier' : 'Trusted'}
         </span>
-        <span
-          role="tooltip"
-          className={
-            // Amazon-style: white surface, clear gray border, generous padding,
-            // near-black text (design tokens).
-            'pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 w-[18rem] -translate-x-1/2 ' +
-            'rounded-[var(--radius-lg)] border border-ink-300 bg-white px-4 py-3 text-[12px] font-normal normal-case leading-relaxed tracking-normal text-ink-800 shadow-lg ' +
-            'opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100'
-          }
-        >
-          {tip}
-        </span>
-      </span>
+      </Tooltip>
     </div>
   )
 }
@@ -525,6 +517,7 @@ function IdentityColumn({
   accordionRows,
   liveRating,
   hasReviews,
+  starBuckets,
 }: {
   template: SampleTemplate
   detail: ReturnType<typeof findTemplateDetail>
@@ -538,6 +531,7 @@ function IdentityColumn({
   accordionRows: { id: string; title: string; body: React.ReactNode }[]
   liveRating: TemplateLiveRating | null
   hasReviews: boolean
+  starBuckets?: { star: number; n: number }[]
 }) {
   return (
     <>
@@ -560,6 +554,7 @@ function IdentityColumn({
                 mean={liveRating.mean}
                 count={liveRating.count}
                 dims={liveRating.dims}
+                starBuckets={hasReviews ? starBuckets : undefined}
                 reviewsHref={hasReviews ? '#creator-reviews' : undefined}
               />
             )}

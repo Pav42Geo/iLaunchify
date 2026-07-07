@@ -6,7 +6,7 @@
 // "See Creator Reviews" link scrolls here). Client component — clicking a star
 // row in the histogram filters the review list to that rating (Amazon behavior).
 
-import { useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { TemplateReview } from '@/lib/template-reviews'
 
 function Stars({ value }: { value: number }) {
@@ -22,7 +22,23 @@ function Stars({ value }: { value: number }) {
 }
 
 export function TemplateReviewsSection({ reviews }: { reviews: TemplateReview[] }) {
-  const [star, setStar] = useState<number | null>(null)
+  // Star filter lives in the URL (?star=N) so the popover's "By stars" rows and
+  // this histogram stay in sync — clicking either filters the same list.
+  const params = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const raw = params.get('star')
+  const star = raw && /^[1-5]$/.test(raw) ? Number(raw) : null
+
+  const setStar = (s: number | null) => {
+    const p = new URLSearchParams(params.toString())
+    if (s == null) p.delete('star')
+    else p.set('star', String(s))
+    const qs = p.toString()
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}#creator-reviews`, { scroll: false })
+  }
+  const toggle = (s: number) => setStar(star === s ? null : s)
+
   if (reviews.length === 0) return null
 
   const mean = reviews.reduce((a, r) => a + r.rating, 0) / reviews.length
@@ -32,7 +48,6 @@ export function TemplateReviewsSection({ reviews }: { reviews: TemplateReview[] 
   }))
 
   const shown = star == null ? reviews : reviews.filter((r) => r.rating === star)
-  const toggle = (s: number) => setStar((cur) => (cur === s ? null : s))
 
   return (
     <section id="creator-reviews" className="max-w-[1640px] mx-auto px-8 mb-24 scroll-mt-24">
@@ -67,22 +82,24 @@ export function TemplateReviewsSection({ reviews }: { reviews: TemplateReview[] 
                   aria-pressed={active}
                   disabled={b.n === 0}
                   className={
-                    'flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[12.5px] transition-colors ' +
+                    'group flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[12.5px] transition-colors ' +
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ' +
                     (b.n === 0
                       ? 'cursor-default text-ink-300'
                       : active
                         ? 'bg-pink-50 text-ink-900 ring-1 ring-pink-200'
-                        : 'text-ink-600 hover:bg-ink-50')
+                        : 'cursor-pointer text-ink-600 hover:bg-ink-50')
                   }
                 >
-                  <span className={'w-12 shrink-0 ' + (active ? 'font-semibold text-pink-700' : 'text-pink-700 group-hover:underline')}>
+                  <span className={'w-12 shrink-0 text-pink-700 group-hover:underline ' + (active ? 'font-semibold' : '')}>
                     {b.star} star
                   </span>
                   <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-ink-100">
                     <span className="block h-full rounded-full bg-pink-600" style={{ width: `${pct}%` }} />
                   </span>
-                  <span className="w-10 shrink-0 text-right tabular-nums">{pct}%</span>
+                  <span className="w-10 shrink-0 text-right tabular-nums group-hover:text-pink-700 group-hover:underline">
+                    {pct}%
+                  </span>
                 </button>
               )
             })}

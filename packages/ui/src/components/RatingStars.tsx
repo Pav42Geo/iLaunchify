@@ -128,6 +128,8 @@ export function RatingBreakdownPopover({
   mean,
   count,
   dims,
+  starBuckets,
+  starHrefBase = '?',
   reviewsHref,
   reviewsLabel = 'See Creator Reviews',
   explainerHref,
@@ -135,11 +137,17 @@ export function RatingBreakdownPopover({
   mean: number
   count: number
   dims: RatingDimBar[]
+  /** Per-star review counts — renders a clickable histogram that filters the
+   *  Creator reviews section via `?star=N` (kept in sync there). Omit to hide. */
+  starBuckets?: { star: number; n: number }[]
+  /** Base for the star links (default '?'); each row → `${base}star=N#creator-reviews`. */
+  starHrefBase?: string
   /** Anchor to the reviews section (e.g. "#creator-reviews"). */
   reviewsHref?: string
   reviewsLabel?: string
   explainerHref?: string
 }) {
+  const starTotal = starBuckets?.reduce((a, b) => a + b.n, 0) ?? 0
   return (
     <div>
       <div className="flex items-baseline gap-2">
@@ -168,6 +176,33 @@ export function RatingBreakdownPopover({
           </div>
         ))}
       </div>
+      {starBuckets && starBuckets.length > 0 && starTotal > 0 && (
+        <div className="mt-3 border-t border-ink-100 pt-3">
+          <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-ink-500">
+            By stars — click to filter reviews
+          </p>
+          <div className="space-y-0.5">
+            {starBuckets.map((b) => {
+              const pct = Math.round((b.n / starTotal) * 100)
+              return (
+                <a
+                  key={b.star}
+                  href={`${starHrefBase}star=${b.star}#creator-reviews`}
+                  className="group flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-[12px] text-ink-600 hover:bg-ink-50"
+                >
+                  <span className="w-11 shrink-0 text-pink-700 group-hover:underline">{b.star} star</span>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-ink-100">
+                    <span className="block h-full rounded-full bg-pink-600" style={{ width: `${pct}%` }} />
+                  </span>
+                  <span className="w-9 shrink-0 text-right tabular-nums group-hover:text-pink-700 group-hover:underline">
+                    {pct}%
+                  </span>
+                </a>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {(reviewsHref || explainerHref) && (
         <div className="mt-3 space-y-1 border-t border-ink-100 pt-3 text-[12.5px]">
           {reviewsHref && (
