@@ -17,6 +17,11 @@ export type SampleTemplate = Omit<ProductCardProps, 'href'> & {
   /** Manufacturing-process slugs (ProductTemplate.manufacturingProcesses) — the
    *  PDP "Process" fact shows the first one's label, or "--" when absent. */
   processSlugs?: string[]
+  /** Earned manufacturer standing badge (Merit) — shown as an ANONYMOUS trust
+   *  tier on the PDP under the rating (docs/PARTNER_TIER_VS_MERIT.md perk model).
+   *  Only elevated badges populate this (Verified = baseline → null → line hidden).
+   *  NEVER carries the partner's name/location/link (orchestration thesis). */
+  manufacturerBadge?: 'TRUSTED' | 'PREMIER' | null
 }
 
 function href(t: { categorySlug: string; subcategorySlug?: string; slug: string }) {

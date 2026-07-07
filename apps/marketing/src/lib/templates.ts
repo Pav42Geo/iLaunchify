@@ -387,6 +387,9 @@ const includeForCard = {
   // The whole include is cast to Prisma.ProductTemplateInclude because the
   // (possibly stale) generated client may not yet type FlavorPreset.leadTimeDays.
   flavorPresets: { where: { status: 'ACTIVE' }, select: { leadTimeDays: true } },
+  // Earned manufacturer badge (Merit) → anonymous trust tier on the PDP. Tier only;
+  // NEVER the partner name/location (orchestration thesis — no partner identity).
+  manufacturerService: { select: { partner: { select: { tier: true } } } },
 } as Prisma.ProductTemplateInclude
 
 /** Lead-time bucket → variant leadTimeDays range (days). */
@@ -545,6 +548,9 @@ type DbTemplate = Awaited<
   // typed optional so reads compile (cast-guarded at use).
   leadTimeRepeatDays?: number | null
   flavorPresets?: Array<{ leadTimeDays: number | null }>
+  // Earned manufacturer badge (Merit) — tier only, no identity. Optional so reads
+  // compile against a possibly-stale client / null-manufacturer templates.
+  manufacturerService?: { partner: { tier: string | null } | null } | null
 }
 
 /**
@@ -599,6 +605,11 @@ function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
     ratingAvg: t.ratingAvg ?? null,
     ratingCount: t.ratingCount ?? 0,
     processSlugs: t.manufacturingProcesses ?? [],
+    // Anonymous earned badge — only elevated tiers surface (Verified = baseline).
+    manufacturerBadge:
+      t.manufacturerService?.partner?.tier === 'TRUSTED' || t.manufacturerService?.partner?.tier === 'PREMIER'
+        ? (t.manufacturerService.partner.tier as 'TRUSTED' | 'PREMIER')
+        : null,
   }
 }
 

@@ -40,7 +40,7 @@ visibility / work-allocation / speed rewards, each admin-tunable and each its ow
 |---|---|---|---|---|
 | **Production fee** (anchor — LIVE) | 4.5% | 2.5% | 0% | ✅ built (Merit resolver) |
 | **Marketplace ranking boost** — default `/marketplace` sort weights higher badges up | none | boost | top | ✅ built 2026-07-07 (`templates.ts` buildOrderBy: default view orders by `manufacturerService.partner.tier desc` then newest; nudge only — explicit sorts pure; inert until standing diverges) |
-| **Standing badge on listings + profile** — Trusted/Premier shown on product cards | – | Trusted | Premier | exists (listing cards) |
+| **Standing badge on the PDP** — anonymous "Trusted/Premier" tier under the rating stars | – | Trusted | Premier | ✅ built 2026-07-07 (PDP `RatingRow`; badge-only, no name/link — respects the "no partner identity on the card" lock, so it lives on the detail page not the card; Verified/none hidden) |
 | **Featured eligibility** — curated Featured / niche-spotlight slots | – | limited | yes | needs build |
 | **Routing priority weight** — tie-break nudge in rotation (NEVER overrides hard filters) | 0 | 1 | 2 | exists (routing engine) |
 | **Reorder first-refusal** — repeat orders offered to the prior maker first | – | – | ✓ | needs build |
