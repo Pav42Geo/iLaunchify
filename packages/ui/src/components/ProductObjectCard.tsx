@@ -49,6 +49,10 @@ export interface ProductObjectCardProps {
   status?: ProductObjectStatus
   /** Real hero image; falls back to a gradient + centered glyph when absent. */
   imageUrl?: string
+  /** Chip row under the brand (e.g. recipe/compliance/restricted/resume chips). */
+  badges?: React.ReactNode
+  /** Small meta line under the badges (e.g. MOQ · lead · orders). */
+  meta?: React.ReactNode
   /** Primary CTA rendered in the footer (e.g. Reorder / Open in Studio). */
   primaryAction?: { label: string; href: string; icon?: React.ReactNode }
   /** Extra controls in the footer (e.g. a remove heart or 3-dot menu). */
@@ -62,6 +66,8 @@ export function ProductObjectCard({
   brandName,
   status,
   imageUrl,
+  badges,
+  meta,
   primaryAction,
   actions,
   className,
@@ -99,6 +105,9 @@ export function ProductObjectCard({
           {name}
         </Link>
         {brandName && <div className="truncate text-[12px] text-ink-500">{brandName}</div>}
+
+        {badges && <div className="mt-1 flex flex-wrap items-center gap-1.5">{badges}</div>}
+        {meta && <div className="mt-1 text-[11.5px] text-ink-500">{meta}</div>}
 
         {(primaryAction || actions) && (
           <div className="mt-auto flex items-center justify-between gap-2 pt-2.5">

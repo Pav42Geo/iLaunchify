@@ -28,10 +28,20 @@ import {
  */
 
 const RECENT_KEY = 'ilf_recent_searches'
+const RECENT_PRODUCTS_KEY = 'ilf_recent_products'
 const MAX_RECENT = 5
+const MAX_RECENT_PRODUCTS = 12
 const DEBOUNCE_MS = 140
 
-export type NavType = 'product' | 'category' | 'niche' | 'suggestion' | 'recent' | 'trending' | 'browse'
+export type NavType =
+  | 'product'
+  | 'recentProduct'
+  | 'category'
+  | 'niche'
+  | 'suggestion'
+  | 'recent'
+  | 'trending'
+  | 'browse'
 
 export interface NavItem {
   index: number
@@ -63,6 +73,27 @@ function writeRecent(next: string[]) {
   }
 }
 
+/** Recently VIEWED products (opened from search) — stored whole so the row
+ *  renders without a refetch. Best-effort; corrupt/missing → []. */
+export function readRecentProducts(): SearchProduct[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(RECENT_PRODUCTS_KEY)
+    const parsed = raw ? (JSON.parse(raw) as unknown) : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((p): p is SearchProduct => !!p && typeof (p as SearchProduct).slug === 'string').slice(0, MAX_RECENT_PRODUCTS)
+  } catch {
+    return []
+  }
+}
+function writeRecentProducts(next: SearchProduct[]) {
+  try {
+    window.localStorage.setItem(RECENT_PRODUCTS_KEY, JSON.stringify(next.slice(0, MAX_RECENT_PRODUCTS)))
+  } catch {
+    /* best-effort */
+  }
+}
+
 export interface UseMarketplaceSearch {
   value: string
   setValue: (v: string) => void
@@ -85,6 +116,7 @@ export interface UseMarketplaceSearch {
   /** Derived groups (contiguous slices of nav) for rendering. */
   groups: {
     products: NavItem[]
+    recentProductItems: NavItem[]
     jumpTo: NavItem[]
     suggestions: NavItem[]
     recentItems: NavItem[]
@@ -125,6 +157,7 @@ export function useMarketplaceSearch(opts: {
   const [recent, setRecent] = React.useState<string[]>([])
   const [popular, setPopular] = React.useState<SearchProduct[]>([])
   const [popularLabel, setPopularLabel] = React.useState<string | undefined>(undefined)
+  const [recentProducts, setRecentProducts] = React.useState<SearchProduct[]>([])
 
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const reqIdRef = React.useRef(0)
@@ -140,6 +173,7 @@ export function useMarketplaceSearch(opts: {
 
   React.useEffect(() => {
     setRecent(readRecent())
+    setRecentProducts(readRecentProducts())
   }, [])
 
   // Fetch "Popular right now" products so the empty-focus panel shows real
@@ -164,7 +198,10 @@ export function useMarketplaceSearch(opts: {
     }
   }, [scope.category, scope.niche])
 
-  const refreshRecent = React.useCallback(() => setRecent(readRecent()), [])
+  const refreshRecent = React.useCallback(() => {
+    setRecent(readRecent())
+    setRecentProducts(readRecentProducts())
+  }, [])
 
   // Debounced fetch on query change.
   React.useEffect(() => {
@@ -231,6 +268,20 @@ export function useMarketplaceSearch(opts: {
     [rememberQuery, trimmed, router, opts],
   )
 
+  // Open a product: record it as recently viewed (front, deduped, capped), then
+  // route. Used by every product row/card so the "Recently viewed" row fills in.
+  const selectProduct = React.useCallback(
+    (p: SearchProduct) => {
+      const updated = [p, ...readRecentProducts().filter((x) => x.slug !== p.slug)].slice(0, MAX_RECENT_PRODUCTS)
+      setRecentProducts(updated)
+      writeRecentProducts(updated)
+      rememberQuery(trimmed)
+      opts.onNavigate?.()
+      router.push(p.href, { scroll: false })
+    },
+    [rememberQuery, trimmed, router, opts],
+  )
+
   const clearInput = React.useCallback(() => {
     setValue('')
     setResults(null)
@@ -248,20 +299,21 @@ export function useMarketplaceSearch(opts: {
     const push = (item: Omit<NavItem, 'index'>) => items.push({ ...item, index: items.length })
 
     if (isEmpty) {
-      for (const p of popular) push({ type: 'product', product: p, run: () => routeToHref(p.href) })
+      for (const p of recentProducts) push({ type: 'recentProduct', product: p, run: () => selectProduct(p) })
+      for (const p of popular) push({ type: 'product', product: p, run: () => selectProduct(p) })
       for (const r of recent) push({ type: 'recent', label: r, run: () => submit(r) })
       for (const t of TRENDING_QUERIES) push({ type: 'trending', label: t, run: () => submit(t) })
       for (const n of browseNiches()) push({ type: 'browse', niche: n, run: () => routeToHref(n.href) })
       return items
     }
     if (results) {
-      for (const p of results.products) push({ type: 'product', product: p, run: () => routeToHref(p.href) })
+      for (const p of results.products) push({ type: 'product', product: p, run: () => selectProduct(p) })
       for (const c of results.categories) push({ type: 'category', category: c, run: () => routeToHref(c.href) })
       for (const n of results.niches) push({ type: 'niche', niche: n, run: () => routeToHref(n.href) })
       for (const s of results.suggestions) push({ type: 'suggestion', label: s, run: () => submit(s) })
     }
     return items
-  }, [isEmpty, popular, recent, results, submit, routeToHref])
+  }, [isEmpty, popular, recentProducts, recent, results, submit, routeToHref, selectProduct])
 
   const handleKeyNav = React.useCallback(
     (e: React.KeyboardEvent): boolean => {
@@ -295,6 +347,7 @@ export function useMarketplaceSearch(opts: {
   const groups = React.useMemo(
     () => ({
       products: nav.filter((n) => n.type === 'product'),
+      recentProductItems: nav.filter((n) => n.type === 'recentProduct'),
       jumpTo: nav.filter((n) => n.type === 'category' || n.type === 'niche'),
       suggestions: nav.filter((n) => n.type === 'suggestion'),
       recentItems: nav.filter((n) => n.type === 'recent'),

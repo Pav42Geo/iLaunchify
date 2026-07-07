@@ -17,7 +17,7 @@
 // @ilaunchify/auth is wired into apps/marketing (REBUILD R2).
 
 import Link from 'next/link'
-import { Heart, Bell } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import {
   AppHeader,
   AppHeaderGuestCta,
@@ -38,6 +38,8 @@ interface Brand {
 import { MarketplaceSearchBar } from './MarketplaceSearchBar'
 import { MarketplaceCommandPalette } from './MarketplaceCommandPalette'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
+import { MarketplaceFavoritesMenu } from './MarketplaceFavoritesMenu'
+import { getAllFavoritedTemplateIds } from '@/app/marketplace/favorites-actions'
 import { creatorUrl } from '@/lib/app-urls'
 import { NICHES } from '@/lib/niches'
 
@@ -92,6 +94,8 @@ export async function MarketplaceHeader({
   placementKey = 'marketplaceHeader',
 }: MarketplaceHeaderProps = {}) {
   const isGuest = !user
+  // Favorites badge count — the peek/modal fetch the full cards on open.
+  const favoritesCount = isGuest ? 0 : (await getAllFavoritedTemplateIds()).length
   const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement(placementKey)])
   const brand =
     placement.kind === 'mark' ? (
@@ -122,11 +126,7 @@ export async function MarketplaceHeader({
           />
         ) : (
           <>
-            <a href={creatorUrl('/favorites')} aria-label="Favorites" className="inline-flex">
-              <AppHeaderIconButton aria-label="Favorites" tabIndex={-1}>
-                <Heart strokeWidth={2} className="h-5 w-5" />
-              </AppHeaderIconButton>
-            </a>
+            <MarketplaceFavoritesMenu initialCount={favoritesCount} />
             <AppHeaderIconButton
               aria-label="Notifications"
               hasDot={hasUnreadNotifications}

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Search, Clock, TrendingUp, CornerDownLeft } from 'lucide-react'
+import { Search, Clock, TrendingUp, CornerDownLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { productGradient } from '@ilaunchify/ui'
 import { highlightSegments } from '@/lib/marketplace-search'
 import type { NavItem, UseMarketplaceSearch } from './useMarketplaceSearch'
@@ -320,6 +320,94 @@ function ProductMiniCard({
   )
 }
 
+/**
+ * PopularCarousel — horizontal mini-card row with edge fades + scroll arrows.
+ * Arrows and the fade on each side appear only when there's more to scroll that
+ * way, so a short row shows neither. Edge padding keeps cards off the panel edge.
+ */
+function PopularCarousel({
+  items,
+  tone,
+  theme,
+  active,
+  setActive,
+}: {
+  items: NavItem[]
+  tone: Tone
+  theme: Theme
+  active: number
+  setActive: (i: number) => void
+}) {
+  const ref = React.useRef<HTMLDivElement>(null)
+  const [canLeft, setCanLeft] = React.useState(false)
+  const [canRight, setCanRight] = React.useState(false)
+
+  const update = React.useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    setCanLeft(el.scrollLeft > 4)
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+  }, [])
+
+  React.useEffect(() => {
+    update()
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [update, items.length])
+
+  const scrollByDir = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * 264, behavior: 'smooth' })
+
+  const fadeFrom = theme === 'dark' ? 'from-ink-900' : 'from-white'
+  const arrowCls =
+    theme === 'dark'
+      ? 'bg-ink-800 text-white border-white/15 hover:bg-ink-700'
+      : 'bg-white text-ink-700 border-ink-200 hover:bg-ink-50'
+
+  return (
+    <div className="relative">
+      <div
+        ref={ref}
+        onScroll={update}
+        className="flex snap-x gap-2 overflow-x-auto scroll-smooth px-[18px] pb-2 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {items.map((item) => (
+          <ProductMiniCard key={item.product!.slug} item={item} tone={tone} active={active} setActive={setActive} />
+        ))}
+      </div>
+
+      {canLeft && (
+        <>
+          <div className={`pointer-events-none absolute bottom-0 left-0 top-0 w-10 bg-gradient-to-r ${fadeFrom} to-transparent`} />
+          <button
+            type="button"
+            aria-label="Scroll left"
+            onClick={() => scrollByDir(-1)}
+            className={`absolute left-1.5 top-[54px] z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition-colors ${arrowCls}`}
+          >
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.25} />
+          </button>
+        </>
+      )}
+      {canRight && (
+        <>
+          <div className={`pointer-events-none absolute bottom-0 right-0 top-0 w-10 bg-gradient-to-l ${fadeFrom} to-transparent`} />
+          <button
+            type="button"
+            aria-label="Scroll right"
+            onClick={() => scrollByDir(1)}
+            className={`absolute right-1.5 top-[54px] z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border shadow-sm transition-colors ${arrowCls}`}
+          >
+            <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function MarketplaceSearchResults({
   search,
   theme,
@@ -329,7 +417,7 @@ export function MarketplaceSearchResults({
 }) {
   const tone = TONES[theme]
   const { trimmed, isEmpty, loading, results, active, setActive, clearRecent, groups, hasResults, showZero } = search
-  const { products, jumpTo, suggestions, recentItems, trendingItems, browseItems } = groups
+  const { products, recentProductItems, jumpTo, suggestions, recentItems, trendingItems, browseItems } = groups
 
   const header = (label: string, right?: React.ReactNode) => (
     <div className={`flex items-center justify-between px-[18px] pb-1.5 pt-3.5 text-[11px] font-bold uppercase tracking-[0.08em] ${tone.header}`}>
@@ -343,14 +431,18 @@ export function MarketplaceSearchResults({
       {/* EMPTY STATE */}
       {isEmpty && (
         <div className="pb-2">
+          {recentProductItems.length > 0 && (
+            <>
+              {header('Recently viewed')}
+              <PopularCarousel items={recentProductItems} tone={tone} theme={theme} active={active} setActive={setActive} />
+              <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
+            </>
+          )}
+
           {products.length > 0 && (
             <>
               {header(search.popularLabel ?? 'Popular right now')}
-              <div className="flex snap-x gap-2 overflow-x-auto px-[14px] pb-2 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {products.map((item) => (
-                  <ProductMiniCard key={item.product!.slug} item={item} tone={tone} active={active} setActive={setActive} />
-                ))}
-              </div>
+              <PopularCarousel items={products} tone={tone} theme={theme} active={active} setActive={setActive} />
               <div className={`mx-[18px] my-2 h-px ${tone.divider}`} />
             </>
           )}

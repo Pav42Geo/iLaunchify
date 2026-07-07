@@ -11,8 +11,21 @@
 
 import { prisma } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
+import type { ProductCardProps } from '@ilaunchify/ui'
 import { getMarketingSession } from '@/lib/session'
 import { creatorUrl } from '@/lib/app-urls'
+
+function iconForNiche(name: string, main?: string | null): string {
+  const s = `${name} ${main ?? ''}`.toLowerCase()
+  if (/coffee|espresso|brew/.test(s)) return '☕'
+  if (/\btea\b|matcha/.test(s)) return '🍵'
+  if (/water|hydration|beverage|drink|tonic|sparkl/.test(s)) return '🥤'
+  if (/supplement|vitamin|capsule|pill|gummies|magnesium|collagen/.test(s)) return '💊'
+  if (/protein|bar|snack|cookie|granola|pretzel|choc/.test(s)) return '🍪'
+  if (/pet|dog|cat/.test(s)) return '🐾'
+  if (/powder|greens|mix/.test(s)) return '🥣'
+  return '📦'
+}
 
 export type MarketplaceToggleResult =
   | { ok: true; saved: boolean }
@@ -133,6 +146,50 @@ export async function getAllFavoritedTemplateIds(): Promise<string[]> {
   } catch {
     // Stale Prisma client before the Favorite model lands — degrade to none so
     // the marketplace layout never 500s.
+    return []
+  }
+}
+
+/**
+ * The creator's favorited marketplace templates as canonical <ProductCard>
+ * props — used by the marketplace header peek + "See all" modal so the whole
+ * favorites experience stays IN the marketplace (docs/FAVORITES_MANAGEMENT.md
+ * §11). Hrefs are RELATIVE (same-app) so opening a favorite navigates within
+ * the marketplace, never out to the dashboard. Empty for guests / stale client.
+ */
+export async function getFavoritedTemplateCards(): Promise<ProductCardProps[]> {
+  const ids = await getAllFavoritedTemplateIds()
+  if (ids.length === 0) return []
+  try {
+    const rows = await prisma.productTemplate.findMany({
+      where: { id: { in: ids }, status: 'PUBLISHED' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        priceFloorCents: true,
+        subcategory: {
+          select: { slug: true, category: { select: { slug: true, name: true, mainCategory: true } } },
+        },
+        variants: { select: { moqMin: true, leadTimeDays: true } },
+      },
+    })
+    return rows.map((t) => {
+      const moqs = t.variants.map((v) => v.moqMin).filter((n): n is number => typeof n === 'number')
+      const leads = t.variants.map((v) => v.leadTimeDays).filter((n): n is number => typeof n === 'number')
+      return {
+        href: `/marketplace/${t.subcategory.category.slug}/${t.subcategory.slug}/${t.slug}`,
+        templateId: t.id,
+        title: t.name,
+        niche: t.subcategory.category.name,
+        icon: iconForNiche(t.name, t.subcategory.category.mainCategory),
+        minUnits: moqs.length ? Math.min(...moqs) : 500,
+        leadTimeDays: leads.length ? Math.min(...leads) : 14,
+        pricePerUnit: t.priceFloorCents / 100,
+        verified: true,
+      }
+    })
+  } catch {
     return []
   }
 }
