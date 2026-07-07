@@ -5012,6 +5012,8 @@ model ProductReview {
   partnerReply   String? // V1.5 — manufacturer's public response
   moderatedById  String? // soft FK → admin User
   moderationNote String?
+  helpfulCount   Int          @default(0) // thumbs-up ("N people found this helpful")
+  notHelpfulCount Int         @default(0) // thumbs-down
   editableUntil  DateTime // author edit/delete window (30d)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

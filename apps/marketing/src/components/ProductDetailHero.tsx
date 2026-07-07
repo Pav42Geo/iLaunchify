@@ -236,7 +236,9 @@ function HeroGallery({
   const packageActive = Boolean(packageImage) && showPackage
 
   return (
-    <div className="lg:sticky lg:top-24 lg:self-start">
+    // NOT sticky — the tabs now flow under this column, so a sticky gallery would
+    // float over them. Only the right configure rail stays sticky.
+    <div className="lg:self-start">
       <div className="flex gap-2.5">
         {/* Thumbnails */}
         <div className="flex flex-shrink-0 flex-col gap-2">

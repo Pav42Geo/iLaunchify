@@ -18,11 +18,11 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-const REVIEWS: { rating: number; title: string; body: string }[] = [
-  { rating: 5, title: 'Exactly what I designed', body: 'The first run matched my dieline and colors perfectly. Turnaround was quick and the units arrived well-packed — zero damage.' },
-  { rating: 5, title: 'Consistent batch to batch', body: 'Ordered twice now and the quality is identical. Fill weights are spot on and the print registration is clean. Would reorder without hesitation.' },
-  { rating: 4, title: 'Great product, minor lead-time slip', body: 'Quality is excellent and communication was proactive. It ran a couple days over the estimate, but they flagged it early so I could plan around it.' },
-  { rating: 5, title: 'Made my launch effortless', body: 'From proof to delivery this was smooth. The team caught a small compliance detail on my label before it went to print. Genuinely impressed.' },
+const REVIEWS: { rating: number; title: string; body: string; helpful: number }[] = [
+  { rating: 5, title: 'Exactly what I designed', body: 'The first run matched my dieline and colors perfectly. Turnaround was quick and the units arrived well-packed — zero damage.', helpful: 37 },
+  { rating: 5, title: 'Consistent batch to batch', body: 'Ordered twice now and the quality is identical. Fill weights are spot on and the print registration is clean. Would reorder without hesitation.', helpful: 22 },
+  { rating: 4, title: 'Great product, minor lead-time slip', body: 'Quality is excellent and communication was proactive. It ran a couple days over the estimate, but they flagged it early so I could plan around it.', helpful: 9 },
+  { rating: 5, title: 'Made my launch effortless', body: 'From proof to delivery this was smooth. The team caught a small compliance detail on my label before it went to print. Genuinely impressed.', helpful: 15 },
 ]
 
 const DIMS = {
@@ -82,6 +82,7 @@ async function main() {
             body: r.body,
             photoAssetIds: [],
             status: 'PUBLISHED',
+            helpfulCount: r.helpful,
             editableUntil,
           },
         })

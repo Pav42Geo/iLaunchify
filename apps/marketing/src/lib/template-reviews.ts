@@ -24,6 +24,7 @@ export interface TemplateReview {
   authorName: string
   photoUrls: string[]
   createdAt: string // ISO
+  helpfulCount: number // "N people found this helpful"
 }
 
 // Display labels for manufacturer dimension slugs. KEEP IN SYNC with
@@ -109,6 +110,7 @@ export async function getTemplateRatingAndReviews(templateSlug: string): Promise
       authorName: nameById.get(r.creatorUserId) ?? 'iLaunchify creator',
       photoUrls: publicBase ? r.photoAssetIds.map((k) => `${publicBase}/${k}`) : [],
       createdAt: r.createdAt.toISOString(),
+      helpfulCount: (r as { helpfulCount?: number }).helpfulCount ?? 0,
     }))
 
     return { rating, reviews }
