@@ -36,6 +36,7 @@ interface Brand {
   colorHex: string
 }
 import { MarketplaceSearchBar } from './MarketplaceSearchBar'
+import { MarketplaceCommandPalette } from './MarketplaceCommandPalette'
 import { CategoriesMegaMenu } from './CategoriesMegaMenu'
 import { creatorUrl } from '@/lib/app-urls'
 import { NICHES } from '@/lib/niches'
@@ -106,8 +107,12 @@ export async function MarketplaceHeader({
       center={
         // The 'All Categories' button moved out of the header centre into
         // the niche subnav (as a hamburger trigger that opens the mega
-        // menu). The centre slot now holds the search bar alone.
-        <MarketplaceSearchBar />
+        // menu). The centre slot holds the search bar; the ⌘K command
+        // palette mounts here too (renders nothing until opened).
+        <>
+          <MarketplaceSearchBar />
+          <MarketplaceCommandPalette />
+        </>
       }
       right={
         isGuest ? (
