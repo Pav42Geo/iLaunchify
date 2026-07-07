@@ -112,7 +112,7 @@ export function MarketplaceSearchBar() {
           id="marketplace-search-panel"
           ref={panelRef}
           role="listbox"
-          className="absolute left-0 top-[calc(100%+10px)] z-50 max-h-[min(70vh,560px)] w-[460px] max-w-[86vw] overflow-y-auto rounded-2xl border border-ink-200 bg-white shadow-[0_24px_60px_-12px_rgba(24,24,26,0.28)]"
+          className="absolute left-0 top-[calc(100%+10px)] z-50 max-h-[min(70vh,560px)] w-[600px] max-w-[92vw] overflow-y-auto rounded-2xl border border-ink-200 bg-white shadow-[0_24px_60px_-12px_rgba(24,24,26,0.28)]"
         >
           <MarketplaceSearchResults search={search} theme="light" />
         </div>
