@@ -141,16 +141,77 @@ export function scoreText(query: string, text: string): number {
   return total
 }
 
+/* ============ synonym / semantic expansion ============ */
+
+/**
+ * Curated CPG synonym groups. Any query token that matches a term in a group
+ * pulls in the whole group as additional search terms, so intent words the
+ * catalog doesn't literally use ("soda", "pre-workout", "candy") still surface
+ * the right products, categories, and niches. Bidirectional by construction —
+ * every term in a group expands to every other. Keep groups tight; over-broad
+ * synonyms make search feel noisy.
+ */
+const SYNONYM_GROUPS: readonly (readonly string[])[] = [
+  ['pre workout', 'preworkout', 'pre-workout', 'energy', 'pump', 'performance'],
+  ['soda', 'sparkling', 'carbonated', 'seltzer', 'soft drink', 'fizzy'],
+  ['coffee', 'cold brew', 'espresso', 'latte', 'nitro'],
+  ['tea', 'matcha', 'herbal tea', 'chai'],
+  ['candy', 'gummies', 'gummy', 'sweets', 'confectionery', 'chews'],
+  ['protein', 'whey', 'plant protein'],
+  ['supplement', 'supplements', 'vitamin', 'vitamins', 'capsule', 'softgel'],
+  ['snack', 'snacks', 'bar', 'bars', 'chips', 'popcorn', 'granola'],
+  ['immunity', 'immune', 'elderberry', 'vitamin c', 'zinc'],
+  ['sleep', 'melatonin', 'relax', 'calm'],
+  ['gut health', 'gut', 'prebiotic', 'probiotic', 'digestive'],
+  ['keto', 'low carb', 'low-carb', 'ketogenic'],
+  ['skincare', 'serum', 'beauty', 'skin', 'collagen'],
+  ['beverage', 'drink', 'rtd', 'ready to drink', 'juice', 'smoothie'],
+  ['chips', 'crisps'],
+  ['pet', 'dog', 'cat', 'pet wellness', 'treats'],
+  ['weight loss', 'slim', 'metabolism', 'fat burner'],
+]
+
+/**
+ * Expand a query into the set of terms to match against: the (normalized)
+ * original first, then every synonym pulled in by a matching group. Deduped and
+ * capped so an over-connected query can't explode the search. The original
+ * always leads, so direct matches keep ranking above synonym matches.
+ */
+export function expandQuery(query: string, cap = 8): string[] {
+  const q = normalize(query)
+  if (!q) return []
+  const terms = new Set<string>([q])
+  const qTokens = q.split(' ').filter(Boolean)
+  for (const group of SYNONYM_GROUPS) {
+    const hit = group.some((term) => {
+      const t = normalize(term)
+      // A group fires if the query contains the term, or (for single-word terms)
+      // any query token matches it closely (prefix / typo).
+      return q.includes(t) || qTokens.some((tok) => tokenMatch(tok, t) >= 1.4)
+    })
+    if (hit) for (const term of group) terms.add(normalize(term))
+    if (terms.size >= cap) break
+  }
+  return [...terms].slice(0, cap)
+}
+
+/** Best score for `text` across an expanded term list (max, so any term can hit). */
+function bestScore(terms: string[], text: string): number {
+  let best = 0
+  for (const t of terms) best = Math.max(best, scoreText(t, text))
+  return best
+}
+
 /* ============ category + niche matchers (pure, in-memory) ============ */
 
 export function matchCategories(query: string, limit = 4): SearchCategory[] {
-  const q = normalize(query)
-  if (!q) return []
+  const terms = expandQuery(query)
+  if (!terms.length) return []
   return CATEGORY_TREE.map((c) => {
       // Match against the category name AND its subcategory names, so "gummies"
       // surfaces Snacks & Confectionery via the candy-gummies subcategory.
       const hay = [c.name, ...c.subcategories.map((s) => s.name)].join(' ')
-      return { c, score: scoreText(query, hay) }
+      return { c, score: bestScore(terms, hay) }
     })
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
@@ -164,11 +225,11 @@ export function matchCategories(query: string, limit = 4): SearchCategory[] {
 }
 
 export function matchNiches(query: string, limit = 3): SearchNiche[] {
-  const q = normalize(query)
-  if (!q) return []
+  const terms = expandQuery(query)
+  if (!terms.length) return []
   return NICHES.map((n) => {
       const hay = [n.name, n.shortName, ...n.subcategories].join(' ')
-      return { n, score: scoreText(query, hay) }
+      return { n, score: bestScore(terms, hay) }
     })
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)

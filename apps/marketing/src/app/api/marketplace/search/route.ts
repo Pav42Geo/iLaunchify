@@ -23,9 +23,11 @@ import {
   matchNiches,
   querySuggestions,
   didYouMean,
+  expandQuery,
   type SearchProduct,
   type SearchResponse,
 } from '@/lib/marketplace-search'
+import type { SampleTemplate } from '@/lib/sample-templates'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -54,8 +56,31 @@ export async function GET(request: Request): Promise<Response> {
 
   let products: SearchProduct[] = []
   try {
-    const { templates } = await getMarketplaceTemplates({ q, take: PRODUCT_LIMIT })
-    products = templates.map((t) => {
+    // Direct match first (original query). When that's thin, expand with
+    // synonyms ("soda" → sparkling, "pre-workout" → energy) and merge, so intent
+    // words the catalog doesn't literally use still surface products. The
+    // original query's hits always lead; synonym hits fill in behind, deduped.
+    const collected = new Map<string, SampleTemplate>()
+    const addRows = (rows: SampleTemplate[]) => {
+      for (const t of rows) {
+        if (collected.size >= PRODUCT_LIMIT) break
+        if (!collected.has(t.slug)) collected.set(t.slug, t)
+      }
+    }
+
+    const direct = await getMarketplaceTemplates({ q, take: PRODUCT_LIMIT })
+    addRows(direct.templates)
+
+    if (collected.size < 3) {
+      // Try up to 3 synonym terms (skip the original, which is first).
+      for (const term of expandQuery(q).slice(1, 4)) {
+        if (collected.size >= PRODUCT_LIMIT) break
+        const more = await getMarketplaceTemplates({ q: term, take: PRODUCT_LIMIT })
+        addRows(more.templates)
+      }
+    }
+
+    products = [...collected.values()].map((t) => {
       const card = templateToCardProps(t)
       return {
         slug: t.slug,
