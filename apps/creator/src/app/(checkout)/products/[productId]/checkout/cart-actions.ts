@@ -47,6 +47,7 @@ import {
   recordOrderVelocityAtCheckout,
   evaluateCapacityGateForCheckout,
   type CapacityGateInfo,
+  resolveOrderProductionFeeBps,
 } from '@ilaunchify/orders'
 import {
   createCheckoutSession,
@@ -620,7 +621,14 @@ export async function placeOrderFromCheckoutDraft(
     freeThreshold != null && productionTotalCents >= freeThreshold ? 0 : baseShippingCents
 
   // --- 7. Platform fee (admin-tunable; falls back to PLATFORM_FEE_BPS) --------
-  const feeBps = orderSettings.productionFeeBps ?? PLATFORM_FEE_BPS
+  // MM-8: the fee resolves from the fulfilling MANUFACTURER's standing badge +
+  // any active fee-grace promo. Shadow-safe — with the merit engine disabled and
+  // no promo it returns the base rate unchanged, so this is inert until go-live.
+  const baseFeeBps = orderSettings.productionFeeBps ?? PLATFORM_FEE_BPS
+  const { feeBps } = await resolveOrderProductionFeeBps({
+    manufacturerServiceId: product.productTemplate?.manufacturerServiceId ?? null,
+    baseFeeBps,
+  })
   // PS-3c — the FC labeling fee is a production service: it joins the fee base
   // and the subtotal, not the shipping line.
   const feeBase = productionTotalCents + fcLabelingCents + shippingCents

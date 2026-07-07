@@ -349,6 +349,9 @@ export { recomputePartnerRatingAggregate } from './partner-rating-recompute'
 // MM-7 — fee-grace / promo layer (global grace + manual grants).
 export { resolveManufacturerFeeBps, feeBpsToPct, resolveActivePromo, addMonths, addDays, addDuration } from './merit-fee'
 export type { FeeSource, ResolvedManufacturerFee, PromoSource, GraceUnit, GracePolicy, FeeGrantLike, ActivePromo } from './merit-fee'
+// MM-8 — the go-live seam: badge/promo-aware production fee for checkout.
+export { resolveOrderProductionFeeBps } from './production-fee-resolver'
+export type { ResolvedOrderFee } from './production-fee-resolver'
 
 // Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
 export {

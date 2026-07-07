@@ -14,12 +14,15 @@ import {
   deriveCohortFromSignals,
   loadManufacturerMeritSignals,
   standingFrozen,
+  resolveActivePromo,
   DEFAULT_MERIT_POLICY,
   type MeritSignals,
   type MeritPolicy,
   type MeritBadge,
   type BadgeSnapshotRef,
   type RatingAppealStatus,
+  type GraceUnit,
+  type FeeGrantLike,
 } from '@ilaunchify/orders'
 
 export interface MeritSweepResult {
@@ -28,6 +31,10 @@ export interface MeritSweepResult {
   wouldPromote: number
   wouldDemote: number
   live: boolean
+  /** MM-8 — badges actually written to Partner.tier this run (0 unless enabled). */
+  assigned: number
+  /** Manufacturers whose engine change was skipped because a fee-grace promo is active. */
+  heldForPromo: number
 }
 
 interface MeritPolicyRow {
@@ -65,24 +72,44 @@ function policyOf(row: MeritPolicyRow | null): { policy: MeritPolicy; promoteSus
 }
 
 export async function runMeritSnapshotSweep(now: Date = new Date()): Promise<MeritSweepResult> {
-  const result: MeritSweepResult = { manufacturers: 0, snapshots: 0, wouldPromote: 0, wouldDemote: 0, live: false }
+  const result: MeritSweepResult = { manufacturers: 0, snapshots: 0, wouldPromote: 0, wouldDemote: 0, live: false, assigned: 0, heldForPromo: 0 }
 
   const policyRow = await prisma.meritPolicy.findUnique({ where: { id: 1 } }).catch(() => null)
   const { policy, promoteSustainDays, demoteMissDays, graceDays, enabled } = policyOf(policyRow)
-  result.live = enabled // MM-5 will consume this to actually assign; MM-2 stays shadow regardless
+  result.live = enabled // MM-8 consumes this to actually assign; snapshots stay shadow regardless
+
+  // MM-8 — global fee-grace policy: a manufacturer with an active promo is
+  // "skipping the engine" and stays at Verified, so we DON'T auto-change its tier.
+  const grace = {
+    enabled: policyRow?.feeGraceEnabled ?? false,
+    value: policyRow?.feeGraceValue ?? 0,
+    unit: (policyRow?.feeGraceUnit ?? 'MONTHS') as GraceUnit,
+    feeBps: policyRow?.feeGraceFeeBps ?? 0,
+  }
 
   const services = await prisma.partnerService.findMany({
     where: { type: 'MANUFACTURING', status: 'ACTIVE', partner: { status: 'ACTIVE' } },
-    select: { id: true, partner: { select: { tier: true } } },
+    select: { id: true, partner: { select: { id: true, tier: true, activatedAt: true } } },
   })
   result.manufacturers = services.length
   if (services.length === 0) return result
 
+  // Active manual grants for all manufacturers this run (for the promo skip).
+  const grantRows = await prisma.manufacturerFeeGrant
+    .findMany({ where: { partnerServiceId: { in: services.map((s) => s.id) }, revokedAt: null }, select: { partnerServiceId: true, feeBps: true, startsAt: true, endsAt: true, revokedAt: true } })
+    .catch(() => [] as Array<{ partnerServiceId: string } & FeeGrantLike>)
+  const grantsByService = new Map<string, FeeGrantLike[]>()
+  for (const g of grantRows) {
+    const list = grantsByService.get(g.partnerServiceId) ?? []
+    list.push({ feeBps: g.feeBps, startsAt: g.startsAt, endsAt: g.endsAt, revokedAt: g.revokedAt })
+    grantsByService.set(g.partnerServiceId, list)
+  }
+
   // Pass 1 — raw signals for every manufacturer (cohort needs the batch).
-  const rows: Array<{ serviceId: string; currentBadge: MeritBadge; signals: MeritSignals }> = []
+  const rows: Array<{ serviceId: string; partnerId: string; activatedAt: Date | null; currentBadge: MeritBadge; signals: MeritSignals }> = []
   for (const svc of services) {
     const signals = await loadManufacturerMeritSignals(svc.id, now).catch(() => null)
-    if (signals) rows.push({ serviceId: svc.id, currentBadge: svc.partner.tier as MeritBadge, signals })
+    if (signals) rows.push({ serviceId: svc.id, partnerId: svc.partner.id, activatedAt: svc.partner.activatedAt ?? null, currentBadge: svc.partner.tier as MeritBadge, signals })
   }
   const cohort = deriveCohortFromSignals(rows.map((r) => r.signals))
 
@@ -130,13 +157,42 @@ export async function runMeritSnapshotSweep(now: Date = new Date()): Promise<Mer
       if (rec.action === 'PROMOTE') result.wouldPromote += 1
       if (rec.action === 'DEMOTE') result.wouldDemote += 1
 
-      // SHADOW: log the recommendation, never assign. MM-5 acts on `enabled`.
-      if (rec.action !== 'HOLD') {
+      // MM-8 — a manufacturer with an active fee-grace promo is skipping the
+      // engine: hold its badge (stays Verified), never auto-change it.
+      const activePromo = resolveActivePromo({ now, activatedAt: r.activatedAt, grace, manualGrants: grantsByService.get(r.serviceId) ?? [] })
+
+      if (rec.action === 'HOLD') {
+        // nothing to do
+      } else if (!enabled) {
+        // SHADOW: log the recommendation, never assign.
         await logSystemAudit({
           entityType: 'PartnerMeritSnapshot',
           entityId: r.serviceId,
-          action: enabled ? 'MERIT_BADGE_RECOMMENDED_LIVE_PENDING' : 'MERIT_BADGE_RECOMMENDED_SHADOW',
+          action: 'MERIT_BADGE_RECOMMENDED_SHADOW',
           payload: { from: rec.from, to: rec.to, action: rec.action, reason: rec.reason, meritScore: merit.meritScore },
+        })
+      } else if (activePromo) {
+        // LIVE but held — the promo pins them out of engine-driven tier changes.
+        result.heldForPromo += 1
+        await logSystemAudit({
+          entityType: 'Partner',
+          entityId: r.partnerId,
+          action: 'MERIT_BADGE_HELD_FEE_GRACE',
+          payload: { from: rec.from, to: rec.to, action: rec.action, promoSource: activePromo.source, promoEndsAt: activePromo.endsAt.toISOString() },
+        })
+      } else {
+        // LIVE — actually assign the recommended badge to Partner.tier.
+        await prisma.partner
+          .update({ where: { id: r.partnerId }, data: { tier: rec.to, tierChangedAt: now, tierChangedById: null } })
+          .then(() => { result.assigned += 1 })
+          .catch(() => undefined)
+        await logSystemAudit({
+          entityType: 'Partner',
+          entityId: r.partnerId,
+          action: 'MERIT_BADGE_ASSIGNED',
+          fromValue: rec.from,
+          toValue: rec.to,
+          payload: { action: rec.action, reason: rec.reason, meritScore: merit.meritScore, serviceId: r.serviceId },
         })
       }
     } catch {

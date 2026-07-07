@@ -166,3 +166,29 @@ engine's FEE, not its scoring. Precedence: **manual grant > global grace > badge
   union), then `rm -rf apps/*/.next` → restart. Until then tsc flags the 5 new-event references
   (expected — same "add event → regenerate" pattern as PARTNER_CAPABILITY_RFQ / COVERAGE_RESTORED);
   the sandbox can't fetch the Prisma engine to regenerate here. No code changes needed after generate.
+
+## MM-8 · Go-live wiring (auto-assignment + fee) — CODE COMPLETE 2026-07-06 (CW)
+The two pieces that make flipping `MeritPolicy.enabled` actually do something. Both are inert while
+the engine is off — this is safe to ship now; the toggle is the only remaining lever.
+- [x] **8a — Badge auto-assignment** in the nightly sweep (`apps/admin/lib/merit-worker.ts`). When
+  `enabled`, the recommended badge is written to `Partner.tier` (`tierChangedAt`, `tierChangedById:null`)
+  with a `MERIT_BADGE_ASSIGNED` audit row. Respects hysteresis + appeal freeze (already in `rec`), and
+  **skips manufacturers with an active fee-grace promo** (they stay Verified — `MERIT_BADGE_HELD_FEE_GRACE`
+  audit). Result now reports `assigned` + `heldForPromo`. When disabled: unchanged shadow behavior
+  (logs `MERIT_BADGE_RECOMMENDED_SHADOW`, never writes tier).
+- [x] **8b — Badge/promo-aware production fee** (`packages/orders/production-fee-resolver.ts` →
+  `resolveOrderProductionFeeBps({ manufacturerServiceId, baseFeeBps })`): base → badge (when enabled) →
+  promo (wins), via the pure resolver. Wired into the real fee line at creator checkout
+  (`cart-actions.ts` §7) keyed off the product's owner-pinned manufacturer. SHADOW-SAFE: engine off +
+  no promo ⇒ returns `baseFeeBps` ⇒ byte-identical to the old flat fee. Never throws (falls back to base).
+- [x] Verify: orders + admin + creator tsc clean; 656/0 pure suites.
+- Note: `computeApplicationFee`/`computeTransferPlan` still aren't called by a live Stripe charge — the
+  broader payments go-live is separate. 8b makes the *rate* correct wherever the platform fee is
+  computed today (checkout estimate + order creation); when the Stripe split path is built it consumes
+  the same resolver.
+
+### To actually go live (unchanged order)
+1. **[PAVEL]** confirm Stripe fee incidence (platform bears `application_fee`).
+2. **[PAVEL]** legal re-consent for fee-by-standing (redlines recorded).
+3. **[PAVEL]** flip `MeritPolicy.enabled = true` in `/merit` (Engine toggle → Save). Auto-assignment +
+   badge fees activate on the next nightly sweep / next checkout. Reversible — flip back to false.
