@@ -57,6 +57,16 @@ export default async function PlanEditorPage({ params }: PageProps) {
         <p className="mt-0.5 font-mono text-[11px] text-ink-400">{plan.code}</p>
       </header>
 
+      {plan.audience === 'PARTNER' && (
+        <div className="rounded-xl border border-info-200 bg-info-50 px-5 py-3.5 text-[12.5px] leading-relaxed text-info-900">
+          <strong>Partner tiers are earned, not purchased</strong> (docs/PARTNER_TIER_VS_MERIT.md).
+          The badge is assigned by the <Link href="/merit" className="font-semibold underline">Merit Engine</Link>,
+          and the production commission resolves from it. <strong>Pricing and the fee rules below are not the
+          live source</strong> for this partner tier &mdash; edit the badge fee in the Merit console. The{' '}
+          <strong>perks</strong> (features) below are what this earned badge unlocks.
+        </div>
+      )}
+
       <PlanPricingForm
         planCode={plan.code}
         monthlyPriceCents={plan.monthlyPriceCents}

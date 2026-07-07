@@ -21,6 +21,16 @@ export async function PlansTab() {
   const creators = plans.filter((p) => p.audience === 'CREATOR')
   const partners = plans.filter((p) => p.audience === 'PARTNER')
 
+  // PT-2 (docs/PARTNER_TIER_VS_MERIT.md decision C): partner tiers are EARNED via
+  // the Merit Engine, not purchased. Show the Merit commission by badge and drop
+  // the "price" framing on partner cards. tierOrder 0/1/2 → Verified/Trusted/Premier.
+  const meritPolicy = await prisma.meritPolicy.findUnique({ where: { id: 1 } }).catch(() => null)
+  const meritFeeByOrder: (number | undefined)[] = [
+    meritPolicy?.verifiedFeeBps,
+    meritPolicy?.trustedFeeBps,
+    meritPolicy?.premierFeeBps,
+  ]
+
   if (plans.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-ink-300 bg-ink-50/40 p-8 text-center">
@@ -39,7 +49,12 @@ export async function PlansTab() {
   return (
     <div className="space-y-8">
       <PlanSection title="Creator plans" plans={creators as never[]} />
-      <PlanSection title="Partner plans" plans={partners as never[]} />
+      <PlanSection
+        title="Partner plans"
+        subtitle="Earned through the Merit Engine — not purchased. Each badge unlocks the commission below plus its perks."
+        plans={partners as never[]}
+        meritFeeByOrder={meritFeeByOrder}
+      />
     </div>
   )
 }
@@ -73,21 +88,37 @@ interface PlanRow {
   }>
 }
 
-function PlanSection({ title, plans }: { title: string; plans: PlanRow[] }) {
+function PlanSection({
+  title,
+  subtitle,
+  plans,
+  meritFeeByOrder,
+}: {
+  title: string
+  subtitle?: string
+  plans: PlanRow[]
+  meritFeeByOrder?: (number | undefined)[]
+}) {
   if (plans.length === 0) return null
   return (
     <section>
-      <h2 className="mb-3 text-[16px] font-semibold text-ink-900">{title}</h2>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <h2 className="text-[16px] font-semibold text-ink-900">{title}</h2>
+      {subtitle && <p className="mb-3 mt-0.5 text-[12.5px] text-ink-500">{subtitle}</p>}
+      <div className={subtitle ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3'}>
         {plans.map((p) => (
-          <PlanCard key={p.id} plan={p} />
+          <PlanCard key={p.id} plan={p} meritFeeBps={meritFeeByOrder?.[p.tierOrder]} />
         ))}
       </div>
     </section>
   )
 }
 
-function PlanCard({ plan }: { plan: PlanRow }) {
+function feePct(bps: number): string {
+  return `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 1)}%`
+}
+
+function PlanCard({ plan, meritFeeBps }: { plan: PlanRow; meritFeeBps?: number }) {
+  const isPartner = plan.audience === 'PARTNER'
   const isHighlight = plan.tierOrder === 1 // Builder / Trusted
   const productionFee = plan.feeRules.find(
     (r) => r.triggerEvent === 'production_order_subtotal',
@@ -108,27 +139,42 @@ function PlanCard({ plan }: { plan: PlanRow }) {
           <div className="font-mono text-[11px] text-ink-400">{plan.code}</div>
         </div>
         <span className="text-[11px] font-medium uppercase tracking-wider text-ink-500">
-          {isHighlight ? 'Recommended' : `Tier ${plan.tierOrder}`}
+          {isPartner ? 'Earned' : isHighlight ? 'Recommended' : `Tier ${plan.tierOrder}`}
         </span>
       </header>
 
       <div className="px-5 py-4">
-        <div className="font-display text-[28px] font-bold leading-none tracking-tight text-ink-900">
-          ${monthly.toFixed(0)}
-          <span className="ml-1 text-[12px] font-normal text-ink-500">/ month</span>
-        </div>
-        {productionFee?.ratePercent != null && (
-          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-ink-100 px-2.5 py-1 text-[11.5px] text-ink-700">
-            {plan.audience === 'CREATOR' ? 'Platform fee' : 'Commission'}{' '}
-            <span className="font-semibold text-ink-900">
-              · {Number(productionFee.ratePercent.toString()).toFixed(2)}%
-            </span>
+        {isPartner ? (
+          // Earned badge — no purchase price. Show the Merit commission for this badge.
+          <div>
+            <div className="font-display text-[26px] font-bold leading-none tracking-tight text-ink-900">
+              {meritFeeBps != null ? feePct(meritFeeBps) : productionFee?.ratePercent != null ? `${Number(productionFee.ratePercent.toString()).toFixed(2)}%` : '—'}
+              <span className="ml-1.5 text-[12px] font-normal text-ink-500">commission</span>
+            </div>
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-[11px] font-semibold text-pink-700">
+              Earned by standing{meritFeeBps != null ? ' · Merit-set' : ''}
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="font-display text-[28px] font-bold leading-none tracking-tight text-ink-900">
+              ${monthly.toFixed(0)}
+              <span className="ml-1 text-[12px] font-normal text-ink-500">/ month</span>
+            </div>
+            {productionFee?.ratePercent != null && (
+              <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-ink-100 px-2.5 py-1 text-[11.5px] text-ink-700">
+                Platform fee{' '}
+                <span className="font-semibold text-ink-900">
+                  · {Number(productionFee.ratePercent.toString()).toFixed(2)}%
+                </span>
+              </div>
+            )}
+          </>
         )}
 
         <div className="mt-4 border-t border-dashed border-ink-200 pt-3">
           <h3 className="mb-2 text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">
-            Features
+            {isPartner ? 'Perks unlocked' : 'Features'}
           </h3>
           <dl className="space-y-1.5 text-[12.5px]">
             {plan.features.map((f) => (

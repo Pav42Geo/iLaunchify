@@ -9,17 +9,21 @@
   to the next badge (latest `PartnerMeritSnapshot`: current → qualified badge, score, gaps) with a
   link to the Merit console, and reframes the hand-set tier editor as an **admin override**.
   `promotion-criteria.ts` + `PromotionCriteriaCard` marked DEPRECATED (unused; safe to delete later).
-- [ ] **PT-2 — Reframe partner plan cards** (`PlansTab` / `/tiers/plan/[code]`): PARTNER
-  `SubscriptionPlan` cards shift from "plan + price" to "earned badge → what it unlocks." Show the
-  **Merit fee** (`MeritPolicy.feeBpsByBadge`) as the commission, keep `PlanFeature` rows as the perk
-  list, drop any purchase/price framing (partner plans are earned, price = $0).
-- [ ] **PT-3 — Merit fee authoritative over plan `FeeRule`.** Ensure the production fee resolves from
-  the badge (already true via `resolveOrderProductionFeeBps`); make the partner-plan `FeeRule`
-  display-only so there is one fee source, not two.
-- [ ] **PT-4 — Perk enforcement.** Wire `PlanFeature` perks (e.g. product-listing cap, marketplace
-  badge, featured, rate-card eligibility) to read per earned badge, so climbing actually unlocks them.
-- [ ] **PT-5 — Docs.** Update CLAUDE.md §Tiers (supersede "no behavioral binding"); note partner
-  plans are earned, creator plans stay paid.
+- [x] **PT-2 — Reframe partner plan cards** (`PlansTab`): PARTNER cards now show the **Merit
+  commission** by badge (from `MeritPolicy.feeBpsByBadge`, tierOrder 0/1/2 → Verified/Trusted/Premier),
+  an "Earned by standing" chip instead of a monthly price, and the features relabeled "Perks unlocked."
+  Section subtitle states tiers are earned, not purchased. Creator cards unchanged.
+- [x] **PT-3 — Merit fee authoritative.** Confirmed checkout never reads the partner plan `FeeRule` —
+  the live production fee already flows OrderSettings → `resolveOrderProductionFeeBps` (badge/promo).
+  Added an info banner on the partner plan editor (`/tiers/plan/[code]`) stating pricing + fee rules
+  are **not** the live source for partner tiers (edit the badge fee in the Merit console); perks are
+  what the earned badge unlocks. No fee-path code change needed.
+- [ ] **PT-4 — Perk enforcement (DEFERRED, honest).** `PlanFeature` perks (product-listing cap,
+  marketplace badge, featured, rate-card eligibility) have **no live enforcement seam today** — e.g.
+  the "up to 3 listings at Verified" from PLATFORM_SPEC isn't gated anywhere yet. The perk *config*
+  exists on the earned badge's plan; wiring a consumer is a future build (don't fabricate a gate).
+- [x] **PT-5 — Docs.** CLAUDE.md §Tiers updated (supersedes "no behavioral binding"); partner tiers
+  earned via Merit, creator plans stay paid.
 
 ---
 

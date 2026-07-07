@@ -86,8 +86,8 @@ Use the `marketplace-taxonomy-guardian` subagent before adding any new taxonomy 
 
 ## Tiers
 
-- Creator: `maker | builder | agency` (not Master) — `packages/auth/tiers.ts`
-- Partner: `VERIFIED | TRUSTED | PREMIER` — **placeholder names, no behavioral binding decided yet.** Never write "Premier partner gets X" anywhere. Surface as info-only chip.
+- Creator: `maker | builder | agency` (not Master) — `packages/auth/tiers.ts`. **Paid subscription.**
+- Partner: `VERIFIED | TRUSTED | PREMIER` — **EARNED via the Merit Engine, not purchased** (decision C, docs/PARTNER_TIER_VS_MERIT.md; supersedes the old "no behavioral binding" note). The badge now binds to the production fee (Verified 4.5% / Trusted 2.5% / Premier 0%, admin-tunable in the Merit console) and, going forward, to perks. The Merit Engine is the single decider of `Partner.tier`; the `/tiers` hand-set is an audited admin override, and the partner `SubscriptionPlan` rows are the earned perk ladder (their price/FeeRule are NOT the live source). Never sell a partner badge.
 
 ## Gotchas
 
