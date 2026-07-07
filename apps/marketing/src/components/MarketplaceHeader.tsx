@@ -17,7 +17,7 @@
 // @ilaunchify/auth is wired into apps/marketing (REBUILD R2).
 
 import Link from 'next/link'
-import { Heart, Bell } from 'lucide-react'
+import { Bookmark, Bell } from 'lucide-react'
 import {
   AppHeader,
   AppHeaderGuestCta,
@@ -117,9 +117,11 @@ export async function MarketplaceHeader({
           />
         ) : (
           <>
-            <AppHeaderIconButton aria-label="Favorites">
-              <Heart strokeWidth={2} className="h-5 w-5" />
-            </AppHeaderIconButton>
+            <a href={creatorUrl('/favorites')} aria-label="Favorites" className="inline-flex">
+              <AppHeaderIconButton aria-label="Favorites" tabIndex={-1}>
+                <Bookmark strokeWidth={2} className="h-5 w-5" />
+              </AppHeaderIconButton>
+            </a>
             <AppHeaderIconButton
               aria-label="Notifications"
               hasDot={hasUnreadNotifications}

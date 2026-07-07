@@ -43,6 +43,8 @@ import { cn, ViewToggle, EmptyState, StarterTiles, type ViewMode } from '@ilaunc
 import { evaluateProductRestrictions } from '@ilaunchify/marketplace'
 import { marketingUrl } from '@/lib/marketing-url'
 import { ProductRowActions } from './ProductRowActions'
+import { SaveButton } from '@/components/favorites/SaveButton'
+import { getFavoritedProductIds } from '../favorites/actions'
 
 function tabHref(key: string, view: ViewMode): string {
   const q = new URLSearchParams()
@@ -320,6 +322,8 @@ export default async function ProductsListPage({
 
   const visible = buckets[activeTab]
   const tabMeta = TABS.find((t) => t.key === activeTab)!
+  // Which of these products the creator has favorited (docs/FAVORITES_MANAGEMENT.md).
+  const savedProductIds = await getFavoritedProductIds()
 
   return (
     <div className="space-y-6">
@@ -372,7 +376,7 @@ export default async function ProductsListPage({
       ) : (
         <div className="space-y-3">
           {visible.map((r) => (
-            <ProductCard key={r.id} row={r} canDownloadLabels={canDownloadLabels} />
+            <ProductCard key={r.id} row={r} canDownloadLabels={canDownloadLabels} saved={savedProductIds.has(r.id)} />
           ))}
         </div>
       )}
@@ -588,7 +592,7 @@ function ProductTable({ rows }: { rows: Row[] }) {
   )
 }
 
-function ProductCard({ row: r, canDownloadLabels }: { row: Row; canDownloadLabels?: boolean }) {
+function ProductCard({ row: r, canDownloadLabels, saved = false }: { row: Row; canDownloadLabels?: boolean; saved?: boolean }) {
   const palette = STATUS[r.status]
   const recipeOutcome = r.recipe?.complianceChecks[0]?.outcome ?? null
   const recipeBadge = RECIPE_BADGE[recipeOutcome ?? 'NONE'] ?? RECIPE_BADGE.NONE
@@ -701,7 +705,10 @@ function ProductCard({ row: r, canDownloadLabels }: { row: Row; canDownloadLabel
           >
             Open in Studio <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
-          <ProductRowActions id={r.id} name={r.name} hasDraft={!!r.draft} canDownloadLabels={canDownloadLabels} />
+          <div className="flex items-center gap-2">
+            <SaveButton kind="PRODUCT" targetId={r.id} initialSaved={saved} variant="icon" />
+            <ProductRowActions id={r.id} name={r.name} hasDraft={!!r.draft} canDownloadLabels={canDownloadLabels} />
+          </div>
         </div>
       </div>
     </article>

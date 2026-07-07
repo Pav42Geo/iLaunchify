@@ -13,7 +13,7 @@
 
 import { AppHeaderIconButton, AppHeaderUserMenu } from '@ilaunchify/ui'
 import {
-  Heart,
+  Bookmark,
   ShoppingBag,
   Plug,
   CreditCard,
@@ -44,6 +44,8 @@ interface Props {
   /** Brand-kit cap for the tier (BRAND_LIMITS[tier].kits). Infinity-safe:
       pass Number.POSITIVE_INFINITY for agency. */
   brandCap?: number
+  /** Saved-favorites count for the header badge (docs/FAVORITES_MANAGEMENT.md). */
+  favoritesCount?: number
 }
 
 // Same cookie the BrandSwitcher writes — brand-scoped server components
@@ -58,6 +60,7 @@ export function TopbarRight({
   activeBrandId,
   tier = null,
   brandCap,
+  favoritesCount = 0,
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -72,9 +75,19 @@ export function TopbarRight({
 
   return (
     <>
-      <AppHeaderIconButton aria-label="Favorites">
-        <Heart strokeWidth={2} className="h-5 w-5" />
-      </AppHeaderIconButton>
+      <span className="relative inline-flex">
+        <AppHeaderIconButton
+          aria-label={favoritesCount > 0 ? `Favorites (${favoritesCount} saved)` : 'Favorites'}
+          onClick={() => router.push('/favorites')}
+        >
+          <Bookmark strokeWidth={2} className="h-5 w-5" />
+        </AppHeaderIconButton>
+        {favoritesCount > 0 && (
+          <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-semibold leading-none text-white tabular-nums">
+            {favoritesCount > 9 ? '9+' : favoritesCount}
+          </span>
+        )}
+      </span>
       <NotificationBell />
       <AppHeaderUserMenu
         user={{ name, email, tier }}

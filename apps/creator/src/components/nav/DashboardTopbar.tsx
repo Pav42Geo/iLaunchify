@@ -23,6 +23,7 @@ export async function DashboardTopbar({ user }: { user: User }) {
   // won't have a CreatorProfile — gracefully render the bare topbar.
   let brands: { id: string; name: string; handle: string }[] = []
   let tier: TierKey | null = null
+  let favoritesCount = 0
   if (user.role === 'CREATOR') {
     const profile = await prisma.creatorProfile.findUnique({
       where: { userId: user.id },
@@ -32,10 +33,12 @@ export async function DashboardTopbar({ user }: { user: User }) {
           select: { id: true, name: true, handle: true },
           orderBy: { createdAt: 'asc' },
         },
+        _count: { select: { favorites: true } },
       },
     })
     brands = profile?.brands ?? []
     tier = profile ? normalizeTier(profile.subscriptionTier ?? null) : null
+    favoritesCount = profile?._count.favorites ?? 0
   }
 
   // Notification dot — check for any unread bell-channel notification.
@@ -70,6 +73,7 @@ export async function DashboardTopbar({ user }: { user: User }) {
           hasUnreadNotifications={unreadCount > 0}
           tier={tier}
           brandCap={tier ? brandLimits(tier).kits : undefined}
+          favoritesCount={favoritesCount}
         />
       }
     />
