@@ -9,7 +9,7 @@
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Bookmark, ArrowRight, ShoppingCart, Package, ShoppingBag } from 'lucide-react'
+import { Heart, ArrowRight, ShoppingCart, Package, ShoppingBag } from 'lucide-react'
 import { EmptyState } from '@ilaunchify/ui'
 import { marketingUrl } from '@/lib/marketing-url'
 import { SaveButton } from '@/components/favorites/SaveButton'
@@ -75,7 +75,7 @@ export default async function FavoritesPage({
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Creator · Favorites</p>
         <h1 className="mt-1 flex items-center gap-2 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          <Bookmark className="h-6 w-6 text-pink-600" strokeWidth={2} aria-hidden="true" />
+          <Heart className="h-6 w-6 text-pink-600" strokeWidth={2} aria-hidden="true" />
           Your favorites
         </h1>
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
@@ -105,7 +105,7 @@ export default async function FavoritesPage({
 
       {visible.length === 0 ? (
         <EmptyState
-          icon={<Bookmark className="h-[22px] w-[22px]" aria-hidden="true" />}
+          icon={<Heart className="h-[22px] w-[22px]" aria-hidden="true" />}
           title={activeTab === 'marketplace' ? 'No saved products yet' : 'No saved products of your own yet'}
           body={
             activeTab === 'marketplace'

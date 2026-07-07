@@ -10,6 +10,9 @@ export type SampleTemplate = Omit<ProductCardProps, 'href'> & {
   slug: string
   categorySlug: string
   subcategorySlug?: string
+  /** Real ProductTemplate.id when DB-backed (undefined for fixture cards).
+   *  Drives favoriting — fixtures can't be saved. docs/FAVORITES_MANAGEMENT.md. */
+  templateId?: string
   /** Marketplace rating (0–5); null/undefined → "New" (no fabricated score). */
   ratingAvg?: number | null
   /** Number of ratings backing ratingAvg. */

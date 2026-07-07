@@ -590,6 +590,7 @@ function mapToCard(t: DbTemplate, heroUrl?: string): SampleTemplate {
     organic: j.lifestyleTag.slug === 'organic',
   }))
   return {
+    templateId: t.id,
     slug: t.slug,
     categorySlug: category.slug,
     subcategorySlug: t.subcategory.slug,

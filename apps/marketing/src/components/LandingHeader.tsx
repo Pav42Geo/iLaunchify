@@ -19,7 +19,7 @@ import {
   BrandMark,
 } from '@ilaunchify/ui'
 import Link from 'next/link'
-import { Bookmark, Bell } from 'lucide-react'
+import { Heart, Bell } from 'lucide-react'
 import { getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { UserMenu, type UserMenuProps } from './UserMenu'
 import { LandingNavDropdown } from './LandingNavDropdown'
@@ -150,7 +150,7 @@ export async function LandingHeader({
           <>
             <a href={creatorUrl('/favorites')} aria-label="Favorites" className="inline-flex">
               <AppHeaderIconButton aria-label="Favorites" tabIndex={-1}>
-                <Bookmark strokeWidth={2} className="h-5 w-5" />
+                <Heart strokeWidth={2} className="h-5 w-5" />
               </AppHeaderIconButton>
             </a>
             <AppHeaderIconButton

@@ -7,7 +7,7 @@
 // Data is fetched on open so it's always fresh after a toggle elsewhere.
 
 import { AppHeaderIconButton } from '@ilaunchify/ui'
-import { Bookmark, ArrowRight, Package, ShoppingCart, ShoppingBag } from 'lucide-react'
+import { Heart, ArrowRight, Package, ShoppingCart, ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -89,7 +89,7 @@ export function FavoritesMenu({ favoritesCount = 0 }: { favoritesCount?: number 
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
         >
-          <Bookmark strokeWidth={2} className="h-5 w-5" fill={open ? 'currentColor' : 'none'} />
+          <Heart strokeWidth={2} className="h-5 w-5" fill={open ? 'currentColor' : 'none'} />
         </AppHeaderIconButton>
         {count > 0 && (
           <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-pink-600 px-1 text-[10px] font-semibold leading-none text-white tabular-nums">
@@ -106,7 +106,7 @@ export function FavoritesMenu({ favoritesCount = 0 }: { favoritesCount?: number 
         >
           <div className="flex items-center justify-between border-b border-ink-100 px-3.5 py-3">
             <div className="flex items-center gap-2">
-              <Bookmark className="h-[18px] w-[18px] text-pink-600" strokeWidth={2} aria-hidden="true" />
+              <Heart className="h-[18px] w-[18px] text-pink-600" strokeWidth={2} aria-hidden="true" />
               <span className="text-[14px] font-semibold text-ink-900">Favorites</span>
               <span className="text-[12px] text-ink-400 tabular-nums">{count}</span>
             </div>
@@ -141,7 +141,7 @@ export function FavoritesMenu({ favoritesCount = 0 }: { favoritesCount?: number 
           ) : filtered.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <div className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-ink-100">
-                <Bookmark className="h-5 w-5 text-ink-500" aria-hidden="true" />
+                <Heart className="h-5 w-5 text-ink-500" aria-hidden="true" />
               </div>
               <p className="mt-3 text-[13px] text-ink-600">
                 {count === 0 ? 'No favorites yet' : 'Nothing in this tab yet'}

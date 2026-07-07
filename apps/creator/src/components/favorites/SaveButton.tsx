@@ -1,14 +1,11 @@
 'use client'
 
-// SaveButton — optimistic bookmark toggle (docs/FAVORITES_MANAGEMENT.md §11).
-//
-// Bookmark, not heart: "save to work on" reads as B2B utility. Fills pink when
-// saved. Lives in the title-side action cluster (detail) or the card footer
-// (grid) — NEVER overlaid on the product image. In P0 this is a creator-app
-// component; graduate to @ilaunchify/ui when the marketing marketplace consumes
-// it.
+// SaveButton — optimistic favorite (heart) toggle (docs/FAVORITES_MANAGEMENT.md
+// §11). Fills pink when saved. Lives in the title-side action cluster (detail)
+// or the card footer (grid). In P0 this is a creator-app component; graduate to
+// @ilaunchify/ui when the marketing marketplace consumes it.
 
-import { Bookmark } from 'lucide-react'
+import { Heart } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toggleFavorite, type FavoritableKind } from '@/app/(dashboard)/favorites/actions'
 
@@ -51,7 +48,7 @@ export function SaveButton({ kind, targetId, initialSaved, variant = 'pill' }: P
             : 'border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:text-ink-700'
         }`}
       >
-        <Bookmark className="h-4 w-4" strokeWidth={2} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
+        <Heart className="h-4 w-4" strokeWidth={2} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
       </button>
     )
   }
@@ -68,7 +65,7 @@ export function SaveButton({ kind, targetId, initialSaved, variant = 'pill' }: P
           : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400'
       }`}
     >
-      <Bookmark className="h-[17px] w-[17px]" strokeWidth={2} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
+      <Heart className="h-[17px] w-[17px]" strokeWidth={2} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
       {label}
     </button>
   )

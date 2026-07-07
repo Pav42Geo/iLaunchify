@@ -30,6 +30,8 @@ import { DomainFactsSwitcher } from '@/components/DomainFactsSwitcher'
 import { findTemplateDetail } from '@/lib/template-detail'
 import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
+import { getFavoritedTemplateIds } from '@/app/marketplace/favorites-actions'
+import { MarketplaceProductActions } from '@/components/MarketplaceProductActions'
 import { getCreatorTier } from '@ilaunchify/auth'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
@@ -93,6 +95,14 @@ export default async function ProductDetailPage({
   const template = resolved.template
   const related = resolved.related
   const categoryTitle = resolved.categoryTitle
+
+  // Favorites (docs/FAVORITES_MANAGEMENT.md §11) — is this template already
+  // saved by the signed-in creator? Only DB-backed templates carry a real id;
+  // fixtures can't be favorited.
+  const initialSavedTemplate =
+    template.templateId && isAuthenticated
+      ? (await getFavoritedTemplateIds([template.templateId])).length > 0
+      : false
 
   // Marketing copy: start from the per-slug fixture (neutral GENERIC_DETAIL for
   // unknown slugs), then merge any DB-authored copy on top (ProductTemplate.
@@ -353,6 +363,8 @@ export default async function ProductDetailPage({
             identity={
               <IdentityColumn
                 template={template}
+                templateId={template.templateId}
+                initialSaved={initialSavedTemplate}
                 detail={detail}
                 certs={certs}
                 accordionRows={accordionRows}
@@ -511,6 +523,8 @@ function ManufacturerBadgeLine({ badge }: { badge?: 'TRUSTED' | 'PREMIER' | null
    accordion. */
 function IdentityColumn({
   template,
+  templateId,
+  initialSaved,
   detail,
   certs,
   accordionRows,
@@ -519,6 +533,8 @@ function IdentityColumn({
   starBuckets,
 }: {
   template: SampleTemplate
+  templateId?: string
+  initialSaved?: boolean
   detail: ReturnType<typeof findTemplateDetail>
   certs: Array<{
     name: string
@@ -540,6 +556,14 @@ function IdentityColumn({
       <h1 className="mb-2 font-display text-[30px] font-extrabold leading-[1.1] tracking-[-0.02em] text-ink-900">
         {template.title}
       </h1>
+
+      {/* Save + Share cluster — beside the title, never on the hero image
+          (docs/FAVORITES_MANAGEMENT.md §11). */}
+      <MarketplaceProductActions
+        templateId={templateId}
+        initialSaved={initialSaved}
+        shareTitle={template.title}
+      />
 
       {/* Rating + social proof (docs/FEEDBACK_MODULE.md §5.4): live manufacturer
           rating (Bayesian-backed aggregate) with the Amazon-style dimension

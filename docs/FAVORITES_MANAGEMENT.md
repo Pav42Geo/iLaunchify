@@ -308,14 +308,14 @@ ungated.
 Answers to §10 + a placement decision that **supersedes the "heart on the image"
 framing in §6.1**:
 
-- **No icon on the hero image, ever.** Save/Share live in a quiet **action
-  cluster** beside the product title (detail page) and in the **card footer**
-  next to price (grid) — imagery stays clean.
-- **Save icon = bookmark, not heart.** `ti-bookmark` / Lucide `Bookmark`; fills
-  pink (`#FF2E63` tint) when saved. Bookmark reads as "save to work on" (B2B
-  utility); heart read as "I love this." The header entry icon switches to the
-  **same bookmark** for consistency (the current `Heart` in `TopbarRight` +
-  `MarketplaceHeader` becomes `Bookmark`).
+- **No icon on the big detail hero image.** On the product detail page, Save/
+  Share live in a quiet **action cluster** beside the product title — never on
+  the hero image itself. (Grid cards keep the standard small heart overlaid
+  top/bottom-right of the thumbnail — Pavel 2026-07-07.)
+- **Save icon = heart, consistently everywhere** (Pavel 2026-07-07, reversing an
+  earlier bookmark experiment). Lucide `Heart`; fills pink (`#FF2E63`) when
+  saved. The header entry icon, the detail cluster, the `/favorites` page, the
+  peek dropdown, and the grid-card thumbnail all use the heart.
 - **Share = share sheet.** A `Share` button opens a popover (desktop) with X,
   LinkedIn, WhatsApp, and Copy link; on mobile it invokes the native OS share
   sheet via the Web Share API (`navigator.share`, feature-detected). Share
@@ -323,9 +323,10 @@ framing in §6.1**:
   creator's private Favorites list. Share is in P0.
 - **Detail action row:** `[ Save ] [ Share ] [ ⋯ ]` as ghost/pill buttons, with
   the black **Customize** pill as the one loud primary action to their right.
-- **Grid card:** two always-visible quiet icon buttons (Save, Share) in the
-  footer next to price — no image overlay, no hover-reveal (discoverable on
-  touch).
+- **Grid card:** keep the existing small heart on the thumbnail (the shared
+  `ProductCard` / `HeartFavorite` already renders it) — Pavel chose the low-risk
+  path 2026-07-07: wire that heart to real save rather than restructure the
+  locked card into a footer cluster.
 - **Q1 Reorder** → straight to the product's existing checkout wizard.
 - **Q2 Collections** → P1. **Q3 count badge** → yes in P0.
   **Q4 marketplace save** → keep in the marketing app, deep-linked.
