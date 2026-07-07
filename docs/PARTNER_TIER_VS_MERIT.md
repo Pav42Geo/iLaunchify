@@ -1,6 +1,30 @@
 # Decision: Partner tier plans vs. the Merit Engine
 
-**Status: OPEN — awaiting Pavel.** Captured 2026-07-06 (Cowork). Not yet implemented.
+**Status: ADOPTED (C) — building in slices, 2026-07-06 (Cowork).** Captured + chosen same day.
+
+## Build progress (option C)
+
+- [x] **PT-1 — Retire the duplicate decider.** The partner tier page
+  (`tiers/partner/[id]`) no longer runs `promotion-criteria.ts`; it shows the **Merit-computed** path
+  to the next badge (latest `PartnerMeritSnapshot`: current → qualified badge, score, gaps) with a
+  link to the Merit console, and reframes the hand-set tier editor as an **admin override**.
+  `promotion-criteria.ts` + `PromotionCriteriaCard` marked DEPRECATED (unused; safe to delete later).
+- [ ] **PT-2 — Reframe partner plan cards** (`PlansTab` / `/tiers/plan/[code]`): PARTNER
+  `SubscriptionPlan` cards shift from "plan + price" to "earned badge → what it unlocks." Show the
+  **Merit fee** (`MeritPolicy.feeBpsByBadge`) as the commission, keep `PlanFeature` rows as the perk
+  list, drop any purchase/price framing (partner plans are earned, price = $0).
+- [ ] **PT-3 — Merit fee authoritative over plan `FeeRule`.** Ensure the production fee resolves from
+  the badge (already true via `resolveOrderProductionFeeBps`); make the partner-plan `FeeRule`
+  display-only so there is one fee source, not two.
+- [ ] **PT-4 — Perk enforcement.** Wire `PlanFeature` perks (e.g. product-listing cap, marketplace
+  badge, featured, rate-card eligibility) to read per earned badge, so climbing actually unlocks them.
+- [ ] **PT-5 — Docs.** Update CLAUDE.md §Tiers (supersede "no behavioral binding"); note partner
+  plans are earned, creator plans stay paid.
+
+---
+
+## Original analysis (retained)
+
 Related: `docs/MANUFACTURER_MERIT_ENGINE.md`, `docs/MANUFACTURER_MERIT_ENGINE_SUMMARY.md`,
 `docs/PLATFORM_SPEC.md` (§Partner tier / commission), CLAUDE.md §Tiers.
 

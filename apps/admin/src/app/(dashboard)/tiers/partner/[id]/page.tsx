@@ -8,11 +8,11 @@ import { requireCapability } from '@ilaunchify/auth'
 import { listEntityHistory } from '@ilaunchify/audit'
 import { AccountTierEditor } from '../../AccountTierEditor'
 import { PARTNER_TIER_STYLE, tierPillStyle } from '../../tier-style'
-// R16.c — decision-support card showing how close the partner is to the
-// next tier. Pure computation against today's schema; final promotion is
-// still a human call via the AccountTierEditor below.
-import { PromotionCriteriaCard } from '../../PromotionCriteriaCard'
-import { computePartnerPromotionCriteria } from '../../promotion-criteria'
+// Partner-tier-vs-Merit decision C (docs/PARTNER_TIER_VS_MERIT.md): the Merit
+// Engine is the single brain for partner standing. This page shows the
+// Merit-computed path to the next badge (superseding the old promotion-criteria
+// card) and treats the hand-set tier below as an admin OVERRIDE.
+import { Award, ArrowUpRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,18 +36,20 @@ export default async function PartnerTierEditPage({ params }: PageProps) {
     where: { id },
     include: {
       user: { select: { email: true } },
-      services: { select: { type: true } },
+      services: { select: { id: true, type: true } },
     },
   })
   if (!partner) notFound()
 
-  const [history, promotionCriteria] = await Promise.all([
+  // Merit standing is manufacturing-scoped; the badge lives on Partner.tier.
+  const mfgService = partner.services.find((s) => s.type === 'MANUFACTURING')
+  const [history, snap] = await Promise.all([
     listEntityHistory('Partner', partner.id, 20),
-    computePartnerPromotionCriteria(
-      partner.id,
-      partner.tier,
-      partner.tierChangedAt,
-    ),
+    mfgService
+      ? prisma.partnerMeritSnapshot
+          .findFirst({ where: { partnerServiceId: mfgService.id }, orderBy: { computedAt: 'desc' } })
+          .catch(() => null)
+      : Promise.resolve(null),
   ])
   const palette = PARTNER_TIER_STYLE[partner.tier]
   const tierPending = partner.tier === 'VERIFIED' && partner.status !== 'ACTIVE'
@@ -103,19 +105,101 @@ export default async function PartnerTierEditPage({ params }: PageProps) {
         </div>
       )}
 
-      <PromotionCriteriaCard result={promotionCriteria} />
+      <MeritStandingCard hasMfg={!!mfgService} snap={snap} currentTier={partner.tier} />
 
-      <AccountTierEditor
-        audience="PARTNER"
-        entityId={partner.id}
-        currentTier={partner.tier}
-        currentFeeOverrideBp={partner.feeRateOverrideBp}
-        currentFeeOverrideReason={partner.feeRateOverrideReason}
-        backHref="/tiers?tab=partners"
-      />
+      <div className="rounded-xl border border-ink-200 bg-white">
+        <div className="border-b border-ink-100 px-5 py-3">
+          <h2 className="text-[10.5px] font-semibold uppercase tracking-widest text-ink-500">Admin override</h2>
+          <p className="mt-0.5 text-[12px] text-ink-500">
+            The Merit Engine assigns the badge automatically when live. Use this only to override a
+            manufacturer&rsquo;s tier by hand (audited); a fee-grace promo is the better tool for a temporary break.
+          </p>
+        </div>
+        <div className="p-5">
+          <AccountTierEditor
+            audience="PARTNER"
+            entityId={partner.id}
+            currentTier={partner.tier}
+            currentFeeOverrideBp={partner.feeRateOverrideBp}
+            currentFeeOverrideReason={partner.feeRateOverrideReason}
+            backHref="/tiers?tab=partners"
+          />
+        </div>
+      </div>
 
       <HistoryCard history={history} />
     </div>
+  )
+}
+
+function MeritStandingCard({
+  hasMfg,
+  snap,
+  currentTier,
+}: {
+  hasMfg: boolean
+  snap: { qualifiedBadge: string; meritScore: unknown; gapsJson: unknown; computedAt: Date } | null
+  currentTier: string
+}) {
+  if (!hasMfg) {
+    return (
+      <section className="rounded-xl border border-ink-200 bg-white p-5">
+        <div className="flex items-center gap-2">
+          <Award className="h-4 w-4 text-ink-500" />
+          <h2 className="font-display text-[14px] font-semibold text-ink-900">Standing</h2>
+        </div>
+        <p className="mt-1.5 text-[12.5px] text-ink-500">
+          Merit standing applies to manufacturing services. This partner has no manufacturing service, so no badge is computed.
+        </p>
+      </section>
+    )
+  }
+  const gaps = Array.isArray(snap?.gapsJson) ? (snap!.gapsJson as string[]) : []
+  const score = snap?.meritScore == null ? null : Math.round(Number(snap.meritScore))
+  return (
+    <section className="rounded-xl border border-ink-200 bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Award className="h-4 w-4 text-ink-500" />
+          <h2 className="font-display text-[14px] font-semibold text-ink-900">Standing (Merit Engine)</h2>
+        </div>
+        <a href="/merit" className="inline-flex items-center gap-1 text-[12px] font-semibold text-pink-700 hover:text-pink-900">
+          Open Merit console <ArrowUpRight className="h-3.5 w-3.5" />
+        </a>
+      </div>
+      <p className="mt-1 text-[12px] text-ink-500">
+        The badge is earned from the manufacturer&rsquo;s performance — it is not set here. This is the Merit-computed path to the next badge.
+      </p>
+      {!snap ? (
+        <p className="mt-3 text-[12.5px] text-ink-500">
+          No snapshot yet — standing is computed nightly once the manufacturer is active and completing orders.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-2.5">
+          <div className="flex items-center gap-3 text-[13px]">
+            <span className="text-ink-500">Current</span>
+            <span className="font-semibold text-ink-900">{currentTier}</span>
+            {snap.qualifiedBadge !== currentTier && (
+              <>
+                <span className="text-ink-400">→ qualifies for</span>
+                <span className="font-semibold text-pink-700">{snap.qualifiedBadge}</span>
+              </>
+            )}
+            {score !== null && <span className="ml-auto tabular-nums text-ink-600">score {score}/100</span>}
+          </div>
+          {gaps.length > 0 && (
+            <div className="rounded-lg border border-info-200 bg-info-50 px-3 py-2">
+              <p className="text-[11.5px] font-semibold text-info-900">Path to the next badge</p>
+              <ul className="mt-1 space-y-0.5">
+                {gaps.map((g, i) => (
+                  <li key={i} className="text-[12px] text-info-800">• {g}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 

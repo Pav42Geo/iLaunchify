@@ -1,3 +1,9 @@
+// DEPRECATED 2026-07-06 (docs/PARTNER_TIER_VS_MERIT.md decision C): the Merit
+// Engine is now the single decider of partner standing. This evaluator (and
+// PromotionCriteriaCard) is no longer wired anywhere — the partner tier page
+// shows the Merit-computed path to the next badge instead. Kept only to avoid a
+// destructive delete mid-two-agent; safe to remove once confirmed.
+//
 // REBUILD R16.c — partner promotion-criteria evaluator.
 //
 // Tells admin at a glance whether a partner has earned promotion to the
