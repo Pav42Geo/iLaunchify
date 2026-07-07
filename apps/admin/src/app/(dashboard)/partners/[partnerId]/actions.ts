@@ -98,11 +98,8 @@ export async function promotePartnerStatus({
         data: { status: 'ACTIVE' },
       })
       // MM-7 — stamp activatedAt ONCE (anchors the live-computed fee-grace
-      // window). `where activatedAt: null` makes it set-once; cast-guarded so it
-      // compiles + no-ops until the MM-7 column lands via db:push.
-      await (tx as unknown as { partner: { updateMany: (a: unknown) => Promise<unknown> } }).partner
-        .updateMany({ where: { id: partnerId, activatedAt: null }, data: { activatedAt: new Date() } })
-        .catch(() => undefined)
+      // window). `where activatedAt: null` makes it set-once.
+      await tx.partner.updateMany({ where: { id: partnerId, activatedAt: null }, data: { activatedAt: new Date() } })
     }
 
     // SUSPEND side effect: pause active services so they stop receiving dispatches.

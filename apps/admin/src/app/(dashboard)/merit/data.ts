@@ -140,14 +140,13 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
   })
   rows.sort((a, b) => b.meritScore - a.meritScore)
 
-  // MM-7 — fee-grace policy (cast-guarded until the migration lands the columns).
-  const pg = policyRow as unknown as { feeGraceEnabled?: boolean; feeGraceValue?: number; feeGraceUnit?: 'DAYS' | 'MONTHS'; feeGraceFeeBps?: number } | null
+  // MM-7 — fee-grace policy.
   const feeGrace = {
-    enabled: pg?.feeGraceEnabled ?? false,
-    value: pg?.feeGraceValue ?? 3,
-    unit: pg?.feeGraceUnit ?? 'MONTHS',
-    feeBps: pg?.feeGraceFeeBps ?? 0,
-    feePct: feeBpsToPct(pg?.feeGraceFeeBps ?? 0),
+    enabled: policyRow?.feeGraceEnabled ?? false,
+    value: policyRow?.feeGraceValue ?? 3,
+    unit: (policyRow?.feeGraceUnit ?? 'MONTHS') as 'DAYS' | 'MONTHS',
+    feeBps: policyRow?.feeGraceFeeBps ?? 0,
+    feePct: feeBpsToPct(policyRow?.feeGraceFeeBps ?? 0),
   }
 
   // All active manufacturers (dropdown for manual grants) + existing grants.
@@ -157,10 +156,8 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
   const manufacturers = mfrs.map((m) => ({ serviceId: m.id, name: m.partner.companyName }))
   const nameByService = new Map(manufacturers.map((m) => [m.serviceId, m.name]))
 
-  const grantRows = await (prisma as unknown as {
-    manufacturerFeeGrant: { findMany: (a: unknown) => Promise<Array<{ id: string; partnerServiceId: string; feeBps: number; startsAt: Date; endsAt: Date; revokedAt: Date | null }>> }
-  }).manufacturerFeeGrant
-    .findMany({ orderBy: { createdAt: 'desc' }, take: 200 })
+  const grantRows = await prisma.manufacturerFeeGrant
+    .findMany({ orderBy: { createdAt: 'desc' }, take: 200, select: { id: true, partnerServiceId: true, feeBps: true, startsAt: true, endsAt: true, revokedAt: true } })
     .catch(() => [] as Array<{ id: string; partnerServiceId: string; feeBps: number; startsAt: Date; endsAt: Date; revokedAt: Date | null }>)
   const nowMs = Date.now()
   const grants: FeeGrantRow[] = grantRows.map((g) => ({

@@ -98,9 +98,13 @@ export async function loadStandingPage(): Promise<StandingPage> {
   const live = policyRow?.enabled ?? false
   const baseFeeBps = (await getOrderSettings().catch(() => null))?.productionFeeBps ?? 500
 
-  // MM-7 — global fee-grace policy (cast-guarded until the migration lands).
-  const pg = policyRow as unknown as { feeGraceEnabled?: boolean; feeGraceValue?: number; feeGraceUnit?: GraceUnit; feeGraceFeeBps?: number } | null
-  const grace = { enabled: pg?.feeGraceEnabled ?? false, value: pg?.feeGraceValue ?? 0, unit: (pg?.feeGraceUnit ?? 'MONTHS') as GraceUnit, feeBps: pg?.feeGraceFeeBps ?? 0 }
+  // MM-7 — global fee-grace policy.
+  const grace = {
+    enabled: policyRow?.feeGraceEnabled ?? false,
+    value: policyRow?.feeGraceValue ?? 0,
+    unit: (policyRow?.feeGraceUnit ?? 'MONTHS') as GraceUnit,
+    feeBps: policyRow?.feeGraceFeeBps ?? 0,
+  }
   const now = new Date()
 
   const feeLadder: StandingPage['feeLadder'] = [
@@ -120,15 +124,13 @@ export async function loadStandingPage(): Promise<StandingPage> {
   if (services.length === 0) return empty
   const svcIdList = services.map((s) => s.id)
 
-  // MM-7 — activation anchor (global grace) + manual grants (both cast-guarded).
+  // MM-7 — activation anchor (global grace) + manual grants.
   const activatedAt =
-    (await (prisma as unknown as { partner: { findUnique: (a: unknown) => Promise<{ activatedAt: Date | null } | null> } }).partner
+    (await prisma.partner
       .findUnique({ where: { id: access.partnerId }, select: { activatedAt: true } })
       .catch(() => null))?.activatedAt ?? null
-  const allGrants = await (prisma as unknown as {
-    manufacturerFeeGrant: { findMany: (a: unknown) => Promise<Array<{ partnerServiceId: string; feeBps: number; startsAt: Date; endsAt: Date; revokedAt: Date | null }>> }
-  }).manufacturerFeeGrant
-    .findMany({ where: { partnerServiceId: { in: svcIdList }, revokedAt: null } })
+  const allGrants = await prisma.manufacturerFeeGrant
+    .findMany({ where: { partnerServiceId: { in: svcIdList }, revokedAt: null }, select: { partnerServiceId: true, feeBps: true, startsAt: true, endsAt: true, revokedAt: true } })
     .catch(() => [] as Array<{ partnerServiceId: string; feeBps: number; startsAt: Date; endsAt: Date; revokedAt: Date | null }>)
 
   const views: StandingView[] = []
