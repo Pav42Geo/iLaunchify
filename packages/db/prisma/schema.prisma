@@ -770,6 +770,8 @@ model CreatorProfile {
   // Relations
   user                     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   brands                   Brand[]
+  // Favorites — private per-creator saved list (docs/FAVORITES_MANAGEMENT.md)
+  favorites                Favorite[]
   createdAt                DateTime         @default(now())
   updatedAt                DateTime         @updatedAt
 }
@@ -1957,6 +1959,8 @@ model Product {
   packagingComponents     PackagingComponent[]
   // Slice C7.b — partner-bundled accessories
   accessories             ProductAccessory[]
+  // Favorites — creators who saved this own product (docs/FAVORITES_MANAGEMENT.md)
+  favorites               Favorite[]
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -4093,6 +4097,8 @@ model ProductTemplate {
   // Phrase engine (2026-06-05)
   phrases                    ProductTemplatePhrase[]
   phraseAssignmentAudits     PhraseAssignmentAudit[]
+  // Favorites — creators who saved this template (docs/FAVORITES_MANAGEMENT.md)
+  favorites                  Favorite[]
   createdAt                  DateTime                      @default(now())
   updatedAt                  DateTime                      @updatedAt
 
@@ -9110,4 +9116,42 @@ model PartnerRiskFeature {
   featuresJson     Json
 
   @@index([partnerServiceId, computedAt])
+}
+
+// =============================================================================
+// FAVORITES — private per-creator saved list (docs/FAVORITES_MANAGEMENT.md)
+// =============================================================================
+// A join row owned by CreatorProfile, so favorites are private by construction.
+// Two nullable FKs + a `kind` discriminator (not a stringly-typed polymorphic
+// id) to keep referential integrity + cascade deletes. Exactly one of
+// productTemplateId / productId is set, matching `kind` (enforced in the server
+// action). Collections are P1 — intentionally not modelled yet.
+
+enum FavoritableType {
+  PRODUCT_TEMPLATE // a marketplace ProductTemplate (customize later)
+  PRODUCT // the creator's own Product (quick access + reorder)
+}
+
+model Favorite {
+  id        String          @id @default(uuid())
+  creatorId String // owner = CreatorProfile.id
+  kind      FavoritableType
+
+  // Exactly one is set, matching `kind`. Both nullable to keep the migration
+  // additive; the server action enforces the XOR + the correct column per kind.
+  productTemplateId String?
+  productId         String?
+
+  note      String? // optional private creator note ("for Q4 launch")
+  createdAt DateTime @default(now())
+
+  creator         CreatorProfile   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  productTemplate ProductTemplate? @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // One favorite per (creator, target). Two partial-unique indexes because the
+  // target lives in one of two columns; a null column never collides.
+  @@unique([creatorId, productTemplateId])
+  @@unique([creatorId, productId])
+  @@index([creatorId, kind])
 }
