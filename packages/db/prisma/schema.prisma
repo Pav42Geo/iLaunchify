@@ -1192,6 +1192,12 @@ model PartnerService {
   partnerId                        String
   type                             ServiceType
   status                           ServiceStatus                     @default(DRAFT)
+  // D8 per-service go-live (Pavel 2026-07-08): stamped when this service's
+  // Activation Setup track is complete. A service goes live (DRAFT→ACTIVE) only
+  // when BOTH the partner is admin-approved AND this is set (the hybrid gate).
+  // Lets the admin approve path flip only activation-complete services without
+  // importing the partner-app activation engine.
+  activationCompletedAt            DateTime?
   // Capability shape varies by type; validated via Zod per-type
   capabilities                     Json
   // Disclosure preference per service (per docs/USER_ROLES.md decision 2026-05-18)

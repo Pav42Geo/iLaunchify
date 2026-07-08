@@ -30,6 +30,16 @@ export {
   assertPartnerTransition,
 } from './partner-fsm'
 export {
+  NOMINATION_ALLOWED_TRANSITIONS,
+  isNominationTransitionAllowed,
+  assertNominationTransition,
+} from './nomination-fsm'
+export {
+  SERVICE_ALLOWED_TRANSITIONS,
+  isServiceTransitionAllowed,
+  assertServiceTransition,
+} from './service-fsm'
+export {
   transitionDispatch,
   assertDispatchTransition,
   DEFAULT_ACCEPT_WINDOW_HOURS,
