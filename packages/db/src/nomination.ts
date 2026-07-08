@@ -33,14 +33,14 @@ type NominationServiceType = 'MANUFACTURING' | 'COPACKING' | 'LABEL_PRINTING' | 
  * this into checkout/routing is a pure no-op until an admin flips the switch.
  */
 export async function getActiveNominatedServiceId(
-  nominatorUserId: string,
+  nominatorPartnerId: string,
   serviceType: NominationServiceType,
 ): Promise<string | null> {
   if (!(await isNominationEnabled())) return null // gate — fails closed
 
   const nomination = await prisma.partnerNomination
     .findFirst({
-      where: { nominatorUserId, serviceType, status: 'ACTIVE' },
+      where: { nominatorPartnerId, serviceType, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
       select: { nominatedPartnerId: true },
     })
@@ -58,6 +58,8 @@ export async function getActiveNominatedServiceId(
 
 export interface NominationConsoleRow {
   id: string
+  nominatorPartnerId: string | null
+  nominatorPartnerName: string | null
   nominatorUserId: string
   nominatorEmail: string | null
   nominatedPartnerId: string
@@ -92,6 +94,7 @@ export async function listAllNominations(limit = 100): Promise<NominationConsole
       consentAt: true,
       createdAt: true,
       nominatedPartner: { select: { companyName: true } },
+      nominatorPartner: { select: { companyName: true } },
     },
   })
 
@@ -103,6 +106,8 @@ export async function listAllNominations(limit = 100): Promise<NominationConsole
 
   return noms.map((n) => ({
     id: n.id,
+    nominatorPartnerId: n.nominatorPartnerId ?? null,
+    nominatorPartnerName: n.nominatorPartner?.companyName ?? null,
     nominatorUserId: n.nominatorUserId,
     nominatorEmail: emailById.get(n.nominatorUserId) ?? null,
     nominatedPartnerId: n.nominatedPartnerId,

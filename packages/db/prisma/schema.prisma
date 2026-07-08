@@ -971,6 +971,7 @@ model Partner {
   activationSteps         PartnerActivationStep[]       @relation("PartnerActivationSteps")
   agreementSignatures     PartnerAgreementSignature[]   @relation("PartnerAgreementSignatures")
   nominations             PartnerNomination[]           @relation("PartnerNominations")
+  nominationsMade         PartnerNomination[]           @relation("PartnerNominationsMade")
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 }
@@ -9287,7 +9288,12 @@ enum NominationStatus {
 /// the nominator accepts responsibility for its directed choice at pin time.
 model PartnerNomination {
   id                 String               @id @default(uuid())
-  nominatorUserId    String // the creator/manufacturer user who nominated
+  // The nominator is a MANUFACTURER ORG (Partner) directing a downstream co-partner
+  // for a leg it doesn't service itself. Keyed by the org so team members share it
+  // and routing resolves by the manufacturer Partner on the order. nominatorUserId
+  // records WHO acted (consent/audit).
+  nominatorPartnerId String?
+  nominatorUserId    String // the manufacturer user who acted (consent record)
   nominatedPartnerId String
   serviceType        ServiceType? // the leg nominated for; null = any service
   visibility         NominationVisibility @default(PRIVATE_TO_INVITER)
@@ -9301,8 +9307,10 @@ model PartnerNomination {
   rejectedReason String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  nominatedPartner Partner @relation("PartnerNominations", fields: [nominatedPartnerId], references: [id], onDelete: Cascade)
+  nominatedPartner Partner  @relation("PartnerNominations", fields: [nominatedPartnerId], references: [id], onDelete: Cascade)
+  nominatorPartner Partner? @relation("PartnerNominationsMade", fields: [nominatorPartnerId], references: [id], onDelete: Cascade)
 
+  @@index([nominatorPartnerId])
   @@index([nominatorUserId])
   @@index([nominatedPartnerId])
 }

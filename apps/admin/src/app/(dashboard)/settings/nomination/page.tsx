@@ -148,7 +148,7 @@ export default async function NominationSettingPage() {
                         {n.nominatedPartnerName ?? n.nominatedPartnerId.slice(0, 8)}
                       </td>
                       <td className="py-2.5 pr-3 text-ink-600">
-                        {n.nominatorEmail ?? n.nominatorUserId.slice(0, 8)}
+                        {n.nominatorPartnerName ?? n.nominatorEmail ?? n.nominatorUserId.slice(0, 8)}
                       </td>
                       <td className="py-2.5 pr-3 text-ink-600">{n.serviceType ?? 'any'}</td>
                       <td className="py-2.5 pr-3 text-ink-600">
