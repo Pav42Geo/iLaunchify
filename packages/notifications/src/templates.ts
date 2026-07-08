@@ -16,6 +16,8 @@ export interface TemplateData {
   SECTION_VERIFIED: { sectionType: string; companyName?: string }
   SECTION_NEEDS_CHANGES: { sectionType: string; companyName?: string; notes?: string }
   PARTNER_ACTIVATED: { companyName?: string }
+  PARTNER_INVITED: { companyName?: string; onboardingUrl?: string }
+  PARTNER_APPLICATION_RECEIVED: { companyName?: string }
   PACKAGING_APPROVED: { name: string; category?: string }
   PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }

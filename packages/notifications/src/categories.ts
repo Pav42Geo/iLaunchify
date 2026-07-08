@@ -117,6 +117,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   SECTION_VERIFIED: 'account',
   SECTION_NEEDS_CHANGES: 'account',
   PARTNER_ACTIVATED: 'account',
+  PARTNER_INVITED: 'account',
+  PARTNER_APPLICATION_RECEIVED: 'account',
   PARTNER_APPLIED: 'account',
   PARTNER_SUBMITTED: 'account',
   PACKAGING_APPROVED: 'account',

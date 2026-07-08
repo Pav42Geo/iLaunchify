@@ -11,19 +11,20 @@ import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
-export type SetStepResult = { ok: true } | { ok: false; error: string }
-
+// Returns void so it can be used directly as a <form action> (React requires
+// form actions to resolve to void). Failures are silent no-ops (nothing to
+// revalidate); a programmatic caller can add a result-returning wrapper later.
 export async function setActivationStepComplete(
   stepKey: string,
   complete: boolean,
-): Promise<SetStepResult> {
+): Promise<void> {
   const user = await requireUser()
   // Ownership: only the acting partner may change their own activation state.
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
     select: { id: true },
   })
-  if (!partner) return { ok: false, error: 'Partner not found' }
+  if (!partner) return
 
   if (complete) {
     await prisma.partnerActivationStep.upsert({
@@ -46,5 +47,4 @@ export async function setActivationStepComplete(
   })
 
   revalidatePath('/activation')
-  return { ok: true }
 }

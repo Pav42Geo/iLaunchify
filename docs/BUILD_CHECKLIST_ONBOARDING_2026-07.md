@@ -54,7 +54,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [x] `PartnerActivationStep` (activation completion — `stepKey` matches the engine) + `Partner.activationSteps` back-relation — **pushed + wired**: `/activation` reads real completion + per-step "Mark done" server action (persist + audit), invariants `--strict` green.
 - [~] `PartnerAgreement` (versioned text) + `PartnerAgreementSignature` (tamper-evident e-sign record) + `Partner.agreementSignatures`
 - [~] `PartnerAccessSetting` singleton + `enum PartnerAccessMode { PRIVATE PUBLIC }`
-- [~] `NotificationEvent` += `PARTNER_INVITED`, `PARTNER_APPLICATION_RECEIVED`
+- [x] `NotificationEvent` += `PARTNER_INVITED`, `PARTNER_APPLICATION_RECEIVED` — **registered** across the notification maps (`TemplateData`, `EVENT_CATEGORY`='account', `REQUIRED_PAYLOAD_KEYS`, `EVENT_TOKEN_PALETTE` incl. `onboardingUrl`). Admin-editable; dispatcher-ready. (Adding a `NotificationEvent` REQUIRES all 4 exhaustive maps — gotcha noted below.)
 - [x] **Ran** `pnpm db:push && pnpm db:generate` (2026-07-07) — client fresh, freshness check green. Actions being wired next: activation save **[x]**, contract sign, access-mode toggle, invite email.
 
 ## 4. P1 — the visible upgrade (build to prototype)
@@ -88,4 +88,6 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [ ] `pnpm check:invariants` green
 - [ ] `node scripts/run-vitest-suites.mjs` for pure engines
 - [ ] Commit + push the handed-off git command; watch for two-agent hot-file collisions
+- **GOTCHA (notifications):** adding a `NotificationEvent` enum value requires entries in ALL 4 exhaustive maps or `tsc` fails — `packages/notifications/src/{templates.ts (TemplateData), categories.ts (EVENT_CATEGORY), payload-required.ts, template-tokens.ts}`. The `renderTemplate` switch has a `default:` so no case needed.
+- **GOTCHA (form actions):** a `<form action={fn}>` server action must resolve to `void`/`Promise<void>` — return `void`, not a result object.
 - **GOTCHA (2026-07-07):** do NOT colocate `*.test.ts` (vitest) inside a Next **app** `src/` — some apps (marketing) type-check test files but lack `vitest` types → `tsc` fails. Pure app-lib modules are node-verified instead; to get real harness coverage, put the module in a `packages/*` dir (which has vitest + runs in `run-vitest-suites`). Package tests (e.g. `packages/orders/*.test.ts`) are fine.
