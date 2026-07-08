@@ -254,6 +254,22 @@ export function renderTemplate<E extends NotificationEvent>(
         link: '/dashboard',
       }
     }
+    case 'PARTNER_INVITED': {
+      const d = data as TemplateData['PARTNER_INVITED']
+      return {
+        title: `You're invited to join iLaunchify${d.companyName ? `, ${d.companyName}` : ''}`,
+        body: "We reviewed your application and would love to have you in our production network. Click below to start your onboarding — it takes about 15 minutes.",
+        link: d.onboardingUrl ?? '/onboarding',
+      }
+    }
+    case 'PARTNER_APPLICATION_RECEIVED': {
+      const d = data as TemplateData['PARTNER_APPLICATION_RECEIVED']
+      return {
+        title: 'We received your application',
+        body: `Thanks${d.companyName ? `, ${d.companyName}` : ''} — your application to become an iLaunchify production partner is in. We review every partner by hand; if it's a fit, you'll get a private invite to onboard, usually within a few business days.`,
+        link: '/',
+      }
+    }
     case 'DISPATCH_RECEIVED': {
       const d = data as TemplateData['DISPATCH_RECEIVED']
       return {

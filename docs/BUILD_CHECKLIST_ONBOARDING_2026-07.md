@@ -71,7 +71,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [ ] Public **"Become a partner" application form** → creates `Partner` LEAD → `/admin/leads` — prototype "① Application"
 - [~] `partnerCta()` helper — pure resolver BUILT + node-verified (`apps/marketing/src/lib/partner-cta.ts`; PRIVATE→apply/"Become a partner", PUBLIC→signup, fails closed to PRIVATE). Wiring to the mode setting + across CTAs pending.
 - [ ] Cloudflare **Turnstile** on the application form + `/login`
-- [~] `PARTNER_INVITED` — event registered + **email now FIRES from `qualifyLead`** (`dispatchNotification`, best-effort, `data: { companyName, onboardingUrl }`). Pending: `PARTNER_APPLICATION_RECEIVED` ack wire-up + seeded default template copy.
+- [x] `PARTNER_INVITED` — event registered + **default render copy** (title/body/CTA→onboardingUrl) + **email FIRES from `qualifyLead`** (`dispatchNotification`, best-effort). `PARTNER_APPLICATION_RECEIVED` ack also has default copy; its dispatch wires up with the public application form (below). Admin can override both templates now.
 - [ ] Seed default copy for all ~55 events + the 3 new partner templates (D9)
 - [ ] Nomination: "invite my partner" flow → official onboarding → auto-pin on `OPERATIONALLY_CONFIGURED` + `excludeFromAutoRotation`
 - [ ] Nomination controls (§6.5): `NominationConsent` stamp, governed reroute/override, price surfacing, merit force-unpin, `visibility` flag
