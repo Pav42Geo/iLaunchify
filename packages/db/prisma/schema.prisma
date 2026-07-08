@@ -888,12 +888,25 @@ enum PlanAudience {
 // PARTNER & PARTNER SERVICE
 // =============================================================================
 
+/// How a partner gets work (Pavel 2026-07-08). PUBLIC = discoverable in the
+/// marketplace + eligible for auto-rotation + nominatable. INVITED_ONLY = private
+/// operator: invisible in the marketplace and excluded from auto-rotation, works
+/// ONLY through direct nominations. Protects a small invited co-partner from the
+/// open-market firehose. Default PUBLIC; invited co-partners default INVITED_ONLY.
+enum PartnerParticipationMode {
+  PUBLIC
+  INVITED_ONLY
+}
+
 model Partner {
   id                      String                        @id @default(cuid())
   userId                  String                        @unique
   companyName             String
   legalName               String
   status                  PartnerStatus                 @default(DRAFT)
+  // Market participation — how this partner gets work. See PartnerParticipationMode.
+  // INVITED_ONLY = private operator (nomination-only, no rotation, no marketplace).
+  participationMode       PartnerParticipationMode      @default(PUBLIC)
   // Lead capture metadata
   leadSource              String?
   leadNotes               String?

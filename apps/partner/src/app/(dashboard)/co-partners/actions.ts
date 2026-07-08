@@ -174,6 +174,10 @@ export async function inviteCoPartner(input: {
           companyName,
           legalName: companyName,
           status: 'INVITED',
+          // Invited co-partners start PRIVATE: they serve the inviter via the
+          // nomination, and are not thrown into rotation/marketplace. They can
+          // switch to PUBLIC later when ready for open-market volume.
+          participationMode: 'INVITED_ONLY',
           leadSource: 'manufacturer-nomination',
           leadNotes: JSON.stringify({
             invitedByPartnerId: nominatorPartnerId,
