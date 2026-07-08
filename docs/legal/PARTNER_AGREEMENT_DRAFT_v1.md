@@ -62,6 +62,20 @@ This Partner Agreement ("Agreement") is between **iLaunchify, Inc.** ("iLaunchif
 
 *[Counsel: this is the D7 core. Confirm the directed-choice allocation, the "traceable to the directed choice vs. platform orchestration" line, and that §6.2(d) does not create assumed-duty exposure under Restatement (Second) §324A.]*
 
+## 6A. Participation Mode & Public Operator Terms
+
+6A.1 **Participation Mode.** Partner elects a **Participation Mode** governing how Orders reach it:
+  (a) **Invited-only (private operator)** — Partner receives Production Legs **solely through direct Nominations**. Partner is **excluded from automated rotation** and is **not listed in Platform discovery**. This is the default for a Partner that joined via a manufacturer's invitation.
+  (b) **Public (open-market operator)** — Partner is discoverable on the Platform, is **eligible for automated rotation**, and may be nominated. Partner may change Mode at any time; a change to Public is effective only upon the acknowledgment in §6A.3.
+
+6A.2 **Public Operator obligations.** While in Public Mode, Partner: (i) will receive Orders **automatically allocated** by the rotation engine without per-Order pre-selection; (ii) will **accept and fulfill** allocated Orders within the applicable acceptance windows, MOQ, lead times, and service levels; (iii) acknowledges that **declines, late acceptance, and missed or failed Orders affect Partner's merit standing and may carry the consequences** set out in the fee schedule and merit policy; and (iv) **represents that its stated capacity, MOQ, and lead times are accurate and current.**
+
+6A.3 **Clickwrap acknowledgment (no separate document).** Switching to Public Mode requires Partner to **affirmatively acknowledge these Public Operator Terms and confirm current capacity** at the time of the switch. iLaunchify records the acknowledgment (terms version, timestamp, IP, and user agent) as an electronic record under §15. **No separate signed instrument is required** — these Terms are part of this Agreement, which Partner has already executed.
+
+6A.4 **Reversibility.** Partner may return to Invited-only Mode at any time; **Orders already in progress are honored** through completion. Reverting removes Partner from future rotation and discovery.
+
+*[Counsel: confirm the clickwrap-on-executed-agreement mechanism is sufficient to bind the Public Operator obligations under ESIGN/UETA (§15), and that the capacity representation in 6A.2(iv) is adequately evidenced by the recorded acknowledgment.]*
+
 ## 7. Fees, payment & anti-circumvention
 
 7.1 **Fees & payout.** iLaunchify collects Platform-originated order payments and pays Partner per the applicable fee schedule and payout terms; Partner connects a payout account.

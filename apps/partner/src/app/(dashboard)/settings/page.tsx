@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   Warehouse,
   Truck,
+  Route,
 } from 'lucide-react'
 import { prisma, getBillingProfile } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
@@ -29,7 +30,10 @@ const PILL_TONE: Record<PillTone, string> = {
 export default async function SettingsPage() {
   const user = await requireUser()
   const [partner, dbUser, billing] = await Promise.all([
-    prisma.partner.findUnique({ where: { userId: user.id }, select: { companyName: true } }),
+    prisma.partner.findUnique({
+      where: { userId: user.id },
+      select: { companyName: true, participationMode: true },
+    }),
     prisma.user.findUnique({
       where: { id: user.id },
       select: { email: true, stripeAccountId: true, stripeAccountStatus: true },
@@ -179,6 +183,22 @@ export default async function SettingsPage() {
           href="/settings/fulfillment"
           cta="Set availability"
           description="Blackout dates that pause routing to your facility (all services), plus receiving requirements for Fulfillment Center facilities."
+        />
+      </Section>
+
+      {/* Market participation */}
+      <Section title="Market">
+        <SettingCard
+          icon={<Route className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Market participation"
+          href="/settings/participation"
+          cta="Manage participation"
+          description="Choose whether you take open-market orders (auto-rotation + discovery) or work privately, only through direct nominations. Switching to open-market requires accepting the Public Operator Terms."
+          pill={
+            partner.participationMode === 'PUBLIC'
+              ? { label: 'Open market', tone: 'brand' }
+              : { label: 'Invited-only', tone: 'neutral' }
+          }
         />
       </Section>
 

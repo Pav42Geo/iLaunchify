@@ -14,9 +14,7 @@ import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-
-/** Current Public Operator Terms version — bump when the terms materially change. */
-export const PUBLIC_OPERATOR_TERMS_VERSION = 'public-operator-v1-2026-07'
+import { PUBLIC_OPERATOR_TERMS_VERSION } from './participation-terms'
 
 export type ParticipationResult = { ok: true } | { ok: false; error: string }
 
