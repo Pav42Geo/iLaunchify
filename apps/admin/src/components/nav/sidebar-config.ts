@@ -279,6 +279,7 @@ const PRIMARY: SidebarRegion = {
         // labeled "Risk Center".
         { kind: 'item', label: 'Risk Center', icon: ShieldAlert, href: '/risk/detectors', capability: 'risk:admin' },
         { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy', capability: 'tickets:admin' },
+        { kind: 'item', label: 'Partner Access', icon: Globe, href: '/settings/partner-access', capability: 'platform:admin' },
         {
           kind: 'group',
           label: 'Order Settings',
