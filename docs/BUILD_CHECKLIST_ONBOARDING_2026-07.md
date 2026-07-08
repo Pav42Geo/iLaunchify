@@ -67,7 +67,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [~] Activation Setup UI — v1 **server-rendered overview BUILT** (`apps/partner/src/app/(dashboard)/activation/page.tsx`): reads partner services → composes union via the engine → grouped by service with per-service go-live + "→ where this lands" routing tags, on the partner-v2 chrome. Color-safe + invariants clean; needs `pnpm type-check`. Pending: per-step forms, completion persistence (schema add), nav wiring, FSM-stage gating.
 
 ## 5. P2 — strategic features (build to prototype)
-- [~] `PartnerAccessMode: PRIVATE|PUBLIC` admin setting — **reader + toggle BUILT**: `getPartnerAccessMode()`/`isPartnerAccessPrivate()` in `@ilaunchify/db` (fails closed to PRIVATE) + `setPartnerAccessMode()` admin action (audited). Pending: admin UI toggle + wiring `partnerCta()` to read the mode.
+- [~] `PartnerAccessMode: PRIVATE|PUBLIC` admin setting — **reader + audited toggle + admin UI BUILT**: `getPartnerAccessMode()`/`isPartnerAccessPrivate()` (`@ilaunchify/db`, fails closed) + `setPartnerAccessMode()` action (gated `platform:admin`, audited) + server-rendered admin page (`/settings/partner-access`, form-button toggle, no client component). Pending: sidebar nav link + wiring `partnerCta()` to read the mode in the marketing CTAs (Code's zone).
 - [ ] Public **"Become a partner" application form** → creates `Partner` LEAD → `/admin/leads` — prototype "① Application"
 - [~] `partnerCta()` helper — pure resolver BUILT + node-verified (`apps/marketing/src/lib/partner-cta.ts`; PRIVATE→apply/"Become a partner", PUBLIC→signup, fails closed to PRIVATE). Wiring to the mode setting + across CTAs pending.
 - [ ] Cloudflare **Turnstile** on the application form + `/login`

@@ -6,12 +6,12 @@
 // the partnerCta() label/href swap + onboarding entry gating.
 
 import { prisma } from '@ilaunchify/db'
-import { requireRole } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
 export async function setPartnerAccessMode(mode: 'PRIVATE' | 'PUBLIC'): Promise<void> {
-  const admin = await requireRole('ADMIN')
+  const admin = await requireCapability('platform:admin')
 
   const existing = await prisma.partnerAccessSetting.findUnique({
     where: { id: 'singleton' },
