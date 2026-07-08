@@ -565,24 +565,29 @@ export async function getMarketplaceFavoriteRows(): Promise<MarketplaceFavoriteR
 
 // ---- Folders (organize favorites) ----------------------------------------
 
-async function currentCreatorProfileId(): Promise<string | null> {
+async function currentCreatorCtx(): Promise<{ userId: string; creatorId: string } | null> {
   const session = await getMarketingSession()
   if (!session?.user || session.user.role !== 'CREATOR') return null
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId: session.user.id },
     select: { id: true },
   })
-  return profile?.id ?? null
+  if (!profile) return null
+  return { userId: session.user.id, creatorId: profile.id }
 }
 
 export async function createCollection(name: string): Promise<{ ok: boolean; id?: string }> {
-  const creatorId = await currentCreatorProfileId()
-  if (!creatorId || !name.trim()) return { ok: false }
+  const ctx = await currentCreatorCtx()
+  if (!ctx || !name.trim()) return { ok: false }
   try {
     const c = await prisma.favoriteCollection.create({
-      data: { creatorId, name: name.trim().slice(0, 40) },
+      data: { creatorId: ctx.creatorId, name: name.trim().slice(0, 40) },
       select: { id: true },
     })
+    await logAuditAs(
+      { id: ctx.userId, role: 'CREATOR' },
+      { entityType: 'FavoriteCollection', entityId: c.id, action: 'COLLECTION_CREATED', payload: { name: name.trim() } },
+    )
     revalidatePath('/marketplace/favorites')
     return { ok: true, id: c.id }
   } catch {
@@ -591,10 +596,14 @@ export async function createCollection(name: string): Promise<{ ok: boolean; id?
 }
 
 export async function deleteCollection(id: string): Promise<{ ok: boolean }> {
-  const creatorId = await currentCreatorProfileId()
-  if (!creatorId) return { ok: false }
+  const ctx = await currentCreatorCtx()
+  if (!ctx) return { ok: false }
   try {
-    await prisma.favoriteCollection.deleteMany({ where: { id, creatorId } })
+    await prisma.favoriteCollection.deleteMany({ where: { id, creatorId: ctx.creatorId } })
+    await logAuditAs(
+      { id: ctx.userId, role: 'CREATOR' },
+      { entityType: 'FavoriteCollection', entityId: id, action: 'COLLECTION_DELETED' },
+    )
     revalidatePath('/marketplace/favorites')
     return { ok: true }
   } catch {
@@ -603,13 +612,17 @@ export async function deleteCollection(id: string): Promise<{ ok: boolean }> {
 }
 
 export async function renameCollection(input: { id: string; name: string }): Promise<{ ok: boolean }> {
-  const creatorId = await currentCreatorProfileId()
-  if (!creatorId || !input.name.trim()) return { ok: false }
+  const ctx = await currentCreatorCtx()
+  if (!ctx || !input.name.trim()) return { ok: false }
   try {
     await prisma.favoriteCollection.updateMany({
-      where: { id: input.id, creatorId },
+      where: { id: input.id, creatorId: ctx.creatorId },
       data: { name: input.name.trim().slice(0, 40) },
     })
+    await logAuditAs(
+      { id: ctx.userId, role: 'CREATOR' },
+      { entityType: 'FavoriteCollection', entityId: input.id, action: 'COLLECTION_RENAMED', payload: { name: input.name.trim() } },
+    )
     revalidatePath('/marketplace/favorites')
     return { ok: true }
   } catch {
@@ -622,14 +635,18 @@ export async function moveFavoriteToCollection(input: {
   targetId: string
   collectionId: string | null
 }): Promise<{ ok: boolean }> {
-  const creatorId = await currentCreatorProfileId()
-  if (!creatorId) return { ok: false }
+  const ctx = await currentCreatorCtx()
+  if (!ctx) return { ok: false }
   try {
     const where =
       input.kind === 'PRODUCT_TEMPLATE'
-        ? { creatorId_productTemplateId: { creatorId, productTemplateId: input.targetId } }
-        : { creatorId_productId: { creatorId, productId: input.targetId } }
+        ? { creatorId_productTemplateId: { creatorId: ctx.creatorId, productTemplateId: input.targetId } }
+        : { creatorId_productId: { creatorId: ctx.creatorId, productId: input.targetId } }
     await prisma.favorite.update({ where, data: { collectionId: input.collectionId } })
+    await logAuditAs(
+      { id: ctx.userId, role: 'CREATOR' },
+      { entityType: 'Favorite', entityId: input.targetId, action: 'FAVORITE_MOVED', payload: { kind: input.kind, collectionId: input.collectionId } },
+    )
     revalidatePath('/marketplace/favorites')
     return { ok: true }
   } catch {
@@ -687,6 +704,10 @@ export async function setFavoriteNote(input: {
         ? { creatorId_productTemplateId: { creatorId: profile.id, productTemplateId: input.targetId } }
         : { creatorId_productId: { creatorId: profile.id, productId: input.targetId } }
     await prisma.favorite.update({ where, data: { note: input.note.slice(0, 280) || null } })
+    await logAuditAs(
+      { id: session.user.id, role: 'CREATOR' },
+      { entityType: 'Favorite', entityId: input.targetId, action: 'FAVORITE_NOTE_SET', payload: { kind: input.kind, via: 'favorites-page' } },
+    )
     revalidatePath('/marketplace/favorites')
     return { ok: true }
   } catch {
