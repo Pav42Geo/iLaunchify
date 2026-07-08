@@ -56,6 +56,42 @@ export async function getActiveNominatedServiceId(
   return service?.id ?? null
 }
 
+export interface InvitationContext {
+  /** The nominating manufacturer's company name (if resolvable). */
+  inviterName: string | null
+  /** ServiceType legs the partner was invited for. */
+  legs: string[]
+}
+
+/**
+ * If this partner was invited as a co-partner and hasn't gone live yet, the
+ * invitation context for their onboarding banner (who invited them, for which
+ * legs). Null when there's no pending invitation. Read-only, ungated (an invited
+ * partner should always see why they're here).
+ */
+export async function getInvitationContext(
+  nominatedPartnerId: string,
+): Promise<InvitationContext | null> {
+  const noms = await prisma.partnerNomination
+    .findMany({
+      where: {
+        nominatedPartnerId,
+        status: { in: ['PENDING_ONBOARDING', 'PENDING_ACTIVATION'] },
+      },
+      select: {
+        serviceType: true,
+        nominatorPartner: { select: { companyName: true } },
+      },
+    })
+    .catch(() => [] as { serviceType: string | null; nominatorPartner: { companyName: string } | null }[])
+  if (noms.length === 0) return null
+
+  const legs = [...new Set(noms.map((n) => n.serviceType).filter((x): x is string => !!x))]
+  const inviterName =
+    noms.find((n) => n.nominatorPartner?.companyName)?.nominatorPartner?.companyName ?? null
+  return { inviterName, legs }
+}
+
 export interface NominationConsoleRow {
   id: string
   nominatorPartnerId: string | null

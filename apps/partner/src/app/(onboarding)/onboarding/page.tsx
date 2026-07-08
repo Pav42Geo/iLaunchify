@@ -11,11 +11,18 @@
 // Legacy step pages at /onboarding/company, /service, /documents, /stripe,
 // /review still exist for back-compat but the primary UX is now this accordion.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getInvitationContext } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { OnboardingAccordion } from '@/components/onboarding/OnboardingAccordion'
 import { capsFromJson } from '@/components/onboarding/sections/capabilities'
 import { getOnboardingState } from './actions'
+
+const LEG_LABEL: Record<string, string> = {
+  LABEL_PRINTING: 'Label printing',
+  COPACKING: 'Co-packing',
+  MANUFACTURING: 'Manufacturing',
+  WAREHOUSE: 'Fulfillment',
+}
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Set up your partner account — iLaunchify' }
@@ -43,6 +50,11 @@ export default async function OnboardingPage() {
   if (!partner) return null
 
   const state = await getOnboardingState()
+
+  // Invited co-partner? Show a banner explaining who invited them + for which
+  // legs. The legs are already pre-selected below (their DRAFT services exist);
+  // this just tells them why — they still complete standard onboarding.
+  const invitation = await getInvitationContext(partner.id)
 
   // Load Market + Region options for Section 1's pickers.
   // Markets: hide COMING_SOON so partners don't try to declare interest in CA before V1.1.
@@ -107,9 +119,29 @@ export default async function OnboardingPage() {
       : '') as string,
   }
 
+  const invitedLegLabels = invitation?.legs.map((l) => LEG_LABEL[l] ?? l) ?? []
+
   return (
-    <OnboardingAccordion
-      companyName={partner.companyName}
+    <>
+      {invitation && (
+        <div className="mb-4 rounded-2xl border border-pink-200 bg-pink-50 px-5 py-4">
+          <p className="text-[13px] font-semibold text-pink-800">
+            {invitation.inviterName
+              ? `${invitation.inviterName} invited you to iLaunchify`
+              : 'You were invited to iLaunchify as a co-partner'}
+            {invitedLegLabels.length > 0 && (
+              <> as a {invitedLegLabels.join(' & ')} partner.</>
+            )}
+          </p>
+          <p className="mt-1 text-[13px] text-pink-800/80">
+            We’ve pre-selected {invitedLegLabels.length > 1 ? 'those services' : 'that service'} below.
+            Complete your onboarding to start working together — you can also add other services you
+            offer. You’ll go live for a service once you finish its setup.
+          </p>
+        </div>
+      )}
+      <OnboardingAccordion
+        companyName={partner.companyName}
       initialBusiness={{
         targetMarketIds: state?.marketsCert?.map((c) => c.marketId) ?? [],
         primaryRegionId: state?.primaryRegion?.id ?? null,
@@ -120,7 +152,8 @@ export default async function OnboardingPage() {
       initialCaps={initialCaps}
       initialPayment={initialPayment}
       markets={markets}
-      regions={regions}
-    />
+        regions={regions}
+      />
+    </>
   )
 }

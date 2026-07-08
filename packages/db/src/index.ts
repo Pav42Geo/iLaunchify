@@ -197,7 +197,9 @@ export {
   isNominationEnabled,
   getActiveNominatedServiceId,
   listAllNominations,
+  getInvitationContext,
   type NominationConsoleRow,
+  type InvitationContext,
 } from './nomination'
 export {
   createSnapshot,
