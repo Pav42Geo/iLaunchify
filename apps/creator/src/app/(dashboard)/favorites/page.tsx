@@ -5,13 +5,20 @@
 
 import { FavoritesListView } from '@ilaunchify/ui'
 import { marketingUrl } from '@/lib/marketing-url'
-import { getCreatorFavoriteRows, toggleFavorite, setFavoriteNote } from './actions'
+import {
+  getCreatorFavoriteRows,
+  toggleFavorite,
+  setFavoriteNote,
+  createCollection,
+  deleteCollection,
+  moveFavoriteToCollection,
+} from './actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Favorites — iLaunchify' }
 
 export default async function FavoritesPage() {
-  const { templateRows, productRows } = await getCreatorFavoriteRows()
+  const { collections, templateRows, productRows } = await getCreatorFavoriteRows()
 
   return (
     <FavoritesListView
@@ -20,6 +27,10 @@ export default async function FavoritesPage() {
       onRemove={toggleFavorite}
       onSaveNote={setFavoriteNote}
       browseHref={marketingUrl('/marketplace')}
+      collections={collections}
+      onCreateFolder={createCollection}
+      onDeleteFolder={deleteCollection}
+      onMoveToFolder={moveFavoriteToCollection}
     />
   )
 }

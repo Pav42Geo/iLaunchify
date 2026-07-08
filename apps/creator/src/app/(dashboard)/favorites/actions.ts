@@ -11,7 +11,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import type { FavoritesRowData } from '@ilaunchify/ui'
+import type { FavoritesRowData, FavoritesCollection } from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -266,6 +266,7 @@ export async function setFavoriteNote(input: {
 }
 
 export interface CreatorFavoriteRows {
+  collections: FavoritesCollection[]
   templateRows: FavoritesRowData[]
   productRows: FavoritesRowData[]
 }
@@ -282,6 +283,7 @@ export async function getCreatorFavoriteRows(): Promise<CreatorFavoriteRows> {
         createdAt: true,
         note: true,
         priceSnapshotCents: true,
+        collectionId: true,
         productTemplate: {
           select: {
             id: true,
@@ -351,6 +353,7 @@ export async function getCreatorFavoriteRows(): Promise<CreatorFavoriteRows> {
           primaryAction: unavailable ? { label: 'View', href } : { label: 'Customize', href },
           secondaryLinks: sampleAvailable && !unavailable ? [{ label: 'Order sample', href }] : undefined,
           shareUrl: href,
+          collectionId: r.collectionId ?? null,
         })
       } else if (r.kind === 'PRODUCT' && r.product) {
         const p = r.product
@@ -368,13 +371,71 @@ export async function getCreatorFavoriteRows(): Promise<CreatorFavoriteRows> {
           kindTag: { label: 'Mine', tone: 'mine' },
           primaryAction: { label: 'Reorder', href: `/products/${p.id}/checkout` },
           secondaryLinks: [{ label: 'Open in Studio', href: `/products/${p.id}/design/canvas` }],
+          collectionId: r.collectionId ?? null,
         })
       }
     }
 
-    return { templateRows, productRows }
+    const cols = await prisma.favoriteCollection.findMany({
+      where: { creatorId: ctx.creatorId },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, _count: { select: { favorites: true } } },
+    })
+    const collections: FavoritesCollection[] = cols.map((c) => ({ id: c.id, name: c.name, count: c._count.favorites }))
+
+    return { collections, templateRows, productRows }
   } catch {
-    return { templateRows: [], productRows: [] }
+    return { collections: [], templateRows: [], productRows: [] }
+  }
+}
+
+// ---- Folders (organize favorites) ----------------------------------------
+
+export async function createCollection(name: string): Promise<{ ok: boolean; id?: string }> {
+  const ctx = await currentCreatorId()
+  if (!ctx || !name.trim()) return { ok: false }
+  try {
+    const c = await prisma.favoriteCollection.create({
+      data: { creatorId: ctx.creatorId, name: name.trim().slice(0, 40) },
+      select: { id: true },
+    })
+    revalidatePath('/favorites')
+    return { ok: true, id: c.id }
+  } catch {
+    return { ok: false }
+  }
+}
+
+export async function deleteCollection(id: string): Promise<{ ok: boolean }> {
+  const ctx = await currentCreatorId()
+  if (!ctx) return { ok: false }
+  try {
+    // Scope the delete to this creator; favorites fall back to no folder (SetNull).
+    await prisma.favoriteCollection.deleteMany({ where: { id, creatorId: ctx.creatorId } })
+    revalidatePath('/favorites')
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+export async function moveFavoriteToCollection(input: {
+  kind: FavoritableKind
+  targetId: string
+  collectionId: string | null
+}): Promise<{ ok: boolean }> {
+  const ctx = await currentCreatorId()
+  if (!ctx) return { ok: false }
+  try {
+    const where =
+      input.kind === 'PRODUCT_TEMPLATE'
+        ? { creatorId_productTemplateId: { creatorId: ctx.creatorId, productTemplateId: input.targetId } }
+        : { creatorId_productId: { creatorId: ctx.creatorId, productId: input.targetId } }
+    await prisma.favorite.update({ where, data: { collectionId: input.collectionId } })
+    revalidatePath('/favorites')
+    return { ok: true }
+  } catch {
+    return { ok: false }
   }
 }
 

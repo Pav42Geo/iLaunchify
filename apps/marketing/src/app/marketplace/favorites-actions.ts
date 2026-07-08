@@ -11,7 +11,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
-import type { ProductCardProps } from '@ilaunchify/ui'
+import type { ProductCardProps, FavoritesCollection } from '@ilaunchify/ui'
 import { getMarketingSession } from '@/lib/session'
 import { creatorUrl } from '@/lib/app-urls'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
@@ -398,6 +398,7 @@ export interface FavCert {
 export interface FavTemplateRow {
   favoriteId: string
   templateId: string
+  collectionId: string | null
   href: string
   title: string
   icon: string
@@ -416,6 +417,7 @@ export interface FavTemplateRow {
 export interface FavProductRow {
   favoriteId: string
   productId: string
+  collectionId: string | null
   href: string
   reorderHref: string
   title: string
@@ -429,6 +431,7 @@ export interface MarketplaceFavoriteRows {
   count: number
   templateCount: number
   productCount: number
+  collections: FavoritesCollection[]
   templateRows: FavTemplateRow[]
   productRows: FavProductRow[]
 }
@@ -437,6 +440,7 @@ const EMPTY_ROWS: MarketplaceFavoriteRows = {
   count: 0,
   templateCount: 0,
   productCount: 0,
+  collections: [],
   templateRows: [],
   productRows: [],
 }
@@ -459,6 +463,7 @@ export async function getMarketplaceFavoriteRows(): Promise<MarketplaceFavoriteR
         createdAt: true,
         note: true,
         priceSnapshotCents: true,
+        collectionId: true,
         productTemplate: {
           select: {
             id: true,
@@ -503,6 +508,7 @@ export async function getMarketplaceFavoriteRows(): Promise<MarketplaceFavoriteR
         templateRows.push({
           favoriteId: '', // not needed by the row; targetId drives remove
           templateId: t.id,
+          collectionId: r.collectionId ?? null,
           href: `/marketplace/${t.subcategory.category.slug}/${t.subcategory.slug}/${t.slug}`,
           title: t.name,
           icon: iconForNiche(t.name, t.subcategory.category.mainCategory),
@@ -524,6 +530,7 @@ export async function getMarketplaceFavoriteRows(): Promise<MarketplaceFavoriteR
         productRows.push({
           favoriteId: '',
           productId: p.id,
+          collectionId: r.collectionId ?? null,
           href: creatorUrl(`/products/${p.id}/design/canvas`),
           reorderHref: creatorUrl(`/products/${p.id}/checkout`),
           title: p.name,
@@ -536,15 +543,82 @@ export async function getMarketplaceFavoriteRows(): Promise<MarketplaceFavoriteR
       }
     }
 
+    const cols = await prisma.favoriteCollection.findMany({
+      where: { creatorId: profile.id },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, _count: { select: { favorites: true } } },
+    })
+    const collections: FavoritesCollection[] = cols.map((c) => ({ id: c.id, name: c.name, count: c._count.favorites }))
+
     return {
       count: rows.length,
       templateCount: templateRows.length,
       productCount: productRows.length,
+      collections,
       templateRows,
       productRows,
     }
   } catch {
     return EMPTY_ROWS
+  }
+}
+
+// ---- Folders (organize favorites) ----------------------------------------
+
+async function currentCreatorProfileId(): Promise<string | null> {
+  const session = await getMarketingSession()
+  if (!session?.user || session.user.role !== 'CREATOR') return null
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  })
+  return profile?.id ?? null
+}
+
+export async function createCollection(name: string): Promise<{ ok: boolean; id?: string }> {
+  const creatorId = await currentCreatorProfileId()
+  if (!creatorId || !name.trim()) return { ok: false }
+  try {
+    const c = await prisma.favoriteCollection.create({
+      data: { creatorId, name: name.trim().slice(0, 40) },
+      select: { id: true },
+    })
+    revalidatePath('/marketplace/favorites')
+    return { ok: true, id: c.id }
+  } catch {
+    return { ok: false }
+  }
+}
+
+export async function deleteCollection(id: string): Promise<{ ok: boolean }> {
+  const creatorId = await currentCreatorProfileId()
+  if (!creatorId) return { ok: false }
+  try {
+    await prisma.favoriteCollection.deleteMany({ where: { id, creatorId } })
+    revalidatePath('/marketplace/favorites')
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+export async function moveFavoriteToCollection(input: {
+  kind: 'PRODUCT_TEMPLATE' | 'PRODUCT'
+  targetId: string
+  collectionId: string | null
+}): Promise<{ ok: boolean }> {
+  const creatorId = await currentCreatorProfileId()
+  if (!creatorId) return { ok: false }
+  try {
+    const where =
+      input.kind === 'PRODUCT_TEMPLATE'
+        ? { creatorId_productTemplateId: { creatorId, productTemplateId: input.targetId } }
+        : { creatorId_productId: { creatorId, productId: input.targetId } }
+    await prisma.favorite.update({ where, data: { collectionId: input.collectionId } })
+    revalidatePath('/marketplace/favorites')
+    return { ok: true }
+  } catch {
+    return { ok: false }
   }
 }
 

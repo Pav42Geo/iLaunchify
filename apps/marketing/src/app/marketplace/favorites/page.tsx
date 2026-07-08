@@ -8,7 +8,14 @@ import { FavoritesListView, type FavoritesRowData } from '@ilaunchify/ui'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
 import { loadActiveNiches } from '@/lib/niches-db'
-import { getMarketplaceFavoriteRows, removeFavorite, setFavoriteNote } from '../favorites-actions'
+import {
+  getMarketplaceFavoriteRows,
+  removeFavorite,
+  setFavoriteNote,
+  createCollection,
+  deleteCollection,
+  moveFavoriteToCollection,
+} from '../favorites-actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Your favorites — iLaunchify' }
@@ -40,6 +47,7 @@ export default async function MarketplaceFavoritesPage() {
     primaryAction: r.unavailable ? { label: 'View', href: r.href } : { label: 'Customize', href: r.href },
     secondaryLinks: r.sampleAvailable && !r.unavailable ? [{ label: 'Order sample', href: r.href }] : undefined,
     shareUrl: r.href, // relative — the view prepends the origin
+    collectionId: r.collectionId,
   }))
 
   const productRows: FavoritesRowData[] = data.productRows.map((r) => ({
@@ -55,6 +63,7 @@ export default async function MarketplaceFavoritesPage() {
     kindTag: { label: 'Mine', tone: 'mine' },
     primaryAction: { label: 'Reorder', href: r.reorderHref },
     secondaryLinks: [{ label: 'Open in Studio', href: r.href }],
+    collectionId: r.collectionId,
   }))
 
   return (
@@ -82,6 +91,10 @@ export default async function MarketplaceFavoritesPage() {
           onRemove={removeFavorite}
           onSaveNote={setFavoriteNote}
           browseHref="/marketplace"
+          collections={data.collections}
+          onCreateFolder={createCollection}
+          onDeleteFolder={deleteCollection}
+          onMoveToFolder={moveFavoriteToCollection}
         />
       </div>
     </>

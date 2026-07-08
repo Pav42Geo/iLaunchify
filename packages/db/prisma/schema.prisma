@@ -772,6 +772,7 @@ model CreatorProfile {
   brands                   Brand[]
   // Favorites — private per-creator saved list (docs/FAVORITES_MANAGEMENT.md)
   favorites                Favorite[]
+  favoriteCollections      FavoriteCollection[]
   createdAt                DateTime         @default(now())
   updatedAt                DateTime         @updatedAt
 }
@@ -9146,15 +9147,33 @@ model Favorite {
   // Price (per unit, cents) at the moment it was saved — powers the Amazon-style
   // "price dropped X% · was $Y when saved" badge. Null for pre-snapshot rows.
   priceSnapshotCents Int?
+  // Optional folder (organize favorites, Amazon-style lists). Null = All / no folder.
+  collectionId String?
   createdAt DateTime @default(now())
 
-  creator         CreatorProfile   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  productTemplate ProductTemplate? @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
-  product         Product?         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  creator         CreatorProfile      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  productTemplate ProductTemplate?    @relation(fields: [productTemplateId], references: [id], onDelete: Cascade)
+  product         Product?            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection      FavoriteCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
 
   // One favorite per (creator, target). Two partial-unique indexes because the
   // target lives in one of two columns; a null column never collides.
   @@unique([creatorId, productTemplateId])
   @@unique([creatorId, productId])
   @@index([creatorId, kind])
+  @@index([creatorId, collectionId])
+}
+
+// Named favorites folder (organize favorites into lists, docs/FAVORITES_MANAGEMENT.md §11).
+model FavoriteCollection {
+  id        String   @id @default(uuid())
+  creatorId String
+  name      String
+  createdAt DateTime @default(now())
+
+  creator   CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  favorites Favorite[]
+
+  @@unique([creatorId, name])
+  @@index([creatorId])
 }
