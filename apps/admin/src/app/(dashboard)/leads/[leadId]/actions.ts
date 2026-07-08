@@ -3,6 +3,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireRole } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { assertPartnerTransition } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 export type QualifyResult =
@@ -27,6 +28,7 @@ export async function qualifyLead({ leadId }: { leadId: string }): Promise<Quali
     return { ok: false, error: `Lead is in ${partner.status} status — already qualified` }
   }
 
+  assertPartnerTransition(partner.status, 'INVITED') // Model A edge: DRAFT/LEAD/INVITED→INVITED
   await prisma.partner.update({
     where: { id: leadId },
     data: { status: 'INVITED' },

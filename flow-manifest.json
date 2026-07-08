@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-07",
+  "generatedAt": "2026-07-08",
   "generator": "scripts/build-flow-manifest.mjs",
   "packageCount": 23,
   "drift": {
@@ -196,11 +196,11 @@
       "exportSurface": 4,
       "consumedBy": {
         "apps/admin": 78,
-        "apps/partner": 45,
-        "apps/creator": 33,
+        "apps/partner": 48,
+        "apps/creator": 39,
+        "apps/marketing": 3,
         "packages/orders": 3,
         "packages/marketplace": 2,
-        "apps/marketing": 1,
         "packages/academy": 1,
         "packages/auth": 1,
         "packages/payments": 1,
@@ -218,7 +218,7 @@
       "consumedBy": {
         "apps/admin": 163,
         "apps/partner": 120,
-        "apps/creator": 117,
+        "apps/creator": 118,
         "apps/marketing": 6,
         "packages/db": 2,
         "packages/payments": 2,
@@ -254,9 +254,9 @@
       "exportSurface": 33,
       "consumedBy": {
         "apps/admin": 248,
-        "apps/partner": 147,
-        "apps/creator": 120,
-        "apps/marketing": 32,
+        "apps/partner": 148,
+        "apps/creator": 121,
+        "apps/marketing": 35,
         "packages/notifications": 16,
         "packages/orders": 16,
         "packages/payments": 10,
@@ -352,9 +352,9 @@
       ],
       "exportSurface": 82,
       "consumedBy": {
-        "apps/admin": 23,
+        "apps/admin": 24,
         "apps/creator": 18,
-        "apps/partner": 9,
+        "apps/partner": 11,
         "packages/ui": 4,
         "apps/marketing": 3,
         "packages/payments": 2,
@@ -479,12 +479,12 @@
         "@ilaunchify/ai-design",
         "@ilaunchify/types"
       ],
-      "exportSurface": 133,
+      "exportSurface": 138,
       "consumedBy": {
         "apps/admin": 164,
-        "apps/creator": 130,
+        "apps/creator": 135,
         "apps/partner": 113,
-        "apps/marketing": 42,
+        "apps/marketing": 48,
         "packages/nutrition": 3,
         "packages/ai-design": 2,
         "packages/auth": 1,

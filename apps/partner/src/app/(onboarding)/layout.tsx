@@ -1,5 +1,7 @@
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import { logAuditAs } from '@ilaunchify/audit'
+import { assertPartnerTransition } from '@ilaunchify/orders'
 import { redirect } from 'next/navigation'
 import { OnboardingNav } from '@/components/onboarding/OnboardingNav'
 
@@ -16,11 +18,22 @@ export default async function OnboardingLayout({ children }: { children: React.R
   // If they've completed onboarding, send them to the dashboard
   if (partner.status === 'ACTIVE') redirect('/dashboard')
 
-  // First time they log in — flip INVITED → IN_PROGRESS
+  // First time they log in — flip INVITED → IN_PROGRESS (Model A handshake edge,
+  // guarded + audited). TODO: this write-in-render should move to a dedicated
+  // server action; guarding it in place is the interim (2026-07-07).
   if (partner.status === 'INVITED') {
+    assertPartnerTransition('INVITED', 'IN_PROGRESS')
     await prisma.partner.update({
       where: { id: partner.id },
       data: { status: 'IN_PROGRESS' },
+    })
+    await logAuditAs(user, {
+      entityType: 'Partner',
+      entityId: partner.id,
+      action: 'PARTNER_ONBOARDING_STARTED',
+      fromValue: 'INVITED',
+      toValue: 'IN_PROGRESS',
+      payload: { via: 'first-login' },
     })
   }
 

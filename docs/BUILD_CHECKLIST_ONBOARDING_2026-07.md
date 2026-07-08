@@ -43,10 +43,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [x] Structural FSM homes (ProductTemplate + shared Partner FSM)
 - [x] Order-status batch guarded + audited
 - [x] 8 audit-gap sites → AuditLog
-- [ ] Retire legacy step-wizard (`/onboarding/company|service|documents|stripe|review` + `SubmitForReviewButton` + `review/actions.ts`); retire `UNDER_REVIEW` submit target — after inbound-link grep
-- [~] Partner FSM Model A edges — `DRAFT/LEAD→INVITED`, `INVITED→IN_PROGRESS` **BUILT + tested** (`packages/orders/src/partner-fsm.ts` + `.test.ts`, in the vitest harness: 666 pass). Next: guard the call sites (admin leads/partners →INVITED, layout INVITED→IN_PROGRESS) now that they're legal edges.
-- [ ] Move `layout.tsx` INVITED→IN_PROGRESS flip into a server action (guarded + audited)
-- [ ] `pnpm check:invariants` → 0 warnings → flip CI/husky to `--strict`
+- [x] Retire `UNDER_REVIEW` as a partner-submit target — `review/actions.ts` now targets canonical `IDENTITY_PENDING_REVIEW` (guarded+audited), matching the accordion; `review/page.tsx` check updated. (`UNDER_REVIEW` stays in the enum — still used by product status, disputes, sidebar.)
+- [!] **DELETE the legacy step-wizard UI is DEFERRED** — not safe yet: the accordion imports `FileUploadSlot` (from `onboarding/documents/`) + `ConnectButton` (from `onboarding/stripe/`), `services/page.tsx` reuses `ServiceProfileForm` (from `onboarding/service/`), and the dashboard layout redirects to `/onboarding/welcome` + `/onboarding/status`. Deleting the routes would break the build. **Refactor first:** extract those 3 shared components to a neutral folder (e.g. `components/onboarding/fields/`), then the `company/service/documents/stripe/review` routes can be deleted.
+- [x] Partner FSM Model A edges — `DRAFT/LEAD→INVITED`, `INVITED→IN_PROGRESS` (`packages/orders/src/partner-fsm.ts` + `.test.ts`, 666 pass) + all call sites guarded: admin `qualifyLead` guarded; admin re-invite allowlisted (audited governed override); `layout.tsx` flip guarded+audited; `review/actions.ts` guarded+repointed.
+- [~] `layout.tsx` INVITED→IN_PROGRESS flip — guarded + audited **in place** (interim); moving it out of the render into a dedicated server action still TODO.
+- [x] `pnpm check:invariants` → **0 warnings** → CI flipped to `--strict` (husky stays non-strict for local WIP). All invariants hold.
 
 ## 4. P1 — the visible upgrade (build to prototype)
 - [ ] Onboarding UI redesign on the accordion (header + progress meter + two-column + sticky rail + trust) — prototype "② Onboarding"

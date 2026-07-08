@@ -11,7 +11,7 @@ export default async function ReviewStep() {
   })
   if (!partner) return null
 
-  const alreadySubmitted = partner.status === 'UNDER_REVIEW'
+  const alreadySubmitted = partner.status === 'IDENTITY_PENDING_REVIEW'
 
   return (
     <Card>

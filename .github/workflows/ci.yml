@@ -46,12 +46,14 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Check platform invariants
+      - name: Check platform invariants (strict)
         # Deterministic architecture guard (scripts/check-invariants.mjs).
-        # Hard invariants (@db.Text, cross-app <Link>) fail the build; heuristic
-        # warnings report but don't block. Flip to `--strict` once the warning
-        # baseline is burned down (see the allowlist in the script).
-        run: pnpm check:invariants
+        # --strict (2026-07-07): the warning baseline is burned down to 0, so ANY
+        # new warning (unaudited mutation, FSM bypass, stale Prisma client, …)
+        # now FAILS the build. Reviewed exceptions live in the script's
+        # AUDIT_ALLOWLIST / FSM_ALLOWLIST. (Husky pre-commit stays non-strict so
+        # local WIP commits aren't blocked by a transient heuristic warning.)
+        run: pnpm check:invariants --strict
 
       - name: Flow manifest is current
         # Fails if package deps/imports changed without regenerating the map.

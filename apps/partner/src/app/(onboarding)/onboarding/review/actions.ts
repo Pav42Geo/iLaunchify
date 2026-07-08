@@ -3,6 +3,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { assertPartnerTransition } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 export async function submitForReview({ partnerId }: { partnerId: string }) {
@@ -14,7 +15,10 @@ export async function submitForReview({ partnerId }: { partnerId: string }) {
   })
   if (!partner) return { ok: false as const, error: 'Partner not found' }
 
-  if (partner.status === 'UNDER_REVIEW') {
+  // Consolidated 2026-07-07: this legacy-wizard submit now targets the SAME
+  // canonical review state as the accordion (IDENTITY_PENDING_REVIEW), retiring
+  // UNDER_REVIEW as a divergent submit target.
+  if (partner.status === 'IDENTITY_PENDING_REVIEW') {
     return { ok: false as const, error: 'Already submitted' }
   }
 
@@ -28,9 +32,10 @@ export async function submitForReview({ partnerId }: { partnerId: string }) {
     return { ok: false as const, error: 'Complete the service profile first' }
   }
 
+  assertPartnerTransition(partner.status, 'IDENTITY_PENDING_REVIEW')
   await prisma.partner.update({
     where: { id: partner.id },
-    data: { status: 'UNDER_REVIEW' },
+    data: { status: 'IDENTITY_PENDING_REVIEW' },
   })
 
   await logAuditAs(user, {
@@ -38,7 +43,7 @@ export async function submitForReview({ partnerId }: { partnerId: string }) {
     entityId: partner.id,
     action: 'PARTNER_SUBMIT_FOR_REVIEW',
     fromValue: partner.status,
-    toValue: 'UNDER_REVIEW',
+    toValue: 'IDENTITY_PENDING_REVIEW',
     payload: { via: 'onboarding/review' },
   })
 
