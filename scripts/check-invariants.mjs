@@ -205,20 +205,27 @@ function findEmbeddedSchemas() {
   }
   return out
 }
-const normSchema = (s) => s.replace(/\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim()
+// Identifier set (model/field/enum names). Prisma canonicalizes (reorders +
+// reformats) the schema it embeds, so exact-text compare false-positives — but
+// the SET of identifiers is invariant. A source identifier absent from the
+// client's embedded schema = a field added without `db:generate` (stale client).
+const schemaIdents = (s) => new Set(s.replace(/\/\/[^\n]*/g, ' ').match(/[A-Za-z_][A-Za-z0-9_]*/g) || [])
 function checkPrismaClientFresh() {
   if (process.env.CI) return { name: 'prisma client freshness (skipped in CI)', level: 'warn', hits: [] }
   const schema = 'packages/db/prisma/schema.prisma'
   const hits = []
   if (existsSync(schema)) {
-    const want = normSchema(read(schema))
+    const want = schemaIdents(read(schema))
     const embedded = findEmbeddedSchemas()
     if (embedded.length === 0) {
       hits.push('generated Prisma client not found — run: pnpm db:generate')
     } else {
       for (const e of embedded) {
-        if (normSchema(read(e)) !== want) {
-          hits.push('schema.prisma differs from the generated client (content, not just mtime) — run: pnpm db:generate && rm -rf apps/*/.next')
+        const have = schemaIdents(read(e))
+        const missing = [...want].filter((t) => !have.has(t))
+        if (missing.length > 0) {
+          const sample = missing.slice(0, 6).join(', ')
+          hits.push(`generated client is missing ${missing.length} schema identifier(s) (${sample}${missing.length > 6 ? '…' : ''}) — run: pnpm db:generate && rm -rf apps/*/.next`)
           break
         }
       }

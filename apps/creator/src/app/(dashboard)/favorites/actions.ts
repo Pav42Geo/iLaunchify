@@ -11,6 +11,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import type { FavoritesRowData } from '@ilaunchify/ui'
 import { revalidatePath } from 'next/cache'
 import { marketingUrl } from '@/lib/marketing-url'
 
@@ -230,4 +231,161 @@ export async function getFavoritesPreview(): Promise<FavoritesPreview> {
     // Stale Prisma client before the Favorite model lands — empty peek.
     return { count: 0, items: [] }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Full favorites rows for the profile /favorites page — the SAME shared
+// FavoritesListView the marketplace uses, so both surfaces match. Templates
+// link OUT to the marketplace (absolute marketingUrl); products stay in the
+// dashboard. Certs are name-only here (the PNG badge lib is marketing-side).
+// ---------------------------------------------------------------------------
+
+function savedLabelFor(d: Date): string {
+  return `Saved ${new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+}
+
+/** Set/clear the private note on a favorite. */
+export async function setFavoriteNote(input: {
+  kind: FavoritableKind
+  targetId: string
+  note: string
+}): Promise<{ ok: boolean }> {
+  const ctx = await currentCreatorId()
+  if (!ctx) return { ok: false }
+  try {
+    const where =
+      input.kind === 'PRODUCT_TEMPLATE'
+        ? { creatorId_productTemplateId: { creatorId: ctx.creatorId, productTemplateId: input.targetId } }
+        : { creatorId_productId: { creatorId: ctx.creatorId, productId: input.targetId } }
+    await prisma.favorite.update({ where, data: { note: input.note.slice(0, 280) || null } })
+    revalidatePath('/favorites')
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+export interface CreatorFavoriteRows {
+  templateRows: FavoritesRowData[]
+  productRows: FavoritesRowData[]
+}
+
+export async function getCreatorFavoriteRows(): Promise<CreatorFavoriteRows> {
+  const ctx = await currentCreatorId()
+  if (!ctx) return { templateRows: [], productRows: [] }
+  try {
+    const rows = await prisma.favorite.findMany({
+      where: { creatorId: ctx.creatorId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        kind: true,
+        createdAt: true,
+        note: true,
+        priceSnapshotCents: true,
+        productTemplate: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            priceFloorCents: true,
+            ratingAvg: true,
+            ratingCount: true,
+            subcategory: { select: { slug: true, category: { select: { slug: true, name: true, mainCategory: true } } } },
+            variants: { select: { moqMin: true, leadTimeDays: true } },
+            manufacturerService: { select: { partner: { select: { tier: true } } } },
+            _count: { select: { flavorPresets: true, sampleOptions: true } },
+            certificates: {
+              where: { instance: { status: 'VERIFIED' } },
+              select: { instance: { select: { certificateType: { select: { name: true, status: true } } } } },
+            },
+          },
+        },
+        product: {
+          select: { id: true, name: true, status: true, brand: { select: { name: true } }, _count: { select: { orderItems: true } } },
+        },
+      },
+    })
+
+    const templateRows: FavoritesRowData[] = []
+    const productRows: FavoritesRowData[] = []
+
+    for (const r of rows) {
+      if (r.kind === 'PRODUCT_TEMPLATE' && r.productTemplate) {
+        const t = r.productTemplate
+        const moqs = t.variants.map((v) => v.moqMin).filter((n): n is number => typeof n === 'number')
+        const leads = t.variants.map((v) => v.leadTimeDays).filter((n): n is number => typeof n === 'number')
+        const moq = moqs.length ? Math.min(...moqs) : 500
+        const lead = leads.length ? Math.min(...leads) : 14
+        const tier = t.manufacturerService?.partner?.tier
+        const certNames = Array.from(
+          new Set(
+            t.certificates
+              .map((c) => c.instance.certificateType)
+              .filter((ct) => ct.status === 'ACTIVE')
+              .map((ct) => ct.name),
+          ),
+        )
+        const href = marketingUrl(`/marketplace/${t.subcategory.category.slug}/${t.subcategory.slug}/${t.slug}`)
+        const unavailable = t.status !== 'PUBLISHED'
+        const sampleAvailable = t._count.sampleOptions > 0
+        templateRows.push({
+          key: `t:${t.id}`,
+          kind: 'PRODUCT_TEMPLATE',
+          targetId: t.id,
+          href,
+          title: t.name,
+          icon: iconForNiche(t.name, t.subcategory.category.mainCategory),
+          metaLine: `${t.subcategory.category.name} · MOQ ${moq.toLocaleString()} · ${lead}-day lead`,
+          priceCents: t.priceFloorCents,
+          priceSnapshotCents: r.priceSnapshotCents ?? undefined,
+          savedLabel: savedLabelFor(r.createdAt),
+          note: r.note ?? undefined,
+          rating: { mean: t.ratingAvg ?? null, count: t.ratingCount ?? 0 },
+          manufacturerBadge: tier === 'TRUSTED' || tier === 'PREMIER' ? tier : null,
+          certs: certNames.map((name) => ({ name, iconUrl: null })),
+          flavorCount: t._count.flavorPresets,
+          sampleAvailable,
+          unavailable,
+          kindTag: { label: 'Template', tone: 'template' },
+          primaryAction: unavailable ? { label: 'View', href } : { label: 'Customize', href },
+          secondaryLinks: sampleAvailable && !unavailable ? [{ label: 'Order sample', href }] : undefined,
+          shareUrl: href,
+        })
+      } else if (r.kind === 'PRODUCT' && r.product) {
+        const p = r.product
+        const orders = p._count.orderItems
+        productRows.push({
+          key: `p:${p.id}`,
+          kind: 'PRODUCT',
+          targetId: p.id,
+          href: `/products/${p.id}/design/canvas`,
+          title: p.name,
+          metaLine: `${p.brand.name} · ${orders} order${orders === 1 ? '' : 's'} placed`,
+          savedLabel: savedLabelFor(r.createdAt),
+          note: r.note ?? undefined,
+          secondaryNote: 'Your product',
+          kindTag: { label: 'Mine', tone: 'mine' },
+          primaryAction: { label: 'Reorder', href: `/products/${p.id}/checkout` },
+          secondaryLinks: [{ label: 'Open in Studio', href: `/products/${p.id}/design/canvas` }],
+        })
+      }
+    }
+
+    return { templateRows, productRows }
+  } catch {
+    return { templateRows: [], productRows: [] }
+  }
+}
+
+function iconForNiche(name: string, main?: string | null): string {
+  const s = `${name} ${main ?? ''}`.toLowerCase()
+  if (/coffee|espresso|brew/.test(s)) return '☕'
+  if (/\btea\b|matcha/.test(s)) return '🍵'
+  if (/water|hydration|beverage|drink|tonic|sparkl/.test(s)) return '🥤'
+  if (/supplement|vitamin|capsule|pill|gummies|magnesium|collagen/.test(s)) return '💊'
+  if (/protein|bar|snack|cookie|granola|pretzel|choc/.test(s)) return '🍪'
+  if (/pet|dog|cat/.test(s)) return '🐾'
+  if (/powder|greens|mix/.test(s)) return '🥣'
+  return '📦'
 }

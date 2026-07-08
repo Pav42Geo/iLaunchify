@@ -39,6 +39,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 
 ## 3. P0 — hygiene (safe, do first)
 - [x] Deterministic invariant checker + connection-review agent + flow manifest (earlier this session)
+- [x] Hardened the checker's Prisma-freshness check → content-based (identifier-set diff of the client's embedded schema), catches "schema field added without db:generate" (the class that broke marketing typecheck 2026-07-07)
 - [x] Structural FSM homes (ProductTemplate + shared Partner FSM)
 - [x] Order-status batch guarded + audited
 - [x] 8 audit-gap sites → AuditLog
@@ -59,7 +60,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 ## 5. P2 — strategic features (build to prototype)
 - [ ] `PartnerAccessMode: PRIVATE|PUBLIC` admin setting (pattern of `DomainSetting`/`LogisticsSetting`)
 - [ ] Public **"Become a partner" application form** → creates `Partner` LEAD → `/admin/leads` — prototype "① Application"
-- [ ] `partnerCta()` helper (label + href from the mode flag) wired across marketing/partner CTAs
+- [~] `partnerCta()` helper — pure resolver BUILT + verified (`apps/marketing/src/lib/partner-cta.ts` + test; PRIVATE→apply/"Become a partner", PUBLIC→signup, fails closed to PRIVATE). Wiring to the mode setting + across CTAs pending.
 - [ ] Cloudflare **Turnstile** on the application form + `/login`
 - [ ] `PARTNER_INVITED` notification event + template (fires from `qualifyLead`) + lead "application received" ack
 - [ ] Seed default copy for all ~55 events + the 3 new partner templates (D9)
