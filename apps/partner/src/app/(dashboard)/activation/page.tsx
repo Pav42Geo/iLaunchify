@@ -17,11 +17,10 @@ import { requireUser } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import {
   activationStepsFor,
-  activationProgress,
   ACTIVATION_SERVICE_ORDER,
   type ActivationStep,
-  type PartnerServiceType,
 } from '@/lib/activation-tracks'
+import { getPartnerActivationStatus } from '@/lib/activation-status'
 import { setActivationStepComplete } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -52,14 +51,14 @@ export default async function ActivationPage() {
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    include: { services: true, activationSteps: { select: { stepKey: true } } },
+    select: { id: true },
   })
   if (!partner) return null
 
-  const serviceTypes = partner.services.map((s) => s.type as PartnerServiceType)
+  const status = await getPartnerActivationStatus(partner.id)
+  const { serviceTypes, progress } = status
+  const completed = new Set(status.completedKeys)
   const steps = activationStepsFor(serviceTypes)
-  const completed = new Set(partner.activationSteps.map((s) => s.stepKey))
-  const progress = activationProgress(serviceTypes, completed)
 
   // Group composed steps into ordered service blocks (+ the shared tail).
   const order: string[] = [...ACTIVATION_SERVICE_ORDER.filter((t) => serviceTypes.includes(t)), 'SHARED']
