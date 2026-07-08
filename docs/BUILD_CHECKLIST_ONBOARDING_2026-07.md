@@ -49,6 +49,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [~] `layout.tsx` INVITED→IN_PROGRESS flip — guarded + audited **in place** (interim); moving it out of the render into a dedicated server action still TODO.
 - [x] `pnpm check:invariants` → **0 warnings** → CI flipped to `--strict` (husky stays non-strict for local WIP). All invariants hold.
 
+## Schema batch (additive) — landed 2026-07-07, pending `pnpm db:push` + `pnpm db:generate`
+`packages/db/prisma/schema.prisma` (+ `packages/audit/src/types.ts` entity types). All CockroachDB-safe (uuid ids, bare String, nullable, no drops):
+- [~] `PartnerActivationStep` (activation completion — `stepKey` matches the engine) + `Partner.activationSteps` back-relation
+- [~] `PartnerAgreement` (versioned text) + `PartnerAgreementSignature` (tamper-evident e-sign record) + `Partner.agreementSignatures`
+- [~] `PartnerAccessSetting` singleton + `enum PartnerAccessMode { PRIVATE PUBLIC }`
+- [~] `NotificationEvent` += `PARTNER_INVITED`, `PARTNER_APPLICATION_RECEIVED`
+- [ ] **Run on your machine:** `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next` → then I wire the server actions (activation save, contract sign, access-mode toggle, invite email) against the regenerated client.
+
 ## 4. P1 — the visible upgrade (build to prototype)
 - [ ] Onboarding UI redesign on the accordion (header + progress meter + two-column + sticky rail + trust) — prototype "② Onboarding"
 - [~] Contract signing modal — **audit-trail CORE built** (`apps/partner/src/lib/agreement-signature.ts`, node-verified): tamper-evident record with document SHA-256, record hash, signer/ip/ua/server-timestamp/consent + verify (ESIGN/UETA per the legal redline). Pending: the document-viewer + scroll-gate + typed/drawn signature modal UI, the `PartnerAgreement`/`PartnerAgreementSignature` schema + server action to persist, and signed-PDF generation.

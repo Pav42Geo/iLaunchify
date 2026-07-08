@@ -147,6 +147,11 @@ export const AUDIT_ENTITY_TYPES = [
   // Favorites — private per-creator saved list (docs/FAVORITES_MANAGEMENT.md)
   'Favorite',
   'FavoriteCollection', // favorites folders (organize)
+  // Onboarding v2 (docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md)
+  'PartnerActivationStep', // post-approval Activation Setup step completion (§5B)
+  'PartnerAgreement', // versioned agreement text
+  'PartnerAgreementSignature', // tamper-evident e-signature record (§4)
+  'PartnerAccessSetting', // private↔public access mode toggle (§7)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

@@ -967,6 +967,9 @@ model Partner {
   // the constraint buys nothing and would break every findUnique guard.
   memberships             PartnerMembership[]
   invites                 PartnerInvite[]
+  // Onboarding v2 (additive) — docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md
+  activationSteps         PartnerActivationStep[]       @relation("PartnerActivationSteps")
+  agreementSignatures     PartnerAgreementSignature[]   @relation("PartnerAgreementSignatures")
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 }
@@ -4707,6 +4710,9 @@ enum NotificationEvent {
   // MM-7 — a fee grace / promo grant started for a manufacturer (0% or reduced
   // platform fee for a window). Positive, once-per-grant; never a recurring reminder.
   MANUFACTURER_FEE_GRANT_STARTED
+  // Onboarding v2 (docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md §11)
+  PARTNER_INVITED // admin qualified a lead → "you're selected, start onboarding" + magic link
+  PARTNER_APPLICATION_RECEIVED // public "Become a partner" application acknowledgement
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -9176,4 +9182,81 @@ model FavoriteCollection {
 
   @@unique([creatorId, name])
   @@index([creatorId])
+}
+
+// =============================================================================
+// Partner onboarding v2 (additive) — docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md
+// + AUTH_ENTRANCE_SECURITY_2026-07.md. All CockroachDB-safe: uuid ids, bare
+// String (no @db.Text), nullable/optional, no drops. 2026-07-07.
+// =============================================================================
+
+enum PartnerAccessMode {
+  PRIVATE // invite-only beta: public CTA = "Become a partner", application → LEAD
+  PUBLIC // open signup
+}
+
+/// Post-approval Activation Setup progress — one row per completed step key
+/// (§5B). `stepKey` matches the pure engine apps/partner/src/lib/activation-tracks.ts
+/// (e.g. 'print.materials', 'shared.certs'). Per-service go-live = all of a
+/// service's own keys + the shared keys complete.
+model PartnerActivationStep {
+  id            String   @id @default(uuid())
+  partnerId     String
+  serviceId     String? // set for service-specific steps; null for SHARED
+  stepKey       String
+  completedAt   DateTime @default(now())
+  completedById String?
+  partner       Partner  @relation("PartnerActivationSteps", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, stepKey])
+  @@index([partnerId])
+}
+
+/// Versioned partner agreement text — the document the partner e-signs. The
+/// current version's bodyMarkdown is rendered in the signing modal + hashed (§4).
+model PartnerAgreement {
+  id             String                      @id @default(uuid())
+  version        String                      @unique // e.g. 'v1.0'
+  title          String
+  bodyMarkdown   String // bare String — CockroachDB rejects @db.Text
+  documentSha256 String
+  isCurrent      Boolean                     @default(false)
+  effectiveAt    DateTime                    @default(now())
+  createdAt      DateTime                    @default(now())
+  signatures     PartnerAgreementSignature[]
+}
+
+/// Tamper-evident e-signature record (ESIGN/UETA) — persists the output of
+/// apps/partner/src/lib/agreement-signature.ts buildAgreementSignatureRecord().
+/// docs/legal/LEGAL_DOCS_REDLINE_RECOMMENDATIONS.md Addendum.
+model PartnerAgreementSignature {
+  id                 String            @id @default(uuid())
+  partnerId          String
+  signerUserId       String
+  agreementId        String?
+  agreementVersion   String
+  signerName         String
+  signerEmail        String
+  method             String // 'typed' | 'drawn'
+  ip                 String?
+  userAgent          String?
+  consentTextVersion String
+  documentSha256     String
+  recordSha256       String
+  signedPdfAssetId   String? // generated Certificate of Completion PDF (later)
+  signedAt           DateTime          @default(now())
+  partner            Partner           @relation("PartnerAgreementSignatures", fields: [partnerId], references: [id], onDelete: Cascade)
+  agreement          PartnerAgreement? @relation(fields: [agreementId], references: [id])
+
+  @@unique([partnerId, agreementVersion])
+  @@index([partnerId])
+}
+
+/// Platform-wide partner access mode (private invite-only ↔ public signup).
+/// §7. Singleton (id = 'singleton'). Drives the partnerCta() label/href swap.
+model PartnerAccessSetting {
+  id          String            @id @default("singleton")
+  mode        PartnerAccessMode @default(PRIVATE)
+  updatedAt   DateTime          @updatedAt @default(now())
+  updatedById String?
 }
