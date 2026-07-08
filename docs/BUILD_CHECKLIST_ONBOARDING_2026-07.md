@@ -51,17 +51,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 
 ## 4. P1 — the visible upgrade (build to prototype)
 - [ ] Onboarding UI redesign on the accordion (header + progress meter + two-column + sticky rail + trust) — prototype "② Onboarding"
-- [~] Contract signing modal — **audit-trail CORE built** (`apps/partner/src/lib/agreement-signature.ts` + test): tamper-evident record with document SHA-256, record hash, signer/ip/ua/server-timestamp/consent + verify (ESIGN/UETA per the legal redline). Pending: the document-viewer + scroll-gate + typed/drawn signature modal UI, the `PartnerAgreement`/`PartnerAgreementSignature` schema + server action to persist, and signed-PDF generation.
+- [~] Contract signing modal — **audit-trail CORE built** (`apps/partner/src/lib/agreement-signature.ts`, node-verified): tamper-evident record with document SHA-256, record hash, signer/ip/ua/server-timestamp/consent + verify (ESIGN/UETA per the legal redline). Pending: the document-viewer + scroll-gate + typed/drawn signature modal UI, the `PartnerAgreement`/`PartnerAgreementSignature` schema + server action to persist, and signed-PDF generation.
 - [ ] Progressive sequencing (§3 required-to-apply / before-go-live / progressive table)
 - [ ] Structured quality-cert step driving existing `CertificateType`/`PartnerCertificateInstance`
 - [ ] Domain→cert matrix as `CertificateType` rows + per-domain cert **routing gate**
-- [x] **Activation Setup engine** — pure service-composition (`apps/partner/src/lib/activation-tracks.ts` + test) — union of tracks from `PartnerService.type[]`, per-service D8 go-live gate. Verified via Node type-strip (13-step composition + gates pass). Needs `pnpm type-check` on your machine.
+- [x] **Activation Setup engine** — pure service-composition (`apps/partner/src/lib/activation-tracks.ts`) — union of tracks from `PartnerService.type[]`, per-service D8 go-live gate. Node-verified (13-step composition + gates pass).
 - [~] Activation Setup UI — v1 **server-rendered overview BUILT** (`apps/partner/src/app/(dashboard)/activation/page.tsx`): reads partner services → composes union via the engine → grouped by service with per-service go-live + "→ where this lands" routing tags, on the partner-v2 chrome. Color-safe + invariants clean; needs `pnpm type-check`. Pending: per-step forms, completion persistence (schema add), nav wiring, FSM-stage gating.
 
 ## 5. P2 — strategic features (build to prototype)
 - [ ] `PartnerAccessMode: PRIVATE|PUBLIC` admin setting (pattern of `DomainSetting`/`LogisticsSetting`)
 - [ ] Public **"Become a partner" application form** → creates `Partner` LEAD → `/admin/leads` — prototype "① Application"
-- [~] `partnerCta()` helper — pure resolver BUILT + verified (`apps/marketing/src/lib/partner-cta.ts` + test; PRIVATE→apply/"Become a partner", PUBLIC→signup, fails closed to PRIVATE). Wiring to the mode setting + across CTAs pending.
+- [~] `partnerCta()` helper — pure resolver BUILT + node-verified (`apps/marketing/src/lib/partner-cta.ts`; PRIVATE→apply/"Become a partner", PUBLIC→signup, fails closed to PRIVATE). Wiring to the mode setting + across CTAs pending.
 - [ ] Cloudflare **Turnstile** on the application form + `/login`
 - [ ] `PARTNER_INVITED` notification event + template (fires from `qualifyLead`) + lead "application received" ack
 - [ ] Seed default copy for all ~55 events + the 3 new partner templates (D9)
@@ -80,3 +80,4 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [ ] `pnpm check:invariants` green
 - [ ] `node scripts/run-vitest-suites.mjs` for pure engines
 - [ ] Commit + push the handed-off git command; watch for two-agent hot-file collisions
+- **GOTCHA (2026-07-07):** do NOT colocate `*.test.ts` (vitest) inside a Next **app** `src/` — some apps (marketing) type-check test files but lack `vitest` types → `tsc` fails. Pure app-lib modules are node-verified instead; to get real harness coverage, put the module in a `packages/*` dir (which has vitest + runs in `run-vitest-suites`). Package tests (e.g. `packages/orders/*.test.ts`) are fine.

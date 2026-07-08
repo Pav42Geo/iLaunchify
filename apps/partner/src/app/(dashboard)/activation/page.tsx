@@ -35,14 +35,17 @@ const SERVICE_LABEL: Record<string, string> = {
 }
 
 // Token-backed accents only (raw off-palette families are banned by check:colors).
+const SHARED_ACCENT = { dot: 'bg-ink-400', pill: 'border-ink-200 bg-ink-100 text-ink-700' }
 const SERVICE_ACCENT: Record<string, { dot: string; pill: string }> = {
   MANUFACTURING: { dot: 'bg-pink-500', pill: 'border-pink-200 bg-pink-50 text-pink-700' },
   COPACKING: { dot: 'bg-info-500', pill: 'border-info-200 bg-info-50 text-info-800' },
   LABEL_PRINTING: { dot: 'bg-warning-500', pill: 'border-warning-200 bg-warning-50 text-warning-800' },
   WAREHOUSE: { dot: 'bg-success-500', pill: 'border-success-200 bg-success-50 text-success-800' },
-  SHARED: { dot: 'bg-ink-400', pill: 'border-ink-200 bg-ink-100 text-ink-700' },
+  SHARED: SHARED_ACCENT,
 }
-const accent = (k: string) => SERVICE_ACCENT[k] ?? SERVICE_ACCENT.SHARED
+// Return a concrete object (never the possibly-undefined result of an indexed
+// lookup) so callers are safe under noUncheckedIndexedAccess.
+const accent = (k: string): { dot: string; pill: string } => SERVICE_ACCENT[k] ?? SHARED_ACCENT
 
 export default async function ActivationPage() {
   const user = await requireUser()
