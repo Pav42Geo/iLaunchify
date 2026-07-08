@@ -150,7 +150,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       currencies={marketCurrencies}
       enabledDomains={enabledDomains}
       markets={marketOptions}
-      topbarRight={<PartnerTopbarRight email={user.email} name={user.name ?? null} companyName={partner.companyName} />}
+      topbarRight={<PartnerTopbarRight email={user.email} name={user.name ?? null} image={user.image ?? 'https://i.pravatar.cc/120?img=12'} companyName={partner.companyName} />}
       />
     </>
   )

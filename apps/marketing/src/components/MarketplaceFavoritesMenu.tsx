@@ -1,31 +1,19 @@
 'use client'
 
 // MarketplaceFavoritesMenu — the favorites entry point in the MARKETPLACE header
-// (docs/FAVORITES_MANAGEMENT.md §11). Mirrors the creator account's peek
-// dropdown (tabs + rich rows + quick actions), but "See all" opens an in-app
-// modal catalogue instead of routing away. Destinations differ per object:
-//   - Template favorites → marketplace detail (relative, stays in marketplace)
-//   - Product favorites  → dashboard Studio / checkout (absolute creatorUrl)
-// Card hearts inside the modal remove favorites via the layout FavoritesProvider.
+// (docs/FAVORITES_MANAGEMENT.md §11). A peek dropdown (tabs + rich rows, mirrors
+// the creator account) whose "See all" navigates to the full in-marketplace
+// favorites page (/marketplace/favorites) — no modal, the creator stays in the
+// marketplace. Destinations differ per object: template favorites open the
+// marketplace detail (relative); product favorites open the dashboard (absolute).
 
-import {
-  AppHeaderIconButton,
-  ProductCard,
-  ProductObjectCard,
-  type ProductObjectStatus,
-} from '@ilaunchify/ui'
-import { Heart, ArrowRight, X, ShoppingCart } from 'lucide-react'
+import { AppHeaderIconButton } from '@ilaunchify/ui'
+import { Heart, ArrowRight, ShoppingCart } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import {
-  getMarketplaceFavoritesData,
-  type MarketplaceFavoritesData,
-  type MarketplaceFavRow,
-} from '@/app/marketplace/favorites-actions'
+import { getMarketplaceFavoritesData, type MarketplaceFavoritesData, type MarketplaceFavRow } from '@/app/marketplace/favorites-actions'
 
 type PeekTab = 'all' | 'marketplace' | 'mine'
-type ModalTab = 'marketplace' | 'mine'
 
 const PEEK_LIMIT = 6
 const THUMB_GRADIENTS = [
@@ -42,19 +30,13 @@ function thumbFor(name: string): string {
 
 export function MarketplaceFavoritesMenu({ initialCount = 0 }: { initialCount?: number }) {
   const [open, setOpen] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
   const [data, setData] = useState<MarketplaceFavoritesData | null>(null)
   const [loading, setLoading] = useState(false)
   const [peekTab, setPeekTab] = useState<PeekTab>('all')
-  const [modalTab, setModalTab] = useState<ModalTab>('marketplace')
-  const [mounted, setMounted] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => setMounted(true), [])
-
-  const needData = open || modalOpen
   useEffect(() => {
-    if (!needData || data) return
+    if (!open || data) return
     let cancelled = false
     setLoading(true)
     getMarketplaceFavoritesData()
@@ -67,19 +49,17 @@ export function MarketplaceFavoritesMenu({ initialCount = 0 }: { initialCount?: 
     return () => {
       cancelled = true
     }
-  }, [needData, data])
+  }, [open, data])
 
   useEffect(() => {
+    if (!open) return
     function onDoc(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        setModalOpen(false)
-      }
+      if (e.key === 'Escape') setOpen(false)
     }
-    if (open) document.addEventListener('mousedown', onDoc)
+    document.addEventListener('mousedown', onDoc)
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('mousedown', onDoc)
@@ -93,12 +73,6 @@ export function MarketplaceFavoritesMenu({ initialCount = 0 }: { initialCount?: 
     ? recent
     : recent.filter((r) => (peekTab === 'marketplace' ? r.kind === 'template' : r.kind === 'product'))
   ).slice(0, PEEK_LIMIT)
-
-  function openModal() {
-    setOpen(false)
-    setModalTab((data?.templateCount ?? 0) > 0 ? 'marketplace' : 'mine')
-    setModalOpen(true)
-  }
 
   return (
     <div className="relative inline-flex" ref={ref}>
@@ -177,103 +151,18 @@ export function MarketplaceFavoritesMenu({ initialCount = 0 }: { initialCount?: 
           )}
 
           {count > 0 && (
-            <button
-              type="button"
-              onClick={openModal}
+            <Link
+              href="/marketplace/favorites"
+              onClick={() => setOpen(false)}
               className="flex w-full items-center justify-center gap-1.5 border-t border-ink-100 py-2.5 text-[13px] font-semibold text-pink-700 transition-colors hover:bg-pink-50"
             >
               See all {count} favorite{count === 1 ? '' : 's'} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
+            </Link>
           )}
         </div>
       )}
-
-      {modalOpen && mounted &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/45 p-4 sm:p-8"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Your favorites"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setModalOpen(false)
-            }}
-          >
-            <div className="mt-6 w-full max-w-[1100px] overflow-hidden rounded-2xl bg-white shadow-2xl">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-6 py-4">
-                <div className="flex items-center gap-2">
-                  <Heart className="h-5 w-5 text-pink-600" strokeWidth={2} aria-hidden="true" />
-                  <h2 className="font-display text-[20px] font-bold text-ink-900">Your favorites</h2>
-                  <span className="text-[13px] text-ink-400 tabular-nums">{count}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex gap-0.5 rounded-full bg-ink-50 p-0.5">
-                    {(['marketplace', 'mine'] as ModalTab[]).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setModalTab(t)}
-                        className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
-                          modalTab === t ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'
-                        }`}
-                      >
-                        {t === 'marketplace' ? `Marketplace ${data?.templateCount ?? 0}` : `My products ${data?.productCount ?? 0}`}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setModalOpen(false)}
-                    aria-label="Close"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-                  >
-                    <X className="h-5 w-5" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="max-h-[75vh] overflow-y-auto p-6">
-                {modalTab === 'marketplace' ? (
-                  (data?.templateCards ?? []).length === 0 ? (
-                    <ModalEmpty text="No saved marketplace products yet. Tap the heart on any product to add it here." />
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
-                      {(data?.templateCards ?? []).map((c) => (
-                        <ProductCard key={c.templateId ?? c.href} {...c} />
-                      ))}
-                    </div>
-                  )
-                ) : (data?.productCards ?? []).length === 0 ? (
-                  <ModalEmpty text="No saved products of your own yet. Save one from your dashboard for a quick reorder." />
-                ) : (
-                  <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
-                    {(data?.productCards ?? []).map((p) => (
-                      <ProductObjectCard
-                        key={p.productId}
-                        href={p.href}
-                        name={p.name}
-                        brandName={p.brandName}
-                        status={p.status as ProductObjectStatus}
-                        primaryAction={{
-                          label: 'Reorder',
-                          href: p.reorderHref,
-                          icon: <ShoppingCart className="h-3.5 w-3.5" aria-hidden="true" />,
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
     </div>
   )
-}
-
-function ModalEmpty({ text }: { text: string }) {
-  return <p className="py-16 text-center text-[14px] text-ink-500">{text}</p>
 }
 
 function PeekRow({ item, onNavigate }: { item: MarketplaceFavRow; onNavigate: () => void }) {

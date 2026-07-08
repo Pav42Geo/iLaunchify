@@ -14,6 +14,12 @@ import { logAuditAs } from '@ilaunchify/audit'
 import type { ProductCardProps } from '@ilaunchify/ui'
 import { getMarketingSession } from '@/lib/session'
 import { creatorUrl } from '@/lib/app-urls'
+import { getProductCertBadges } from '@/lib/product-cert-badges'
+import { revalidatePath } from 'next/cache'
+
+function savedLabelFor(d: Date): string {
+  return `Saved ${new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+}
 
 function iconForNiche(name: string, main?: string | null): string {
   const s = `${name} ${main ?? ''}`.toLowerCase()
@@ -78,8 +84,19 @@ export async function toggleFavoriteFromMarketplace(input: {
     return { ok: true, saved: false }
   }
 
+  // Snapshot the current price so the favorites page can show "price dropped
+  // X% since saved" (docs/FAVORITES_MANAGEMENT.md §11).
+  const snap = await prisma.productTemplate.findUnique({
+    where: { id: templateId },
+    select: { priceFloorCents: true },
+  })
   const created = await prisma.favorite.create({
-    data: { creatorId: profile.id, kind: 'PRODUCT_TEMPLATE', productTemplateId: templateId },
+    data: {
+      creatorId: profile.id,
+      kind: 'PRODUCT_TEMPLATE',
+      productTemplateId: templateId,
+      priceSnapshotCents: snap?.priceFloorCents ?? null,
+    },
     select: { id: true },
   })
   await logAuditAs(
@@ -364,5 +381,226 @@ export async function getMarketplaceFavoritesData(): Promise<MarketplaceFavorite
     }
   } catch {
     return EMPTY_DATA
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rich favorites rows — the Amazon-style FavoriteRow payload for the full
+// in-marketplace favorites page (docs/FAVORITES_MANAGEMENT.md §11). Templates
+// carry trust signals (rating / manufacturer badge / certs / sample / flavors)
+// + price-drop-since-saved; own products carry status + orders + reorder.
+// ---------------------------------------------------------------------------
+
+export interface FavCert {
+  name: string
+  iconUrl: string | null
+}
+export interface FavTemplateRow {
+  favoriteId: string
+  templateId: string
+  href: string
+  title: string
+  icon: string
+  metaLine: string
+  priceCents: number
+  priceSnapshotCents: number | null
+  savedLabel: string
+  note: string | null
+  rating: { mean: number | null; count: number }
+  manufacturerBadge: 'TRUSTED' | 'PREMIER' | null
+  certs: FavCert[]
+  flavorCount: number
+  sampleAvailable: boolean
+  unavailable: boolean
+}
+export interface FavProductRow {
+  favoriteId: string
+  productId: string
+  href: string
+  reorderHref: string
+  title: string
+  metaLine: string
+  savedLabel: string
+  note: string | null
+  status: string
+  secondaryNote: string
+}
+export interface MarketplaceFavoriteRows {
+  count: number
+  templateCount: number
+  productCount: number
+  templateRows: FavTemplateRow[]
+  productRows: FavProductRow[]
+}
+
+const EMPTY_ROWS: MarketplaceFavoriteRows = {
+  count: 0,
+  templateCount: 0,
+  productCount: 0,
+  templateRows: [],
+  productRows: [],
+}
+
+export async function getMarketplaceFavoriteRows(): Promise<MarketplaceFavoriteRows> {
+  const session = await getMarketingSession()
+  if (!session?.user || session.user.role !== 'CREATOR') return EMPTY_ROWS
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  })
+  if (!profile) return EMPTY_ROWS
+
+  try {
+    const rows = await prisma.favorite.findMany({
+      where: { creatorId: profile.id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        kind: true,
+        createdAt: true,
+        note: true,
+        priceSnapshotCents: true,
+        productTemplate: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            priceFloorCents: true,
+            ratingAvg: true,
+            ratingCount: true,
+            subcategory: {
+              select: { slug: true, category: { select: { slug: true, name: true, mainCategory: true } } },
+            },
+            variants: { select: { moqMin: true, leadTimeDays: true } },
+            manufacturerService: { select: { partner: { select: { tier: true } } } },
+            _count: { select: { flavorPresets: true, sampleOptions: true } },
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            brand: { select: { name: true } },
+            _count: { select: { orderItems: true } },
+          },
+        },
+      },
+    })
+
+    const templateRows: FavTemplateRow[] = []
+    const productRows: FavProductRow[] = []
+
+    for (const r of rows) {
+      if (r.kind === 'PRODUCT_TEMPLATE' && r.productTemplate) {
+        const t = r.productTemplate
+        const moqs = t.variants.map((v) => v.moqMin).filter((n): n is number => typeof n === 'number')
+        const leads = t.variants.map((v) => v.leadTimeDays).filter((n): n is number => typeof n === 'number')
+        const moq = moqs.length ? Math.min(...moqs) : 500
+        const lead = leads.length ? Math.min(...leads) : 14
+        const tier = t.manufacturerService?.partner?.tier
+        const certBadges = await getProductCertBadges(t.slug).catch(() => [])
+        templateRows.push({
+          favoriteId: '', // not needed by the row; targetId drives remove
+          templateId: t.id,
+          href: `/marketplace/${t.subcategory.category.slug}/${t.subcategory.slug}/${t.slug}`,
+          title: t.name,
+          icon: iconForNiche(t.name, t.subcategory.category.mainCategory),
+          metaLine: `${t.subcategory.category.name} · MOQ ${moq.toLocaleString()} · ${lead}-day lead`,
+          priceCents: t.priceFloorCents,
+          priceSnapshotCents: r.priceSnapshotCents ?? null,
+          savedLabel: savedLabelFor(r.createdAt),
+          note: r.note ?? null,
+          rating: { mean: t.ratingAvg ?? null, count: t.ratingCount ?? 0 },
+          manufacturerBadge: tier === 'TRUSTED' || tier === 'PREMIER' ? tier : null,
+          certs: certBadges.map((c) => ({ name: c.name, iconUrl: c.iconUrl })),
+          flavorCount: t._count.flavorPresets,
+          sampleAvailable: t._count.sampleOptions > 0,
+          unavailable: t.status !== 'PUBLISHED',
+        })
+      } else if (r.kind === 'PRODUCT' && r.product) {
+        const p = r.product
+        const orders = p._count.orderItems
+        productRows.push({
+          favoriteId: '',
+          productId: p.id,
+          href: creatorUrl(`/products/${p.id}/design/canvas`),
+          reorderHref: creatorUrl(`/products/${p.id}/checkout`),
+          title: p.name,
+          metaLine: `${p.brand.name} · ${orders} order${orders === 1 ? '' : 's'} placed`,
+          savedLabel: savedLabelFor(r.createdAt),
+          note: r.note ?? null,
+          status: p.status,
+          secondaryNote: 'Your product · opens in your dashboard',
+        })
+      }
+    }
+
+    return {
+      count: rows.length,
+      templateCount: templateRows.length,
+      productCount: productRows.length,
+      templateRows,
+      productRows,
+    }
+  } catch {
+    return EMPTY_ROWS
+  }
+}
+
+/** Remove a favorite (either kind) for the current creator. */
+export async function removeFavorite(input: {
+  kind: 'PRODUCT_TEMPLATE' | 'PRODUCT'
+  targetId: string
+}): Promise<{ ok: boolean }> {
+  const session = await getMarketingSession()
+  if (!session?.user || session.user.role !== 'CREATOR') return { ok: false }
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  })
+  if (!profile) return { ok: false }
+  try {
+    const where =
+      input.kind === 'PRODUCT_TEMPLATE'
+        ? { creatorId_productTemplateId: { creatorId: profile.id, productTemplateId: input.targetId } }
+        : { creatorId_productId: { creatorId: profile.id, productId: input.targetId } }
+    const existing = await prisma.favorite.findUnique({ where, select: { id: true } })
+    if (!existing) return { ok: true }
+    await prisma.favorite.delete({ where: { id: existing.id } })
+    await logAuditAs(
+      { id: session.user.id, role: 'CREATOR' },
+      { entityType: 'Favorite', entityId: existing.id, action: 'FAVORITE_REMOVED', payload: { ...input, via: 'favorites-page' } },
+    )
+    revalidatePath('/marketplace/favorites')
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+/** Set/clear the private note on a favorite. */
+export async function setFavoriteNote(input: {
+  kind: 'PRODUCT_TEMPLATE' | 'PRODUCT'
+  targetId: string
+  note: string
+}): Promise<{ ok: boolean }> {
+  const session = await getMarketingSession()
+  if (!session?.user || session.user.role !== 'CREATOR') return { ok: false }
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  })
+  if (!profile) return { ok: false }
+  try {
+    const where =
+      input.kind === 'PRODUCT_TEMPLATE'
+        ? { creatorId_productTemplateId: { creatorId: profile.id, productTemplateId: input.targetId } }
+        : { creatorId_productId: { creatorId: profile.id, productId: input.targetId } }
+    await prisma.favorite.update({ where, data: { note: input.note.slice(0, 280) || null } })
+    revalidatePath('/marketplace/favorites')
+    return { ok: true }
+  } catch {
+    return { ok: false }
   }
 }

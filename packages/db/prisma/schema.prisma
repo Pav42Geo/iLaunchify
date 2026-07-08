@@ -9143,6 +9143,9 @@ model Favorite {
   productId         String?
 
   note      String? // optional private creator note ("for Q4 launch")
+  // Price (per unit, cents) at the moment it was saved — powers the Amazon-style
+  // "price dropped X% · was $Y when saved" badge. Null for pre-snapshot rows.
+  priceSnapshotCents Int?
   createdAt DateTime @default(now())
 
   creator         CreatorProfile   @relation(fields: [creatorId], references: [id], onDelete: Cascade)

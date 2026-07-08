@@ -45,6 +45,8 @@ export async function PartnerTopbar({
           <PartnerTopbarRight
             email={user.email}
             name={user.name ?? null}
+            // Placeholder avatar until real profile-image upload lands.
+            image={user.image ?? 'https://i.pravatar.cc/120?img=12'}
             companyName={companyName}
             tier={tier}
             showMyApplication={showMyApplication}

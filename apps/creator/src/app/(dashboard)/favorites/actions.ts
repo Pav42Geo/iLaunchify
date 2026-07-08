@@ -73,12 +73,20 @@ export async function toggleFavorite(input: {
     return { ok: true, saved: false }
   }
 
+  // Snapshot the template's current price so the favorites page can show
+  // "price dropped X% since saved" (docs/FAVORITES_MANAGEMENT.md §11).
+  const priceSnapshotCents =
+    kind === 'PRODUCT_TEMPLATE'
+      ? (await prisma.productTemplate.findUnique({ where: { id: targetId }, select: { priceFloorCents: true } }))
+          ?.priceFloorCents ?? null
+      : null
   const created = await prisma.favorite.create({
     data: {
       creatorId,
       kind,
       productTemplateId: kind === 'PRODUCT_TEMPLATE' ? targetId : null,
       productId: kind === 'PRODUCT' ? targetId : null,
+      priceSnapshotCents,
     },
     select: { id: true },
   })

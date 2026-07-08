@@ -187,14 +187,41 @@ function checkFsmBypass() {
 // Local-only signal; skipped in CI where the client is always freshly generated.
 // Memory: ilaunchify-dev-prisma-restart.
 // =============================================================================
+// Find the schema copy Prisma EMBEDS inside the generated client (verbatim at
+// generate time). Comparing its CONTENT to the source schema catches a schema
+// edited without `db:generate` even when mtimes lie — the exact miss that let a
+// stale `Favorite.priceSnapshotCents` reach a failing typecheck (2026-07-07).
+function findEmbeddedSchemas() {
+  const out = []
+  const top = 'node_modules/.prisma/client/schema.prisma'
+  if (existsSync(top)) out.push(top)
+  const pnpm = 'node_modules/.pnpm'
+  if (existsSync(pnpm)) {
+    for (const dir of readdirSync(pnpm)) {
+      if (!/@prisma\+client@/.test(dir)) continue
+      const p = join(pnpm, dir, 'node_modules/.prisma/client/schema.prisma')
+      if (existsSync(p)) out.push(p)
+    }
+  }
+  return out
+}
+const normSchema = (s) => s.replace(/\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim()
 function checkPrismaClientFresh() {
   if (process.env.CI) return { name: 'prisma client freshness (skipped in CI)', level: 'warn', hits: [] }
   const schema = 'packages/db/prisma/schema.prisma'
-  const client = 'node_modules/.prisma/client/index.js'
   const hits = []
-  if (existsSync(schema) && existsSync(client)) {
-    if (statSync(schema).mtimeMs > statSync(client).mtimeMs) {
-      hits.push('schema.prisma is newer than the generated client — run: pnpm db:generate && rm -rf apps/*/.next')
+  if (existsSync(schema)) {
+    const want = normSchema(read(schema))
+    const embedded = findEmbeddedSchemas()
+    if (embedded.length === 0) {
+      hits.push('generated Prisma client not found — run: pnpm db:generate')
+    } else {
+      for (const e of embedded) {
+        if (normSchema(read(e)) !== want) {
+          hits.push('schema.prisma differs from the generated client (content, not just mtime) — run: pnpm db:generate && rm -rf apps/*/.next')
+          break
+        }
+      }
     }
   }
   return { name: 'Prisma client freshness (stale-client trap)', level: 'warn', hits }
