@@ -22,6 +22,19 @@ export type SignAgreementResult =
   | { ok: true; alreadySigned: boolean; recordSha256: string }
   | { ok: false; error: string }
 
+/**
+ * <form action> wrapper — returns void so it can bind directly to a server-form
+ * (no client component needed). Reads the typed legal name from FormData; the
+ * "I agree" checkbox is enforced natively (required) on the form. Errors are
+ * silent no-ops here (the page re-renders its state); a client modal can call
+ * signPartnerAgreement() directly for richer feedback later.
+ */
+export async function signAgreementFromForm(formData: FormData): Promise<void> {
+  const signerName = String(formData.get('signerName') ?? '').trim()
+  if (!signerName) return
+  await signPartnerAgreement({ signerName, method: 'typed' })
+}
+
 export async function signPartnerAgreement(input: {
   signerName: string
   method: 'typed' | 'drawn'

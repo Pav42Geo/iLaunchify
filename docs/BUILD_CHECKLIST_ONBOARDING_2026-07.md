@@ -59,7 +59,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 
 ## 4. P1 — the visible upgrade (build to prototype)
 - [ ] Onboarding UI redesign on the accordion (header + progress meter + two-column + sticky rail + trust) — prototype "② Onboarding"
-- [~] Contract signing — **core + persistence BUILT**: tamper-evident record builder (`agreement-signature.ts`, node-verified) + `signPartnerAgreement` server action (`(onboarding)/onboarding/agreement-actions.ts`: loads current `PartnerAgreement` server-side, builds record, persists `PartnerAgreementSignature`, audits, idempotent) + `v1.0` agreement seed (`seed:partner-agreement`). Invariants `--strict` green. Pending: the document-viewer + scroll-gate + typed/drawn **modal UI** (client component, wire the action) + signed-PDF certificate.
+- [~] Contract signing — **core + persistence + a working sign surface BUILT**: record builder (`agreement-signature.ts`, node-verified) + `signPartnerAgreement` action (persist + audit + idempotent) + `v1.0` seed (`seed:partner-agreement`) + **server-rendered `/onboarding/agreement` page** (renders the document markdown-lite; native form — required "I agree" checkbox + typed name → `signAgreementFromForm` → persists; shows signed state + cert hash). Invariants `--strict` green. Pending (client enhancements): the scroll-gate + draw-signature **modal** + signed-PDF certificate.
 - [ ] Progressive sequencing (§3 required-to-apply / before-go-live / progressive table)
 - [ ] Structured quality-cert step driving existing `CertificateType`/`PartnerCertificateInstance`
 - [ ] Domain→cert matrix as `CertificateType` rows + per-domain cert **routing gate**
