@@ -34,7 +34,8 @@
     "clean": "rm -rf node_modules .turbo dist",
     "seed:fc-dryrun": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-fc-dryrun.ts",
     "seed:favorites": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-favorites.ts",
-    "seed:onboarding-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-onboarding-demo.ts"
+    "seed:onboarding-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-onboarding-demo.ts",
+    "seed:partner-agreement": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-partner-agreement.ts"
   },
   "prisma": {
     "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts"
