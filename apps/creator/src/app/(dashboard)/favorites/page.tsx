@@ -11,6 +11,7 @@ import {
   setFavoriteNote,
   createCollection,
   deleteCollection,
+  renameCollection,
   moveFavoriteToCollection,
 } from './actions'
 
@@ -30,6 +31,7 @@ export default async function FavoritesPage() {
       collections={collections}
       onCreateFolder={createCollection}
       onDeleteFolder={deleteCollection}
+      onRenameFolder={renameCollection}
       onMoveToFolder={moveFavoriteToCollection}
     />
   )

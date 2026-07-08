@@ -14,6 +14,7 @@ import {
   setFavoriteNote,
   createCollection,
   deleteCollection,
+  renameCollection,
   moveFavoriteToCollection,
 } from '../favorites-actions'
 
@@ -94,6 +95,7 @@ export default async function MarketplaceFavoritesPage() {
           collections={data.collections}
           onCreateFolder={createCollection}
           onDeleteFolder={deleteCollection}
+          onRenameFolder={renameCollection}
           onMoveToFolder={moveFavoriteToCollection}
         />
       </div>

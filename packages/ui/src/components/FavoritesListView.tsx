@@ -9,7 +9,7 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, Search, Trash2, Share2, StickyNote, ShoppingBag, FolderPlus, Folder, X, Check } from 'lucide-react'
+import { Heart, Search, Trash2, Share2, StickyNote, ShoppingBag, FolderPlus, Folder, Pencil, X, Check } from 'lucide-react'
 import { FavoriteRow, type FavoriteRowProps } from './FavoriteRow'
 
 export interface FavoritesRowData extends Omit<FavoriteRowProps, 'actions' | 'className'> {
@@ -37,6 +37,7 @@ export interface FavoritesListViewProps {
   collections?: FavoritesCollection[]
   onCreateFolder?: (name: string) => void | Promise<unknown>
   onDeleteFolder?: (id: string) => void | Promise<unknown>
+  onRenameFolder?: (input: { id: string; name: string }) => void | Promise<unknown>
   onMoveToFolder?: (input: { kind: 'PRODUCT_TEMPLATE' | 'PRODUCT'; targetId: string; collectionId: string | null }) => void | Promise<unknown>
 }
 
@@ -53,6 +54,7 @@ export function FavoritesListView({
   collections,
   onCreateFolder,
   onDeleteFolder,
+  onRenameFolder,
   onMoveToFolder,
 }: FavoritesListViewProps) {
   const router = useRouter()
@@ -66,6 +68,7 @@ export function FavoritesListView({
   const [editing, setEditing] = React.useState<string | null>(null)
   const [creating, setCreating] = React.useState(false)
   const [newName, setNewName] = React.useState('')
+  const [renamingId, setRenamingId] = React.useState<string | null>(null)
 
   const q = query.trim().toLowerCase()
   const colOf = (r: FavoritesRowData) => (r.key in moved ? moved[r.key] : r.collectionId ?? null)
@@ -112,6 +115,11 @@ export function FavoritesListView({
   function deleteFolder(id: string) {
     if (folder === id) setFolder(null)
     void Promise.resolve(onDeleteFolder?.(id)).then(() => router.refresh())
+  }
+  function rename(id: string, name: string) {
+    setRenamingId(null)
+    if (!name.trim()) return
+    void Promise.resolve(onRenameFolder?.({ id, name: name.trim() })).then(() => router.refresh())
   }
 
   const rows = tab === 'marketplace' ? shownT : shownP
@@ -240,6 +248,10 @@ export function FavoritesListView({
               count={c.count}
               onClick={() => setFolder(c.id)}
               onDelete={onDeleteFolder ? () => deleteFolder(c.id) : undefined}
+              renaming={renamingId === c.id}
+              onStartRename={onRenameFolder ? () => setRenamingId(c.id) : undefined}
+              onRename={(name) => rename(c.id, name)}
+              onCancelRename={() => setRenamingId(null)}
             />
           ))}
         </nav>
@@ -282,16 +294,48 @@ function FolderItem({
   count,
   onClick,
   onDelete,
+  renaming,
+  onStartRename,
+  onRename,
+  onCancelRename,
 }: {
   active: boolean
   label: string
   count: number
   onClick: () => void
   onDelete?: () => void
+  renaming?: boolean
+  onStartRename?: () => void
+  onRename?: (name: string) => void
+  onCancelRename?: () => void
 }) {
+  const [val, setVal] = React.useState(label)
+  React.useEffect(() => {
+    if (renaming) setVal(label)
+  }, [renaming, label])
+
+  if (renaming) {
+    return (
+      <div className="px-1 py-1">
+        <input
+          autoFocus
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          maxLength={40}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onRename?.(val)
+            if (e.key === 'Escape') onCancelRename?.()
+          }}
+          onBlur={() => onRename?.(val)}
+          className="h-8 w-full rounded-lg border border-ink-200 bg-white px-2 text-[12px] focus:border-ink-400 focus:outline-none"
+        />
+      </div>
+    )
+  }
+
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors ${
+      className={`group flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors ${
         active ? 'bg-ink-900 text-white' : 'text-ink-700 hover:bg-ink-100'
       }`}
     >
@@ -300,6 +344,16 @@ function FolderItem({
         <span className="truncate">{label}</span>
         <span className={`ml-auto tabular-nums ${active ? 'text-white/60' : 'text-ink-400'}`}>{count}</span>
       </button>
+      {onStartRename && (
+        <button
+          type="button"
+          aria-label={`Rename folder ${label}`}
+          onClick={onStartRename}
+          className={`opacity-0 transition-opacity group-hover:opacity-100 ${active ? 'text-white/70 hover:text-white' : 'text-ink-400 hover:text-ink-900'}`}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
       {onDelete && (
         <button
           type="button"

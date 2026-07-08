@@ -602,6 +602,21 @@ export async function deleteCollection(id: string): Promise<{ ok: boolean }> {
   }
 }
 
+export async function renameCollection(input: { id: string; name: string }): Promise<{ ok: boolean }> {
+  const creatorId = await currentCreatorProfileId()
+  if (!creatorId || !input.name.trim()) return { ok: false }
+  try {
+    await prisma.favoriteCollection.updateMany({
+      where: { id: input.id, creatorId },
+      data: { name: input.name.trim().slice(0, 40) },
+    })
+    revalidatePath('/marketplace/favorites')
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
 export async function moveFavoriteToCollection(input: {
   kind: 'PRODUCT_TEMPLATE' | 'PRODUCT'
   targetId: string
