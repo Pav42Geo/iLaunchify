@@ -152,6 +152,8 @@ export const AUDIT_ENTITY_TYPES = [
   'PartnerAgreement', // versioned agreement text
   'PartnerAgreementSignature', // tamper-evident e-signature record (§4)
   'PartnerAccessSetting', // private↔public access mode toggle (§7)
+  'PartnerNomination', // D7 nomination — directed-partner pin + consent (dark until counsel)
+  'NominationSetting', // nomination feature gate (enabled=false until counsel blesses D7)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

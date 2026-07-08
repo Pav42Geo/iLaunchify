@@ -970,6 +970,7 @@ model Partner {
   // Onboarding v2 (additive) — docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md
   activationSteps         PartnerActivationStep[]       @relation("PartnerActivationSteps")
   agreementSignatures     PartnerAgreementSignature[]   @relation("PartnerAgreementSignatures")
+  nominations             PartnerNomination[]           @relation("PartnerNominations")
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 }
@@ -9258,5 +9259,59 @@ model PartnerAccessSetting {
   id          String            @id @default("singleton")
   mode        PartnerAccessMode @default(PRIVATE)
   updatedAt   DateTime          @updatedAt @default(now())
+  updatedById String?
+}
+
+// =============================================================================
+// Nomination model (D7) — BUILT DARK behind NominationSetting.enabled=false.
+// docs/legal/NOMINATION_LIABILITY_D7_FRAMEWORK.md. Do NOT enable for live
+// partners until counsel blesses the §6 liability allocation. Additive +
+// CockroachDB-safe. 2026-07-08.
+// =============================================================================
+
+enum NominationVisibility {
+  PUBLIC // nominated partner is also discoverable in the open marketplace
+  PRIVATE_TO_INVITER // scoped to the nominator only (hidden from rotation/marketplace)
+}
+
+enum NominationStatus {
+  PENDING_ONBOARDING // invited, not yet onboarded/approved
+  PENDING_ACTIVATION // approved, finishing Activation Setup
+  ACTIVE // pinned + routing-eligible for the nominator's legs
+  REJECTED // governed reject/reroute (§6.2d) or reasonable objection
+  REVOKED // nominator or platform unpinned
+}
+
+/// A creator/manufacturer directs a specific partner for a production leg,
+/// overriding automated rotation (D7). Carries the evidentiary consent record —
+/// the nominator accepts responsibility for its directed choice at pin time.
+model PartnerNomination {
+  id                 String               @id @default(uuid())
+  nominatorUserId    String // the creator/manufacturer user who nominated
+  nominatedPartnerId String
+  serviceType        ServiceType? // the leg nominated for; null = any service
+  visibility         NominationVisibility @default(PRIVATE_TO_INVITER)
+  status             NominationStatus     @default(PENDING_ONBOARDING)
+  // D7 consent (evidentiary; immutable once set)
+  consentTermsVersion String?
+  consentAt           DateTime?
+  consentIp           String?
+  consentUserAgent    String?
+  // Governance (§6.2d reject/reroute)
+  rejectedReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  nominatedPartner Partner @relation("PartnerNominations", fields: [nominatedPartnerId], references: [id], onDelete: Cascade)
+
+  @@index([nominatorUserId])
+  @@index([nominatedPartnerId])
+}
+
+/// Platform-wide nomination gate. enabled=false keeps the feature DARK until
+/// counsel blesses D7 + an admin flips it (mirrors the rotation engine pattern).
+model NominationSetting {
+  id          String   @id @default("singleton")
+  enabled     Boolean  @default(false)
+  updatedAt   DateTime @updatedAt @default(now())
   updatedById String?
 }
