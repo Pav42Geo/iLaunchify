@@ -7,7 +7,7 @@
 'use server'
 
 import { requireUser } from '@ilaunchify/auth'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getNominationMismatches } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertPartnerTransition } from '@ilaunchify/orders'
 import type { ServiceType } from '@ilaunchify/db'
@@ -408,6 +408,39 @@ export async function submitForReview() {
       )
     } catch {
       /* swallow — notifications are best-effort */
+    }
+
+    // D7 mismatch notice: if this partner was invited as a co-partner for a leg
+    // they didn't set up, tell the inviting manufacturer (the nomination stays
+    // pending — it never auto-pins without a live service). Best-effort.
+    try {
+      const mismatches = await getNominationMismatches(partner.id)
+      if (mismatches.length > 0) {
+        const legLabel: Record<string, string> = {
+          LABEL_PRINTING: 'Label printing',
+          COPACKING: 'Co-packing',
+          MANUFACTURING: 'Manufacturing',
+          WAREHOUSE: 'Fulfillment',
+        }
+        const { dispatchNotification } = await import('@ilaunchify/notifications')
+        await Promise.allSettled(
+          mismatches
+            .filter((m) => m.inviterUserId)
+            .map((m) =>
+              dispatchNotification({
+                userId: m.inviterUserId as string,
+                event: 'NOMINATION_SERVICE_MISMATCH',
+                audience: 'partner',
+                data: {
+                  coPartnerName: partner.companyName,
+                  serviceLabel: legLabel[m.serviceType] ?? m.serviceType,
+                },
+              }),
+            ),
+        )
+      }
+    } catch {
+      /* swallow — best-effort */
     }
   }
 

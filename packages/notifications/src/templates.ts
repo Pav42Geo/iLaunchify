@@ -18,6 +18,7 @@ export interface TemplateData {
   PARTNER_ACTIVATED: { companyName?: string }
   PARTNER_INVITED: { companyName?: string; onboardingUrl?: string }
   PARTNER_APPLICATION_RECEIVED: { companyName?: string }
+  NOMINATION_SERVICE_MISMATCH: { coPartnerName?: string; serviceLabel?: string }
   PACKAGING_APPROVED: { name: string; category?: string }
   PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
@@ -260,6 +261,16 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `You're invited to join iLaunchify${d.companyName ? `, ${d.companyName}` : ''}`,
         body: "We reviewed your application and would love to have you in our production network. Click below to start your onboarding — it takes about 15 minutes.",
         link: d.onboardingUrl ?? '/onboarding',
+      }
+    }
+    case 'NOMINATION_SERVICE_MISMATCH': {
+      const d = data as TemplateData['NOMINATION_SERVICE_MISMATCH']
+      const who = d.coPartnerName ?? 'A co-partner you invited'
+      const leg = d.serviceLabel ?? 'the invited service'
+      return {
+        title: `${who} didn’t set up ${leg}`,
+        body: `${who} finished onboarding without ${leg}. The nomination is on hold until they add that service — you may want to reach out or re-invite them for the correct leg.`,
+        link: '/co-partners',
       }
     }
     case 'PARTNER_APPLICATION_RECEIVED': {

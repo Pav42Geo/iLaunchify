@@ -120,6 +120,9 @@ export default async function OnboardingPage() {
   }
 
   const invitedLegLabels = invitation?.legs.map((l) => LEG_LABEL[l] ?? l) ?? []
+  const currentTypes = new Set(state?.services?.map((s) => s.type) ?? [])
+  const missingLegLabels =
+    invitation?.legs.filter((l) => !currentTypes.has(l)).map((l) => LEG_LABEL[l] ?? l) ?? []
 
   return (
     <>
@@ -138,6 +141,14 @@ export default async function OnboardingPage() {
             Complete your onboarding to start working together — you can also add other services you
             offer. You’ll go live for a service once you finish its setup.
           </p>
+          {missingLegLabels.length > 0 && (
+            <p className="mt-2 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-[12px] font-medium text-warning-800">
+              ⚠ You were invited for {missingLegLabels.join(' & ')}, but{' '}
+              {missingLegLabels.length > 1 ? 'those services aren’t' : 'that service isn’t'} in your
+              selection. Add {missingLegLabels.length > 1 ? 'them' : 'it'} back under “Your business”
+              to work with {invitation.inviterName ?? 'the manufacturer who invited you'}.
+            </p>
+          )}
         </div>
       )}
       <OnboardingAccordion

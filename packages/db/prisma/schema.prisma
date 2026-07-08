@@ -4737,6 +4737,7 @@ enum NotificationEvent {
   // Onboarding v2 (docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md §11)
   PARTNER_INVITED // admin qualified a lead → "you're selected, start onboarding" + magic link
   PARTNER_APPLICATION_RECEIVED // public "Become a partner" application acknowledgement
+  NOMINATION_SERVICE_MISMATCH // invited co-partner onboarded without the invited leg → notify inviter (D7)
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

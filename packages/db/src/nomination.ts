@@ -92,6 +92,51 @@ export async function getInvitationContext(
   return { inviterName, legs }
 }
 
+export interface NominationMismatch {
+  nominationId: string
+  serviceType: string
+  inviterUserId: string | null
+  inviterName: string | null
+}
+
+/**
+ * Nominations whose invited leg the partner is NOT set up for (no PartnerService
+ * of that type) — the "invited for X but didn't set it up" case. Used to notify
+ * the inviter + warn the invitee; the nomination stays pending (never auto-pins),
+ * so a mismatch is surfaced, never silent bad data. Read-only.
+ */
+export async function getNominationMismatches(
+  nominatedPartnerId: string,
+): Promise<NominationMismatch[]> {
+  const [noms, services] = await Promise.all([
+    prisma.partnerNomination.findMany({
+      where: {
+        nominatedPartnerId,
+        status: { in: ['PENDING_ONBOARDING', 'PENDING_ACTIVATION'] },
+        serviceType: { not: null },
+      },
+      select: {
+        id: true,
+        serviceType: true,
+        nominatorPartner: { select: { userId: true, companyName: true } },
+      },
+    }),
+    prisma.partnerService.findMany({
+      where: { partnerId: nominatedPartnerId },
+      select: { type: true },
+    }),
+  ])
+  const have = new Set(services.map((s) => s.type))
+  return noms
+    .filter((n) => n.serviceType !== null && !have.has(n.serviceType))
+    .map((n) => ({
+      nominationId: n.id,
+      serviceType: n.serviceType as string,
+      inviterUserId: n.nominatorPartner?.userId ?? null,
+      inviterName: n.nominatorPartner?.companyName ?? null,
+    }))
+}
+
 export interface NominationConsoleRow {
   id: string
   nominatorPartnerId: string | null

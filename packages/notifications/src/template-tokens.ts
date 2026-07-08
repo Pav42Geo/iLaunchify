@@ -68,6 +68,7 @@ export const EVENT_TOKEN_PALETTE: {
   SECTION_NEEDS_CHANGES: ['sectionType', 'companyName', 'notes'],
   PARTNER_ACTIVATED: ['companyName'],
   PARTNER_INVITED: ['companyName', 'onboardingUrl'],
+  NOMINATION_SERVICE_MISMATCH: ['coPartnerName', 'serviceLabel'],
   PARTNER_APPLICATION_RECEIVED: ['companyName'],
   PACKAGING_APPROVED: ['name', 'category'],
   PACKAGING_REJECTED: ['name', 'notes'],

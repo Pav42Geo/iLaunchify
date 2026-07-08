@@ -198,8 +198,10 @@ export {
   getActiveNominatedServiceId,
   listAllNominations,
   getInvitationContext,
+  getNominationMismatches,
   type NominationConsoleRow,
   type InvitationContext,
+  type NominationMismatch,
 } from './nomination'
 export {
   createSnapshot,
