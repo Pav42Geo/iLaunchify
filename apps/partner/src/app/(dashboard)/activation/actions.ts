@@ -10,6 +10,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+import { activateReadyNominations } from '@/lib/nomination-activation'
 
 // Returns void so it can be used directly as a <form action> (React requires
 // form actions to resolve to void). Failures are silent no-ops (nothing to
@@ -45,6 +46,10 @@ export async function setActivationStepComplete(
     toValue: stepKey,
     payload: { stepKey, complete },
   })
+
+  // Auto-pin any nominations waiting on this partner's leg going live (D7).
+  // Gated dark — no-ops unless nomination is enabled.
+  if (complete) await activateReadyNominations(partner.id)
 
   revalidatePath('/activation')
 }
