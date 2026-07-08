@@ -32,6 +32,8 @@ import {
   Gauge,
   Megaphone,
   Medal,
+  Handshake,
+  Rocket,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -80,6 +82,8 @@ const NAV_ACCESSORIES: PartnerNavItem = { href: '/accessories', label: 'Accessor
 const NAV_CERTIFICATIONS: PartnerNavItem = { href: '/certifications', label: 'Certifications', icon: Award }
 const NAV_PAYMENTS: PartnerNavItem = { href: '/payments', label: 'Payments', icon: DollarSign }
 const NAV_SETTINGS: PartnerNavItem = { href: '/settings', label: 'Settings', icon: Settings }
+const NAV_COPARTNERS: PartnerNavItem = { href: '/co-partners', label: 'Co-partners', icon: Handshake }
+const NAV_ACTIVATION: PartnerNavItem = { href: '/activation', label: 'Activation Setup', icon: Rocket }
 
 /**
  * Resolve the sidebar nav for a partner from their service types.
@@ -96,7 +100,7 @@ const NAV_SETTINGS: PartnerNavItem = { href: '/settings', label: 'Settings', ico
  */
 export function roleNavFor(
   serviceTypes: readonly string[],
-  opts: { isOrgAdmin?: boolean } = {},
+  opts: { isOrgAdmin?: boolean; showCoPartners?: boolean } = {},
 ): PartnerNavItem[] {
   const isOrgAdmin = opts.isOrgAdmin ?? true // founders/back-compat default
   const effective: readonly string[] =
@@ -114,6 +118,8 @@ export function roleNavFor(
   const nav: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS, NAV_PERFORMANCE]
   if (fulfillment) nav.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
   if (isOrgAdmin) {
+    // Post-approval setup surface — the union of every service's activation track.
+    nav.push(NAV_ACTIVATION)
     if (producing) nav.push(NAV_STANDING)
     if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)
     nav.push(NAV_SERVICES)
@@ -122,6 +128,9 @@ export function roleNavFor(
     // PS-8c — claimable capability RFQs (printers who can produce uncovered specs).
     if (has('LABEL_PRINTING')) nav.push(NAV_CAPABILITY)
     if (producing) nav.push(NAV_ACCESSORIES)
+    // Co-partners (D7) — a manufacturer directs its own print/pack subcontractors.
+    // Gated on the nomination feature being enabled (dark until counsel clears it).
+    if (producing && opts.showCoPartners) nav.push(NAV_COPARTNERS)
     nav.push(NAV_CERTIFICATIONS, NAV_PAYMENTS)
     if (fulfillment) nav.push(NAV_BILLING)
   }

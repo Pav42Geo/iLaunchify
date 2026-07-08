@@ -47,13 +47,49 @@ const SERVICE_ACCENT: Record<string, { dot: string; pill: string }> = {
 // lookup) so callers are safe under noUncheckedIndexedAccess.
 const accent = (k: string): { dot: string; pill: string } => SERVICE_ACCENT[k] ?? SHARED_ACCENT
 
+// Activation Setup opens once a partner is past identity/ops approval. Before
+// that, onboarding + admin review come first — show a "not yet" notice instead
+// of the setup tracks (the route is directly reachable even though the nav hides
+// it pre-approval).
+const PRE_APPROVAL_STATUSES = new Set([
+  'DRAFT',
+  'LEAD',
+  'INVITED',
+  'IN_PROGRESS',
+  'IDENTITY_PENDING_REVIEW',
+  'UNDER_REVIEW',
+])
+
 export default async function ActivationPage() {
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    select: { id: true },
+    select: { id: true, status: true },
   })
   if (!partner) return null
+
+  if (PRE_APPROVAL_STATUSES.has(partner.status)) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
+            Post-approval · Activation Setup
+          </p>
+          <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+            Activation Setup opens after approval
+          </h1>
+          <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+            Finish onboarding and pass identity + operations review first. Once you’re approved,
+            you’ll set up each service here to go live.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center text-[13px] text-ink-600">
+          Your account is still in onboarding / review. We’ll open Activation Setup as soon as you’re
+          approved.
+        </div>
+      </div>
+    )
+  }
 
   const status = await getPartnerActivationStatus(partner.id)
   const { serviceTypes, progress } = status
