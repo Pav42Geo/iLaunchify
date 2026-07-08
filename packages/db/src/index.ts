@@ -193,7 +193,12 @@ export {
   isPartnerAccessPrivate,
   type PartnerAccessMode as PartnerAccessModeValue,
 } from './partner-access'
-export { isNominationEnabled, getActiveNominatedServiceId } from './nomination'
+export {
+  isNominationEnabled,
+  getActiveNominatedServiceId,
+  listAllNominations,
+  type NominationConsoleRow,
+} from './nomination'
 export {
   createSnapshot,
   listSnapshots,

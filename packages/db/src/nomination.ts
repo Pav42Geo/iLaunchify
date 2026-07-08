@@ -55,3 +55,64 @@ export async function getActiveNominatedServiceId(
     .catch(() => null)
   return service?.id ?? null
 }
+
+export interface NominationConsoleRow {
+  id: string
+  nominatorUserId: string
+  nominatorEmail: string | null
+  nominatedPartnerId: string
+  nominatedPartnerName: string | null
+  serviceType: string | null
+  visibility: string
+  status: string
+  rejectedReason: string | null
+  consentTermsVersion: string | null
+  consentAt: Date | null
+  createdAt: Date
+}
+
+/**
+ * Every nomination, newest first, joined to the nominated partner's name + the
+ * nominator's email. For the admin console (governance + D7 consent audit). Not
+ * gated — governance must see nominations regardless of the enable flag.
+ */
+export async function listAllNominations(limit = 100): Promise<NominationConsoleRow[]> {
+  const noms = await prisma.partnerNomination.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      nominatorUserId: true,
+      nominatedPartnerId: true,
+      serviceType: true,
+      visibility: true,
+      status: true,
+      rejectedReason: true,
+      consentTermsVersion: true,
+      consentAt: true,
+      createdAt: true,
+      nominatedPartner: { select: { companyName: true } },
+    },
+  })
+
+  const userIds = [...new Set(noms.map((n) => n.nominatorUserId))]
+  const users = userIds.length
+    ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } })
+    : []
+  const emailById = new Map(users.map((u) => [u.id, u.email]))
+
+  return noms.map((n) => ({
+    id: n.id,
+    nominatorUserId: n.nominatorUserId,
+    nominatorEmail: emailById.get(n.nominatorUserId) ?? null,
+    nominatedPartnerId: n.nominatedPartnerId,
+    nominatedPartnerName: n.nominatedPartner?.companyName ?? null,
+    serviceType: n.serviceType ?? null,
+    visibility: n.visibility,
+    status: n.status,
+    rejectedReason: n.rejectedReason ?? null,
+    consentTermsVersion: n.consentTermsVersion ?? null,
+    consentAt: n.consentAt ?? null,
+    createdAt: n.createdAt,
+  }))
+}
