@@ -51,7 +51,7 @@ export async function getActingPartner(userId: string) {
   if (!access) return null
   const partner = await prisma.partner.findUnique({
     where: { id: access.partnerId },
-    select: { id: true, status: true, companyName: true, onboardingProgress: true },
+    select: { id: true, status: true, companyName: true, onboardingProgress: true, tier: true },
   })
   return partner ? { partner, access } : null
 }
