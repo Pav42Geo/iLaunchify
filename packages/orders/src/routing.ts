@@ -345,26 +345,36 @@ export async function findRouting(params: {
     if (ownerPrint) {
       printSvcId = ownerPrint.id
       printUserId = ownerPrint.partner.userId
-    } else if (eligiblePrinters.length > 0) {
+    } else {
       // SR-2 (SMART_ROTATION_ENGINE §2.2) — the commodity shop. Replaces the
       // old arbitrary `eligiblePrinters[0]`: hard filters already ran above;
       // the engine handles sticky reorders, the new-provider ramp, the rating
       // pool and the admin-configured split. Policy `enabled=false` (or no
       // policy row) reproduces the legacy first-candidate pick exactly.
-      const decided = await rotatePrintShop({
-        eligible: eligiblePrinters.map((s) => ({
-          id: s.id,
-          userId: s.partner.userId,
-          ratingBayesian: s.ratingBayesian === null ? null : Number(s.ratingBayesian),
-          ratingCount: s.ratingCount,
-          excludeFromAutoRotation: s.excludeFromAutoRotation,
-        })),
-        productId: params.productId,
-        creatorUserId: params.creatorUserId ?? null,
-      })
-      printSvcId = decided.serviceId
-      printUserId = decided.userId
-      if (decided.awardPayload) printAwardDecision = decided.awardPayload
+      //
+      // INVITED_ONLY (private) operators are excluded from the rotation pool
+      // ENTIRELY — they take work only via direct nomination (pinned earlier via
+      // pinnedPrintServiceId), never auto-rotation, and never via the engine's
+      // never-strand fallback. Owner-self (above) is unaffected.
+      const rotationEligible = eligiblePrinters.filter(
+        (s) => s.partner.participationMode === 'PUBLIC',
+      )
+      if (rotationEligible.length > 0) {
+        const decided = await rotatePrintShop({
+          eligible: rotationEligible.map((s) => ({
+            id: s.id,
+            userId: s.partner.userId,
+            ratingBayesian: s.ratingBayesian === null ? null : Number(s.ratingBayesian),
+            ratingCount: s.ratingCount,
+            excludeFromAutoRotation: s.excludeFromAutoRotation,
+          })),
+          productId: params.productId,
+          creatorUserId: params.creatorUserId ?? null,
+        })
+        printSvcId = decided.serviceId
+        printUserId = decided.userId
+        if (decided.awardPayload) printAwardDecision = decided.awardPayload
+      }
     }
   }
 

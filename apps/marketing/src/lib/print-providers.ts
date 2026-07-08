@@ -87,7 +87,13 @@ export async function getPrintProviderCards(templateSlug: string): Promise<Print
       where: {
         type: 'LABEL_PRINTING',
         status: 'ACTIVE',
-        partner: { status: 'ACTIVE', user: { stripeAccountStatus: 'ACTIVE' } },
+        // INVITED_ONLY (private) operators are invisible in public discovery —
+        // reachable only via a direct nomination, never browsed/picked by others.
+        partner: {
+          status: 'ACTIVE',
+          participationMode: 'PUBLIC',
+          user: { stripeAccountStatus: 'ACTIVE' },
+        },
         packagingOfferings: { some: { status: 'ACTIVE' } },
       },
       select: {

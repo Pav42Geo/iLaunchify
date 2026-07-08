@@ -907,6 +907,15 @@ model Partner {
   // Market participation — how this partner gets work. See PartnerParticipationMode.
   // INVITED_ONLY = private operator (nomination-only, no rotation, no marketplace).
   participationMode       PartnerParticipationMode      @default(PUBLIC)
+  // Public-operator clickwrap acknowledgment (Pavel 2026-07-08). Recorded when a
+  // partner switches to PUBLIC: they accept the Public Operator Terms (a section of
+  // the signed partner agreement) + confirm current capacity. Evidentiary trail for
+  // the higher-obligation open-market mode; no separate signed document.
+  publicModeTermsVersion       String?
+  publicModeAcceptedAt         DateTime?
+  publicModeAcceptedIp         String?
+  publicModeAcceptedUserAgent  String?
+  publicModeCapacityConfirmedAt DateTime?
   // Lead capture metadata
   leadSource              String?
   leadNotes               String?
