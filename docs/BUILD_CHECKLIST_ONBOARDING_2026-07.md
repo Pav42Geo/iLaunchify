@@ -51,7 +51,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 
 ## 4. P1 — the visible upgrade (build to prototype)
 - [ ] Onboarding UI redesign on the accordion (header + progress meter + two-column + sticky rail + trust) — prototype "② Onboarding"
-- [ ] Contract signing modal — document viewer + scroll-gate + typed/drawn signature + `PartnerAgreement`/`PartnerAgreementSignature` + audit trail (ts/IP/UA/hash/consent) + signed-PDF — prototype modal
+- [~] Contract signing modal — **audit-trail CORE built** (`apps/partner/src/lib/agreement-signature.ts` + test): tamper-evident record with document SHA-256, record hash, signer/ip/ua/server-timestamp/consent + verify (ESIGN/UETA per the legal redline). Pending: the document-viewer + scroll-gate + typed/drawn signature modal UI, the `PartnerAgreement`/`PartnerAgreementSignature` schema + server action to persist, and signed-PDF generation.
 - [ ] Progressive sequencing (§3 required-to-apply / before-go-live / progressive table)
 - [ ] Structured quality-cert step driving existing `CertificateType`/`PartnerCertificateInstance`
 - [ ] Domain→cert matrix as `CertificateType` rows + per-domain cert **routing gate**
