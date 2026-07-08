@@ -168,6 +168,7 @@ export function PrintProvidersSection({
   templateSlug,
   initialSelectedServiceId = null,
   canSelect = false,
+  nominated = false,
 }: {
   view: PrintProvidersView
   templateSlug: string
@@ -175,7 +176,12 @@ export function PrintProvidersSection({
   initialSelectedServiceId?: string | null
   /** True only for signed-in creators — guests see cards without the button. */
   canSelect?: boolean
+  /** D7 — the manufacturer nominated a print co-partner for this leg; the creator
+   *  can't pick/switch (the switch is hidden + a note explains). */
+  nominated?: boolean
 }) {
+  // A manufacturer nomination owns the leg → no creator selection at all.
+  const selectable = canSelect && !nominated
   const [detailsFor, setDetailsFor] = useState<ProviderCardData | null>(null)
   const [openToReviews, setOpenToReviews] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedServiceId)
@@ -207,7 +213,7 @@ export function PrintProvidersSection({
           ? 'This manufacturer works with independent print partners — one of these providers will print your labels and decoration.'
           : 'This manufacturer can print in-house, or one of these independent providers can handle your labels and decoration.'}{' '}
         Ratings come only from creators with delivered orders.
-        {canSelect && (
+        {selectable && (
           <>
             {' '}
             Pick one to make it your printer for this product, or leave it to us — we route to the
@@ -215,6 +221,13 @@ export function PrintProvidersSection({
           </>
         )}
       </p>
+
+      {nominated && (
+        <p className="mb-4 rounded-xl border border-ink-200 bg-ink-50 px-4 py-2.5 text-[13px] text-ink-600">
+          The manufacturer of this product works with its own print partner for this leg, so provider
+          selection is managed for you.
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="mb-4 rounded-xl border border-pink-200 bg-pink-50 px-4 py-2.5 text-[13px] text-pink-700">
@@ -289,7 +302,7 @@ export function PrintProvidersSection({
               >
                 Provider info
               </button>
-              {canSelect && (
+              {selectable && (
                 <button
                   type="button"
                   onClick={() => handleSelect(p.serviceId)}

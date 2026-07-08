@@ -6,12 +6,45 @@
 // step 0 at checkout (hard-filter validated there — the pin is a preference,
 // never a bypass). Audited.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getActiveNominatedServiceId } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { getMarketingSession } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true; selected: boolean } | { ok: false; error: string }
+
+/**
+ * D7 — does the product's MANUFACTURER own the print leg via an active nomination?
+ * When they do, the creator cannot manually pick/switch the printer (the
+ * manufacturer's co-partner takes the leg). Gated: false while nomination is dark.
+ */
+async function nominationOwnsPrintLeg(templateId: string): Promise<boolean> {
+  const t = await prisma.productTemplate.findUnique({
+    where: { id: templateId },
+    select: { manufacturerServiceId: true },
+  })
+  if (!t?.manufacturerServiceId) return false
+  const svc = await prisma.partnerService.findUnique({
+    where: { id: t.manufacturerServiceId },
+    select: { partnerId: true },
+  })
+  if (!svc) return false
+  return (await getActiveNominatedServiceId(svc.partnerId, 'LABEL_PRINTING')) !== null
+}
+
+/** UI helper: is the print leg manufacturer-nominated for this template? (hide the switch) */
+export async function isPrintLegNominated(templateSlug: string): Promise<boolean> {
+  try {
+    const t = await prisma.productTemplate.findUnique({
+      where: { slug: templateSlug },
+      select: { id: true },
+    })
+    if (!t) return false
+    return await nominationOwnsPrintLeg(t.id)
+  } catch {
+    return false
+  }
+}
 
 export async function selectPrintProvider(input: {
   templateSlug: string
@@ -28,6 +61,16 @@ export async function selectPrintProvider(input: {
     select: { id: true },
   })
   if (!template) return { ok: false, error: 'Product not found' }
+
+  // D7 — if the manufacturer has nominated a print co-partner for this product,
+  // the creator cannot pick/switch the printer for that leg. Authoritative guard
+  // (covers every caller); gated, so it never blocks while nomination is dark.
+  if (await nominationOwnsPrintLeg(template.id)) {
+    return {
+      ok: false,
+      error: 'The manufacturer of this product has assigned its own print partner for this leg.',
+    }
+  }
 
   // The pick must be a live printer — same ops gate the cards render behind.
   const now = new Date()

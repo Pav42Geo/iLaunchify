@@ -21,7 +21,7 @@ import { getTemplateRatingAndReviews, type TemplateLiveRating } from '@/lib/temp
 import { TemplateReviewsSection } from './TemplateReviewsSection'
 import { getPrintProviderCards } from '@/lib/print-providers'
 import { PrintProvidersSection } from './PrintProvidersSection'
-import { getMyPrintSelection } from './select-provider-action'
+import { getMyPrintSelection, isPrintLegNominated } from './select-provider-action'
 import { getMarketplaceTemplateBySlug, getTemplateDetailOverrides, getTemplateGalleryImages } from '@/lib/templates'
 import { getTemplateRecipeDetail, type DomainFacts } from '@/lib/recipe-detail'
 import { getTemplateFlavorRecipes } from '@/lib/flavor-recipe-detail'
@@ -123,6 +123,8 @@ export default async function ProductDetailPage({
   const canSelectProvider = session?.user?.role === 'CREATOR'
   const myPrintSelectionId =
     printProviders && canSelectProvider ? await getMyPrintSelection(template.slug) : null
+  // D7 — if the manufacturer nominated a print co-partner, the creator can't pick.
+  const printLegNominated = printProviders ? await isPrintLegNominated(template.slug) : false
 
   // Recipe-derived ingredients + Nutrition Facts — computed from the template's
   // real recipe slots via the nutrition engine (FOOD domain). Overrides the
@@ -414,6 +416,7 @@ export default async function ProductDetailPage({
           templateSlug={template.slug}
           initialSelectedServiceId={myPrintSelectionId}
           canSelect={canSelectProvider}
+          nominated={printLegNominated}
         />
       )}
 

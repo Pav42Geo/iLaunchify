@@ -11,7 +11,7 @@
 // Outputs: chosen manufacturing service + chosen label-printing service (or null
 // if no match — order is flagged for admin manual routing).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getActiveNominatedServiceId } from '@ilaunchify/db'
 import { generateOrderManifest } from './manifest'
 import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
@@ -232,6 +232,44 @@ export async function findRouting(params: {
   }
 
   // -------- Print / decoration provider --------
+  // D7 NOMINATION (docs/legal/NOMINATION_LIABILITY_D7_FRAMEWORK.md) — a
+  // MANUFACTURER's ACTIVE nomination for the print leg takes precedence over the
+  // creator's manual pick and over rotation (precedence: mfr-self > nomination >
+  // creator-pick > rotation). It can never conflict with mfr-self: a nomination
+  // can't be created for a leg the manufacturer services itself. Validated against
+  // the SAME hard filters as any pin — a nomination NEVER rescues a failed filter;
+  // an unavailable nominee falls through to the creator pick / rotation below.
+  // getActiveNominatedServiceId is gated (returns null while nomination is dark),
+  // so this whole step is a no-op until the feature is enabled.
+  const nominatedPrintServiceId = await getActiveNominatedServiceId(
+    manufacturer.partnerId,
+    'LABEL_PRINTING',
+  )
+  if (nominatedPrintServiceId && !excluded.has(nominatedPrintServiceId)) {
+    const now = new Date()
+    const nominated = await prisma.partnerService.findFirst({
+      where: {
+        id: nominatedPrintServiceId,
+        type: 'LABEL_PRINTING',
+        status: 'ACTIVE',
+        partner: { status: 'ACTIVE', user: { stripeAccountStatus: 'ACTIVE' } },
+        packagingOfferings: { some: { status: 'ACTIVE' } },
+        blackoutDates: { none: { startsOn: { lte: now }, endsOn: { gte: now } } },
+      },
+      include: { partner: { select: { userId: true } } },
+    })
+    if (nominated) {
+      return {
+        ok: true,
+        manufacturingServiceId: manufacturer.id,
+        manufacturingUserId: manufacturer.partner.userId,
+        labelPrintingServiceId: nominated.id,
+        labelPrintingUserId: nominated.partner.userId,
+      }
+    }
+    // Nominated printer failed a hard filter — fall through (never rescue a filter).
+  }
+
   // PS-3 STEP 0 (PRINT_PROVIDER_SELECTION §4): the creator's pinned provider,
   // validated against the SAME hard filters as every other path (active svc +
   // partner + Stripe, not excluded, no live blackout, ≥1 ACTIVE offering).
