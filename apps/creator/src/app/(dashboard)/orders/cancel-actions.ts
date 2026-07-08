@@ -19,6 +19,7 @@ import { logAuditAs } from '@ilaunchify/audit'
 import {
   computeCancellationOutcome,
   canCreatorSelfCancel,
+  assertOrderTransition,
   type CreatorCancelBlockReason,
 } from '@ilaunchify/orders'
 import { dispatchNotification } from '@ilaunchify/notifications'
@@ -85,6 +86,7 @@ export async function requestOrderCancellation({
     preRouting &&
     withinWindow
   ) {
+    assertOrderTransition(order.status, 'CANCELLED')
     await prisma.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } })
     await logAuditAs(user, {
       entityType: 'Order',

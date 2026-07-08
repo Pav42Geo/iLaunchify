@@ -421,3 +421,46 @@ Open questions for next session:
 Thanks,
 Pavel
 ```
+
+---
+
+# Addendum 2026-07-07 — Onboarding, Nomination, Activation & E-Signature build
+
+Hand these to counsel alongside the drafts. They arise from the partner-onboarding build (see `docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md` §6 nomination, §4 e-sign, §5B Activation Setup, and `docs/AUTH_ENTRANCE_SECURITY_2026-07.md`). The **D7 nomination liability language is the priority** — do not ship the nomination feature until counsel blesses it.
+
+## Partner Agreement (`Partner_Agreement.docx`)
+
+### ADD — Nominated / Directed-Partner Liability & Indemnity (D7 — priority)
+
+> **Nominated Partners.** Where a Creator or Manufacturer nominates a specific downstream partner (e.g., print provider, co-packer, fulfillment center) for a production leg (a "Nominated Partner"), the nominating party (a) represents that it has an independent basis for the nomination; (b) accepts responsibility for its directed choice to the extent a resulting defect arises from that choice rather than from the Platform's orchestration; and (c) indemnifies and holds harmless the Platform against claims arising from the nomination. The Platform retains a governed right, in its reasonable discretion, to reject or temporarily route around a Nominated Partner for capacity, compliance, quality, or legal reasons. A Nominated Partner remains independently bound by all obligations of this Agreement; nomination is a fast lane for onboarding, **not** a waiver of any compliance, certification, insurance, or quality requirement.
+
+*Counsel note:* benchmark against nominated-subcontractor doctrine (FIDIC-style "reasonable objection" + employer indemnity). **Primary question:** the default liability allocation when the Platform's automated partner allocation ("rotation") is overridden by a party's directed choice.
+
+### ADD — Anti-Circumvention / On-Platform Transaction
+
+> Partner shall transact all Platform-originated orders on the Platform and shall not solicit, divert, or accept off-platform payment for orders originated through the Platform — including with counterparties introduced or nominated via the Platform — for a period of [___] months following introduction.
+
+### ADD — Electronic Signature & Consent to Transact Electronically
+
+> This Agreement may be executed by electronic signature, which each party intends to authenticate this writing and to have the same legal effect as a handwritten signature under the U.S. ESIGN Act (15 U.S.C. §7001 et seq.) and applicable UETA. Each party consents to transact electronically. The Platform will retain a tamper-evident record of execution — including signer identity, timestamps, originating IP/device, a consent record, and a document-version hash — and will make an executed copy available to the Partner.
+
+*Counsel note:* confirm our **DIY signed-document approach** (scroll-gated document modal, typed/drawn signature, server-side timestamp + IP + user-agent + document hash + generated Certificate of Completion) is sufficient for enforceability of this document class, or whether a certified e-signature provider is advised for the Partner Agreement specifically.
+
+### ADD — Partner-Maintained Operating Data (Activation Setup)
+
+> Partner is responsible for the accuracy and currency of the operational data it enters and maintains (capabilities, materials, certifications, lead times, capacity). The Platform relies on this data to route work; material misrepresentation is a breach. Expired or withdrawn certifications automatically suspend the Partner's eligibility for the affected category of work.
+
+## Terms of Service (`Terms_of_Service.docx`)
+
+### MODIFY §13 (Limitation of liability) — reference the nomination carve-out
+
+Add a cross-reference so the ToS cap defers to the Partner Agreement's Nominated-Partner liability allocation for directed-choice defects.
+
+## Questions for counsel — the short list (D7 + build)
+
+1. **Liability allocation** when a party nominates/directs a specific partner and a defect results — who bears it, and does our indemnity language hold up?
+2. **E-signature sufficiency** — is our DIY signed-document + audit-trail + certificate approach enough for the Partner Agreement, or should this document class use a certified provider?
+3. **Anti-circumvention** — enforceable scope and term for a production marketplace?
+4. **Governed override** — does the Platform's right to reject/reroute a Nominated Partner create assumed-duty exposure (Restatement (Second) of Torts §324A)?
+5. **Insurance** — confirm the required certificates of insurance (general + product liability) and minimum limits for each partner role.
+6. Confirm the **version bump** (Partner Agreement → v1.1) and whether existing partners must re-sign.

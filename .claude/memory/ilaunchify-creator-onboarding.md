@@ -7,6 +7,8 @@ metadata:
   originSessionId: f1d70585-c159-4eab-861c-0f3599bfdeaf
 ---
 
+> **CORRECTION 2026-07-07 (audit):** the route-based 5-step stepper below was **superseded** (Pavel 2026-05-25, "Supliful pattern"). The live implementation is a **non-blocking Launch Checklist** — drawer + sidebar trigger + dashboard `ChecklistProgressCard`, one shared `LaunchChecklistProvider` snapshot, 5 deep-linking items, none blocking. There is NO `/dashboard/creator/onboarding` route (it was a 404 target until fixed). Progress in `CreatorProfile.onboardingProgress` JSON. Files: `apps/creator/src/components/checklist/*`, `(dashboard)/_actions/checklist-actions.ts`. Do NOT rebuild the stepper. The <15-min goal and step *content* below still describe what the checklist links to, but the delivery mechanism is the drawer, not a route stepper. See `docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md` Appendix A.
+
 In iLaunchify, creator onboarding is a **5-step guided stepper** that runs immediately after first signin — patterned after Pavel's FOD `/dashboard/creator/onboarding` (616-line CreatorOnboardingFlow). Goal: signup → "customizing first product" in <15 min of active time.
 
 **The 5 steps:**

@@ -100,7 +100,10 @@ const LAUNCH_KEYS = ['template', 'flavor', 'size', 'packaging', 'quantity', 'par
  */
 function buildPostSigninUrl(launch: Record<string, string> | undefined): string {
   const template = launch?.template
-  if (!template) return '/dashboard/creator/onboarding'
+  // No marketplace pick → land on the dashboard, where the first-run GetStartedHub
+  // + Launch Checklist drawer live. (Was '/dashboard/creator/onboarding', a route
+  // that no longer exists after the stepper→checklist-drawer pivot — 404. 2026-07-07.)
+  if (!template) return '/dashboard'
   const params = new URLSearchParams()
   for (const key of LAUNCH_KEYS) {
     const value = launch?.[key]

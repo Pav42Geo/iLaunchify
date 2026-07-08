@@ -48,6 +48,7 @@ import {
   evaluateCapacityGateForCheckout,
   type CapacityGateInfo,
   resolveOrderProductionFeeBps,
+  assertOrderTransition,
 } from '@ilaunchify/orders'
 import {
   createCheckoutSession,
@@ -1283,12 +1284,24 @@ export async function placeOrderFromCheckoutDraft(
       applicationFeeCents,
     })
   } catch (err) {
+    // Rollback: the order was just created at PENDING_PAYMENT, so
+    // PENDING_PAYMENT→CANCELLED is a verified-legal edge — the assert documents
+    // it and cannot throw here.
+    assertOrderTransition('PENDING_PAYMENT', 'CANCELLED')
     await prisma.order.update({
       where: { id: order.id },
       data: {
         status: 'CANCELLED',
         internalNotes: `${internalNotes}\n\nStripe error: ${(err as Error).message}`,
       },
+    })
+    await logAuditAs(user, {
+      entityType: 'Order',
+      entityId: order.id,
+      action: 'ORDER_CANCELLED_CHECKOUT_ERROR',
+      fromValue: 'PENDING_PAYMENT',
+      toValue: 'CANCELLED',
+      payload: { reason: 'stripe_session_error', message: (err as Error).message },
     })
     return {
       ok: false,

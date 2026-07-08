@@ -137,6 +137,10 @@ Larger specs in `docs/`:
 - `MANUFACTURER_PRODUCT_BUILDER.md` — partner editor card spec
 - `DESIGN_SYSTEM.md` — full tokens + components
 - `SECURITY_ARCHITECTURE.md` — LOCKED 2026-06-05 · threat model + Tier 0/1/2 plan. Tenant isolation is threat #1; new server actions use centralized ownership guards (`packages/auth`), never ad-hoc checks.
+- `PARTNER_ONBOARDING_STRATEGY_2026-07.md` — onboarding redesign + Activation Setup (§5B service-composed post-approval stepper) + nomination model (§6, Option A + §6.5 controls) + private/public access switch (§7) + admin templates (§11). Decisions D1–D9. **UI = `design/partner-onboarding-mockup.html` (approved baseline).**
+- `AUTH_ENTRANCE_SECURITY_2026-07.md` — 3-entrance auth hardening: invite-only + Turnstile + passkeys; admin 2FA spec §4B (TOTP-first, build now). Decisions S1–S5.
+- `BUILD_CHECKLIST_ONBOARDING_2026-07.md` — living build tracker for all the above (P0–P3). Check items off as built.
+- `legal/LEGAL_DOCS_REDLINE_RECOMMENDATIONS.md` Addendum 2026-07-07 — counsel redlines for nomination liability (D7), e-sign, anti-circumvention. **Don't ship nomination until counsel blesses D7.**
 
 ## Available subagents
 

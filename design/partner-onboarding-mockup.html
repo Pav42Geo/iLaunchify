@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>iLaunchify · Partner Application + Onboarding + Activation — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Fraunces:ital,opsz,wght@1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pink:#FF2E63; --pink-700:#C21E4B; --neon:#B5FF3D;
+  --ink-900:#17171B; --ink-700:#3A3A42; --ink-500:#6B6B76; --ink-400:#8A8A94;
+  --ink-300:#C9C9D1; --ink-200:#E7E7EC; --ink-100:#F2F2F5;
+  --hero:#FFFFFF; --shell:#F6F5F1; --dark:#141419;
+  --ok:#12B76A; --radius:18px;
+  --c-mfr:#FF2E63; --c-copack:#7A5AF8; --c-print:#0EA5E9; --c-fc:#12B76A;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--shell);color:var(--ink-900);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5}
+h1,h2,h3,h4{font-family:"Bricolage Grotesque",Inter,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0}
+.fr{font-family:Fraunces,serif;font-style:italic;font-weight:500}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.pill{background:var(--ink-900);color:#fff;border-radius:999px;padding:12px 22px;font-weight:600;font-size:14px;transition:transform .1s ease,opacity .15s}
+.pill:hover{transform:translateY(-1px)}
+.pill.pink{background:var(--pink)}
+.pill.ghost{background:transparent;color:var(--ink-700);border:1.5px solid var(--ink-200)}
+.pill.neon{background:var(--neon);color:#16220a}
+.pill:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.card{background:var(--hero);border:1px solid var(--ink-200);border-radius:var(--radius)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:var(--ink-100);color:var(--ink-700);border:1px solid var(--ink-200)}
+.tag.pink{background:#FFEbf0;color:var(--pink-700);border-color:#FFD4E0}
+.muted{color:var(--ink-500)}.small{font-size:13px}
+input,select,textarea{font-family:inherit;font-size:14px;width:100%;padding:11px 13px;border:1.5px solid var(--ink-200);border-radius:11px;background:#fff;color:var(--ink-900)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink)}
+label.f{display:block;font-weight:600;font-size:13px;margin:0 0 6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:11px;border:1.5px solid var(--ink-200);font-size:13.5px;font-weight:500;background:#fff;cursor:pointer;user-select:none}
+.chip.on{border-color:var(--pink);background:#FFEbf0;color:var(--pink-700)}
+.chip .x{width:15px;height:15px;border-radius:50%;background:var(--pink);color:#fff;font-size:10px;display:grid;place-items:center}
+
+.appbar{position:sticky;top:0;z-index:40;background:var(--dark);color:#fff;display:flex;align-items:center;gap:16px;padding:12px 22px;flex-wrap:wrap}
+.appbar .logo{font-family:"Bricolage Grotesque";font-weight:700;font-size:16px}
+.appbar .logo b{color:var(--pink)}
+.seg{display:flex;gap:4px;background:#23232b;border-radius:999px;padding:4px}
+.seg button{color:#b7b7c2;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600}
+.seg button.on{background:#fff;color:var(--ink-900)}
+.appbar .right{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:#b7b7c2;flex-wrap:wrap}
+.svcpick{display:flex;gap:6px}
+.svcpick .sc{padding:6px 11px;border-radius:999px;font-size:12px;font-weight:600;border:1.5px solid #33333d;color:#b7b7c2;background:#23232b;cursor:pointer}
+.svcpick .sc.on{color:#fff}
+.svcpick .sc[data-s=mfr].on{background:var(--c-mfr);border-color:var(--c-mfr)}
+.svcpick .sc[data-s=copack].on{background:var(--c-copack);border-color:var(--c-copack)}
+.svcpick .sc[data-s=print].on{background:var(--c-print);border-color:var(--c-print)}
+.svcpick .sc[data-s=fc].on{background:var(--c-fc);border-color:var(--c-fc)}
+
+.wrap{max-width:1120px;margin:0 auto;padding:26px 22px 96px}
+.view{display:none}.view.on{display:block}
+.hide{display:none!important}
+
+/* ---- application ---- */
+.apphero{background:var(--dark);color:#fff;border-radius:var(--radius);padding:34px 34px 30px;margin-bottom:20px;position:relative;overflow:hidden}
+.apphero .eyebrow{display:inline-block;background:#23232b;color:var(--neon);font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;margin-bottom:14px}
+.apphero h1{font-size:32px;line-height:1.1;max-width:16ch}
+.apphero p{color:#c7c7d2;max-width:52ch;margin-top:10px}
+.apphero .glow{position:absolute;right:-60px;top:-60px;width:240px;height:240px;background:radial-gradient(circle,var(--pink),transparent 70%);opacity:.5}
+.turnstile{display:flex;align-items:center;gap:11px;border:1.5px solid var(--ink-200);border-radius:12px;padding:12px 14px;background:#FbFbFd;font-size:13px}
+.turnstile .box{width:22px;height:22px;border-radius:6px;border:2px solid var(--ink-300);display:grid;place-items:center;color:#fff;font-size:13px}
+.turnstile.ok .box{background:var(--ok);border-color:var(--ok)}
+.ctahint{font-size:12px;color:var(--ink-400);margin-top:6px}
+
+/* ---- onboarding ---- */
+.ohead{display:flex;align-items:center;gap:20px;margin-bottom:22px;flex-wrap:wrap}
+.ohead .meter{flex:1;min-width:220px}
+.bar{height:8px;border-radius:999px;background:var(--ink-200);overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--pink-700));border-radius:999px;transition:width .4s}
+.cols{display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.acc{overflow:hidden}.acc+.acc{margin-top:12px}
+.acc>.hd{display:flex;align-items:center;gap:14px;padding:18px 20px;cursor:pointer}
+.acc .num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;background:var(--ink-100);color:var(--ink-500);flex:none}
+.acc.done .num{background:var(--ok);color:#fff}.acc.open .num{background:var(--pink);color:#fff}
+.acc .hd h3{font-size:16px}.acc .hd .sub{font-size:12.5px}
+.acc .chev{margin-left:auto;color:var(--ink-400);transition:transform .2s}.acc.open .chev{transform:rotate(90deg)}
+.acc .body{display:none;padding:4px 20px 22px 64px}.acc.open .body{display:block}
+.side{position:sticky;top:78px;display:flex;flex-direction:column;gap:14px}
+.trust{background:var(--dark);color:#fff;border-radius:var(--radius);padding:18px}.trust .fr{color:var(--neon)}
+
+.footbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--ink-200);padding:12px 22px;display:flex;align-items:center;gap:12px;z-index:30}
+.footbar .sp{flex:1}
+
+/* ---- activation ---- */
+.approved{background:var(--dark);color:#fff;border-radius:var(--radius);padding:20px 24px;margin-bottom:18px}
+.approved .top{display:flex;align-items:center;gap:16px}
+.approved .badge{background:var(--neon);color:#16220a;font-weight:700;border-radius:999px;padding:6px 13px;font-size:12.5px;flex:none}
+.svcprog{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.svcprog .s{display:flex;align-items:center;gap:8px;background:#20202a;border:1px solid #2e2e39;border-radius:12px;padding:8px 13px;font-size:12.5px}
+.svcprog .s .d{width:9px;height:9px;border-radius:50%}
+.svcprog .s .pct{color:#c7c7d2;margin-left:2px}
+.stepcols{display:grid;grid-template-columns:270px 1fr;gap:22px;align-items:start}
+@media(max-width:900px){.stepcols{grid-template-columns:1fr}}
+.snav{position:sticky;top:78px;padding:8px}
+.snav .grouphd{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);padding:12px 12px 5px;display:flex;align-items:center;gap:7px}
+.snav .gd{width:8px;height:8px;border-radius:50%}
+.snav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border-radius:11px;font-size:13px;font-weight:500;color:var(--ink-700)}
+.snav button .n{width:22px;height:22px;border-radius:50%;background:var(--ink-100);color:var(--ink-500);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.snav button.on{background:#FFEbf0;color:var(--pink-700)}.snav button.on .n{background:var(--pink);color:#fff}
+.snav button.ok .n{background:var(--ok);color:#fff}
+.stepbody h2{font-size:22px;margin-bottom:2px;display:flex;align-items:center;gap:10px}
+.svcbadge{font-size:11px;font-weight:700;color:#fff;padding:3px 9px;border-radius:999px}
+.routes{background:#FBF7F0;border:1px dashed var(--ink-300);border-radius:14px;padding:14px 16px;margin-top:18px}
+.routes .lbl{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-500);margin-bottom:9px}
+.matrow{display:grid;grid-template-columns:1.4fr 1fr .9fr auto;gap:10px;align-items:center;margin-bottom:10px}
+.matrow .rm{color:var(--ink-400);font-size:18px;padding:6px;cursor:pointer}
+.addrow{color:var(--pink-700);font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:7px;margin-top:4px;cursor:pointer}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(15,15,20,.55);z-index:60;display:none;align-items:center;justify-content:center;padding:24px}
+.overlay.on{display:flex}
+.modal{background:#fff;border-radius:20px;width:min(720px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.modal .mh{padding:18px 22px;border-bottom:1px solid var(--ink-200);display:flex;align-items:center;gap:12px}
+.modal .doc{overflow-y:auto;padding:26px 30px;flex:1;background:#FCFCFB}
+.doc h4{font-size:15px;margin:18px 0 6px}.doc p{color:var(--ink-700);font-size:13.5px;margin:0 0 10px}
+.readbar{height:5px;background:var(--ink-200)}.readbar>i{display:block;height:100%;width:0;background:var(--pink);transition:width .1s}
+.mf{padding:16px 22px;border-top:1px solid var(--ink-200);background:#fff}
+.sigtabs{display:flex;gap:6px;margin:10px 0}
+.sigtabs button{padding:7px 14px;border-radius:9px;font-size:13px;font-weight:600;color:var(--ink-500);background:var(--ink-100)}
+.sigtabs button.on{background:var(--ink-900);color:#fff}
+.sigpad{height:60px;border:1.5px dashed var(--ink-300);border-radius:12px;display:flex;align-items:center;padding:0 16px;font-family:Fraunces,serif;font-style:italic;font-size:24px;color:var(--ink-900)}
+.chkline{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;margin:12px 0}
+.chkline input{width:18px;height:18px;margin-top:1px;flex:none}
+.audit{font-size:11.5px;color:var(--ink-400);margin-top:10px;display:flex;gap:14px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div class="logo">i<b>L</b>aunchify · Partner</div>
+  <div class="seg">
+    <button id="tab-app" class="on" onclick="showView('application')">① Application</button>
+    <button id="tab-onb" onclick="showView('onboarding')">② Onboarding</button>
+    <button id="tab-act" onclick="showView('activation')">③ Activation Setup</button>
+  </div>
+  <div class="right">
+    <span>Services:</span>
+    <div class="svcpick" id="svcpick">
+      <span class="sc on" data-s="mfr" onclick="toggleSvc('mfr')">Produce</span>
+      <span class="sc on" data-s="copack" onclick="toggleSvc('copack')">Pack</span>
+      <span class="sc on" data-s="print" onclick="toggleSvc('print')">Print</span>
+      <span class="sc" data-s="fc" onclick="toggleSvc('fc')">Fulfill</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- =========== VIEW: PUBLIC APPLICATION =========== -->
+<div class="view on" id="view-application">
+  <div class="apphero">
+    <div class="glow"></div>
+    <span class="eyebrow">✦ Private beta</span>
+    <h1>Become an iLaunchify production partner</h1>
+    <p>We hand-pick our production network while we scale — quality over volume. Tell us about your operation and, if it’s a fit, we’ll send you a private invite to onboard.</p>
+  </div>
+
+  <div class="cols">
+    <div class="card" style="padding:24px" id="appForm">
+      <h3 style="font-size:17px;margin-bottom:4px">Tell us about your company</h3>
+      <div class="muted small" style="margin-bottom:18px">Takes ~2 minutes. No account needed yet.</div>
+      <div class="grid2" style="margin-bottom:14px">
+        <div><label class="f">Company name</label><input placeholder="Northwind Print Co."></div>
+        <div><label class="f">Your name</label><input placeholder="Full name"></div>
+      </div>
+      <div class="grid2" style="margin-bottom:14px">
+        <div><label class="f">Work email</label><input placeholder="you@company.com"></div>
+        <div><label class="f">Country</label><input placeholder="United States"></div>
+      </div>
+      <label class="f">What can you do? <span class="muted" style="font-weight:400">(select all that apply)</span></label>
+      <div style="margin-bottom:16px">
+        <span class="chip on">Manufacturing</span>
+        <span class="chip on">Co-packing</span>
+        <span class="chip on">Label printing</span>
+        <span class="chip">Fulfillment / warehouse</span>
+      </div>
+      <label class="f">Tell us about your capacity &amp; what you make</label>
+      <textarea rows="3" placeholder="e.g. Digital + flexo label printing, food-safe inks, 250–250k runs, Ohio…"></textarea>
+      <div class="turnstile" id="turnstile" style="margin:16px 0" onclick="verifyHuman()">
+        <span class="box" id="tsbox"></span>
+        <span id="tstext"><b>Verify you’re human</b> — click to run the check</span>
+        <span class="muted" style="margin-left:auto;font-size:11px">Cloudflare Turnstile</span>
+      </div>
+      <button class="pill pink" id="appSubmit" disabled onclick="submitApp()">Request to join</button>
+      <div class="ctahint">Private mode → this CTA reads “Become a partner / Request to join”. Flip the admin <b>PartnerAccessMode</b> switch to public → it becomes “Sign up”.</div>
+    </div>
+
+    <div class="card" id="appDone" style="padding:26px;display:none">
+      <div style="font-size:34px">✓</div>
+      <h3 style="font-size:19px;margin:8px 0 6px">Application received</h3>
+      <p class="muted small">We review every partner by hand. If it’s a fit, you’ll get a <b>private invite</b> to start onboarding — usually within a few business days.</p>
+      <div style="margin-top:16px;border-top:1px solid var(--ink-100);padding-top:14px" class="small">
+        <div class="muted" style="font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">What happens behind the scenes</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div>① Your application lands as a <b>Lead</b> in <span class="tag">/admin/leads</span></div>
+          <div>② An admin reviews &amp; qualifies you (<span class="tag">qualifyLead</span>)</div>
+          <div>③ You get a <b>one-time secure magic link</b> to onboard (<span class="tag pink">PARTNER_INVITED</span> email)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="trust">
+        <div class="fr" style="font-size:17px;margin-bottom:6px">Curated, not crowded.</div>
+        <div class="small" style="color:#c7c7d2">🔒 We’re invite-only during beta. That’s deliberate — it keeps quality high and, honestly, keeps the bots out. No open signup to abuse.</div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div class="small muted" style="font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">Why partners join</div>
+        <div class="small" style="display:flex;flex-direction:column;gap:7px">
+          <div>🎨 Creators design in our Studio — you just produce</div>
+          <div>🔁 Steady, orchestrated order flow</div>
+          <div>🤝 Bring your own trusted sub-partners</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========== VIEW: ONBOARDING =========== -->
+<div class="view" id="view-onboarding">
+  <div class="ohead">
+    <div><h1 style="font-size:26px">Set up your partner account</h1>
+      <div class="muted small">Get approved, then complete Activation Setup. <span class="fr">Reviewed in 1–2 business days.</span></div></div>
+    <div class="meter">
+      <div class="small muted" style="display:flex;justify-content:space-between;margin-bottom:6px"><b style="color:var(--ink-900)">Step 2 of 4</b><span>~6 min left</span></div>
+      <div class="bar"><i style="width:42%"></i></div>
+    </div>
+    <button class="pill ghost">Save &amp; exit</button>
+  </div>
+  <div class="cols">
+    <div>
+      <div class="card acc done" id="s1"><div class="hd" onclick="toggleAcc('s1')"><div class="num">✓</div><div><h3>Your business</h3><div class="sub muted">Markets, region, partner types</div></div><div class="chev">›</div></div>
+        <div class="body"><div class="muted small" style="margin-bottom:10px">You selected — these drive your Activation Setup:</div>
+          <span class="chip on">Manufacturing</span> <span class="chip on">Co-packing</span> <span class="chip on">Label printing</span></div></div>
+      <div class="card acc open" id="s2"><div class="hd" onclick="toggleAcc('s2')"><div class="num">2</div><div><h3>Your company</h3><div class="sub muted">Legal entity, contact, address + verification docs</div></div><div class="chev">›</div></div>
+        <div class="body"><div class="grid2" style="margin-bottom:14px"><div><label class="f">Legal name</label><input value="Northwind Print Co. LLC"></div><div><label class="f">DBA</label><input value="Northwind Labels"></div></div>
+          <label class="f">Verification documents</label><div class="small muted" style="margin-bottom:8px">Incorporation · License · <b>General-liability insurance</b> (tracked with expiry reminders)</div>
+          <span class="tag">📄 Incorporation ✓</span> <span class="tag">📄 License ✓</span> <span class="tag pink">＋ Insurance COI</span></div></div>
+      <div class="card acc" id="s3"><div class="hd" onclick="toggleAcc('s3')"><div class="num">3</div><div><h3>What you can do</h3><div class="sub muted">Quick categories — full spec comes in Activation Setup</div></div><div class="chev">›</div></div>
+        <div class="body"><div class="muted small">Just enough to get matched. The detailed, per-service spec sheets are your post-approval Activation Setup.</div></div></div>
+      <div class="card acc" id="s4"><div class="hd" onclick="toggleAcc('s4')"><div class="num">4</div><div><h3>Payment &amp; contract</h3><div class="sub muted">Stripe Connect payout + sign the partner agreement</div></div><div class="chev">›</div></div>
+        <div class="body"><div class="small muted" style="margin-bottom:14px">Connect payout and sign the iLaunchify Partner Agreement.</div>
+          <button class="pill ghost" style="margin-right:10px">Connect Stripe</button><button class="pill pink" onclick="openContract()">Review &amp; sign agreement</button></div></div>
+    </div>
+    <div class="side">
+      <div class="card" style="padding:18px"><h4 style="font-size:14px;margin-bottom:10px">Your progress</h4>
+        <div class="small" style="display:flex;flex-direction:column;gap:9px">
+          <div>✅ Your business</div><div>🟡 Your company</div><div>⚪ What you can do</div><div>⚪ Payment &amp; contract</div></div></div>
+      <div class="trust"><div class="fr" style="font-size:17px;margin-bottom:6px">Approval ≠ the finish line.</div>
+        <div class="small" style="color:#c7c7d2">Once we approve you, <b style="color:#fff">Activation Setup</b> collects the full operating detail for each service you run — and files it everywhere it’s needed automatically.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- =========== VIEW: ACTIVATION (multi-service composed) =========== -->
+<div class="view" id="view-activation">
+  <div class="approved">
+    <div class="top"><div class="badge">✓ Approved</div>
+      <div style="flex:1"><h2 style="font-size:19px">Welcome aboard, Northwind. Let’s get every service operational.</h2>
+        <div class="small" style="color:#c7c7d2">Your setup is the <b style="color:#fff">union of every service you took on</b>. Finish a service’s track and <b style="color:var(--neon)">it goes live on its own</b> — you don’t have to wait for the others.</div></div></div>
+    <div class="svcprog" id="svcprog"></div>
+  </div>
+  <div class="stepcols">
+    <div class="card snav" id="snav"></div>
+    <div class="stepbody card" style="padding:26px 28px" id="stepbody"></div>
+  </div>
+</div>
+
+</div><!--/wrap-->
+
+<div class="footbar hide" id="footOnb"><button class="pill ghost">Back</button><div class="sp"></div><span class="muted small">Autosaved</span><button class="pill">Submit for review</button></div>
+<div class="footbar hide" id="footAct"><button class="pill ghost" onclick="stepMove(-1)">Back</button><div class="sp"></div><span class="muted small" id="actSaved">Step saved · routed automatically</span><button class="pill pink" id="actNext" onclick="stepMove(1)">Save &amp; continue</button></div>
+
+<!-- contract modal -->
+<div class="overlay" id="contract"><div class="modal">
+  <div class="mh"><h3 style="font-size:16px;flex:1">iLaunchify Partner Agreement · v1.0</h3><button class="muted" onclick="closeContract()" style="font-size:20px">✕</button></div>
+  <div class="readbar"><i id="readfill"></i></div>
+  <div class="doc" id="doc" onscroll="onDocScroll(this)">
+    <h4>1. Parties &amp; Purpose</h4><p>This Agreement governs the Partner’s participation in the iLaunchify production network across the services it configures in Activation Setup.</p>
+    <h4>2. Scope of Services</h4><p>Partner performs the services configured in its Activation Setup profile to the declared specifications, lead times, and quality standards, and maintains the accuracy of that data.</p>
+    <h4>3. Quality, Compliance &amp; Certifications</h4><p>Partner maintains the certifications it attests to, including domain-specific requirements. Partner shall not accept work outside its certified domains. Expired certs auto-suspend routing for the affected domain.</p>
+    <h4>4. Orders, Pinning &amp; Nomination</h4><p>Where a creator or manufacturer nominates Partner for a specific production leg, Partner accepts such directed assignments subject to capacity, and remains bound by the compliance, quality, and on-platform-transaction obligations of this Agreement.</p>
+    <h4>5. Fees, Payout &amp; Anti-Circumvention</h4><p>Partner transacts all Platform-originated orders on the Platform and shall not solicit or accept off-platform payment for such orders.</p>
+    <h4>6. Liability &amp; Indemnity</h4><p>Each party is responsible for its own acts and defaults. Where Partner is nominated by a counterparty, liability allocation follows the Platform’s nomination policy, and the nominating party accepts defined responsibility for its directed choice. Partner maintains general and product-liability insurance throughout the term.</p>
+    <h4>7. Term &amp; Termination</h4><p>Effective until terminated per the notice provisions; confidentiality, open-order, and indemnity obligations survive.</p>
+    <h4>8. Acceptance</h4><p>By signing, Partner agrees to be bound by this Agreement. This electronic signature is legally binding under the U.S. ESIGN Act and UETA.</p>
+    <p style="color:var(--ink-400)">— End of document —</p>
+  </div>
+  <div class="mf">
+    <div class="sigtabs"><button class="on" id="sigTypeBtn" onclick="sigTab('type')">Type signature</button><button id="sigDrawBtn" onclick="sigTab('draw')">Draw signature</button></div>
+    <div id="sigType"><input id="sigInput" placeholder="Type your full legal name" oninput="renderSig()"></div>
+    <div id="sigDraw" class="hide"><div class="sigpad">✎ draw here (touch / mouse)</div></div>
+    <div class="sigpad" id="sigPreview" style="margin-top:10px;color:var(--ink-400)">Your signature will appear here</div>
+    <label class="chkline"><input type="checkbox" id="agree" disabled onchange="syncSign()"> <span>I have read and agree, and I intend this to be my electronic signature. <span class="muted" id="scrollHint">(scroll to the end to enable)</span></span></label>
+    <div style="display:flex;align-items:center;gap:12px"><button class="pill pink" id="signBtn" disabled onclick="doSign()">Sign &amp; submit</button>
+      <div class="audit"><span>🕓 Timestamp</span><span>🌐 IP + device</span><span># Document hash</span><span>📜 Certificate</span></div></div>
+  </div>
+</div></div>
+
+<script>
+// -------- views --------
+function showView(v){
+  ['application','onboarding','activation'].forEach(x=>{
+    document.getElementById('view-'+x).classList.toggle('on',x===v);
+  });
+  document.getElementById('tab-app').classList.toggle('on',v==='application');
+  document.getElementById('tab-onb').classList.toggle('on',v==='onboarding');
+  document.getElementById('tab-act').classList.toggle('on',v==='activation');
+  document.getElementById('footOnb').classList.toggle('hide',v!=='onboarding');
+  document.getElementById('footAct').classList.toggle('hide',v!=='activation');
+  window.scrollTo(0,0);
+}
+function toggleAcc(id){document.getElementById(id).classList.toggle('open')}
+
+// -------- application --------
+function verifyHuman(){const t=document.getElementById('turnstile');t.classList.add('ok');document.getElementById('tsbox').textContent='✓';document.getElementById('tstext').innerHTML='<b>Verified you’re human</b>';document.getElementById('appSubmit').disabled=false}
+function submitApp(){document.getElementById('appForm').style.display='none';document.getElementById('appDone').style.display='block';window.scrollTo(0,0)}
+
+// -------- contract --------
+function openContract(){document.getElementById('contract').classList.add('on');onDocScroll(document.getElementById('doc'))}
+function closeContract(){document.getElementById('contract').classList.remove('on')}
+let scrolledEnd=false;
+function onDocScroll(el){const p=Math.min(1,(el.scrollTop+el.clientHeight)/el.scrollHeight);document.getElementById('readfill').style.width=(p*100)+'%';if(p>0.96&&!scrolledEnd){scrolledEnd=true;document.getElementById('agree').disabled=false;document.getElementById('scrollHint').textContent='(thanks — you can sign now)';}}
+function sigTab(t){document.getElementById('sigType').classList.toggle('hide',t!=='type');document.getElementById('sigDraw').classList.toggle('hide',t==='type');document.getElementById('sigTypeBtn').classList.toggle('on',t==='type');document.getElementById('sigDrawBtn').classList.toggle('on',t!=='type')}
+function renderSig(){const v=document.getElementById('sigInput').value;const p=document.getElementById('sigPreview');p.textContent=v||'Your signature will appear here';p.style.color=v?'var(--ink-900)':'var(--ink-400)';syncSign()}
+function syncSign(){document.getElementById('signBtn').disabled=!(document.getElementById('agree').checked&&document.getElementById('sigInput').value.trim().length>1)}
+function doSign(){const b=document.getElementById('signBtn');b.textContent='✓ Signed — certificate generated';b.style.background='var(--ok)';setTimeout(closeContract,900)}
+
+// -------- multi-service Activation composition --------
+const SVC={mfr:{label:'Manufacturing',short:'Produce',color:'var(--c-mfr)'},copack:{label:'Co-packing',short:'Pack',color:'var(--c-copack)'},print:{label:'Label printing',short:'Print',color:'var(--c-print)'},fc:{label:'Fulfillment',short:'Fulfill',color:'var(--c-fc)'}};
+const TRACKS={
+  mfr:[
+    {t:'Product types & formats',d:'What you make, per domain.',routes:['Matching engine']},
+    {t:'Formulation & specs',d:'Capabilities, constraints, sample capability.',routes:['Product builder','Owner-pin eligibility']},
+    {t:'MOQ & lead times',d:'Bands + blackout dates.',routes:['Checkout ETA','Capacity gate']},
+  ],
+  copack:[
+    {t:'Packaging formats',d:'Bottles, jars, pouches, sachets, cartons, blister, cans.',routes:['Matching engine']},
+    {t:'Fill types',d:'Powder, liquid, capsule/tablet, cream/gel, aerosol.',routes:['Routing']},
+    {t:'Do you supply packaging?',d:'Supply-or-not per format + lines & capacity.',routes:['Routing (packaging leg)']},
+  ],
+  print:[
+    {t:'Materials & substrates',d:'List every material you print on — one at a time.',routes:['Matching engine','Marketplace facets']},
+    {t:'Print specs',d:'Methods, color, finishes, max print area.',routes:['Print-eligibility filter']},
+    {t:'Die-lines',d:'Die-line templates you support or can produce.',routes:['Design Studio','Dispatch docs']},
+    {t:'Run sizes & lead times',d:'MOQ, production & sample lead time, cutoffs, blackout.',routes:['Checkout ETA','Capacity gate']},
+  ],
+  fc:[
+    {t:'Storage classes',d:'Ambient, cold, frozen, hazmat.',routes:['FC selector']},
+    {t:'Capacity & geo',d:'Weekly pallet capacity, location.',routes:['FC scorer']},
+    {t:'Value-added services',d:'Kitting, returns, pick-pack fees.',routes:['Manifest','Quote']},
+  ],
+};
+const SHARED=[
+  {t:'Certifications',d:'Per-domain attestation + upload across all your services (food, baby, cosmetics, OTC, pet).',routes:['Routing cert gate'],shared:true},
+  {t:'Pricing & payout',d:'Confirm price tiers and payout terms.',routes:['Billing','Creator quote'],shared:true},
+  {t:'Review & go live',d:'Each service’s completeness flips its own routing eligibility ON.',routes:['Rotation eligibility'],shared:true},
+];
+let services=['mfr','copack','print'], step=0;
+function toggleSvc(s){
+  const el=document.querySelector('.sc[data-s="'+s+'"]');
+  if(services.includes(s)){if(services.length===1)return;services=services.filter(x=>x!==s);el.classList.remove('on');}
+  else{services.push(s);el.classList.add('on');}
+  step=0;renderStepper();
+}
+// build composed step list: per selected service (in order) its track, then shared tail
+function composedSteps(){
+  const out=[];
+  ['mfr','copack','print','fc'].filter(s=>services.includes(s)).forEach(s=>{
+    TRACKS[s].forEach(st=>out.push({...st,svc:s}));
+  });
+  SHARED.forEach(st=>out.push({...st,svc:'shared'}));
+  return out;
+}
+function routeTags(list){return list.map(x=>`<span class="tag pink">→ ${x}</span>`).join(' ')}
+function matRow(name,fam,safe){return `<div class="matrow"><input value="${name}"><select><option>${fam}</option><option>Paper</option><option>Film</option><option>Carton</option></select><span class="chip ${safe?'on':''}" onclick="this.classList.toggle('on')">${safe?'Food-safe ✓':'Food-safe?'}</span><span class="rm" onclick="this.closest('.matrow').remove()">✕</span></div>`}
+function addMat(){document.getElementById('matlist').insertAdjacentHTML('beforeend',matRow('','Film',false))}
+function certRow(dom,note,have){return `<div class="matrow" style="grid-template-columns:1.3fr 1.4fr auto"><div><b style="font-size:14px">${dom}</b><div class="small muted">${note}</div></div><div><span class="tag ${have?'pink':''}">${have?'📄 On file ✓':'＋ Upload certificate'}</span></div><span class="chip ${have?'on':''}" onclick="this.classList.toggle('on')">${have?'Cleared':'Declare'}</span></div>`}
+function stepInner(st){
+  if(st.svc==='print'&&st.t.startsWith('Materials')){
+    return `<div id="matlist">${matRow('Pressure-sensitive label stock','PS / paper',true)}${matRow('BOPP film (clear)','Film',true)}</div><a class="addrow" onclick="addMat()">＋ Add another material</a><div class="small muted" style="margin-top:14px">Each material: <b>name</b>, <b>family</b>, <b>food-contact safe?</b>, and the <b>domains</b> it’s cleared for.</div>`;
+  }
+  if(st.svc==='print'&&st.t.startsWith('Print specs')){
+    return `<label class="f">Methods</label><div style="margin-bottom:14px"><span class="chip on">Digital</span> <span class="chip on">Flexo</span> <span class="chip">Offset</span> <span class="chip">Gravure</span></div><label class="f">Color</label><div style="margin-bottom:14px"><span class="chip on">CMYK</span> <span class="chip on">Pantone</span> <span class="chip on">White ink</span> <span class="chip">ICC</span></div><label class="f">Finishes</label><div><span class="chip on">Foil</span> <span class="chip">Emboss</span> <span class="chip on">Spot UV</span></div>`;
+  }
+  if(st.svc==='copack'&&st.t.startsWith('Packaging formats')){
+    return `<label class="f">Formats you handle</label><div><span class="chip on">Bottles</span> <span class="chip on">Pouches</span> <span class="chip on">Stick packs</span> <span class="chip">Jars</span> <span class="chip">Blister</span> <span class="chip">Cans</span></div>`;
+  }
+  if(st.svc==='mfr'&&st.t.startsWith('Product types')){
+    return `<label class="f">What you produce</label><div><span class="chip on">Supplements</span> <span class="chip on">Functional bev</span> <span class="chip on">Food</span> <span class="chip">Cosmetics</span> <span class="chip">Pet</span></div>`;
+  }
+  if(st.shared&&st.t==='Certifications'){
+    return `<div class="small muted" style="margin-bottom:12px">Declared once, applied across <b>every service</b> you run. An expired required cert auto-suspends routing for that domain.</div>${certRow('Food & beverage','Low-migration inks · EuPIA · BRCGS/FSSC',true)}${certRow('Baby / infant','Infant-grade migration (0.01 mg/kg)',false)}${certRow('Cosmetics','ISO 22716 label control',true)}${certRow('OTC drugs','cGMP 211 · DSCSA serialization',false)}${certRow('Pet','AAFCO labeling',true)}`;
+  }
+  return `<div class="small muted">Fields for this step (prototype), saved to the stores noted below.</div><div class="grid2" style="margin-top:12px"><input placeholder="Field…"><input placeholder="Field…"></div>`;
+}
+function renderStepper(){
+  const steps=composedSteps();
+  if(step>=steps.length)step=steps.length-1;
+  // service progress header
+  const perSvc={};steps.forEach((s,i)=>{if(s.svc!=='shared'){perSvc[s.svc]=perSvc[s.svc]||{n:0,done:0};perSvc[s.svc].n++;if(i<step)perSvc[s.svc].done++;}});
+  document.getElementById('svcprog').innerHTML=services.map(s=>{const p=perSvc[s]||{n:0,done:0};const pc=p.n?Math.round(p.done/p.n*100):0;return `<div class="s"><span class="d" style="background:${SVC[s].color}"></span>${SVC[s].label}<span class="pct">${pc===100?'✓ live':pc+'%'}</span></div>`}).join('')+`<div class="s"><span class="d" style="background:var(--ink-400)"></span>Shared</div>`;
+  // nav grouped by service
+  let html='',lastSvc=null;
+  steps.forEach((s,i)=>{
+    if(s.svc!==lastSvc){lastSvc=s.svc;const meta=s.svc==='shared'?{label:'Shared',color:'var(--ink-400)'}:SVC[s.svc];html+=`<div class="grouphd"><span class="gd" style="background:${meta.color}"></span>${meta.label}</div>`;}
+    html+=`<button class="${i===step?'on':''} ${i<step?'ok':''}" onclick="gotoStep(${i})"><span class="n">${i<step?'✓':i+1}</span>${s.t}</button>`;
+  });
+  document.getElementById('snav').innerHTML=html;
+  // body
+  const st=steps[step];const badge=st.svc==='shared'?'':`<span class="svcbadge" style="background:${SVC[st.svc].color}">${SVC[st.svc].label}</span>`;
+  document.getElementById('stepbody').innerHTML=`<h2>${st.t}${badge}</h2><div class="muted" style="margin-bottom:18px">${st.d}</div>${stepInner(st)}<div class="routes"><div class="lbl">Where this data appears — automatically</div>${routeTags(st.routes)}</div>`;
+  const last=step===steps.length-1;const btn=document.getElementById('actNext');btn.textContent=last?'🚀 Go live':'Save & continue';btn.style.background=last?'var(--ink-900)':'var(--pink)';
+}
+function stepMove(d){const n=composedSteps().length;step=Math.max(0,Math.min(n-1,step+d));renderStepper()}
+function gotoStep(i){step=i;renderStepper()}
+renderStepper();
+</script>
+</body>
+</html>

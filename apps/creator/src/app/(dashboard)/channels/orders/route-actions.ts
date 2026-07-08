@@ -16,7 +16,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { createOrderWithNumber } from '@ilaunchify/orders'
+import { createOrderWithNumber, assertOrderTransition } from '@ilaunchify/orders'
 import { createCheckoutSession } from '@ilaunchify/payments'
 import { resolveChannelAdapter, applyLedgerEntry, type ChannelCode } from '@ilaunchify/channels'
 import { recomputeStockAlert } from '../inventory/alerts'
@@ -205,7 +205,22 @@ export async function routeChannelOrderToProduction(channelOrderId: string): Pro
         // PENDING_PAYMENT order(s) and release the claim so "Route & pay" can be
         // retried cleanly — no stranded orders, no duplicate risk.
         for (const oid of orderIds) {
-          await prisma.order.update({ where: { id: oid }, data: { status: 'CANCELLED' } as never }).catch(() => {})
+          // Best-effort per order — just-created PENDING_PAYMENT, so
+          // PENDING_PAYMENT→CANCELLED is verified-legal; errors swallowed per order.
+          try {
+            assertOrderTransition('PENDING_PAYMENT', 'CANCELLED')
+            await prisma.order.update({ where: { id: oid }, data: { status: 'CANCELLED' } as never })
+            await logAuditAs(user, {
+              entityType: 'Order',
+              entityId: oid,
+              action: 'ORDER_CANCELLED_CHANNEL_ROUTE_FAILED',
+              fromValue: 'PENDING_PAYMENT',
+              toValue: 'CANCELLED',
+              payload: { reason: 'checkout_session_failed' },
+            })
+          } catch {
+            /* leave the stale order for the auto-cancel sweep */
+          }
         }
         await releaseClaim('Payment session failed — check Stripe configuration and retry.')
         return { ok: false, error: 'Payment session failed — check Stripe configuration and hit Route & pay again.' }
