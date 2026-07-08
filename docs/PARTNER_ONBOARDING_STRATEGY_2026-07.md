@@ -20,6 +20,7 @@
 | D7 | Who owns quality/defect liability when a creator/manufacturer *directs* the partner choice? | Needs your call — see §6.4 (this is the real risk). |
 | D8 | Post-approval **Activation Setup** a hard gate to go live (per service), or soft? | **Hard gate per service** — see §5B. |
 | D9 | Seed default copy for all ~55 events + 3 new partner templates (invite / ack)? | **Yes** — makes admin management ready-to-go. §11. |
+| D10 | Which domain docs are per-role **approval gates** (at onboarding) vs **routing gates** (Activation Setup)? | Default: domain docs = routing gates; promote to approval gate per role only where we can't responsibly approve without it (e.g. food-facility reg for food producers). Decide list w/ counsel. §3.1. |
 | S1–S5 | Auth & entrance hardening (passkeys, Turnstile, admin 2FA, invite-only) | See `docs/AUTH_ENTRANCE_SECURITY_2026-07.md`. |
 
 ---
@@ -64,6 +65,28 @@ Recommended sequencing for iLaunchify (this is the answer to "is it enough / are
 | Agreement | Accept ToS to apply | **Signed partner contract** (§4) | Re-sign on version change |
 
 **Verdict:** you are collecting the right *categories* — the gap isn't "more fields," it's **sequencing + surfacing**. Two concrete adds worth making: a **KYB/UBO capture** (or lean on Stripe Connect's KYC and store the reference), and a **structured quality-cert step** that drives the `CertificateType`/`PartnerCertificateInstance` models you already have. Everything else can be progressive. Don't add references as a blocker; make them optional.
+
+### 3.1 Where each document/data item is collected (retiring the stepper loses nothing)
+
+The old step-wizard's Documents + Service steps are being retired (§1). **No collection point is lost** — each item moves to onboarding (accordion) or Activation Setup (§5B), split by *why* we need it:
+
+> **Rule of thumb:** if it proves the **company exists and is insured** → onboarding accordion. If it proves they can **produce a specific thing safely** → Activation Setup, where it gates that service/domain.
+
+| Item | To APPLY — onboarding accordion | Before GO-LIVE / ongoing — Activation Setup (§5B) |
+|---|---|---|
+| **Facility** | Primary facility address ("Your company") | Additional facilities; per-facility detail |
+| **Capabilities** | Rough categories ("What you can do") — D4 | Full per-service spec: materials, formats, print specs, MOQ/lead |
+| **Business-verification docs** | Certificate of incorporation, business license, **general-liability COI** — *already collected in the accordion via the same `FileUploadSlot`* | — |
+| **KYB / UBO** | Minimal identity to apply | Full KYB (or Stripe Connect KYC reference) before payout |
+| **Domain compliance / certs** | — | FDA food-facility registration, food-safe/BRCGS/FSSC, cosmetics ISO 22716, OTC cGMP, product-liability COI (§5.2 matrix). Each **gates that domain's routing**; expired → auto-suspend for the domain |
+
+**Two kinds of gate — don't conflate them:**
+- **Approval gate** (onboarding): needed to trust the entity at all → incorporation, license, general-liability COI. Blocks approval.
+- **Routing gate** (Activation Setup, per-domain): needed to route a *specific* kind of work → domain certs. Blocks only the affected domain's routing, not approval.
+
+**Per-role approval-gate exceptions (a Pavel policy call):** a few compliance items are baseline *approval* gates for specific partner types even though they look domain-specific — e.g., a **food manufacturer / co-packer** arguably shouldn't be approved without proof of a **registered food facility (FDA FFR)**; an **OTC packager** without evidence of cGMP posture. For those, require the doc at onboarding *for that partner type* rather than deferring to Activation. Decide the exact list with counsel (ties to `docs/legal/LEGAL_DOCS_REDLINE_RECOMMENDATIONS.md`). Default: everything domain-specific is a routing gate (Activation Setup); promote an item to an approval gate only where the platform can't responsibly approve the role without it.
+
+Why this ordering is also better UX: a partner isn't asked for a cosmetics cert before we even know they'll run cosmetics — they declare services, get approved on the business basics, then Activation Setup asks only for what their chosen services actually require.
 
 ---
 
