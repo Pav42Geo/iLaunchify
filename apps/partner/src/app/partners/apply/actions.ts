@@ -99,6 +99,15 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
         }),
       ),
     )
+
+    // Acknowledge to the applicant (PARTNER_APPLICATION_RECEIVED). Best-effort —
+    // the dispatcher never throws, so a missing Resend key won't block the apply.
+    await dispatchNotification({
+      userId: created.id,
+      event: 'PARTNER_APPLICATION_RECEIVED',
+      data: { companyName: v.companyName },
+      audience: 'partner',
+    })
   }
 
   return { ok: true }
