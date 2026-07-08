@@ -3,7 +3,6 @@ import { prisma } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertPartnerTransition } from '@ilaunchify/orders'
 import { redirect } from 'next/navigation'
-import { OnboardingNav } from '@/components/onboarding/OnboardingNav'
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
@@ -45,7 +44,9 @@ export default async function OnboardingLayout({ children }: { children: React.R
           Complete your partner profile. We&apos;ll review and activate within 1–2 business days.
         </p>
       </header>
-      <OnboardingNav partnerStatus={partner.status} services={partner.services} />
+      {/* Legacy step-wizard tab bar removed 2026-07-07 — the single-page
+          accordion is the canonical onboarding UX (D1). Legacy step routes are
+          slated for deletion once their shared field components are extracted. */}
       <div className="mt-6">{children}</div>
     </div>
   )
