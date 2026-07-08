@@ -277,7 +277,7 @@ export interface CreatorFavoriteRows {
 
 export async function getCreatorFavoriteRows(): Promise<CreatorFavoriteRows> {
   const ctx = await currentCreatorId()
-  if (!ctx) return { templateRows: [], productRows: [] }
+  if (!ctx) return { collections: [], templateRows: [], productRows: [] }
   try {
     const rows = await prisma.favorite.findMany({
       where: { creatorId: ctx.creatorId },
