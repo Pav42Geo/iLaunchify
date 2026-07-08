@@ -15,6 +15,7 @@ import { prisma, getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { brandLimits, normalizeTier, type TierKey, type User } from '@ilaunchify/auth'
 import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
 import { TopbarRight } from './TopbarRight'
+import { MarketplaceSearchLauncher } from './MarketplaceSearchLauncher'
 
 const COOKIE_NAME = 'active_brand_id'
 
@@ -71,6 +72,7 @@ export async function DashboardTopbar({ user }: { user: User }) {
       brandHref="/dashboard"
       flushLeft
       brand={brand}
+      center={<MarketplaceSearchLauncher />}
       right={
         <TopbarRight
           email={user.email}
