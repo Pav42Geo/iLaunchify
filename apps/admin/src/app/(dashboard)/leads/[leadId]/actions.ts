@@ -60,10 +60,27 @@ export async function qualifyLead({ leadId }: { leadId: string }): Promise<Quali
     )
   }
 
+  // Branded "you've been selected — start onboarding" email (PARTNER_INVITED).
+  // Best-effort: the dispatcher swallows its own errors, so a missing Resend key
+  // never blocks qualification. Lazy-imported to keep this action light.
+  let emailSent = false
+  try {
+    const { dispatchNotification } = await import('@ilaunchify/notifications')
+    await dispatchNotification({
+      userId: partner.userId,
+      event: 'PARTNER_INVITED',
+      audience: 'partner',
+      data: { companyName: partner.companyName, onboardingUrl: link },
+    })
+    emailSent = true
+  } catch {
+    /* best-effort */
+  }
+
   revalidatePath('/leads')
   revalidatePath(`/leads/${leadId}`)
 
-  return { ok: true, invitationLink: link, emailSent: false }
+  return { ok: true, invitationLink: link, emailSent }
 }
 
 export async function disqualifyLead({

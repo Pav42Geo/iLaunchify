@@ -189,6 +189,11 @@ export {
   type OrderSettingsContext,
 } from './order-settings'
 export {
+  getPartnerAccessMode,
+  isPartnerAccessPrivate,
+  type PartnerAccessMode as PartnerAccessModeValue,
+} from './partner-access'
+export {
   createSnapshot,
   listSnapshots,
   getSnapshotJson,
