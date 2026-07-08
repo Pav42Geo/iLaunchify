@@ -17,6 +17,17 @@ const nextConfig = {
   experimental: {
     serverActions: { allowedOrigins: ['app.ilaunchify.com', 'localhost:3000'] },
   },
+  // Proxy the marketplace search API (which lives in apps/marketing) so the
+  // creator top-bar search can call it SAME-ORIGIN (no CORS). Next forwards the
+  // request server-side including the shared session cookie, so /personal
+  // returns the creator's own favorites + orders. Destination is the marketing
+  // origin (NEXT_PUBLIC_MARKETING_URL, defaults to :3010 in dev).
+  async rewrites() {
+    const marketing = process.env.NEXT_PUBLIC_MARKETING_URL ?? 'http://localhost:3010'
+    return [
+      { source: '/api/marketplace/:path*', destination: `${marketing}/api/marketplace/:path*` },
+    ]
+  },
   // The AWS SDK (pulled in via @ilaunchify/storage) uses dynamic requires that Next's
   // webpack can't reliably bundle — it emits "Cannot find module ./vendor-chunks/@smithy+…"
   // and fails the route (→ 404). Require these from node_modules at runtime instead of
