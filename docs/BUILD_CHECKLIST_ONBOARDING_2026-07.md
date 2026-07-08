@@ -44,7 +44,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [x] Order-status batch guarded + audited
 - [x] 8 audit-gap sites → AuditLog
 - [ ] Retire legacy step-wizard (`/onboarding/company|service|documents|stripe|review` + `SubmitForReviewButton` + `review/actions.ts`); retire `UNDER_REVIEW` submit target — after inbound-link grep
-- [ ] Partner FSM Model A edges (`DRAFT/LEAD→INVITED`, `INVITED→IN_PROGRESS`) + guard the 4 remaining FSM-warning sites
+- [~] Partner FSM Model A edges — `DRAFT/LEAD→INVITED`, `INVITED→IN_PROGRESS` **BUILT + tested** (`packages/orders/src/partner-fsm.ts` + `.test.ts`, in the vitest harness: 666 pass). Next: guard the call sites (admin leads/partners →INVITED, layout INVITED→IN_PROGRESS) now that they're legal edges.
 - [ ] Move `layout.tsx` INVITED→IN_PROGRESS flip into a server action (guarded + audited)
 - [ ] `pnpm check:invariants` → 0 warnings → flip CI/husky to `--strict`
 

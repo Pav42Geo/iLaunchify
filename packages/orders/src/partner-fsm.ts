@@ -21,8 +21,9 @@ import type { PartnerStatus } from '@ilaunchify/db'
  * not here — this table lists the edges that exist at all.
  */
 export const PARTNER_ALLOWED_TRANSITIONS: Partial<Record<PartnerStatus, PartnerStatus[]>> = {
-  // Pre-submit
-  LEAD: ['IDENTITY_PENDING_REVIEW', 'TERMINATED'],
+  // Pre-submit. Model A (2026-07-07): the pre-LEAD invite handshake is canonical
+  // — admin qualifies a lead to INVITED; first login advances INVITED→IN_PROGRESS.
+  LEAD: ['INVITED', 'IDENTITY_PENDING_REVIEW', 'TERMINATED'],
 
   // Identity review
   IDENTITY_PENDING_REVIEW: ['IDENTITY_VERIFIED', 'LEAD', 'TERMINATED'],
@@ -41,11 +42,11 @@ export const PARTNER_ALLOWED_TRANSITIONS: Partial<Record<PartnerStatus, PartnerS
   // Terminal
   TERMINATED: [],
 
-  // Legacy bridges (Phase-A rows that pre-date the 10-state model). INVITED now
-  // also permits IDENTITY_PENDING_REVIEW so a legacy partner submitting
-  // onboarding routes to the canonical review state (2026-07-06).
-  DRAFT: ['IDENTITY_PENDING_REVIEW', 'TERMINATED'],
-  INVITED: ['LEAD', 'IDENTITY_PENDING_REVIEW', 'TERMINATED'],
+  // Early-lifecycle bridges. Model A (2026-07-07): these are canonical, not
+  // legacy — the admin invite handshake (DRAFT/LEAD→INVITED→IN_PROGRESS) plus a
+  // path to the canonical review state. Only UNDER_REVIEW is a true legacy alias.
+  DRAFT: ['INVITED', 'IDENTITY_PENDING_REVIEW', 'TERMINATED'],
+  INVITED: ['IN_PROGRESS', 'LEAD', 'IDENTITY_PENDING_REVIEW', 'TERMINATED'],
   IN_PROGRESS: ['IDENTITY_PENDING_REVIEW', 'TERMINATED'],
   UNDER_REVIEW: ['ACTIVE', 'IDENTITY_PENDING_REVIEW', 'TERMINATED'],
 }
