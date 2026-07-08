@@ -22,6 +22,7 @@ import {
   type ActivationStep,
   type PartnerServiceType,
 } from '@/lib/activation-tracks'
+import { setActivationStepComplete } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Activation Setup — Partners' }
@@ -51,14 +52,13 @@ export default async function ActivationPage() {
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    include: { services: true },
+    include: { services: true, activationSteps: { select: { stepKey: true } } },
   })
   if (!partner) return null
 
   const serviceTypes = partner.services.map((s) => s.type as PartnerServiceType)
   const steps = activationStepsFor(serviceTypes)
-  // TODO(next slice): load persisted completed step keys; empty for v1.
-  const completed = new Set<string>()
+  const completed = new Set(partner.activationSteps.map((s) => s.stepKey))
   const progress = activationProgress(serviceTypes, completed)
 
   // Group composed steps into ordered service blocks (+ the shared tail).
@@ -116,31 +116,49 @@ export default async function ActivationPage() {
             </span>
           </header>
           <ol className="divide-y divide-ink-100">
-            {g.steps.map((s: ActivationStep, i: number) => (
-              <li key={s.key} className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-start">
-                <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-ink-100 text-[11px] font-bold text-ink-500">
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-semibold text-ink-900">{s.title}</p>
-                  <p className="mt-0.5 text-[12.5px] text-ink-600">{s.description}</p>
-                  {/* Where this data lands — automatically */}
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {s.routesTo.map((r) => (
-                      <span
-                        key={r}
-                        className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-2 py-[3px] text-[11px] font-semibold text-pink-700"
-                      >
-                        → {r}
-                      </span>
-                    ))}
+            {g.steps.map((s: ActivationStep, i: number) => {
+              const done = completed.has(s.key)
+              return (
+                <li key={s.key} className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-start">
+                  <span
+                    className={cn(
+                      'mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full text-[11px] font-bold',
+                      done ? 'bg-success-100 text-success-800' : 'bg-ink-100 text-ink-500',
+                    )}
+                  >
+                    {done ? '✓' : i + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-semibold text-ink-900">{s.title}</p>
+                    <p className="mt-0.5 text-[12.5px] text-ink-600">{s.description}</p>
+                    {/* Where this data lands — automatically */}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {s.routesTo.map((r) => (
+                        <span
+                          key={r}
+                          className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-2 py-[3px] text-[11px] font-semibold text-pink-700"
+                        >
+                          → {r}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <span className="flex-none self-start rounded-full border border-ink-200 bg-ink-50 px-2.5 py-[3px] text-[11px] font-semibold text-ink-600">
-                  To do
-                </span>
-              </li>
-            ))}
+                  <form action={setActivationStepComplete.bind(null, s.key, !done)} className="flex-none self-start">
+                    <button
+                      type="submit"
+                      className={cn(
+                        'rounded-full border px-2.5 py-[3px] text-[11px] font-semibold transition-colors',
+                        done
+                          ? 'border-success-200 bg-success-50 text-success-800 hover:bg-success-100'
+                          : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-pink-300 hover:text-pink-700',
+                      )}
+                    >
+                      {done ? '✓ Done' : 'Mark done'}
+                    </button>
+                  </form>
+                </li>
+              )
+            })}
           </ol>
         </section>
       ))}

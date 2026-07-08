@@ -51,11 +51,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 
 ## Schema batch (additive) — landed 2026-07-07, pending `pnpm db:push` + `pnpm db:generate`
 `packages/db/prisma/schema.prisma` (+ `packages/audit/src/types.ts` entity types). All CockroachDB-safe (uuid ids, bare String, nullable, no drops):
-- [~] `PartnerActivationStep` (activation completion — `stepKey` matches the engine) + `Partner.activationSteps` back-relation
+- [x] `PartnerActivationStep` (activation completion — `stepKey` matches the engine) + `Partner.activationSteps` back-relation — **pushed + wired**: `/activation` reads real completion + per-step "Mark done" server action (persist + audit), invariants `--strict` green.
 - [~] `PartnerAgreement` (versioned text) + `PartnerAgreementSignature` (tamper-evident e-sign record) + `Partner.agreementSignatures`
 - [~] `PartnerAccessSetting` singleton + `enum PartnerAccessMode { PRIVATE PUBLIC }`
 - [~] `NotificationEvent` += `PARTNER_INVITED`, `PARTNER_APPLICATION_RECEIVED`
-- [ ] **Run on your machine:** `pnpm db:push && pnpm db:generate && rm -rf apps/*/.next` → then I wire the server actions (activation save, contract sign, access-mode toggle, invite email) against the regenerated client.
+- [x] **Ran** `pnpm db:push && pnpm db:generate` (2026-07-07) — client fresh, freshness check green. Actions being wired next: activation save **[x]**, contract sign, access-mode toggle, invite email.
 
 ## 4. P1 — the visible upgrade (build to prototype)
 - [ ] Onboarding UI redesign on the accordion (header + progress meter + two-column + sticky rail + trust) — prototype "② Onboarding"
