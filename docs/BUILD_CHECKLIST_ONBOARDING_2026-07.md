@@ -56,7 +56,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` to do · `[!]` blocked on a Pav
 - [ ] Structured quality-cert step driving existing `CertificateType`/`PartnerCertificateInstance`
 - [ ] Domain→cert matrix as `CertificateType` rows + per-domain cert **routing gate**
 - [x] **Activation Setup engine** — pure service-composition (`apps/partner/src/lib/activation-tracks.ts` + test) — union of tracks from `PartnerService.type[]`, per-service D8 go-live gate. Verified via Node type-strip (13-step composition + gates pass). Needs `pnpm type-check` on your machine.
-- [ ] Activation Setup UI (stepper grouped by service + data-routing tags) — prototype "③ Activation Setup"
+- [~] Activation Setup UI — v1 **server-rendered overview BUILT** (`apps/partner/src/app/(dashboard)/activation/page.tsx`): reads partner services → composes union via the engine → grouped by service with per-service go-live + "→ where this lands" routing tags, on the partner-v2 chrome. Color-safe + invariants clean; needs `pnpm type-check`. Pending: per-step forms, completion persistence (schema add), nav wiring, FSM-stage gating.
 
 ## 5. P2 — strategic features (build to prototype)
 - [ ] `PartnerAccessMode: PRIVATE|PUBLIC` admin setting (pattern of `DomainSetting`/`LogisticsSetting`)
