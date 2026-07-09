@@ -36,7 +36,7 @@ export default function BusinessLandingPage() {
         }
       >
         <Button variant="neon" size="xl" asChild>
-          <a href={partnerUrl('/signup')}>Apply to join →</a>
+          <a href={partnerUrl('/partners/apply')}>Apply to join →</a>
         </Button>
         <Button
           variant="outline"
@@ -233,7 +233,7 @@ function PartnerTypes() {
               icon={p.icon}
               name={p.name}
               description={p.desc}
-              href={partnerUrl('/signup')}
+              href={partnerUrl('/partners/apply')}
             />
           ))}
         </div>
@@ -360,7 +360,7 @@ function FinalCta() {
           minutes and your cert PDFs handy.
         </p>
         <Button variant="neon" size="lg" asChild>
-          <a href={partnerUrl('/signup')}>Apply to join →</a>
+          <a href={partnerUrl('/partners/apply')}>Apply to join →</a>
         </Button>
       </div>
     </section>

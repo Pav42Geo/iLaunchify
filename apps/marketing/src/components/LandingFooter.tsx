@@ -49,7 +49,7 @@ export async function LandingFooter() {
 
           <FooterCol title="Business">
             <FooterLink href="/business">Why iLaunchify</FooterLink>
-            <FooterLink href={partnerUrl('/signup')} external>
+            <FooterLink href={partnerUrl('/partners/apply')} external>
               Apply to join
             </FooterLink>
             <FooterLink href={partnerUrl('/login')} external>

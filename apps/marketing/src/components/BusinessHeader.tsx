@@ -53,7 +53,7 @@ export async function BusinessHeader({ placementKey = 'businessHeader' }: { plac
         </a>
 
         <Button variant="neon" asChild>
-          <a href={partnerUrl('/signup')}>Apply now</a>
+          <a href={partnerUrl('/partners/apply')}>Apply now</a>
         </Button>
       </div>
     </header>

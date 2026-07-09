@@ -55,7 +55,7 @@ function copy(audience: AcademyAudience) {
         ctaTitle: 'Ready to take your first order?',
         ctaSub: 'Apply to join the production network — verification is quick and there’s no listing fee.',
         ctaLabel: 'Apply to partner',
-        ctaHref: partnerUrl('/signup'),
+        ctaHref: partnerUrl('/partners/apply'),
         eyebrow: 'Partner Academy',
       }
     : {

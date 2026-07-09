@@ -121,7 +121,7 @@ export async function LandingHeader({
               },
               {
                 label: 'Apply to join',
-                href: partnerUrl('/signup'),
+                href: partnerUrl('/partners/apply'),
                 description: '~25 minutes if you have your docs ready.',
               },
               {

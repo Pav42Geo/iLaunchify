@@ -66,6 +66,9 @@ export default async function OnboardingLayout({ children }: { children: React.R
             sublabelClassName="text-neon-500"
           />
           <nav className="flex items-center gap-1 rounded-full bg-white/10 p-1">
+            <span className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-300">
+              Application
+            </span>
             <span className="rounded-full bg-white px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-900">
               Onboarding
             </span>
