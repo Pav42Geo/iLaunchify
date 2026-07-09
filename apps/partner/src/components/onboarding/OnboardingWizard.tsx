@@ -218,7 +218,7 @@ export function OnboardingWizard({
       <div
         key={cur}
         style={{ animation: `${dir === 'next' ? 'obN' : 'obB'} .32s cubic-bezier(.22,.61,.36,1)` }}
-        className="rounded-3xl border border-ink-200 bg-white p-7 shadow-[0_18px_50px_-28px_rgba(20,20,25,0.35)]"
+        className="rounded-[20px] border border-ink-200 bg-white p-7 shadow-[0_18px_50px_-28px_rgba(20,20,25,0.35)]"
       >
         <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-pink-700">{active.eyebrow}</div>
         <h2 className="mb-1 mt-2 font-display text-[26px] font-extrabold leading-[1.05] tracking-[-0.03em] text-ink-900">

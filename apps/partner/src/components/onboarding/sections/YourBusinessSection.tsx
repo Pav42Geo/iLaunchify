@@ -129,7 +129,7 @@ export function YourBusinessSection({
             return (
               <label
                 key={m.id}
-                className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
+                className={`flex cursor-pointer items-center gap-3 rounded-[14px] border-[1.5px] p-3.5 transition-colors ${
                   checked
                     ? 'border-pink-500 bg-pink-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
@@ -139,12 +139,20 @@ export function YourBusinessSection({
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleMarket(m.id)}
-                  className="mt-0.5 h-4 w-4 accent-pink-600"
+                  className="sr-only"
                 />
                 <div className="min-w-0">
-                  <div className="font-medium text-ink-900">{m.name}</div>
-                  {m.region && <div className="text-ui-caption text-ink-500">{m.region}</div>}
+                  <div className="text-[13.5px] font-bold text-ink-900">{m.name}</div>
+                  {m.region && <div className="text-[12px] text-ink-500">{m.region}</div>}
                 </div>
+                <span
+                  aria-hidden="true"
+                  className={`ml-auto flex h-5 w-5 flex-none items-center justify-center rounded-full border-[1.5px] text-[12px] font-bold ${
+                    checked ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 text-transparent'
+                  }`}
+                >
+                  ✓
+                </span>
               </label>
             )
           })}
@@ -186,7 +194,7 @@ export function YourBusinessSection({
             return (
               <label
                 key={opt.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
+                className={`flex cursor-pointer items-center gap-3 rounded-[14px] border-[1.5px] p-3.5 transition-colors ${
                   checked
                     ? 'border-pink-500 bg-pink-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
@@ -196,12 +204,20 @@ export function YourBusinessSection({
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleServiceType(opt.value)}
-                  className="mt-1 h-4 w-4 accent-pink-600"
+                  className="sr-only"
                 />
-                <div>
-                  <div className="font-medium text-ink-900">{opt.label}</div>
-                  <div className="text-ui-body text-ink-500">{opt.description}</div>
+                <div className="min-w-0">
+                  <div className="text-[13.5px] font-bold text-ink-900">{opt.label}</div>
+                  <div className="text-[12px] text-ink-500">{opt.description}</div>
                 </div>
+                <span
+                  aria-hidden="true"
+                  className={`ml-auto flex h-5 w-5 flex-none items-center justify-center rounded-full border-[1.5px] text-[12px] font-bold ${
+                    checked ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 text-transparent'
+                  }`}
+                >
+                  ✓
+                </span>
               </label>
             )
           })}

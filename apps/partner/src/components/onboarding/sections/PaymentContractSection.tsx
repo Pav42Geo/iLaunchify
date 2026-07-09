@@ -55,7 +55,7 @@ function StripeConnectCard({ status }: { status: StripeStatus }) {
   const isPending = status === 'PENDING' || status === 'RESTRICTED'
 
   return (
-    <section className="space-y-3 rounded-lg border border-ink-200 p-5">
+    <section className="space-y-3 rounded-[14px] border-[1.5px] border-ink-200 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-ink-900">Stripe Connect for payouts</h3>
@@ -168,7 +168,7 @@ function ContractCard({
   }
 
   return (
-    <section className="space-y-4 rounded-lg border border-ink-200 p-5">
+    <section className="space-y-4 rounded-[14px] border-[1.5px] border-ink-200 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold text-ink-900">{state.contract.name}</h3>
@@ -246,7 +246,7 @@ function ContractCard({
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
                 disabled={isPending}
-                className="mt-1"
+                className="mt-1 h-4 w-4 accent-pink-600"
               />
               <span className="text-ui-body text-ink-700">
                 I have authority to bind my company and I accept the terms of the{' '}
