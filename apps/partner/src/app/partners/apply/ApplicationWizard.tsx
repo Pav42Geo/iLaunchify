@@ -50,9 +50,9 @@ const MFG_CATEGORIES: [string, string][] = [
 ]
 const MFG_PROCESSES = ['Hot-fill', 'Cold-fill', 'HPP', 'Pasteurization', 'Blending', 'Encapsulation', 'Spray-dry', 'Aseptic']
 const MODELS: [string, string, string][] = [
-  ['white', 'White label', 'Your existing product, their label — fastest, lowest MOQ'],
-  ['private', 'Private label', 'Your base formula, customized under their brand'],
-  ['custom', 'Fully customized', 'Bespoke formulation from their spec'],
+  ['white', 'White-label products', 'Your existing product, their label — fastest, lowest MOQ'],
+  ['private', 'Private-label products', 'Your base formula, customized under their brand'],
+  ['custom', 'Fully custom products', 'Bespoke formulation built from their spec'],
 ]
 const COPACK_FORMATS = ['Bottles', 'Jars', 'Pouches', 'Sachets', 'Cartons', 'Cans', 'Shrink sleeves', 'Blister']
 const FILL_TYPES = ['Powder', 'Liquid', 'Capsule / tablet', 'Cream / gel', 'Aerosol']
@@ -299,9 +299,22 @@ export function ApplicationWizard({
     return (
       <>
         <H>
-          What do you <Em>make?</Em>
+          What products do you <Em>make?</Em>
         </H>
-        <Sub>A small-batch white / private-label runner is our sweet spot.</Sub>
+        <Sub>This is the heart of it — how you build for a brand decides which orders route to you.</Sub>
+        <FieldBox label="What kind of products do you offer? (pick any)">
+          <div className="space-y-2.5">
+            {MODELS.map(([v, l, d]) => (
+              <SelectCard
+                key={v}
+                on={arr(k, 'models').includes(v)}
+                onClick={() => toggleDetail(k, 'models', v)}
+                title={l}
+                desc={d}
+              />
+            ))}
+          </div>
+        </FieldBox>
         <FieldBox label="Product categories">
           <Chips>
             {MFG_CATEGORIES.map(([v, l]) => (
@@ -316,15 +329,6 @@ export function ApplicationWizard({
             {MFG_PROCESSES.map((p) => (
               <Chip key={p} on={arr(k, 'processes').includes(p)} onClick={() => toggleDetail(k, 'processes', p)}>
                 {p}
-              </Chip>
-            ))}
-          </Chips>
-        </FieldBox>
-        <FieldBox label="Which do you offer?">
-          <Chips>
-            {MODELS.map(([v, l]) => (
-              <Chip key={v} on={arr(k, 'models').includes(v)} onClick={() => toggleDetail(k, 'models', v)}>
-                {l}
               </Chip>
             ))}
           </Chips>
@@ -512,6 +516,43 @@ function FieldBox({ label, error, children }: { label: string; error?: string; c
       {children}
       {error && <p className="text-[12px] text-danger-600">{error}</p>}
     </div>
+  )
+}
+function SelectCard({
+  on,
+  onClick,
+  title,
+  desc,
+}: {
+  on: boolean
+  onClick: () => void
+  title: string
+  desc: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={
+        'flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-colors ' +
+        (on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-300')
+      }
+    >
+      <span
+        aria-hidden="true"
+        className={
+          'mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border text-[11px] font-bold ' +
+          (on ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 bg-white text-transparent')
+        }
+      >
+        ✓
+      </span>
+      <span className="min-w-0">
+        <span className={'block text-[15px] font-bold ' + (on ? 'text-pink-800' : 'text-ink-900')}>{title}</span>
+        <span className="mt-0.5 block text-[13px] leading-[1.45] text-ink-500">{desc}</span>
+      </span>
+    </button>
   )
 }
 function Chips({ children }: { children: React.ReactNode }) {
