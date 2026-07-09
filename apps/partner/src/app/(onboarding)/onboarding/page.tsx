@@ -45,9 +45,24 @@ export default async function OnboardingPage() {
       postalCode: true,
       country: true,
       onboardingProgress: true,
+      leadNotes: true,
     },
   })
   if (!partner) return null
+
+  // Carry the applicant's own application answers forward (Pavel 2026-07-08):
+  // capacity + certifications are free-text triage blurbs with no 1:1 structured
+  // field here, so we surface them as a reference so onboarding never feels like
+  // re-asking. leadNotes is a JSON string written by submitLead.
+  let appCapacity = ''
+  let appCerts = ''
+  try {
+    const notes = partner.leadNotes ? (JSON.parse(partner.leadNotes) as Record<string, unknown>) : {}
+    if (typeof notes.monthlyCapacity === 'string') appCapacity = notes.monthlyCapacity
+    if (typeof notes.certifications === 'string') appCerts = notes.certifications
+  } catch {
+    /* malformed leadNotes — skip the reference */
+  }
 
   const state = await getOnboardingState()
 
@@ -148,10 +163,42 @@ export default async function OnboardingPage() {
     </div>
   ) : null
 
+  const applicationSummary =
+    appCapacity || appCerts ? (
+      <div className="mb-4 rounded-2xl border border-ink-200 bg-white px-5 py-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+          From your application
+        </p>
+        <div className="mt-1.5 space-y-1 text-[13px] text-ink-700">
+          {appCapacity && (
+            <p>
+              <span className="text-ink-500">Capacity:</span> {appCapacity}
+            </p>
+          )}
+          {appCerts && (
+            <p>
+              <span className="text-ink-500">Certifications:</span> {appCerts}
+            </p>
+          )}
+        </div>
+        <p className="mt-2 text-[12px] text-ink-500">
+          A reference from what you told us — use it as you fill in the detailed fields below.
+        </p>
+      </div>
+    ) : null
+
+  const topBanner =
+    invitationBanner || applicationSummary ? (
+      <>
+        {invitationBanner}
+        {applicationSummary}
+      </>
+    ) : undefined
+
   return (
     <OnboardingAccordion
       companyName={partner.companyName}
-      banner={invitationBanner}
+      banner={topBanner}
       initialBusiness={{
         targetMarketIds: state?.marketsCert?.map((c) => c.marketId) ?? [],
         primaryRegionId: state?.primaryRegion?.id ?? null,
