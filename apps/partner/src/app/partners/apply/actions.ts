@@ -35,8 +35,9 @@ export type SubmitLeadResult = { ok: true } | { ok: false; error: string }
 // Pre-fill onboarding capability cards from the Application's per-service answers.
 // Only maps fields that share the SAME vocabulary between the two flows, so the
 // values are valid for onboarding's capsFromJson (categories/processes,
-// print die-cuts, warehouse storage). Co-packing formats differ (ContainerCategory
-// at apply vs StructuralPackType in onboarding) → not carried.
+// print die-cuts, warehouse storage). Co-packing now carries both fields — the
+// two flows share enums: containerFormats (ContainerCategory) and
+// packagingFormats (StructuralPackType).
 const PRODUCT_CATEGORIES = new Set(['FOOD', 'BEVERAGE_FUNCTIONAL', 'SUPPLEMENT', 'COSMETIC', 'PET'])
 function capsFromApplication(type: string, detail: unknown): Record<string, unknown> {
   const d = detail && typeof detail === 'object' ? (detail as Record<string, unknown>) : {}

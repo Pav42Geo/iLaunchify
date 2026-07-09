@@ -38,6 +38,8 @@ import {
 } from 'lucide-react'
 import { ActiveWelcomeModal } from './ActiveWelcomeModal'
 import { homeEyebrow, heroQuickActions } from '@/lib/role-skins'
+import { getPartnerActivationStatus } from '@/lib/activation-status'
+import { Rocket } from 'lucide-react'
 import { YourRatingCard, type ServiceRatingView, type RatingCommentView, type AspectNoteView } from './YourRatingCard'
 
 // Feedback module §5.4 — display labels for the "Your rating" card.
@@ -114,6 +116,13 @@ export default async function ProviderDashboardHome() {
   })
   if (!partner) return null
   const serviceIds = partner.services.map((s) => s.id)
+
+  // Activation nudge: once a partner is fully live they keep the full nav (the
+  // layout's sticky `activationComplete` flag), so a service added later that
+  // isn't live yet has no other prompt. Surface it here — on the home page only,
+  // not on every navigation — so finishing setup can't be missed. Org-wide.
+  const activation = await getPartnerActivationStatus(access.partnerId)
+  const pendingActivationCount = activation.serviceTypes.length - activation.liveServiceTypes.length
 
   // Feedback module §5.4 — rating views + latest creator comments.
   const ratingServices: ServiceRatingView[] = partner.services.map((s) => ({
@@ -422,6 +431,32 @@ export default async function ProviderDashboardHome() {
           </div>
         </div>
       </div>
+
+      {/* Finish activation nudge — only when a service isn't live yet (e.g. one
+          added after the partner already graduated to the full nav). */}
+      {pendingActivationCount > 0 && (
+        <Link
+          href="/activation"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-pink-200 bg-pink-50 px-6 py-4 transition-colors hover:border-pink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-pink-600 text-white">
+              <Rocket className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-ink-900">
+                {pendingActivationCount === 1
+                  ? 'One service still needs setup before it can take orders'
+                  : `${pendingActivationCount} services still need setup before they can take orders`}
+              </p>
+              <p className="mt-0.5 text-[12px] text-ink-600">
+                Finish activation setup to make {pendingActivationCount === 1 ? 'it' : 'them'} live for routing.
+              </p>
+            </div>
+          </div>
+          <span className="flex-none text-[13px] font-semibold text-pink-700">Finish setup →</span>
+        </Link>
+      )}
 
       {/* Needs you now — action-first */}
       <section className="grid grid-cols-1 lg:grid-cols-12">
