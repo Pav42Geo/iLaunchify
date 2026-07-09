@@ -466,7 +466,7 @@ export function ApplicationWizard({
             ))}
           </div>
         </FieldBox>
-        <FieldBox label="Product categories">
+        <FieldBox label="Product categories" star>
           <Chips>
             {MFG_CATEGORIES.map(([v, l]) => (
               <Chip key={v} on={arr(k, 'categories').includes(v)} onClick={() => toggleDetail(k, 'categories', v)}>
