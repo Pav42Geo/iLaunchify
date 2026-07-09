@@ -13,12 +13,14 @@
 
 import { prisma, getInvitationContext } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { OnboardingAccordion } from '@/components/onboarding/OnboardingAccordion'
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard'
 import { capsFromJson } from '@/components/onboarding/sections/capabilities'
+import { domainsFromCategories, filterEligibleCerts } from '@/lib/cert-eligibility'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { getOnboardingState } from './actions'
 
 const LEG_LABEL: Record<string, string> = {
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   COPACKING: 'Co-packing',
   MANUFACTURING: 'Manufacturing',
   WAREHOUSE: 'Fulfillment',
@@ -75,7 +77,7 @@ export default async function OnboardingPage() {
   // Markets: hide COMING_SOON so partners don't try to declare interest in CA before V1.1.
   // Regions: state-level only (METRO is V1.1+).
   // Standard contract: the ACTIVE STANDARD_V1.x row for Section 4's acceptance card.
-  const [markets, regions, standardContract] = await Promise.all([
+  const [markets, regions, standardContract, allCertTypes] = await Promise.all([
     prisma.market.findMany({
       where: { status: 'ACTIVE' },
       select: { id: true, code: true, name: true, region: true },
@@ -91,7 +93,43 @@ export default async function OnboardingPage() {
       orderBy: { effectiveFrom: 'desc' },
       select: { id: true, version: true, name: true, description: true, status: true },
     }),
+    prisma.certificateType.findMany({
+      where: { status: 'ACTIVE' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        thumbnailFileId: true,
+        applicableLabelingTypes: true,
+      },
+      orderBy: { name: 'asc' },
+    }),
   ])
+
+  // Section 3b — Certifications you hold. Narrow the admin library to the
+  // partner's domains (from their declared product categories), resolve the
+  // branded badge thumbnails, and hydrate their current declaration.
+  const declaredCategories = new Set<string>()
+  for (const s of state?.services ?? []) {
+    const cats = (s.capabilities as Record<string, unknown> | null)?.categories
+    if (Array.isArray(cats)) for (const c of cats) if (typeof c === 'string') declaredCategories.add(c)
+  }
+  const partnerDomains = domainsFromCategories([...declaredCategories])
+  const eligibleCertTypes = filterEligibleCerts(allCertTypes, partnerDomains)
+  const certBadgeUrls = await resolveCertBadgeUrls(eligibleCertTypes.map((c) => c.thumbnailFileId))
+  const certOptions = eligibleCertTypes.map((c) => ({
+    id: c.id,
+    slug: c.slug,
+    name: c.name,
+    description: c.description,
+    thumbnailUrl: c.thumbnailFileId ? (certBadgeUrls.get(c.thumbnailFileId) ?? null) : null,
+  }))
+  const declaredCertIdsRaw = (partner.onboardingProgress as Record<string, unknown> | null)
+    ?.declaredCertTypeIds
+  const initialDeclaredCertIds = Array.isArray(declaredCertIdsRaw)
+    ? declaredCertIdsRaw.filter((v): v is string => typeof v === 'string')
+    : []
 
   // Hydrate Section 2 (Your company) — partner.* address fields, with empty strings for null.
   const initialCompany = {
@@ -135,7 +173,7 @@ export default async function OnboardingPage() {
   }
 
   const invitedLegLabels = invitation?.legs.map((l) => LEG_LABEL[l] ?? l) ?? []
-  const currentTypes = new Set(state?.services?.map((s) => s.type) ?? [])
+  const currentTypes = new Set<string>(state?.services?.map((s) => s.type) ?? [])
   const missingLegLabels =
     invitation?.legs.filter((l) => !currentTypes.has(l)).map((l) => LEG_LABEL[l] ?? l) ?? []
 
@@ -196,7 +234,7 @@ export default async function OnboardingPage() {
     ) : undefined
 
   return (
-    <OnboardingAccordion
+    <OnboardingWizard
       companyName={partner.companyName}
       banner={topBanner}
       initialBusiness={{
@@ -210,6 +248,8 @@ export default async function OnboardingPage() {
       initialPayment={initialPayment}
       markets={markets}
       regions={regions}
+      certOptions={certOptions}
+      initialDeclaredCertIds={initialDeclaredCertIds}
     />
   )
 }
