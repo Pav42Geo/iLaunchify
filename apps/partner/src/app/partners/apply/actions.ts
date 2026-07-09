@@ -32,6 +32,28 @@ const LeadSchema = z.object({
 
 export type SubmitLeadResult = { ok: true } | { ok: false; error: string }
 
+// Pre-fill onboarding capability cards from the Application's per-service answers.
+// Only maps fields that share the SAME vocabulary between the two flows, so the
+// values are valid for onboarding's capsFromJson (categories/processes,
+// print die-cuts, warehouse storage). Co-packing formats differ (ContainerCategory
+// at apply vs StructuralPackType in onboarding) → not carried.
+const PRODUCT_CATEGORIES = new Set(['FOOD', 'BEVERAGE_FUNCTIONAL', 'SUPPLEMENT', 'COSMETIC', 'PET'])
+function capsFromApplication(type: string, detail: unknown): Record<string, unknown> {
+  const d = detail && typeof detail === 'object' ? (detail as Record<string, unknown>) : {}
+  const arr = (k: string): string[] =>
+    Array.isArray(d[k]) ? (d[k] as unknown[]).filter((x): x is string => typeof x === 'string') : []
+  const base: Record<string, unknown> = { type }
+  if (type === 'MANUFACTURING') {
+    base.categories = arr('categories').filter((c) => PRODUCT_CATEGORIES.has(c)) // drop OTC (interest-only)
+    base.manufacturingProcesses = arr('processes')
+  } else if (type === 'LABEL_PRINTING') {
+    base.dieCuts = arr('prints')
+  } else if (type === 'WAREHOUSE') {
+    base.storageType = arr('storage')
+  }
+  return base
+}
+
 export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<SubmitLeadResult> {
   const parsed = LeadSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
@@ -87,7 +109,8 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
               type: t,
               status: 'DRAFT' as const,
               disclosureLevel: 'ANONYMOUS' as const,
-              capabilities: { type: t }, // empty stub — partner fills during onboarding
+              // Pre-fill from the application's answers (same-vocab fields only).
+              capabilities: capsFromApplication(t, v.serviceDetails[t]) as never,
             })),
           },
         },

@@ -411,13 +411,15 @@ export async function submitForReview() {
   const hasCompany =
     !!partner.legalName &&
     !!partner.addressLine1 &&
+    partner.files.some((f) => f.kind === 'CERT_OF_INCORPORATION') &&
     partner.files.some((f) => f.kind === 'BUSINESS_LICENSE') &&
     partner.files.some((f) => f.kind === 'INSURANCE')
   const hasCommercial = !!partner.commercialTerms?.signedAt
 
   const missing: string[] = []
   if (!hasBusiness) missing.push('Your business — pick at least one partner type')
-  if (!hasCompany) missing.push('Your company — legal info + business license + insurance')
+  if (!hasCompany)
+    missing.push('Your company — legal info + certificate of incorporation + business license + insurance')
   if (!hasCommercial) missing.push('Payment & contract — sign the partner agreement')
 
   if (missing.length > 0) {

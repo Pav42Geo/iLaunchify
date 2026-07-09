@@ -256,14 +256,14 @@ export function ApplicationWizard({
           Let&apos;s start with <Em>the basics.</Em>
         </H>
         <Sub>Takes ~2 minutes. No account needed yet — if it&apos;s a fit we&apos;ll invite you to onboard.</Sub>
-        <FieldBox label="Company name" error={formState.errors.companyName?.message}>
+        <FieldBox label="Company name" error={formState.errors.companyName?.message} star>
           <Input placeholder="Northwind Co." {...register('companyName')} />
         </FieldBox>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FieldBox label="Legal name (if different)">
             <Input placeholder="Northwind Co. LLC" {...register('legalName')} />
           </FieldBox>
-          <FieldBox label="Years in business" recommended>
+          <FieldBox label="Years in business" star>
             <Input placeholder="e.g. 8" {...register('yearsInBusiness')} />
           </FieldBox>
         </div>
@@ -283,7 +283,7 @@ export function ApplicationWizard({
               <option value="OTHER">Other</option>
             </ApplySelect>
           </FieldBox>
-          <FieldBox label="State / region" recommended>
+          <FieldBox label="State / region" star>
             <ApplySelect {...register('regionCode')} disabled={!isUS}>
               <option value="">{isUS ? 'Select…' : 'US only at launch'}</option>
               {isUS &&
@@ -299,7 +299,7 @@ export function ApplicationWizard({
           </FieldBox>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <FieldBox label="Production facilities" recommended>
+          <FieldBox label="Production facilities" star>
             <ApplySelect {...register('facilityCount')}>
               <option value="">Select…</option>
               <option value="1">1</option>
@@ -397,10 +397,10 @@ export function ApplicationWizard({
         </H>
         <Sub>And a couple lines of context so we can judge fit.</Sub>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FieldBox label="Your name" error={formState.errors.contactName?.message}>
+          <FieldBox label="Your name" error={formState.errors.contactName?.message} star>
             <Input placeholder="Jane Doe" {...register('contactName')} />
           </FieldBox>
-          <FieldBox label="Work email" error={formState.errors.email?.message}>
+          <FieldBox label="Work email" error={formState.errors.email?.message} star>
             <Input type="email" placeholder="you@company.com" {...register('email')} />
           </FieldBox>
         </div>
@@ -408,7 +408,7 @@ export function ApplicationWizard({
           <FieldBox label="Phone (optional)">
             <Input {...register('phone')} />
           </FieldBox>
-          <FieldBox label="Website" error={formState.errors.website?.message} recommended>
+          <FieldBox label="Website" error={formState.errors.website?.message} star>
             <Input placeholder="https://" {...register('website')} />
           </FieldBox>
         </div>
@@ -422,6 +422,7 @@ export function ApplicationWizard({
         <FieldBox
           label="What does success on iLaunchify look like for you?"
           error={formState.errors.successDescription?.message}
+          star
         >
           <textarea
             className="flex min-h-[72px] w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
@@ -751,20 +752,23 @@ function Sub({ children }: { children: React.ReactNode }) {
 function FieldBox({
   label,
   error,
-  recommended,
+  star,
   children,
 }: {
   label: string
   error?: string
-  recommended?: boolean
+  /** Pink * — required or strongly recommended field (unified with onboarding). */
+  star?: boolean
   children: React.ReactNode
 }) {
   return (
     <div className="mb-4 space-y-1.5">
-      <div className="flex items-baseline gap-1.5">
+      <div className="flex items-baseline gap-1">
         <Label>{label}</Label>
-        {recommended && (
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-pink-600">Recommended</span>
+        {star && (
+          <span className="text-pink-500" aria-label="required" title="Required">
+            *
+          </span>
         )}
       </div>
       {children}

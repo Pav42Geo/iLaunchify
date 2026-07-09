@@ -5,7 +5,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "// Note": "All commands load env from .env.local at the repo root via dotenv-cli \u2014 Next.js uses the same file.",
+    "// Note": "All commands load env from .env.local at the repo root via dotenv-cli — Next.js uses the same file.",
     "generate": "pnpm exec dotenv -e ../../.env.local -- prisma generate",
     "push": "pnpm exec dotenv -e ../../.env.local -- prisma db push",
     "migrate": "pnpm exec dotenv -e ../../.env.local -- prisma migrate dev",
@@ -36,7 +36,8 @@
     "seed:fc-dryrun": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-fc-dryrun.ts",
     "seed:favorites": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-favorites.ts",
     "seed:onboarding-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-onboarding-demo.ts",
-    "seed:partner-agreement": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-partner-agreement.ts"
+    "seed:partner-agreement": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-partner-agreement.ts",
+    "seed:certificate-types": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/run-certificate-types.ts"
   },
   "prisma": {
     "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts"
