@@ -20,7 +20,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { PartnerSidebar } from '@/components/nav/PartnerSidebar'
 import { PartnerTopbar } from '@/components/nav/PartnerTopbar'
-import { getPartnerActivationStatus } from '@/lib/activation-status'
+import { resolveActivationLimited } from '@/lib/activation-status'
 
 // Statuses where the partner is mid-onboarding (form not yet submitted).
 const PRE_SUBMIT_STATUSES = new Set([
@@ -111,8 +111,10 @@ export default async function PartnerDashboardLayout({ children }: { children: R
 
   // ACTIVE but still finishing Activation Setup → show the limited "in-profile"
   // nav until every service is live (D8). Only computed for non-restricted
-  // (ACTIVE) partners so restricted shells aren't charged the extra query.
-  const activationLimited = restricted ? false : !(await getPartnerActivationStatus(partner.id)).allLive
+  // (ACTIVE) partners so restricted shells aren't charged the extra query, and
+  // short-circuited via a sticky flag once complete so we don't re-run the
+  // status queries on every subsequent page load.
+  const activationLimited = restricted ? false : await resolveActivationLimited(partner)
 
   return (
     <div className="flex h-screen flex-col">

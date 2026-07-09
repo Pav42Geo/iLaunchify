@@ -113,6 +113,42 @@ async function deriveAutoCompletedKeys(partnerId: string, services: SvcRow[]): P
   return [...keys]
 }
 
+/**
+ * Layout helper: should the partner still see the limited "finishing activation"
+ * nav? Backed by a sticky `onboardingProgress.activationComplete` flag so we stop
+ * running the activation status queries on EVERY dashboard page load once the
+ * partner is fully live (the layout previously paid ~2 finds + up to 5 counts per
+ * navigation forever).
+ *
+ * The flag is monotonic by design: once a partner graduates to the full nav, a
+ * later admin-added service should surface via a banner, not silently demote the
+ * whole shell back to the limited nav. The lazy write mirrors the membership
+ * backfill this same layout already relies on.
+ */
+export async function resolveActivationLimited(partner: {
+  id: string
+  onboardingProgress: unknown
+}): Promise<boolean> {
+  const progress = (partner.onboardingProgress as Record<string, unknown> | null) ?? {}
+  if (progress.activationComplete === true) return false // cached → 0 queries
+
+  const { allLive } = await getPartnerActivationStatus(partner.id)
+  if (!allLive) return true // still finishing → limited nav
+
+  // First load where every service is live: persist the sticky flag so future
+  // page loads skip the status queries entirely. Best-effort — a failed write
+  // just means we recompute (and retry the write) next load.
+  try {
+    await prisma.partner.update({
+      where: { id: partner.id },
+      data: { onboardingProgress: { ...progress, activationComplete: true } as never },
+    })
+  } catch {
+    // Non-fatal.
+  }
+  return false
+}
+
 /** Convenience: is a specific service activation-complete (routing-eligible)? */
 export async function isPartnerServiceLive(
   partnerId: string,
