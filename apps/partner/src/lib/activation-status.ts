@@ -18,6 +18,8 @@ import {
 export interface PartnerActivationStatus {
   serviceTypes: PartnerServiceType[]
   completedKeys: string[]
+  /** Subset of completedKeys satisfied automatically by real backing data. */
+  autoCompletedKeys: string[]
   progress: ActivationProgress
   /** Services whose own track + the shared tail are complete → routing-eligible (D8). */
   liveServiceTypes: PartnerServiceType[]
@@ -54,6 +56,7 @@ export async function getPartnerActivationStatus(
   return {
     serviceTypes,
     completedKeys,
+    autoCompletedKeys: autoKeys,
     progress,
     liveServiceTypes,
     allLive: serviceTypes.length > 0 && liveServiceTypes.length === serviceTypes.length,

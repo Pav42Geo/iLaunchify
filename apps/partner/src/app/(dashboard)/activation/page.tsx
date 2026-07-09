@@ -95,6 +95,7 @@ export default async function ActivationPage() {
   const status = await getPartnerActivationStatus(partner.id)
   const { serviceTypes, progress } = status
   const completed = new Set(status.completedKeys)
+  const auto = new Set(status.autoCompletedKeys)
   const steps = activationStepsFor(serviceTypes)
 
   // Group composed steps into ordered service blocks (+ the shared tail).
@@ -154,6 +155,7 @@ export default async function ActivationPage() {
           <ol className="divide-y divide-ink-100">
             {g.steps.map((s: ActivationStep, i: number) => {
               const done = completed.has(s.key)
+              const isAuto = auto.has(s.key)
               return (
                 <li key={s.key} className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-start">
                   <span
@@ -185,22 +187,32 @@ export default async function ActivationPage() {
                         href={s.href}
                         className="rounded-full border border-ink-200 bg-white px-3 py-[3px] text-[11px] font-semibold text-pink-700 transition-colors hover:border-pink-300 hover:bg-pink-50"
                       >
-                        Set up →
+                        {isAuto ? 'Edit →' : 'Set up →'}
                       </a>
                     )}
-                    <form action={setActivationStepComplete.bind(null, s.key, !done)}>
-                      <button
-                        type="submit"
-                        className={cn(
-                          'rounded-full border px-2.5 py-[3px] text-[11px] font-semibold transition-colors',
-                          done
-                            ? 'border-success-200 bg-success-50 text-success-800 hover:bg-success-100'
-                            : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-pink-300 hover:text-pink-700',
-                        )}
+                    {isAuto ? (
+                      // Satisfied by real data — locked, not a manual toggle.
+                      <span
+                        title="Detected automatically from your setup"
+                        className="inline-flex items-center rounded-full border border-success-200 bg-success-50 px-2.5 py-[3px] text-[11px] font-semibold text-success-800"
                       >
-                        {done ? '✓ Done' : 'Mark done'}
-                      </button>
-                    </form>
+                        ✓ Auto-detected
+                      </span>
+                    ) : (
+                      <form action={setActivationStepComplete.bind(null, s.key, !done)}>
+                        <button
+                          type="submit"
+                          className={cn(
+                            'rounded-full border px-2.5 py-[3px] text-[11px] font-semibold transition-colors',
+                            done
+                              ? 'border-success-200 bg-success-50 text-success-800 hover:bg-success-100'
+                              : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-pink-300 hover:text-pink-700',
+                          )}
+                        >
+                          {done ? '✓ Done' : 'Mark done'}
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </li>
               )
