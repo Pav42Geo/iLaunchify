@@ -36,6 +36,7 @@
     "seed:fc-dryrun": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-fc-dryrun.ts",
     "seed:favorites": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-favorites.ts",
     "seed:onboarding-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-onboarding-demo.ts",
+    "seed:activation-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-activation-demo.ts",
     "seed:partner-agreement": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-partner-agreement.ts",
     "seed:certificate-types": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/run-certificate-types.ts"
   },
