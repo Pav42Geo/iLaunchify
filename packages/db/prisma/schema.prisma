@@ -994,9 +994,6 @@ model Partner {
   agreementSignatures     PartnerAgreementSignature[]   @relation("PartnerAgreementSignatures")
   nominations             PartnerNomination[]           @relation("PartnerNominations")
   nominationsMade         PartnerNomination[]           @relation("PartnerNominationsMade")
-  // Facilities (Pavel 2026-07-08) — a partner may run several plants; the facility
-  // is the routing unit (certs/proximity/capacity are per-plant). Phase 1 substrate.
-  facilities              Facility[]
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 }
@@ -1100,9 +1097,16 @@ model PartnerFacility {
   postalCode   String
   country      String   @default("US")
   isDefault    Boolean  @default(false)
+  // Geo for per-facility proximity scoring (Phase 3 routing). Nullable until geocoded.
+  lat          Float?
+  lng          Float?
   partner      Partner  @relation("PartnerFacilities", fields: [partnerId], references: [id], onDelete: Cascade)
   variants     ProductTemplateVariant[]
   productDefaults PartnerProductDefaults[] @relation("FacilityProductDefaults")
+  // Multi-facility routing substrate (Pavel 2026-07-08) — the facility is the
+  // routing unit; services + certs are scoped to it. docs/FACILITY_MODEL_2026-07.md.
+  services            PartnerService[]
+  certificateInstances PartnerCertificateInstance[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -1188,39 +1192,6 @@ enum PackStructure {
   INDIVIDUAL_IN_OUTER // each flavor its own pack, all in one outer
   CUSTOMIZABLE // consumer picks N
   OUTER_WITH_INNERS // outer pack holding distinct inner packs
-}
-
-enum FacilityStatus {
-  ACTIVE
-  PAUSED
-  ARCHIVED
-}
-
-/// A physical plant a partner operates (Pavel 2026-07-08). The facility — not the
-/// company — is the routing unit: certs, proximity/freight, capacity and storage
-/// class are per-plant. Phase 1 = substrate (backfilled 1 primary per partner);
-/// Phase 3 routing scopes capability + proximity per facility. docs/FACILITY_MODEL_2026-07.md.
-model Facility {
-  id           String         @id @default(cuid())
-  partnerId    String
-  name         String         @default("Primary facility")
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  postalCode   String?
-  country      String         @default("US")
-  lat          Float?
-  lng          Float?
-  isPrimary    Boolean        @default(false)
-  status       FacilityStatus @default(ACTIVE)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  partner      Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  services     PartnerService[]
-  certificateInstances PartnerCertificateInstance[]
-
-  @@index([partnerId])
 }
 
 model PartnerService {
@@ -1328,7 +1299,7 @@ model PartnerService {
   blackoutDates                    PartnerBlackoutDate[]
   serviceMemberships               PartnerServiceMembership[] // P3 team (service-scoped roles)
   partner                          Partner                           @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  facility                         Facility?                         @relation(fields: [facilityId], references: [id])
+  facility                         PartnerFacility?                  @relation(fields: [facilityId], references: [id])
   createdAt                        DateTime                          @default(now())
   updatedAt                        DateTime                          @updatedAt
 
@@ -6837,7 +6808,7 @@ model PartnerCertificateInstance {
   createdAt          DateTime                     @default(now())
   updatedAt          DateTime                     @updatedAt
   partner            Partner                      @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  facility           Facility?                    @relation(fields: [facilityId], references: [id])
+  facility           PartnerFacility?             @relation(fields: [facilityId], references: [id])
   certificateType    CertificateType              @relation(fields: [certificateTypeId], references: [id])
   productAssignments ProductCertificate[]
   replacedBy         PartnerCertificateInstance?  @relation("CertInstanceRenewal", fields: [replacedById], references: [id]) // the newer instance that replaced this one
