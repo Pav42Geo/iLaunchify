@@ -7,7 +7,7 @@
 'use server'
 
 import { requireUser } from '@ilaunchify/auth'
-import { prisma, getNominationMismatches } from '@ilaunchify/db'
+import { prisma, getNominationMismatches, StorageClass } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertPartnerTransition } from '@ilaunchify/orders'
 import type { ServiceType } from '@ilaunchify/db'
@@ -217,9 +217,24 @@ export async function saveServiceCapabilities(patch: CapabilityPatch) {
   const existing = (service.capabilities ?? {}) as Record<string, unknown>
   const merged = { ...existing, ...patch.capabilities, type: patch.type, _stub: undefined }
 
+  // Warehouse storage classes are ALSO a typed, first-class column the FC
+  // selector + scorer read (packages/orders/fc-selector, fc-scorer) as a HARD
+  // eligibility filter. Mirror the picked StorageClass[] into it — validated
+  // against the enum — so onboarding genuinely feeds routing, not just the JSON.
+  const extraData: Record<string, unknown> = {}
+  if (patch.type === 'WAREHOUSE') {
+    const raw = (patch.capabilities as Record<string, unknown>).storageType
+    const allowed = new Set<string>(Object.values(StorageClass))
+    if (Array.isArray(raw)) {
+      extraData.storageClasses = [
+        ...new Set(raw.filter((x): x is string => typeof x === 'string' && allowed.has(x))),
+      ]
+    }
+  }
+
   await prisma.partnerService.update({
     where: { id: service.id },
-    data: { capabilities: merged as never },
+    data: { capabilities: merged as never, ...extraData },
   })
 
   // Stamp the FACILITY verification section.
@@ -417,7 +432,7 @@ export async function submitForReview() {
       const mismatches = await getNominationMismatches(partner.id)
       if (mismatches.length > 0) {
         const legLabel: Record<string, string> = {
-          LABEL_PRINTING: 'Label printing',
+          LABEL_PRINTING: 'Packaging printing',
           COPACKING: 'Co-packing',
           MANUFACTURING: 'Manufacturing',
           WAREHOUSE: 'Fulfillment',
@@ -477,6 +492,62 @@ export async function markWelcomeSeen() {
 
   revalidatePath('/dashboard')
   return { ok: true as const }
+}
+
+// -----------------------------------------------------------------------------
+// SECTION 3b — Certifications you hold (declaration)
+// The unified CertificatePicker records which admin-library cert types the
+// partner claims to hold. This is a DECLARATION only (no proof) — Activation's
+// shared.certs step turns each into a real PartnerCertificateInstance with a PDF
+// + expiry that admin verifies. Stored in onboardingProgress so it survives and
+// pre-fills the activation claim checklist. Purpose: tells us what to expect,
+// and feeds the routing cert gate once verified.
+// -----------------------------------------------------------------------------
+
+export async function saveDeclaredCerts(certTypeIds: string[]) {
+  const user = await requireUser()
+  if (user.role !== 'PARTNER') return { ok: false as const, error: 'NOT_A_PARTNER' as const }
+
+  const partner = await prisma.partner.findUnique({
+    where: { userId: user.id },
+    select: { id: true, onboardingProgress: true },
+  })
+  if (!partner) return { ok: false as const, error: 'PARTNER_NOT_FOUND' as const }
+
+  // De-dupe + drop empties; validate against the live library so a stale/removed
+  // id can never persist.
+  const requested = [...new Set(certTypeIds.filter((id) => typeof id === 'string' && id.length > 0))]
+  const valid =
+    requested.length > 0
+      ? (
+          await prisma.certificateType.findMany({
+            where: { id: { in: requested }, status: 'ACTIVE' },
+            select: { id: true },
+          })
+        ).map((c) => c.id)
+      : []
+
+  const progress = (partner.onboardingProgress as Record<string, unknown> | null) ?? {}
+  await prisma.partner.update({
+    where: { id: partner.id },
+    data: {
+      onboardingProgress: {
+        ...progress,
+        declaredCertTypeIds: valid,
+        declaredCertsUpdatedAt: new Date().toISOString(),
+      },
+    },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'Partner',
+    entityId: partner.id,
+    action: 'PARTNER_DECLARE_CERTS',
+    payload: { certTypeIds: valid, via: 'onboarding/capabilities' },
+  })
+
+  revalidatePath('/onboarding')
+  return { ok: true as const, saved: valid }
 }
 
 // -----------------------------------------------------------------------------
