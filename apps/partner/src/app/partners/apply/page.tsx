@@ -41,8 +41,8 @@ export default async function ApplyPage({
   const logos = await getPublicBrandLogos()
 
   return (
-    <div className="min-h-screen bg-[var(--bg-hero)] grid grid-cols-1 md:grid-cols-[1fr_1fr]">
-      {/* Left — dark marketing panel */}
+    <div className="grid min-h-screen grid-cols-1 bg-[var(--bg-hero)] md:h-screen md:grid-cols-[1fr_1fr]">
+      {/* Left — dark marketing panel (fills the viewport height; never scrolls) */}
       <aside
         data-surface="dark"
         className="relative hidden flex-col justify-between overflow-hidden bg-ink-900 p-12 text-white md:flex"
@@ -86,16 +86,17 @@ export default async function ApplyPage({
         </div>
       </aside>
 
-      {/* Right — application form */}
-      <main className="flex items-start justify-center p-6 pt-12 md:items-center md:p-12">
+      {/* Right — application form. Its own scroll area so the page/left panel
+          stay put and only the form scrolls if it exceeds the viewport. */}
+      <main className="flex items-start justify-center p-6 pt-10 md:h-full md:overflow-y-auto md:p-12">
         <div className="w-full max-w-[560px]">
           {/* Mobile-only logo */}
           <a href={marketingUrl('/business')} className="mb-7 flex items-center md:hidden">
             <Brand imageSrc={logos.fullLight} sublabel="Business" sublabelClassName="text-pink-700" />
           </a>
 
-          <h2 className="text-ui-display mb-2 text-ink-900">{meta.title}</h2>
-          <p className="mb-7 text-[14px] leading-[1.55] text-ink-600">
+          <h2 className="text-ui-display mb-1.5 text-ink-900">{meta.title}</h2>
+          <p className="mb-5 text-[14px] leading-[1.5] text-ink-600">
             {meta.description} Already approved?{' '}
             <Link href="/login" className="font-semibold text-pink-700 hover:text-pink-600">
               Sign in
@@ -103,11 +104,11 @@ export default async function ApplyPage({
             .
           </p>
 
-          <div className="rounded-2xl border border-ink-200 bg-white p-7">
-            <LeadForm defaultServiceType={type} />
+          <div className="rounded-2xl border border-ink-200 bg-white p-6">
+            <LeadForm defaultServiceTypes={[type]} />
           </div>
 
-          <p className="mt-5 text-[12px] leading-[1.5] text-ink-500">
+          <p className="mt-4 text-[12px] leading-[1.5] text-ink-500">
             By applying you agree to our{' '}
             <Link href="/terms" className="text-ink-900 hover:underline">
               Terms

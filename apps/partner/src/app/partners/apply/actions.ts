@@ -12,7 +12,9 @@ const LeadSchema = z.object({
   email: z.string().email(),
   phone: z.string().max(30).optional(),
   website: z.string().url().max(200).optional().or(z.literal('')),
-  serviceType: z.enum(['MANUFACTURING', 'LABEL_PRINTING', 'COPACKING']),
+  serviceTypes: z
+    .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
+    .min(1),
   monthlyCapacity: z.string().max(80),
   certifications: z.string().max(200),
   successDescription: z.string().min(20).max(800),
@@ -58,12 +60,14 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
           contactPhone: v.phone || null,
           country: 'US',
           services: {
-            create: {
-              type: v.serviceType,
-              status: 'DRAFT',
-              disclosureLevel: 'ANONYMOUS',
-              capabilities: { type: v.serviceType }, // empty stub — partner fills during onboarding
-            },
+            // One DRAFT service per selected capability — partners are multi-service;
+            // the onboarding/activation flow composes off this set.
+            create: v.serviceTypes.map((t) => ({
+              type: t,
+              status: 'DRAFT' as const,
+              disclosureLevel: 'ANONYMOUS' as const,
+              capabilities: { type: t }, // empty stub — partner fills during onboarding
+            })),
           },
         },
       },
@@ -78,7 +82,7 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
       entityType: 'Partner',
       entityId: created.partner.id,
       action: 'PARTNER_LEAD_CREATE',
-      payload: { email: v.email, companyName: v.companyName, serviceType: v.serviceType },
+      payload: { email: v.email, companyName: v.companyName, serviceTypes: v.serviceTypes },
     })
 
     const admins = await prisma.user.findMany({
