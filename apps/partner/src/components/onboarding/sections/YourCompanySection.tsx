@@ -265,8 +265,8 @@ function Field({
           </span>
         )}
       </div>
-      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
       {children}
+      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
     </div>
   )
 }
