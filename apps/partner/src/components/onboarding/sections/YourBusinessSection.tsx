@@ -68,6 +68,16 @@ const SERVICE_TYPE_OPTIONS: Array<{ value: ServiceType; label: string; descripti
   },
 ]
 
+// Per-service accent colors — matches the mockup's "Services" pills exactly
+// (Produce/Pack/Print/Fulfill). Inline styles keep the exact hex; each selected
+// service card takes its own color (border + soft tint + tick).
+const SERVICE_COLOR: Record<ServiceType, string> = {
+  MANUFACTURING: '#FF2E63',
+  COPACKING: '#7A5AF8',
+  LABEL_PRINTING: '#0EA5E9',
+  WAREHOUSE: '#12B76A',
+}
+
 export function YourBusinessSection({
   initialState,
   markets,
@@ -191,13 +201,13 @@ export function YourBusinessSection({
         <div className="space-y-2">
           {SERVICE_TYPE_OPTIONS.map((opt) => {
             const checked = state.serviceTypes.includes(opt.value)
+            const color = SERVICE_COLOR[opt.value]
             return (
               <label
                 key={opt.value}
+                style={checked ? { borderColor: color, backgroundColor: `${color}14` } : undefined}
                 className={`flex cursor-pointer items-center gap-3 rounded-[14px] border-[1.5px] p-3.5 transition-colors ${
-                  checked
-                    ? 'border-pink-500 bg-pink-50'
-                    : 'border-ink-200 bg-white hover:bg-ink-50'
+                  checked ? '' : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
                 <input
@@ -212,8 +222,9 @@ export function YourBusinessSection({
                 </div>
                 <span
                   aria-hidden="true"
+                  style={checked ? { backgroundColor: color, borderColor: color } : undefined}
                   className={`ml-auto flex h-5 w-5 flex-none items-center justify-center rounded-full border-[1.5px] text-[12px] font-bold ${
-                    checked ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 text-transparent'
+                    checked ? 'text-white' : 'border-ink-300 text-transparent'
                   }`}
                 >
                   ✓
