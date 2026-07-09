@@ -165,6 +165,7 @@ export async function listAllNominations(limit = 100): Promise<NominationConsole
     take: limit,
     select: {
       id: true,
+      nominatorPartnerId: true,
       nominatorUserId: true,
       nominatedPartnerId: true,
       serviceType: true,
