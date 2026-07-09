@@ -5,7 +5,7 @@
 // applicant selects — a 3PL never sees "what products do you make?". Card/survey
 // shell from the approved prototype.
 
-import { useState } from 'react'
+import { forwardRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -21,6 +21,14 @@ const Schema = z.object({
   companyName: z.string().min(2, 'Company name required').max(120),
   legalName: z.string().max(120).optional().or(z.literal('')),
   yearsInBusiness: z.string().max(20).optional().or(z.literal('')),
+  // Company location (carries forward to onboarding via Partner columns) + light
+  // scale signals for triage.
+  country: z.string().max(4).default('US'),
+  regionCode: z.string().max(8).optional().or(z.literal('')),
+  city: z.string().max(80).optional().or(z.literal('')),
+  facilityCount: z.string().max(12).optional().or(z.literal('')),
+  companySize: z.string().max(16).optional().or(z.literal('')),
+  entityType: z.string().max(20).optional().or(z.literal('')),
   serviceTypes: z
     .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
     .min(1, 'Pick at least one service'),
@@ -49,6 +57,9 @@ const MFG_CATEGORIES: [string, string][] = [
   ['SUPPLEMENT', 'Supplement'],
   ['COSMETIC', 'Cosmetic'],
   ['PET', 'Pet'],
+  // OTC is a real label domain but not live yet — offered here purely to gauge
+  // interest (stored as a triage signal, never routed). See DomainSetting.
+  ['OTC', 'OTC drug'],
 ]
 const MODELS: [string, string, string][] = [
   ['white', 'White-label products', 'Your existing product, their label — fastest, lowest MOQ'],
@@ -136,9 +147,11 @@ type Detail = Record<string, string[] | string>
 export function ApplicationWizard({
   defaultServiceTypes = [],
   certOptions = [],
+  regions = [],
 }: {
   defaultServiceTypes?: ServiceT[]
   certOptions?: CertPickerOption[]
+  regions?: { code: string; name: string }[]
 }) {
   const router = useRouter()
   const [step, setStep] = useState(0)
@@ -152,6 +165,12 @@ export function ApplicationWizard({
       companyName: '',
       legalName: '',
       yearsInBusiness: '',
+      country: 'US',
+      regionCode: '',
+      city: '',
+      facilityCount: '',
+      companySize: '',
+      entityType: '',
       serviceTypes: defaultServiceTypes,
       certificateTypeIds: [],
       contactName: '',
@@ -245,6 +264,59 @@ export function ApplicationWizard({
           </FieldBox>
           <FieldBox label="Years in business">
             <Input placeholder="e.g. 8" {...register('yearsInBusiness')} />
+          </FieldBox>
+        </div>
+        {/* Location — carries forward to onboarding; drives proximity matching +
+            region diversity. State list is your real Region data. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <FieldBox label="Country">
+            <ApplySelect {...register('country')}>
+              <option value="US">United States</option>
+              <option value="CA">Canada</option>
+              <option value="OTHER">Other</option>
+            </ApplySelect>
+          </FieldBox>
+          <FieldBox label="State / region">
+            <ApplySelect {...register('regionCode')}>
+              <option value="">Select…</option>
+              {regions.map((r) => (
+                <option key={r.code} value={r.code}>
+                  {r.name}
+                </option>
+              ))}
+            </ApplySelect>
+          </FieldBox>
+          <FieldBox label="City">
+            <Input placeholder="Columbus" {...register('city')} />
+          </FieldBox>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <FieldBox label="Production facilities">
+            <ApplySelect {...register('facilityCount')}>
+              <option value="">Select…</option>
+              <option value="1">1</option>
+              <option value="2-3">2–3</option>
+              <option value="4+">4+</option>
+            </ApplySelect>
+          </FieldBox>
+          <FieldBox label="Company size">
+            <ApplySelect {...register('companySize')}>
+              <option value="">Select…</option>
+              <option value="1-10">1–10</option>
+              <option value="11-50">11–50</option>
+              <option value="51-200">51–200</option>
+              <option value="200+">200+</option>
+            </ApplySelect>
+          </FieldBox>
+          <FieldBox label="Business entity">
+            <ApplySelect {...register('entityType')}>
+              <option value="">Select…</option>
+              <option value="LLC">LLC</option>
+              <option value="C_CORP">C-Corp</option>
+              <option value="S_CORP">S-Corp</option>
+              <option value="SOLE_PROP">Sole proprietor</option>
+              <option value="OTHER">Other</option>
+            </ApplySelect>
           </FieldBox>
         </div>
       </>
@@ -393,6 +465,12 @@ export function ApplicationWizard({
               </Chip>
             ))}
           </Chips>
+          {arr(k, 'categories').includes('OTC') && (
+            <p className="mt-2 text-[12px] text-ink-500">
+              OTC drug production isn’t live on iLaunchify yet — picking it registers your interest so
+              we can gauge demand.
+            </p>
+          )}
         </FieldBox>
         <FieldBox label="Processes you run">
           <PickSelect
@@ -641,6 +719,17 @@ function PickSelect({
     </div>
   )
 }
+const ApplySelect = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
+  function ApplySelect(props, ref) {
+    return (
+      <select
+        ref={ref}
+        {...props}
+        className="w-full rounded-xl border-[1.5px] border-ink-200 bg-white px-3 py-2.5 text-[13.5px] text-ink-700 focus:border-pink-500 focus:outline-none"
+      />
+    )
+  },
+)
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-pink-700">{children}</div>
 }

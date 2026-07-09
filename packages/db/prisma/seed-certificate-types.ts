@@ -119,10 +119,18 @@ const STARTER_CERTIFICATE_TYPES: Array<{
     verificationNotes:
       'Confirm the FDA registration number + facility name/address. Registration is biennial (renewed in even years) — verify it is current.',
   },
+  {
+    slug: 'fda-drug-establishment',
+    name: 'FDA Drug Establishment Registration',
+    description:
+      'FDA drug establishment registration (21 CFR Part 207) — required to manufacture or pack OTC drug products in the US. Pairs with an NDC labeler code.',
+    verificationNotes:
+      'Confirm the FDA Establishment Identifier (FEI) / registration + NDC labeler code. Registration renews annually — verify it is current.',
+  },
 ]
 
 export async function seedCertificateTypes(prisma: PrismaClient) {
-  console.log('Seeding admin-curated CertificateType library (14 starter types)...')
+  console.log('Seeding admin-curated CertificateType library (15 starter types)...')
 
   for (const ct of STARTER_CERTIFICATE_TYPES) {
     await prisma.certificateType.upsert({

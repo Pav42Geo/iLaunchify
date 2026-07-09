@@ -37,6 +37,15 @@ export default async function ApplyPage({
     thumbnailUrl: t.thumbnailFileId ? (badgeUrls.get(t.thumbnailFileId) ?? null) : null,
   }))
 
+  // Real Region data for the company-location state/region dropdown (same source
+  // onboarding uses). State-level only; active only.
+  const regionRows = await prisma.region.findMany({
+    where: { kind: 'STATE_PROVINCE', isActive: true },
+    select: { code: true, name: true },
+    orderBy: { name: 'asc' },
+  })
+  const regions = regionRows.map((r) => ({ code: r.code, name: r.name }))
+
   return (
     <div className="min-h-screen bg-ink-50">
       {/* Dark appbar — business-landing logo + the Application → Onboarding →
@@ -67,7 +76,7 @@ export default async function ApplyPage({
         </div>
       </header>
 
-      <ApplicationWizard defaultServiceTypes={[type]} certOptions={certOptions} />
+      <ApplicationWizard defaultServiceTypes={[type]} certOptions={certOptions} regions={regions} />
     </div>
   )
 }

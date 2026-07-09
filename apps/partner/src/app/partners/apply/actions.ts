@@ -9,6 +9,12 @@ const LeadSchema = z.object({
   companyName: z.string().min(2).max(120),
   legalName: z.string().max(120).optional().or(z.literal('')),
   yearsInBusiness: z.string().max(20).optional().or(z.literal('')),
+  country: z.string().max(4).default('US'),
+  regionCode: z.string().max(8).optional().or(z.literal('')),
+  city: z.string().max(80).optional().or(z.literal('')),
+  facilityCount: z.string().max(12).optional().or(z.literal('')),
+  companySize: z.string().max(16).optional().or(z.literal('')),
+  entityType: z.string().max(20).optional().or(z.literal('')),
   contactName: z.string().min(2).max(80),
   email: z.string().email(),
   phone: z.string().max(30).optional().or(z.literal('')),
@@ -56,6 +62,9 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
             contactName: v.contactName,
             phone: v.phone || null,
             yearsInBusiness: v.yearsInBusiness || null,
+            facilityCount: v.facilityCount || null,
+            companySize: v.companySize || null,
+            entityType: v.entityType || null,
             serviceDetails: v.serviceDetails,
             certificateTypeIds: v.certificateTypeIds,
             producedFor: v.producedFor || null,
@@ -64,7 +73,10 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
           }),
           websiteUrl: v.website || null,
           contactPhone: v.phone || null,
-          country: 'US',
+          // Location → real Partner columns so onboarding pre-fills (no re-typing).
+          country: v.country || 'US',
+          state: v.regionCode || null,
+          city: v.city || null,
           services: {
             // One DRAFT service per selected capability — partners are multi-service;
             // the onboarding/activation flow composes off this set.
