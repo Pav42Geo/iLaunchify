@@ -162,6 +162,7 @@ export function OnboardingAccordion({
           <div className="space-y-3">
         <SectionShell
           id="business"
+          num={1}
           title="Your business"
           subtitle="What you make, where you operate, and what kind of partner you are"
           status={sectionStatus.business}
@@ -179,6 +180,7 @@ export function OnboardingAccordion({
 
         <SectionShell
           id="company"
+          num={2}
           title="Your company"
           subtitle="Legal entity, contact, address, certificate of incorporation, insurance"
           status={sectionStatus.company}
@@ -197,6 +199,7 @@ export function OnboardingAccordion({
 
         <SectionShell
           id="capabilities"
+          num={3}
           title="What you can do"
           subtitle="Production capacity, MOQ, lead time — one tab per partner type"
           status={sectionStatus.capabilities}
@@ -214,6 +217,7 @@ export function OnboardingAccordion({
 
         <SectionShell
           id="commercial"
+          num={4}
           title="Payment & contract"
           subtitle="Stripe Connect for payouts + sign the standard partner agreement"
           status={sectionStatus.commercial}

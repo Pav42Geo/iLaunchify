@@ -1,17 +1,27 @@
 import { requireUser } from '@ilaunchify/auth'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertPartnerTransition } from '@ilaunchify/orders'
+import { Brand } from '@ilaunchify/ui'
 import { redirect } from 'next/navigation'
+
+// Service → short appbar label (matches the approved prototype's Services pills).
+const SERVICE_PILL: Record<string, string> = {
+  MANUFACTURING: 'Produce',
+  COPACKING: 'Pack',
+  LABEL_PRINTING: 'Print',
+  WAREHOUSE: 'Fulfill',
+}
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
   if (user.role !== 'PARTNER') redirect('/login?error=unauthorized')
 
-  const partner = await prisma.partner.findUnique({
-    where: { userId: user.id },
-    include: { services: true },
-  })
+  const [partner, logos, placement] = await Promise.all([
+    prisma.partner.findUnique({ where: { userId: user.id }, include: { services: true } }),
+    getPublicBrandLogos(),
+    getLogoPlacement('businessHeader'),
+  ])
   if (!partner) redirect('/login?error=unauthorized')
 
   // If they've completed onboarding, send them to the dashboard
@@ -36,18 +46,51 @@ export default async function OnboardingLayout({ children }: { children: React.R
     })
   }
 
+  const serviceLabels = [
+    ...new Set(partner.services.map((s) => SERVICE_PILL[s.type]).filter((x): x is string => !!x)),
+  ]
+
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <header className="mb-8">
-        <h1 className="text-ui-title">Welcome, {partner.companyName}</h1>
-        <p className="mt-1 text-ui-body text-ink-500">
-          Complete your partner profile. We&apos;ll review and activate within 1–2 business days.
-        </p>
+    <div className="min-h-screen bg-ink-50">
+      {/* Dark appbar — business-landing logo (on-dark full logo + neon sublabel),
+          the Onboarding → Activation Setup journey stepper (prototype segmented
+          control), and the partner's service pills. Full-width: logo hugs the
+          left edge, services hug the right. */}
+      <header className="sticky top-0 z-40 bg-ink-900 text-white">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3">
+          <Brand
+            label="iLaunchify"
+            sublabel={placement.sublabel ?? 'Business'}
+            imageSrc={logos.fullDark}
+            wordmarkClassName="text-white"
+            sublabelClassName="text-neon-500"
+          />
+          <nav className="flex items-center gap-1 rounded-full bg-white/10 p-1">
+            <span className="rounded-full bg-white px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-900">
+              Onboarding
+            </span>
+            <span className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-300">
+              Activation Setup
+            </span>
+          </nav>
+
+          {serviceLabels.length > 0 && (
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="text-[11px] font-medium text-ink-400">Services:</span>
+              {serviceLabels.map((l) => (
+                <span
+                  key={l}
+                  className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white"
+                >
+                  {l}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
-      {/* Legacy step-wizard tab bar removed 2026-07-07 — the single-page
-          accordion is the canonical onboarding UX (D1). Legacy step routes are
-          slated for deletion once their shared field components are extracted. */}
-      <div className="mt-6">{children}</div>
+
+      {children}
     </div>
   )
 }

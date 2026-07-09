@@ -9,6 +9,8 @@ export type SectionStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETE' | 'NEEDS_
 
 interface SectionShellProps {
   id: string
+  /** 1-based section number shown in the status circle (prototype ①②③④). */
+  num: number
   title: string
   subtitle?: string
   status: SectionStatus
@@ -20,6 +22,7 @@ interface SectionShellProps {
 
 export function SectionShell({
   id,
+  num,
   title,
   subtitle,
   status,
@@ -41,7 +44,7 @@ export function SectionShell({
         aria-expanded={isOpen}
         aria-controls={`section-${id}-body`}
       >
-        <StatusPills status={status} />
+        <NumberCircle num={num} status={status} isOpen={isOpen} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h2 className="font-semibold text-ink-900">{title}</h2>
@@ -53,7 +56,6 @@ export function SectionShell({
           </div>
           {subtitle && <p className="mt-0.5 text-ui-body text-ink-500">{subtitle}</p>}
         </div>
-        <StatusLabel status={status} />
         <ChevronDown
           className={`h-5 w-5 flex-shrink-0 text-ink-400 transition-transform ${
             isOpen ? 'rotate-180' : ''
@@ -74,54 +76,32 @@ export function SectionShell({
 }
 
 // -----------------------------------------------------------------------------
-// Status visualization (4 dots — visual progress indicator)
+// Status circle (prototype ①②③④): green ✓ when complete, pink number when this
+// section is the open/current one, gray number otherwise.
 // -----------------------------------------------------------------------------
 
-function StatusPills({ status }: { status: SectionStatus }) {
-  // Translate enum to filled-circle count
-  const filled = {
-    NOT_STARTED: 0,
-    IN_PROGRESS: 2,
-    COMPLETE: 4,
-    NEEDS_CHANGES: 0, // shown as red empty circles
-  }[status]
-
-  const color =
-    status === 'COMPLETE'
-      ? 'bg-success-500'
-      : status === 'NEEDS_CHANGES'
-        ? 'bg-danger-500'
-        : 'bg-ink-400'
-
-  const emptyColor = status === 'NEEDS_CHANGES' ? 'border-danger-300' : 'border-ink-300'
-
-  return (
-    <div className="flex flex-shrink-0 gap-1" aria-hidden>
-      {[0, 1, 2, 3].map((i) => (
-        <span
-          key={i}
-          className={`h-2 w-2 rounded-full ${
-            i < filled ? color : `border ${emptyColor} bg-transparent`
-          }`}
-        />
-      ))}
-    </div>
-  )
-}
-
-function StatusLabel({ status }: { status: SectionStatus }) {
-  const labels: Record<SectionStatus, { text: string; cls: string }> = {
-    NOT_STARTED: { text: 'NOT STARTED', cls: 'text-ink-400' },
-    IN_PROGRESS: { text: 'IN PROGRESS', cls: 'text-warning-600' },
-    COMPLETE: { text: 'COMPLETE', cls: 'text-success-600' },
-    NEEDS_CHANGES: { text: 'NEEDS CHANGES', cls: 'text-danger-600' },
-  }
-  const { text, cls } = labels[status]
+function NumberCircle({
+  num,
+  status,
+  isOpen,
+}: {
+  num: number
+  status: SectionStatus
+  isOpen: boolean
+}) {
+  const complete = status === 'COMPLETE'
+  const cls = complete
+    ? 'bg-success-500 text-white'
+    : status === 'NEEDS_CHANGES'
+      ? 'bg-danger-500 text-white'
+      : isOpen
+        ? 'bg-pink-500 text-white'
+        : 'bg-ink-100 text-ink-500'
   return (
     <span
-      className={`hidden flex-shrink-0 text-ui-label sm:inline ${cls}`}
+      className={`flex h-8 w-8 flex-none items-center justify-center rounded-full text-[13px] font-bold ${cls}`}
     >
-      {text}
+      {complete ? '✓' : num}
     </span>
   )
 }
