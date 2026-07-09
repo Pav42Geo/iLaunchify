@@ -7,7 +7,7 @@
 'use server'
 
 import { requireUser } from '@ilaunchify/auth'
-import { prisma, getNominationMismatches, StorageClass } from '@ilaunchify/db'
+import { prisma, getNominationMismatches, StorageClass, SubstrateCategory, DieCutCategory } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { assertPartnerTransition } from '@ilaunchify/orders'
 import type { ServiceType } from '@ilaunchify/db'
@@ -236,6 +236,50 @@ export async function saveServiceCapabilities(patch: CapabilityPatch) {
     where: { id: service.id },
     data: { capabilities: merged as never, ...extraData },
   })
+
+  // Printing → expand the picked SubstrateCategory / DieCutCategory into the
+  // REAL typed rows the matching engine reads: PartnerServiceSubstrate (validated
+  // at listing) + PartnerServiceDieCut (routing.ts dieCutSupport hard filter).
+  // Both catalogs carry a `category`, so a category pick = "capable of every
+  // active catalog row in it". ADDITIVE (skipDuplicates) — never deletes, so a
+  // partner's per-row pricing/overrides set later in Activation are preserved.
+  if (patch.type === 'LABEL_PRINTING') {
+    const caps = patch.capabilities as Record<string, unknown>
+
+    const subAllowed = new Set<string>(Object.values(SubstrateCategory))
+    const subCats = Array.isArray(caps.substrates)
+      ? caps.substrates.filter((x): x is string => typeof x === 'string' && subAllowed.has(x))
+      : []
+    if (subCats.length > 0) {
+      const subs = await prisma.substrate.findMany({
+        where: { status: 'ACTIVE', category: { in: subCats as never } },
+        select: { id: true },
+      })
+      if (subs.length > 0) {
+        await prisma.partnerServiceSubstrate.createMany({
+          data: subs.map((s) => ({ partnerServiceId: service.id, substrateId: s.id })),
+          skipDuplicates: true,
+        })
+      }
+    }
+
+    const dcAllowed = new Set<string>(Object.values(DieCutCategory))
+    const dcCats = Array.isArray(caps.dieCuts)
+      ? caps.dieCuts.filter((x): x is string => typeof x === 'string' && dcAllowed.has(x))
+      : []
+    if (dcCats.length > 0) {
+      const templates = await prisma.dieCutTemplate.findMany({
+        where: { category: { in: dcCats as never } },
+        select: { id: true },
+      })
+      if (templates.length > 0) {
+        await prisma.partnerServiceDieCut.createMany({
+          data: templates.map((t) => ({ partnerServiceId: service.id, dieCutTemplateId: t.id })),
+          skipDuplicates: true,
+        })
+      }
+    }
+  }
 
   // Stamp the FACILITY verification section.
   await prisma.partnerVerificationSection.upsert({
