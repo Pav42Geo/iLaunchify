@@ -130,11 +130,13 @@ export default async function OnboardingPage() {
     description: c.description,
     thumbnailUrl: c.thumbnailFileId ? (certBadgeUrls.get(c.thumbnailFileId) ?? null) : null,
   }))
-  const declaredCertIdsRaw = (partner.onboardingProgress as Record<string, unknown> | null)
-    ?.declaredCertTypeIds
+  const progressJson = (partner.onboardingProgress as Record<string, unknown> | null) ?? {}
+  const declaredCertIdsRaw = progressJson.declaredCertTypeIds
   const initialDeclaredCertIds = Array.isArray(declaredCertIdsRaw)
     ? declaredCertIdsRaw.filter((v): v is string => typeof v === 'string')
     : []
+  const initialInsuranceUsd =
+    typeof progressJson.insuranceCoverageUsd === 'string' ? progressJson.insuranceCoverageUsd : ''
 
   // Hydrate Section 2 (Your company) — partner.* address fields, with empty strings for null.
   const initialCompany = {
@@ -256,6 +258,7 @@ export default async function OnboardingPage() {
       certOptions={certOptions}
       initialDeclaredCertIds={initialDeclaredCertIds}
       agreement={partnerAgreement}
+      initialInsuranceUsd={initialInsuranceUsd}
     />
   )
 }

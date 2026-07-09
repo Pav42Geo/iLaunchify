@@ -103,10 +103,26 @@ const STARTER_CERTIFICATE_TYPES: Array<{
     verificationNotes:
       'PDF must show ISO 22000:2018 scope + facility + auditor + valid date range.',
   },
+  {
+    slug: 'brcgs',
+    name: 'BRCGS',
+    description:
+      'BRCGS (Brand Reputation Compliance Global Standards) — GFSI-recognized food safety + quality certification, dominant in UK/EU retail. Graded AA–D.',
+    verificationNotes:
+      'PDF must show facility scope + grade + BRCGS accredited certification body + audit date. Verify on brcdirectory.com.',
+  },
+  {
+    slug: 'fda-registered-facility',
+    name: 'FDA Registered Facility',
+    description:
+      'FDA food facility registration (21 CFR Part 1, Subpart H) — the legal floor for producing or packing food in the US. A registration number is issued by the FDA.',
+    verificationNotes:
+      'Confirm the FDA registration number + facility name/address. Registration is biennial (renewed in even years) — verify it is current.',
+  },
 ]
 
 export async function seedCertificateTypes(prisma: PrismaClient) {
-  console.log('Seeding admin-curated CertificateType library (12 starter types)...')
+  console.log('Seeding admin-curated CertificateType library (14 starter types)...')
 
   for (const ct of STARTER_CERTIFICATE_TYPES) {
     await prisma.certificateType.upsert({

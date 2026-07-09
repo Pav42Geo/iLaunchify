@@ -16,7 +16,7 @@
 import { useState, useTransition } from 'react'
 import { Input, Label } from '@ilaunchify/ui'
 import type { PartnerFile } from '@ilaunchify/db'
-import { saveYourCompanySection } from '../../../app/(onboarding)/onboarding/actions'
+import { saveYourCompanySection, saveInsuranceCoverageUsd } from '../../../app/(onboarding)/onboarding/actions'
 import { FileUploadSlot, type ExistingFile } from '../../../app/(onboarding)/onboarding/documents/FileUploadSlot'
 
 export interface CompanyState {
@@ -38,14 +38,17 @@ interface YourCompanySectionProps {
   initialState: CompanyState
   initialFiles: BusinessFile[]
   onChange: (state: CompanyState, files: BusinessFile[]) => void
+  initialInsuranceUsd?: string
 }
 
 export function YourCompanySection({
   initialState,
   initialFiles,
   onChange,
+  initialInsuranceUsd = '',
 }: YourCompanySectionProps) {
   const [state, setState] = useState<CompanyState>(initialState)
+  const [insuranceUsd, setInsuranceUsd] = useState(initialInsuranceUsd)
   const [isPending, startTransition] = useTransition()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -231,6 +234,20 @@ export function YourCompanySection({
           existingFiles={filesByKind.get('INSURANCE') ?? []}
           required
         />
+        <Field id="insurance-coverage" label="Coverage amount (USD)" hint="Total general + product liability limit on the COI above. Serious operators typically carry $2M–$5M+.">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-ink-500">$</span>
+            <Input
+              id="insurance-coverage"
+              type="text"
+              inputMode="numeric"
+              placeholder="5,000,000"
+              value={insuranceUsd ? Number(insuranceUsd).toLocaleString('en-US') : ''}
+              onChange={(e) => setInsuranceUsd(e.target.value.replace(/[^0-9]/g, ''))}
+              onBlur={() => startTransition(() => void saveInsuranceCoverageUsd(insuranceUsd))}
+            />
+          </div>
+        </Field>
       </section>
     </div>
   )

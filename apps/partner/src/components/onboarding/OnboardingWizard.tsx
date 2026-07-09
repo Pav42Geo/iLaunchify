@@ -57,6 +57,7 @@ interface OnboardingWizardProps {
   certOptions: CertPickerOption[]
   initialDeclaredCertIds: string[]
   agreement: { title: string; version: string; bodyMarkdown: string } | null
+  initialInsuranceUsd?: string
   banner?: ReactNode
 }
 
@@ -72,6 +73,7 @@ export function OnboardingWizard({
   certOptions,
   initialDeclaredCertIds,
   agreement,
+  initialInsuranceUsd,
   banner,
 }: OnboardingWizardProps) {
   const router = useRouter()
@@ -123,6 +125,7 @@ export function OnboardingWizard({
         <YourCompanySection
           initialState={companyState}
           initialFiles={companyFiles}
+          initialInsuranceUsd={initialInsuranceUsd}
           onChange={(s, f) => {
             setCompanyState(s)
             setCompanyFiles(f)

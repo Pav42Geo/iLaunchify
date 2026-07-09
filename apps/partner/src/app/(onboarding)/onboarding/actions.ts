@@ -539,6 +539,32 @@ export async function markWelcomeSeen() {
 }
 
 // -----------------------------------------------------------------------------
+// Insurance coverage amount — pairs with the General-Liability COI upload in
+// Section 2. A hard, hard-to-fake scale/seriousness signal (~$5M CGL benchmark).
+// Whole USD, stored in onboardingProgress (no schema); admin reads it next to
+// the COI during verification.
+// -----------------------------------------------------------------------------
+
+export async function saveInsuranceCoverageUsd(usd: string) {
+  const user = await requireUser()
+  if (user.role !== 'PARTNER') return { ok: false as const }
+  const partner = await prisma.partner.findUnique({
+    where: { userId: user.id },
+    select: { id: true, onboardingProgress: true },
+  })
+  if (!partner) return { ok: false as const }
+
+  const clean = usd.replace(/[^0-9]/g, '') // digits only, whole USD
+  const progress = (partner.onboardingProgress as Record<string, unknown> | null) ?? {}
+  await prisma.partner.update({
+    where: { id: partner.id },
+    data: { onboardingProgress: { ...progress, insuranceCoverageUsd: clean } },
+  })
+  revalidatePath('/onboarding')
+  return { ok: true as const }
+}
+
+// -----------------------------------------------------------------------------
 // SECTION 3b — Certifications you hold (declaration)
 // The unified CertificatePicker records which admin-library cert types the
 // partner claims to hold. This is a DECLARATION only (no proof) — Activation's
