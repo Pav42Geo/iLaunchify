@@ -12,7 +12,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Input, Label } from '@ilaunchify/ui'
-import { ContainerCategory, DieCutCategory, StorageClass, PrintProcess, FcVasJobType } from '@ilaunchify/db'
+import { ContainerCategory, DieCutCategory, StorageClass, FcVasJobType } from '@ilaunchify/db'
 import { MANUFACTURING_PROCESS_OPTIONS } from '@ilaunchify/types'
 import { CertificatePicker, type CertPickerOption } from '@/components/CertificatePicker'
 import { submitLead } from './actions'
@@ -110,9 +110,18 @@ const COPACK_PROCESS_OPTS: Opt[] = [
 
 const CONTAINER_FORMAT_OPTS = enumOpts(ContainerCategory, { STICK_PACK: 'Stick pack', OTHER: 'Other' })
 const PRINT_WHAT_OPTS = enumOpts(DieCutCategory)
-const PRINT_METHOD_OPTS = enumOpts(PrintProcess, {
-  DIGITAL: 'Digital', OFFSET: 'Offset', FLEXO: 'Flexo', GRAVURE: 'Gravure', SCREEN: 'Screen',
-})
+// Packaging-relevant print methods with proper names. Mirrors PrintProcess enum
+// values — not imported so the app typechecks before db:generate. Keep in sync.
+// (laser / sublimation / 3D / large-format / engraving excluded — not packaging.)
+const PRINT_METHOD_OPTS: Opt[] = [
+  { value: 'FLEXO', label: 'Flexography' },
+  { value: 'OFFSET', label: 'Offset lithography' },
+  { value: 'GRAVURE', label: 'Rotogravure' },
+  { value: 'DIGITAL', label: 'Digital (inkjet / toner)' },
+  { value: 'LED_UV', label: 'LED UV' },
+  { value: 'SCREEN', label: 'Screen printing' },
+  { value: 'LETTERPRESS', label: 'Letterpress' },
+]
 const STORAGE_OPTS = enumOpts(StorageClass, {
   AMBIENT: 'Ambient', PROTECT_HEAT: 'Heat-protected', CHILLED: 'Chilled', FROZEN: 'Frozen',
 })

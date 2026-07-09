@@ -1318,11 +1318,15 @@ enum LabelingMode {
 }
 
 enum PrintProcess {
-  DIGITAL // minimal setup — low MOQ, short lead (from ~50 pcs / 5–14d)
-  OFFSET // plates + press setup — high MOQ, long lead (thousands / 10–45d)
-  FLEXO // mid MOQ (hundreds / 7–21d)
-  GRAVURE // very high volume (shrink sleeves etc.)
-  SCREEN
+  DIGITAL // digital inkjet / toner (HP Indigo) — minimal setup, low MOQ, short lead (~50 pcs / 5–14d)
+  OFFSET // offset lithography — plates + press setup; folding cartons (thousands / 10–45d)
+  FLEXO // flexography — dominant label / flexible-packaging method (hundreds / 7–21d)
+  GRAVURE // rotogravure — very high volume flexible / shrink sleeves
+  SCREEN // screen printing — bottles, containers, specialty
+  // Added 2026-07-09 — only the packaging-relevant methods from the 12-types list;
+  // laser / sublimation / 3D / large-format / engraving excluded (not CPG packaging print).
+  LETTERPRESS // premium labels, tactile / semi-rotary
+  LED_UV // UV-cured inkjet/flexo — premium, prints on varied substrates
 }
 
 // FC declarable value-added jobs (§8.1a) — what makes resolver step 3 real.
