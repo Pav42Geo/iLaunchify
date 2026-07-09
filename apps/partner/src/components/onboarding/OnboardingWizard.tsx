@@ -56,6 +56,7 @@ interface OnboardingWizardProps {
   regions: RegionOption[]
   certOptions: CertPickerOption[]
   initialDeclaredCertIds: string[]
+  agreement: { title: string; version: string; bodyMarkdown: string } | null
   banner?: ReactNode
 }
 
@@ -70,6 +71,7 @@ export function OnboardingWizard({
   regions,
   certOptions,
   initialDeclaredCertIds,
+  agreement,
   banner,
 }: OnboardingWizardProps) {
   const router = useRouter()
@@ -162,7 +164,7 @@ export function OnboardingWizard({
         </>
       ),
       sub: 'Connect payouts and sign the partner agreement. Then we review and activate.',
-      body: <PaymentContractSection state={payment} onChange={setPayment} />,
+      body: <PaymentContractSection state={payment} onChange={setPayment} agreement={agreement} />,
     },
   ]
 

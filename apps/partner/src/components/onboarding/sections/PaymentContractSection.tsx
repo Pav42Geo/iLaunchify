@@ -32,16 +32,77 @@ export type PaymentContractState = {
   signerName: string // from Partner.onboardingProgress.contractSignerName
 }
 
+type AgreementDoc = { title: string; version: string; bodyMarkdown: string } | null
+
 interface PaymentContractSectionProps {
   state: PaymentContractState
   onChange: (state: PaymentContractState) => void
+  agreement?: AgreementDoc
 }
 
-export function PaymentContractSection({ state, onChange }: PaymentContractSectionProps) {
+export function PaymentContractSection({ state, onChange, agreement = null }: PaymentContractSectionProps) {
   return (
     <div className="space-y-8">
       <StripeConnectCard status={state.stripeAccountStatus} />
-      <ContractCard state={state} onChange={onChange} />
+      <ContractCard state={state} onChange={onChange} agreement={agreement} />
+    </div>
+  )
+}
+
+// Lightweight markdown renderer (headings + paragraphs) — mirrors the
+// /onboarding/agreement page so the modal shows the same document.
+function AgreementBody({ markdown }: { markdown: string }) {
+  return (
+    <>
+      {markdown.split('\n').map((line, i) => {
+        if (line.startsWith('## '))
+          return (
+            <h3 key={i} className="mt-4 text-[14px] font-semibold text-ink-900">
+              {line.slice(3)}
+            </h3>
+          )
+        if (line.startsWith('# '))
+          return (
+            <h2 key={i} className="mt-2 font-display text-[17px] font-bold text-ink-900">
+              {line.slice(2)}
+            </h2>
+          )
+        if (!line.trim()) return null
+        return (
+          <p key={i} className="mt-1.5 text-[12.5px] leading-relaxed text-ink-700">
+            {line}
+          </p>
+        )
+      })}
+    </>
+  )
+}
+
+function AgreementModal({ agreement, onClose }: { agreement: NonNullable<AgreementDoc>; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-ink-100 px-6 py-4">
+          <div>
+            <h3 className="font-display text-[18px] font-bold text-ink-900">{agreement.title}</h3>
+            <p className="mt-0.5 text-[12px] text-ink-500">Version {agreement.version}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-md p-1 text-ink-400 hover:bg-ink-50 hover:text-ink-700"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="overflow-y-auto px-6 py-5">
+          <AgreementBody markdown={agreement.bodyMarkdown} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -123,14 +184,17 @@ function StatusBadge({ status }: { status: StripeStatus }) {
 function ContractCard({
   state,
   onChange,
+  agreement,
 }: {
   state: PaymentContractState
   onChange: (state: PaymentContractState) => void
+  agreement: AgreementDoc
 }) {
   const [signerName, setSignerName] = useState(state.signerName)
   const [agreed, setAgreed] = useState(state.signedAt !== null)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [showAgreement, setShowAgreement] = useState(false)
 
   const alreadySigned = state.signedAt !== null
 
@@ -200,27 +264,30 @@ function ContractCard({
         </div>
       ) : (
         <>
-          <details className="rounded-md border border-ink-200">
-            <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
-              Read the agreement summary
-            </summary>
-            <div className="space-y-2 border-t border-ink-200 px-3 py-3 text-sm text-ink-700">
-              <p>
-                The standard agreement covers payment timing, dispute resolution, failure
-                responsibility (creator-cause vs. partner-cause vs. shared), and the platform&apos;s
-                standard revision policy. You&apos;re always free to negotiate custom side terms
-                with iLaunchify admin later if your business model needs them — that creates a
-                signed override that supersedes the standard for your account only.
-              </p>
-              <p>
-                The full executable PDF is available on request via{' '}
-                <a href="mailto:partners@ilaunchify.com" className="underline">
-                  partners@ilaunchify.com
-                </a>
-                .
-              </p>
-            </div>
-          </details>
+          {agreement ? (
+            <button
+              type="button"
+              onClick={() => setShowAgreement(true)}
+              className="flex w-full items-center justify-between rounded-[14px] border-[1.5px] border-ink-200 bg-white px-4 py-3 text-left hover:border-pink-300"
+            >
+              <span>
+                <span className="block text-[13.5px] font-semibold text-ink-900">
+                  Read the full {agreement.title}
+                </span>
+                <span className="mt-0.5 block text-[12px] text-ink-500">
+                  Version {agreement.version} — opens the complete agreement
+                </span>
+              </span>
+              <span className="text-[13px] font-semibold text-pink-700">Open →</span>
+            </button>
+          ) : (
+            <p className="rounded-[14px] border-[1.5px] border-dashed border-warning-300 bg-warning-50 px-4 py-3 text-[12.5px] text-warning-900">
+              No partner agreement is published yet — an admin needs to publish one.
+            </p>
+          )}
+          {showAgreement && agreement && (
+            <AgreementModal agreement={agreement} onClose={() => setShowAgreement(false)} />
+          )}
 
           <div className="space-y-3">
             <div>

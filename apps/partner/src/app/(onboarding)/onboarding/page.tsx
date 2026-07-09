@@ -77,7 +77,7 @@ export default async function OnboardingPage() {
   // Markets: hide COMING_SOON so partners don't try to declare interest in CA before V1.1.
   // Regions: state-level only (METRO is V1.1+).
   // Standard contract: the ACTIVE STANDARD_V1.x row for Section 4's acceptance card.
-  const [markets, regions, standardContract, allCertTypes] = await Promise.all([
+  const [markets, regions, standardContract, allCertTypes, partnerAgreement] = await Promise.all([
     prisma.market.findMany({
       where: { status: 'ACTIVE' },
       select: { id: true, code: true, name: true, region: true },
@@ -104,6 +104,11 @@ export default async function OnboardingPage() {
         applicableLabelingTypes: true,
       },
       orderBy: { name: 'asc' },
+    }),
+    prisma.partnerAgreement.findFirst({
+      where: { isCurrent: true },
+      orderBy: { effectiveAt: 'desc' },
+      select: { title: true, version: true, bodyMarkdown: true },
     }),
   ])
 
@@ -250,6 +255,7 @@ export default async function OnboardingPage() {
       regions={regions}
       certOptions={certOptions}
       initialDeclaredCertIds={initialDeclaredCertIds}
+      agreement={partnerAgreement}
     />
   )
 }
