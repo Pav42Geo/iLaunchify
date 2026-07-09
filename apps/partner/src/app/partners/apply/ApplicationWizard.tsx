@@ -1,9 +1,9 @@
 'use client'
 
-// Multi-step "card / survey" application (approved prototype:
-// design/partner-application-cards-mockup.html). One card per logical group,
-// slide transition, progress bar. Same submitLead contract — just re-housed +
-// the private-label / min-run / years / references qualification fields.
+// Adaptive, service-composed application (docs/PARTNER_APPLICATION_ADAPTIVE_2026-07.md).
+// The middle steps are the UNION of the question cards for the services the
+// applicant selects — a 3PL never sees "what products do you make?". Card/survey
+// shell from the approved prototype.
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -22,12 +22,6 @@ const Schema = z.object({
   serviceTypes: z
     .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
     .min(1, 'Pick at least one service'),
-  productCategories: z
-    .array(z.enum(['FOOD', 'BEVERAGE_FUNCTIONAL', 'SUPPLEMENT', 'COSMETIC', 'PET']))
-    .default([]),
-  productModels: z.array(z.enum(['WHITE_LABEL', 'PRIVATE_LABEL', 'FULLY_CUSTOM'])).default([]),
-  minRunUnits: z.string().max(40).optional().or(z.literal('')),
-  monthlyCapacity: z.string().max(80).optional().or(z.literal('')),
   certificateTypeIds: z.array(z.string()).default([]),
   contactName: z.string().min(2, 'Your name').max(80),
   email: z.string().email('Valid email required'),
@@ -38,27 +32,36 @@ const Schema = z.object({
 })
 type Values = z.infer<typeof Schema>
 type ServiceT = Values['serviceTypes'][number]
-type CategoryT = Values['productCategories'][number]
-type ModelT = Values['productModels'][number]
 
-const SERVICES: [ServiceT, string][] = [
-  ['MANUFACTURING', 'Manufacturing'],
-  ['COPACKING', 'Co-packing'],
-  ['LABEL_PRINTING', 'Label printing'],
-  ['WAREHOUSE', 'Fulfillment / warehouse'],
-]
-const CATEGORIES: [CategoryT, string][] = [
+const SERVICE_ORDER: ServiceT[] = ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']
+const SERVICE: Record<ServiceT, { label: string; sub: string }> = {
+  MANUFACTURING: { label: 'Manufacturing', sub: 'Make from scratch' },
+  COPACKING: { label: 'Co-packing', sub: 'Fill & package' },
+  LABEL_PRINTING: { label: 'Packaging printing', sub: 'Labels · sleeves · cartons · flexible' },
+  WAREHOUSE: { label: 'Fulfillment (3PL)', sub: 'Store · pick · pack · ship' },
+}
+
+const MFG_CATEGORIES: [string, string][] = [
   ['FOOD', 'Food'],
   ['BEVERAGE_FUNCTIONAL', 'Beverage'],
   ['SUPPLEMENT', 'Supplement'],
   ['COSMETIC', 'Cosmetic'],
   ['PET', 'Pet'],
 ]
-const MODELS: [ModelT, string, string][] = [
-  ['WHITE_LABEL', 'White label', 'Your existing product, their label — fastest, lowest MOQ'],
-  ['PRIVATE_LABEL', 'Private label', 'Your base formula, customized (flavor / packaging) under their brand'],
-  ['FULLY_CUSTOM', 'Fully customized', 'Bespoke formulation built from their spec'],
+const MFG_PROCESSES = ['Hot-fill', 'Cold-fill', 'HPP', 'Pasteurization', 'Blending', 'Encapsulation', 'Spray-dry', 'Aseptic']
+const MODELS: [string, string, string][] = [
+  ['white', 'White label', 'Your existing product, their label — fastest, lowest MOQ'],
+  ['private', 'Private label', 'Your base formula, customized under their brand'],
+  ['custom', 'Fully customized', 'Bespoke formulation from their spec'],
 ]
+const COPACK_FORMATS = ['Bottles', 'Jars', 'Pouches', 'Sachets', 'Cartons', 'Cans', 'Shrink sleeves', 'Blister']
+const FILL_TYPES = ['Powder', 'Liquid', 'Capsule / tablet', 'Cream / gel', 'Aerosol']
+const PRINT_WHAT = ['Labels', 'Shrink sleeves', 'Folding cartons', 'Flexible packaging']
+const PRINT_METHODS = ['Digital', 'Flexo', 'Offset', 'Gravure', 'Screen']
+const STORAGE_CLASSES = ['Ambient', 'Refrigerated', 'Frozen', 'Hazmat']
+const VALUE_ADDS = ['Kitting', 'Assembly', 'Returns', 'Pick & pack']
+
+type Detail = Record<string, string[] | string>
 
 export function ApplicationWizard({
   defaultServiceTypes = [],
@@ -71,6 +74,7 @@ export function ApplicationWizard({
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState<'next' | 'back'>('next')
   const [busy, setBusy] = useState(false)
+  const [details, setDetails] = useState<Record<string, Detail>>({})
 
   const form = useForm<Values>({
     resolver: zodResolver(Schema),
@@ -79,10 +83,6 @@ export function ApplicationWizard({
       legalName: '',
       yearsInBusiness: '',
       serviceTypes: defaultServiceTypes,
-      productCategories: [],
-      productModels: [],
-      minRunUnits: '',
-      monthlyCapacity: '',
       certificateTypeIds: [],
       contactName: '',
       email: '',
@@ -94,45 +94,60 @@ export function ApplicationWizard({
   })
   const { register, watch, setValue, trigger, handleSubmit, formState } = form
 
-  function toggle<T extends string>(field: keyof Values, val: T) {
-    const cur = (watch(field) as unknown as T[]) ?? []
-    setValue(
-      field,
-      (cur.includes(val) ? cur.filter((x) => x !== val) : [...cur, val]) as never,
-      { shouldValidate: true },
-    )
+  function toggleService(v: ServiceT) {
+    const cur = watch('serviceTypes')
+    setValue('serviceTypes', cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v], {
+      shouldValidate: true,
+    })
+  }
+  // per-service detail helpers
+  const arr = (svc: string, key: string) => (details[svc]?.[key] as string[]) ?? []
+  const str = (svc: string, key: string) => (details[svc]?.[key] as string) ?? ''
+  function toggleDetail(svc: string, key: string, val: string) {
+    setDetails((d) => {
+      const cur = (d[svc]?.[key] as string[]) ?? []
+      const next = cur.includes(val) ? cur.filter((x) => x !== val) : [...cur, val]
+      return { ...d, [svc]: { ...d[svc], [key]: next } }
+    })
+  }
+  function setDetail(svc: string, key: string, val: string) {
+    setDetails((d) => ({ ...d, [svc]: { ...d[svc], [key]: val } }))
   }
 
+  const activeServices = SERVICE_ORDER.filter((s) => watch('serviceTypes').includes(s))
   const STEPS: { fields: (keyof Values)[]; render: () => React.ReactNode }[] = [
     { fields: ['companyName'], render: stepCompany },
-    { fields: ['serviceTypes'], render: stepCapabilities },
-    { fields: [], render: stepModel },
+    { fields: ['serviceTypes'], render: stepServices },
+    ...activeServices.map((s) => ({ fields: [] as (keyof Values)[], render: () => stepService(s) })),
     { fields: [], render: stepCerts },
     { fields: ['contactName', 'email', 'successDescription'], render: stepContact },
   ]
   const total = STEPS.length
-  const last = step === total - 1
-  const pct = Math.round(((step + 1) / total) * 100)
+  const cur = Math.min(step, total - 1)
+  const last = cur === total - 1
+  const pct = Math.round(((cur + 1) / total) * 100)
 
   async function next() {
-    const ok = await trigger(STEPS[step]!.fields as never)
+    const ok = await trigger(STEPS[cur]!.fields as never)
     if (!ok) return
     if (!last) {
       setDir('next')
-      setStep(step + 1)
+      setStep(cur + 1)
     } else {
       handleSubmit(onSubmit)()
     }
   }
   function back() {
-    if (step > 0) {
+    if (cur > 0) {
       setDir('back')
-      setStep(step - 1)
+      setStep(cur - 1)
     }
   }
-  async function onSubmit(v: Values) {
+  async function onSubmit(values: Values) {
     setBusy(true)
-    const r = await submitLead(v)
+    const serviceDetails: Record<string, unknown> = {}
+    for (const s of activeServices) serviceDetails[s] = details[s] ?? {}
+    const r = await submitLead({ ...values, serviceDetails })
     if (!r.ok) {
       toast.error(r.error)
       setBusy(false)
@@ -142,7 +157,7 @@ export function ApplicationWizard({
     }
   }
 
-  // ---- step renderers ----
+  // ---- shared steps ----
   function stepCompany() {
     return (
       <>
@@ -150,13 +165,13 @@ export function ApplicationWizard({
         <H>
           Let&apos;s start with <Em>the basics.</Em>
         </H>
-        <Sub>Takes ~2 minutes. No account needed yet — if it&apos;s a fit we&apos;ll send a private invite to onboard.</Sub>
+        <Sub>Takes ~2 minutes. No account needed yet — if it&apos;s a fit we&apos;ll invite you to onboard.</Sub>
         <FieldBox label="Company name" error={formState.errors.companyName?.message}>
-          <Input placeholder="Northwind Print Co." {...register('companyName')} />
+          <Input placeholder="Northwind Co." {...register('companyName')} />
         </FieldBox>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FieldBox label="Legal name (if different)">
-            <Input placeholder="Northwind Print Co. LLC" {...register('legalName')} />
+            <Input placeholder="Northwind Co. LLC" {...register('legalName')} />
           </FieldBox>
           <FieldBox label="Years in business">
             <Input placeholder="e.g. 8" {...register('yearsInBusiness')} />
@@ -165,59 +180,23 @@ export function ApplicationWizard({
       </>
     )
   }
-  function stepCapabilities() {
-    const svc = watch('serviceTypes') ?? []
-    const cats = watch('productCategories') ?? []
+  function stepServices() {
+    const svc = watch('serviceTypes')
     return (
       <>
-        <Eyebrow>Capabilities</Eyebrow>
+        <Eyebrow>Your services</Eyebrow>
         <H>
-          What can you <Em>make?</Em>
+          What do you <Em>offer?</Em>
         </H>
-        <Sub>Pick everything that applies — you can run several. This drives what we route to you.</Sub>
-        <FieldBox label="Services you offer" error={formState.errors.serviceTypes?.message as string | undefined}>
-          <Chips>
-            {SERVICES.map(([v, l]) => (
-              <Chip key={v} on={svc.includes(v)} onClick={() => toggle('serviceTypes', v)}>
-                {l}
-              </Chip>
-            ))}
-          </Chips>
-        </FieldBox>
-        <div className="mt-4">
-          <FieldBox label="Product categories you produce">
-            <Chips>
-              {CATEGORIES.map(([v, l]) => (
-                <Chip key={v} on={cats.includes(v)} onClick={() => toggle('productCategories', v)}>
-                  {l}
-                </Chip>
-              ))}
-            </Chips>
-          </FieldBox>
-        </div>
-      </>
-    )
-  }
-  function stepModel() {
-    const models = watch('productModels') ?? []
-    return (
-      <>
-        <Eyebrow>How you run</Eyebrow>
-        <H>
-          What kind of products <Em>do you offer?</Em>
-        </H>
-        <Sub>
-          Pick all that apply — this tells us which creators to route to you. A small-batch white /
-          private-label runner is our sweet spot.
-        </Sub>
+        <Sub>Pick everything you do — we&apos;ll only ask about the services you select.</Sub>
         <div className="space-y-2.5">
-          {MODELS.map(([v, name, desc]) => {
-            const on = models.includes(v)
+          {SERVICE_ORDER.map((s) => {
+            const on = svc.includes(s)
             return (
               <button
-                key={v}
+                key={s}
                 type="button"
-                onClick={() => toggle('productModels', v)}
+                onClick={() => toggleService(s)}
                 aria-pressed={on}
                 className={
                   'block w-full rounded-2xl border px-4 py-3.5 text-left transition-colors ' +
@@ -226,23 +205,20 @@ export function ApplicationWizard({
               >
                 <span className={'text-[14px] font-bold ' + (on ? 'text-pink-700' : 'text-ink-800')}>
                   {on ? '✓ ' : ''}
-                  {name}
+                  {SERVICE[s].label}
                 </span>
                 <span className={'mt-0.5 block text-[12px] ' + (on ? 'text-pink-700' : 'text-ink-500')}>
-                  {desc}
+                  {SERVICE[s].sub}
                 </span>
               </button>
             )
           })}
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FieldBox label="Smallest run you'll take">
-            <Input placeholder="e.g. 500 units" {...register('minRunUnits')} />
-          </FieldBox>
-          <FieldBox label="Rough monthly capacity">
-            <Input placeholder="e.g. 50K units" {...register('monthlyCapacity')} />
-          </FieldBox>
-        </div>
+        {formState.errors.serviceTypes && (
+          <p className="mt-2 text-[12px] text-danger-600">
+            {formState.errors.serviceTypes.message as string}
+          </p>
+        )}
       </>
     )
   }
@@ -253,10 +229,7 @@ export function ApplicationWizard({
         <H>
           Which certifications <Em>do you hold?</Em>
         </H>
-        <Sub>
-          Pick every one you hold — you&apos;ll upload the PDFs during onboarding. This tells us which
-          categories you can safely serve.
-        </Sub>
+        <Sub>Pick every one you hold — you&apos;ll upload the PDFs during onboarding.</Sub>
         <CertificatePicker
           options={certOptions}
           value={watch('certificateTypeIds')}
@@ -291,8 +264,8 @@ export function ApplicationWizard({
         </div>
         <FieldBox label="Who have you produced for? (brands / categories)">
           <textarea
-            className="flex min-h-[64px] w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-            placeholder="A few brands or product types you've made — proof you've shipped."
+            className="flex min-h-[60px] w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            placeholder="A few brands or product types you've made."
             {...register('producedFor')}
           />
         </FieldBox>
@@ -301,7 +274,7 @@ export function ApplicationWizard({
           error={formState.errors.successDescription?.message}
         >
           <textarea
-            className="flex min-h-[76px] w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+            className="flex min-h-[72px] w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
             {...register('successDescription')}
           />
         </FieldBox>
@@ -309,30 +282,191 @@ export function ApplicationWizard({
     )
   }
 
+  // ---- per-service cards ----
+  function stepService(s: ServiceT) {
+    return (
+      <>
+        <Eyebrow>{SERVICE[s].label}</Eyebrow>
+        {s === 'MANUFACTURING' && manufacturingCard()}
+        {s === 'COPACKING' && copackingCard()}
+        {s === 'LABEL_PRINTING' && printingCard()}
+        {s === 'WAREHOUSE' && fulfillmentCard()}
+      </>
+    )
+  }
+  function manufacturingCard() {
+    const k = 'MANUFACTURING'
+    return (
+      <>
+        <H>
+          What do you <Em>make?</Em>
+        </H>
+        <Sub>A small-batch white / private-label runner is our sweet spot.</Sub>
+        <FieldBox label="Product categories">
+          <Chips>
+            {MFG_CATEGORIES.map(([v, l]) => (
+              <Chip key={v} on={arr(k, 'categories').includes(v)} onClick={() => toggleDetail(k, 'categories', v)}>
+                {l}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Processes you run">
+          <Chips>
+            {MFG_PROCESSES.map((p) => (
+              <Chip key={p} on={arr(k, 'processes').includes(p)} onClick={() => toggleDetail(k, 'processes', p)}>
+                {p}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Which do you offer?">
+          <Chips>
+            {MODELS.map(([v, l]) => (
+              <Chip key={v} on={arr(k, 'models').includes(v)} onClick={() => toggleDetail(k, 'models', v)}>
+                {l}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Smallest run you'll take">
+          <Input placeholder="e.g. 500 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
+        </FieldBox>
+      </>
+    )
+  }
+  function copackingCard() {
+    const k = 'COPACKING'
+    return (
+      <>
+        <H>
+          How do you <Em>pack?</Em>
+        </H>
+        <Sub>You fill and package goods — tell us the formats and fills you run.</Sub>
+        <FieldBox label="Packaging formats you handle">
+          <Chips>
+            {COPACK_FORMATS.map((f) => (
+              <Chip key={f} on={arr(k, 'formats').includes(f)} onClick={() => toggleDetail(k, 'formats', f)}>
+                {f}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Fill types">
+          <Chips>
+            {FILL_TYPES.map((f) => (
+              <Chip key={f} on={arr(k, 'fills').includes(f)} onClick={() => toggleDetail(k, 'fills', f)}>
+                {f}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Do you supply the packaging?">
+          <Chips>
+            {['Yes, we source it', 'No, brand supplies'].map((o) => (
+              <Chip key={o} on={str(k, 'supply') === o} onClick={() => setDetail(k, 'supply', o)}>
+                {o}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Smallest run you'll take">
+          <Input placeholder="e.g. 1,000 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
+        </FieldBox>
+      </>
+    )
+  }
+  function printingCard() {
+    const k = 'LABEL_PRINTING'
+    return (
+      <>
+        <H>
+          What do you <Em>print?</Em>
+        </H>
+        <Sub>You print packaging materials — labels, sleeves, cartons, flexible.</Sub>
+        <FieldBox label="What you print">
+          <Chips>
+            {PRINT_WHAT.map((f) => (
+              <Chip key={f} on={arr(k, 'prints').includes(f)} onClick={() => toggleDetail(k, 'prints', f)}>
+                {f}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Print methods">
+          <Chips>
+            {PRINT_METHODS.map((m) => (
+              <Chip key={m} on={arr(k, 'methods').includes(m)} onClick={() => toggleDetail(k, 'methods', m)}>
+                {m}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Smallest run you'll take">
+          <Input placeholder="e.g. 2,000 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
+        </FieldBox>
+      </>
+    )
+  }
+  function fulfillmentCard() {
+    const k = 'WAREHOUSE'
+    return (
+      <>
+        <H>
+          How do you <Em>fulfill?</Em>
+        </H>
+        <Sub>You store finished goods and ship them — no products of your own needed.</Sub>
+        <FieldBox label="Storage classes">
+          <Chips>
+            {STORAGE_CLASSES.map((c) => (
+              <Chip key={c} on={arr(k, 'storage').includes(c)} onClick={() => toggleDetail(k, 'storage', c)}>
+                {c}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <FieldBox label="Value-added services">
+          <Chips>
+            {VALUE_ADDS.map((c) => (
+              <Chip key={c} on={arr(k, 'vas').includes(c)} onClick={() => toggleDetail(k, 'vas', c)}>
+                {c}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FieldBox label="Rough capacity">
+            <Input placeholder="e.g. 500 pallets" value={str(k, 'capacity')} onChange={(e) => setDetail(k, 'capacity', e.target.value)} />
+          </FieldBox>
+          <FieldBox label="Location (city / state)">
+            <Input placeholder="Columbus, OH" value={str(k, 'location')} onChange={(e) => setDetail(k, 'location', e.target.value)} />
+          </FieldBox>
+        </div>
+      </>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-[620px] px-5 pb-24 pt-8">
       <style>{`@keyframes appN{from{opacity:0;transform:translateX(28px) scale(.99)}to{opacity:1;transform:none}}@keyframes appB{from{opacity:0;transform:translateX(-28px) scale(.99)}to{opacity:1;transform:none}}`}</style>
-
       <div className="mb-1.5 flex items-center justify-between text-[12.5px] font-semibold text-ink-500">
-        <span>Step {step + 1} of {total}</span>
+        <span>Step {cur + 1} of {total}</span>
         <span>{pct}%</span>
       </div>
       <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-ink-200">
         <div className="h-full rounded-full bg-pink-500 transition-all duration-300" style={{ width: `${pct}%` }} />
       </div>
-
       <div
-        key={step}
+        key={cur}
         style={{ animation: `${dir === 'next' ? 'appN' : 'appB'} .32s cubic-bezier(.22,.61,.36,1)` }}
         className="rounded-3xl border border-ink-200 bg-white p-7 shadow-[0_18px_50px_-28px_rgba(20,20,25,0.35)]"
       >
-        {STEPS[step]!.render()}
-
+        {STEPS[cur]!.render()}
         <div className="mt-6 flex items-center justify-between">
           <button
             type="button"
             onClick={back}
-            disabled={step === 0}
+            disabled={cur === 0}
             className="rounded-full px-2 py-2.5 text-[14px] font-semibold text-ink-600 disabled:opacity-35"
           >
             ← Back
@@ -354,11 +488,9 @@ export function ApplicationWizard({
   )
 }
 
-// ---- small presentational helpers ----
+// ---- presentational helpers ----
 function Eyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-pink-700">{children}</div>
-  )
+  return <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-pink-700">{children}</div>
 }
 function H({ children }: { children: React.ReactNode }) {
   return (
@@ -373,15 +505,7 @@ function Em({ children }: { children: React.ReactNode }) {
 function Sub({ children }: { children: React.ReactNode }) {
   return <p className="mb-5 text-[14px] leading-[1.5] text-ink-600">{children}</p>
 }
-function FieldBox({
-  label,
-  error,
-  children,
-}: {
-  label: string
-  error?: string
-  children: React.ReactNode
-}) {
+function FieldBox({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div className="mb-4 space-y-1.5">
       <Label>{label}</Label>
@@ -400,7 +524,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       onClick={onClick}
       aria-pressed={on}
       className={
-        'rounded-full border px-3.5 py-2 text-[13.5px] font-semibold transition-colors ' +
+        'rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors ' +
         (on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300')
       }
     >

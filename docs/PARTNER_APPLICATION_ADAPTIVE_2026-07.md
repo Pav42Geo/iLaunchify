@@ -10,7 +10,7 @@ Sources: [CPG manufacturing models](https://thefreshfactory.co/blog/cpg-manufact
 |---|---|---|---|
 | `MANUFACTURING` | **Manufacturing** | Contract / co-manufacturing | Makes from scratch — sources, formulates, produces, packages |
 | `COPACKING` | **Co-packing** | Contract packaging & fill | Fills / packages semi- or finished goods on their lines |
-| `LABEL_PRINTING` | **Packaging printing** (Pavel ✓) | Labels · sleeves · cartons · flexible | A *converter* — prints labels + shrink sleeves + folding cartons + flexible packaging (digital/flexo/offset) |
+| `LABEL_PRINTING` | **Packaging printing** (Pavel ✓ FINAL) | Labels · sleeves · cartons · flexible | A *converter* — prints labels + shrink sleeves + folding cartons + flexible packaging. NOTE: "Packaging printing" (not "Printing & packaging") because the latter implies they also *pack* (co-packing), which they don't — they print packaging materials. |
 | `WAREHOUSE` | **Fulfillment (3PL)** | Storage · pick-pack-ship · kitting | Third-party logistics for finished goods — warehousing, fulfillment, returns |
 
 **Only display labels change** (the enum stays — precedent: `WAREHOUSE` already displays "Fulfillment Center"). Central label map: `apps/partner/src/lib/role-skins.ts` `SERVICE_TYPE_LABEL` — change there to propagate platform-wide (align in a follow-up; do the application first).
@@ -39,8 +39,8 @@ A print-only applicant sees: Company → Services → Printing & packaging → C
 
 Deep structured detail (every substrate, die-line, format) stays in onboarding — the application card is coarse fit-signal only.
 
-## Build
+## Build — BUILT 2026-07-08
 
-- Rebuild `ApplicationWizard` so `STEPS` is **computed from `watch('serviceTypes')`**: shared front + a card per selected service (Manufacturing / Co-packing / Printing&packaging / Fulfillment) + shared back. Progress + validation adapt to the live step list.
-- Store each service card's answers under a per-service key in `leadNotes` (declaration; the structured onboarding capture is the authoritative write).
-- Apply the new display names in the wizard now; align `SERVICE_TYPE_LABEL` platform-wide as a follow-up.
+- `ApplicationWizard` rebuilt: `STEPS` **computed from `watch('serviceTypes')`** — shared Company + Services front, one card per selected service (Manufacturing / Co-packing / **Packaging printing** / Fulfillment (3PL)), shared Certs + Contact back. Step index clamped so deselecting a service can't strand you; progress + per-step validation adapt to the live list.
+- Per-service answers stored under `leadNotes.serviceDetails[SERVICE]` (declaration; structured onboarding capture is authoritative). `submitLead` schema swapped the manufacturing-centric fields for `serviceDetails: record`.
+- New display names used in the wizard. **TODO (follow-up):** align `SERVICE_TYPE_LABEL` (`role-skins.ts`) platform-wide so "Packaging printing" / "Fulfillment (3PL)" show everywhere. Typecheck + colors + invariants green.

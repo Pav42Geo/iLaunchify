@@ -16,14 +16,9 @@ const LeadSchema = z.object({
   serviceTypes: z
     .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
     .min(1),
-  productCategories: z
-    .array(z.enum(['FOOD', 'BEVERAGE_FUNCTIONAL', 'SUPPLEMENT', 'COSMETIC', 'PET']))
-    .default([]),
-  productModels: z
-    .array(z.enum(['WHITE_LABEL', 'PRIVATE_LABEL', 'FULLY_CUSTOM']))
-    .default([]),
-  minRunUnits: z.string().max(40).optional().or(z.literal('')),
-  monthlyCapacity: z.string().max(80).optional().or(z.literal('')),
+  // Adaptive per-service answers (declaration blob, one key per selected service).
+  // The authoritative structured capture happens in onboarding; this is triage.
+  serviceDetails: z.record(z.string(), z.unknown()).default({}),
   certificateTypeIds: z.array(z.string()).default([]),
   producedFor: z.string().max(600).optional().or(z.literal('')),
   successDescription: z.string().min(20).max(800),
@@ -61,10 +56,7 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
             contactName: v.contactName,
             phone: v.phone || null,
             yearsInBusiness: v.yearsInBusiness || null,
-            productCategories: v.productCategories,
-            productModels: v.productModels,
-            minRunUnits: v.minRunUnits || null,
-            monthlyCapacity: v.monthlyCapacity || null,
+            serviceDetails: v.serviceDetails,
             certificateTypeIds: v.certificateTypeIds,
             producedFor: v.producedFor || null,
             successDescription: v.successDescription,
