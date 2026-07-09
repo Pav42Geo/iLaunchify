@@ -329,7 +329,7 @@ async function main() {
                 leadTimeStockDays: 28,
                 leadTimeCustomDays: 70,
                 certifications: ['FDA', 'GMP', 'USDA_ORGANIC', 'KOSHER'],
-                containerFormats: ['bottle', 'tub', 'pouch'],
+                containerFormats: ['BOTTLE', 'TUB', 'POUCH'],
                 fillTypes: ['powder', 'capsule', 'liquid'],
               },
             },
@@ -367,7 +367,7 @@ async function main() {
                 disclosureLevel: 'ANONYMOUS',
                 capabilities: {
                   type: 'COPACKING',
-                  containerFormats: ['tub', 'pouch', 'sachet'],
+                  containerFormats: ['TUB', 'POUCH', 'SACHET'],
                   fillTypes: ['powder', 'capsule'],
                   moqMin: 300,
                   moqMax: 8000,

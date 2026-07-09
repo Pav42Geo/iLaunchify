@@ -76,7 +76,12 @@ export function ServiceProfileForm({
         })
       } else if (serviceType === 'COPACKING') {
         Object.assign(capabilities, {
+          // Preserve the richer onboarding capability shape this thin editor
+          // doesn't surface, so saving here never silently drops it:
+          //  - containerFormats: ContainerCategory[] (the containers they fill)
+          //  - packagingFormats: StructuralPackType[] (how containers are packed)
           containerFormats: initial.containerFormats ?? [],
+          packagingFormats: initial.packagingFormats ?? [],
           fillTypes: initial.fillTypes ?? [],
           moqMin,
           moqMax,

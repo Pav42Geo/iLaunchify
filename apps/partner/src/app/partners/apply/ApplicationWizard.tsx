@@ -12,7 +12,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Input, Label } from '@ilaunchify/ui'
-import { ContainerCategory, DieCutCategory, StorageClass, FcVasJobType } from '@ilaunchify/db'
+import { ContainerCategory, StructuralPackType, DieCutCategory, StorageClass, FcVasJobType } from '@ilaunchify/db'
 import { MANUFACTURING_PROCESS_OPTIONS } from '@ilaunchify/types'
 import { CertificatePicker, type CertPickerOption } from '@/components/CertificatePicker'
 import { submitLead } from './actions'
@@ -120,6 +120,14 @@ const COPACK_PROCESS_OPTS: Opt[] = [
 ]
 
 const CONTAINER_FORMAT_OPTS = enumOpts(ContainerCategory, { STICK_PACK: 'Stick pack', OTHER: 'Other' })
+const PACK_TYPE_OPTS = enumOpts(StructuralPackType, {
+  SINGLE_UNIT: 'Single unit',
+  MULTI_UNIT_SAME: 'Multipack (same flavor)',
+  MULTI_FLAVOR_MIXED: 'Mixed variety',
+  MULTI_FLAVOR_COMPARTMENT: 'Compartment variety',
+  PER_FLAVOR_IN_OUTER: 'Per-flavor in outer',
+  CUSTOMIZABLE_PICK_N: 'Pick-your-mix',
+})
 const PRINT_WHAT_OPTS = enumOpts(DieCutCategory)
 // Packaging-relevant print methods with proper names. Mirrors PrintProcess enum
 // values — not imported so the app typechecks before db:generate. Keep in sync.
@@ -540,12 +548,20 @@ export function ApplicationWizard({
             onToggle={(v) => toggleDetail(k, 'processes', v)}
           />
         </FieldBox>
-        <FieldBox label="Packaging formats you handle">
+        <FieldBox label="Container formats you fill">
           <PickSelect
-            placeholder="Add a packaging format…"
+            placeholder="Add a container…"
             options={CONTAINER_FORMAT_OPTS}
             selected={arr(k, 'formats')}
             onToggle={(v) => toggleDetail(k, 'formats', v)}
+          />
+        </FieldBox>
+        <FieldBox label="Pack types you assemble">
+          <PickSelect
+            placeholder="Add a pack type…"
+            options={PACK_TYPE_OPTS}
+            selected={arr(k, 'packTypes')}
+            onToggle={(v) => toggleDetail(k, 'packTypes', v)}
           />
         </FieldBox>
         <FieldBox label="Allergen handling">

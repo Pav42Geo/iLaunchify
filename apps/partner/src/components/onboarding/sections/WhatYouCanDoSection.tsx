@@ -14,6 +14,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { Input, Label } from '@ilaunchify/ui'
 import type { ServiceType } from '@ilaunchify/db'
 import {
+  ContainerCategory,
   StructuralPackType,
   SubstrateCategory,
   DecorationMethod,
@@ -48,8 +49,10 @@ function enumOpts(
     .map((v) => ({ value: v, label: labels[v] ?? prettify(v) }))
 }
 
-// Co-packing → StructuralPackType (single/multipack/variety/compartment/…).
-const COPACK_FORMAT_OPTS = enumOpts(StructuralPackType, {
+// Co-packing has two distinct axes: the CONTAINER they fill (ContainerCategory)
+// and how those containers are combined/packed (StructuralPackType).
+const CONTAINER_FORMAT_OPTS = enumOpts(ContainerCategory, { STICK_PACK: 'Stick pack', OTHER: 'Other' })
+const PACK_TYPE_OPTS = enumOpts(StructuralPackType, {
   SINGLE_UNIT: 'Single unit',
   MULTI_UNIT_SAME: 'Multipack (same flavor)',
   MULTI_FLAVOR_MIXED: 'Mixed variety',
@@ -381,27 +384,35 @@ function CopackingForm({
 }) {
   const commit = useCommit('COPACKING', () => normaliseCopack(value))
   const [, startTx] = useTransition()
-  function toggleFmt(v: string) {
-    const cur = value.packagingFormats
+  function toggleField(field: 'containerFormats' | 'packagingFormats', v: string) {
+    const cur = value[field]
     const nextArr = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
-    const next = { ...value, packagingFormats: nextArr }
-    onPatch({ packagingFormats: nextArr })
+    const next = { ...value, [field]: nextArr }
+    onPatch({ [field]: nextArr } as Partial<CopackingCaps>)
     startTx(() => {
       void saveServiceCapabilities({ type: 'COPACKING', capabilities: normaliseCopack(next) })
     })
   }
   return (
     <div className="space-y-4">
+      <Field id="cop-containers" label="Container formats you fill" hint="The containers you can fill.">
+        <ChipSelect
+          placeholder="Add a container…"
+          options={CONTAINER_FORMAT_OPTS}
+          selected={value.containerFormats}
+          onToggle={(v) => toggleField('containerFormats', v)}
+        />
+      </Field>
       <Field
-        id="cop-formats"
-        label="Packaging formats you support"
-        hint="Pick every format you can fill + pack."
+        id="cop-packtypes"
+        label="Pack types you assemble"
+        hint="How those containers are combined / packed."
       >
         <ChipSelect
-          placeholder="Add a format…"
-          options={COPACK_FORMAT_OPTS}
+          placeholder="Add a pack type…"
+          options={PACK_TYPE_OPTS}
           selected={value.packagingFormats}
-          onToggle={toggleFmt}
+          onToggle={(v) => toggleField('packagingFormats', v)}
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
@@ -616,7 +627,7 @@ function blankManufacturing(): ManufacturingCaps {
   return { categories: [], processes: [], moqMin: '', moqMax: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
 }
 function blankCopacking(): CopackingCaps {
-  return { packagingFormats: [], moqUnitsTypical: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
+  return { containerFormats: [], packagingFormats: [], moqUnitsTypical: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
 }
 function blankLabelPrinting(): LabelPrintingCaps {
   return { substrates: [], colorModes: [], dieCuts: [], leadTimeDaysMin: '', leadTimeDaysMax: '' }
@@ -642,7 +653,8 @@ function normaliseMfg(v: ManufacturingCaps) {
 }
 function normaliseCopack(v: CopackingCaps) {
   return {
-    packagingFormats: v.packagingFormats, // StructuralPackType[] — real enum values
+    containerFormats: v.containerFormats, // ContainerCategory[]
+    packagingFormats: v.packagingFormats, // StructuralPackType[] — pack types
     moqUnitsTypical: intOrNull(v.moqUnitsTypical),
     leadTimeDaysMin: intOrNull(v.leadTimeDaysMin),
     leadTimeDaysMax: intOrNull(v.leadTimeDaysMax),

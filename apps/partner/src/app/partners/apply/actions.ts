@@ -46,6 +46,9 @@ function capsFromApplication(type: string, detail: unknown): Record<string, unkn
   if (type === 'MANUFACTURING') {
     base.categories = arr('categories').filter((c) => PRODUCT_CATEGORIES.has(c)) // drop OTC (interest-only)
     base.manufacturingProcesses = arr('processes')
+  } else if (type === 'COPACKING') {
+    base.containerFormats = arr('formats') // ContainerCategory
+    base.packagingFormats = arr('packTypes') // StructuralPackType
   } else if (type === 'LABEL_PRINTING') {
     base.dieCuts = arr('prints')
   } else if (type === 'WAREHOUSE') {

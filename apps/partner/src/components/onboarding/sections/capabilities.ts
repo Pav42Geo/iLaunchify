@@ -20,7 +20,8 @@ export type ManufacturingCaps = {
 }
 
 export type CopackingCaps = {
-  packagingFormats: string[] // picked from the format vocab
+  containerFormats: string[] // ContainerCategory — the containers they fill
+  packagingFormats: string[] // StructuralPackType — how containers are combined / packed
   moqUnitsTypical: string
   leadTimeDaysMin: string
   leadTimeDaysMax: string
@@ -68,6 +69,7 @@ export function capsFromJson(services: Array<{ type: ServiceType; capabilities: 
         break
       case 'COPACKING':
         out.COPACKING = {
+          containerFormats: strArr(c.containerFormats),
           packagingFormats: strArr(c.packagingFormats),
           moqUnitsTypical: numToStr(c.moqUnitsTypical),
           leadTimeDaysMin: numToStr(c.leadTimeDaysMin),
