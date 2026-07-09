@@ -517,13 +517,12 @@ export function ApplicationWizard({
         </H>
         <Sub>You store finished goods and ship them — no products of your own needed.</Sub>
         <FieldBox label="Storage classes">
-          <Chips>
-            {STORAGE_OPTS.map((o) => (
-              <Chip key={o.value} on={arr(k, 'storage').includes(o.value)} onClick={() => toggleDetail(k, 'storage', o.value)}>
-                {o.label}
-              </Chip>
-            ))}
-          </Chips>
+          <PickSelect
+            placeholder="Add a storage class…"
+            options={STORAGE_OPTS}
+            selected={arr(k, 'storage')}
+            onToggle={(v) => toggleDetail(k, 'storage', v)}
+          />
         </FieldBox>
         <FieldBox label="Value-added services">
           <PickSelect
