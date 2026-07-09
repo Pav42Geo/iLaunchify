@@ -28,6 +28,8 @@ export interface ActivationStep {
   serviceType: ActivationServiceKey
   /** Platform surfaces this step's data auto-routes to (for the UI tags). */
   routesTo: string[]
+  /** Deep link to the real surface where this step's data is actually entered. */
+  href?: string
 }
 
 // Stable service order so multi-service partners get a deterministic union.
@@ -43,32 +45,32 @@ export const ACTIVATION_SERVICE_ORDER: PartnerServiceType[] = [
 // ---------------------------------------------------------------------------
 const TRACKS: Record<PartnerServiceType, ActivationStep[]> = {
   MANUFACTURING: [
-    { key: 'mfr.products', title: 'Product types & formats', description: 'What you make, per domain.', serviceType: 'MANUFACTURING', routesTo: ['Matching engine'] },
-    { key: 'mfr.specs', title: 'Formulation & specs', description: 'Capabilities, constraints, sample capability.', serviceType: 'MANUFACTURING', routesTo: ['Product builder', 'Owner-pin eligibility'] },
-    { key: 'mfr.moq', title: 'MOQ & lead times', description: 'Bands + blackout dates.', serviceType: 'MANUFACTURING', routesTo: ['Checkout ETA', 'Capacity gate'] },
+    { key: 'mfr.products', title: 'Product types & formats', description: 'What you make, per domain.', serviceType: 'MANUFACTURING', routesTo: ['Matching engine'], href: '/products' },
+    { key: 'mfr.specs', title: 'Formulation & specs', description: 'Capabilities, constraints, sample capability.', serviceType: 'MANUFACTURING', routesTo: ['Product builder', 'Owner-pin eligibility'], href: '/products' },
+    { key: 'mfr.moq', title: 'MOQ & lead times', description: 'Bands + blackout dates.', serviceType: 'MANUFACTURING', routesTo: ['Checkout ETA', 'Capacity gate'], href: '/services' },
   ],
   COPACKING: [
-    { key: 'copack.formats', title: 'Packaging formats', description: 'Bottles, jars, pouches, sachets, cartons, blister, cans.', serviceType: 'COPACKING', routesTo: ['Matching engine'] },
-    { key: 'copack.fill', title: 'Fill types', description: 'Powder, liquid, capsule/tablet, cream/gel, aerosol.', serviceType: 'COPACKING', routesTo: ['Routing'] },
-    { key: 'copack.supply', title: 'Do you supply packaging?', description: 'Supply-or-not per format + lines & capacity.', serviceType: 'COPACKING', routesTo: ['Routing (packaging leg)'] },
+    { key: 'copack.formats', title: 'Packaging formats', description: 'Bottles, jars, pouches, sachets, cartons, blister, cans.', serviceType: 'COPACKING', routesTo: ['Matching engine'], href: '/packaging/offerings' },
+    { key: 'copack.fill', title: 'Fill types', description: 'Powder, liquid, capsule/tablet, cream/gel, aerosol.', serviceType: 'COPACKING', routesTo: ['Routing'], href: '/packaging/offerings' },
+    { key: 'copack.supply', title: 'Do you supply packaging?', description: 'Supply-or-not per format + lines & capacity.', serviceType: 'COPACKING', routesTo: ['Routing (packaging leg)'], href: '/packaging/offerings' },
   ],
   LABEL_PRINTING: [
-    { key: 'print.materials', title: 'Materials & substrates', description: 'List every material you print on — one at a time.', serviceType: 'LABEL_PRINTING', routesTo: ['Matching engine', 'Marketplace facets'] },
-    { key: 'print.specs', title: 'Print specs', description: 'Methods, color, finishes, max print area.', serviceType: 'LABEL_PRINTING', routesTo: ['Print-eligibility filter'] },
-    { key: 'print.dielines', title: 'Die-lines', description: 'Die-line templates you support or can produce.', serviceType: 'LABEL_PRINTING', routesTo: ['Design Studio', 'Dispatch docs'] },
-    { key: 'print.runs', title: 'Run sizes & lead times', description: 'MOQ, production & sample lead time, cutoffs, blackout.', serviceType: 'LABEL_PRINTING', routesTo: ['Checkout ETA', 'Capacity gate'] },
+    { key: 'print.materials', title: 'Materials & substrates', description: 'List every material you print on — one at a time.', serviceType: 'LABEL_PRINTING', routesTo: ['Matching engine', 'Marketplace facets'], href: '/packaging/offerings' },
+    { key: 'print.specs', title: 'Print specs', description: 'Methods, color, finishes, max print area.', serviceType: 'LABEL_PRINTING', routesTo: ['Print-eligibility filter'], href: '/print-spec' },
+    { key: 'print.dielines', title: 'Die-lines', description: 'Die-line templates you support or can produce.', serviceType: 'LABEL_PRINTING', routesTo: ['Design Studio', 'Dispatch docs'], href: '/packaging/dielines' },
+    { key: 'print.runs', title: 'Run sizes & lead times', description: 'MOQ, production & sample lead time, cutoffs, blackout.', serviceType: 'LABEL_PRINTING', routesTo: ['Checkout ETA', 'Capacity gate'], href: '/print-spec' },
   ],
   WAREHOUSE: [
-    { key: 'fc.storage', title: 'Storage classes', description: 'Ambient, cold, frozen, hazmat.', serviceType: 'WAREHOUSE', routesTo: ['FC selector'] },
-    { key: 'fc.capacity', title: 'Capacity & geo', description: 'Weekly pallet capacity, location.', serviceType: 'WAREHOUSE', routesTo: ['FC scorer'] },
-    { key: 'fc.vas', title: 'Value-added services', description: 'Kitting, returns, pick-pack fees.', serviceType: 'WAREHOUSE', routesTo: ['Manifest', 'Quote'] },
+    { key: 'fc.storage', title: 'Storage classes', description: 'Ambient, cold, frozen, hazmat.', serviceType: 'WAREHOUSE', routesTo: ['FC selector'], href: '/services' },
+    { key: 'fc.capacity', title: 'Capacity & geo', description: 'Weekly pallet capacity, location.', serviceType: 'WAREHOUSE', routesTo: ['FC scorer'], href: '/services' },
+    { key: 'fc.vas', title: 'Value-added services', description: 'Kitting, returns, pick-pack fees.', serviceType: 'WAREHOUSE', routesTo: ['Manifest', 'Quote'], href: '/services' },
   ],
 }
 
 // Shared tail — applied once across all services a partner runs.
 export const ACTIVATION_SHARED_STEPS: ActivationStep[] = [
-  { key: 'shared.certs', title: 'Certifications', description: 'Per-domain attestation + upload across all your services (food, baby, cosmetics, OTC, pet).', serviceType: 'SHARED', routesTo: ['Routing cert gate'] },
-  { key: 'shared.pricing', title: 'Pricing & payout', description: 'Confirm price tiers and payout terms.', serviceType: 'SHARED', routesTo: ['Billing', 'Creator quote'] },
+  { key: 'shared.certs', title: 'Certifications', description: 'Per-domain attestation + upload across all your services (food, baby, cosmetics, OTC, pet).', serviceType: 'SHARED', routesTo: ['Routing cert gate'], href: '/certifications' },
+  { key: 'shared.pricing', title: 'Pricing & payout', description: 'Confirm price tiers and payout terms.', serviceType: 'SHARED', routesTo: ['Billing', 'Creator quote'], href: '/settings' },
   { key: 'shared.review', title: 'Review & go live', description: "Each service's completeness flips its own routing eligibility on.", serviceType: 'SHARED', routesTo: ['Rotation eligibility'] },
 ]
 

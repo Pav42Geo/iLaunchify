@@ -21,6 +21,7 @@ import {
   type ActivationStep,
 } from '@/lib/activation-tracks'
 import { getPartnerActivationStatus } from '@/lib/activation-status'
+import { SiteFooter } from '@/components/SiteFooter'
 import { setActivationStepComplete } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,7 @@ export const metadata = { title: 'Activation Setup — Partners' }
 const SERVICE_LABEL: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Fulfillment',
   SHARED: 'Shared',
 }
@@ -178,25 +179,36 @@ export default async function ActivationPage() {
                       ))}
                     </div>
                   </div>
-                  <form action={setActivationStepComplete.bind(null, s.key, !done)} className="flex-none self-start">
-                    <button
-                      type="submit"
-                      className={cn(
-                        'rounded-full border px-2.5 py-[3px] text-[11px] font-semibold transition-colors',
-                        done
-                          ? 'border-success-200 bg-success-50 text-success-800 hover:bg-success-100'
-                          : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-pink-300 hover:text-pink-700',
-                      )}
-                    >
-                      {done ? '✓ Done' : 'Mark done'}
-                    </button>
-                  </form>
+                  <div className="flex flex-none items-center gap-2 self-start">
+                    {s.href && (
+                      <a
+                        href={s.href}
+                        className="rounded-full border border-ink-200 bg-white px-3 py-[3px] text-[11px] font-semibold text-pink-700 transition-colors hover:border-pink-300 hover:bg-pink-50"
+                      >
+                        Set up →
+                      </a>
+                    )}
+                    <form action={setActivationStepComplete.bind(null, s.key, !done)}>
+                      <button
+                        type="submit"
+                        className={cn(
+                          'rounded-full border px-2.5 py-[3px] text-[11px] font-semibold transition-colors',
+                          done
+                            ? 'border-success-200 bg-success-50 text-success-800 hover:bg-success-100'
+                            : 'border-ink-200 bg-ink-50 text-ink-600 hover:border-pink-300 hover:text-pink-700',
+                        )}
+                      >
+                        {done ? '✓ Done' : 'Mark done'}
+                      </button>
+                    </form>
+                  </div>
                 </li>
               )
             })}
           </ol>
         </section>
       ))}
+      <SiteFooter />
     </div>
   )
 }
