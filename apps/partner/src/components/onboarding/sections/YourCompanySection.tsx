@@ -255,15 +255,10 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-baseline gap-2">
+      <div className="flex items-baseline gap-1">
         <Label htmlFor={id} className="text-sm font-medium text-ink-900">
           {label}
         </Label>
-        {required && (
-          <span className="text-[10px] font-medium uppercase tracking-wider text-danger-600">
-            Required
-          </span>
-        )}
       </div>
       {children}
       {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}

@@ -94,12 +94,14 @@ export function FileUploadSlot({
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-ui-value text-ink-900">{label}</h3>
-            {required && (
-              <span className="rounded bg-danger-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-danger-700">
-                Required
-              </span>
-            )}
+            <h3 className="text-ui-value text-ink-900">
+              {label}
+              {required && (
+                <span className="ml-0.5 text-pink-500" aria-label="required" title="Required">
+                  *
+                </span>
+              )}
+            </h3>
             {!required && conditionNote && (
               <span className="rounded bg-warning-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-warning-700">
                 If applicable
