@@ -131,6 +131,22 @@ export function SupportPolicyForm({ initial }: { initial: SupportSettingsValues 
         </table>
       </div>
 
+      {/* Contact-us forwarding — where the public footer contact form is delivered. */}
+      <div className="rounded-2xl border border-ink-200 bg-white p-4">
+        <p className="text-[13px] font-semibold text-ink-900">Contact-us forwarding email</p>
+        <p className="mt-0.5 text-[12px] text-ink-500">
+          Public footer &ldquo;Contact us&rdquo; submissions are emailed here. Leave blank to fall back to
+          the platform default.
+        </p>
+        <input
+          type="email"
+          value={v.contactForwardingEmail ?? ''}
+          placeholder="ilaunchify@gmail.com"
+          onChange={(e) => patch({ contactForwardingEmail: e.target.value })}
+          className="mt-2 w-full max-w-md rounded-lg border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+        />
+      </div>
+
       <div className="flex items-center gap-3">
         <button
           type="button"

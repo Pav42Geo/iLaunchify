@@ -38,6 +38,10 @@ export async function saveSupportSettings(input: SupportSettingsValues): Promise
     makerMinPriority: asPriority(input.makerMinPriority),
     builderMinPriority: asPriority(input.builderMinPriority),
     agencyMinPriority: asPriority(input.agencyMinPriority),
+    contactForwardingEmail:
+      typeof input.contactForwardingEmail === 'string' && input.contactForwardingEmail.trim()
+        ? input.contactForwardingEmail.trim().slice(0, 200)
+        : null,
   }
 
   try {

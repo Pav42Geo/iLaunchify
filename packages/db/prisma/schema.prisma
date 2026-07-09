@@ -7811,6 +7811,9 @@ model SupportSettings {
   makerMinPriority       TicketPriority @default(LOW)
   builderMinPriority     TicketPriority @default(MEDIUM)
   agencyMinPriority      TicketPriority @default(HIGH)
+  // Destination for public "Contact us" footer-form submissions. Admin pastes the
+  // address to forward to before deployment; null = fall back to AUTH_EMAIL_FROM.
+  contactForwardingEmail String?
   updatedAt              DateTime       @updatedAt
 }
 

@@ -59,6 +59,16 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
   const v = parsed.data
 
+  // Server-side backstop: a manufacturer must declare ≥1 product category (the
+  // routing match key) — mirrors the client gate on the Manufacturing card.
+  if (v.serviceTypes.includes('MANUFACTURING')) {
+    const mfg = v.serviceDetails['MANUFACTURING'] as Record<string, unknown> | undefined
+    const cats = mfg && Array.isArray(mfg.categories) ? (mfg.categories as unknown[]) : []
+    if (!cats.some((c) => typeof c === 'string' && PRODUCT_CATEGORIES.has(c))) {
+      return { ok: false, error: 'Manufacturing requires at least one product category.' }
+    }
+  }
+
   // Idempotency: don't duplicate if a Partner with this email already exists.
   const existingUser = await prisma.user.findUnique({ where: { email: v.email }, include: { partner: true } })
   if (existingUser?.partner) {

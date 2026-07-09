@@ -25,6 +25,8 @@ export interface SupportSettingsValues {
   makerMinPriority: SupportPriority
   builderMinPriority: SupportPriority
   agencyMinPriority: SupportPriority
+  /** Destination for public Contact-us footer submissions. null = fall back to AUTH_EMAIL_FROM. */
+  contactForwardingEmail: string | null
 }
 
 export const SUPPORT_SETTINGS_DEFAULTS: SupportSettingsValues = {
@@ -36,6 +38,7 @@ export const SUPPORT_SETTINGS_DEFAULTS: SupportSettingsValues = {
   makerMinPriority: 'LOW',
   builderMinPriority: 'MEDIUM',
   agencyMinPriority: 'HIGH',
+  contactForwardingEmail: null,
 }
 
 export async function getSupportSettings(): Promise<SupportSettingsValues> {
@@ -58,6 +61,7 @@ export async function getSupportSettings(): Promise<SupportSettingsValues> {
           makerMinPriority: true,
           builderMinPriority: true,
           agencyMinPriority: true,
+          contactForwardingEmail: true,
         },
       })
       .catch(() => null)
