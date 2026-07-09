@@ -50,7 +50,7 @@ interface WhatYouCanDoSectionProps {
 const TYPE_LABELS: Record<ServiceType, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Warehouse / 3PL',
 }
 
@@ -175,17 +175,12 @@ function ManufacturingForm({
         label="Processes you run"
         hint="How you make it — used to match products that need these processes."
       >
-        <Chips>
-          {MANUFACTURING_PROCESS_OPTIONS.map((o) => (
-            <Chip
-              key={o.value}
-              on={value.processes.includes(o.value)}
-              onClick={() => toggleArr('processes', o.value)}
-            >
-              {o.label}
-            </Chip>
-          ))}
-        </Chips>
+        <ChipSelect
+          placeholder="Add a process…"
+          options={MANUFACTURING_PROCESS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          selected={value.processes}
+          onToggle={(v) => toggleArr('processes', v)}
+        />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="mfg-moqmin" label="Minimum order (units)">
@@ -254,6 +249,62 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       {on ? '✓ ' : ''}
       {children}
     </button>
+  )
+}
+
+// Compact "pick from a dropdown → adds a removable chip" control. Keeps long
+// option lists (processes, formats) tidy instead of a wall of chips.
+function ChipSelect({
+  options,
+  selected,
+  onToggle,
+  placeholder = 'Add…',
+}: {
+  options: { value: string; label: string }[]
+  selected: string[]
+  onToggle: (v: string) => void
+  placeholder?: string
+}) {
+  const available = options.filter((o) => !selected.includes(o.value))
+  const labelFor = (v: string) => options.find((o) => o.value === v)?.label ?? v
+  return (
+    <div className="space-y-2">
+      <select
+        value=""
+        onChange={(e) => {
+          if (e.target.value) onToggle(e.target.value)
+        }}
+        disabled={available.length === 0}
+        className="block w-full rounded-[12px] border-[1.5px] border-ink-200 bg-white px-3 py-2.5 text-[13px] text-ink-700 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500 disabled:opacity-50"
+      >
+        <option value="">{available.length === 0 ? 'All added' : placeholder}</option>
+        {available.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((v) => (
+            <span
+              key={v}
+              className="inline-flex items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-2.5 py-1 text-[12.5px] font-semibold text-pink-700"
+            >
+              {labelFor(v)}
+              <button
+                type="button"
+                onClick={() => onToggle(v)}
+                aria-label={`Remove ${labelFor(v)}`}
+                className="text-pink-400 hover:text-pink-700"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
