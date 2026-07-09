@@ -58,7 +58,7 @@ const SERVICE_TYPE_OPTIONS: Array<{ value: ServiceType; label: string; descripti
   },
   {
     value: 'LABEL_PRINTING',
-    label: 'Label printing',
+    label: 'Packaging printing',
     description: 'You print labels, stickers, or full packaging artwork',
   },
   {
@@ -131,7 +131,7 @@ export function YourBusinessSection({
                 key={m.id}
                 className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
                   checked
-                    ? 'border-success-500 bg-success-50'
+                    ? 'border-pink-500 bg-pink-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
@@ -139,7 +139,7 @@ export function YourBusinessSection({
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleMarket(m.id)}
-                  className="mt-0.5"
+                  className="mt-0.5 h-4 w-4 accent-pink-600"
                 />
                 <div className="min-w-0">
                   <div className="font-medium text-ink-900">{m.name}</div>
@@ -164,7 +164,7 @@ export function YourBusinessSection({
         <select
           value={state.primaryRegionId ?? ''}
           onChange={(e) => update({ primaryRegionId: e.target.value || null })}
-          className="block w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm focus:border-success-500 focus:outline-none focus:ring-1 focus:ring-success-500"
+          className="block w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
         >
           <option value="">Select a state…</option>
           {regions.map((r) => (
@@ -188,7 +188,7 @@ export function YourBusinessSection({
                 key={opt.value}
                 className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
                   checked
-                    ? 'border-success-500 bg-success-50'
+                    ? 'border-pink-500 bg-pink-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
@@ -196,7 +196,7 @@ export function YourBusinessSection({
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleServiceType(opt.value)}
-                  className="mt-1"
+                  className="mt-1 h-4 w-4 accent-pink-600"
                 />
                 <div>
                   <div className="font-medium text-ink-900">{opt.label}</div>
