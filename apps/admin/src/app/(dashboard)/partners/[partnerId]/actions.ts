@@ -91,11 +91,15 @@ export async function promotePartnerStatus({
       },
     })
 
-    // First-time-ACTIVE side effect: flip any DRAFT PartnerService rows to ACTIVE.
+    // First-time-ACTIVE side effect: flip DRAFT PartnerService rows to ACTIVE —
+    // but ONLY services whose Activation Setup track is complete (D8 hybrid
+    // go-live, Pavel 2026-07-08). Incomplete services stay DRAFT and go live
+    // later, per-service, via setActivationStepComplete once their track is done.
+    // Approval alone no longer makes an unconfigured service operational.
     // Re-activation from PAUSED/SUSPENDED keeps the service statuses as-is.
     if (toStatus === 'ACTIVE' && (fromStatus === 'OPERATIONALLY_CONFIGURED' || fromStatus === 'UNDER_REVIEW')) {
       await tx.partnerService.updateMany({
-        where: { partnerId, status: 'DRAFT' },
+        where: { partnerId, status: 'DRAFT', activationCompletedAt: { not: null } },
         data: { status: 'ACTIVE' },
       })
       // MM-7 — stamp activatedAt ONCE (anchors the live-computed fee-grace
