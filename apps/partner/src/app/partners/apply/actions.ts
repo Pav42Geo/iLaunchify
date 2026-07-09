@@ -7,16 +7,25 @@ import { z } from 'zod'
 
 const LeadSchema = z.object({
   companyName: z.string().min(2).max(120),
-  legalName: z.string().max(120).optional(),
+  legalName: z.string().max(120).optional().or(z.literal('')),
+  yearsInBusiness: z.string().max(20).optional().or(z.literal('')),
   contactName: z.string().min(2).max(80),
   email: z.string().email(),
-  phone: z.string().max(30).optional(),
+  phone: z.string().max(30).optional().or(z.literal('')),
   website: z.string().url().max(200).optional().or(z.literal('')),
   serviceTypes: z
     .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
     .min(1),
-  monthlyCapacity: z.string().max(80),
+  productCategories: z
+    .array(z.enum(['FOOD', 'BEVERAGE_FUNCTIONAL', 'SUPPLEMENT', 'COSMETIC', 'PET']))
+    .default([]),
+  productModels: z
+    .array(z.enum(['WHITE_LABEL', 'PRIVATE_LABEL', 'FULLY_CUSTOM']))
+    .default([]),
+  minRunUnits: z.string().max(40).optional().or(z.literal('')),
+  monthlyCapacity: z.string().max(80).optional().or(z.literal('')),
   certificateTypeIds: z.array(z.string()).default([]),
+  producedFor: z.string().max(600).optional().or(z.literal('')),
   successDescription: z.string().min(20).max(800),
 })
 
@@ -51,8 +60,13 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
           leadNotes: JSON.stringify({
             contactName: v.contactName,
             phone: v.phone || null,
-            monthlyCapacity: v.monthlyCapacity,
+            yearsInBusiness: v.yearsInBusiness || null,
+            productCategories: v.productCategories,
+            productModels: v.productModels,
+            minRunUnits: v.minRunUnits || null,
+            monthlyCapacity: v.monthlyCapacity || null,
             certificateTypeIds: v.certificateTypeIds,
+            producedFor: v.producedFor || null,
             successDescription: v.successDescription,
             submittedAt: new Date().toISOString(),
           }),
