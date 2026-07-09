@@ -20,22 +20,22 @@ export type ManufacturingCaps = {
 }
 
 export type CopackingCaps = {
-  packagingFormats: string // '12oz_slim_can, 16oz_pet_bottle'
+  packagingFormats: string[] // picked from the format vocab
   moqUnitsTypical: string
   leadTimeDaysMin: string
   leadTimeDaysMax: string
 }
 
 export type LabelPrintingCaps = {
-  substrates: string // 'paper, BOPP, vinyl'
-  colorModes: string // 'CMYK, CMYK+W, Pantone'
-  dieCuts: string // 'standard rectangle, oval, custom'
+  substrates: string[] // picked from the substrate vocab
+  colorModes: string[] // picked from the color-mode vocab
+  dieCuts: string[] // picked from the die-cut vocab
   leadTimeDaysMin: string
   leadTimeDaysMax: string
 }
 
 export type WarehouseCaps = {
-  storageType: string // 'ambient, refrigerated, frozen'
+  storageType: string[] // picked from the storage-class vocab
   palletCapacity: string
   pickPackFeeCents: string
 }
@@ -68,7 +68,7 @@ export function capsFromJson(services: Array<{ type: ServiceType; capabilities: 
         break
       case 'COPACKING':
         out.COPACKING = {
-          packagingFormats: arrToStr(c.packagingFormats),
+          packagingFormats: strArr(c.packagingFormats),
           moqUnitsTypical: numToStr(c.moqUnitsTypical),
           leadTimeDaysMin: numToStr(c.leadTimeDaysMin),
           leadTimeDaysMax: numToStr(c.leadTimeDaysMax),
@@ -76,16 +76,16 @@ export function capsFromJson(services: Array<{ type: ServiceType; capabilities: 
         break
       case 'LABEL_PRINTING':
         out.LABEL_PRINTING = {
-          substrates: arrToStr(c.substrates),
-          colorModes: arrToStr(c.colorModes),
-          dieCuts: arrToStr(c.dieCuts),
+          substrates: strArr(c.substrates),
+          colorModes: strArr(c.colorModes),
+          dieCuts: strArr(c.dieCuts),
           leadTimeDaysMin: numToStr(c.leadTimeDaysMin),
           leadTimeDaysMax: numToStr(c.leadTimeDaysMax),
         }
         break
       case 'WAREHOUSE':
         out.WAREHOUSE = {
-          storageType: arrToStr(c.storageType),
+          storageType: strArr(c.storageType),
           palletCapacity: numToStr(c.palletCapacity),
           pickPackFeeCents: numToStr(c.pickPackFeeCents),
         }
@@ -95,9 +95,6 @@ export function capsFromJson(services: Array<{ type: ServiceType; capabilities: 
   return out
 }
 
-function arrToStr(v: unknown): string {
-  return Array.isArray(v) ? v.join(', ') : ''
-}
 function strArr(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
 }

@@ -13,6 +13,13 @@
 import { useMemo, useState, useTransition } from 'react'
 import { Input, Label } from '@ilaunchify/ui'
 import type { ServiceType } from '@ilaunchify/db'
+import {
+  StructuralPackType,
+  SubstrateCategory,
+  DecorationMethod,
+  DieCutCategory,
+  StorageClass,
+} from '@ilaunchify/db'
 import { MANUFACTURING_PROCESS_OPTIONS } from '@ilaunchify/types'
 import { saveServiceCapabilities } from '../../../app/(onboarding)/onboarding/actions'
 
@@ -24,6 +31,63 @@ const MFG_CATEGORIES: [string, string][] = [
   ['COSMETIC', 'Cosmetic'],
   ['PET', 'Pet'],
 ]
+
+// Capability option vocabularies — the platform's REAL enums (packages/db), so
+// every value a partner picks is a value the matching engine already speaks.
+// Values are the enum members; labels are display-only.
+const prettify = (s: string) =>
+  s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+
+function enumOpts(
+  e: Record<string, string>,
+  labels: Record<string, string> = {},
+  exclude: string[] = [],
+): { value: string; label: string }[] {
+  return Object.values(e)
+    .filter((v) => !exclude.includes(v))
+    .map((v) => ({ value: v, label: labels[v] ?? prettify(v) }))
+}
+
+// Co-packing → StructuralPackType (single/multipack/variety/compartment/…).
+const COPACK_FORMAT_OPTS = enumOpts(StructuralPackType, {
+  SINGLE_UNIT: 'Single unit',
+  MULTI_UNIT_SAME: 'Multipack (same flavor)',
+  MULTI_FLAVOR_MIXED: 'Mixed variety',
+  MULTI_FLAVOR_COMPARTMENT: 'Compartment variety',
+  PER_FLAVOR_IN_OUTER: 'Per-flavor in outer',
+  CUSTOMIZABLE_PICK_N: 'Pick-your-mix',
+})
+// Printing → SubstrateCategory / DecorationMethod / DieCutCategory.
+const SUBSTRATE_OPTS = enumOpts(SubstrateCategory, {
+  PAPER_COATED: 'Coated paper',
+  PAPER_UNCOATED: 'Uncoated paper',
+  KRAFT_RECYCLED: 'Kraft / recycled',
+  FILM_BOPP: 'BOPP film',
+  FILM_CLEAR: 'Clear film',
+  FILM_METALLIC: 'Metallic film',
+  SPECIALTY: 'Specialty',
+})
+const DECORATION_OPTS = enumOpts(
+  DecorationMethod,
+  {
+    DIRECT_PRINT: 'Direct print',
+    PRESSURE_SENSITIVE_LABEL: 'Pressure-sensitive label',
+    SHRINK_SLEEVE: 'Shrink sleeve',
+    IN_MOLD_LABEL: 'In-mold label',
+    HEAT_TRANSFER: 'Heat transfer',
+    FOIL_STAMP: 'Foil stamp',
+    SPOT_UV: 'Spot UV',
+  },
+  ['NONE'],
+)
+const DIECUT_OPTS = enumOpts(DieCutCategory)
+// Warehouse → StorageClass.
+const STORAGE_OPTS = enumOpts(StorageClass, {
+  AMBIENT: 'Ambient',
+  PROTECT_HEAT: 'Heat-protected',
+  CHILLED: 'Chilled',
+  FROZEN: 'Frozen',
+})
 import type {
   ManufacturingCaps,
   CopackingCaps,
@@ -316,18 +380,28 @@ function CopackingForm({
   onPatch: (p: Partial<CopackingCaps>) => void
 }) {
   const commit = useCommit('COPACKING', () => normaliseCopack(value))
+  const [, startTx] = useTransition()
+  function toggleFmt(v: string) {
+    const cur = value.packagingFormats
+    const nextArr = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+    const next = { ...value, packagingFormats: nextArr }
+    onPatch({ packagingFormats: nextArr })
+    startTx(() => {
+      void saveServiceCapabilities({ type: 'COPACKING', capabilities: normaliseCopack(next) })
+    })
+  }
   return (
     <div className="space-y-4">
       <Field
         id="cop-formats"
         label="Packaging formats you support"
-        hint="Comma-separated. e.g., 12oz_slim_can, 16oz_pet_bottle, 8oz_jar"
+        hint="Pick every format you can fill + pack."
       >
-        <Input
-          id="cop-formats"
-          value={value.packagingFormats}
-          onChange={(e) => onPatch({ packagingFormats: e.target.value })}
-          onBlur={commit}
+        <ChipSelect
+          placeholder="Add a format…"
+          options={COPACK_FORMAT_OPTS}
+          selected={value.packagingFormats}
+          onToggle={toggleFmt}
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
@@ -374,34 +448,40 @@ function LabelPrintingForm({
   onPatch: (p: Partial<LabelPrintingCaps>) => void
 }) {
   const commit = useCommit('LABEL_PRINTING', () => normaliseLabel(value))
+  const [, startTx] = useTransition()
+  function toggleField(field: 'substrates' | 'colorModes' | 'dieCuts', v: string) {
+    const cur = value[field]
+    const nextArr = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+    const next = { ...value, [field]: nextArr }
+    onPatch({ [field]: nextArr } as Partial<LabelPrintingCaps>)
+    startTx(() => {
+      void saveServiceCapabilities({ type: 'LABEL_PRINTING', capabilities: normaliseLabel(next) })
+    })
+  }
   return (
     <div className="space-y-4">
-      <Field id="lp-substrates" label="Substrates" hint="Comma-separated. e.g., paper, BOPP, vinyl, foil">
-        <Input
-          id="lp-substrates"
-          value={value.substrates}
-          onChange={(e) => onPatch({ substrates: e.target.value })}
-          onBlur={commit}
+      <Field id="lp-substrates" label="Substrates" hint="Materials you can print on.">
+        <ChipSelect
+          placeholder="Add a substrate…"
+          options={SUBSTRATE_OPTS}
+          selected={value.substrates}
+          onToggle={(v) => toggleField('substrates', v)}
         />
       </Field>
-      <Field
-        id="lp-colormodes"
-        label="Color modes"
-        hint="Comma-separated. e.g., CMYK, CMYK+W, Pantone, foil stamping"
-      >
-        <Input
-          id="lp-colormodes"
-          value={value.colorModes}
-          onChange={(e) => onPatch({ colorModes: e.target.value })}
-          onBlur={commit}
+      <Field id="lp-colormodes" label="Decoration methods" hint="How you decorate the packaging.">
+        <ChipSelect
+          placeholder="Add a decoration method…"
+          options={DECORATION_OPTS}
+          selected={value.colorModes}
+          onToggle={(v) => toggleField('colorModes', v)}
         />
       </Field>
-      <Field id="lp-diecuts" label="Die-cuts supported" hint="Comma-separated. e.g., rectangle, oval, custom">
-        <Input
-          id="lp-diecuts"
-          value={value.dieCuts}
-          onChange={(e) => onPatch({ dieCuts: e.target.value })}
-          onBlur={commit}
+      <Field id="lp-diecuts" label="Die-cuts supported" hint="Shapes / formats you can cut.">
+        <ChipSelect
+          placeholder="Add a die-cut…"
+          options={DIECUT_OPTS}
+          selected={value.dieCuts}
+          onToggle={(v) => toggleField('dieCuts', v)}
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -438,18 +518,24 @@ function WarehouseForm({
   onPatch: (p: Partial<WarehouseCaps>) => void
 }) {
   const commit = useCommit('WAREHOUSE', () => normaliseWh(value))
+  const [, startTx] = useTransition()
+  function toggleStorage(v: string) {
+    const cur = value.storageType
+    const nextArr = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+    const next = { ...value, storageType: nextArr }
+    onPatch({ storageType: nextArr })
+    startTx(() => {
+      void saveServiceCapabilities({ type: 'WAREHOUSE', capabilities: normaliseWh(next) })
+    })
+  }
   return (
     <div className="space-y-4">
-      <Field
-        id="wh-storage"
-        label="Storage types"
-        hint="Comma-separated. e.g., ambient, refrigerated, frozen"
-      >
-        <Input
-          id="wh-storage"
-          value={value.storageType}
-          onChange={(e) => onPatch({ storageType: e.target.value })}
-          onBlur={commit}
+      <Field id="wh-storage" label="Storage types" hint="Temperature classes you can hold.">
+        <ChipSelect
+          placeholder="Add a storage type…"
+          options={STORAGE_OPTS}
+          selected={value.storageType}
+          onToggle={toggleStorage}
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -530,22 +616,15 @@ function blankManufacturing(): ManufacturingCaps {
   return { categories: [], processes: [], moqMin: '', moqMax: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
 }
 function blankCopacking(): CopackingCaps {
-  return { packagingFormats: '', moqUnitsTypical: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
+  return { packagingFormats: [], moqUnitsTypical: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
 }
 function blankLabelPrinting(): LabelPrintingCaps {
-  return { substrates: '', colorModes: '', dieCuts: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
+  return { substrates: [], colorModes: [], dieCuts: [], leadTimeDaysMin: '', leadTimeDaysMax: '' }
 }
 function blankWarehouse(): WarehouseCaps {
-  return { storageType: '', palletCapacity: '', pickPackFeeCents: '' }
+  return { storageType: [], palletCapacity: '', pickPackFeeCents: '' }
 }
 
-// Comma-string → trimmed array; '' → undefined; numeric strings → int.
-function csv(v: string): string[] {
-  return v
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
 function intOrNull(v: string): number | null {
   const n = parseInt(v, 10)
   return Number.isFinite(n) ? n : null
@@ -563,7 +642,7 @@ function normaliseMfg(v: ManufacturingCaps) {
 }
 function normaliseCopack(v: CopackingCaps) {
   return {
-    packagingFormats: csv(v.packagingFormats),
+    packagingFormats: v.packagingFormats, // StructuralPackType[] — real enum values
     moqUnitsTypical: intOrNull(v.moqUnitsTypical),
     leadTimeDaysMin: intOrNull(v.leadTimeDaysMin),
     leadTimeDaysMax: intOrNull(v.leadTimeDaysMax),
@@ -571,16 +650,16 @@ function normaliseCopack(v: CopackingCaps) {
 }
 function normaliseLabel(v: LabelPrintingCaps) {
   return {
-    substrates: csv(v.substrates),
-    colorModes: csv(v.colorModes),
-    dieCuts: csv(v.dieCuts),
+    substrates: v.substrates, // SubstrateCategory[]
+    colorModes: v.colorModes, // DecorationMethod[]
+    dieCuts: v.dieCuts, // DieCutCategory[]
     leadTimeDaysMin: intOrNull(v.leadTimeDaysMin),
     leadTimeDaysMax: intOrNull(v.leadTimeDaysMax),
   }
 }
 function normaliseWh(v: WarehouseCaps) {
   return {
-    storageType: csv(v.storageType),
+    storageType: v.storageType, // StorageClass[]
     palletCapacity: intOrNull(v.palletCapacity),
     pickPackFeeCents: intOrNull(v.pickPackFeeCents),
   }
