@@ -9,6 +9,12 @@ import {
   LifeBuoy,
   ChevronLeft,
   ChevronRight,
+  Rocket,
+  Boxes,
+  Package,
+  ShieldCheck,
+  Wrench,
+  Settings,
 } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
 import { roleNavFor, type PartnerNavItem } from '@/lib/role-skins'
@@ -28,6 +34,20 @@ const RESTRICTED_NAV: PartnerNavItem[] = [
   { href: '/help',            label: 'Help',            icon: LifeBuoy },
 ]
 
+// Limited "in-profile" nav shown post-approval while the partner is still
+// finishing Activation Setup (not yet live on every service). Setup essentials
+// only — operational surfaces (orders, inventory, performance, billing) appear
+// once every service goes live. Pavel 2026-07-09.
+const LIMITED_ACTIVATION_NAV: PartnerNavItem[] = [
+  { href: '/activation',          label: 'Activation Setup', icon: Rocket },
+  { href: '/products',            label: 'Products',         icon: Boxes },
+  { href: '/packaging/offerings', label: 'Packaging',        icon: Package },
+  { href: '/certifications',      label: 'Certifications',   icon: ShieldCheck },
+  { href: '/services',            label: 'Services',         icon: Wrench },
+  { href: '/settings',            label: 'Settings',         icon: Settings },
+  { href: '/help',                label: 'Support',          icon: LifeBuoy },
+]
+
 interface PartnerSidebarProps {
   status: PartnerStatus
   restricted: boolean
@@ -35,6 +55,10 @@ interface PartnerSidebarProps {
   serviceTypes?: string[]
   /** Org-wide admin (founder or isAdmin membership) — commercial nav items. */
   isOrgAdmin?: boolean
+  /** Nomination feature enabled → show the Co-partners nav item (manufacturers). */
+  showCoPartners?: boolean
+  /** ACTIVE but not yet live on every service → show the limited setup nav. */
+  activationLimited?: boolean
 }
 
 function statusBadge(status: PartnerStatus): {
@@ -60,9 +84,13 @@ function statusBadge(status: PartnerStatus): {
 
 const STORAGE_KEY = 'ilf-partner-sidebar-collapsed'
 
-export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin }: PartnerSidebarProps) {
+export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, showCoPartners, activationLimited }: PartnerSidebarProps) {
   const pathname = usePathname()
-  const nav = restricted ? RESTRICTED_NAV : roleNavFor(serviceTypes ?? [], { isOrgAdmin })
+  const nav = restricted
+    ? RESTRICTED_NAV
+    : activationLimited
+      ? LIMITED_ACTIVATION_NAV
+      : roleNavFor(serviceTypes ?? [], { isOrgAdmin, showCoPartners })
   const badge = statusBadge(status)
 
   const [collapsed, setCollapsed] = useState(false)

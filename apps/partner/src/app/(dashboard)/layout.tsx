@@ -14,12 +14,13 @@
 // in Partner.onboardingProgress so we don't show it twice.
 
 import { requireUser } from '@ilaunchify/auth'
-import { prisma } from '@ilaunchify/db'
+import { prisma, isNominationEnabled } from '@ilaunchify/db'
 import { getActingPartner } from '@/lib/partner-context'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { PartnerSidebar } from '@/components/nav/PartnerSidebar'
 import { PartnerTopbar } from '@/components/nav/PartnerTopbar'
+import { getPartnerActivationStatus } from '@/lib/activation-status'
 
 // Statuses where the partner is mid-onboarding (form not yet submitted).
 const PRE_SUBMIT_STATUSES = new Set([
@@ -105,6 +106,14 @@ export default async function PartnerDashboardLayout({ children }: { children: R
         ).map((s) => s.type as string)
       : []
 
+  // Co-partners nav (D7) shows only when nomination is enabled platform-wide.
+  const showCoPartners = await isNominationEnabled()
+
+  // ACTIVE but still finishing Activation Setup → show the limited "in-profile"
+  // nav until every service is live (D8). Only computed for non-restricted
+  // (ACTIVE) partners so restricted shells aren't charged the extra query.
+  const activationLimited = restricted ? false : !(await getPartnerActivationStatus(partner.id)).allLive
+
   return (
     <div className="flex h-screen flex-col">
       {/* showMyApplication: the menu row only exists pre-activation (Pavel 2026-07-06). */}
@@ -123,7 +132,9 @@ export default async function PartnerDashboardLayout({ children }: { children: R
           status={partner.status}
           restricted={restricted}
           serviceTypes={serviceTypes}
+          showCoPartners={showCoPartners}
           isOrgAdmin={access.isAdmin}
+          activationLimited={activationLimited}
         />
         <main data-partner-shell-main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50 p-6">
           <div data-partner-shell-content className="mx-auto max-w-6xl">{children}</div>
