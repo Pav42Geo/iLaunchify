@@ -75,11 +75,13 @@ interface OfferingFormProps {
 
 const PRINT_PROCESSES = [
   { value: '', label: 'Not declared' },
-  { value: 'DIGITAL', label: 'Digital (low MOQ, short runs)' },
-  { value: 'OFFSET', label: 'Offset (plates — high volume)' },
-  { value: 'FLEXO', label: 'Flexo (mid volume)' },
-  { value: 'GRAVURE', label: 'Gravure (very high volume)' },
-  { value: 'SCREEN', label: 'Screen' },
+  { value: 'FLEXO', label: 'Flexography (mid volume)' },
+  { value: 'OFFSET', label: 'Offset lithography (plates — high volume)' },
+  { value: 'GRAVURE', label: 'Rotogravure (very high volume)' },
+  { value: 'DIGITAL', label: 'Digital — inkjet / toner (low MOQ, short runs)' },
+  { value: 'LED_UV', label: 'LED UV (premium, varied substrates)' },
+  { value: 'SCREEN', label: 'Screen printing' },
+  { value: 'LETTERPRESS', label: 'Letterpress (premium labels)' },
 ] as const
 
 const BLANK_TIER: TierRow = { minQty: '1', pricePerUnit: '' }
@@ -121,7 +123,15 @@ export function OfferingForm({
 
   const num = (s: string) => (s.trim() === '' ? null : Number(s))
   const capability = () => ({
-    printProcess: (printProcess || null) as 'DIGITAL' | 'OFFSET' | 'FLEXO' | 'GRAVURE' | 'SCREEN' | null,
+    printProcess: (printProcess || null) as
+      | 'DIGITAL'
+      | 'OFFSET'
+      | 'FLEXO'
+      | 'GRAVURE'
+      | 'SCREEN'
+      | 'LETTERPRESS'
+      | 'LED_UV'
+      | null,
     maxRunQty: num(maxRunQty),
     foodContactSafe,
     minPrintWidthMm: num(minW),

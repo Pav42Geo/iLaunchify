@@ -75,7 +75,7 @@ function isUniqueViolation(err: unknown): boolean {
 // eligiblePrintProviders. All optional/null = "not declared" (permissive),
 // EXCEPT foodContactSafe which is a HARD filter when the packaging demands it.
 export interface OfferingCapabilityInput {
-  printProcess?: 'DIGITAL' | 'OFFSET' | 'FLEXO' | 'GRAVURE' | 'SCREEN' | null
+  printProcess?: 'DIGITAL' | 'OFFSET' | 'FLEXO' | 'GRAVURE' | 'SCREEN' | 'LETTERPRESS' | 'LED_UV' | null
   maxRunQty?: number | null
   foodContactSafe?: boolean
   minPrintWidthMm?: number | null
