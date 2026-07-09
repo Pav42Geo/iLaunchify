@@ -12,6 +12,8 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Input, Label } from '@ilaunchify/ui'
+import { ContainerCategory, DieCutCategory, StorageClass, PrintProcess, FcVasJobType } from '@ilaunchify/db'
+import { MANUFACTURING_PROCESS_OPTIONS } from '@ilaunchify/types'
 import { CertificatePicker, type CertPickerOption } from '@/components/CertificatePicker'
 import { submitLead } from './actions'
 
@@ -48,19 +50,10 @@ const MFG_CATEGORIES: [string, string][] = [
   ['COSMETIC', 'Cosmetic'],
   ['PET', 'Pet'],
 ]
-const MFG_PROCESSES = ['Hot-fill', 'Cold-fill', 'HPP', 'Pasteurization', 'Blending', 'Encapsulation', 'Spray-dry', 'Aseptic']
 const MODELS: [string, string, string][] = [
   ['white', 'White-label products', 'Your existing product, their label — fastest, lowest MOQ'],
   ['private', 'Private-label products', 'Your base formula, customized under their brand'],
   ['custom', 'Fully custom products', 'Bespoke formulation built from their spec'],
-]
-const COPACK_FORMATS = ['Bottles', 'Jars', 'Pouches', 'Sachets', 'Cartons', 'Cans', 'Shrink sleeves', 'Blister']
-// Fill / process types — the #1 co-packer capability signal (each maps to a
-// specific, expensive line). Research: madebygenie / youbars co-packer vetting.
-const COPACK_PROCESSES = [
-  'Hot-fill', 'Cold-fill', 'Aseptic', 'HPP', 'Retort', 'Carbonation', 'Nitrogen flush',
-  'Powder fill', 'Liquid fill', 'Viscous / paste fill', 'Encapsulation', 'Tablet / capsule',
-  'Gummy depositing', 'Cream / gel fill', 'Aerosol',
 ]
 const ALLERGEN_OPTIONS = [
   'Dedicated allergen-free facility',
@@ -72,10 +65,62 @@ const RD_OPTIONS = [
   'We tweak an existing base',
   'Bring a finished, tested recipe',
 ]
-const PRINT_WHAT = ['Labels', 'Shrink sleeves', 'Folding cartons', 'Flexible packaging']
-const PRINT_METHODS = ['Digital', 'Flexo', 'Offset', 'Gravure', 'Screen']
-const STORAGE_CLASSES = ['Ambient', 'Refrigerated', 'Frozen', 'Hazmat']
-const VALUE_ADDS = ['Kitting', 'Assembly', 'Returns', 'Pick & pack']
+
+// Real platform enums = the full list (nothing to seed — an enum is complete by
+// definition). Labels are display-only; stored values are the enum members.
+type Opt = { value: string; label: string }
+const prettify = (s: string) => s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+const enumOpts = (e: Record<string, string>, labels: Record<string, string> = {}): Opt[] =>
+  Object.values(e).map((v) => ({ value: v, label: labels[v] ?? prettify(v) }))
+
+// Mirrors the FillProcess enum (packages/db) — the #1 co-packer capability
+// signal. Not imported so the app typechecks before db:generate; values are the
+// real enum members. Keep in sync with the enum.
+const COPACK_PROCESS_OPTS: Opt[] = [
+  { value: 'GRAVITY_FILL', label: 'Gravity fill' },
+  { value: 'OVERFLOW_FILL', label: 'Overflow (level) fill' },
+  { value: 'PISTON_FILL', label: 'Piston / pump fill' },
+  { value: 'PRESSURE_VACUUM_FILL', label: 'Pressure / vacuum fill' },
+  { value: 'NET_WEIGH_FILL', label: 'Net-weight fill' },
+  { value: 'HOT_FILL', label: 'Hot fill' },
+  { value: 'COLD_FILL', label: 'Cold / ambient fill' },
+  { value: 'ASEPTIC_FILL', label: 'Aseptic fill' },
+  { value: 'CARBONATED_FILL', label: 'Carbonated / counter-pressure fill' },
+  { value: 'TUNNEL_PASTEURIZATION', label: 'Tunnel pasteurization' },
+  { value: 'RETORT_STERILIZATION', label: 'Retort / canning' },
+  { value: 'HPP', label: 'High-pressure processing (HPP)' },
+  { value: 'AUGER_FILL', label: 'Auger (screw) fill' },
+  { value: 'VOLUMETRIC_CUP_FILL', label: 'Volumetric cup fill' },
+  { value: 'VFFS_BAGGING', label: 'Vertical form-fill-seal' },
+  { value: 'STICK_SACHET_FILL', label: 'Stick-pack / sachet fill' },
+  { value: 'VISCOUS_PASTE_CREAM_FILL', label: 'Paste / cream / gel fill' },
+  { value: 'HOT_POUR_FILL', label: 'Hot-pour fill' },
+  { value: 'DEPOSITING', label: 'Depositing (gummies / confection)' },
+  { value: 'TUBE_FILLING', label: 'Tube fill & seal' },
+  { value: 'TABLET_COMPRESSION', label: 'Tablet compression' },
+  { value: 'CAPSULE_FILLING', label: 'Two-piece capsule filling' },
+  { value: 'SOFTGEL_ENCAPSULATION', label: 'Softgel encapsulation' },
+  { value: 'COUNT_AND_BOTTLE', label: 'Count & bottle' },
+  { value: 'BLISTER_PACKING', label: 'Blister packing' },
+  { value: 'AIRLESS_PUMP_FILL', label: 'Airless-pump fill' },
+  { value: 'AEROSOL_FILL', label: 'Aerosol fill' },
+  { value: 'ROLL_ON_FILL', label: 'Roll-on fill' },
+  { value: 'COMPACT_PRESSING', label: 'Compact / pan pressing' },
+]
+
+const CONTAINER_FORMAT_OPTS = enumOpts(ContainerCategory, { STICK_PACK: 'Stick pack', OTHER: 'Other' })
+const PRINT_WHAT_OPTS = enumOpts(DieCutCategory)
+const PRINT_METHOD_OPTS = enumOpts(PrintProcess, {
+  DIGITAL: 'Digital', OFFSET: 'Offset', FLEXO: 'Flexo', GRAVURE: 'Gravure', SCREEN: 'Screen',
+})
+const STORAGE_OPTS = enumOpts(StorageClass, {
+  AMBIENT: 'Ambient', PROTECT_HEAT: 'Heat-protected', CHILLED: 'Chilled', FROZEN: 'Frozen',
+})
+const VAS_OPTS = enumOpts(FcVasJobType, {
+  RELABEL: 'Relabel', KITTING: 'Kitting', LIGHT_ASSEMBLY: 'Light assembly',
+  BAGGING_BUNDLING: 'Bagging / bundling', DISPLAY_BUILDS: 'Display builds', REWORK: 'Rework',
+})
+const MFG_PROCESS_OPTS: Opt[] = MANUFACTURING_PROCESS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))
 
 type Detail = Record<string, string[] | string>
 
@@ -341,13 +386,12 @@ export function ApplicationWizard({
           </Chips>
         </FieldBox>
         <FieldBox label="Processes you run">
-          <Chips>
-            {MFG_PROCESSES.map((p) => (
-              <Chip key={p} on={arr(k, 'processes').includes(p)} onClick={() => toggleDetail(k, 'processes', p)}>
-                {p}
-              </Chip>
-            ))}
-          </Chips>
+          <PickSelect
+            placeholder="Add a process…"
+            options={MFG_PROCESS_OPTS}
+            selected={arr(k, 'processes')}
+            onToggle={(v) => toggleDetail(k, 'processes', v)}
+          />
         </FieldBox>
         <FieldBox label="Do you develop recipes, or fill finished ones?">
           <Chips>
@@ -378,22 +422,20 @@ export function ApplicationWizard({
         </H>
         <Sub>The processes you run tell us what you can actually make — that&apos;s what matters most.</Sub>
         <FieldBox label="Fill & process types you run">
-          <Chips>
-            {COPACK_PROCESSES.map((f) => (
-              <Chip key={f} on={arr(k, 'processes').includes(f)} onClick={() => toggleDetail(k, 'processes', f)}>
-                {f}
-              </Chip>
-            ))}
-          </Chips>
+          <PickSelect
+            placeholder="Add a fill / process…"
+            options={COPACK_PROCESS_OPTS}
+            selected={arr(k, 'processes')}
+            onToggle={(v) => toggleDetail(k, 'processes', v)}
+          />
         </FieldBox>
         <FieldBox label="Packaging formats you handle">
-          <Chips>
-            {COPACK_FORMATS.map((f) => (
-              <Chip key={f} on={arr(k, 'formats').includes(f)} onClick={() => toggleDetail(k, 'formats', f)}>
-                {f}
-              </Chip>
-            ))}
-          </Chips>
+          <PickSelect
+            placeholder="Add a packaging format…"
+            options={CONTAINER_FORMAT_OPTS}
+            selected={arr(k, 'formats')}
+            onToggle={(v) => toggleDetail(k, 'formats', v)}
+          />
         </FieldBox>
         <FieldBox label="Allergen handling">
           <Chips>
@@ -436,19 +478,18 @@ export function ApplicationWizard({
         </H>
         <Sub>You print packaging materials — labels, sleeves, cartons, flexible.</Sub>
         <FieldBox label="What you print">
-          <Chips>
-            {PRINT_WHAT.map((f) => (
-              <Chip key={f} on={arr(k, 'prints').includes(f)} onClick={() => toggleDetail(k, 'prints', f)}>
-                {f}
-              </Chip>
-            ))}
-          </Chips>
+          <PickSelect
+            placeholder="Add a packaging format…"
+            options={PRINT_WHAT_OPTS}
+            selected={arr(k, 'prints')}
+            onToggle={(v) => toggleDetail(k, 'prints', v)}
+          />
         </FieldBox>
         <FieldBox label="Print methods">
           <Chips>
-            {PRINT_METHODS.map((m) => (
-              <Chip key={m} on={arr(k, 'methods').includes(m)} onClick={() => toggleDetail(k, 'methods', m)}>
-                {m}
+            {PRINT_METHOD_OPTS.map((o) => (
+              <Chip key={o.value} on={arr(k, 'methods').includes(o.value)} onClick={() => toggleDetail(k, 'methods', o.value)}>
+                {o.label}
               </Chip>
             ))}
           </Chips>
@@ -469,18 +510,18 @@ export function ApplicationWizard({
         <Sub>You store finished goods and ship them — no products of your own needed.</Sub>
         <FieldBox label="Storage classes">
           <Chips>
-            {STORAGE_CLASSES.map((c) => (
-              <Chip key={c} on={arr(k, 'storage').includes(c)} onClick={() => toggleDetail(k, 'storage', c)}>
-                {c}
+            {STORAGE_OPTS.map((o) => (
+              <Chip key={o.value} on={arr(k, 'storage').includes(o.value)} onClick={() => toggleDetail(k, 'storage', o.value)}>
+                {o.label}
               </Chip>
             ))}
           </Chips>
         </FieldBox>
         <FieldBox label="Value-added services">
           <Chips>
-            {VALUE_ADDS.map((c) => (
-              <Chip key={c} on={arr(k, 'vas').includes(c)} onClick={() => toggleDetail(k, 'vas', c)}>
-                {c}
+            {VAS_OPTS.map((o) => (
+              <Chip key={o.value} on={arr(k, 'vas').includes(o.value)} onClick={() => toggleDetail(k, 'vas', o.value)}>
+                {o.label}
               </Chip>
             ))}
           </Chips>
@@ -540,6 +581,60 @@ export function ApplicationWizard({
 }
 
 // ---- presentational helpers ----
+// Compact dropdown multi-select → removable chips (saves space on long lists).
+function PickSelect({
+  options,
+  selected,
+  onToggle,
+  placeholder = 'Add…',
+}: {
+  options: Opt[]
+  selected: string[]
+  onToggle: (v: string) => void
+  placeholder?: string
+}) {
+  const available = options.filter((o) => !selected.includes(o.value))
+  const labelFor = (v: string) => options.find((o) => o.value === v)?.label ?? v
+  return (
+    <div className="space-y-2">
+      <select
+        value=""
+        disabled={available.length === 0}
+        onChange={(e) => {
+          if (e.target.value) onToggle(e.target.value)
+        }}
+        className="w-full rounded-xl border-[1.5px] border-ink-200 bg-white px-3 py-2.5 text-[13.5px] text-ink-700 focus:border-pink-500 focus:outline-none disabled:opacity-50"
+      >
+        <option value="">{available.length === 0 ? 'All added' : placeholder}</option>
+        {available.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selected.map((v) => (
+            <span
+              key={v}
+              className="inline-flex items-center gap-1 rounded-full border border-pink-500 bg-pink-50 px-3 py-1.5 text-[13px] font-semibold text-pink-700"
+            >
+              {labelFor(v)}
+              <button
+                type="button"
+                onClick={() => onToggle(v)}
+                aria-label={`Remove ${labelFor(v)}`}
+                className="text-pink-400 hover:text-pink-700"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-pink-700">{children}</div>
 }

@@ -7059,6 +7059,51 @@ enum SpecSheetStatus {
   SUPERSEDED
 }
 
+// Co-packing / contract-manufacturing fill & process lines (2026-07-09, research-
+// backed). The capability a co-packer declares — each maps to a specific, often
+// expensive line. Two orthogonal axes for beverages (fill mechanism + thermal
+// preservation) are flattened here since a line is named by its dominant method.
+// Format-adjacent members (VFFS/stick/blister/tube/count-bottle) keep the FILL
+// ACTION only — the container itself lives in ContainerCategory, downstream
+// finishing (MAP, sealing, sleeving, labeling, kitting) lives in FcVasJobType.
+enum FillProcess {
+  // Liquid & beverage — fill mechanism
+  GRAVITY_FILL
+  OVERFLOW_FILL
+  PISTON_FILL
+  PRESSURE_VACUUM_FILL
+  NET_WEIGH_FILL
+  // Liquid & beverage — preservation / thermal process
+  HOT_FILL
+  COLD_FILL
+  ASEPTIC_FILL
+  CARBONATED_FILL
+  TUNNEL_PASTEURIZATION
+  RETORT_STERILIZATION
+  HPP
+  // Powder & dry
+  AUGER_FILL
+  VOLUMETRIC_CUP_FILL
+  VFFS_BAGGING
+  STICK_SACHET_FILL
+  // Viscous / semi-solid
+  VISCOUS_PASTE_CREAM_FILL
+  HOT_POUR_FILL
+  DEPOSITING
+  TUBE_FILLING
+  // Solid dose / supplement
+  TABLET_COMPRESSION
+  CAPSULE_FILLING
+  SOFTGEL_ENCAPSULATION
+  COUNT_AND_BOTTLE
+  BLISTER_PACKING
+  // Cosmetic / personal care
+  AIRLESS_PUMP_FILL
+  AEROSOL_FILL
+  ROLL_ON_FILL
+  COMPACT_PRESSING
+}
+
 enum ProductChangeType {
   LABEL_COPY
   FLAVOR_ADD
