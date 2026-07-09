@@ -21,6 +21,7 @@ import { YourCompanySection, type CompanyState } from './sections/YourCompanySec
 import { WhatYouCanDoSection, type CapsByType } from './sections/WhatYouCanDoSection'
 import { CertDeclareSection } from './sections/CertDeclareSection'
 import { PaymentContractSection, type PaymentContractState } from './sections/PaymentContractSection'
+import { useOnboardingServices } from './OnboardingServices'
 import { submitForReview } from '../../app/(onboarding)/onboarding/actions'
 import type { CertPickerOption } from '@/components/CertificatePicker'
 
@@ -72,6 +73,7 @@ export function OnboardingWizard({
   banner,
 }: OnboardingWizardProps) {
   const router = useRouter()
+  const { setSelected } = useOnboardingServices()
 
   // Live mirrors — WhatYouCanDo needs the selected types from the business step.
   const [businessState, setBusinessState] = useState<BusinessState>(initialBusiness)
@@ -100,7 +102,10 @@ export function OnboardingWizard({
           initialState={businessState}
           markets={markets}
           regions={regions}
-          onChange={setBusinessState}
+          onChange={(s) => {
+            setBusinessState(s)
+            setSelected(s.serviceTypes)
+          }}
         />
       ),
     },

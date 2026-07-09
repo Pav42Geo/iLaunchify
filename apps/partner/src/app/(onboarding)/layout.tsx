@@ -4,14 +4,10 @@ import { logAuditAs } from '@ilaunchify/audit'
 import { assertPartnerTransition } from '@ilaunchify/orders'
 import { Brand } from '@ilaunchify/ui'
 import { redirect } from 'next/navigation'
-
-// Service → short appbar label (matches the approved prototype's Services pills).
-const SERVICE_PILL: Record<string, string> = {
-  MANUFACTURING: 'Produce',
-  COPACKING: 'Pack',
-  LABEL_PRINTING: 'Print',
-  WAREHOUSE: 'Fulfill',
-}
+import {
+  OnboardingServicesProvider,
+  HeaderServicePills,
+} from '@/components/onboarding/OnboardingServices'
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
@@ -46,11 +42,10 @@ export default async function OnboardingLayout({ children }: { children: React.R
     })
   }
 
-  const serviceLabels = [
-    ...new Set(partner.services.map((s) => SERVICE_PILL[s.type]).filter((x): x is string => !!x)),
-  ]
+  const initialServiceTypes = [...new Set(partner.services.map((s) => s.type))]
 
   return (
+    <OnboardingServicesProvider initial={initialServiceTypes}>
     <div className="min-h-screen bg-ink-50">
       {/* Dark appbar — business-landing logo (on-dark full logo + neon sublabel),
           the Onboarding → Activation Setup journey stepper (prototype segmented
@@ -77,23 +72,12 @@ export default async function OnboardingLayout({ children }: { children: React.R
             </span>
           </nav>
 
-          {serviceLabels.length > 0 && (
-            <div className="ml-auto flex items-center gap-1.5">
-              <span className="text-[11px] font-medium text-ink-400">Services:</span>
-              {serviceLabels.map((l) => (
-                <span
-                  key={l}
-                  className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white"
-                >
-                  {l}
-                </span>
-              ))}
-            </div>
-          )}
+          <HeaderServicePills />
         </div>
       </header>
 
       {children}
     </div>
+    </OnboardingServicesProvider>
   )
 }
