@@ -258,6 +258,11 @@ function Field({
       <div className="flex items-baseline gap-1">
         <Label htmlFor={id} className="text-sm font-medium text-ink-900">
           {label}
+          {required && (
+            <span className="ml-0.5 text-pink-500" aria-label="required" title="Required">
+              *
+            </span>
+          )}
         </Label>
       </div>
       {children}
