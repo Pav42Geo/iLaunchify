@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { submitLead } from './actions'
+import { CertificatePicker, type CertPickerOption } from '@/components/CertificatePicker'
 
 const SERVICE_OPTIONS = [
   { value: 'MANUFACTURING', label: 'Manufacturing' },
@@ -27,13 +28,19 @@ const LeadSchema = z.object({
     .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
     .min(1, 'Select at least one service you offer'),
   monthlyCapacity: z.string().max(80),
-  certifications: z.string().max(200),
+  certificateTypeIds: z.array(z.string()).default([]),
   successDescription: z.string().min(20, 'A few words on what success looks like').max(800),
 })
 type LeadValues = z.infer<typeof LeadSchema>
 export type LeadServiceType = LeadValues['serviceTypes'][number]
 
-export function LeadForm({ defaultServiceTypes = [] }: { defaultServiceTypes?: LeadServiceType[] }) {
+export function LeadForm({
+  defaultServiceTypes = [],
+  certOptions = [],
+}: {
+  defaultServiceTypes?: LeadServiceType[]
+  certOptions?: CertPickerOption[]
+}) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
 
@@ -48,7 +55,7 @@ export function LeadForm({ defaultServiceTypes = [] }: { defaultServiceTypes?: L
       website: '',
       serviceTypes: defaultServiceTypes,
       monthlyCapacity: '',
-      certifications: '',
+      certificateTypeIds: [],
       successDescription: '',
     },
   })
@@ -143,10 +150,14 @@ export function LeadForm({ defaultServiceTypes = [] }: { defaultServiceTypes?: L
 
       <Field
         label="Certifications"
-        id="certifications"
-        hint="FDA, cGMP, USDA Organic, kosher, halal, ISO 22000…"
+        id="certificateTypeIds"
+        hint="Pick every certification you hold — you'll upload the PDFs during onboarding."
       >
-        <Input id="certifications" {...form.register('certifications')} disabled={busy} />
+        <CertificatePicker
+          options={certOptions}
+          value={form.watch('certificateTypeIds')}
+          onChange={(ids) => form.setValue('certificateTypeIds', ids, { shouldValidate: true })}
+        />
       </Field>
 
       <Field

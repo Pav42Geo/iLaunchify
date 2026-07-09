@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { Factory, ShieldCheck, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Brand } from '@ilaunchify/ui'
-import { getPublicBrandLogos } from '@ilaunchify/db'
+import { getPublicBrandLogos, prisma } from '@ilaunchify/db'
 import { marketingUrl } from '@/lib/marketing-url'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { LeadForm } from './LeadForm'
 
 export const metadata = { title: 'Apply to join the iLaunchify partner network' }
@@ -39,6 +40,23 @@ export default async function ApplyPage({
   const type = ((await searchParams).type ?? 'MANUFACTURING') as keyof typeof TYPE_LABELS
   const meta = TYPE_LABELS[type] ?? TYPE_LABELS.MANUFACTURING
   const logos = await getPublicBrandLogos()
+
+  // Certificate library for the picker (Pavel 2026-07-08) — replaces the old
+  // free-text certs field. Applicants pick from the admin-curated CertificateType
+  // library; the real PDF/expiry instances come later in onboarding.
+  const certTypes = await prisma.certificateType.findMany({
+    where: { status: 'ACTIVE' },
+    select: { id: true, slug: true, name: true, description: true, thumbnailFileId: true },
+    orderBy: { name: 'asc' },
+  })
+  const badgeUrls = await resolveCertBadgeUrls(certTypes.map((t) => t.thumbnailFileId))
+  const certOptions = certTypes.map((t) => ({
+    id: t.id,
+    slug: t.slug,
+    name: t.name,
+    description: t.description,
+    thumbnailUrl: t.thumbnailFileId ? (badgeUrls.get(t.thumbnailFileId) ?? null) : null,
+  }))
 
   return (
     <div className="grid min-h-screen grid-cols-1 bg-[var(--bg-hero)] md:h-screen md:grid-cols-[1fr_1fr]">
@@ -105,7 +123,7 @@ export default async function ApplyPage({
           </p>
 
           <div className="rounded-2xl border border-ink-200 bg-white p-6">
-            <LeadForm defaultServiceTypes={[type]} />
+            <LeadForm defaultServiceTypes={[type]} certOptions={certOptions} />
           </div>
 
           <p className="mt-4 text-[12px] leading-[1.5] text-ink-500">

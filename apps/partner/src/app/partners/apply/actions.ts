@@ -16,7 +16,7 @@ const LeadSchema = z.object({
     .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
     .min(1),
   monthlyCapacity: z.string().max(80),
-  certifications: z.string().max(200),
+  certificateTypeIds: z.array(z.string()).default([]),
   successDescription: z.string().min(20).max(800),
 })
 
@@ -52,7 +52,7 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
             contactName: v.contactName,
             phone: v.phone || null,
             monthlyCapacity: v.monthlyCapacity,
-            certifications: v.certifications,
+            certificateTypeIds: v.certificateTypeIds,
             successDescription: v.successDescription,
             submittedAt: new Date().toISOString(),
           }),
