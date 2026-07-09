@@ -11,7 +11,7 @@
 // submitForReview() which promotes Partner.status from DRAFT → IDENTITY_PENDING_REVIEW.
 // Admin verification queue (#94 shipped) picks up from there.
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@ilaunchify/ui'
 import type { PartnerFile, ServiceType } from '@ilaunchify/db'
@@ -54,9 +54,25 @@ interface OnboardingAccordionProps {
   initialPayment: PaymentContractState
   markets: MarketOption[]
   regions: RegionOption[]
+  /** Optional server-rendered banner (e.g. the invited co-partner notice) shown
+   *  at the top of the main column so it aligns with the redesigned two-column shell. */
+  banner?: ReactNode
 }
 
 type SectionId = 'business' | 'company' | 'capabilities' | 'commercial'
+
+const SECTION_LABEL: Record<SectionId, string> = {
+  business: 'Your business',
+  company: 'Your company',
+  capabilities: 'What you can do',
+  commercial: 'Payment & contract',
+}
+
+const STATUS_GLYPH: Record<SectionStatus, { mark: string; cls: string }> = {
+  COMPLETE: { mark: '✓', cls: 'bg-success-100 text-success-800' },
+  IN_PROGRESS: { mark: '•', cls: 'bg-warning-100 text-warning-800' },
+  NOT_STARTED: { mark: '', cls: 'bg-ink-100 text-ink-400' },
+}
 
 export function OnboardingAccordion({
   companyName,
@@ -67,6 +83,7 @@ export function OnboardingAccordion({
   initialPayment,
   markets,
   regions,
+  banner,
 }: OnboardingAccordionProps) {
   const router = useRouter()
 
@@ -118,7 +135,7 @@ export function OnboardingAccordion({
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <main className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-8">
         <h1 className="text-ui-title">Welcome, {companyName}</h1>
         <p className="mt-1 text-ui-body text-ink-500">
@@ -139,7 +156,10 @@ export function OnboardingAccordion({
         </div>
       </header>
 
-      <div className="space-y-3">
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
+        <div className="min-w-0">
+          {banner}
+          <div className="space-y-3">
         <SectionShell
           id="business"
           title="Your business"
@@ -234,6 +254,42 @@ export function OnboardingAccordion({
           </Button>
         </div>
       </footer>
+        </div>
+
+        <aside className="space-y-4 lg:sticky lg:top-20">
+          <div className="rounded-2xl border border-ink-200 bg-white p-4">
+            <h2 className="text-[13px] font-semibold text-ink-800">Your progress</h2>
+            <ul className="mt-3 space-y-2.5">
+              {(Object.keys(SECTION_LABEL) as SectionId[]).map((id) => {
+                const g = STATUS_GLYPH[sectionStatus[id]]
+                return (
+                  <li key={id} className="flex items-center gap-2.5 text-[13px] text-ink-700">
+                    <span
+                      className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] font-bold ${g.cls}`}
+                    >
+                      {g.mark}
+                    </span>
+                    <span className={sectionStatus[id] === 'NOT_STARTED' ? 'text-ink-500' : ''}>
+                      {SECTION_LABEL[id]}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+
+          <div className="rounded-2xl bg-ink-900 p-5 text-white">
+            <p className="font-display text-[16px] font-semibold text-neon-400">
+              Approval isn’t the finish line.
+            </p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-ink-200">
+              Once we approve you, <span className="font-semibold text-white">Activation Setup</span>{' '}
+              collects the full operating detail for each service you run — and files it everywhere
+              it’s needed, automatically.
+            </p>
+          </div>
+        </aside>
+      </div>
     </main>
   )
 }

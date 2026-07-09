@@ -124,35 +124,34 @@ export default async function OnboardingPage() {
   const missingLegLabels =
     invitation?.legs.filter((l) => !currentTypes.has(l)).map((l) => LEG_LABEL[l] ?? l) ?? []
 
-  return (
-    <>
-      {invitation && (
-        <div className="mb-4 rounded-2xl border border-pink-200 bg-pink-50 px-5 py-4">
-          <p className="text-[13px] font-semibold text-pink-800">
-            {invitation.inviterName
-              ? `${invitation.inviterName} invited you to iLaunchify`
-              : 'You were invited to iLaunchify as a co-partner'}
-            {invitedLegLabels.length > 0 && (
-              <> as a {invitedLegLabels.join(' & ')} partner.</>
-            )}
-          </p>
-          <p className="mt-1 text-[13px] text-pink-800/80">
-            We’ve pre-selected {invitedLegLabels.length > 1 ? 'those services' : 'that service'} below.
-            Complete your onboarding to start working together — you can also add other services you
-            offer. You’ll go live for a service once you finish its setup.
-          </p>
-          {missingLegLabels.length > 0 && (
-            <p className="mt-2 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-[12px] font-medium text-warning-800">
-              ⚠ You were invited for {missingLegLabels.join(' & ')}, but{' '}
-              {missingLegLabels.length > 1 ? 'those services aren’t' : 'that service isn’t'} in your
-              selection. Add {missingLegLabels.length > 1 ? 'them' : 'it'} back under “Your business”
-              to work with {invitation.inviterName ?? 'the manufacturer who invited you'}.
-            </p>
-          )}
-        </div>
+  const invitationBanner = invitation ? (
+    <div className="mb-4 rounded-2xl border border-pink-200 bg-pink-50 px-5 py-4">
+      <p className="text-[13px] font-semibold text-pink-800">
+        {invitation.inviterName
+          ? `${invitation.inviterName} invited you to iLaunchify`
+          : 'You were invited to iLaunchify as a co-partner'}
+        {invitedLegLabels.length > 0 && <> as a {invitedLegLabels.join(' & ')} partner.</>}
+      </p>
+      <p className="mt-1 text-[13px] text-pink-800/80">
+        We’ve pre-selected {invitedLegLabels.length > 1 ? 'those services' : 'that service'} below.
+        Complete your onboarding to start working together — you can also add other services you
+        offer. You’ll go live for a service once you finish its setup.
+      </p>
+      {missingLegLabels.length > 0 && (
+        <p className="mt-2 rounded-lg border border-warning-300 bg-warning-50 px-3 py-2 text-[12px] font-medium text-warning-800">
+          ⚠ You were invited for {missingLegLabels.join(' & ')}, but{' '}
+          {missingLegLabels.length > 1 ? 'those services aren’t' : 'that service isn’t'} in your
+          selection. Add {missingLegLabels.length > 1 ? 'them' : 'it'} back under “Your business” to
+          work with {invitation.inviterName ?? 'the manufacturer who invited you'}.
+        </p>
       )}
-      <OnboardingAccordion
-        companyName={partner.companyName}
+    </div>
+  ) : null
+
+  return (
+    <OnboardingAccordion
+      companyName={partner.companyName}
+      banner={invitationBanner}
       initialBusiness={{
         targetMarketIds: state?.marketsCert?.map((c) => c.marketId) ?? [],
         primaryRegionId: state?.primaryRegion?.id ?? null,
@@ -163,8 +162,7 @@ export default async function OnboardingPage() {
       initialCaps={initialCaps}
       initialPayment={initialPayment}
       markets={markets}
-        regions={regions}
-      />
-    </>
+      regions={regions}
+    />
   )
 }
