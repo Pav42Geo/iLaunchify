@@ -13,6 +13,7 @@
     "migrate:status": "pnpm exec dotenv -e ../../.env.local -- prisma migrate status",
     "studio": "pnpm exec dotenv -e ../../.env.local -- prisma studio",
     "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts",
+    "backfill:facilities": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-facilities.ts",
     "seed:sample-orders": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-sample-orders.ts",
     "seed:subscription-plans": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-subscription-plans.ts",
     "seed:domain-ingredients": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-domain-ingredients.ts",

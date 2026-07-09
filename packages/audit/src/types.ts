@@ -154,6 +154,7 @@ export const AUDIT_ENTITY_TYPES = [
   'PartnerAccessSetting', // private↔public access mode toggle (§7)
   'PartnerNomination', // D7 nomination — directed-partner pin + consent (dark until counsel)
   'NominationSetting', // nomination feature gate (enabled=false until counsel blesses D7)
+  'Facility', // per-plant routing unit (multi-facility Phase 1 substrate)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 

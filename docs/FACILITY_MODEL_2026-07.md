@@ -20,11 +20,11 @@ That last row is the payoff: route an order to the *specific plant* that's close
 
 Same discipline as the multi-tenant substrate: add the no-regret data layer now, defer the disruptive routing rewrite until it's pulled in.
 
-**Phase 1 — no-regret substrate (additive, nothing breaks):**
-- New `Facility` model: `id, partnerId, name, addressLine1/2, city, state, postalCode, country, lat?, lng?, isPrimary, status`.
-- `Partner.facilities Facility[]`.
-- Add **nullable `facilityId`** to `PartnerService`, `PartnerCertificateInstance` (and capacity/blackout carriers).
-- **Backfill:** create one primary `Facility` per existing partner from their current address; point their existing services/certs at it. Every current read still works (facilityId defaults to the primary).
+**Phase 1 — no-regret substrate (additive, nothing breaks): BUILT 2026-07-08.**
+- New `Facility` model (`id, partnerId, name, addressLine1/2, city, state, postalCode, country, lat?, lng?, isPrimary, status`) + `FacilityStatus` enum + `Partner.facilities`. ✅
+- **Nullable `facilityId`** + `facility` relation + index on `PartnerService` and `PartnerCertificateInstance`. ✅ (`Facility` added to audit entity types.)
+- **Backfill script** `packages/db/prisma/backfill-facilities.ts` (`pnpm --filter @ilaunchify/db backfill:facilities`) — creates one primary `Facility` per partner from their address, links facility-less services + cert instances to it. Idempotent. Run after `db:push`+`db:generate`.
+- `PartnerService @@unique([partnerId, type])` kept for Phase 1; **Phase 2 relaxes it to `[partnerId, type, facilityId]`** so a partner can run the same service at multiple facilities.
 
 **Phase 2 — capture (UI writes real facilities):**
 - Onboarding "Facilities" repeater → real `Facility` rows.
