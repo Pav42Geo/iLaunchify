@@ -157,6 +157,7 @@ export function ApplicationWizard({
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState<'next' | 'back'>('next')
   const [busy, setBusy] = useState(false)
+  const [stepError, setStepError] = useState<string | null>(null)
   const [details, setDetails] = useState<Record<string, Detail>>({})
 
   const form = useForm<Values>({
@@ -204,10 +205,23 @@ export function ApplicationWizard({
   }
 
   const activeServices = SERVICE_ORDER.filter((s) => watch('serviceTypes').includes(s))
-  const STEPS: { fields: (keyof Values)[]; render: () => React.ReactNode }[] = [
+  // Per-step validator for data held in `details` (outside react-hook-form).
+  const STEPS: {
+    fields: (keyof Values)[]
+    render: () => React.ReactNode
+    validate?: () => string | null
+  }[] = [
     { fields: ['companyName'], render: stepCompany },
     { fields: ['serviceTypes'], render: stepServices },
-    ...activeServices.map((s) => ({ fields: [] as (keyof Values)[], render: () => stepService(s) })),
+    ...activeServices.map((s) => ({
+      fields: [] as (keyof Values)[],
+      render: () => stepService(s),
+      // Manufacturing must declare at least one product category (routing key).
+      validate:
+        s === 'MANUFACTURING'
+          ? () => (arr('MANUFACTURING', 'categories').length > 0 ? null : 'Pick at least one product category.')
+          : undefined,
+    })),
     { fields: [], render: stepCerts },
     { fields: ['contactName', 'email', 'successDescription'], render: stepContact },
   ]
@@ -219,6 +233,12 @@ export function ApplicationWizard({
   async function next() {
     const ok = await trigger(STEPS[cur]!.fields as never)
     if (!ok) return
+    const err = STEPS[cur]!.validate?.()
+    if (err) {
+      setStepError(err)
+      return
+    }
+    setStepError(null)
     if (!last) {
       setDir('next')
       setStep(cur + 1)
@@ -227,6 +247,7 @@ export function ApplicationWizard({
     }
   }
   function back() {
+    setStepError(null)
     if (cur > 0) {
       setDir('back')
       setStep(cur - 1)
@@ -641,6 +662,11 @@ export function ApplicationWizard({
         className="rounded-3xl border border-ink-200 bg-white p-7 shadow-[0_18px_50px_-28px_rgba(20,20,25,0.35)]"
       >
         {STEPS[cur]!.render()}
+        {stepError && (
+          <p className="mt-4 rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-[12.5px] font-medium text-danger-700">
+            {stepError}
+          </p>
+        )}
         <div className="mt-6 flex items-center justify-between">
           <button
             type="button"
