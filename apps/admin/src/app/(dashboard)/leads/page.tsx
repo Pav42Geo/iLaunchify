@@ -67,7 +67,7 @@ const STATUS_TONE: Record<
 const SERVICE_LABELS: Record<ServiceType, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Warehousing',
 }
 
@@ -557,6 +557,7 @@ type LeadRow = {
   websiteUrl: string | null
   contactPhone: string | null
   leadSource: string | null
+  leadNotes: string | null
   createdAt: Date
   updatedAt: Date
   user: { email: string; stripeAccountStatus: string | null; stripeAccountId: string | null }
@@ -611,12 +612,22 @@ function LeadsTable({
                       {initials}
                     </span>
                     <div className="min-w-0">
-                      <Link
-                        href={`/leads/${lead.id}`}
-                        className="block font-semibold text-ink-900 hover:text-pink-700 focus-visible:outline-none focus-visible:underline"
-                      >
-                        {lead.companyName}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Link
+                          href={`/leads/${lead.id}`}
+                          className="font-semibold text-ink-900 hover:text-pink-700 focus-visible:outline-none focus-visible:underline"
+                        >
+                          {lead.companyName}
+                        </Link>
+                        {leadHasOtcInterest(lead.leadNotes) && (
+                          <span
+                            title="Registered interest in OTC drug (domain not live)"
+                            className="inline-flex items-center gap-1 rounded-full border border-pink-200 bg-pink-50 px-1.5 py-[1px] text-[9.5px] font-bold uppercase tracking-wide text-pink-700"
+                          >
+                            OTC
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-0.5 inline-flex items-center gap-1 truncate text-[11px] text-ink-500">
                         <Mail className="h-3 w-3 flex-shrink-0" />
                         <span className="truncate">{lead.user.email}</span>
@@ -846,4 +857,22 @@ function humanizeSource(source: string): string {
   return source
     .replace(/[-_]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// True if any declared service listed OTC among its product categories —
+// interest in the not-yet-live OTC domain. leadNotes → { serviceDetails: { <SVC>: { categories } } }.
+function leadHasOtcInterest(leadNotes: string | null): boolean {
+  if (!leadNotes) return false
+  try {
+    const parsed = JSON.parse(leadNotes) as { serviceDetails?: unknown }
+    const sd = parsed.serviceDetails
+    if (!sd || typeof sd !== 'object') return false
+    return Object.values(sd as Record<string, unknown>).some((svc) => {
+      if (!svc || typeof svc !== 'object') return false
+      const cats = (svc as Record<string, unknown>).categories
+      return Array.isArray(cats) && cats.includes('OTC')
+    })
+  } catch {
+    return false
+  }
 }

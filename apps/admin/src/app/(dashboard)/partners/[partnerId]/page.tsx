@@ -726,6 +726,36 @@ function OverviewCard({ partner }: { partner: PartnerWithIncludes }) {
             <span className="text-ink-400">Not provided</span>
           )}
         </Row>
+        {(() => {
+          const p = parseLeadProfile(partner.leadNotes)
+          return (
+            <>
+              {p.facilityCount && (
+                <Row label="Facilities">
+                  <span className="text-ink-900">{p.facilityCount}</span>
+                </Row>
+              )}
+              {p.companySize && (
+                <Row label="Company size">
+                  <span className="text-ink-900">{p.companySize} staff</span>
+                </Row>
+              )}
+              {p.entityType && (
+                <Row label="Business entity">
+                  <span className="text-ink-900">{humanizeEntity(p.entityType)}</span>
+                </Row>
+              )}
+              {p.otc && (
+                <Row label="OTC interest">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[11px] font-semibold text-pink-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-pink-500" aria-hidden="true" />
+                    Registered · domain not live
+                  </span>
+                </Row>
+              )}
+            </>
+          )
+        })()}
         <Row label="Stripe Connect">
           {partner.user.stripeAccountId ? (
             <span className="inline-flex items-center gap-1.5">
@@ -744,6 +774,43 @@ function OverviewCard({ partner }: { partner: PartnerWithIncludes }) {
       </dl>
     </Card>
   )
+}
+
+// Application-time triage signals persisted on Partner.leadNotes (survive the
+// lead → partner transition). OTC = interest in the not-yet-live OTC domain.
+function parseLeadProfile(leadNotes: string | null): {
+  facilityCount: string | null
+  companySize: string | null
+  entityType: string | null
+  otc: boolean
+} {
+  const empty = { facilityCount: null, companySize: null, entityType: null, otc: false }
+  if (!leadNotes) return empty
+  try {
+    const n = JSON.parse(leadNotes) as Record<string, unknown>
+    const str = (k: string) => (typeof n[k] === 'string' ? (n[k] as string) : null)
+    const sd = n.serviceDetails
+    const otc =
+      !!sd &&
+      typeof sd === 'object' &&
+      Object.values(sd as Record<string, unknown>).some((svc) => {
+        if (!svc || typeof svc !== 'object') return false
+        const cats = (svc as Record<string, unknown>).categories
+        return Array.isArray(cats) && cats.includes('OTC')
+      })
+    return {
+      facilityCount: str('facilityCount'),
+      companySize: str('companySize'),
+      entityType: str('entityType'),
+      otc,
+    }
+  } catch {
+    return empty
+  }
+}
+
+function humanizeEntity(s: string): string {
+  return s.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function VerificationCard({

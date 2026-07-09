@@ -248,6 +248,7 @@ export function ApplicationWizard({
 
   // ---- shared steps ----
   function stepCompany() {
+    const isUS = watch('country') === 'US'
     return (
       <>
         <Eyebrow>About your company</Eyebrow>
@@ -270,20 +271,27 @@ export function ApplicationWizard({
             region diversity. State list is your real Region data. */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <FieldBox label="Country">
-            <ApplySelect {...register('country')}>
+            <ApplySelect
+              {...register('country', {
+                onChange: (e) => {
+                  if (e.target.value !== 'US') setValue('regionCode', '')
+                },
+              })}
+            >
               <option value="US">United States</option>
               <option value="CA">Canada</option>
               <option value="OTHER">Other</option>
             </ApplySelect>
           </FieldBox>
           <FieldBox label="State / region">
-            <ApplySelect {...register('regionCode')}>
-              <option value="">Select…</option>
-              {regions.map((r) => (
-                <option key={r.code} value={r.code}>
-                  {r.name}
-                </option>
-              ))}
+            <ApplySelect {...register('regionCode')} disabled={!isUS}>
+              <option value="">{isUS ? 'Select…' : 'US only at launch'}</option>
+              {isUS &&
+                regions.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.name}
+                  </option>
+                ))}
             </ApplySelect>
           </FieldBox>
           <FieldBox label="City">
@@ -465,12 +473,6 @@ export function ApplicationWizard({
               </Chip>
             ))}
           </Chips>
-          {arr(k, 'categories').includes('OTC') && (
-            <p className="mt-2 text-[12px] text-ink-500">
-              OTC drug production isn’t live on iLaunchify yet — picking it registers your interest so
-              we can gauge demand.
-            </p>
-          )}
         </FieldBox>
         <FieldBox label="Processes you run">
           <PickSelect
