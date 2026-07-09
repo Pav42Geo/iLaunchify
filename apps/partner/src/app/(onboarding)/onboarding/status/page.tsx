@@ -21,6 +21,7 @@ import { CheckCircle2, Clock, AlertTriangle, FileText, ArrowRight } from 'lucide
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { Button } from '@ilaunchify/ui'
+import { getPartnerActivationStatus } from '@/lib/activation-status'
 import type { VerificationSectionType, VerificationSectionStatus } from '@ilaunchify/db'
 
 export const dynamic = 'force-dynamic'
@@ -57,6 +58,9 @@ export default async function ApplicationStatusPage() {
   const verifiedCount = sections.filter((s) => s.status === 'VERIFIED').length
   const needsChanges = sections.some((s) => s.status === 'NEEDS_CHANGES')
   const isActive = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
+  // Approved (ACTIVE) but still finishing per-service Activation Setup → guide
+  // them into activation, not the full dashboard. Fully live → dashboard.
+  const allLive = isActive ? (await getPartnerActivationStatus(partner.id)).allLive : false
 
   const hero = isActive
     ? { lead: 'You’re', em: 'in.', sub: `${partner.companyName} is fully verified — creators can route production orders to you now.` }
@@ -143,16 +147,23 @@ export default async function ApplicationStatusPage() {
       {/* Next-steps CTA */}
       {isActive ? (
         <section data-surface="dark" className="mt-10 overflow-hidden rounded-3xl bg-ink-900 px-6 py-10 text-center text-white">
-          <h2 className="mx-auto max-w-[22ch] font-display text-2xl font-extrabold leading-[1.1] tracking-[-0.02em] sm:text-3xl [&_em]:font-serif [&_em]:font-medium [&_em]:italic [&_em]:text-neon-500">
-            You’re live — <em>start producing.</em>
+          <h2 className="mx-auto max-w-[24ch] font-display text-2xl font-extrabold leading-[1.1] tracking-[-0.02em] sm:text-3xl [&_em]:font-serif [&_em]:font-medium [&_em]:italic [&_em]:text-neon-500">
+            {allLive ? (
+              <>You’re live — <em>start producing.</em></>
+            ) : (
+              <>You’re approved — <em>finish your setup.</em></>
+            )}
           </h2>
-          <p className="mx-auto mt-3 max-w-[44ch] text-[14px] text-ink-300">
-            Head to your dashboard to accept your first production orders.
+          <p className="mx-auto mt-3 max-w-[46ch] text-[14px] text-ink-300">
+            {allLive
+              ? 'Head to your dashboard to accept your first production orders.'
+              : 'Complete Activation Setup for each service to go live and start accepting orders — each service turns on as you finish it.'}
           </p>
           <div className="mt-6 flex justify-center">
             <Button asChild variant="neon" size="lg">
-              <Link href="/dashboard">
-                Go to dashboard <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
+              <Link href={allLive ? '/dashboard' : '/activation'}>
+                {allLive ? 'Go to dashboard' : 'Start Activation Setup'}{' '}
+                <ArrowRight strokeWidth={2.5} className="h-4 w-4" />
               </Link>
             </Button>
           </div>
