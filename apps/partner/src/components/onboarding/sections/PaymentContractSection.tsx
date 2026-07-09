@@ -252,6 +252,33 @@ function ContractCard({
         )}
       </div>
 
+      {/* Agreement document — always viewable (signed or not) so the current
+          version can be re-read at any time. */}
+      {agreement ? (
+        <button
+          type="button"
+          onClick={() => setShowAgreement(true)}
+          className="flex w-full items-center justify-between rounded-[14px] border-[1.5px] border-ink-200 bg-white px-4 py-3 text-left hover:border-pink-300"
+        >
+          <span>
+            <span className="block text-[13.5px] font-semibold text-ink-900">
+              Read the full {agreement.title}
+            </span>
+            <span className="mt-0.5 block text-[12px] text-ink-500">
+              Version {agreement.version} — opens the complete agreement
+            </span>
+          </span>
+          <span className="text-[13px] font-semibold text-pink-700">Open →</span>
+        </button>
+      ) : (
+        <p className="rounded-[14px] border-[1.5px] border-dashed border-warning-300 bg-warning-50 px-4 py-3 text-[12.5px] text-warning-900">
+          No partner agreement is published yet — an admin needs to publish one.
+        </p>
+      )}
+      {showAgreement && agreement && (
+        <AgreementModal agreement={agreement} onClose={() => setShowAgreement(false)} />
+      )}
+
       {alreadySigned ? (
         <div className="rounded-md bg-success-50 px-3 py-3 text-sm text-success-900">
           <div>
@@ -264,31 +291,6 @@ function ContractCard({
         </div>
       ) : (
         <>
-          {agreement ? (
-            <button
-              type="button"
-              onClick={() => setShowAgreement(true)}
-              className="flex w-full items-center justify-between rounded-[14px] border-[1.5px] border-ink-200 bg-white px-4 py-3 text-left hover:border-pink-300"
-            >
-              <span>
-                <span className="block text-[13.5px] font-semibold text-ink-900">
-                  Read the full {agreement.title}
-                </span>
-                <span className="mt-0.5 block text-[12px] text-ink-500">
-                  Version {agreement.version} — opens the complete agreement
-                </span>
-              </span>
-              <span className="text-[13px] font-semibold text-pink-700">Open →</span>
-            </button>
-          ) : (
-            <p className="rounded-[14px] border-[1.5px] border-dashed border-warning-300 bg-warning-50 px-4 py-3 text-[12.5px] text-warning-900">
-              No partner agreement is published yet — an admin needs to publish one.
-            </p>
-          )}
-          {showAgreement && agreement && (
-            <AgreementModal agreement={agreement} onClose={() => setShowAgreement(false)} />
-          )}
-
           <div className="space-y-3">
             <div>
               <Label htmlFor="signerName" className="text-sm font-medium text-ink-900">

@@ -8,6 +8,7 @@ import {
   OnboardingServicesProvider,
   HeaderServicePills,
 } from '@/components/onboarding/OnboardingServices'
+import { SiteFooter } from '@/components/SiteFooter'
 
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
@@ -77,6 +78,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
       </header>
 
       {children}
+      <SiteFooter />
     </div>
     </OnboardingServicesProvider>
   )

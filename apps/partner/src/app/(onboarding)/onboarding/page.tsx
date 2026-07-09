@@ -52,20 +52,6 @@ export default async function OnboardingPage() {
   })
   if (!partner) return null
 
-  // Carry the applicant's own application answers forward (Pavel 2026-07-08):
-  // capacity + certifications are free-text triage blurbs with no 1:1 structured
-  // field here, so we surface them as a reference so onboarding never feels like
-  // re-asking. leadNotes is a JSON string written by submitLead.
-  let appCapacity = ''
-  let appCerts = ''
-  try {
-    const notes = partner.leadNotes ? (JSON.parse(partner.leadNotes) as Record<string, unknown>) : {}
-    if (typeof notes.monthlyCapacity === 'string') appCapacity = notes.monthlyCapacity
-    if (typeof notes.certifications === 'string') appCerts = notes.certifications
-  } catch {
-    /* malformed leadNotes — skip the reference */
-  }
-
   const state = await getOnboardingState()
 
   // Invited co-partner? Show a banner explaining who invited them + for which
@@ -137,6 +123,16 @@ export default async function OnboardingPage() {
     : []
   const initialInsuranceUsd =
     typeof progressJson.insuranceCoverageUsd === 'string' ? progressJson.insuranceCoverageUsd : ''
+  // Markets the partner declared in Section 1 (persisted to onboardingProgress).
+  // Merge with admin-verified PartnerMarketCert rows so a fresh selection doesn't
+  // vanish on reload before an admin verifies it.
+  const declaredMarketIdsRaw = progressJson.declaredTargetMarketIds
+  const declaredMarketIds = Array.isArray(declaredMarketIdsRaw)
+    ? declaredMarketIdsRaw.filter((v): v is string => typeof v === 'string')
+    : []
+  const initialTargetMarketIds = [
+    ...new Set([...(state?.marketsCert?.map((c) => c.marketId) ?? []), ...declaredMarketIds]),
+  ]
 
   // Hydrate Section 2 (Your company) — partner.* address fields, with empty strings for null.
   const initialCompany = {
@@ -208,44 +204,14 @@ export default async function OnboardingPage() {
     </div>
   ) : null
 
-  const applicationSummary =
-    appCapacity || appCerts ? (
-      <div className="mb-4 rounded-2xl border border-ink-200 bg-white px-5 py-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
-          From your application
-        </p>
-        <div className="mt-1.5 space-y-1 text-[13px] text-ink-700">
-          {appCapacity && (
-            <p>
-              <span className="text-ink-500">Capacity:</span> {appCapacity}
-            </p>
-          )}
-          {appCerts && (
-            <p>
-              <span className="text-ink-500">Certifications:</span> {appCerts}
-            </p>
-          )}
-        </div>
-        <p className="mt-2 text-[12px] text-ink-500">
-          A reference from what you told us — use it as you fill in the detailed fields below.
-        </p>
-      </div>
-    ) : null
-
-  const topBanner =
-    invitationBanner || applicationSummary ? (
-      <>
-        {invitationBanner}
-        {applicationSummary}
-      </>
-    ) : undefined
+  const topBanner = invitationBanner ?? undefined
 
   return (
     <OnboardingWizard
       companyName={partner.companyName}
       banner={topBanner}
       initialBusiness={{
-        targetMarketIds: state?.marketsCert?.map((c) => c.marketId) ?? [],
+        targetMarketIds: initialTargetMarketIds,
         primaryRegionId: state?.primaryRegion?.id ?? null,
         serviceTypes: state?.services?.map((s) => s.type) ?? [],
       }}

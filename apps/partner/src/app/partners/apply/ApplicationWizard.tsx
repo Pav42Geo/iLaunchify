@@ -263,7 +263,7 @@ export function ApplicationWizard({
           <FieldBox label="Legal name (if different)">
             <Input placeholder="Northwind Co. LLC" {...register('legalName')} />
           </FieldBox>
-          <FieldBox label="Years in business">
+          <FieldBox label="Years in business" recommended>
             <Input placeholder="e.g. 8" {...register('yearsInBusiness')} />
           </FieldBox>
         </div>
@@ -283,7 +283,7 @@ export function ApplicationWizard({
               <option value="OTHER">Other</option>
             </ApplySelect>
           </FieldBox>
-          <FieldBox label="State / region">
+          <FieldBox label="State / region" recommended>
             <ApplySelect {...register('regionCode')} disabled={!isUS}>
               <option value="">{isUS ? 'Select…' : 'US only at launch'}</option>
               {isUS &&
@@ -299,7 +299,7 @@ export function ApplicationWizard({
           </FieldBox>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <FieldBox label="Production facilities">
+          <FieldBox label="Production facilities" recommended>
             <ApplySelect {...register('facilityCount')}>
               <option value="">Select…</option>
               <option value="1">1</option>
@@ -408,7 +408,7 @@ export function ApplicationWizard({
           <FieldBox label="Phone (optional)">
             <Input {...register('phone')} />
           </FieldBox>
-          <FieldBox label="Website" error={formState.errors.website?.message}>
+          <FieldBox label="Website" error={formState.errors.website?.message} recommended>
             <Input placeholder="https://" {...register('website')} />
           </FieldBox>
         </div>
@@ -748,10 +748,25 @@ function Em({ children }: { children: React.ReactNode }) {
 function Sub({ children }: { children: React.ReactNode }) {
   return <p className="mb-5 text-[14px] leading-[1.5] text-ink-600">{children}</p>
 }
-function FieldBox({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function FieldBox({
+  label,
+  error,
+  recommended,
+  children,
+}: {
+  label: string
+  error?: string
+  recommended?: boolean
+  children: React.ReactNode
+}) {
   return (
     <div className="mb-4 space-y-1.5">
-      <Label>{label}</Label>
+      <div className="flex items-baseline gap-1.5">
+        <Label>{label}</Label>
+        {recommended && (
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-pink-600">Recommended</span>
+        )}
+      </div>
       {children}
       {error && <p className="text-[12px] text-danger-600">{error}</p>}
     </div>

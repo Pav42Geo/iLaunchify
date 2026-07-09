@@ -77,6 +77,9 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
           country: v.country || 'US',
           state: v.regionCode || null,
           city: v.city || null,
+          // Carry the applicant's cert declaration forward so the onboarding cert
+          // picker pre-fills (no re-asking).
+          onboardingProgress: { declaredCertTypeIds: v.certificateTypeIds },
           services: {
             // One DRAFT service per selected capability — partners are multi-service;
             // the onboarding/activation flow composes off this set.
