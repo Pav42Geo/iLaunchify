@@ -495,13 +495,12 @@ export function ApplicationWizard({
           />
         </FieldBox>
         <FieldBox label="Print methods">
-          <Chips>
-            {PRINT_METHOD_OPTS.map((o) => (
-              <Chip key={o.value} on={arr(k, 'methods').includes(o.value)} onClick={() => toggleDetail(k, 'methods', o.value)}>
-                {o.label}
-              </Chip>
-            ))}
-          </Chips>
+          <PickSelect
+            placeholder="Add a print method…"
+            options={PRINT_METHOD_OPTS}
+            selected={arr(k, 'methods')}
+            onToggle={(v) => toggleDetail(k, 'methods', v)}
+          />
         </FieldBox>
         <FieldBox label="Smallest run you'll take">
           <Input placeholder="e.g. 2,000 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
@@ -527,13 +526,12 @@ export function ApplicationWizard({
           </Chips>
         </FieldBox>
         <FieldBox label="Value-added services">
-          <Chips>
-            {VAS_OPTS.map((o) => (
-              <Chip key={o.value} on={arr(k, 'vas').includes(o.value)} onClick={() => toggleDetail(k, 'vas', o.value)}>
-                {o.label}
-              </Chip>
-            ))}
-          </Chips>
+          <PickSelect
+            placeholder="Add a value-added service…"
+            options={VAS_OPTS}
+            selected={arr(k, 'vas')}
+            onToggle={(v) => toggleDetail(k, 'vas', v)}
+          />
         </FieldBox>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FieldBox label="Rough capacity">
