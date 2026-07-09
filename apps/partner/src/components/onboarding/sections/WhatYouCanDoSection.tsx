@@ -13,7 +13,17 @@
 import { useMemo, useState, useTransition } from 'react'
 import { Input, Label } from '@ilaunchify/ui'
 import type { ServiceType } from '@ilaunchify/db'
+import { MANUFACTURING_PROCESS_OPTIONS } from '@ilaunchify/types'
 import { saveServiceCapabilities } from '../../../app/(onboarding)/onboarding/actions'
+
+// Manufacturer match key = ProductCategory (findRouting reads capabilities.categories).
+const MFG_CATEGORIES: [string, string][] = [
+  ['FOOD', 'Food'],
+  ['BEVERAGE_FUNCTIONAL', 'Beverage'],
+  ['SUPPLEMENT', 'Supplement'],
+  ['COSMETIC', 'Cosmetic'],
+  ['PET', 'Pet'],
+]
 import type {
   ManufacturingCaps,
   CopackingCaps,
@@ -133,44 +143,73 @@ function ManufacturingForm({
   value: ManufacturingCaps
   onPatch: (p: Partial<ManufacturingCaps>) => void
 }) {
-  const commit = useCommit('MANUFACTURING', () => normaliseMfg(value))
+  const [, startTransition] = useTransition()
+  function persist(next: ManufacturingCaps) {
+    startTransition(() => {
+      void saveServiceCapabilities({ type: 'MANUFACTURING', capabilities: normaliseMfg(next) })
+    })
+  }
+  function toggleArr(field: 'categories' | 'processes', val: string) {
+    const cur = value[field]
+    const nextArr = cur.includes(val) ? cur.filter((x) => x !== val) : [...cur, val]
+    onPatch({ [field]: nextArr } as Partial<ManufacturingCaps>)
+    persist({ ...value, [field]: nextArr })
+  }
   return (
     <div className="space-y-4">
       <Field
-        id="mfg-productTypes"
-        label="Product types"
-        hint="What you produce. e.g., carbonated beverage, supplement powder, hot sauce"
+        id="mfg-cats"
+        label="Product categories you make"
+        hint="Drives matching — we route you orders in the categories you pick."
       >
-        <Input
-          id="mfg-productTypes"
-          value={value.productTypes}
-          onChange={(e) => onPatch({ productTypes: e.target.value })}
-          onBlur={commit}
-        />
+        <Chips>
+          {MFG_CATEGORIES.map(([v, l]) => (
+            <Chip key={v} on={value.categories.includes(v)} onClick={() => toggleArr('categories', v)}>
+              {l}
+            </Chip>
+          ))}
+        </Chips>
       </Field>
       <Field
-        id="mfg-specs"
-        label="Production specs"
-        hint="Comma-separated. e.g., hot_fill, cold_fill, HPP, pasteurization"
+        id="mfg-proc"
+        label="Processes you run"
+        hint="How you make it — used to match products that need these processes."
       >
-        <Input
-          id="mfg-specs"
-          value={value.productionSpecs}
-          onChange={(e) => onPatch({ productionSpecs: e.target.value })}
-          onBlur={commit}
-        />
+        <Chips>
+          {MANUFACTURING_PROCESS_OPTIONS.map((o) => (
+            <Chip
+              key={o.value}
+              on={value.processes.includes(o.value)}
+              onClick={() => toggleArr('processes', o.value)}
+            >
+              {o.label}
+            </Chip>
+          ))}
+        </Chips>
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field id="mfg-moq" label="Typical MOQ (units)">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="mfg-moqmin" label="Minimum order (units)">
           <Input
-            id="mfg-moq"
+            id="mfg-moqmin"
             type="number"
             min={0}
-            value={value.moqUnitsTypical}
-            onChange={(e) => onPatch({ moqUnitsTypical: e.target.value })}
-            onBlur={commit}
+            value={value.moqMin}
+            onChange={(e) => onPatch({ moqMin: e.target.value })}
+            onBlur={() => persist(value)}
           />
         </Field>
+        <Field id="mfg-moqmax" label="Maximum order (units, optional)">
+          <Input
+            id="mfg-moqmax"
+            type="number"
+            min={0}
+            value={value.moqMax}
+            onChange={(e) => onPatch({ moqMax: e.target.value })}
+            onBlur={() => persist(value)}
+          />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field id="mfg-lt-min" label="Lead time (days, min)">
           <Input
             id="mfg-lt-min"
@@ -178,7 +217,7 @@ function ManufacturingForm({
             min={0}
             value={value.leadTimeDaysMin}
             onChange={(e) => onPatch({ leadTimeDaysMin: e.target.value })}
-            onBlur={commit}
+            onBlur={() => persist(value)}
           />
         </Field>
         <Field id="mfg-lt-max" label="Lead time (days, max)">
@@ -188,11 +227,33 @@ function ManufacturingForm({
             min={0}
             value={value.leadTimeDaysMax}
             onChange={(e) => onPatch({ leadTimeDaysMax: e.target.value })}
-            onBlur={commit}
+            onBlur={() => persist(value)}
           />
         </Field>
       </div>
     </div>
+  )
+}
+
+function Chips({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap gap-2">{children}</div>
+}
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={
+        'rounded-full border px-3 py-1.5 text-[13px] font-semibold transition-colors ' +
+        (on
+          ? 'border-pink-500 bg-pink-50 text-pink-700'
+          : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300')
+      }
+    >
+      {on ? '✓ ' : ''}
+      {children}
+    </button>
   )
 }
 
@@ -415,7 +476,7 @@ function Field({
 // -----------------------------------------------------------------------------
 
 function blankManufacturing(): ManufacturingCaps {
-  return { productTypes: '', productionSpecs: '', moqUnitsTypical: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
+  return { categories: [], processes: [], moqMin: '', moqMax: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
 }
 function blankCopacking(): CopackingCaps {
   return { packagingFormats: '', moqUnitsTypical: '', leadTimeDaysMin: '', leadTimeDaysMax: '' }
@@ -441,9 +502,10 @@ function intOrNull(v: string): number | null {
 
 function normaliseMfg(v: ManufacturingCaps) {
   return {
-    productTypes: csv(v.productTypes),
-    productionSpecs: csv(v.productionSpecs),
-    moqUnitsTypical: intOrNull(v.moqUnitsTypical),
+    categories: v.categories, // ProductCategory[] — the routing match key
+    manufacturingProcesses: v.processes,
+    moqMin: intOrNull(v.moqMin),
+    moqMax: intOrNull(v.moqMax),
     leadTimeDaysMin: intOrNull(v.leadTimeDaysMin),
     leadTimeDaysMax: intOrNull(v.leadTimeDaysMax),
   }

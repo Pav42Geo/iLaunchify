@@ -11,9 +11,10 @@ import type { ServiceType } from '@ilaunchify/db'
 // ----- Per-type capability shapes (loose; admin enforces strictness) -----
 
 export type ManufacturingCaps = {
-  productTypes: string // comma-separated for V1; ingredient picker is V1.5+
-  productionSpecs: string // 'hot_fill, HPP, pasteurization'
-  moqUnitsTypical: string // string for input; coerced to int on save
+  categories: string[] // ProductCategory[] — THE routing match key (findRouting reads capabilities.categories)
+  processes: string[] // MANUFACTURING_PROCESS_OPTIONS value slugs → capabilities.manufacturingProcesses
+  moqMin: string // → capabilities.moqMin (routing quantity gate)
+  moqMax: string // → capabilities.moqMax
   leadTimeDaysMin: string
   leadTimeDaysMax: string
 }
@@ -57,9 +58,10 @@ export function capsFromJson(services: Array<{ type: ServiceType; capabilities: 
     switch (s.type) {
       case 'MANUFACTURING':
         out.MANUFACTURING = {
-          productTypes: arrToStr(c.productTypes),
-          productionSpecs: arrToStr(c.productionSpecs),
-          moqUnitsTypical: numToStr(c.moqUnitsTypical),
+          categories: strArr(c.categories),
+          processes: strArr(c.manufacturingProcesses),
+          moqMin: numToStr(c.moqMin),
+          moqMax: numToStr(c.moqMax),
           leadTimeDaysMin: numToStr(c.leadTimeDaysMin),
           leadTimeDaysMax: numToStr(c.leadTimeDaysMax),
         }
@@ -95,6 +97,9 @@ export function capsFromJson(services: Array<{ type: ServiceType; capabilities: 
 
 function arrToStr(v: unknown): string {
   return Array.isArray(v) ? v.join(', ') : ''
+}
+function strArr(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
 }
 function numToStr(v: unknown): string {
   return typeof v === 'number' && Number.isFinite(v) ? String(v) : ''

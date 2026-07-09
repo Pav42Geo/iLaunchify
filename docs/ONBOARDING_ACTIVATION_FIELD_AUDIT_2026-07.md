@@ -86,7 +86,7 @@ The platform is **hungry** for structured capability data — the matching engin
 4. **Retire free-text** except an optional "anything else?" note.
 
 ### Build order (highest platform value first)
-1. Manufacturing **categories + processes + MOQ min/max** → unblocks the match engine (currently empty).
+1. Manufacturing **categories + processes + MOQ min/max** → unblocks the match engine (currently empty). **BUILT 2026-07-08:** onboarding "What you can do" manufacturing card rebuilt — free-text `productTypes`/`productionSpecs`/`moqUnitsTypical` replaced with **`ProductCategory` chips → `capabilities.categories[]` (THE match key findRouting reads)** + **`MANUFACTURING_PROCESS_OPTIONS` chips → `capabilities.manufacturingProcesses[]`** (marketplace facet) + `moqMin`/`moqMax` (the keys routing reads). Persists via the existing generic `saveServiceCapabilities`. `ManufacturingCaps` shape + `capsFromJson` + `normaliseMfg` + `computeCapabilitiesStatus` (array-safe) updated. Co-pack/print/FC cards still free-text — same pattern next. Facility-scoping (per-facility services) is the follow-up once the unique constraint is relaxed (P2).
 2. FC **storage classes + capacity** → unblocks the FC hard filter.
 3. Print **substrates + die-lines + food-contact** → unblocks print-leg match + preflight.
 4. Co-pack **formats + fill + supply** → unblocks packaging-leg routing.

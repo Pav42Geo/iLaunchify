@@ -332,12 +332,14 @@ function computeCapabilitiesStatus(
   // A type counts as "filled" if any of its representative fields is non-empty.
   // We don't enforce specific values here — admin verifies content.
   const filledTypes = selectedTypes.filter((t) => {
-    // Each CapsByType[t] is a different shape, but they're all string-valued
-    // records at the type-script level. Read via Record<string, string> so
-    // dynamic-key access stays type-safe.
-    const c = (caps as Record<string, Record<string, string> | undefined>)[t]
+    // Each CapsByType[t] is a different shape — some fields are strings (inputs),
+    // some are string[] (chips: categories/processes). Read via unknown so both
+    // are handled without a runtime .trim() on an array.
+    const c = (caps as Record<string, Record<string, unknown> | undefined>)[t]
     if (!c) return false
-    return Object.values(c).some((v) => v && v.trim().length > 0)
+    return Object.values(c).some((v) =>
+      Array.isArray(v) ? v.length > 0 : typeof v === 'string' && v.trim().length > 0,
+    )
   })
 
   if (filledTypes.length === selectedTypes.length) return 'COMPLETE'
