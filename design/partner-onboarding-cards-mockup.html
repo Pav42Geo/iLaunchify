@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iLaunchify · Partner Onboarding — card / survey prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Fraunces:ital,opsz,wght@1,9..144,400..600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF2E63; --pink-50:#fff0f4; --pink-200:#ffc2d3; --pink-700:#c31447;
+    --neon:#B5FF3D; --dark:#141419; --ink-900:#17171d; --ink-700:#3b3b45;
+    --ink-600:#55555f; --ink-500:#71717a; --ink-400:#9a9aa4; --ink-300:#c9c9d0;
+    --ink-200:#e6e6ea; --ink-100:#f1f1f4; --bg:#f4f4f6; --card:#ffffff; --ok:#22a06b; --radius:20px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink-900);-webkit-font-smoothing:antialiased}
+  .display{font-family:"Bricolage Grotesque",Inter,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:1.02}
+  .serif{font-family:Fraunces,serif;font-style:italic;font-weight:500}
+
+  .appbar{position:sticky;top:0;z-index:20;background:var(--dark);color:#fff;display:flex;align-items:center;gap:16px;padding:12px 22px;flex-wrap:wrap}
+  .logo{font-family:"Bricolage Grotesque";font-weight:800;font-size:16px}
+  .logo b{color:var(--neon);font-weight:800}
+  .seg{display:flex;gap:4px;background:rgba(255,255,255,.08);border-radius:999px;padding:4px}
+  .seg span{color:var(--ink-300);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600}
+  .seg span.on{background:#fff;color:var(--ink-900)}
+  .saveexit{margin-left:auto;font-size:12.5px;color:var(--ink-300);display:flex;gap:14px;align-items:center}
+  .saveexit b{color:var(--neon);font-weight:600}
+  .saveexit .x{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 13px;color:#fff;cursor:pointer}
+
+  .stage{max-width:640px;margin:0 auto;padding:34px 20px 90px}
+  .progresswrap{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .progresswrap .lbl{font-size:12.5px;color:var(--ink-500);font-weight:600}
+  .bar{height:6px;border-radius:999px;background:var(--ink-200);overflow:hidden;margin-bottom:22px}
+  .bar>div{height:100%;background:var(--pink);border-radius:999px;transition:width .35s cubic-bezier(.4,0,.2,1)}
+
+  .cardwrap{position:relative;min-height:440px}
+  .card{background:var(--card);border:1px solid var(--ink-200);border-radius:var(--radius);padding:30px 30px 26px;box-shadow:0 18px 50px -28px rgba(20,20,25,.35)}
+  .eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--pink-700)}
+  h2.q{font-size:26px;margin:8px 0 4px}
+  .sub{font-size:14px;color:var(--ink-600);line-height:1.5;margin-bottom:20px}
+  label.f{display:block;font-size:12.5px;font-weight:600;color:var(--ink-700);margin:0 0 6px}
+  input.t{width:100%;font:inherit;font-size:14px;border:1.5px solid var(--ink-200);border-radius:12px;padding:11px 13px;outline:none;background:#fff}
+  input.t:focus{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .field{margin-bottom:16px}
+  .chips{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{border:1.5px solid var(--ink-200);background:#fff;border-radius:999px;padding:9px 15px;font-size:13.5px;font-weight:600;color:var(--ink-600);cursor:pointer;transition:all .12s;user-select:none}
+  .chip:hover{border-color:var(--ink-300)}
+  .chip.on{border-color:var(--pink);background:var(--pink-50);color:var(--pink-700)}
+
+  /* doc upload cards */
+  .docs{display:flex;flex-direction:column;gap:9px}
+  .doc{display:flex;align-items:center;gap:12px;border:1.5px dashed var(--ink-300);border-radius:14px;padding:13px 14px;cursor:pointer;background:#fff}
+  .doc:hover{border-color:var(--pink-200);background:var(--pink-50)}
+  .doc.on{border-style:solid;border-color:var(--ok);background:#f0faf5}
+  .doc .ic{width:34px;height:34px;border-radius:9px;background:var(--ink-100);display:grid;place-items:center;font-size:16px;flex:none}
+  .doc.on .ic{background:var(--ok);color:#fff}
+  .doc .nm{font-size:13.5px;font-weight:700}
+  .doc .ds{font-size:12px;color:var(--ink-500)}
+  .doc .cta{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--pink-700)}
+  .doc.on .cta{color:var(--ok)}
+
+  /* cert cards */
+  .certlist{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow:auto;padding-right:4px}
+  .certcard{display:flex;align-items:center;gap:12px;border:1.5px solid var(--ink-200);border-radius:14px;padding:11px 13px;cursor:pointer;background:#fff}
+  .certcard:hover{background:var(--ink-100)}
+  .certcard.on{border-color:var(--pink);background:var(--pink-50)}
+  .badge{width:36px;height:36px;border-radius:9px;flex:none;display:grid;place-items:center;font-weight:800;color:#fff;font-size:11px}
+  .certcard .nm{font-size:13.5px;font-weight:700}.certcard .ds{font-size:12px;color:var(--ink-500)}
+  .certcard .tick{margin-left:auto;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink-300);display:grid;place-items:center;color:transparent;font-size:12px;flex:none}
+  .certcard.on .tick{background:var(--pink);border-color:var(--pink);color:#fff}
+
+  /* connect / sign buttons */
+  .bigbtn{width:100%;display:flex;align-items:center;gap:12px;border:1.5px solid var(--ink-200);border-radius:14px;padding:15px;background:#fff;cursor:pointer;font:inherit;text-align:left;margin-bottom:12px}
+  .bigbtn .ic{width:36px;height:36px;border-radius:9px;background:var(--ink-100);display:grid;place-items:center;font-size:17px;flex:none}
+  .bigbtn .nm{font-size:14px;font-weight:700}.bigbtn .ds{font-size:12.5px;color:var(--ink-500)}
+  .bigbtn .go{margin-left:auto;font-weight:700;color:var(--pink-700)}
+  .bigbtn.on{border-color:var(--ok);background:#f0faf5}.bigbtn.on .go{color:var(--ok)}
+
+  .trust{background:var(--dark);color:#fff;border-radius:14px;padding:16px;margin-top:6px}
+  .trust .fr{color:var(--neon);font-family:Fraunces;font-style:italic;font-size:16px;margin-bottom:5px}
+  .trust .tx{font-size:12.5px;color:#cfcfd8;line-height:1.5}
+
+  .actions{display:flex;align-items:center;justify-content:space-between;margin-top:24px}
+  .ghost{font:inherit;font-weight:600;font-size:14px;color:var(--ink-600);background:none;border:none;cursor:pointer;padding:10px 6px}
+  .ghost[disabled]{opacity:.35;cursor:default}
+  .pill{font:inherit;font-weight:700;font-size:14px;color:#fff;background:var(--ink-900);border:none;border-radius:999px;padding:13px 26px;cursor:pointer}
+  .pill.pink{background:var(--pink)}
+  .anim-next{animation:inNext .34s cubic-bezier(.22,.61,.36,1)}
+  .anim-back{animation:inBack .34s cubic-bezier(.22,.61,.36,1)}
+  @keyframes inNext{from{opacity:0;transform:translateX(34px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes inBack{from{opacity:0;transform:translateX(-34px) scale(.985)}to{opacity:1;transform:none}}
+  .done{text-align:center;padding:20px 6px}
+  .done .ring{width:64px;height:64px;border-radius:50%;background:var(--neon);color:var(--ink-900);display:grid;place-items:center;font-size:30px;font-weight:800;margin:6px auto 16px}
+</style>
+</head>
+<body>
+<div class="appbar">
+  <div class="logo">i<b>L</b>aunchify · <span style="color:var(--neon)">Business</span></div>
+  <div class="seg"><span>Application</span><span class="on">Onboarding</span><span>Activation Setup</span></div>
+  <div class="saveexit"><span><b>✓ Saved</b> automatically</span><span class="x">Save &amp; exit</span></div>
+</div>
+
+<div class="stage">
+  <div class="progresswrap"><span class="lbl" id="stepLbl">Step 1 of 5</span><span class="lbl" id="pctLbl">20%</span></div>
+  <div class="bar"><div id="barfill" style="width:20%"></div></div>
+  <div class="cardwrap"><div class="card" id="card"></div></div>
+</div>
+
+<script>
+const MARKETS=['United States','Canada','EU'];
+const CATS=['Food','Beverage','Supplement','Cosmetic','Pet'];
+const PROCS=['Hot-fill','Cold-fill','HPP','Pasteurization','Blending','Encapsulation','Spray-dry','Aseptic'];
+const CERTS=[
+  {n:'FDA Registered',d:'Facility registration',c:'#2563eb'},
+  {n:'cGMP',d:'Good manufacturing practices',c:'#7c3aed'},
+  {n:'SQF',d:'Safe Quality Food (GFSI)',c:'#0891b2'},
+  {n:'USDA Organic',d:'Certified organic',c:'#16a34a'},
+  {n:'Kosher',d:'Kosher certified',c:'#4f46e5'},
+];
+const state={markets:new Set(['United States']),cats:new Set(['Food']),procs:new Set(),certs:new Set(),docs:new Set(),stripe:false,signed:false,facilities:[{city:'Columbus',st:'Ohio'}]};
+let step=0,dir='next';
+const steps=[stBusiness,stCompany,stCapability,stCerts,stPayment];
+
+function chip(t,set){const on=set.has(t)?'on':'';return `<div class="chip ${on}" data-c="${t}" data-k="${setKey(set)}">${on?'✓ ':''}${t}</div>`;}
+function setKey(s){return s===state.markets?'markets':s===state.cats?'cats':'procs';}
+
+function stBusiness(){
+  const fac=state.facilities.map((f,i)=>`<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:10px">
+    <div><label class="f">${i===0?'Facility city':'City'}</label><input class="t" value="${f.city||''}" placeholder="Columbus"></div>
+    <div><label class="f">${i===0?'State / region':'State'}</label><input class="t" value="${f.st||''}" placeholder="Ohio"></div>
+    ${state.facilities.length>1?`<button class="facdel" data-fi="${i}" style="border:1.5px solid var(--ink-200);background:#fff;border-radius:12px;padding:11px 12px;cursor:pointer;color:var(--ink-500);font:inherit">✕</button>`:'<span></span>'}
+  </div>`).join('');
+  return `<div class="eyebrow">Your business</div>
+  <h2 class="q display">Where do you <span class="serif">operate?</span></h2>
+  <p class="sub">Markets set your label + compliance rules. Add every facility you run — each one's lines, capacity and certs get set up in Activation.</p>
+  <div class="field"><label class="f">Target markets</label><div class="chips">${MARKETS.map(m=>chip(m,state.markets)).join('')}</div></div>
+  <div class="field" style="margin-top:16px"><label class="f">Facilities</label>${fac}
+    <div class="addfac" style="font-size:12.5px;font-weight:700;color:var(--pink-700);cursor:pointer;margin-top:2px">＋ Add another facility</div></div>`;}
+
+function stCompany(){const doc=(id,nm,ds,ic)=>{const on=state.docs.has(id)?'on':'';return `<div class="doc ${on}" data-doc="${id}"><div class="ic">${on?'✓':ic}</div><div><div class="nm">${nm}</div><div class="ds">${ds}</div></div><div class="cta">${on?'Uploaded':'Upload'}</div></div>`;};
+  return `<div class="eyebrow">Your company</div>
+  <h2 class="q display">Verify <span class="serif">who you are.</span></h2>
+  <p class="sub">Legal entity + the documents our team checks before approval.</p>
+  <div class="row"><div class="field"><label class="f">Legal name</label><input class="t" value="Northwind Print Co. LLC"></div>
+  <div class="field"><label class="f">DBA</label><input class="t" value="Northwind Labels"></div></div>
+  <label class="f">Verification documents</label>
+  <div class="docs">${doc('inc','Certificate of incorporation','Proves the legal entity','🏛️')}${doc('lic','Business license','Local operating license','📄')}${doc('ins','General-liability insurance (COI)','Tracked with expiry reminders','🛡️')}</div>`;}
+
+function stCapability(){return `<div class="eyebrow">What you can do</div>
+  <h2 class="q display">Exactly what you <span class="serif">produce.</span></h2>
+  <p class="sub">Pick from the list — this is the data our matching engine routes on, not free text.</p>
+  <div class="field"><label class="f">Product categories</label><div class="chips">${CATS.map(c=>chip(c,state.cats)).join('')}</div></div>
+  <div class="field" style="margin-top:18px"><label class="f">Processes you run</label><div class="chips">${PROCS.map(p=>chip(p,state.procs)).join('')}</div></div>
+  <div class="row" style="margin-top:6px">
+    <div class="field"><label class="f">Minimum order (units)</label><input class="t" placeholder="500"></div>
+    <div class="field"><label class="f">Typical lead time (days)</label><input class="t" placeholder="21–35"></div>
+  </div>`;}
+
+function stCerts(){return `<div class="eyebrow">Certifications</div>
+  <h2 class="q display">Confirm your <span class="serif">certifications.</span></h2>
+  <p class="sub">Only the certs eligible for your categories are shown. Pick each, then attach the PDF + expiry.</p>
+  <div class="certlist">${CERTS.map((c,i)=>{const on=state.certs.has(i)?'on':'';return `<div class="certcard ${on}" data-cert="${i}"><div class="badge" style="background:${c.c}">${c.n.split(' ').map(w=>w[0]).join('').slice(0,2)}</div><div><div class="nm">${c.n}</div><div class="ds">${on?'📎 PDF · expires 2027-04':c.d}</div></div><div class="tick">✓</div></div>`}).join('')}</div>
+  <div style="margin-top:8px;font-size:12.5px;font-weight:700;color:var(--pink-700);cursor:pointer">＋ Don't see yours? Request a certificate</div>`;}
+
+function stPayment(){const s=state.stripe?'on':'',g=state.signed?'on':'';
+  return `<div class="eyebrow">Payment &amp; contract</div>
+  <h2 class="q display">Last step — <span class="serif">get paid.</span></h2>
+  <p class="sub">Connect payouts and sign the partner agreement. Then we review and activate.</p>
+  <button class="bigbtn ${s}" data-act="stripe"><div class="ic">${s?'✓':'💳'}</div><div><div class="nm">Connect Stripe</div><div class="ds">Secure payouts — bank details live in Stripe</div></div><div class="go">${s?'Connected':'Connect'}</div></button>
+  <button class="bigbtn ${g}" data-act="sign"><div class="ic">${g?'✓':'✍️'}</div><div><div class="nm">Sign the Partner Agreement</div><div class="ds">DocuSign-style · saved to your record</div></div><div class="go">${g?'Signed':'Review &amp; sign'}</div></button>
+  <div class="trust"><div class="fr">Approval isn't the finish line.</div><div class="tx">Once approved, <b style="color:#fff">Activation Setup</b> collects the full spec for each service — and each service goes live on its own as you finish it.</div></div>`;}
+
+function render(ns,d){dir=d||'next';step=ns;const total=steps.length;const card=document.getElementById('card');
+  if(step>=total){renderDone();return;}
+  const last=step===total-1;
+  card.innerHTML=steps[step]()+`<div class="actions"><button class="ghost" id="back" ${step===0?'disabled':''}>← Back</button><button class="pill ${last?'pink':''}" id="next">${last?'Submit for review':'Continue →'}</button></div>`;
+  card.className='card '+(dir==='next'?'anim-next':'anim-back');
+  document.getElementById('stepLbl').textContent=`Step ${step+1} of ${total}`;
+  const pct=Math.round(((step+1)/total)*100);document.getElementById('pctLbl').textContent=pct+'%';document.getElementById('barfill').style.width=pct+'%';
+  bind();}
+function renderDone(){const card=document.getElementById('card');card.className='card anim-next';
+  card.innerHTML=`<div class="done"><div class="ring">✓</div><h2 class="q display" style="font-size:25px">Submitted for <span class="serif">review.</span></h2><p class="sub" style="max-width:34ch;margin:8px auto 0">We'll verify your details and activate within 1–2 business days. You'll get an email the moment you're approved.</p><button class="pill pink" style="margin-top:18px" onclick="render(0,'back')">Restart demo</button></div>`;
+  document.getElementById('stepLbl').textContent='Done';document.getElementById('pctLbl').textContent='100%';document.getElementById('barfill').style.width='100%';}
+function bind(){
+  const nx=document.getElementById('next'),bk=document.getElementById('back');
+  if(nx)nx.onclick=()=>render(step+1,'next');
+  if(bk)bk.onclick=()=>{if(step>0)render(step-1,'back');};
+  document.querySelectorAll('.chip').forEach(el=>el.onclick=()=>{const k=el.dataset.k;const set=k==='markets'?state.markets:k==='cats'?state.cats:state.procs;const v=el.dataset.c;set.has(v)?set.delete(v):set.add(v);render(step,'next');});
+  document.querySelectorAll('.doc').forEach(el=>el.onclick=()=>{const id=el.dataset.doc;state.docs.has(id)?state.docs.delete(id):state.docs.add(id);render(step,'next');});
+  document.querySelectorAll('.certcard').forEach(el=>el.onclick=()=>{const i=+el.dataset.cert;state.certs.has(i)?state.certs.delete(i):state.certs.add(i);render(step,'next');});
+  document.querySelectorAll('.bigbtn').forEach(el=>el.onclick=()=>{const a=el.dataset.act;if(a==='stripe')state.stripe=!state.stripe;else state.signed=!state.signed;render(step,'next');});
+  const af=document.querySelector('.addfac');if(af)af.onclick=()=>{state.facilities.push({});render(step,'next');};
+  document.querySelectorAll('.facdel').forEach(el=>el.onclick=()=>{state.facilities.splice(+el.dataset.fi,1);render(step,'next');});
+}
+render(0,'next');
+</script>
+</body>
+</html>

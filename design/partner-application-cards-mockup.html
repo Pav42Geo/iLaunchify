@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iLaunchify · Partner Application — card / survey prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Fraunces:ital,opsz,wght@1,9..144,400..600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF2E63; --pink-50:#fff0f4; --pink-200:#ffc2d3; --pink-700:#c31447;
+    --neon:#B5FF3D; --dark:#141419; --ink-900:#17171d; --ink-700:#3b3b45;
+    --ink-600:#55555f; --ink-500:#71717a; --ink-400:#9a9aa4; --ink-300:#c9c9d0;
+    --ink-200:#e6e6ea; --ink-100:#f1f1f4; --bg:#f4f4f6; --card:#ffffff; --ok:#22a06b; --radius:20px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink-900);-webkit-font-smoothing:antialiased}
+  .display{font-family:"Bricolage Grotesque",Inter,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:1.02}
+  .serif{font-family:Fraunces,serif;font-style:italic;font-weight:500}
+
+  /* Dark appbar */
+  .appbar{position:sticky;top:0;z-index:20;background:var(--dark);color:#fff;display:flex;align-items:center;gap:16px;padding:12px 22px;flex-wrap:wrap}
+  .logo{font-family:"Bricolage Grotesque";font-weight:800;font-size:16px}
+  .logo b{color:var(--neon);font-weight:800}
+  .seg{display:flex;gap:4px;background:rgba(255,255,255,.08);border-radius:999px;padding:4px}
+  .seg span{color:var(--ink-300);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600}
+  .seg span.on{background:#fff;color:var(--ink-900)}
+
+  /* Stage */
+  .stage{max-width:620px;margin:0 auto;padding:34px 20px 90px}
+  .progresswrap{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .progresswrap .lbl{font-size:12.5px;color:var(--ink-500);font-weight:600}
+  .bar{height:6px;border-radius:999px;background:var(--ink-200);overflow:hidden;margin-bottom:22px}
+  .bar>div{height:100%;background:var(--pink);border-radius:999px;transition:width .35s cubic-bezier(.4,0,.2,1)}
+
+  .cardwrap{position:relative;min-height:430px}
+  .card{background:var(--card);border:1px solid var(--ink-200);border-radius:var(--radius);padding:30px 30px 26px;box-shadow:0 18px 50px -28px rgba(20,20,25,.35)}
+  .eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--pink-700)}
+  h2.q{font-size:27px;margin:8px 0 4px}
+  .sub{font-size:14px;color:var(--ink-600);line-height:1.5;margin-bottom:20px}
+
+  label.f{display:block;font-size:12.5px;font-weight:600;color:var(--ink-700);margin:0 0 6px}
+  input.t,textarea.t{width:100%;font:inherit;font-size:14px;border:1.5px solid var(--ink-200);border-radius:12px;padding:11px 13px;outline:none;background:#fff}
+  input.t:focus,textarea.t:focus{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
+  textarea.t{min-height:84px;resize:vertical}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .field{margin-bottom:16px}
+
+  /* Chips */
+  .chips{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{border:1.5px solid var(--ink-200);background:#fff;border-radius:999px;padding:9px 15px;font-size:13.5px;font-weight:600;color:var(--ink-600);cursor:pointer;transition:all .12s;user-select:none}
+  .chip:hover{border-color:var(--ink-300)}
+  .chip.on{border-color:var(--pink);background:var(--pink-50);color:var(--pink-700)}
+
+  /* Yes/No big pills */
+  .yn{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .yn button{font:inherit;font-size:14px;font-weight:700;border:1.5px solid var(--ink-200);background:#fff;border-radius:14px;padding:16px;cursor:pointer;text-align:left;color:var(--ink-700)}
+  .yn button .t2{display:block;font-size:12px;font-weight:500;color:var(--ink-500);margin-top:3px}
+  .yn button.on{border-color:var(--pink);background:var(--pink-50);color:var(--pink-700)}
+  .yn button.on .t2{color:var(--pink-700)}
+
+  /* Cert cards */
+  .certlist{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto;padding-right:4px}
+  .certcard{display:flex;align-items:center;gap:12px;border:1.5px solid var(--ink-200);border-radius:14px;padding:11px 13px;cursor:pointer;background:#fff}
+  .certcard:hover{background:var(--ink-100)}
+  .certcard.on{border-color:var(--pink);background:var(--pink-50)}
+  .badge{width:38px;height:38px;border-radius:9px;flex:none;display:grid;place-items:center;font-weight:800;color:#fff;font-size:12px}
+  .certcard .nm{font-size:13.5px;font-weight:700}
+  .certcard .ds{font-size:12px;color:var(--ink-500)}
+  .certcard .tick{margin-left:auto;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--ink-300);display:grid;place-items:center;color:transparent;font-size:12px;flex:none}
+  .certcard.on .tick{background:var(--pink);border-color:var(--pink);color:#fff}
+  .addlink{margin-top:6px;font-size:12.5px;font-weight:700;color:var(--pink-700);cursor:pointer}
+
+  /* Footer actions */
+  .actions{display:flex;align-items:center;justify-content:space-between;margin-top:24px}
+  .ghost{font:inherit;font-weight:600;font-size:14px;color:var(--ink-600);background:none;border:none;cursor:pointer;padding:10px 6px}
+  .ghost[disabled]{opacity:.35;cursor:default}
+  .pill{font:inherit;font-weight:700;font-size:14px;color:#fff;background:var(--ink-900);border:none;border-radius:999px;padding:13px 26px;cursor:pointer}
+  .pill.pink{background:var(--pink)}
+  .hint{font-size:12px;color:var(--ink-400);margin-top:14px}
+
+  /* Slide animation */
+  .anim-in-next{animation:inNext .34s cubic-bezier(.22,.61,.36,1)}
+  .anim-in-back{animation:inBack .34s cubic-bezier(.22,.61,.36,1)}
+  @keyframes inNext{from{opacity:0;transform:translateX(34px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes inBack{from{opacity:0;transform:translateX(-34px) scale(.985)}to{opacity:1;transform:none}}
+
+  .done{text-align:center;padding:20px 6px}
+  .done .ring{width:64px;height:64px;border-radius:50%;background:var(--neon);color:var(--ink-900);display:grid;place-items:center;font-size:30px;font-weight:800;margin:6px auto 16px}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div class="logo">i<b>L</b>aunchify · <span style="color:var(--neon)">Business</span></div>
+  <div class="seg">
+    <span class="on">Application</span><span>Onboarding</span><span>Activation Setup</span>
+  </div>
+  <div style="margin-left:auto;font-size:12px;color:var(--ink-300)">✦ Private beta · ~2 min</div>
+</div>
+
+<div class="stage">
+  <div class="progresswrap">
+    <span class="lbl" id="stepLbl">Step 1 of 5</span>
+    <span class="lbl" id="pctLbl">20%</span>
+  </div>
+  <div class="bar"><div id="barfill" style="width:20%"></div></div>
+
+  <div class="cardwrap"><div class="card" id="card"></div></div>
+</div>
+
+<script>
+const CATS = ['Food','Beverage','Supplement','Cosmetic','Pet'];
+const SERVICES = ['Manufacturing','Co-packing','Label printing','Fulfillment / warehouse'];
+const CERTS = [
+  {n:'FDA Registered', d:'Facility registration', c:'#2563eb'},
+  {n:'cGMP', d:'Good manufacturing practices', c:'#7c3aed'},
+  {n:'SQF', d:'Safe Quality Food (GFSI)', c:'#0891b2'},
+  {n:'HACCP', d:'Hazard analysis', c:'#ea580c'},
+  {n:'USDA Organic', d:'Certified organic', c:'#16a34a'},
+  {n:'Kosher', d:'Kosher certified', c:'#4f46e5'},
+  {n:'Halal', d:'Halal certified', c:'#059669'},
+  {n:'Allergen Control', d:'Dedicated / segregated lines', c:'#db2777'},
+];
+
+const state = { services:new Set(['Manufacturing']), cats:new Set(), certs:new Set(), models:new Set() };
+let step = 0, dir='next';
+const steps = [stepCompany, stepMake, stepFit, stepCerts, stepContact];
+
+function chip(text, set){ const on=set.has(text)?'on':''; return `<div class="chip ${on}" data-set="${text}">${on?'✓ ':''}${text}</div>`; }
+
+function stepCompany(){
+  return `<div class="eyebrow">About your company</div>
+  <h2 class="q display">Let's start with <span class="serif">the basics.</span></h2>
+  <p class="sub">Takes ~2 minutes. No account needed yet — if it's a fit we'll send a private invite to onboard.</p>
+  <div class="field"><label class="f">Company name</label><input class="t" placeholder="Northwind Print Co."></div>
+  <div class="row">
+    <div class="field"><label class="f">Legal name (if different)</label><input class="t" placeholder="Northwind Print Co. LLC"></div>
+    <div class="field"><label class="f">Country</label><input class="t" value="United States"></div>
+  </div>
+  <div class="field"><label class="f">Years in business</label><input class="t" placeholder="e.g. 8" style="max-width:160px"></div>`;
+}
+function stepMake(){
+  return `<div class="eyebrow">Capabilities</div>
+  <h2 class="q display">What can you <span class="serif">make?</span></h2>
+  <p class="sub">Pick everything that applies — you can run several. This drives what we route to you.</p>
+  <div class="field"><label class="f">Services you offer</label><div class="chips">${SERVICES.map(s=>chip(s,state.services)).join('')}</div></div>
+  <div class="field" style="margin-top:20px"><label class="f">Product categories you produce</label><div class="chips">${CATS.map(c=>chip(c,state.cats)).join('')}</div></div>`;
+}
+function stepFit(){
+  const m=(id,nm,ds)=>{const on=state.models.has(id)?'on':'';return `<button class="${on}" data-model="${id}">${on?'✓ ':''}${nm}<span class="t2">${ds}</span></button>`;};
+  return `<div class="eyebrow">How you run</div>
+  <h2 class="q display">What kind of products <span class="serif">do you offer?</span></h2>
+  <p class="sub">Pick all that apply — this tells us which creators to route to you. A small-batch white / private-label runner is our sweet spot.</p>
+  <div class="field"><div class="yn" style="grid-template-columns:1fr;gap:10px">
+    ${m('white','White label','Your existing product, their label — fastest, lowest MOQ')}
+    ${m('private','Private label','Your base formula, customized (flavor / packaging) under their brand')}
+    ${m('custom','Fully customized','Bespoke formulation built from their spec')}
+  </div></div>
+  <div class="row" style="margin-top:16px">
+    <div class="field"><label class="f">Smallest run you'll take</label><input class="t" placeholder="e.g. 500 units"></div>
+    <div class="field"><label class="f">Rough monthly capacity</label><input class="t" placeholder="e.g. 50K units"></div>
+  </div>`;
+}
+function stepCerts(){
+  return `<div class="eyebrow">Compliance</div>
+  <h2 class="q display">Which certifications <span class="serif">do you hold?</span></h2>
+  <p class="sub">Pick every one you hold — you'll upload the PDFs during onboarding. This tells us which categories you can safely serve.</p>
+  <div class="certlist">
+    ${CERTS.map((c,i)=>{const on=state.certs.has(i)?'on':''; return `<div class="certcard ${on}" data-cert="${i}">
+      <div class="badge" style="background:${c.c}">${c.n.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+      <div><div class="nm">${c.n}</div><div class="ds">${c.d}</div></div>
+      <div class="tick">✓</div></div>`}).join('')}
+  </div>
+  <div class="addlink">＋ Don't see yours? Add a certificate</div>`;
+}
+function stepContact(){
+  return `<div class="eyebrow">Almost there</div>
+  <h2 class="q display">Who should we <span class="serif">reach out to?</span></h2>
+  <p class="sub">And a couple lines of context so we can judge fit.</p>
+  <div class="row">
+    <div class="field"><label class="f">Your name</label><input class="t" placeholder="Jane Doe"></div>
+    <div class="field"><label class="f">Work email</label><input class="t" placeholder="you@company.com"></div>
+  </div>
+  <div class="row">
+    <div class="field"><label class="f">Phone (optional)</label><input class="t"></div>
+    <div class="field"><label class="f">Website</label><input class="t" placeholder="https://"></div>
+  </div>
+  <div class="field"><label class="f">Who have you produced for? (brands / categories)</label><textarea class="t" placeholder="A few brands or product types you've made — proof you've shipped."></textarea></div>`;
+}
+
+function render(newStep, d){
+  dir=d||'next'; step=newStep;
+  const total=steps.length;
+  const card=document.getElementById('card');
+  if(step>=total){ renderDone(); return; }
+  card.innerHTML = steps[step]() + actionsHtml(total);
+  card.className='card '+(dir==='next'?'anim-in-next':'anim-in-back');
+  document.getElementById('stepLbl').textContent=`Step ${step+1} of ${total}`;
+  const pct=Math.round(((step+1)/total)*100);
+  document.getElementById('pctLbl').textContent=pct+'%';
+  document.getElementById('barfill').style.width=pct+'%';
+  bind();
+}
+function actionsHtml(total){
+  const last = step===total-1;
+  return `<div class="actions">
+    <button class="ghost" id="back" ${step===0?'disabled':''}>← Back</button>
+    <button class="pill ${last?'pink':''}" id="next">${last?'Submit application':'Continue →'}</button>
+  </div>${step===2?'<p class="hint">Tip: a 500-unit white-label runner is worth more to us than a 50K-minimum own-brand line.</p>':''}`;
+}
+function renderDone(){
+  const card=document.getElementById('card');
+  card.className='card anim-in-next';
+  card.innerHTML=`<div class="done"><div class="ring">✓</div>
+    <h2 class="q display" style="font-size:26px">Application <span class="serif">received.</span></h2>
+    <p class="sub" style="max-width:34ch;margin:8px auto 0">We review every partner by hand. If it's a fit, you'll get a private invite to onboard — usually within a few business days.</p>
+    <button class="pill pink" style="margin-top:18px" onclick="render(0,'back')">Restart demo</button></div>`;
+  document.getElementById('stepLbl').textContent='Done';
+  document.getElementById('pctLbl').textContent='100%';
+  document.getElementById('barfill').style.width='100%';
+}
+function bind(){
+  const nx=document.getElementById('next'), bk=document.getElementById('back');
+  if(nx) nx.onclick=()=>render(step+1,'next');
+  if(bk) bk.onclick=()=>{ if(step>0) render(step-1,'back'); };
+  document.querySelectorAll('.chip').forEach(el=>el.onclick=()=>{
+    const v=el.dataset.set; const set = state.services.size!==undefined && SERVICES.includes(v) ? state.services : state.cats;
+    set.has(v)?set.delete(v):set.add(v); render(step,'next');
+  });
+  document.querySelectorAll('.yn button').forEach(el=>el.onclick=()=>{ const id=el.dataset.model; state.models.has(id)?state.models.delete(id):state.models.add(id); render(step,'next'); });
+  document.querySelectorAll('.certcard').forEach(el=>el.onclick=()=>{ const i=+el.dataset.cert; state.certs.has(i)?state.certs.delete(i):state.certs.add(i); render(step,'next'); });
+}
+render(0,'next');
+</script>
+</body>
+</html>
