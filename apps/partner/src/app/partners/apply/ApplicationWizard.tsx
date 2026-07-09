@@ -55,7 +55,23 @@ const MODELS: [string, string, string][] = [
   ['custom', 'Fully custom products', 'Bespoke formulation built from their spec'],
 ]
 const COPACK_FORMATS = ['Bottles', 'Jars', 'Pouches', 'Sachets', 'Cartons', 'Cans', 'Shrink sleeves', 'Blister']
-const FILL_TYPES = ['Powder', 'Liquid', 'Capsule / tablet', 'Cream / gel', 'Aerosol']
+// Fill / process types — the #1 co-packer capability signal (each maps to a
+// specific, expensive line). Research: madebygenie / youbars co-packer vetting.
+const COPACK_PROCESSES = [
+  'Hot-fill', 'Cold-fill', 'Aseptic', 'HPP', 'Retort', 'Carbonation', 'Nitrogen flush',
+  'Powder fill', 'Liquid fill', 'Viscous / paste fill', 'Encapsulation', 'Tablet / capsule',
+  'Gummy depositing', 'Cream / gel fill', 'Aerosol',
+]
+const ALLERGEN_OPTIONS = [
+  'Dedicated allergen-free facility',
+  'Shared lines + allergen control plan',
+  'No allergen program',
+]
+const RD_OPTIONS = [
+  'In-house R&D / formulation',
+  'We tweak an existing base',
+  'Bring a finished, tested recipe',
+]
 const PRINT_WHAT = ['Labels', 'Shrink sleeves', 'Folding cartons', 'Flexible packaging']
 const PRINT_METHODS = ['Digital', 'Flexo', 'Offset', 'Gravure', 'Screen']
 const STORAGE_CLASSES = ['Ambient', 'Refrigerated', 'Frozen', 'Hazmat']
@@ -333,9 +349,23 @@ export function ApplicationWizard({
             ))}
           </Chips>
         </FieldBox>
-        <FieldBox label="Smallest run you'll take">
-          <Input placeholder="e.g. 500 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
+        <FieldBox label="Do you develop recipes, or fill finished ones?">
+          <Chips>
+            {RD_OPTIONS.map((o) => (
+              <Chip key={o} on={str(k, 'rd') === o} onClick={() => setDetail(k, 'rd', o)}>
+                {o}
+              </Chip>
+            ))}
+          </Chips>
         </FieldBox>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FieldBox label="Smallest batch you'll run">
+            <Input placeholder="e.g. 500 units" value={str(k, 'batchMin')} onChange={(e) => setDetail(k, 'batchMin', e.target.value)} />
+          </FieldBox>
+          <FieldBox label="Largest batch (ceiling)">
+            <Input placeholder="e.g. 250,000 units" value={str(k, 'batchMax')} onChange={(e) => setDetail(k, 'batchMax', e.target.value)} />
+          </FieldBox>
+        </div>
       </>
     )
   }
@@ -346,7 +376,16 @@ export function ApplicationWizard({
         <H>
           How do you <Em>pack?</Em>
         </H>
-        <Sub>You fill and package goods — tell us the formats and fills you run.</Sub>
+        <Sub>The processes you run tell us what you can actually make — that&apos;s what matters most.</Sub>
+        <FieldBox label="Fill & process types you run">
+          <Chips>
+            {COPACK_PROCESSES.map((f) => (
+              <Chip key={f} on={arr(k, 'processes').includes(f)} onClick={() => toggleDetail(k, 'processes', f)}>
+                {f}
+              </Chip>
+            ))}
+          </Chips>
+        </FieldBox>
         <FieldBox label="Packaging formats you handle">
           <Chips>
             {COPACK_FORMATS.map((f) => (
@@ -356,11 +395,11 @@ export function ApplicationWizard({
             ))}
           </Chips>
         </FieldBox>
-        <FieldBox label="Fill types">
+        <FieldBox label="Allergen handling">
           <Chips>
-            {FILL_TYPES.map((f) => (
-              <Chip key={f} on={arr(k, 'fills').includes(f)} onClick={() => toggleDetail(k, 'fills', f)}>
-                {f}
+            {ALLERGEN_OPTIONS.map((o) => (
+              <Chip key={o} on={str(k, 'allergen') === o} onClick={() => setDetail(k, 'allergen', o)}>
+                {o}
               </Chip>
             ))}
           </Chips>
@@ -374,8 +413,16 @@ export function ApplicationWizard({
             ))}
           </Chips>
         </FieldBox>
-        <FieldBox label="Smallest run you'll take">
-          <Input placeholder="e.g. 1,000 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FieldBox label="Smallest run you'll take">
+            <Input placeholder="e.g. 1,000 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
+          </FieldBox>
+          <FieldBox label="Largest run (ceiling)">
+            <Input placeholder="e.g. 500,000 units" value={str(k, 'maxRun')} onChange={(e) => setDetail(k, 'maxRun', e.target.value)} />
+          </FieldBox>
+        </div>
+        <FieldBox label="Current capacity utilization (%)">
+          <Input placeholder="e.g. 70" value={str(k, 'utilization')} onChange={(e) => setDetail(k, 'utilization', e.target.value)} />
         </FieldBox>
       </>
     )
