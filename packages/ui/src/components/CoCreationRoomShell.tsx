@@ -19,7 +19,12 @@ import { Input } from '../primitives/input'
 import { Textarea } from '../primitives/textarea'
 import { cn } from '../lib/utils'
 import { productGradient, type ProductGradient } from '../tokens/colors'
-import { NutritionFactsRenderer } from '../nutrition/NutritionFactsRenderer'
+// Print-grade, CSS-immune label artifacts — the platform's single source of
+// truth for how regulated labels LOOK (21 CFR 101.9(d) / INCI / AAFCO). The
+// room previews the same artifacts the product builder and label download use.
+import { NutritionFactsSvg } from '../nutrition/NutritionFactsSvg'
+import { InciDeclarationSvg } from '../nutrition/InciDeclarationSvg'
+import { GuaranteedAnalysisSvg } from '../nutrition/GuaranteedAnalysisSvg'
 import { formatNetQuantity } from '../canvas/netQuantity'
 
 // ---------------------------------------------------------------------------
@@ -1429,69 +1434,77 @@ function RecipeFactsSidebar({
         </div>
       ) : null}
 
+      {/* FALCPA safety gate — UI status, never printed on the artifact */}
+      {label.containsIncomplete ? (
+        <div className="mb-s-2 rounded-lg bg-warning-50 px-s-3 py-s-2 text-ui-label normal-case tracking-normal text-warning-700">
+          ⚠ Allergen statement pending — {label.coverage.unresolvedNames.length} ingredient
+          {label.coverage.unresolvedNames.length === 1 ? '' : 's'} unresolved.
+        </div>
+      ) : null}
+
+      {/* The regulated artifact itself — same SVG renderers as the product
+          builder + label download (statements print INSIDE the artifact). */}
       {isFoodish ? (
         label.panel ? (
-          <NutritionFactsRenderer data={label.panel} />
+          <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+            <NutritionFactsSvg
+              data={label.panel}
+              ingredientStatement={label.statement ?? undefined}
+              contains={label.containsLine ?? undefined}
+              widthPx={null}
+            />
+          </div>
         ) : (
           <p className="rounded-lg bg-white px-s-3 py-s-3 text-ui-label normal-case tracking-normal text-ink-500">
             Add serving size &amp; servings per container in the next version to compute the
             Nutrition Facts panel.
           </p>
         )
-      ) : null}
-
-      {/* Mandatory statements block */}
-      <div className="mt-s-2 rounded-lg border border-ink-200 bg-white p-s-3">
-        {label.domain === 'COSMETIC' && label.inciText ? (
-          <>
-            <div className="text-ui-label uppercase text-ink-900">Ingredients (INCI)</div>
-            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-700">{label.inciText}</p>
-          </>
-        ) : label.domain === 'PET' && label.petOrder ? (
-          <>
-            <div className="text-ui-label uppercase text-ink-900">Ingredients</div>
-            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-700">
-              {label.petOrder.join(', ')}
-            </p>
-            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
-              Guaranteed analysis values come from the maker's lab results.
-            </p>
-          </>
-        ) : label.statement ? (
-          <>
-            <div className="text-ui-label uppercase text-ink-900">Ingredients</div>
-            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-700">{label.statement}</p>
-          </>
-        ) : (
-          <p className="text-ui-label normal-case tracking-normal text-ink-500">
-            Ingredient statement needs gram amounts on matched rows.
-          </p>
-        )}
-
-        {/* FALCPA Contains — safety-gated on full resolution */}
-        <div className="mt-s-2 border-t border-ink-100 pt-s-2">
-          {label.containsIncomplete ? (
-            <p className="text-ui-label normal-case tracking-normal text-warning-700">
-              ⚠ Allergen statement pending — {label.coverage.unresolvedNames.length} ingredient
-              {label.coverage.unresolvedNames.length === 1 ? '' : 's'} unresolved.
-            </p>
-          ) : label.containsLine ? (
-            <p className="text-ui-label normal-case tracking-normal text-ink-900">
-              <b>Contains:</b> {label.containsLine}
-            </p>
-          ) : (
-            <p className="text-ui-label normal-case tracking-normal text-ink-500">
-              No Big-9 allergens declared by the matched ingredients.
-            </p>
-          )}
+      ) : label.domain === 'COSMETIC' && label.inciText ? (
+        <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+          <InciDeclarationSvg
+            ingredients={label.inciText}
+            netContents={netLine ?? undefined}
+            widthPx={null}
+          />
         </div>
-
-        {netLine ? (
-          <div className="mt-s-2 border-t border-ink-100 pt-s-2">
-            <p className="text-ui-label uppercase tracking-normal text-ink-900">{netLine}</p>
+      ) : label.domain === 'PET' && label.petOrder ? (
+        <>
+          <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+            <GuaranteedAnalysisSvg
+              gaRows={[]}
+              ingredients={label.petOrder.join(', ')}
+              netContents={netLine ?? undefined}
+              widthPx={null}
+            />
           </div>
-        ) : null}
-      </div>
+          <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+            Guaranteed analysis values come from the maker's lab results.
+          </p>
+        </>
+      ) : label.statement ? (
+        // No printable artifact yet (e.g. SUPPLEMENT panel pending) — show the
+        // computed 101.4 statement as text until the artifact can render.
+        <div className="rounded-lg border border-ink-200 bg-white p-s-3">
+          <div className="text-ui-label uppercase text-ink-900">Ingredients</div>
+          <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-700">{label.statement}</p>
+        </div>
+      ) : (
+        <p className="rounded-lg bg-white px-s-3 py-s-3 text-ui-label normal-case tracking-normal text-ink-500">
+          Ingredient statement needs gram amounts on matched rows.
+        </p>
+      )}
+
+      {/* Net quantity is a principal-display-panel element (101.105) — shown
+          as a caption where the artifact doesn't carry it. */}
+      {isFoodish && netLine ? (
+        <p className="mt-s-1 text-ui-label uppercase tracking-normal text-ink-900">{netLine}</p>
+      ) : null}
+      {!label.containsIncomplete && !label.containsLine ? (
+        <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+          No Big-9 allergens declared by the matched ingredients.
+        </p>
+      ) : null}
       {versionNote ? (
         <p className="mt-s-1 text-ui-label normal-case tracking-normal text-warning-700">
           ⚠ {versionNote}
@@ -1621,9 +1634,16 @@ function RecipeFactsCompare({
         )}
       </div>
 
-      {/* Latest label for context under the diff */}
+      {/* Latest label for context under the diff — same print-grade artifact */}
       {(latest.domain === 'FOOD' || latest.domain === 'BEVERAGE_FUNCTIONAL') && latest.panel ? (
-        <NutritionFactsRenderer data={latest.panel} />
+        <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+          <NutritionFactsSvg
+            data={latest.panel}
+            ingredientStatement={latest.statement ?? undefined}
+            contains={latest.containsLine ?? undefined}
+            widthPx={null}
+          />
+        </div>
       ) : null}
       <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-400">
         Both labels computed from catalog data for their own formula version.
