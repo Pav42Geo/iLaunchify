@@ -96,6 +96,13 @@ export async function computeTemplatePrintCoverage(
     ]
 
     const now = new Date()
+    // COVERAGE DETECTION — intentionally NOT gated by the pure-printer main-role
+    // rule (LOCKED 2026-07-09, Pavel). This asks "does ANY printer cover this
+    // spec", and a manufacturer/co-packer self-labeling its OWN products IS
+    // legitimate coverage — excluding producers here would report false gaps and
+    // fire needless RFQs. The main-role gate applies only to PUBLIC print work
+    // (rotation pool + RFQ broadcast in loadCapabilityShortlist below), not to
+    // whether coverage exists. Do not "fix" this to match the broadcast filter.
     const services = await prisma.partnerService.findMany({
       where: {
         type: 'LABEL_PRINTING',
