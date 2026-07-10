@@ -1,6 +1,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import { notFound, redirect } from 'next/navigation'
+import { CoCreationStepper } from '@ilaunchify/ui'
 import { RoomClient } from './RoomClient'
 
 export const dynamic = 'force-dynamic'
@@ -43,7 +44,16 @@ export default async function PartnerRoomPage({
   if (!room) notFound()
 
   return (
-    <RoomClient
+    <>
+      {/* Maker journey stepper — full-bleed direct child of the layout grid. */}
+      <CoCreationStepper
+        className="col-span-full -mt-6 mb-s-5"
+        steps={[
+          { key: 'pool', label: 'Opportunity pool', state: 'done', href: '/opportunities' },
+          { key: 'room', label: 'Collaboration room', state: 'current' },
+        ]}
+      />
+      <RoomClient
       roomId={room.id}
       briefTitle={room.brief.title}
       briefNicheSlug={room.brief.nicheSlug}
@@ -82,6 +92,7 @@ export default async function PartnerRoomPage({
         body: m.body,
         createdAt: m.createdAt.toISOString(),
       }))}
-    />
+      />
+    </>
   )
 }

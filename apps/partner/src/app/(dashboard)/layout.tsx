@@ -138,8 +138,21 @@ export default async function PartnerDashboardLayout({ children }: { children: R
           isOrgAdmin={access.isAdmin}
           activationLimited={activationLimited}
         />
-        <main data-partner-shell-main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50 p-6">
-          <div data-partner-shell-content className="mx-auto max-w-6xl">{children}</div>
+        {/* FULL-BLEED GRID (2026-07-10, mirrors the creator layout): main is a
+            plain scroll block; the inner grid replaces p-6 + max-w-6xl —
+            visually identical (center col = min(72rem, 100% − 3rem), py-6).
+            A child marked data-full-bleed spans all columns (co-creation
+            stepper). GuidedBuilder compat: its gb-active CSS zeroes the old
+            padding/max-width via the data attributes (kept, now no-ops); the
+            [body.gb-active_&] variants below reproduce its full-width
+            takeover for the grid without touching GuidedBuilder (hot zone). */}
+        <main data-partner-shell-main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50">
+          <div
+            data-partner-shell-content
+            className="grid content-start grid-cols-[minmax(1.5rem,1fr)_minmax(0,72rem)_minmax(1.5rem,1fr)] py-6 [&>*:not([data-full-bleed])]:col-start-2 [body.gb-active_&]:grid-cols-[0_minmax(0,1fr)_0] [body.gb-active_&]:py-0"
+          >
+            {children}
+          </div>
         </main>
       </div>
     </div>

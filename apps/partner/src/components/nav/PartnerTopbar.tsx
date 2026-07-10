@@ -9,6 +9,7 @@ import type { User } from '@ilaunchify/auth'
 import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
 import { getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { PartnerTopbarRight } from './PartnerTopbarRight'
+import { CoCreationSublabel } from './CoCreationTopbarSlots'
 
 export async function PartnerTopbar({
   user,
@@ -34,7 +35,14 @@ export async function PartnerTopbar({
     <AppHeader
       brandHref="/dashboard"
       flushLeft
-      brand={brand}
+      // Co-creation routes append the demo's "| Co-Creation Studio" sublabel
+      // (route-aware client slot; no-op elsewhere).
+      brand={
+        <>
+          {brand}
+          <CoCreationSublabel />
+        </>
+      }
       // Empty portal targets the product builder injects its Saved chip + Save
       // Draft (center, next to the logo) and Next button (right, next to the
       // bell) into. Harmless on every other page.

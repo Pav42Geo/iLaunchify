@@ -2,6 +2,8 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { CoCreationStepper, nicheGradientKey } from '@ilaunchify/ui'
+import { productGradient } from '@ilaunchify/ui/tokens'
 import { getActingPartner } from '@/lib/partner-context'
 import { loadOpportunityPool, type PoolEntry } from './loader'
 import { ExpressInterestDialog } from './ExpressInterestDialog'
@@ -84,36 +86,68 @@ export default async function OpportunitiesPage({
 
   const matchedCount = entries.filter((e) => e.fitScore >= MATCHED_FIT_THRESHOLD).length
 
+  const capabilityNames = facts.nicheSlugs
+    .map((s) => nicheBySlug.get(s)?.name)
+    .filter(Boolean)
+    .slice(0, 4)
+    .join(' · ')
+
   return (
-    <div className="space-y-6">
-      {/* Hero band */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] p-6">
-        <h1 className="font-display text-ui-title">Opportunities</h1>
-        <p className="mt-1 text-ui-body text-ink-500">
-          Creator briefs matched to your capabilities. Express interest with your fit &amp; terms —
-          never a formula. Formulation is a paid, NDA-protected milestone after selection.
-        </p>
+    <>
+      {/* Maker journey stepper — full-bleed direct child of the layout grid. */}
+      <CoCreationStepper
+        className="col-span-full -mt-6 mb-s-5"
+        steps={[
+          { key: 'pool', label: 'Opportunity pool', state: 'current' },
+          { key: 'room', label: 'Collaboration room', state: 'upcoming' },
+        ]}
+      />
+      <div className="space-y-6">
+      {/* Pool header (demo .briefhdr — maker identity + capability line) */}
+      <div className="flex items-center gap-s-3 rounded-xl border border-ink-200 bg-ink-50 px-s-4 py-s-4">
+        <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-ink-900 text-ui-section text-white">
+          🏭
+        </span>
+        <div>
+          <h1 className="flex items-center gap-s-2 font-display text-ui-section">
+            {partner.companyName}
+            <span className="rounded-pill bg-success-50 px-s-2 py-0.5 text-ui-label tracking-normal text-success-700">
+              ✓ Verified
+            </span>
+          </h1>
+          <p className="text-ui-caption text-ink-500">
+            {capabilityNames
+              ? `Your capabilities: ${capabilityNames} — briefs are matched to your published products.`
+              : 'Matching works off your published products.'}{' '}
+            Express interest with fit &amp; terms — never a formula.
+          </p>
+        </div>
       </div>
 
-      {/* Tabs + sort */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Tabs + sort (demo .tabs underline style with count badges) */}
+      <div className="flex flex-wrap items-center gap-s-2 border-b border-ink-100">
         {(
           [
-            ['matched', `Matched to you (${matchedCount})`],
-            ['all', `All open (${entries.length})`],
-            ['mine', `My interests (${myInterests.length})`],
+            ['matched', 'Matched to you', matchedCount],
+            ['all', 'All open', entries.length],
+            ['mine', 'My interests', myInterests.length],
           ] as const
-        ).map(([t, label]) => (
+        ).map(([t, label, count]) => (
           <Link
             key={t}
             href={buildHref({ tab: t, sort })}
-            className={`rounded-full border px-4 py-1.5 text-ui-caption font-medium transition ${
-              tab === t
-                ? 'border-ink-900 bg-ink-900 text-white'
-                : 'border-ink-200 bg-white text-ink-500 hover:text-ink-900'
+            className={`mr-s-4 border-b-2 px-s-1 py-s-2 text-ui-caption font-bold transition ${
+              tab === t ? 'border-pink-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'
             }`}
           >
             {label}
+            <span
+              className={`ml-s-1 rounded-pill px-s-2 py-0.5 text-ui-label tracking-normal ${
+                tab === t ? 'bg-pink-50 text-pink-700' : 'bg-ink-100 text-ink-600'
+              }`}
+            >
+              {count}
+            </span>
           </Link>
         ))}
         <span className="flex-1" />
@@ -220,21 +254,39 @@ export default async function OpportunitiesPage({
         <div className="space-y-4">
           {list.map((e) => {
             const n = nicheBySlug.get(e.brief.nicheSlug)
+            const highFit = e.fitScore >= 80
             return (
-              <div key={e.brief.id} className="rounded-3xl border border-ink-200 bg-white p-5">
-                <div className="flex items-start gap-3">
-                  <div>
-                    <h3 className="font-display text-ui-subhead">{e.brief.title}</h3>
-                    <p className="mt-0.5 text-ui-caption text-ink-500">
+              <div key={e.brief.id} className="rounded-xl border border-ink-200 bg-white p-s-4 shadow-sm">
+                <div className="flex items-start gap-s-3">
+                  {/* Demo .lg2 — niche-gradient product tile */}
+                  <span
+                    aria-hidden
+                    className="flex h-11 w-11 flex-none items-center justify-center rounded-lg text-ui-section"
+                    style={{ background: productGradient[nicheGradientKey(e.brief.nicheSlug)] }}
+                  >
+                    {n?.iconEmoji ?? '🧪'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-display text-ui-section">{e.brief.title}</h3>
+                    <p className="mt-s-1 text-ui-caption text-ink-500">
                       {e.brief.creator?.displayName ?? 'Creator'}
                       {e.brief.creator?.handle ? ` · ${e.brief.creator.handle}` : ''} ·{' '}
                       {n ? `${n.iconEmoji ?? ''} ${n.name}` : e.brief.nicheSlug} · posted{' '}
                       {postedAgo(e.brief.createdAt)}
                     </p>
                   </div>
-                  <div className="ml-auto text-right">
-                    <div className="font-display text-ui-value">{e.fitScore}%</div>
-                    <div className="text-ui-caption text-ink-500">fit</div>
+                  {/* Demo .fit — meter with bar (success ≥80, warning below) */}
+                  <div className="flex flex-none flex-col items-center">
+                    <div className={`font-display text-ui-section ${highFit ? 'text-success-700' : 'text-warning-500'}`}>
+                      {e.fitScore}%
+                    </div>
+                    <div className="text-ui-label uppercase text-ink-400">fit</div>
+                    <div className="mt-s-1 h-1 w-12 overflow-hidden rounded-pill bg-ink-100">
+                      <div
+                        className={`h-full ${highFit ? 'bg-success-500' : 'bg-warning-500'}`}
+                        style={{ width: `${e.fitScore}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
                 <dl className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
@@ -263,11 +315,26 @@ export default async function OpportunitiesPage({
                   </div>
                 ) : null}
                 <div className="mt-4 flex items-center gap-3">
-                  <span className="text-ui-caption text-ink-500">
-                    {e.interestedCount > 0
-                      ? `${e.interestedCount} interested`
-                      : 'Be first to raise your hand'}
-                  </span>
+                  {/* Demo .stack — anonymous interest avatars (identities stay private) */}
+                  {e.interestedCount > 0 ? (
+                    <span className="flex items-center gap-s-2 text-ui-caption text-ink-500">
+                      <span className="flex">
+                        {(['purple', 'pink', 'lime', 'sky'] as const)
+                          .slice(0, Math.min(e.interestedCount, 4))
+                          .map((g, i) => (
+                            <span
+                              key={g}
+                              aria-hidden
+                              className={`h-5 w-5 rounded-pill border-2 border-white ${i > 0 ? '-ml-1.5' : ''}`}
+                              style={{ background: productGradient[g] }}
+                            />
+                          ))}
+                      </span>
+                      {e.interestedCount} interested
+                    </span>
+                  ) : (
+                    <span className="text-ui-caption text-ink-500">Be first to raise your hand</span>
+                  )}
                   <span className="flex-1" />
                   {e.mine && e.mine.status !== 'WITHDRAWN' ? (
                     <span
@@ -289,15 +356,16 @@ export default async function OpportunitiesPage({
           })}
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 
 function Term({ label, value, small }: { label: string; value: string; small?: boolean }) {
   return (
-    <div className="rounded-xl bg-ink-50 px-2 py-2">
-      <dt className="text-[11px] uppercase tracking-wide text-ink-500">{label}</dt>
-      <dd className={`font-semibold ${small ? 'text-[11.5px]' : 'text-ui-caption'}`}>{value}</dd>
+    <div className="rounded-lg border border-ink-100 bg-ink-50 px-s-3 py-s-1">
+      <dt className="text-ui-label uppercase text-ink-500">{label}</dt>
+      <dd className={`text-ui-value ${small ? 'text-ui-caption' : ''}`}>{value}</dd>
     </div>
   )
 }
