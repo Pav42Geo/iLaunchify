@@ -2,6 +2,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, hasTier } from '@ilaunchify/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { CoCreationStepper } from '@ilaunchify/ui'
 import { marketingUrl } from '@/lib/marketing-url'
 import { BriefBuilderClient } from './BriefBuilderClient'
 
@@ -65,6 +66,15 @@ export default async function BriefBuilderPage() {
 
   return (
     <div className="space-y-6">
+      {/* Creator journey stepper (demo .stagebar): later stages unlock once a
+          brief exists — no dead links. */}
+      <CoCreationStepper
+        steps={[
+          { key: 'brief', label: 'Post a brief', state: 'current' },
+          { key: 'shortlist', label: 'Choose a maker', state: 'upcoming' },
+          { key: 'room', label: 'Collaboration room', state: 'upcoming' },
+        ]}
+      />
       <BriefBuilderClient
         niches={niches.map((n) => ({ slug: n.slug, name: n.name, icon: n.iconEmoji ?? '✦' }))}
         categories={categories}

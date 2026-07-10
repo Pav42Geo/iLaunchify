@@ -2,9 +2,10 @@
 
 // Co-creation Collaboration Room shell — PRESENTATIONAL-ONLY, shared by the
 // creator and partner apps via a `mode` prop (same pattern as
-// PackagingStudioShell). UX contract: iLaunchify-cocreation-demo.html screens
-// ④/⑤/⑥ — object rail + versioned detail + per-line comments + label pins +
-// activity/decision log + messages.
+// PackagingStudioShell). UX contract: design/co-creation-demo.html screens
+// ④/⑤/⑥ matched 1:1 with the token system (Pavel 2026-07-10) — dark room top
+// bar, object rail + milestone strip, versioned detail with per-line threads,
+// LABEL pin-proofing board, decision-log rail, messages.
 //
 // All mutations arrive as async callbacks (server-action wrappers owned by
 // the rendering app, which also owns membership guards + revalidation). Copy
@@ -14,6 +15,8 @@ import * as React from 'react'
 import { Button } from '../primitives/button'
 import { Input } from '../primitives/input'
 import { Textarea } from '../primitives/textarea'
+import { cn } from '../lib/utils'
+import { productGradient, type ProductGradient } from '../tokens/colors'
 
 // ---------------------------------------------------------------------------
 // Data shapes (serialized by the server page — no Prisma types cross here)
@@ -72,6 +75,8 @@ export interface CoCreationRoomShellProps {
   creatorName: string
   partnerName: string
   ndaSigned: boolean
+  /** Niche gradient key for artwork surfaces (label proof, header avatar). */
+  accentGradient?: ProductGradient
   objects: RoomShellObject[]
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
@@ -96,13 +101,14 @@ const OBJECT_META: Record<string, { icon: string; name: string }> = {
   SPEC_SHEET: { icon: '📄', name: 'Spec sheet' },
 }
 
+/** Demo status pills (.p-*) on token ramps. */
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  DRAFT: { label: 'Draft', cls: 'bg-ink-100 text-ink-700' },
-  SUBMITTED: { label: 'Submitted', cls: 'bg-info-50 text-info-800' },
-  IN_REVIEW: { label: 'Needs review', cls: 'bg-info-50 text-info-800' },
-  CHANGES_REQUESTED: { label: 'Changes requested', cls: 'bg-warning-50 text-warning-800' },
-  APPROVED: { label: 'Approved', cls: 'bg-success-50 text-success-800' },
-  LOCKED: { label: 'Locked', cls: 'bg-success-50 text-success-800' },
+  DRAFT: { label: 'Draft', cls: 'bg-ink-100 text-ink-600' },
+  SUBMITTED: { label: 'Submitted', cls: 'bg-info-50 text-info-700' },
+  IN_REVIEW: { label: 'Needs review', cls: 'bg-warning-50 text-warning-700' },
+  CHANGES_REQUESTED: { label: 'Changes requested', cls: 'bg-danger-50 text-danger-700' },
+  APPROVED: { label: 'Approved', cls: 'bg-success-50 text-success-700' },
+  LOCKED: { label: 'Locked', cls: 'bg-success-50 text-success-700' },
 }
 
 const MILESTONE_LABEL: Record<string, string> = {
@@ -110,6 +116,24 @@ const MILESTONE_LABEL: Record<string, string> = {
   SAMPLE: 'Sample',
   TOOLING: 'Tooling',
   PRODUCTION: 'Production',
+}
+
+/** Activity dot color per event kind (demo .act .d variants). */
+function eventDotCls(kind: string): string {
+  switch (kind) {
+    case 'OBJECT_APPROVED':
+    case 'ROOM_CLOSED_WON':
+      return 'bg-success-500'
+    case 'OBJECT_SUBMITTED':
+      return 'bg-ink-900'
+    case 'OBJECT_CHANGES_REQUESTED':
+    case 'OBJECT_REOPENED':
+      return 'bg-warning-500'
+    case 'COMMENT_ADDED':
+      return 'bg-pink-500'
+    default:
+      return 'bg-ink-400'
+  }
 }
 
 interface RecipeRow {
@@ -144,6 +168,9 @@ function fieldRows(payload: unknown): FieldRow[] {
   return []
 }
 
+/** Label pin anchors are "x,y" viewport percentages. */
+const PIN_ANCHOR = /^(\d{1,3}),(\d{1,3})$/
+
 function timeAgo(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000))
   if (mins < 1) return 'just now'
@@ -154,11 +181,14 @@ function timeAgo(iso: string): string {
 
 function eventText(e: RoomShellEvent): string {
   const by = typeof e.data.by === 'string' ? e.data.by : 'Someone'
-  const kind = typeof e.data.objectKind === 'string' ? (OBJECT_META[e.data.objectKind]?.name ?? e.data.objectKind) : ''
+  const kind =
+    typeof e.data.objectKind === 'string' ? (OBJECT_META[e.data.objectKind]?.name ?? e.data.objectKind) : ''
   const v = typeof e.data.version === 'number' ? ` v${e.data.version}` : ''
   switch (e.kind) {
     case 'ROOM_CREATED':
-      return 'Room created — NDA + private workspace initialized.'
+      return 'Room created — private workspace initialized.'
+    case 'ROOM_CLOSED_WON':
+      return 'Room closed — recipe materialized into a draft product.'
     case 'OBJECT_SUBMITTED':
       return `${by} submitted ${kind}${v} for review.`
     case 'OBJECT_APPROVED':
@@ -172,6 +202,20 @@ function eventText(e: RoomShellEvent): string {
     default:
       return e.kind.replaceAll('_', ' ').toLowerCase()
   }
+}
+
+/** Author avatar — demo .cav (creator = pink, maker = ink-900 with neon ring). */
+function AuthorAvatar({ role, className }: { role: string; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'h-6 w-6 flex-none rounded-pill',
+        role === 'CREATOR' ? 'bg-pink-500' : 'bg-ink-900 shadow-[inset_0_0_0_2px_var(--neon-500,#B5FF3D)]',
+        className,
+      )}
+    />
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -194,38 +238,50 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
 
   const released = props.milestones.filter((m) => m.status === 'RELEASED').length
   const meName = mode === 'creator' ? props.creatorName : props.partnerName
+  const gradient = productGradient[props.accentGradient ?? 'pink']
 
   return (
-    <div className="space-y-4">
-      {/* Room header */}
-      <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-ink-200 bg-white px-5 py-4">
+    <div className="overflow-hidden rounded-xl border border-ink-200 bg-white shadow-sm">
+      {/* Room top bar (demo .roomtop — dark, in-page chrome) */}
+      <div className="flex flex-wrap items-center gap-s-3 bg-ink-900 px-s-4 py-s-3 text-white">
+        <span
+          aria-hidden
+          className="flex h-8 w-8 items-center justify-center rounded-md text-ui-subhead"
+          style={{ background: gradient }}
+        >
+          🥤
+        </span>
         <div>
-          <div className="font-display text-ui-subhead">{props.briefTitle}</div>
-          <div className="text-ui-caption text-ink-500">
+          <b className="block text-ui-value">{props.briefTitle}</b>
+          <span className="text-ui-label normal-case tracking-normal text-ink-400">
             {props.creatorName} × {props.partnerName} · viewing as {meName} (
             {mode === 'creator' ? 'Creator' : 'Manufacturer'})
-          </div>
+          </span>
         </div>
-        <span className="ml-auto rounded-full border border-ink-200 bg-ink-50 px-3 py-1 text-ui-caption font-medium text-ink-700">
-          {props.ndaSigned ? '● NDA signed' : 'NDA pending — finalizing with counsel'}
+        <span className="flex-1" />
+        <span className="inline-flex items-center gap-s-1 rounded-pill border border-white/15 bg-white/10 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-100">
+          <span
+            aria-hidden
+            className={cn('h-2 w-2 rounded-pill', props.ndaSigned ? 'bg-neon-500' : 'bg-warning-500')}
+          />
+          {props.ndaSigned ? 'NDA signed' : 'NDA pending — with counsel'}
         </span>
-        <span className="rounded-full border border-ink-200 bg-ink-50 px-3 py-1 text-ui-caption font-medium text-ink-700">
+        <span className="rounded-pill border border-white/15 bg-white/10 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-100">
           🔒 IP: Creator-owned
         </span>
       </div>
 
       {error ? (
-        <p className="rounded-xl bg-danger-50 px-3 py-2 text-ui-caption text-danger-700" role="alert">
+        <p className="border-b border-danger-100 bg-danger-50 px-s-4 py-s-2 text-ui-caption text-danger-700" role="alert">
           {error}
         </p>
       ) : null}
 
       {mode === 'creator' && props.canCloseWon && props.onCloseWon ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-pink-500 bg-pink-50 px-5 py-4">
+        <div className="flex flex-wrap items-center gap-s-3 border-b border-pink-200 bg-pink-50 px-s-4 py-s-3">
           <div className="text-ui-caption text-pink-700">
-            <b>Recipe approved.</b> Ready to make this real? Closing the room creates your draft
-            product with this formula — you finish packaging and place the production order from
-            your products page.
+            <b>Recipe approved.</b> Closing the room creates your draft product with this formula —
+            you finish packaging and place the production order from your products page.
           </div>
           <span className="flex-1" />
           <Button variant="primary" size="sm" disabled={busy} onClick={() => run(props.onCloseWon!)}>
@@ -234,67 +290,69 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[260px_1fr_300px]">
-        {/* Left rail — objects + milestones */}
-        <div className="space-y-4">
-          <div className="rounded-3xl border border-ink-200 bg-white p-3">
-            <div className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">
-              Build objects
-            </div>
-            {objects.map((o) => {
-              const meta = OBJECT_META[o.kind] ?? { icon: '▫️', name: o.kind }
-              const pill = STATUS_PILL[o.status] ?? STATUS_PILL.DRAFT!
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => setSelectedId(o.id)}
-                  className={`flex w-full items-center gap-2 rounded-2xl px-2 py-2.5 text-left transition ${
-                    selected?.id === o.id ? 'bg-ink-50 ring-1 ring-ink-200' : 'hover:bg-ink-50'
-                  }`}
-                >
-                  <span className="text-lg">{meta.icon}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-ui-caption font-semibold">{meta.name}</span>
-                    <span className="block text-[11px] text-ink-500">
-                      v{o.currentVersion}
-                      {o.comments.length ? ` · ${o.comments.length} comments` : ''}
-                    </span>
-                  </span>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${pill.cls}`}>
-                    {pill.label}
-                  </span>
-                </button>
-              )
-            })}
+      {/* 3-column body (demo .roombody 250/1fr/290) */}
+      <div className="grid lg:grid-cols-[250px_1fr_290px]">
+        {/* Left rail — objects + payment-protection strip */}
+        <div className="flex flex-col border-b border-ink-200 lg:border-b-0 lg:border-r">
+          <div className="border-b border-ink-100 px-s-4 py-s-3 text-ui-label uppercase text-ink-500">
+            Build objects
           </div>
+          {objects.map((o) => {
+            const meta = OBJECT_META[o.kind] ?? { icon: '▫️', name: o.kind }
+            const pill = STATUS_PILL[o.status] ?? STATUS_PILL.DRAFT!
+            const sel = selected?.id === o.id
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => setSelectedId(o.id)}
+                className={cn(
+                  'relative flex items-center gap-s-3 border-b border-ink-100 px-s-4 py-s-3 text-left transition',
+                  sel ? 'bg-pink-50' : 'hover:bg-ink-50',
+                )}
+              >
+                {sel ? <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-pink-500" /> : null}
+                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-ink-100 text-ui-subhead">
+                  {meta.icon}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <b className="block truncate text-ui-caption font-bold">{meta.name}</b>
+                  <span className="text-ui-label normal-case tracking-normal text-ink-500">
+                    v{o.currentVersion}
+                    {o.comments.length ? ` · ${o.comments.length} comments` : ''}
+                  </span>
+                </span>
+                <span className={cn('rounded-pill px-s-2 py-0.5 text-ui-label tracking-normal', pill.cls)}>
+                  {pill.label}
+                </span>
+              </button>
+            )
+          })}
 
-          <div className="rounded-3xl border border-ink-200 bg-white p-4">
-            <div className="flex items-center justify-between text-ui-caption">
-              <span className="font-semibold">Milestones · payment protection</span>
+          <div className="mt-auto border-t border-ink-100 bg-ink-50 px-s-4 py-s-3">
+            <div className="flex justify-between text-ui-caption">
+              <b>Milestones · payment protection</b>
               <span className="text-ink-500">
                 {released} / {props.milestones.length} released
               </span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-100">
+            <div className="my-s-2 h-1.5 overflow-hidden rounded-pill bg-ink-200">
               <div
-                className="h-full rounded-full bg-pink-500"
+                className="h-full rounded-pill bg-success-500"
                 style={{ width: `${props.milestones.length ? (released / props.milestones.length) * 100 : 0}%` }}
               />
             </div>
-            <div className="mt-2 space-y-1">
-              {props.milestones.map((m) => (
-                <div key={m.id} className="flex justify-between text-[11px] text-ink-500">
-                  <span>{MILESTONE_LABEL[m.kind] ?? m.kind}</span>
-                  <span>{m.status === 'PENDING' ? 'awaiting terms' : m.status.toLowerCase().replaceAll('_', ' ')}</span>
-                </div>
-              ))}
-            </div>
+            {props.milestones.map((m) => (
+              <div key={m.id} className="flex justify-between text-ui-label normal-case tracking-normal text-ink-500">
+                <span>{MILESTONE_LABEL[m.kind] ?? m.kind}</span>
+                <span>{m.status === 'PENDING' ? 'awaiting terms' : m.status.toLowerCase().replaceAll('_', ' ')}</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Center — object detail */}
-        <div className="rounded-3xl border border-ink-200 bg-white p-5">
+        {/* Center — object detail on ink-50 canvas */}
+        <div className="flex min-h-[420px] flex-col border-b border-ink-200 bg-ink-50 lg:border-b-0 lg:border-r">
           {selected ? (
             <ObjectDetail
               key={selected.id}
@@ -302,19 +360,22 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               mode={mode}
               meName={meName}
               busy={busy}
+              gradient={gradient}
+              briefTitle={props.briefTitle}
+              partnerName={props.partnerName}
               onSubmitVersion={(payload) => run(() => props.onSubmitVersion(selected.id, payload))}
               onReview={(d, note) => run(() => props.onReview(selected.id, d, note))}
               onReopen={() => run(() => props.onReopen(selected.id))}
               onComment={(body, anchor) => run(() => props.onComment(selected.id, body, anchor))}
             />
           ) : (
-            <p className="text-ui-caption text-ink-500">No objects in this room yet.</p>
+            <p className="p-s-5 text-ui-caption text-ink-500">No objects in this room yet.</p>
           )}
         </div>
 
-        {/* Right rail — activity / messages */}
-        <div className="flex min-h-[420px] flex-col rounded-3xl border border-ink-200 bg-white">
-          <div className="flex gap-1 border-b border-ink-100 p-2">
+        {/* Right rail — activity / messages (demo .rtab/.feed2) */}
+        <div className="flex min-h-[420px] flex-col">
+          <div className="flex border-b border-ink-100">
             {(
               [
                 ['activity', 'Activity log'],
@@ -325,25 +386,31 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
                 key={t}
                 type="button"
                 onClick={() => setRightTab(t)}
-                className={`flex-1 rounded-xl px-3 py-1.5 text-ui-caption font-medium transition ${
-                  rightTab === t ? 'bg-ink-900 text-white' : 'text-ink-500 hover:text-ink-900'
-                }`}
+                className={cn(
+                  'flex-1 border-b-2 py-s-3 text-ui-caption font-bold transition',
+                  rightTab === t ? 'border-pink-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900',
+                )}
               >
                 {label}
               </button>
             ))}
           </div>
           {rightTab === 'activity' ? (
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-s-4">
               {props.events.length === 0 ? (
                 <p className="text-ui-caption text-ink-500">Decisions and submissions log here.</p>
               ) : (
-                props.events.map((e) => (
-                  <div key={e.id} className="flex gap-2">
-                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-pink-500" aria-hidden />
-                    <div>
+                props.events.map((e, i) => (
+                  <div key={e.id} className="flex gap-s-2">
+                    <span className="flex flex-col items-center">
+                      <span aria-hidden className={cn('mt-s-1 h-2 w-2 rounded-pill', eventDotCls(e.kind))} />
+                      {i < props.events.length - 1 ? (
+                        <span aria-hidden className="mt-s-1 w-0.5 flex-1 bg-ink-200" />
+                      ) : null}
+                    </span>
+                    <div className="pb-s-3">
                       <div className="text-ui-caption">{eventText(e)}</div>
-                      <div className="text-[10px] text-ink-500">{timeAgo(e.createdAt)}</div>
+                      <div className="text-ui-label normal-case tracking-normal text-ink-400">{timeAgo(e.createdAt)}</div>
                     </div>
                   </div>
                 ))
@@ -366,7 +433,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Object detail (versions, comments, role-aware actions)
+// Object detail (versions, comments, pin board, role-aware actions)
 // ---------------------------------------------------------------------------
 
 function ObjectDetail({
@@ -374,6 +441,9 @@ function ObjectDetail({
   mode,
   meName,
   busy,
+  gradient,
+  briefTitle,
+  partnerName,
   onSubmitVersion,
   onReview,
   onReopen,
@@ -383,6 +453,9 @@ function ObjectDetail({
   mode: 'creator' | 'partner'
   meName: string
   busy: boolean
+  gradient: string
+  briefTitle: string
+  partnerName: string
   onSubmitVersion: (payload: Record<string, unknown>) => void
   onReview: (decision: 'APPROVE' | 'REQUEST_CHANGES', note?: string) => void
   onReopen: () => void
@@ -403,23 +476,20 @@ function ObjectDetail({
   const previous = versions.length > 1 ? versions[versions.length - 2] : undefined
 
   const isRecipe = object.kind === 'RECIPE'
+  const isLabel = object.kind === 'LABEL'
   const rows = viewing ? recipeRows(viewing.payload) : []
   const prevRows = previous ? recipeRows(previous.payload) : []
   const fields = viewing ? fieldRows(viewing.payload) : []
 
-  // Editable draft for a new version, seeded from the latest payload.
   const [draftRows, setDraftRows] = React.useState<RecipeRow[]>(() =>
     latest ? recipeRows(latest.payload) : [{ name: '', amount: '', note: '' }],
   )
   const [draftFields, setDraftFields] = React.useState<FieldRow[]>(() =>
-    latest && fieldRows(latest.payload).length
-      ? fieldRows(latest.payload)
-      : [{ label: '', value: '' }],
+    latest && fieldRows(latest.payload).length ? fieldRows(latest.payload) : [{ label: '', value: '' }],
   )
 
   const canSubmit =
-    (mode === 'partner' || object.kind === 'LABEL') &&
-    (object.status === 'DRAFT' || object.status === 'CHANGES_REQUESTED')
+    (mode === 'partner' || isLabel) && (object.status === 'DRAFT' || object.status === 'CHANGES_REQUESTED')
   const canReview = mode === 'creator' && object.status === 'IN_REVIEW'
   const canReopen = object.status === 'APPROVED' || object.status === 'LOCKED'
 
@@ -435,60 +505,81 @@ function ObjectDetail({
     setEditing(false)
   }
 
+  const submittedBy = latest
+    ? latest.submittedByPartner
+      ? `submitted by ${partnerName}`
+      : 'submitted by creator'
+    : 'nothing submitted yet'
+
   return (
-    <div>
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">{meta.icon}</span>
-        <div>
-          <h2 className="font-display text-ui-subhead">{meta.name}</h2>
-          <p className="text-[11px] text-ink-500">
-            v{object.currentVersion}
-            {latest ? ` · ${latest.submittedByPartner ? 'submitted by maker' : 'submitted by creator'}` : ' · nothing submitted yet'}
-          </p>
-        </div>
-        <span className={`ml-auto rounded-full px-3 py-1 text-ui-caption font-semibold ${pill.cls}`}>
-          {pill.label}
+    <>
+      {/* Detail header (demo .deth) */}
+      <div className="flex items-center gap-s-3 border-b border-ink-100 bg-white px-s-4 py-s-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-100 text-ui-section">
+          {meta.icon}
         </span>
+        <div>
+          <h2 className="font-display text-ui-section">{meta.name}</h2>
+          <div className="text-ui-label normal-case tracking-normal text-ink-500">
+            v{object.currentVersion} · {submittedBy}
+          </div>
+        </div>
+        <span className="flex-1" />
+        <span className={cn('rounded-pill px-s-3 py-s-1 text-ui-caption font-bold', pill.cls)}>{pill.label}</span>
       </div>
 
-      {/* Version tabs */}
-      {versions.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-1.5">
-          {versions.map((v) => (
-            <button
-              key={v.version}
-              type="button"
-              onClick={() => setViewVersion(v.version)}
-              className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
-                viewVersion === v.version
-                  ? 'border-ink-900 bg-ink-900 text-white'
-                  : 'border-ink-200 text-ink-500 hover:text-ink-900'
-              }`}
-            >
-              v{v.version}
-              {v.version === latest?.version ? ' · latest' : ''}
-            </button>
-          ))}
-          {versions.length > 1 && isRecipe ? (
-            <button
-              type="button"
-              onClick={() => setViewVersion('compare')}
-              className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition ${
-                viewVersion === 'compare'
-                  ? 'border-ink-900 bg-ink-900 text-white'
-                  : 'border-ink-200 text-ink-500 hover:text-ink-900'
-              }`}
-            >
-              ⇄ Compare
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
       {/* Body */}
-      <div className="mt-4 space-y-1.5">
-        {versions.length === 0 && !editing ? (
-          <p className="rounded-xl bg-ink-50 px-3 py-4 text-center text-ui-caption text-ink-500">
+      <div className="flex-1 overflow-y-auto p-s-4">
+        {/* Version tabs (demo .vtabs segmented) */}
+        {versions.length > 0 && !isLabel ? (
+          <div className="mb-s-3 inline-flex rounded-lg bg-ink-100 p-s-1">
+            {versions.map((v) => (
+              <button
+                key={v.version}
+                type="button"
+                onClick={() => setViewVersion(v.version)}
+                className={cn(
+                  'rounded-md px-s-3 py-s-1 text-ui-caption font-bold transition',
+                  viewVersion === v.version ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900',
+                )}
+              >
+                v{v.version}
+                {v.version === latest?.version ? ' · latest' : ''}
+              </button>
+            ))}
+            {versions.length > 1 && isRecipe ? (
+              <button
+                type="button"
+                onClick={() => setViewVersion('compare')}
+                className={cn(
+                  'rounded-md px-s-3 py-s-1 text-ui-caption font-bold transition',
+                  viewVersion === 'compare' ? 'bg-white text-ink-900 shadow-sm' : 'text-ink-500 hover:text-ink-900',
+                )}
+              >
+                ⇄ Compare
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {viewVersion === 'compare' ? (
+          <p className="mb-s-3 text-ui-caption text-ink-500">
+            v{latest?.version} with changes vs v{previous?.version} highlighted.
+          </p>
+        ) : null}
+
+        {isLabel ? (
+          <LabelPinBoard
+            object={object}
+            mode={mode}
+            meName={meName}
+            busy={busy}
+            gradient={gradient}
+            briefTitle={briefTitle}
+            partnerName={partnerName}
+            onComment={onComment}
+          />
+        ) : versions.length === 0 && !editing ? (
+          <p className="rounded-lg bg-white px-s-3 py-s-4 text-center text-ui-caption text-ink-500">
             {canSubmit
               ? 'Nothing submitted yet — add the first version below.'
               : `Waiting for ${mode === 'creator' ? 'the maker' : 'the creator'} to submit the first version.`}
@@ -498,49 +589,53 @@ function ObjectDetail({
             const anchor = `row:${idx}`
             const thread = threadFor(anchor)
             const prev = viewVersion === 'compare' ? prevRows[idx] : undefined
-            const changed =
-              prev && (prev.amount !== r.amount || prev.name !== r.name || prev.note !== r.note)
+            const changed = prev && (prev.amount !== r.amount || prev.name !== r.name || prev.note !== r.note)
             return (
               <div key={idx}>
                 <div
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${
-                    changed ? 'border-pink-500 bg-pink-50' : 'border-ink-100'
-                  }`}
+                  className={cn(
+                    'mb-s-2 flex items-center gap-s-3 rounded-lg border bg-white px-s-3 py-s-2',
+                    changed ? 'border-danger-200 bg-danger-50' : 'border-ink-200',
+                  )}
                 >
                   <span className="min-w-0 flex-1 truncate text-ui-caption">
                     <b>{r.name}</b>
                     {r.note ? <span className="text-ink-500"> · {r.note}</span> : null}
                   </span>
-                  <span className="text-ui-caption font-semibold">
+                  <span className="text-ui-caption font-bold">
                     {r.amount}
                     {changed && prev ? (
-                      <span className="ml-1 text-[10px] font-semibold text-pink-700">
-                        (was {prev.amount || '—'})
+                      <span className="ml-s-1 rounded-sm bg-info-50 px-s-1 py-0.5 text-ui-label tracking-normal text-info-700">
+                        was {prev.amount || '—'}
                       </span>
                     ) : null}
                   </span>
                   <button
                     type="button"
                     onClick={() => setOpenThread(openThread === anchor ? null : anchor)}
-                    className={`rounded-full border px-2 py-0.5 text-[11px] ${
-                      thread.length
-                        ? 'border-pink-500 bg-pink-50 text-pink-700'
-                        : 'border-ink-200 text-ink-500 hover:text-ink-900'
-                    }`}
+                    className={cn(
+                      'rounded-md border px-s-2 py-s-1 text-ui-label normal-case tracking-normal',
+                      thread.length ? 'border-pink-500 bg-white text-pink-700' : 'border-ink-200 bg-white text-ink-500 hover:text-ink-900',
+                    )}
                   >
                     💬{thread.length ? ` ${thread.length}` : ''}
                   </button>
                 </div>
                 {openThread === anchor ? (
-                  <div className="ml-4 mt-1 space-y-2 rounded-xl bg-ink-50 p-3">
+                  <div className="mb-s-2 ml-s-4 rounded-r-lg border border-l-[3px] border-ink-200 border-l-pink-500 bg-white p-s-3">
                     {thread.map((c) => (
-                      <div key={c.id} className="text-ui-caption">
-                        <b>{c.authorRole === 'CREATOR' ? 'Creator' : 'Maker'}</b>{' '}
-                        <span className="text-[10px] text-ink-500">{timeAgo(c.createdAt)}</span>
-                        <div>{c.body}</div>
+                      <div key={c.id} className="mb-s-2 flex gap-s-2">
+                        <AuthorAvatar role={c.authorRole} />
+                        <div className="text-ui-caption">
+                          <b>{c.authorRole === 'CREATOR' ? 'Creator' : 'Maker'}</b>{' '}
+                          <span className="text-ui-label normal-case tracking-normal text-ink-400">
+                            {timeAgo(c.createdAt)}
+                          </span>
+                          <div className="text-ink-700">{c.body}</div>
+                        </div>
                       </div>
                     ))}
-                    <div className="flex gap-2">
+                    <div className="mt-s-1 flex gap-s-2">
                       <Input
                         value={reply}
                         onChange={(e) => setReply(e.target.value)}
@@ -571,174 +666,310 @@ function ObjectDetail({
           })
         ) : fields.length ? (
           fields.map((f, idx) => (
-            <div key={idx} className="flex items-center gap-2 rounded-xl border border-ink-100 px-3 py-2">
-              <span className="min-w-0 flex-1 truncate text-ui-caption font-semibold">{f.label}</span>
+            <div key={idx} className="mb-s-2 flex items-center gap-s-3 rounded-lg border border-ink-200 bg-white px-s-3 py-s-2">
+              <span className="min-w-0 flex-1 truncate text-ui-caption font-bold">{f.label}</span>
               <span className="text-ui-caption text-ink-700">{f.value}</span>
             </div>
           ))
         ) : versions.length > 0 ? (
-          <p className="rounded-xl bg-ink-50 px-3 py-3 text-ui-caption text-ink-500">
+          <p className="rounded-lg bg-white px-s-3 py-s-3 text-ui-caption text-ink-500">
             This version has no structured fields.
           </p>
         ) : null}
-      </div>
 
-      {/* New-version editor */}
-      {canSubmit ? (
-        editing || versions.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-ink-200 p-3">
-            <div className="text-ui-caption font-semibold">
-              {versions.length === 0 ? 'First version' : `Submit v${object.currentVersion + 1}`}
-            </div>
-            <div className="mt-2 space-y-2">
-              {isRecipe
-                ? draftRows.map((r, i) => (
-                    <div key={i} className="flex gap-2">
-                      <Input
-                        value={r.name}
-                        placeholder="Ingredient"
-                        onChange={(e) =>
-                          setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
-                        }
-                        className="flex-1"
-                      />
-                      <Input
-                        value={r.amount}
-                        placeholder="Amount"
-                        onChange={(e) =>
-                          setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))
-                        }
-                        className="w-24"
-                      />
-                      <Input
-                        value={r.note}
-                        placeholder="Note"
-                        onChange={(e) =>
-                          setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))
-                        }
-                        className="w-28"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Remove row"
-                        onClick={() => setDraftRows((rows2) => rows2.filter((_, j) => j !== i))}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  ))
-                : draftFields.map((f, i) => (
-                    <div key={i} className="flex gap-2">
-                      <Input
-                        value={f.label}
-                        placeholder="Field (e.g. Format)"
-                        onChange={(e) =>
-                          setDraftFields((fs) => fs.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
-                        }
-                        className="w-40"
-                      />
-                      <Input
-                        value={f.value}
-                        placeholder="Value (e.g. 12oz slim can, matte)"
-                        onChange={(e) =>
-                          setDraftFields((fs) => fs.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))
-                        }
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label="Remove field"
-                        onClick={() => setDraftFields((fs) => fs.filter((_, j) => j !== i))}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  ))}
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    isRecipe
-                      ? setDraftRows((r) => [...r, { name: '', amount: '', note: '' }])
-                      : setDraftFields((f) => [...f, { label: '', value: '' }])
-                  }
-                >
-                  ＋ Add {isRecipe ? 'ingredient' : 'field'}
-                </Button>
-                <span className="flex-1" />
-                {versions.length > 0 ? (
-                  <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
-                    Cancel
+        {/* New-version editor */}
+        {!isLabel && canSubmit ? (
+          editing || versions.length === 0 ? (
+            <div className="mt-s-3 rounded-lg border border-ink-200 bg-white p-s-3">
+              <div className="text-ui-caption font-bold">
+                {versions.length === 0 ? 'First version' : `Submit v${object.currentVersion + 1}`}
+              </div>
+              <div className="mt-s-2">
+                {isRecipe
+                  ? draftRows.map((r, i) => (
+                      <div key={i} className="mb-s-2 flex gap-s-2">
+                        <Input
+                          value={r.name}
+                          placeholder="Ingredient"
+                          onChange={(e) =>
+                            setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                          }
+                          className="flex-[2]"
+                        />
+                        <Input
+                          value={r.amount}
+                          placeholder="Amount"
+                          onChange={(e) =>
+                            setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))
+                          }
+                          className="flex-1"
+                        />
+                        <Input
+                          value={r.note}
+                          placeholder="Note"
+                          onChange={(e) =>
+                            setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))
+                          }
+                          className="flex-[2]"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Remove row"
+                          onClick={() => setDraftRows((rows2) => rows2.filter((_, j) => j !== i))}
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))
+                  : draftFields.map((f, i) => (
+                      <div key={i} className="mb-s-2 flex gap-s-2">
+                        <Input
+                          value={f.label}
+                          placeholder="Field (e.g. Format)"
+                          onChange={(e) =>
+                            setDraftFields((fs) => fs.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
+                          }
+                          className="w-36"
+                        />
+                        <Input
+                          value={f.value}
+                          placeholder="Value (e.g. 12oz slim can, matte)"
+                          onChange={(e) =>
+                            setDraftFields((fs) => fs.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))
+                          }
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Remove field"
+                          onClick={() => setDraftFields((fs) => fs.filter((_, j) => j !== i))}
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                <div className="flex gap-s-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      isRecipe
+                        ? setDraftRows((r) => [...r, { name: '', amount: '', note: '' }])
+                        : setDraftFields((f) => [...f, { label: '', value: '' }])
+                    }
+                  >
+                    ＋ Add {isRecipe ? 'ingredient' : 'field'}
                   </Button>
-                ) : null}
-                <Button variant="primary" size="sm" disabled={busy} onClick={submitDraft}>
-                  {busy ? 'Submitting…' : 'Submit for review'}
-                </Button>
+                  <span className="flex-1" />
+                  {versions.length > 0 ? (
+                    <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
+                      Cancel
+                    </Button>
+                  ) : null}
+                  <Button variant="primary" size="sm" disabled={busy} onClick={submitDraft}>
+                    {busy ? 'Submitting…' : 'Submit for review'}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="mt-4 flex justify-end">
-            <Button variant="pink" size="sm" onClick={() => setEditing(true)}>
-              Submit new version
-            </Button>
-          </div>
-        )
-      ) : null}
+          ) : null
+        ) : null}
 
-      {/* Review actions */}
-      {canReview ? (
-        <div className="mt-4 rounded-2xl border border-ink-200 p-3">
-          <div className="text-ui-caption text-ink-500">Review the {meta.name.toLowerCase()}, then decide.</div>
-          <div className="mt-2 flex items-center gap-2">
+        {/* Unanchored discussion */}
+        {!isLabel ? (
+          <ObjectThread
+            comments={object.comments.filter((c) => !c.anchor)}
+            meName={meName}
+            busy={busy}
+            onComment={(b) => onComment(b)}
+          />
+        ) : null}
+      </div>
+
+      {/* Sticky actions bar (demo .actions) */}
+      <div className="sticky bottom-0 flex items-center gap-s-2 border-t border-ink-100 bg-white px-s-4 py-s-3">
+        <span className="text-ui-caption text-ink-500">
+          {canReview
+            ? `Review the ${meta.name.toLowerCase()}, then decide.`
+            : canSubmit && !isLabel
+              ? object.status === 'CHANGES_REQUESTED'
+                ? 'Changes requested — revise & resubmit.'
+                : 'Draft — submit when ready.'
+              : object.status === 'APPROVED'
+                ? '✓ Approved — any change re-opens review.'
+                : object.status === 'LOCKED'
+                  ? '🔒 Locked.'
+                  : mode === 'creator'
+                    ? `Awaiting ${partnerName}.`
+                    : 'Submitted for review.'}
+        </span>
+        <span className="flex-1" />
+        {canReview ? (
+          <>
             <Input
               value={changeNote}
               onChange={(e) => setChangeNote(e.target.value)}
-              placeholder="Optional note with your decision…"
-              className="flex-1"
+              placeholder="Optional note…"
+              className="max-w-48"
             />
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => onReview('REQUEST_CHANGES', changeNote.trim() || undefined)}
-            >
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => onReview('REQUEST_CHANGES', changeNote.trim() || undefined)}>
               Request changes
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={busy}
-              onClick={() => onReview('APPROVE', changeNote.trim() || undefined)}
-            >
+            <Button variant="primary" size="sm" disabled={busy} onClick={() => onReview('APPROVE', changeNote.trim() || undefined)}>
               ✓ Approve v{object.currentVersion}
             </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {canReopen ? (
-        <div className="mt-4 flex items-center gap-3">
-          <span className="text-ui-caption text-ink-500">
-            {object.status === 'APPROVED' ? '✓ Approved — any change re-opens review.' : '🔒 Locked.'}
-          </span>
-          <span className="flex-1" />
+          </>
+        ) : null}
+        {!isLabel && canSubmit && versions.length > 0 && !editing ? (
+          <Button variant="pink" size="sm" onClick={() => setEditing(true)}>
+            Submit new version
+          </Button>
+        ) : null}
+        {canReopen ? (
           <Button variant="ghost" size="sm" disabled={busy} onClick={onReopen}>
             Re-open
           </Button>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
+    </>
+  )
+}
 
-      {/* Unanchored comments */}
-      <ObjectThread
-        comments={object.comments.filter((c) => !c.anchor)}
-        meName={meName}
-        busy={busy}
-        onComment={(b) => onComment(b)}
-      />
+// ---------------------------------------------------------------------------
+// LABEL pin-proofing board (demo screen ⑥ .proof/.can/.pin)
+// ---------------------------------------------------------------------------
+
+function LabelPinBoard({
+  object,
+  mode,
+  meName,
+  busy,
+  gradient,
+  briefTitle,
+  partnerName,
+  onComment,
+}: {
+  object: RoomShellObject
+  mode: 'creator' | 'partner'
+  meName: string
+  busy: boolean
+  gradient: string
+  briefTitle: string
+  partnerName: string
+  onComment: (body: string, anchor?: string) => void
+}) {
+  const [pending, setPending] = React.useState<{ x: number; y: number } | null>(null)
+  const [note, setNote] = React.useState('')
+
+  const pins = object.comments
+    .map((c) => {
+      const m = c.anchor?.match(PIN_ANCHOR)
+      return m ? { ...c, x: Number(m[1]), y: Number(m[2]) } : null
+    })
+    .filter((p): p is NonNullable<typeof p> => p !== null)
+
+  function dropPin(e: React.MouseEvent<HTMLDivElement>) {
+    const r = e.currentTarget.getBoundingClientRect()
+    setPending({
+      x: Math.round(((e.clientX - r.left) / r.width) * 100),
+      y: Math.round(((e.clientY - r.top) / r.height) * 100),
+    })
+  }
+
+  function sendPin() {
+    if (!pending || !note.trim()) return
+    onComment(note, `${pending.x},${pending.y}`)
+    setPending(null)
+    setNote('')
+  }
+
+  const titleWords = briefTitle.replace(/^Demo — /, '').split(' ')
+
+  return (
+    <div className="grid gap-s-3 sm:grid-cols-2">
+      {/* Proof canvas */}
+      <div className="flex flex-col items-center rounded-lg border border-dashed border-ink-300 bg-white p-s-4">
+        <div
+          role="button"
+          aria-label="Label proof — click to drop a feedback pin"
+          tabIndex={0}
+          onClick={dropPin}
+          className="relative h-48 w-28 cursor-crosshair rounded-lg shadow-lg"
+          style={{ background: gradient }}
+        >
+          <div className="absolute inset-x-s-2 bottom-1/4 top-1/4 flex flex-col items-center justify-center rounded-md bg-white/90">
+            <div className="text-center font-display text-ui-label normal-case leading-tight tracking-normal text-ink-900">
+              {titleWords.slice(0, 2).join(' ').toUpperCase()}
+            </div>
+            <div className="mt-s-1 text-center text-[0.5rem] text-ink-500">{titleWords.slice(2).join(' ')}</div>
+          </div>
+          {pins.map((p, i) => (
+            <span
+              key={p.id}
+              title={p.body}
+              className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-full items-center justify-center rounded-[50%_50%_50%_2px] border-2 border-white bg-pink-500 text-ui-label tracking-normal text-white shadow-md"
+              style={{ left: `${p.x}%`, top: `${p.y}%` }}
+            >
+              {i + 1}
+            </span>
+          ))}
+          {pending ? (
+            <span
+              aria-hidden
+              className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-full animate-pulse items-center justify-center rounded-[50%_50%_50%_2px] border-2 border-white bg-ink-900 text-ui-label tracking-normal text-white shadow-md"
+              style={{ left: `${pending.x}%`, top: `${pending.y}%` }}
+            >
+              +
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
+          💡 Click the label to drop a feedback pin
+        </p>
+        {pending ? (
+          <div className="mt-s-2 flex w-full gap-s-2">
+            <Input
+              autoFocus
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Pin note…"
+              onKeyDown={(e) => e.key === 'Enter' && sendPin()}
+            />
+            <Button variant="primary" size="sm" disabled={busy || !note.trim()} onClick={sendPin}>
+              Pin
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Pin list */}
+      <div>
+        <div className="mb-s-2 text-ui-caption font-bold">Pinned feedback ({pins.length})</div>
+        {pins.length === 0 ? (
+          <p className="text-ui-caption text-ink-500">No pins yet.</p>
+        ) : (
+          pins.map((p, i) => (
+            <div key={p.id} className="mb-s-2 flex gap-s-2 rounded-lg border border-ink-200 bg-white px-s-3 py-s-2">
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-pill bg-pink-500 text-ui-label tracking-normal text-white">
+                {i + 1}
+              </span>
+              <div className="text-ui-caption">
+                <span className="text-ink-700">{p.body}</span>
+                <span className="ml-s-1 text-ui-label normal-case tracking-normal text-ink-400">
+                  {p.authorRole === 'CREATOR' ? 'Creator' : 'Maker'} · {timeAgo(p.createdAt)}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+        <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
+          {mode === 'creator'
+            ? `Pins go to ${partnerName} with the next change request.`
+            : `Awaiting ${meName === partnerName ? 'the creator' : meName}’s pins before revising.`}
+        </p>
+      </div>
     </div>
   )
 }
@@ -756,20 +987,21 @@ function ObjectThread({
 }) {
   const [body, setBody] = React.useState('')
   return (
-    <div className="mt-5 border-t border-ink-100 pt-3">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
-        Discussion ({comments.length})
-      </div>
-      <div className="mt-2 space-y-2">
+    <div className="mt-s-4 border-t border-ink-100 pt-s-3">
+      <div className="text-ui-label uppercase text-ink-500">Discussion ({comments.length})</div>
+      <div className="mt-s-2">
         {comments.map((c) => (
-          <div key={c.id} className="text-ui-caption">
-            <b>{c.authorRole === 'CREATOR' ? 'Creator' : 'Maker'}</b>{' '}
-            <span className="text-[10px] text-ink-500">{timeAgo(c.createdAt)}</span>
-            <div>{c.body}</div>
+          <div key={c.id} className="mb-s-2 flex gap-s-2">
+            <AuthorAvatar role={c.authorRole} />
+            <div className="text-ui-caption">
+              <b>{c.authorRole === 'CREATOR' ? 'Creator' : 'Maker'}</b>{' '}
+              <span className="text-ui-label normal-case tracking-normal text-ink-400">{timeAgo(c.createdAt)}</span>
+              <div className="text-ink-700">{c.body}</div>
+            </div>
           </div>
         ))}
       </div>
-      <div className="mt-2 flex gap-2">
+      <div className="mt-s-2 flex gap-s-2">
         <Textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -817,7 +1049,7 @@ function MessagesRail({
 
   return (
     <>
-      <div className="flex-1 space-y-2 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-s-4">
         {messages.length === 0 ? (
           <p className="text-ui-caption text-ink-500">
             Say hello — everything stays in the room, no email needed.
@@ -826,13 +1058,15 @@ function MessagesRail({
           messages.map((m) => {
             const mine = m.authorRole === meRole
             return (
-              <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+              <div key={m.id} className={cn('mb-s-3 flex gap-s-2', mine && 'flex-row-reverse')}>
+                <AuthorAvatar role={m.authorRole} />
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-ui-caption ${
-                    mine ? 'bg-ink-900 text-white' : 'bg-ink-50 text-ink-900'
-                  }`}
+                  className={cn(
+                    'max-w-[80%] rounded-lg px-s-3 py-s-2 text-ui-caption',
+                    mine ? 'bg-pink-50' : 'bg-ink-100',
+                  )}
                 >
-                  <div className={`text-[10px] font-semibold ${mine ? 'text-ink-300' : 'text-ink-500'}`}>
+                  <div className="text-ui-label normal-case tracking-normal text-ink-500">
                     {m.authorRole === 'CREATOR' ? creatorName : partnerName}
                   </div>
                   {m.body}
@@ -843,7 +1077,7 @@ function MessagesRail({
         )}
         <div ref={endRef} />
       </div>
-      <div className="flex gap-2 border-t border-ink-100 p-2">
+      <div className="flex gap-s-2 border-t border-ink-100 bg-white p-s-3">
         <Input
           value={body}
           onChange={(e) => setBody(e.target.value)}

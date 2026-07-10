@@ -1,6 +1,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
+import { CoCreationStepper } from '@ilaunchify/ui'
 import { RoomClient } from './RoomClient'
 
 export const dynamic = 'force-dynamic'
@@ -45,9 +46,18 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
     recipe.versions.length > 0
 
   return (
-    <RoomClient
-      roomId={room.id}
-      briefTitle={room.brief.title}
+    <div className="space-y-6">
+      <CoCreationStepper
+        steps={[
+          { key: 'brief', label: 'Post a brief', state: 'done', href: '/products/new/brief' },
+          { key: 'shortlist', label: 'Choose a maker', state: 'done', href: `/briefs/${room.brief.id}/interests` },
+          { key: 'room', label: 'Collaboration room', state: 'current' },
+        ]}
+      />
+      <RoomClient
+        roomId={room.id}
+        briefTitle={room.brief.title}
+        briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}
       partnerName={room.partner.companyName}
       ndaSigned={!!room.ndaSignedAt}
@@ -78,12 +88,13 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
         data: (e.data ?? {}) as Record<string, unknown>,
         createdAt: e.createdAt.toISOString(),
       }))}
-      messages={room.messages.map((m) => ({
-        id: m.id,
-        authorRole: m.authorRole,
-        body: m.body,
-        createdAt: m.createdAt.toISOString(),
-      }))}
-    />
+        messages={room.messages.map((m) => ({
+          id: m.id,
+          authorRole: m.authorRole,
+          body: m.body,
+          createdAt: m.createdAt.toISOString(),
+        }))}
+      />
+    </div>
   )
 }

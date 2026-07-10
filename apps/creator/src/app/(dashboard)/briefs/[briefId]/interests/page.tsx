@@ -2,6 +2,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { CoCreationStepper } from '@ilaunchify/ui'
 import { InterestsClient, type InterestCard } from './InterestsClient'
 
 export const dynamic = 'force-dynamic'
@@ -70,6 +71,13 @@ export default async function BriefInterestsPage({
 
   return (
     <div className="space-y-6">
+      <CoCreationStepper
+        steps={[
+          { key: 'brief', label: 'Post a brief', state: 'done', href: '/products/new/brief' },
+          { key: 'shortlist', label: 'Choose a maker', state: 'current' },
+          { key: 'room', label: 'Collaboration room', state: 'upcoming' },
+        ]}
+      />
       <div>
         <nav className="mb-2 text-ui-caption text-ink-500">
           <Link href="/products" className="hover:underline">

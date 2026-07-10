@@ -107,25 +107,30 @@ export function InterestsClient({
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Toolbar — demo .tabs underline style */}
+      <div className="flex flex-wrap items-center gap-s-2 border-b border-ink-100">
         {(
           [
-            ['all', `All interested (${interests.length})`],
-            ['short', `Shortlisted (${shortlisted.length})`],
+            ['all', 'All interested', interests.length],
+            ['short', 'Shortlisted', shortlisted.length],
           ] as const
-        ).map(([t, label]) => (
+        ).map(([t, label, count]) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`rounded-full border px-4 py-1.5 text-ui-caption font-medium transition ${
-              tab === t
-                ? 'border-ink-900 bg-ink-900 text-white'
-                : 'border-ink-200 bg-white text-ink-500 hover:text-ink-900'
+            className={`mr-s-4 border-b-2 px-s-1 py-s-2 text-ui-caption font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
+              tab === t ? 'border-pink-500 text-ink-900' : 'border-transparent text-ink-500 hover:text-ink-900'
             }`}
           >
             {label}
+            <span
+              className={`ml-s-1 rounded-pill px-s-2 py-0.5 text-ui-label tracking-normal ${
+                tab === t ? 'bg-pink-50 text-pink-700' : 'bg-ink-100 text-ink-600'
+              }`}
+            >
+              {count}
+            </span>
           </button>
         ))}
         <span className="flex-1" />
@@ -171,44 +176,56 @@ export function InterestsClient({
         list.map((i) => {
           const rec = i.fitScore === bestFit && i.fitScore >= 90
           const starred = i.status === 'SHORTLISTED'
+          const highFit = i.fitScore >= 80
           return (
             <div
               key={i.id}
-              className={`relative rounded-3xl border bg-white p-5 ${
-                rec ? 'border-pink-500' : 'border-ink-200'
+              className={`relative overflow-hidden rounded-xl border bg-white p-s-4 shadow-sm ${
+                rec ? 'border-pink-500 ring-2 ring-pink-50' : 'border-ink-200'
               }`}
             >
               {rec ? (
-                <span className="absolute -top-3 left-5 rounded-full bg-pink-500 px-3 py-0.5 text-[11px] font-semibold text-white">
+                <span className="absolute right-0 top-0 rounded-bl-lg bg-pink-500 px-s-3 py-s-1 text-ui-label uppercase text-white">
                   ★ Best fit
                 </span>
               ) : null}
-              <div className="flex items-start gap-3">
-                <div>
-                  <h3 className="font-display text-ui-subhead">
-                    {i.partnerName}{' '}
-                    <span className="align-middle rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-700">
-                      ✓ {i.partnerTier.toLowerCase()}
+              <div className="flex items-start gap-s-3">
+                <div className="min-w-0 flex-1">
+                  <h3 className="flex items-center gap-s-2 font-display text-ui-section">
+                    {i.partnerName}
+                    <span className="rounded-pill bg-success-50 px-s-2 py-0.5 text-ui-label tracking-normal text-success-700">
+                      ✓ {i.partnerTier.charAt(0) + i.partnerTier.slice(1).toLowerCase()}
                     </span>
                   </h3>
-                  <p className="mt-0.5 text-ui-caption text-ink-500">
-                    {i.rating !== null ? `★ ${i.rating.toFixed(1)}` : 'Not yet rated'}
-                    {i.location ? ` · 📍 ${i.location}` : ''}
+                  <p className="mt-s-1 flex flex-wrap gap-s-3 text-ui-caption text-ink-500">
+                    {i.rating !== null ? (
+                      <span className="font-bold text-warning-500">★ {i.rating.toFixed(1)}</span>
+                    ) : (
+                      <span>Not yet rated</span>
+                    )}
+                    {i.location ? <span>📍 {i.location}</span> : null}
                   </p>
                 </div>
-                <div className="ml-auto text-right">
-                  <div className="font-display text-ui-value">{i.fitScore}%</div>
-                  <div className="text-ui-caption text-ink-500">fit</div>
+                {/* Fit meter (demo .fit) */}
+                <div className="flex flex-none flex-col items-center">
+                  <div className={`font-display text-ui-section ${highFit ? 'text-success-700' : 'text-warning-500'}`}>
+                    {i.fitScore}%
+                  </div>
+                  <div className="text-ui-label uppercase text-ink-400">fit</div>
+                  <div className="mt-s-1 h-1 w-12 overflow-hidden rounded-pill bg-ink-100">
+                    <div
+                      className={`h-full ${highFit ? 'bg-success-500' : 'bg-warning-500'}`}
+                      style={{ width: `${i.fitScore}%` }}
+                    />
+                  </div>
                 </div>
                 <button
                   type="button"
                   aria-pressed={starred}
                   aria-label={starred ? 'Remove from shortlist' : 'Shortlist'}
                   onClick={() => star(i)}
-                  className={`rounded-full border px-3 py-2 text-lg leading-none transition ${
-                    starred
-                      ? 'border-pink-500 bg-pink-50 text-pink-700'
-                      : 'border-ink-200 text-ink-500 hover:text-ink-900'
+                  className={`flex-none px-s-1 text-ui-title leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
+                    starred ? 'text-warning-500' : 'text-ink-300 hover:text-ink-500'
                   }`}
                 >
                   {starred ? '★' : '☆'}
@@ -252,7 +269,7 @@ export function InterestsClient({
                 </div>
               ) : null}
 
-              <blockquote className="mt-3 rounded-xl bg-ink-50 px-3 py-2 text-ui-caption text-ink-700">
+              <blockquote className="mt-s-3 rounded-r-lg border-l-[3px] border-pink-500 bg-ink-50 px-s-3 py-s-2 text-ui-caption text-ink-600">
                 “{i.pitch}”
               </blockquote>
 
@@ -367,9 +384,9 @@ export function InterestsClient({
 
 function Term({ label, value, best }: { label: string; value: string; best?: boolean }) {
   return (
-    <div className={`rounded-xl px-2 py-2 ${best ? 'bg-pink-50' : 'bg-ink-50'}`}>
-      <dt className="text-[11px] uppercase tracking-wide text-ink-500">{label}</dt>
-      <dd className={`text-ui-caption font-semibold ${best ? 'text-pink-700' : ''}`}>
+    <div className="rounded-lg border border-ink-100 bg-ink-50 px-s-3 py-s-1">
+      <dt className="text-ui-label uppercase text-ink-500">{label}</dt>
+      <dd className={`text-ui-value ${best ? 'font-bold text-success-700' : ''}`}>
         {value}
         {best ? ' ✓' : ''}
       </dd>

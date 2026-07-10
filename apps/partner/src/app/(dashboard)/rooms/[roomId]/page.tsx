@@ -46,6 +46,7 @@ export default async function PartnerRoomPage({
     <RoomClient
       roomId={room.id}
       briefTitle={room.brief.title}
+      briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}
       partnerName={room.partner.companyName}
       ndaSigned={!!room.ndaSignedAt}

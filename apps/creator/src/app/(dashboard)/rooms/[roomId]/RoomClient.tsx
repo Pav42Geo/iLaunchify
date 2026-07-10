@@ -6,6 +6,7 @@
 import { useRouter } from 'next/navigation'
 import {
   CoCreationRoomShell,
+  nicheGradientKey,
   type RoomShellEvent,
   type RoomShellMessage,
   type RoomShellMilestone,
@@ -23,6 +24,7 @@ import {
 export function RoomClient(props: {
   roomId: string
   briefTitle: string
+  briefNicheSlug: string
   creatorName: string
   partnerName: string
   ndaSigned: boolean
@@ -43,6 +45,7 @@ export function RoomClient(props: {
     <CoCreationRoomShell
       mode="creator"
       briefTitle={props.briefTitle}
+      accentGradient={nicheGradientKey(props.briefNicheSlug)}
       creatorName={props.creatorName}
       partnerName={props.partnerName}
       ndaSigned={props.ndaSigned}
