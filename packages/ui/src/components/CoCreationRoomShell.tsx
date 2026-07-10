@@ -1170,9 +1170,9 @@ function ObjectDetail({
                         className="w-24"
                       />
                       <Input
-                        aria-label="Serving size description"
+                        aria-label="Serving size household measure"
                         value={draftServing.sizeDesc}
-                        placeholder="e.g. 12 fl oz (355g)"
+                        placeholder="e.g. 12 fl oz — grams are added automatically"
                         onChange={(e) => setDraftServing((s) => ({ ...s, sizeDesc: e.target.value }))}
                         className="flex-1"
                       />

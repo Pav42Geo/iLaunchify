@@ -224,8 +224,13 @@ export async function resolveRoomRecipeLabel(input: {
       servingSizeG: serving.sizeG,
       servingsPerPackage: serving.perContainer,
     })
+    // The engine appends "(NNNg)" to the household measure itself — strip a
+    // gram suffix the maker may have typed so it never doubles up.
+    const householdMeasure = serving.sizeDesc
+      ? serving.sizeDesc.replace(/\s*\(\s*\d+(?:\.\d+)?\s*g\s*\)\s*$/i, '').trim() || undefined
+      : undefined
     panel = toPanelData(result, {
-      suggestedServing: serving.sizeDesc ?? undefined,
+      suggestedServing: householdMeasure,
       showVoluntaryFats: true,
     })
   }

@@ -331,9 +331,11 @@ async function main() {
       { name: 'Monk fruit', amount: '0.9g', note: 'Sweetener — swapped from stevia' },
     ]
     // Serving block feeds the live facts panel (rows are per-container).
+    // sizeDesc is the household measure ONLY — the panel engine appends
+    // "(355g)" itself (21 CFR 101.9(b) dual declaration).
     const serving = {
       sizeG: 355,
-      sizeDesc: '12 fl oz (355g)',
+      sizeDesc: '12 fl oz',
       perContainer: 1,
       netQuantity: { kind: 'liquid', milliliters: 355 },
     }
