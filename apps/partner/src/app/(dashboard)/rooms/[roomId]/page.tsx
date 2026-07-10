@@ -49,16 +49,23 @@ export default async function PartnerRoomPage({
   })
   if (!room) notFound()
 
-  // Live domain-aware label bundle from the latest recipe version.
+  // Live domain-aware label bundle for EVERY recipe version (per-version
+  // display + label diff on compare).
   const recipeObj = room.objects.find((o) => o.kind === 'RECIPE')
-  const latestRecipeVersion = recipeObj?.versions[recipeObj.versions.length - 1]
-  const recipeLabel = latestRecipeVersion
-    ? await resolveRoomRecipeLabel({
-        partnerId: room.partnerId,
-        domain: room.brief.category,
-        payload: latestRecipeVersion.payload,
-      })
-    : null
+  const recipeLabels = recipeObj
+    ? (
+        await Promise.all(
+          recipeObj.versions.map(async (v) => ({
+            version: v.version,
+            label: await resolveRoomRecipeLabel({
+              partnerId: room.partnerId,
+              domain: room.brief.category,
+              payload: v.payload,
+            }),
+          })),
+        )
+      ).flatMap((x) => (x.label ? [{ version: x.version, label: x.label }] : []))
+    : []
 
   // Room switcher — every ACTIVE room this maker org is in.
   const [activeRooms, nicheRows] = await Promise.all([
@@ -103,7 +110,7 @@ export default async function PartnerRoomPage({
       <RoomClient
       roomId={room.id}
       rooms={switcherRooms}
-      recipeLabel={recipeLabel}
+      recipeLabels={recipeLabels}
       briefTitle={room.brief.title}
       briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}

@@ -71,17 +71,24 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
     }
   })
 
-  // Live domain-aware label bundle from the latest recipe version (facts
-  // panel + mandatory statements; honesty-gated in resolveRoomRecipeLabel).
+  // Live domain-aware label bundle for EVERY recipe version (facts panel +
+  // mandatory statements; honesty-gated in resolveRoomRecipeLabel) — the
+  // shell shows the matching label per viewed version and diffs on compare.
   const recipeObj = room.objects.find((o) => o.kind === 'RECIPE')
-  const latestRecipeVersion = recipeObj?.versions[recipeObj.versions.length - 1]
-  const recipeLabel = latestRecipeVersion
-    ? await resolveRoomRecipeLabel({
-        partnerId: room.partnerId,
-        domain: room.brief.category,
-        payload: latestRecipeVersion.payload,
-      })
-    : null
+  const recipeLabels = recipeObj
+    ? (
+        await Promise.all(
+          recipeObj.versions.map(async (v) => ({
+            version: v.version,
+            label: await resolveRoomRecipeLabel({
+              partnerId: room.partnerId,
+              domain: room.brief.category,
+              payload: v.payload,
+            }),
+          })),
+        )
+      ).flatMap((x) => (x.label ? [{ version: x.version, label: x.label }] : []))
+    : []
 
   // "Confirm & create product" unlocks when the recipe is approved, the room
   // is still active, and nothing was materialized yet (§6 CLOSED_WON).
@@ -110,7 +117,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
       <RoomClient
         roomId={room.id}
         rooms={switcherRooms}
-        recipeLabel={recipeLabel}
+        recipeLabels={recipeLabels}
         briefTitle={room.brief.title}
         briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}

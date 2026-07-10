@@ -98,8 +98,10 @@ export interface CoCreationRoomShellProps {
   /** All of this user's active rooms (incl. the current one) — the title
       becomes a switcher dropdown when there's more than one. */
   rooms?: RoomSwitcherEntry[]
-  /** Live domain-aware label bundle for the latest recipe version. */
-  recipeLabel?: RoomRecipeLabelView | null
+  /** Live domain-aware label bundles, one per recipe version (unresolvable
+      versions omitted) — the facts sidebar follows the viewed version and
+      the compare view diffs the two labels. */
+  recipeLabels?: { version: number; label: RoomRecipeLabelView }[]
 }
 
 /** Serialized label bundle (structural mirror of @ilaunchify/orders' RoomRecipeLabel). */
@@ -476,7 +478,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               gradient={gradient}
               briefTitle={props.briefTitle}
               partnerName={props.partnerName}
-              recipeLabel={props.recipeLabel ?? null}
+              recipeLabels={props.recipeLabels ?? []}
               onSubmitVersion={(payload) => run(() => props.onSubmitVersion(selected.id, payload))}
               onReview={(d, note) => run(() => props.onReview(selected.id, d, note))}
               onReopen={() => run(() => props.onReopen(selected.id))}
@@ -678,7 +680,7 @@ function ObjectDetail({
   gradient,
   briefTitle,
   partnerName,
-  recipeLabel,
+  recipeLabels,
   onSubmitVersion,
   onReview,
   onReopen,
@@ -691,7 +693,7 @@ function ObjectDetail({
   gradient: string
   briefTitle: string
   partnerName: string
-  recipeLabel: RoomRecipeLabelView | null
+  recipeLabels: { version: number; label: RoomRecipeLabelView }[]
   onSubmitVersion: (payload: Record<string, unknown>) => void
   onReview: (decision: 'APPROVE' | 'REQUEST_CHANGES', note?: string) => void
   onReopen: () => void
@@ -747,10 +749,20 @@ function ObjectDetail({
     })(),
   }))
 
-  // Facts sidebar renders against the LATEST version only (older/compare
-  // views show formula history, not a stale label).
+  // Facts sidebar follows the VIEWED version (every version gets its own
+  // computed label); compare mode diffs previous → latest side by side.
+  const labelFor = React.useCallback(
+    (v: number | undefined) =>
+      v === undefined ? null : (recipeLabels.find((x) => x.version === v)?.label ?? null),
+    [recipeLabels],
+  )
+  const viewLabel =
+    viewVersion === 'compare' ? labelFor(latest?.version) : labelFor(viewVersion)
+  const prevLabel = labelFor(previous?.version)
   const viewingLatest = viewVersion === latest?.version
-  const showFacts = isRecipe && viewingLatest && recipeLabel !== null && recipeLabel.rows.length > 0
+  const hasFactsData = isRecipe && viewLabel !== null && viewLabel.rows.length > 0
+  const showFacts = hasFactsData && viewVersion !== 'compare'
+  const showFactsCompare = hasFactsData && viewVersion === 'compare'
 
   const canSubmit =
     (mode === 'partner' || isLabel) && (object.status === 'DRAFT' || object.status === 'CHANGES_REQUESTED')
@@ -868,14 +880,15 @@ function ObjectDetail({
               : `Waiting for ${mode === 'creator' ? 'the maker' : 'the creator'} to submit the first version.`}
           </p>
         ) : isRecipe ? (
-          <div className={cn(showFacts && 'gap-s-4 xl:grid xl:grid-cols-[minmax(0,1fr)_270px]')}>
+          <div className={cn(hasFactsData && 'gap-s-4 xl:grid xl:grid-cols-[minmax(0,1fr)_270px]')}>
           <div>
           {rows.map((r, idx) => {
             const anchor = `row:${idx}`
             const thread = threadFor(anchor)
             const prev = viewVersion === 'compare' ? prevRows[idx] : undefined
             const changed = prev && (prev.amount !== r.amount || prev.name !== r.name || prev.note !== r.note)
-            const res = showFacts ? (recipeLabel?.rows[idx] ?? null) : null
+            // viewLabel always matches the displayed rows (compare shows latest).
+            const res = hasFactsData ? (viewLabel?.rows[idx] ?? null) : null
             return (
               <div key={idx}>
                 <div
@@ -961,8 +974,31 @@ function ObjectDetail({
               </div>
             )
           })}
+          {/* Discussion stays under the formula column — never under the label. */}
+          <ObjectThread
+            comments={object.comments.filter((c) => !c.anchor)}
+            meName={meName}
+            busy={busy}
+            onComment={(b) => onComment(b)}
+          />
           </div>
-          {showFacts && recipeLabel ? <RecipeFactsSidebar label={recipeLabel} /> : null}
+          {showFactsCompare && viewLabel ? (
+            <RecipeFactsCompare
+              latest={viewLabel}
+              previous={prevLabel}
+              latestVersion={latest?.version ?? 0}
+              prevVersion={previous?.version ?? 0}
+            />
+          ) : showFacts && viewLabel ? (
+            <RecipeFactsSidebar
+              label={viewLabel}
+              versionNote={
+                viewingLatest
+                  ? null
+                  : `Label computed for v${viewVersion} — not the latest formula.`
+              }
+            />
+          ) : null}
           </div>
         ) : fields.length ? (
           fields.map((f, idx) => (
@@ -1134,8 +1170,8 @@ function ObjectDetail({
           ) : null
         ) : null}
 
-        {/* Unanchored discussion */}
-        {!isLabel ? (
+        {/* Unanchored discussion (recipe renders it inside its formula column) */}
+        {!isLabel && !isRecipe ? (
           <ObjectThread
             comments={object.comments.filter((c) => !c.anchor)}
             meName={meName}
@@ -1200,7 +1236,14 @@ function ObjectDetail({
 // catalog rows — coverage is always disclosed, allergens gated on 100%.
 // ---------------------------------------------------------------------------
 
-function RecipeFactsSidebar({ label }: { label: RoomRecipeLabelView }) {
+function RecipeFactsSidebar({
+  label,
+  versionNote,
+}: {
+  label: RoomRecipeLabelView
+  /** Shown instead of the live-preview footnote when viewing an OLDER version. */
+  versionNote?: string | null
+}) {
   const partial = label.coverage.resolved < label.coverage.total
   const netLine = label.serving.netQuantity ? formatNetQuantity(label.serving.netQuantity) : null
   const isFoodish = label.domain === 'FOOD' || label.domain === 'BEVERAGE_FUNCTIONAL'
@@ -1278,8 +1321,141 @@ function RecipeFactsSidebar({ label }: { label: RoomRecipeLabelView }) {
           </div>
         ) : null}
       </div>
+      {versionNote ? (
+        <p className="mt-s-1 text-ui-label normal-case tracking-normal text-warning-700">
+          ⚠ {versionNote}
+        </p>
+      ) : (
+        <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-400">
+          Live preview — computed from catalog data, updates with each version.
+        </p>
+      )}
+    </aside>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Label compare (Pavel 2026-07-10) — diffs the previous vs latest computed
+// labels: serving line, every panel nutrient (by row id), ingredient
+// statement / INCI / pet order, Contains line, net quantity. Rendered next
+// to the formula compare so the two diffs read together.
+// ---------------------------------------------------------------------------
+
+interface LabelDiffItem {
+  name: string
+  from: string | null
+  to: string | null
+}
+
+function panelRowMap(panel: PanelData | null) {
+  const m = new Map<string, { label: string; value: string }>()
+  for (const r of panel?.rows ?? []) {
+    const dv =
+      r.dvText ?? (r.noDailyValue ? '†' : r.percentDailyValue != null ? `${r.percentDailyValue}%` : null)
+    m.set(r.id || r.label, {
+      label: r.label,
+      value: `${r.amount}${r.unit ?? ''}${dv ? ` · ${dv} DV` : ''}`,
+    })
+  }
+  return m
+}
+
+function diffLabels(prev: RoomRecipeLabelView, next: RoomRecipeLabelView): LabelDiffItem[] {
+  const items: LabelDiffItem[] = []
+
+  // Serving line
+  const servingOf = (l: RoomRecipeLabelView) =>
+    l.serving.sizeG != null
+      ? `${l.serving.sizeDesc ?? `${l.serving.sizeG}g`}${l.serving.perContainer != null ? ` × ${l.serving.perContainer}` : ''}`
+      : null
+  const sPrev = servingOf(prev)
+  const sNext = servingOf(next)
+  if (sPrev !== sNext) items.push({ name: 'Serving', from: sPrev, to: sNext })
+
+  // Panel nutrients, keyed by row id — next's order first, then prev-only rows.
+  const pm = panelRowMap(prev.panel)
+  const nm = panelRowMap(next.panel)
+  for (const [key, n] of nm) {
+    const p = pm.get(key)
+    if (!p) items.push({ name: n.label, from: null, to: n.value })
+    else if (p.value !== n.value) items.push({ name: n.label, from: p.value, to: n.value })
+  }
+  for (const [key, p] of pm) {
+    if (!nm.has(key)) items.push({ name: p.label, from: p.value, to: null })
+  }
+
+  // Mandatory statements — long text collapses to "updated".
+  const stmtOf = (l: RoomRecipeLabelView) => l.inciText ?? l.petOrder?.join(', ') ?? l.statement
+  if (stmtOf(prev) !== stmtOf(next) && (stmtOf(prev) || stmtOf(next))) {
+    items.push({
+      name: 'Ingredient statement',
+      from: stmtOf(prev) ? 'previous order' : null,
+      to: stmtOf(next) ? 'updated' : null,
+    })
+  }
+  if (prev.containsLine !== next.containsLine) {
+    items.push({ name: 'Contains', from: prev.containsLine, to: next.containsLine })
+  }
+  const netOf = (l: RoomRecipeLabelView) =>
+    l.serving.netQuantity ? formatNetQuantity(l.serving.netQuantity) : null
+  if (netOf(prev) !== netOf(next)) items.push({ name: 'Net quantity', from: netOf(prev), to: netOf(next) })
+
+  return items
+}
+
+function RecipeFactsCompare({
+  latest,
+  previous,
+  latestVersion,
+  prevVersion,
+}: {
+  latest: RoomRecipeLabelView
+  previous: RoomRecipeLabelView | null
+  latestVersion: number
+  prevVersion: number
+}) {
+  const diff = previous ? diffLabels(previous, latest) : []
+
+  return (
+    <aside aria-label="Label comparison" className="mt-s-4 xl:mt-0">
+      <div className="mb-s-2 rounded-lg border border-ink-200 bg-white p-s-3">
+        <div className="text-ui-label uppercase text-ink-900">
+          Label · v{prevVersion} → v{latestVersion}
+        </div>
+        {!previous ? (
+          <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+            v{prevVersion} has no computable label (missing serving or unmatched rows) — showing
+            v{latestVersion} only.
+          </p>
+        ) : diff.length === 0 ? (
+          <p className="mt-s-1 text-ui-label normal-case tracking-normal text-success-700">
+            ✓ No label impact — facts, statements and net quantity are unchanged.
+          </p>
+        ) : (
+          <div className="mt-s-1">
+            {diff.map((d, i) => (
+              <div
+                key={i}
+                className="flex items-baseline justify-between gap-s-2 border-b border-ink-100 py-s-1 last:border-0"
+              >
+                <span className="text-ui-label normal-case tracking-normal text-ink-600">{d.name}</span>
+                <span className="text-right text-ui-label normal-case tracking-normal text-ink-900">
+                  {d.from ? <span className="text-ink-400 line-through">{d.from}</span> : null}
+                  {d.from && d.to ? ' ' : null}
+                  {d.to ? <b>{d.to}</b> : d.from ? <b className="text-danger-700">removed</b> : null}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Latest label for context under the diff */}
+      {(latest.domain === 'FOOD' || latest.domain === 'BEVERAGE_FUNCTIONAL') && latest.panel ? (
+        <NutritionFactsRenderer data={latest.panel} />
+      ) : null}
       <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-400">
-        Live preview — computed from catalog data, updates with each version.
+        Both labels computed from catalog data for their own formula version.
       </p>
     </aside>
   )
