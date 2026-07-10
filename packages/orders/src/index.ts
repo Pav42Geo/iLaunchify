@@ -59,6 +59,15 @@ export {
   isMilestoneTransitionAllowed,
   assertMilestoneTransition,
 } from './room-object-fsm'
+// Room mutation core — callers own the membership guards (see module header).
+export {
+  submitObjectVersion,
+  reviewObject,
+  reopenObject,
+  addObjectComment,
+  addRoomMessage,
+} from './room-service'
+export type { RoomActor, RoomCtx, RoomRole, RoomResult } from './room-service'
 export {
   transitionDispatch,
   assertDispatchTransition,

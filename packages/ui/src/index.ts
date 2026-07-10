@@ -73,6 +73,8 @@ export * from './components/HeroBanner'
 export * from './components/AppHeader'
 export * from './components/Brand'
 export * from './components/PackagingStudioShell'
+// Co-creation Collaboration Room (presentational, mode prop — creator + partner render it)
+export * from './components/CoCreationRoomShell'
 export * from './components/TrendChart'
 export * from './components/MetricCard'
 export * from './components/ActionQueue'

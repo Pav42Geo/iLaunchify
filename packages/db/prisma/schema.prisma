@@ -4795,6 +4795,9 @@ enum NotificationEvent {
   BRIEF_INTEREST_SHORTLISTED // creator starred the maker's interest → notify partner
   BRIEF_INTEREST_SELECTED // creator picked this maker — room opening → notify partner
   BRIEF_INTEREST_PASSED // creator chose another maker — thanked respectfully → notify partner
+  BUILD_OBJECT_SUBMITTED // a room object version was submitted for review → notify the other side
+  BUILD_OBJECT_CHANGES_REQUESTED // reviewer requested changes → notify submitter
+  BUILD_OBJECT_APPROVED // reviewer approved the object → notify submitter
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

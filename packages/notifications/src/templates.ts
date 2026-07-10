@@ -23,6 +23,9 @@ export interface TemplateData {
   BRIEF_INTEREST_SHORTLISTED: { briefTitle: string; creatorName?: string }
   BRIEF_INTEREST_SELECTED: { briefTitle: string; creatorName?: string; roomId?: string }
   BRIEF_INTEREST_PASSED: { briefTitle: string }
+  BUILD_OBJECT_SUBMITTED: { roomId: string; objectKind: string; version?: number; byName?: string }
+  BUILD_OBJECT_CHANGES_REQUESTED: { roomId: string; objectKind: string; version?: number; byName?: string; note?: string }
+  BUILD_OBJECT_APPROVED: { roomId: string; objectKind: string; version?: number; byName?: string }
   PACKAGING_APPROVED: { name: string; category?: string }
   PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
@@ -209,6 +212,15 @@ const PARTNER_APP_URL = process.env.PARTNER_LOGIN_HOST ?? 'http://localhost:3002
 const ADMIN_APP_URL = process.env.ADMIN_LOGIN_HOST ?? 'http://localhost:3003'
 const CREATOR_APP_URL = process.env.CREATOR_LOGIN_HOST ?? 'http://localhost:3000'
 
+/** Human labels for co-creation BuildObject kinds (room notifications). */
+const OBJECT_KIND_LABEL: Record<string, string> = {
+  RECIPE: 'recipe',
+  LABEL: 'label',
+  PACKAGING: 'packaging',
+  SAMPLE: 'sample & spec',
+  SPEC_SHEET: 'spec sheet',
+}
+
 export function renderTemplate<E extends NotificationEvent>(
   event: E,
   data: TemplateData[E],
@@ -298,6 +310,33 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `Update on “${d.briefTitle}”`,
         body: 'The creator chose another partner for this brief. Thanks for raising your hand — your interest and terms made the comparison stronger, and new matched briefs keep coming.',
         link: '/opportunities',
+      }
+    }
+    case 'BUILD_OBJECT_SUBMITTED': {
+      const d = data as TemplateData['BUILD_OBJECT_SUBMITTED']
+      const kind = OBJECT_KIND_LABEL[d.objectKind] ?? d.objectKind.toLowerCase()
+      return {
+        title: `${d.byName ?? 'Your partner'} submitted the ${kind}${d.version ? ` (v${d.version})` : ''}`,
+        body: `A new version of the ${kind} is ready for your review in the collaboration room — approve it or request changes.`,
+        link: `/rooms/${d.roomId}`,
+      }
+    }
+    case 'BUILD_OBJECT_CHANGES_REQUESTED': {
+      const d = data as TemplateData['BUILD_OBJECT_CHANGES_REQUESTED']
+      const kind = OBJECT_KIND_LABEL[d.objectKind] ?? d.objectKind.toLowerCase()
+      return {
+        title: `Changes requested on the ${kind}`,
+        body: `${d.byName ?? 'The reviewer'} requested changes${d.note ? `: “${d.note}”` : ''}. Revise and submit a new version in the room.`,
+        link: `/rooms/${d.roomId}`,
+      }
+    }
+    case 'BUILD_OBJECT_APPROVED': {
+      const d = data as TemplateData['BUILD_OBJECT_APPROVED']
+      const kind = OBJECT_KIND_LABEL[d.objectKind] ?? d.objectKind.toLowerCase()
+      return {
+        title: `${kind[0]?.toUpperCase()}${kind.slice(1)} approved ✓`,
+        body: `${d.byName ?? 'The reviewer'} approved the ${kind}${d.version ? ` (v${d.version})` : ''} — it's locked into the decision log. On to the next step.`,
+        link: `/rooms/${d.roomId}`,
       }
     }
     case 'NOMINATION_SERVICE_MISMATCH': {

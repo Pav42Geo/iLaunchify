@@ -3,6 +3,22 @@ import { describe, expect, it } from 'vitest'
 import type { FcCandidate, FcSelectionInput } from './fc-selector'
 import { scoreAndSelectFc } from './fc-scorer'
 import type { FcScoringContext, FcScoringWeights } from './fc-scorer'
+import { isPublicFcPoolEligible } from './fc-pool'
+
+describe('isPublicFcPoolEligible — public FC pool barred to producers (main-role rule)', () => {
+  it('pure fulfillment center → eligible', () => {
+    expect(isPublicFcPoolEligible(['WAREHOUSE'])).toBe(true)
+  })
+  it('manufacturer that also warehouses → excluded (its warehouse serves its own cycle)', () => {
+    expect(isPublicFcPoolEligible(['MANUFACTURING', 'WAREHOUSE'])).toBe(false)
+  })
+  it('co-packer that also warehouses → excluded', () => {
+    expect(isPublicFcPoolEligible(['COPACKING', 'WAREHOUSE'])).toBe(false)
+  })
+  it('no warehouse service → not an FC at all', () => {
+    expect(isPublicFcPoolEligible(['LABEL_PRINTING'])).toBe(false)
+  })
+})
 
 const weights: FcScoringWeights = {
   costWeightPct: 35,
