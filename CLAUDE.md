@@ -55,6 +55,8 @@ CockroachDB Serverless via Prisma. Schema at `packages/db/prisma/schema.prisma`.
 
 Tokens live in `packages/ui/src/tokens` and `packages/ui/src/theme.css`. Tailwind preset at `packages/ui/tailwind.preset.ts`.
 
+**Before building ANY UI, read `AGENTS.md` (repo root) + `packages/ui/registry.json`** — the component registry + UI laws. Reuse a component if it covers ~80% of the need; don't invent one. Hex/palette hygiene enforced by `pnpm check:colors` (see `docs/DESIGN_TOKEN_HYGIENE.md`).
+
 ## Admin v2 surface pattern (LOCKED 2026-05-31)
 
 Every admin list page follows this chrome — **no exceptions, no shadcn Card, no @ilaunchify/ui Card**:
@@ -126,6 +128,7 @@ After `db:push` + `db:generate`, also `rm -rf apps/*/.next` and restart `next de
 Persistent decisions live in `.claude/memory/*.md`. Index at `.claude/memory/INDEX.md`. Read it when starting work on an unfamiliar surface.
 
 Larger specs in `docs/`:
+- `CO_CREATION_MARKETPLACE_SPEC.md` — **NEW (2026-07-09)** creator-originated products: two-door Brief Builder → manufacturer Opportunity Pool (Express-Interest, no recipe) → Shortlist & Selection → on-platform Collaboration Room (structured recipe/label/packaging objects + approvals + milestone escrow). **Start-here for the co-creation build is §0.** UX contract = branded prototype `iLaunchify-cocreation-demo.html` (repo root) + `design/co-creation-demo.html`; rationale/research = `design/co-creation-strategy-brief.html`.
 - `PLATFORM_SPEC.md` — tiers, fees, FSMs
 - `MARKETPLACE_DESIGN.md` — 4-layer taxonomy detail
 - `PRODUCTION_ORCHESTRATION.md` — multi-partner workflow graph

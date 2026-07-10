@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creator ↔ Manufacturer Marketplace — Strategy & Design Brief</title>
+<style>
+  :root{
+    --ink:#12181f; --ink-soft:#3d4a57; --muted:#68788a; --line:#e5e9ef;
+    --bg:#f6f8fa; --card:#ffffff;
+    --brand:#12b981;      /* fresh green */
+    --brand-d:#0e9c6d;
+    --brand-wash:#e7f8f1;
+    --coral:#ff6b57;      /* warm accent */
+    --coral-wash:#fff0ed;
+    --violet:#6c5ce7;
+    --violet-wash:#efedfd;
+    --amber:#f6a609;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+    --shadow-lg:0 12px 40px rgba(16,24,40,.10);
+    --r:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  section{padding:56px 0;border-bottom:1px solid var(--line)}
+  h1,h2,h3,h4{line-height:1.2;letter-spacing:-.02em;margin:0}
+  h2{font-size:30px;margin-bottom:8px}
+  h3{font-size:20px;margin:0 0 6px}
+  p{margin:0 0 14px}
+  a{color:var(--brand-d);text-decoration:none}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-d)}
+  .lead{font-size:18px;color:var(--ink-soft)}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+       padding:3px 9px;border-radius:999px;background:var(--brand-wash);color:var(--brand-d)}
+  .tag.coral{background:var(--coral-wash);color:#d9432f}
+  .tag.violet{background:var(--violet-wash);color:#5646c9}
+  .tag.amber{background:#fff5e0;color:#b9790a}
+  .tag.gray{background:#eef2f6;color:#55636f}
+
+  /* ---------- HERO ---------- */
+  .hero{background:
+      radial-gradient(1200px 500px at 15% -10%,rgba(18,185,129,.18),transparent 60%),
+      radial-gradient(900px 500px at 100% 0%,rgba(108,92,231,.14),transparent 55%),
+      linear-gradient(180deg,#0d1420,#0d1420);
+    color:#eaf1f6;border-bottom:none;padding:64px 0 60px}
+  .hero .eyebrow{color:#7ff0c4}
+  .hero h1{font-size:44px;max-width:20ch;margin:12px 0 16px;color:#fff}
+  .hero p{color:#b6c4d1;font-size:19px;max-width:60ch}
+  .hero .chips{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .chip{font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;
+        background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:#dbe6ee}
+  .meta{margin-top:30px;font-size:13px;color:#8aa0b2}
+
+  /* ---------- GRID / CARDS ---------- */
+  .grid{display:grid;gap:18px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
+  .card h3{display:flex;align-items:center;gap:9px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .callout{border-left:4px solid var(--brand);background:var(--brand-wash);
+    padding:16px 20px;border-radius:0 12px 12px 0;margin:18px 0}
+  .callout.coral{border-color:var(--coral);background:var(--coral-wash)}
+  .callout.violet{border-color:var(--violet);background:var(--violet-wash)}
+  .kpi{font-size:34px;font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+  .kpi span{font-size:14px;font-weight:600;color:var(--muted)}
+  ul.clean{margin:6px 0 0;padding-left:18px}
+  ul.clean li{margin-bottom:7px}
+  ul.check{list-style:none;margin:6px 0 0;padding:0}
+  ul.check li{position:relative;padding-left:26px;margin-bottom:9px}
+  ul.check li::before{content:"✓";position:absolute;left:0;top:0;color:var(--brand-d);font-weight:800}
+  ul.cross li::before{content:"✕";color:#d9432f}
+
+  /* ---------- TABLE ---------- */
+  table{width:100%;border-collapse:collapse;font-size:14px;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+  th,td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f0f4f8;font-size:12px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-soft)}
+  tr:last-child td{border-bottom:none}
+  td strong{color:var(--ink)}
+
+  /* ---------- JOURNEY MAP ---------- */
+  .journey{display:grid;grid-template-columns:120px repeat(7,1fr);gap:0;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+  .journey .rowlabel,.journey .step,.journey .phase{padding:12px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);font-size:12.5px}
+  .journey .phase{background:#0d1420;color:#eaf1f6;font-weight:700;text-align:center;letter-spacing:.02em;font-size:12px}
+  .journey .phase.corner{background:#0d1420}
+  .journey .rowlabel{background:#f0f4f8;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;font-size:12px}
+  .journey .step{min-height:76px}
+  .journey .step.c{background:var(--brand-wash)}
+  .journey .step.m{background:var(--violet-wash)}
+  .journey .step.p{background:#fff8e8}
+  .journey .step b{display:block;font-size:12.5px;margin-bottom:3px;color:var(--ink)}
+  .journey .step span{color:var(--muted);font-size:11.5px;line-height:1.35;display:block}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:13px}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
+
+  /* ---------- WIREFRAMES ---------- */
+  .wf{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-lg)}
+  .wf .bar{display:flex;align-items:center;gap:7px;padding:10px 14px;background:#eef2f6;border-bottom:1px solid var(--line)}
+  .wf .bar i{width:11px;height:11px;border-radius:50%;background:#cfd8e0}
+  .wf .bar .url{margin-left:10px;font-size:12px;color:#7d8b98;background:#fff;border:1px solid var(--line);
+    border-radius:7px;padding:4px 12px;flex:1}
+  .wf .screen{padding:18px}
+  .wf-title{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+  .ph{background:#eef2f6;border-radius:6px;height:10px;margin:6px 0}
+  .ph.s{width:40%}.ph.m{width:65%}.ph.l{width:88%}
+  .btn{display:inline-block;background:var(--brand);color:#fff;font-size:12.5px;font-weight:700;
+    padding:8px 16px;border-radius:9px}
+  .btn.ghost{background:#fff;color:var(--ink-soft);border:1px solid var(--line)}
+  .btn.coral{background:var(--coral)}
+  .btn.dark{background:#1a2531}
+  .field{border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:12.5px;color:var(--muted);background:#fbfcfd;margin:6px 0}
+  .field b{color:var(--ink);font-weight:600}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;
+    background:#eef2f6;color:#55636f;margin:2px 4px 2px 0}
+  .pill.on{background:var(--brand-wash);color:var(--brand-d)}
+  .postcard{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;background:#fff}
+  .avatar{width:34px;height:34px;border-radius:50%;flex:none;
+    background:linear-gradient(135deg,var(--brand),#43d6a3)}
+  .avatar.v{background:linear-gradient(135deg,var(--violet),#9d8bff)}
+  .avatar.c{background:linear-gradient(135deg,var(--coral),#ffa08e)}
+  .flex{display:flex;gap:12px}
+  .between{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .col{display:flex;flex-direction:column}
+  .stack>*+*{margin-top:10px}
+  .divider{height:1px;background:var(--line);margin:12px 0}
+  .wf-note{font-size:13px;color:var(--muted);margin-top:12px}
+  .wf-note b{color:var(--ink-soft)}
+
+  .split{display:grid;grid-template-columns:1.05fr .95fr;gap:26px;align-items:start}
+  .num{width:30px;height:30px;border-radius:9px;background:var(--brand);color:#fff;font-weight:800;
+    display:flex;align-items:center;justify-content:center;flex:none;font-size:14px}
+  .step-row{display:flex;gap:14px;margin-bottom:16px}
+  .toc{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .toc a{font-size:13px;font-weight:600;background:#fff;border:1px solid var(--line);border-radius:999px;
+    padding:7px 13px;color:var(--ink-soft)}
+  .toc a:hover{border-color:var(--brand);color:var(--brand-d)}
+  footer{padding:40px 0;color:var(--muted);font-size:13px}
+  .src{font-size:12.5px;color:var(--muted)}
+  .src a{color:var(--muted);text-decoration:underline}
+  @media(max-width:860px){
+    .g2,.g3,.g4,.split{grid-template-columns:1fr}
+    .journey{grid-template-columns:100px repeat(7,minmax(120px,1fr));overflow-x:auto}
+    .hero h1{font-size:34px}
+  }
+  @media print{.hero{background:#0d1420}.card,.wf,table{box-shadow:none}}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Platform Vision · Feature Strategy &amp; Design Brief</div>
+    <h1>Let creators invent their own product — and build it with a manufacturer, without ever leaving the platform.</h1>
+    <p>A new module that turns your marketplace from “order a template” into “launch your own brand.” Creators post an idea or a formula, matched manufacturers raise their hand, and the whole build — recipe, label, packaging, approvals — happens inside one guided, on-platform workspace.</p>
+    <div class="chips">
+      <span class="chip">🧪 Recipe &amp; formula co-creation</span>
+      <span class="chip">🤝 Curated manufacturer matching</span>
+      <span class="chip">🗂️ Structured approval workspace</span>
+      <span class="chip">🔒 IP, escrow &amp; creator control</span>
+    </div>
+    <div class="meta">Prepared for Pavel · July 2026 · Full end-to-end scope</div>
+  </div>
+</header>
+
+<!-- EXEC SUMMARY -->
+<section id="summary">
+  <div class="wrap">
+    <div class="eyebrow">01 · The big bet</div>
+    <h2>What we&rsquo;re actually building</h2>
+    <p class="lead">Today creators can <em>order and tweak</em> ready-made templates. This feature lets them <strong>originate</strong> — bring their own recipe, or their own idea, and get a real branded CPG product made under their control. Almost no one serves the <em>small</em> creator here. That&rsquo;s the whitespace.</p>
+
+    <div class="grid g3" style="margin-top:22px">
+      <div class="card">
+        <span class="tag">The gap</span>
+        <h3 style="margin-top:10px">Nobody does this for small creators</h3>
+        <p class="muted small">Keychain &amp; Pietra serve people who already know what to make and just need a factory. The creator who has an <em>audience and an idea</em> but no formulation knowledge is unserved.</p>
+      </div>
+      <div class="card">
+        <span class="tag violet">The moat</span>
+        <h3 style="margin-top:10px">The build stays on-platform</h3>
+        <p class="muted small">Recipe, label and packaging move as <em>structured, approvable objects</em> — not email attachments. That&rsquo;s the reason to stay, and it&rsquo;s very hard to copy.</p>
+      </div>
+      <div class="card">
+        <span class="tag coral">The risk to manage</span>
+        <h3 style="margin-top:10px">Trust in a first-of-kind service</h3>
+        <p class="muted small">We&rsquo;re first, so we must be the most <em>responsible</em>: IP protection, staged reveal, milestone escrow and clear creator control from message one.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>The one-sentence strategy:</strong> Be the place where a creator&rsquo;s idea becomes a shippable product through a guided, trustworthy, on-platform collaboration — so leaving for email feels like a downgrade, not an escape.
+    </div>
+
+    <div class="toc">
+      <a href="#market">Market landscape</a>
+      <a href="#personas">Two creator types</a>
+      <a href="#model">Matching model</a>
+      <a href="#flow">End-to-end flow</a>
+      <a href="#wireframes">Wireframes</a>
+      <a href="#workspace">Collaboration workspace</a>
+      <a href="#trust">Trust · IP · payments</a>
+      <a href="#money">Monetization</a>
+      <a href="#rollout">Rollout</a>
+    </div>
+  </div>
+</section>
+
+<!-- MARKET -->
+<section id="market">
+  <div class="wrap">
+    <div class="eyebrow">02 · Market landscape</div>
+    <h2>Who&rsquo;s near this space — and the door they left open</h2>
+    <p class="lead">The manufacturing-marketplace category is real and funded. But it&rsquo;s built for brands and retailers who <em>already have a product spec</em>. The creator co-creation layer — especially for the non-expert — is missing.</p>
+
+    <div class="grid g2" style="margin-top:22px">
+      <div class="card">
+        <div class="between"><h3>Keychain</h3><span class="tag gray">Brands / retailers</span></div>
+        <p class="muted small">AI matchmaker across 30k+ manufacturers. Type a product, see who can make it, reserve line time. Cuts sourcing from 12–18 months to days. <b>But:</b> you must know your product; built for established brands, not idea-stage creators.</p>
+      </div>
+      <div class="card">
+        <div class="between"><h3>Pietra</h3><span class="tag gray">Creators / DTC</span></div>
+        <p class="muted small">Closest analog: 1,500+ vetted factories, sourcing → fulfillment → storefront, launch in 60–90 days. <b>But:</b> largely white-label/private-label &amp; catalog sourcing. Light on <em>guided formulation for a novel recipe</em> and on structured, in-app recipe/label approval.</p>
+      </div>
+      <div class="card">
+        <div class="between"><h3>Wonnda</h3><span class="tag gray">EU · B2B</span></div>
+        <p class="muted small">Private-label &amp; co-manufacturing marketplace connecting brands with FMCG makers. Discovery-first. <b>But:</b> B2B sourcing tool, not a creator-first co-creation &amp; collaboration experience.</p>
+      </div>
+      <div class="card">
+        <div class="between"><h3>COLLAB / agencies</h3><span class="tag gray">Top talent only</span></div>
+        <p class="muted small">Full-service “we build your creator brand” — great outcomes, but hands-on, high-touch, and reserved for celebrities/large creators. <b>But:</b> doesn&rsquo;t scale to the long tail of small creators. That tail is our market.</p>
+      </div>
+    </div>
+
+    <div class="callout coral" style="margin-top:20px">
+      <strong>Anti-pattern to avoid — 99designs-style open bidding.</strong> Widely criticized as exploitative: makers do unpaid spec work, race to “safe” output, and get one shot. Manufacturers will <em>never</em> do free formulation work on spec. The market has moved to <strong>curated matching</strong> (Toptal-style). We take the good part — competition — without the toxic part — free labor.
+    </div>
+  </div>
+</section>
+
+<!-- PERSONAS -->
+<section id="personas">
+  <div class="wrap">
+    <div class="eyebrow">03 · Who we&rsquo;re serving</div>
+    <h2>Two creators, two on-ramps</h2>
+    <p class="lead">Same destination — their own product on a shelf. Different starting knowledge. The UI must greet each correctly on the very first screen.</p>
+
+    <div class="split" style="margin-top:22px">
+      <div class="card" style="border-top:4px solid var(--brand)">
+        <span class="tag">Type 1 · “The Formulator”</span>
+        <h3 style="margin-top:10px">Knows the recipe / formula</h3>
+        <p class="muted small">Chefs, food nomads, cosmetic &amp; wellness enthusiasts, product nerds. They have a formula (or the key ingredients) and want it made <em>their</em> way.</p>
+        <ul class="check small">
+          <li>Wants: fidelity to their spec, minimal dilution of vision</li>
+          <li>Fear: “the factory will change my recipe / steal it”</li>
+          <li>On-ramp: <b>“I have a recipe”</b> → structured formula builder</li>
+        </ul>
+      </div>
+      <div class="card" style="border-top:4px solid var(--violet)">
+        <span class="tag violet">Type 2 · “The Visionary”</span>
+        <h3 style="margin-top:10px">Has the idea, not the know-how</h3>
+        <p class="muted small">The passion-fruit protein water creator. Strong affinity &amp; audience, zero formulation skill. Needs a partner to make the idea real — <em>under their control</em>.</p>
+        <ul class="check small">
+          <li>Wants: a guide/expert, confidence, staying in charge</li>
+          <li>Fear: “I&rsquo;ll get railroaded or ripped off”</li>
+          <li>On-ramp: <b>“I have an idea”</b> → guided concept brief</li>
+        </ul>
+      </div>
+    </div>
+    <p class="wf-note"><b>Design implication:</b> one entry screen, two doors — “I have a recipe” and “I have an idea.” Both funnel into the same <em>Product Brief</em> object, just with different amounts pre-filled. Everything downstream is shared machinery.</p>
+  </div>
+</section>
+
+<!-- MODEL -->
+<section id="model">
+  <div class="wrap">
+    <div class="eyebrow">04 · The matching model</div>
+    <h2>Not an auction. A curated “raise your hand,” then a paid discovery.</h2>
+    <p class="lead">The hardest strategic choice is how creators and manufacturers find each other. Here&rsquo;s the recommendation and why.</p>
+
+    <table style="margin-top:20px">
+      <tr><th>Model</th><th>How it works</th><th>Verdict</th></tr>
+      <tr>
+        <td><strong>Open bidding / contest</strong><br><span class="muted small">99designs-style</span></td>
+        <td>Manufacturers submit real formulations to win the job.</td>
+        <td><span class="tag coral">Reject</span> Free spec work makers won&rsquo;t do; races to cheap; erodes trust.</td>
+      </tr>
+      <tr>
+        <td><strong>Pure algorithmic match</strong><br><span class="muted small">Keychain-style</span></td>
+        <td>AI assigns the “best” factory instantly.</td>
+        <td><span class="tag amber">Partial</span> Great for known specs; too cold for an emotional, first-time creator build.</td>
+      </tr>
+      <tr>
+        <td><strong>Curated RFQ + Expression of Interest</strong><br><span class="muted small">recommended</span></td>
+        <td>Creator posts a brief → platform routes to fit-matched manufacturers → makers send a lightweight <em>Expression of Interest</em> (capabilities, ballpark range, MOQ, why-us, timeline — <b>no free recipe</b>) → creator shortlists &amp; picks one → a <em>paid Discovery &amp; Sample</em> phase begins.</td>
+        <td><span class="tag">Adopt</span> Competition without exploitation; creator stays in control; makers invest only once chosen.</td>
+      </tr>
+    </table>
+
+    <div class="grid g3" style="margin-top:20px">
+      <div class="card">
+        <h3><span class="dot" style="background:var(--brand)"></span>Cheap to express interest</h3>
+        <p class="muted small">Interest = structured card (fit, range, MOQ, lead time, credentials, one note). Minutes, not unpaid labor. Keeps the pool liquid.</p>
+      </div>
+      <div class="card">
+        <h3><span class="dot" style="background:var(--violet)"></span>Expensive to actually build</h3>
+        <p class="muted small">The real work — formulation, samples — is a <em>paid milestone</em> after selection. Makers only invest in deals they&rsquo;ve won.</p>
+      </div>
+      <div class="card">
+        <h3><span class="dot" style="background:var(--coral)"></span>Creator always decides</h3>
+        <p class="muted small">Platform matches &amp; ranks; the creator shortlists and chooses. Never auto-assigned. Control is the product.</p>
+      </div>
+    </div>
+    <div class="callout violet">
+      <strong>Trend read (2026):</strong> across marketplaces the momentum is RFQ + curation + verified profiles + escrow/milestones, away from race-to-the-bottom auctions. We match that, and add the CPG-specific collaboration layer nobody else has.
+    </div>
+  </div>
+</section>
+
+<!-- FLOW -->
+<section id="flow">
+  <div class="wrap">
+    <div class="eyebrow">05 · The end-to-end flow</div>
+    <h2>Idea → shelf, as one continuous rail</h2>
+    <p class="lead">Seven phases. Three swimlanes — what the Creator does, what the Platform does automatically, what the Manufacturer does. The magic is that nothing ever falls out of the system into email.</p>
+
+    <div class="journey" style="margin-top:22px">
+      <div class="phase corner"></div>
+      <div class="phase">1 · Post</div>
+      <div class="phase">2 · Match</div>
+      <div class="phase">3 · Shortlist</div>
+      <div class="phase">4 · Discover</div>
+      <div class="phase">5 · Co-create</div>
+      <div class="phase">6 · Approve</div>
+      <div class="phase">7 · Produce</div>
+
+      <div class="rowlabel">Creator</div>
+      <div class="step c"><b>Brief builder</b><span>“Idea” or “recipe” → guided brief: category, taste, claims, budget, volume</span></div>
+      <div class="step c"><b>Reviews fits</b><span>Sees matched makers &amp; why they fit</span></div>
+      <div class="step c"><b>Shortlists &amp; picks</b><span>Compares interests, chooses one, signs mutual NDA</span></div>
+      <div class="step c"><b>Shares detail</b><span>Reveals recipe/targets in the secure room</span></div>
+      <div class="step c"><b>Gives direction</b><span>Reacts to samples, label &amp; pack drafts</span></div>
+      <div class="step c"><b>Approves</b><span>Approve / request changes on each object</span></div>
+      <div class="step c"><b>Confirms order</b><span>Signs off spec &amp; PO; tracks run</span></div>
+
+      <div class="rowlabel">Platform</div>
+      <div class="step p"><b>Structures it</b><span>Turns brief into searchable spec object</span></div>
+      <div class="step p"><b>Routes &amp; ranks</b><span>Fit-matches to capable, verified makers</span></div>
+      <div class="step p"><b>NDA + room</b><span>Auto NDA, spins up private workspace</span></div>
+      <div class="step p"><b>Escrow milestone</b><span>Holds discovery/sample fee in escrow</span></div>
+      <div class="step p"><b>Object sync</b><span>Recipe/label/pack forms + versioning</span></div>
+      <div class="step p"><b>Decision log</b><span>Records approvals, locks versions</span></div>
+      <div class="step p"><b>Handoff + payout</b><span>Releases milestones, generates PO</span></div>
+
+      <div class="rowlabel">Manufacturer</div>
+      <div class="step m"><b>Opportunity pool</b><span>Sees matched briefs in a live feed</span></div>
+      <div class="step m"><b>Expresses interest</b><span>Fit, range, MOQ, lead time, why-us</span></div>
+      <div class="step m"><b>Gets selected</b><span>Enters room; kickoff checklist</span></div>
+      <div class="step m"><b>Formulates</b><span>Builds recipe, ships samples</span></div>
+      <div class="step m"><b>Submits objects</b><span>Posts recipe/label/pack as forms</span></div>
+      <div class="step m"><b>Iterates</b><span>Resolves change requests, re-submits</span></div>
+      <div class="step m"><b>Runs production</b><span>Manufactures &amp; fulfills</span></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--brand)"></i>Creator action</span>
+      <span><i style="background:var(--amber)"></i>Platform (automatic)</span>
+      <span><i style="background:var(--violet)"></i>Manufacturer action</span>
+    </div>
+    <p class="wf-note"><b>Read it as a promise:</b> every hand-off that would normally trigger “I&rsquo;ll email it to you” instead becomes a structured object the other side can see, react to, and approve — right where they already are.</p>
+  </div>
+</section>
+
+<!-- WIREFRAMES -->
+<section id="wireframes">
+  <div class="wrap">
+    <div class="eyebrow">06 · Wireframes</div>
+    <h2>The key screens, low-fi</h2>
+    <p class="lead">Six screens carry the whole experience. These are structure-and-behavior sketches — not final visuals — to align on the interaction model.</p>
+
+    <!-- WF1 + WF2 -->
+    <div class="split" style="margin-top:24px">
+      <div>
+        <div class="wf">
+          <div class="bar"><i></i><i></i><i></i><span class="url">app / create / new-product</span></div>
+          <div class="screen">
+            <p class="wf-title">① Creator — Brief builder</p>
+            <div class="between" style="margin-bottom:12px">
+              <div class="btn dark">🧪 I have a recipe</div>
+              <div class="btn ghost">💡 I have an idea</div>
+            </div>
+            <div class="field"><b>Product</b> — Bottled water · passion-fruit · +protein</div>
+            <div class="field"><b>Must-have claims</b> &nbsp;<span class="pill on">High-protein</span><span class="pill on">No added sugar</span><span class="pill">Vegan</span></div>
+            <div class="field"><b>Taste / texture notes</b> — bright, tropical, not chalky</div>
+            <div class="flex">
+              <div class="field" style="flex:1"><b>Target volume</b><br>5,000 units</div>
+              <div class="field" style="flex:1"><b>Budget / unit</b><br>$1.20–1.80</div>
+            </div>
+            <div class="field"><b>Attach</b> — moodboard, competitor cans, my formula (optional)</div>
+            <div class="between" style="margin-top:12px">
+              <span class="small muted">Auto-saved as a Brief</span>
+              <div class="btn">Post to manufacturers →</div>
+            </div>
+          </div>
+        </div>
+        <p class="wf-note"><b>Why:</b> two doors, one object. AI can pre-fill claims/benchmarks from the idea so a novice isn&rsquo;t staring at a blank form.</p>
+      </div>
+
+      <div>
+        <div class="wf">
+          <div class="bar"><i></i><i></i><i></i><span class="url">makers / opportunity-pool</span></div>
+          <div class="screen">
+            <p class="wf-title">② Manufacturer — Opportunity pool (live feed)</p>
+            <div class="between" style="margin-bottom:6px">
+              <div><span class="pill on">Matched to you</span><span class="pill">Beverage</span><span class="pill">Protein</span></div>
+              <span class="small muted">🟢 live</span>
+            </div>
+            <div class="postcard">
+              <div class="flex between">
+                <div class="flex"><div class="avatar c"></div>
+                  <div class="col"><b class="small">Passion-fruit protein water</b><span class="small muted">5,000 units · $1.20–1.80 · 8-wk</span></div>
+                </div>
+                <span class="tag">96% fit</span>
+              </div>
+              <div style="margin-top:8px"><span class="pill">High-protein</span><span class="pill">No added sugar</span></div>
+              <div class="between" style="margin-top:10px">
+                <span class="small muted">💬 3 interested · 2h left to be early</span>
+                <div class="btn coral">Express interest</div>
+              </div>
+            </div>
+            <div class="postcard" style="opacity:.7">
+              <div class="flex between">
+                <div class="flex"><div class="avatar"></div>
+                  <div class="col"><b class="small">Adaptogen sparkling tea</b><span class="small muted">3,000 units · functional</span></div>
+                </div>
+                <span class="tag gray">81% fit</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="wf-note"><b>Why a feed, not a job board:</b> matched + real-time + “be early” nudges create liquidity and urgency. Only <em>fit-matched</em> briefs show, so it never feels like spam.</p>
+      </div>
+    </div>
+
+    <!-- WF3 + WF4 -->
+    <div class="split" style="margin-top:30px">
+      <div>
+        <div class="wf">
+          <div class="bar"><i></i><i></i><i></i><span class="url">brief / interested-makers</span></div>
+          <div class="screen">
+            <p class="wf-title">③ Creator — Shortlist &amp; choose</p>
+            <p class="small muted" style="margin-top:0">3 manufacturers raised their hand. Compare, then pick one to start.</p>
+            <div class="postcard">
+              <div class="between">
+                <div class="flex"><div class="avatar v"></div><div class="col"><b class="small">PureBrew Co.</b><span class="small muted">⭐ 4.9 · 32 creator builds · verified</span></div></div>
+                <div class="col" style="text-align:right"><b class="small">~$1.35/unit</b><span class="small muted">MOQ 3,000 · 7 wk</span></div>
+              </div>
+              <p class="small muted" style="margin:8px 0 0">“We run cold-fill protein lines &amp; have a clean passion-fruit base ready.”</p>
+              <div class="between" style="margin-top:10px">
+                <div class="btn ghost">View profile</div>
+                <div class="btn">Select &amp; start →</div>
+              </div>
+            </div>
+            <div class="postcard" style="opacity:.75">
+              <div class="between"><div class="flex"><div class="avatar v"></div><b class="small">NutriCraft Labs</b></div><span class="small muted">~$1.55 · MOQ 5k</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="wf-note"><b>Why:</b> the creator compares apples-to-apples (price band, MOQ, lead time, credentials, fit note) and stays the decision-maker. Selecting triggers NDA + the private room.</p>
+      </div>
+
+      <div>
+        <div class="wf">
+          <div class="bar"><i></i><i></i><i></i><span class="url">room / purebrew ↔ maria</span></div>
+          <div class="screen">
+            <p class="wf-title">④ The collaboration workspace (shared)</p>
+            <div class="between">
+              <div class="flex"><div class="avatar c"></div><div class="avatar v" style="margin-left:-12px"></div>
+                <div class="col" style="margin-left:8px"><b class="small">Passion-fruit protein water</b><span class="small muted">NDA signed · Discovery in escrow</span></div>
+              </div>
+              <span class="tag">On track</span>
+            </div>
+            <div class="divider"></div>
+            <p class="small" style="margin:0 0 6px;font-weight:700;color:var(--ink-soft)">Build objects</p>
+            <div class="stack">
+              <div class="between field" style="margin:0"><span><b>🧪 Recipe / formula</b></span><span class="pill on">v2 · needs review</span></div>
+              <div class="between field" style="margin:0"><span><b>🏷️ Label</b></span><span class="pill">draft</span></div>
+              <div class="between field" style="margin:0"><span><b>📦 Packaging</b></span><span class="pill on">approved</span></div>
+              <div class="between field" style="margin:0"><span><b>🧾 Sample &amp; spec sheet</b></span><span class="pill">shipping</span></div>
+            </div>
+            <div class="divider"></div>
+            <div class="between"><span class="small muted">💬 Messages · 📎 Files · 🗓️ Timeline</span><div class="btn">Open thread</div></div>
+          </div>
+        </div>
+        <p class="wf-note"><b>The moat, one screen:</b> the relationship is organized around <em>objects with states</em> (draft → review → approved), not a chat scroll. Chat exists, but it&rsquo;s secondary.</p>
+      </div>
+    </div>
+
+    <!-- WF5 + WF6 -->
+    <div class="split" style="margin-top:30px">
+      <div>
+        <div class="wf">
+          <div class="bar"><i></i><i></i><i></i><span class="url">room / recipe / v2 · review</span></div>
+          <div class="screen">
+            <p class="wf-title">⑤ Recipe review — approve / change (creator view)</p>
+            <div class="between"><b class="small">Formula v2</b><span class="small muted">submitted by PureBrew · compare ⇄ v1</span></div>
+            <div class="field" style="margin-top:8px"><b>Base</b> — Spring water 88% <span class="pill">v1: 90%</span></div>
+            <div class="field"><b>Protein</b> — Whey isolate 9g / serving</div>
+            <div class="field" style="border-color:var(--coral)"><b>Sweetener</b> — Monk fruit &nbsp;<span class="pill" style="background:var(--coral-wash);color:#d9432f">💬 your note</span></div>
+            <p class="small muted" style="margin:4px 0 0">“Can we push passion-fruit +10%? A touch tart.” — Maria</p>
+            <div class="between" style="margin-top:12px">
+              <div class="btn ghost">Request changes</div>
+              <div class="btn">✓ Approve v2</div>
+            </div>
+          </div>
+        </div>
+        <p class="wf-note"><b>Why:</b> exactly your example — the maker submits the recipe as the same structured form used in “Partner Add Product,” the creator sees it inline, comments per-line, and approves or requests changes. No “check your email.”</p>
+      </div>
+
+      <div>
+        <div class="wf">
+          <div class="bar"><i></i><i></i><i></i><span class="url">room / label &amp; pack / proof</span></div>
+          <div class="screen">
+            <p class="wf-title">⑥ Label &amp; packaging proofing</p>
+            <div class="flex">
+              <div style="flex:1;border:1px dashed var(--line);border-radius:10px;padding:10px;text-align:center;background:#fbfcfd">
+                <div style="height:78px;border-radius:8px;background:linear-gradient(135deg,var(--coral),#ffd26b)"></div>
+                <span class="small muted">Can render · 📍2 pins</span>
+              </div>
+              <div class="col" style="flex:1;gap:6px">
+                <div class="field" style="margin:0"><b>📍 Ingredient panel</b><br><span class="small">legal text too small</span></div>
+                <div class="field" style="margin:0"><b>📍 Logo</b><br><span class="small">nudge up 4mm</span></div>
+                <div class="btn ghost small">＋ Add pin</div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="between">
+              <span class="small muted">Creator can also self-design →</span>
+              <div class="btn">Approve for print</div>
+            </div>
+          </div>
+        </div>
+        <p class="wf-note"><b>Why:</b> pinned annotations + versions (Frame.io/Ziflow pattern) for label &amp; pack. Knowledgeable creators can jump into a design tool on the maker&rsquo;s dieline; others just pin feedback.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WORKSPACE DEEP DIVE -->
+<section id="workspace">
+  <div class="wrap">
+    <div class="eyebrow">07 · The collaboration workspace</div>
+    <h2>Why they never want to leave</h2>
+    <p class="lead">Messenger-style chat is table stakes and, alone, a trap — it&rsquo;s where “email me the recipe” happens. The winning model organizes the relationship around <strong>structured objects with states</strong>, with chat as connective tissue.</p>
+
+    <div class="grid g2" style="margin-top:22px">
+      <div class="card">
+        <h3>🧩 Objects, not attachments</h3>
+        <p class="muted small">Recipe, label, packaging, sample, spec sheet, quote, PO — each is a first-class object with a lifecycle: <b>Draft → Submitted → In&nbsp;Review → Changes&nbsp;Requested → Approved → Locked</b>. Reuse the exact recipe/label forms from your Partner “Add Product” flow, so submission feels native to makers.</p>
+      </div>
+      <div class="card">
+        <h3>🕓 Versioning &amp; side-by-side</h3>
+        <p class="muted small">Every re-submission is a version. Creators compare v1⇄v2, see exactly what changed (like the base % in the wireframe). A <em>decision log</em> records who approved what, when — the audit trail that makes trust real.</p>
+      </div>
+      <div class="card">
+        <h3>📌 Contextual feedback</h3>
+        <p class="muted small">Comments attach to a line of the formula or a pin on the label — not lost in a chat river. Threaded replies, @mentions, resolve/re-open. Feedback is <em>actionable</em>, tied to the thing it&rsquo;s about.</p>
+      </div>
+      <div class="card">
+        <h3>🚦 Guided stage gates</h3>
+        <p class="muted small">The room shows the current phase and the one action that unblocks it. Novice creators are never lost; makers always know what&rsquo;s expected next. Nudges + status keep momentum without a project manager.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <strong>Design principle:</strong> if a task can be done in email, it must be <em>easier</em> in the room. Submitting a recipe as a form, approving with one tap, pinning a label note — each must beat the email alternative on effort <em>and</em> on safety.
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section id="trust">
+  <div class="wrap">
+    <div class="eyebrow">08 · Trust, IP &amp; payments</div>
+    <h2>Because we&rsquo;re first, we have to be the most responsible</h2>
+    <p class="lead">This is the part that makes a creator brave enough to hand over their idea. Get it visibly right and it becomes the reason they choose us.</p>
+
+    <div class="grid g3" style="margin-top:22px">
+      <div class="card">
+        <h3>🔒 Staged reveal</h3>
+        <ul class="clean small muted">
+          <li>Public brief shows <em>intent</em>, not the secret formula</li>
+          <li>Full recipe/targets only revealed <b>after</b> selection + mutual NDA, inside the private room</li>
+          <li>Need-to-know: the maker can&rsquo;t export the raw formula without a logged, watermarked action</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>📜 NDA ≠ ownership</h3>
+        <ul class="clean small muted">
+          <li>Auto <b>mutual NDA</b> on entry (confidentiality)</li>
+          <li>Plus explicit <b>IP terms</b>: creator owns the recipe, brand &amp; label; maker&rsquo;s background IP stays theirs</li>
+          <li>Improvements &amp; “who owns what” defined <em>up front</em>, in-platform, in plain language</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>💰 Milestone escrow</h3>
+        <ul class="clean small muted">
+          <li>Discovery, samples, tooling, production run = separate <b>milestones</b></li>
+          <li>Funds held in <b>escrow</b>, released on creator approval of each object</li>
+          <li>Dispute &amp; refund policy with the decision log as evidence</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:18px">
+      <div class="card">
+        <h3>✅ Verification &amp; reputation</h3>
+        <p class="muted small">Manufacturers are vetted (certifications, allergens, capacity, capabilities) before entering the pool. Two-sided reviews and completed-build counts build accountability. Fit-score + track record, not just price, drive matching.</p>
+      </div>
+      <div class="card">
+        <h3>🧭 Creator control, always</h3>
+        <p class="muted small">Nothing advances without the creator&rsquo;s approval. They can pause, request changes, or (within policy) switch makers before production. “Under their control” is encoded into every gate — the fear from Persona 2 answered structurally.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MONETIZATION -->
+<section id="money">
+  <div class="wrap">
+    <div class="eyebrow">09 · How it makes money</div>
+    <h2>Aligned with successful launches, not gated at the door</h2>
+    <div class="grid g4" style="margin-top:20px">
+      <div class="card"><div class="kpi">%<span></span></div><h3 style="margin-top:6px">Take rate</h3><p class="muted small">A platform fee on each paid milestone / production run — the core, usage-aligned revenue.</p></div>
+      <div class="card"><div class="kpi">Sub</div><h3 style="margin-top:6px">Maker seats</h3><p class="muted small">Manufacturers pay for pool access, more concurrent rooms, and better placement/analytics.</p></div>
+      <div class="card"><div class="kpi">+</div><h3 style="margin-top:6px">Value-add services</h3><p class="muted small">Design, compliance/label review, samples, photography, fulfillment — attach margin along the rail.</p></div>
+      <div class="card"><div class="kpi">Esc</div><h3 style="margin-top:6px">Escrow / payments</h3><p class="muted small">Float and payment spread on escrowed milestones as volume scales.</p></div>
+    </div>
+    <p class="wf-note"><b>Principle:</b> keep posting a brief free (fills the pool), monetize when real money and real work move. Don&rsquo;t tax the idea — tax the outcome.</p>
+  </div>
+</section>
+
+<!-- ROLLOUT -->
+<section id="rollout">
+  <div class="wrap">
+    <div class="eyebrow">10 · How to ship it</div>
+    <h2>Crawl → walk → run</h2>
+
+    <div class="step-row" style="margin-top:20px">
+      <div class="num">1</div>
+      <div>
+        <h3>Concierge MVP <span class="tag gray">weeks, not quarters</span></h3>
+        <p class="muted small">Ship the <b>Brief builder</b>, a <b>curated pool</b> for a hand-picked set of verified makers in ONE category (e.g., functional beverages), and a basic <b>room with the recipe/label/pack objects + approvals</b>. Your team manually matches at first. Prove the loop end-to-end with 5–10 real creator builds.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="num">2</div>
+      <div>
+        <h3>Self-serve matching + escrow</h3>
+        <p class="muted small">Automate fit-matching &amp; the live opportunity feed, add milestone escrow, versioning &amp; the decision log, two-sided reviews. Open a second and third product category. Introduce maker subscriptions.</p>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="num">3</div>
+      <div>
+        <h3>Scale the rail</h3>
+        <p class="muted small">Add AI brief-assist for novices, label/compliance checks, sample logistics, self-design on maker dielines, and fulfillment/storefront hand-off. This is where you leapfrog Pietra/Keychain on the <em>creator co-creation</em> experience.</p>
+      </div>
+    </div>
+
+    <div class="callout coral">
+      <strong>Biggest risks &amp; the counters:</strong>
+      <ul class="clean small" style="margin-top:8px">
+        <li><b>Cold-start liquidity</b> → seed makers first in one category; concierge-match so early briefs always get quality interest.</li>
+        <li><b>Disintermediation (“let&rsquo;s just email”)</b> → make in-room the easier <em>and</em> safer path; tie escrow, IP protection &amp; dispute support to staying on-platform.</li>
+        <li><b>Trust in a novel service</b> → over-invest in verification, staged reveal, and visible creator control from day one.</li>
+        <li><b>Quality variance</b> → structured objects + approvals + reviews make bad outcomes visible early and rare.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SOURCES -->
+<section id="sources" style="border-bottom:none">
+  <div class="wrap">
+    <div class="eyebrow">Appendix</div>
+    <h2>Sources</h2>
+    <p class="src">Market &amp; model research drawn from:</p>
+    <p class="src">
+      <a href="https://www.keychain.com/">Keychain — CPG manufacturing platform</a> ·
+      <a href="https://www.bevnet.com/news/2024/manufacturing-matchmaker-keychain-uses-ai-to-bring-transparency-to-cpg-production/">BevNET — Keychain AI matchmaker</a> ·
+      <a href="https://www.pietrastudio.com/">Pietra Studio</a> ·
+      <a href="https://help.pietrastudio.com/en/articles/8568066-what-is-pietra-s-sourcing-production-network">Pietra — sourcing &amp; production network</a> ·
+      <a href="https://wonnda.com/">Wonnda — private label &amp; co-manufacturing</a> ·
+      <a href="https://traxretail.com/blog/creator-brands-are-reshaping-the-rules-for-cpg-manufactures/">Trax Retail — creator brands reshaping CPG</a> ·
+      <a href="https://wearecollab.com/">COLLAB — creator brand builder</a> ·
+      <a href="https://www.hireinsouth.com/post/99designs-review">99designs review (contest-model critique)</a> ·
+      <a href="https://www.twine.net/blog/the-10-best-alternatives-to-99designs/">Twine — 99designs alternatives</a> ·
+      <a href="https://www.ziflow.com/blog/ziflow-vs-frameio">Ziflow vs Frame.io — proofing &amp; approval UX</a> ·
+      <a href="https://filestage.io/blog/design-annotation-software/">Filestage — design annotation patterns</a> ·
+      <a href="https://www.journeyh.io/blog/b2b-marketplace-models-features">JourneyH — B2B marketplace models (RFQ)</a> ·
+      <a href="https://gtsetu.com/blogs/ip-ownership-in-contract-manufacturing/">GTsetu — IP ownership in contract manufacturing</a> ·
+      <a href="https://jurislawgroup.com/protecting-your-trade-secrets-with-co-packers/">Juris Law — protecting trade secrets with co-packers</a> ·
+      <a href="https://www.wilsondutra.com/blog/your-nda-protects-who-owns-the-ip/">Wilson Dutra — NDA vs IP ownership</a>
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Strategy &amp; design brief · Creator ↔ Manufacturer Marketplace · Draft v1 for discussion. Wireframes are low-fidelity interaction sketches, not final UI.
+  </div>
+</footer>
+
+</body>
+</html>

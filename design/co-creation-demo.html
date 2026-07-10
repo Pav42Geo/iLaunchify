@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iLaunchify — Co-Creation Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- iLaunchify tokens (packages/ui/src/tokens/colors.ts · theme.css) ---- */
+    --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;
+    --pink-400:#FF5285;--pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;--pink-800:#9E0E40;
+    --neon-300:#D4FF7A;--neon-400:#C2FF4D;--neon-500:#B5FF3D;--neon-600:#9EE61F;
+    --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+    --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+    --success-50:#E7F4EC;--success-500:#1E7C4A;--success-700:#135733;
+    --warning-50:#FFF4E2;--warning-500:#B45309;
+    --danger-50:#FBE8E7;--danger-500:#C2362F;--danger-600:#A62A26;
+    --info-50:#E8F1FB;--info-500:#1F5BA8;
+    /* product gradients */
+    --g-lime:radial-gradient(120% 130% at 50% 0%,#E8FFB8,#B8FF66 65%,#9EE61F);
+    --g-pink:radial-gradient(120% 130% at 50% 0%,#FFE0EC,#FFB3CC 60%,#FF7FA8);
+    --g-purple:radial-gradient(120% 130% at 50% 0%,#EEE6FF,#C9B6FF 60%,#A48CFF);
+    --g-yellow:radial-gradient(120% 130% at 50% 0%,#FFF6C2,#FFE074 60%,#F5C842);
+    --g-cyan:radial-gradient(120% 130% at 50% 0%,#D1F2FF,#8DE0FF 60%,#5BC5F0);
+    --g-coral:radial-gradient(120% 130% at 50% 0%,#FFDFD2,#FFB5A0 60%,#FF8A6C);
+    --g-mint:radial-gradient(120% 130% at 50% 0%,#D6F5E4,#9CE6BB 60%,#6BD198);
+    --g-sky:radial-gradient(120% 130% at 50% 0%,#E5EFFF,#B8CCFF 60%,#8DA8FF);
+    /* fonts */
+    --sans:'Inter',-apple-system,system-ui,sans-serif;
+    --display:'Bricolage Grotesque','Inter',sans-serif;
+    --serif:'Fraunces',Georgia,serif;
+    /* radius/shadow */
+    --r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+    --el-card:0 1px 2px rgba(24,24,26,.05);
+    --el-pop:0 16px 40px -16px rgba(24,24,26,.30);
+    --el-lg:0 12px 28px rgba(24,24,26,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--ink-50);color:var(--ink-900);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input,textarea,select{font-family:inherit}
+  .muted{color:var(--ink-500)}.sec{color:var(--ink-600)}.small{font-size:12px}.tiny{font-size:11px}.b{font-weight:700}
+  .disp{font-family:var(--display);letter-spacing:-.02em}
+  em,.emph{font-family:var(--serif);font-style:italic;font-weight:500;color:var(--pink-700)}
+
+  .app{max-width:1120px;margin:18px auto;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--el-lg)}
+
+  /* ---- app header (light, iLaunchify chrome) ---- */
+  .hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--ink-200)}
+  .mark{width:28px;height:28px;border-radius:8px;background:var(--pink-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;font-family:var(--display)}
+  .word{font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
+  .word .lo{color:var(--pink-500)}
+  .sublabel{font-size:12px;color:var(--ink-500);border-left:1px solid var(--ink-200);padding-left:12px;margin-left:2px}
+  .hdr .spacer{flex:1}
+  /* role switch */
+  .roleSwitch{display:flex;background:var(--ink-100);border-radius:var(--r-pill);padding:3px}
+  .roleSwitch button{font-size:12.5px;font-weight:700;color:var(--ink-500);padding:7px 15px;border-radius:var(--r-pill);display:flex;align-items:center;gap:7px}
+  .roleSwitch button.on{background:var(--ink-900);color:#fff}
+  .roleSwitch .rav{width:16px;height:16px;border-radius:50%}
+  .rav.c{background:var(--pink-500)}.rav.m{background:var(--ink-900);box-shadow:inset 0 0 0 2px var(--neon-500)}
+
+  /* ---- stage tabs ---- */
+  .stagebar{display:flex;align-items:center;gap:5px;padding:11px 20px;background:var(--ink-50);border-bottom:1px solid var(--ink-200);overflow-x:auto}
+  .stg{display:flex;align-items:center;gap:8px;padding:7px 13px;border-radius:var(--r-pill);white-space:nowrap;color:var(--ink-500);font-size:12.5px;font-weight:600;border:1px solid transparent;cursor:pointer}
+  .stg .n{width:20px;height:20px;border-radius:50%;background:var(--ink-200);color:var(--ink-600);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex:none}
+  .stg.done{color:var(--success-700)}.stg.done .n{background:var(--success-500);color:#fff}
+  .stg.on{background:#fff;border-color:var(--pink-200);color:var(--ink-900);box-shadow:var(--el-card)}
+  .stg.on .n{background:var(--pink-500);color:#fff}
+  .conn{width:20px;height:2px;background:var(--ink-200);flex:none}.conn.done{background:var(--success-500)}
+  .stagebar .spacer{flex:1}
+  .nextbtn{font-size:12.5px;font-weight:700;color:#fff;background:var(--ink-900);padding:9px 16px;border-radius:var(--r-pill)}
+  .nextbtn:hover{background:#000}.nextbtn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ---- generic ---- */
+  .screen{min-height:520px}
+  .btn{font-size:13px;font-weight:700;padding:10px 18px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:7px;transition:.14s}
+  .btn.primary{background:var(--ink-900);color:#fff}.btn.primary:hover{background:#000}
+  .btn.pink{background:var(--pink-500);color:#fff}.btn.pink:hover{background:var(--pink-600)}
+  .btn.ghost{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn.ghost:hover{background:var(--ink-50)}
+  .btn.neon{background:var(--neon-500);color:var(--ink-900)}
+  .btn.big{padding:12px 24px;font-size:14px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .chip{font-size:12px;font-weight:600;padding:6px 12px;border-radius:var(--r-pill);border:1px solid var(--ink-300);background:#fff;color:var(--ink-600)}
+  .chip.on{background:var(--pink-500);border-color:var(--pink-500);color:#fff}
+  .pill{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:var(--r-pill)}
+  .p-draft{background:var(--ink-100);color:var(--ink-600)}
+  .p-review{background:var(--warning-50);color:var(--warning-500)}
+  .p-changes{background:var(--danger-50);color:var(--danger-600)}
+  .p-approved{background:var(--success-50);color:var(--success-700)}
+  .p-shipping{background:var(--info-50);color:var(--info-500)}
+  .p-await{background:var(--warning-50);color:var(--warning-500)}
+  .p-short{background:var(--info-50);color:var(--info-500)}
+  .p-sel{background:var(--success-50);color:var(--success-700)}
+
+  /* ---- BRIEF BUILDER ---- */
+  .door{padding:42px 32px 48px;text-align:center}
+  .door h1{font-family:var(--display);font-size:30px;margin:0 0 8px;letter-spacing:-.02em}
+  .door .sub{font-size:15px;color:var(--ink-500);max-width:56ch;margin:0 auto 30px}
+  .doors{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:720px;margin:0 auto}
+  .doorcard{border:1.5px solid var(--ink-200);border-radius:var(--r-xl);padding:26px 24px;text-align:left;background:#fff;transition:.16s;cursor:pointer}
+  .doorcard:hover{border-color:var(--pink-500);transform:translateY(-3px);box-shadow:var(--el-pop)}
+  .doorcard .em{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:14px;background:var(--pink-50)}
+  .doorcard.i .em{background:var(--ink-100)}
+  .doorcard h3{font-family:var(--display);font-size:19px;margin:0 0 5px}
+  .doorcard p{font-size:13px;color:var(--ink-500);margin:0 0 14px;min-height:52px}
+  .doorcard .go{font-size:13px;font-weight:800;color:var(--pink-700);display:flex;gap:6px}
+  .door .foot{margin-top:26px;font-size:12px;color:var(--ink-500)}
+
+  .split{display:grid;grid-template-columns:1fr 340px;min-height:520px}
+  .form{padding:24px 28px;overflow:auto;max-height:640px}
+  .form .steptag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--pink-700)}
+  .form h2{font-family:var(--display);font-size:22px;margin:5px 0 3px}
+  .form .hint{font-size:13px;color:var(--ink-500);margin:0 0 20px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:11.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-600);margin-bottom:6px}
+  .field input,.field textarea,.field select{width:100%;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:11px 13px;font-size:14px;outline:none;background:#fff;color:var(--ink-900)}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.13)}
+  textarea{resize:vertical;min-height:64px}
+  .two{display:flex;gap:12px}.two .field{flex:1}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .aibtn{font-size:12px;font-weight:700;color:var(--pink-700);background:var(--pink-50);border-radius:8px;padding:7px 12px;display:inline-flex;gap:6px;margin-top:8px}
+  .aibtn:hover{background:var(--pink-100)}
+  .nichebar{display:flex;align-items:center;gap:9px;background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:9px 12px;font-size:12.5px;color:var(--ink-600);margin-bottom:16px}
+  .nichebar .ne{font-size:18px}
+  .choice{display:flex;gap:11px}
+  .opt{flex:1;border:1.5px solid var(--ink-200);border-radius:var(--r-lg);padding:13px;cursor:pointer;background:#fff}
+  .opt.on{border-color:var(--pink-500);background:var(--pink-50)}
+  .opt .t{font-size:13px;font-weight:800;margin-bottom:3px;display:flex;gap:7px;align-items:center}
+  .opt .d{font-size:11.5px;color:var(--ink-500)}
+  .opt .radio{width:15px;height:15px;border-radius:50%;border:2px solid var(--ink-300);flex:none}
+  .opt.on .radio{border-color:var(--pink-500);background:radial-gradient(circle,var(--pink-500) 0 42%,#fff 46%)}
+  .ing{display:flex;gap:8px;margin-bottom:8px}
+  .ing input{border:1px solid var(--ink-300);border-radius:8px;padding:8px 10px;font-size:12.5px;outline:none}
+  .ing .n{flex:2}.ing .a{flex:1}.ing .no{flex:2}.ing .rm{color:var(--ink-400);font-size:15px;padding:2px 6px}
+  .addrow{font-size:12.5px;font-weight:700;color:var(--pink-700);margin-top:2px}
+  .privacy{display:flex;gap:9px;background:var(--success-50);border:1px solid #bfe6cf;border-radius:var(--r-lg);padding:11px 13px;font-size:12px;color:var(--success-700);margin-top:12px}
+  .nav{display:flex;align-items:center;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--ink-100)}
+  .nav .spacer{flex:1}
+
+  .preview{border-left:1px solid var(--ink-200);background:var(--ink-50);padding:20px 18px}
+  .preview .ph{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);margin-bottom:3px}
+  .preview .psub{font-size:11.5px;color:var(--ink-500);margin-bottom:14px}
+  .pcard{border:1px solid var(--ink-200);border-radius:var(--r-xl);background:#fff;overflow:hidden;box-shadow:var(--el-card)}
+  .pcard .art{height:96px}
+  .pcard .in{padding:14px}
+  .pcard h3{font-family:var(--display);margin:0;font-size:15.5px}
+  .pcard .by{font-size:11px;color:var(--ink-500)}
+  .pspecs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .pspec{background:var(--ink-50);border:1px solid var(--ink-100);border-radius:9px;padding:5px 9px;min-width:70px}
+  .pspec .l{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-500)}
+  .pspec .v{font-size:12.5px;font-weight:700}
+  .pclaims{display:flex;flex-wrap:wrap;gap:5px}
+  .pclaim{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:var(--r-pill);background:var(--pink-50);color:var(--pink-700)}
+  .match{margin-top:14px;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:11px 13px;font-size:12px;color:var(--ink-600)}
+  .cbar{height:6px;border-radius:6px;background:var(--ink-200);overflow:hidden;margin-top:6px}
+  .cbar i{display:block;height:100%;background:var(--pink-500)}
+
+  /* ---- POOL / SHORTLIST shared cards ---- */
+  .toolbar{display:flex;align-items:center;gap:8px;padding:12px 20px;border-bottom:1px solid var(--ink-100);background:#fff;flex-wrap:wrap}
+  .tabs{display:flex;gap:2px}
+  .tabs button{padding:8px 3px;margin-right:18px;font-size:13px;font-weight:700;color:var(--ink-500);border-bottom:2px solid transparent}
+  .tabs button.on{color:var(--ink-900);border-bottom-color:var(--pink-500)}
+  .tabs .cnt{font-size:11px;font-weight:800;background:var(--ink-100);color:var(--ink-600);border-radius:var(--r-pill);padding:1px 7px;margin-left:5px}
+  .tabs button.on .cnt{background:var(--pink-50);color:var(--pink-700)}
+  .toolbar .spacer{flex:1}
+  .sort{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-500)}
+  .sort select{border:1px solid var(--ink-300);border-radius:8px;padding:6px 9px;font-size:12px;background:#fff}
+  .cmpbtn{font-size:12.5px;font-weight:700;color:var(--pink-700);background:var(--pink-50);border-radius:8px;padding:7px 13px}
+  .cmpbtn:disabled{opacity:.45;cursor:not-allowed}
+  .briefhdr{display:flex;align-items:center;gap:14px;padding:16px 20px;background:var(--ink-50);border-bottom:1px solid var(--ink-200)}
+  .briefhdr .em{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .briefhdr h1{font-family:var(--display);margin:0;font-size:18px}
+  .briefhdr .sub{font-size:12px;color:var(--ink-500)}
+  .briefhdr .spacer{flex:1}
+  .briefhdr .stat{text-align:right}
+  .briefhdr .stat .n{font-size:22px;font-weight:800;color:var(--pink-600);font-family:var(--display)}
+  .briefhdr .stat .l{font-size:11px;color:var(--ink-500)}
+
+  .list{padding:16px 20px 24px;max-height:620px;overflow:auto}
+  .mk{border:1px solid var(--ink-200);border-radius:var(--r-xl);background:#fff;margin-bottom:14px;box-shadow:var(--el-card);overflow:hidden;position:relative}
+  .mk.rec{border-color:var(--pink-500);box-shadow:0 0 0 2px var(--pink-50),var(--el-card)}
+  .mk.fresh{animation:pop .5s;border-color:var(--pink-500);box-shadow:0 0 0 3px var(--pink-50)}
+  @keyframes pop{from{transform:scale(.98);opacity:0}to{transform:scale(1);opacity:1}}
+  .ribbon{position:absolute;top:0;right:0;background:var(--pink-500);color:#fff;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:5px 12px;border-radius:0 0 0 12px}
+  .mk .inner{padding:16px}
+  .mhead{display:flex;align-items:flex-start;gap:12px}
+  .lg2{width:46px;height:46px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;font-size:21px;color:#fff}
+  .mhead .mt{flex:1;min-width:0}
+  .mhead h3{font-family:var(--display);margin:0;font-size:16px;display:flex;align-items:center;gap:7px}
+  .vchip{font-size:10px;font-weight:800;color:var(--success-700);background:var(--success-50);padding:2px 7px;border-radius:var(--r-pill)}
+  .mmeta{font-size:12px;color:var(--ink-500);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+  .star2{color:#E8A90C;font-weight:700}
+  .fit{display:flex;flex-direction:column;align-items:center;gap:1px;flex:none}
+  .fit .fn{font-size:17px;font-weight:800;color:var(--success-700);font-family:var(--display)}
+  .fit.mid .fn{color:var(--warning-500)}
+  .fit .fl{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400)}
+  .fitbar{width:48px;height:5px;border-radius:5px;background:var(--ink-100);overflow:hidden;margin-top:2px}
+  .fitbar i{display:block;height:100%;background:var(--success-500)}.fit.mid .fitbar i{background:var(--warning-500)}
+  .starbtn{font-size:19px;color:var(--ink-300);flex:none;padding:2px}.starbtn.on{color:#E8A90C}
+  .terms{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 10px}
+  .term{background:var(--ink-50);border:1px solid var(--ink-100);border-radius:10px;padding:6px 11px;min-width:84px}
+  .term .l{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-500)}
+  .term .v{font-size:13.5px;font-weight:700;margin-top:1px}
+  .term.best .v{color:var(--success-700)}.term.best::after{content:" ✓";color:var(--success-700);font-weight:800}
+  .mclaims{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .mclaim{font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--r-pill);background:var(--pink-50);color:var(--pink-700)}
+  .mclaim.miss{background:var(--ink-100);color:var(--ink-400)}
+  .pitch{font-size:12.5px;color:var(--ink-600);background:var(--ink-50);border-left:3px solid var(--pink-500);border-radius:0 10px 10px 0;padding:9px 12px;margin-bottom:10px}
+  .mfoot{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-500);cursor:pointer}
+  .chk input{width:14px;height:14px;accent-color:var(--pink-500)}
+  .linkbtn{font-size:12px;font-weight:700;color:var(--ink-500)}.linkbtn:hover{color:var(--ink-900)}
+  .mfoot .spacer{flex:1}
+  .urgency{font-size:11px;font-weight:700;color:var(--danger-600);background:var(--danger-50);padding:3px 9px;border-radius:var(--r-pill)}
+  .urgency.calm{color:var(--ink-500);background:var(--ink-100)}
+  .stack{display:flex}.stack .m{width:22px;height:22px;border-radius:50%;border:2px solid #fff;margin-left:-7px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff}
+  .stack .m:first-child{margin-left:0}
+
+  /* ---- ROOM ---- */
+  .roomtop{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--ink-900);color:#fff}
+  .roomtop .av{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+  .roomtop .rt b{font-size:14px}.roomtop .rt span{font-size:11px;color:var(--ink-400)}
+  .roomtop .spacer{flex:1}
+  .rbadge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:var(--r-pill);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#e6e9ee;display:inline-flex;gap:6px;align-items:center}
+  .rbadge .g{width:7px;height:7px;border-radius:50%;background:var(--neon-500)}
+  .roombody{display:grid;grid-template-columns:250px 1fr 290px}
+  .rcol{border-right:1px solid var(--ink-200);display:flex;flex-direction:column}
+  .rcol:last-child{border-right:none}
+  .rcolh{padding:12px 16px;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-500);border-bottom:1px solid var(--ink-100)}
+  .obj{display:flex;gap:11px;padding:13px 16px;border-bottom:1px solid var(--ink-100);cursor:pointer;align-items:center;position:relative}
+  .obj:hover{background:var(--ink-50)}.obj.sel{background:var(--pink-50)}
+  .obj.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--pink-500)}
+  .obj .ic{width:32px;height:32px;border-radius:9px;background:var(--ink-100);display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+  .obj .nm{flex:1;min-width:0}.obj .nm b{font-size:13px;display:block}
+  .escrow{margin-top:auto;padding:14px 16px;border-top:1px solid var(--ink-100);background:var(--ink-50)}
+  .escrow .row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+  .ebar{height:7px;border-radius:6px;background:var(--ink-200);overflow:hidden;margin:4px 0 8px}
+  .ebar i{display:block;height:100%;background:var(--success-500);border-radius:6px}
+  .center{background:var(--ink-50);overflow:auto;max-height:600px}
+  .deth{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--ink-100);background:#fff}
+  .deth .ic{width:38px;height:38px;border-radius:11px;background:var(--ink-100);display:flex;align-items:center;justify-content:center;font-size:19px}
+  .deth h2{font-family:var(--display);margin:0;font-size:17px}
+  .deth .s{font-size:12px;color:var(--ink-500)}
+  .detb{padding:18px 20px}
+  .vtabs{display:inline-flex;background:var(--ink-100);border-radius:10px;padding:3px;margin-bottom:14px}
+  .vtabs button{font-size:12px;font-weight:700;color:var(--ink-500);padding:7px 13px;border-radius:8px}
+  .vtabs button.on{background:#fff;color:var(--ink-900);box-shadow:var(--el-card)}
+  .irow{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--ink-200);border-radius:11px;margin-bottom:8px;background:#fff}
+  .irow .lab{flex:1}.irow .val{font-weight:700}
+  .irow.flag{border-color:#f3c7c2;background:var(--danger-50)}
+  .delta{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:8px}
+  .delta.up{background:var(--success-50);color:var(--success-700)}.delta.dn{background:var(--info-50);color:var(--info-500)}
+  .cbtn{font-size:11.5px;font-weight:700;color:var(--ink-500);padding:5px 9px;border-radius:7px;border:1px solid var(--ink-200);background:#fff}
+  .cbtn.has{border-color:var(--pink-500);color:var(--pink-700)}
+  .thread{margin:2px 0 10px;padding:11px 13px;border:1px solid var(--ink-200);border-left:3px solid var(--pink-500);border-radius:0 11px 11px 0;background:#fff}
+  .cmt{display:flex;gap:9px;margin-bottom:9px}
+  .cmt .cav{width:24px;height:24px;border-radius:50%;flex:none}
+  .cav.c{background:var(--pink-500)}.cav.m{background:var(--ink-900);box-shadow:inset 0 0 0 2px var(--neon-500)}
+  .cmt .bb b{font-size:12.5px}.cmt .bb .t{font-size:12.5px;color:var(--ink-700)}.cmt .bb .w{font-size:10px;color:var(--ink-400)}
+  .composer{display:flex;gap:8px;margin-top:5px}
+  .composer input{flex:1;border:1px solid var(--ink-300);border-radius:9px;padding:8px 11px;font-size:12.5px;outline:none}
+  .proof{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .can{border:1px dashed var(--ink-300);border-radius:14px;background:#fff;padding:14px;display:flex;flex-direction:column;align-items:center}
+  .can .art2{width:110px;height:190px;border-radius:14px;position:relative;cursor:crosshair;box-shadow:var(--el-lg)}
+  .can .art2 .lbl{position:absolute;left:12px;right:12px;top:58px;bottom:58px;border-radius:8px;background:rgba(255,255,255,.92);display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .can .art2 .lbl .l1{font-family:var(--display);font-size:11px;font-weight:800;color:var(--ink-900);text-align:center;line-height:1.1}
+  .can .art2 .lbl .l2{font-size:7px;color:var(--ink-500);margin-top:3px}
+  .pin{position:absolute;width:20px;height:20px;border-radius:50% 50% 50% 2px;background:var(--pink-500);transform:translate(-50%,-100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;box-shadow:0 3px 8px rgba(0,0,0,.25);cursor:pointer;border:2px solid #fff}
+  .can .hint{font-size:11px;color:var(--ink-500);margin-top:10px}
+  .pn{display:flex;gap:9px;padding:9px 11px;border:1px solid var(--ink-200);border-radius:10px;margin-bottom:7px;background:#fff;cursor:pointer}
+  .pn:hover{border-color:var(--pink-500)}
+  .pn .num{width:19px;height:19px;border-radius:50%;background:var(--pink-500);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+  .actions{display:flex;gap:10px;align-items:center;padding:14px 20px;border-top:1px solid var(--ink-100);background:#fff;position:sticky;bottom:0}
+  .actions .spacer{flex:1}.actions .note{font-size:12px;color:var(--ink-500)}
+  .rtab{display:flex;border-bottom:1px solid var(--ink-100)}
+  .rtab button{flex:1;padding:12px;font-size:12.5px;font-weight:700;color:var(--ink-500);border-bottom:2px solid transparent}
+  .rtab button.on{color:var(--ink-900);border-bottom-color:var(--pink-500)}
+  .feed2{flex:1;overflow:auto;padding:14px 16px;max-height:430px}
+  .act{display:flex;gap:10px;margin-bottom:13px}
+  .act .rail{display:flex;flex-direction:column;align-items:center}
+  .act .d{width:9px;height:9px;border-radius:50%;background:var(--success-500);margin-top:5px}
+  .act .d.v{background:var(--ink-900)}.act .d.a{background:var(--warning-500)}.act .d.c{background:var(--pink-500)}
+  .act .ln{flex:1;width:2px;background:var(--ink-200);margin-top:3px}
+  .act .tx{font-size:12.5px}.act .tx .w{font-size:10px;color:var(--ink-400);display:block;margin-top:1px}
+  .msg{display:flex;gap:9px;margin-bottom:12px}.msg.me{flex-direction:row-reverse}
+  .msg .cav{width:26px;height:26px;border-radius:50%;flex:none}
+  .msg .bb{max-width:80%;background:var(--ink-100);border-radius:12px;padding:8px 11px;font-size:12.5px}
+  .msg.me .bb{background:var(--pink-50)}
+  .msg .bb .who{font-size:10px;font-weight:700;color:var(--ink-500);margin-bottom:2px}
+  .msgbar{display:flex;gap:8px;padding:11px 14px;border-top:1px solid var(--ink-100);background:#fff}
+  .msgbar input{flex:1;border:1px solid var(--ink-300);border-radius:10px;padding:9px 12px;font-size:12.5px;outline:none}
+  .msgbar button{background:var(--ink-900);color:#fff;border-radius:10px;padding:0 14px;font-weight:800}
+
+  /* ---- modal / toast ---- */
+  .scrim{position:fixed;inset:0;background:rgba(24,24,26,.55);display:none;align-items:center;justify-content:center;z-index:40;padding:20px}
+  .scrim.show{display:flex}
+  .modal{background:#fff;border-radius:var(--r-2xl);width:min(560px,100%);max-height:92vh;overflow:auto;box-shadow:var(--el-pop);animation:pop .25s}
+  .modal.wide{width:min(820px,100%)}
+  .mhd{padding:20px 24px 8px}
+  .mhd h2{font-family:var(--display);margin:0 0 4px;font-size:20px}
+  .mhd p{margin:0;font-size:13px;color:var(--ink-500)}
+  .mbd{padding:12px 24px}
+  .guard{display:flex;gap:10px;background:var(--warning-50);border:1px solid #f2dda0;border-radius:11px;padding:11px 13px;font-size:12px;color:var(--warning-500);margin-bottom:16px}
+  .frow{display:flex;gap:12px;margin-bottom:13px}.frow .field{flex:1;margin:0}
+  .toggle-row{display:flex;flex-wrap:wrap;gap:7px}
+  .tg{font-size:12px;font-weight:600;padding:6px 12px;border-radius:var(--r-pill);border:1px solid var(--ink-300);background:#fff;color:var(--ink-600)}
+  .tg.on{background:var(--pink-50);border-color:var(--pink-500);color:var(--pink-700)}
+  .seg{display:flex;background:var(--ink-100);border-radius:10px;padding:3px}
+  .seg button{flex:1;font-size:12px;font-weight:700;color:var(--ink-500);padding:8px;border-radius:8px}
+  .seg button.on{background:#fff;color:var(--ink-900);box-shadow:var(--el-card)}
+  .commit{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--ink-100)}
+  .commit .ic{width:30px;height:30px;border-radius:9px;background:var(--success-50);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+  .commit .t{font-size:13px}.commit .t .d{font-size:12px;color:var(--ink-500)}
+  .control{display:flex;gap:10px;background:var(--pink-50);border-radius:12px;padding:12px 14px;margin:14px 0 4px;font-size:12.5px;color:var(--pink-700)}
+  .mft{padding:16px 24px 20px;display:flex;gap:10px;align-items:center}.mft .spacer{flex:1}
+  .ctable{width:100%;border-collapse:collapse;font-size:13px}
+  .ctable th,.ctable td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--ink-100);vertical-align:top}
+  .ctable th{background:var(--ink-50);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-500)}
+  .ctable td.rh{font-weight:700;color:var(--ink-600);background:var(--ink-50);width:120px}
+  .ctable .win{color:var(--success-700);font-weight:800}
+  .cmk{display:flex;align-items:center;gap:8px}.cmk .l{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px}
+  .success2{background:#fff;border-radius:var(--r-2xl);width:min(440px,100%);padding:32px 28px;text-align:center;box-shadow:var(--el-pop);animation:pop .3s}
+  .success2 .ring{width:70px;height:70px;border-radius:50%;background:var(--pink-50);display:flex;align-items:center;justify-content:center;font-size:33px;margin:0 auto 14px}
+  .success2 h2{font-family:var(--display);margin:0 0 6px;font-size:20px}.success2 p{font-size:13px;color:var(--ink-500);margin:0 0 18px}
+  .routed{display:flex;justify-content:center;margin-bottom:8px}
+  .routed .m{width:30px;height:30px;border-radius:50%;border:2px solid #fff;margin-left:-8px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+  .routed .m:first-child{margin-left:0}
+
+  .livebar{margin:12px 20px 0;display:none;align-items:center;justify-content:center;gap:8px;background:var(--pink-500);color:#fff;font-size:12.5px;font-weight:700;padding:9px;border-radius:11px;cursor:pointer;box-shadow:var(--el-pop)}
+  .livebar.show{display:flex}
+  .livebar .pulse{width:8px;height:8px;border-radius:50%;background:#fff;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.3}}
+
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink-900);color:#fff;font-size:13px;font-weight:600;padding:12px 20px;border-radius:12px;box-shadow:var(--el-pop);transition:.28s;z-index:60;display:flex;gap:9px;align-items:center;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}#toast .tk{color:var(--pink-400)}
+  .empty{text-align:center;padding:56px 20px;color:var(--ink-500)}.empty .em{font-size:30px}
+  .caption{max-width:1120px;margin:0 auto 30px;padding:0 8px;color:var(--ink-500);font-size:12.5px;text-align:center}
+  .caption b{color:var(--ink-700)}
+  @media(max-width:900px){.split,.roombody{grid-template-columns:1fr}.doors,.proof{grid-template-columns:1fr}.preview,.rcol{border-left:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <div class="mark">iL</div>
+    <div class="word">i<span class="lo">Launchify</span></div>
+    <div class="sublabel" id="sublabel">Co-Creation Studio</div>
+    <div class="spacer"></div>
+    <div class="roleSwitch" id="roleSwitch">
+      <button data-role="creator" class="on"><span class="rav c"></span>Creator</button>
+      <button data-role="manufacturer"><span class="rav m"></span>Manufacturer</button>
+    </div>
+  </div>
+  <div class="stagebar" id="stagebar"></div>
+  <div class="livebar" id="livebar" onclick="poolLoadPending()"><span class="pulse"></span><span id="livetext"></span> — click to load ▲</div>
+  <div class="screen" id="screen"></div>
+</div>
+<div class="caption" id="caption"></div>
+<div class="scrim" id="scrim"><div id="scrimBody"></div></div>
+<div id="toast"><span class="tk">●</span><span id="toastmsg"></span></div>
+
+<script>
+/* ============================================================
+   iLaunchify Co-Creation Demo — real brand tokens + taxonomy
+   ============================================================ */
+const $=s=>document.querySelector(s);
+function toast(m,icon){const t=$('#toast');t.querySelector('.tk').textContent=icon||'●';$('#toastmsg').textContent=m;t.classList.add('show');clearTimeout(window._t);window._t=setTimeout(()=>t.classList.remove('show'),2400);}
+function esc(s){return (s||'').replace(/</g,'&lt;');}
+
+/* ---- real taxonomy (apps/marketing/src/lib/niches.ts · seed-categories-locked.ts) ---- */
+const NICHES=[
+  {slug:'energy-performance',name:'Energy & Performance',icon:'⚡',g:'--g-purple'},
+  {slug:'wellness',name:'Wellness & Holistic Health',icon:'🌿',g:'--g-mint'},
+  {slug:'beauty',name:'Beauty & Self-Care',icon:'✨',g:'--g-pink'},
+  {slug:'healthy-lifestyle',name:'Healthy Lifestyle',icon:'🥗',g:'--g-lime'},
+  {slug:'gourmet',name:'Gourmet & Culinary',icon:'🍫',g:'--g-coral'},
+  {slug:'family-kids',name:'Family & Kids',icon:'👶',g:'--g-yellow'},
+  {slug:'pet-wellness',name:'Pet Wellness',icon:'🐾',g:'--g-cyan'},
+  {slug:'social-lifestyle',name:'Social & Lifestyle',icon:'🥂',g:'--g-sky'}
+];
+const CATEGORIES=[
+  'Functional & Wellness Beverages','Refreshment Drinks','Coffee & Tea','Snacks & Confectionery',
+  'Pantry Staples','Breakfast & Morning','Baking & Desserts','Ready Meals & Meal Solutions',
+  'Supplements','Cosmetics & Personal Care','Pet Products','Baby & Kids Nutrition','Gift & Seasonal'
+];
+const CLAIM_POOL=['High-protein','No added sugar','Vegan','Functional','Clean-label','Low-sugar','Keto','Gluten-free','Adaptogenic','Electrolytes','Organic','Nootropic'];
+
+/* ---- app state ---- */
+const APP={role:'creator',stage:0};
+const STAGES={
+  creator:[
+    {key:'brief',label:'Post a brief'},
+    {key:'shortlist',label:'Choose a maker'},
+    {key:'room',label:'Collaboration room'}
+  ],
+  manufacturer:[
+    {key:'pool',label:'Opportunity pool'},
+    {key:'room',label:'Collaboration room'}
+  ]
+};
+const CAPTIONS={
+  brief:'Pick a door — <b>“I have a recipe”</b> or <b>“I have an idea”</b> — build the brief (try <b>✨ AI-assist</b>), then post. The live preview is exactly how manufacturers see it.',
+  shortlist:'Five manufacturers raised their hand on your brief. <b>Star</b> to shortlist, <b>compare</b> up to 3, then <b>Select</b> — see the NDA · escrow · control commitments before the room opens.',
+  pool:'PureBrew’s live matched feed. Wait for <b>new briefs</b> to stream in, then <b>Express interest</b> (fit &amp; terms only — never a recipe). Open <b>My interests</b> and the shortlisted brief’s <b>Open room →</b> advances you.',
+  room:'The private, on-platform build room. Recipe / label / packaging move as <b>structured objects with states</b> — submit, review, <b>approve</b> or <b>request changes</b> — never email.'
+};
+
+/* ---- shared demo data ---- */
+const BRIEF={emoji:'🥤',g:'--g-purple',title:'Passion-fruit Protein Water',niche:'energy-performance',
+  category:'Functional & Wellness Beverages',claims:new Set(['High-protein','No added sugar']),
+  volume:'5,000',budget:'$1.20–1.80',timeline:'8 weeks',formulaMode:'help'};
+
+/* =========================================================================
+   SHELL
+   ========================================================================= */
+function setRole(r){
+  APP.role=r;APP.stage=0;
+  [...$('#roleSwitch').children].forEach(b=>b.classList.toggle('on',b.dataset.role===r));
+  $('#sublabel').textContent = r==='creator'?'Co-Creation Studio · Creator':'Co-Creation Studio · Manufacturer';
+  $('#livebar').classList.remove('show');
+  render();
+  toast(r==='creator'?'Viewing as Maria, a creator':'Viewing as PureBrew, a manufacturer', r==='creator'?'👤':'🏭');
+}
+$('#roleSwitch').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setRole(b.dataset.role);});
+
+function renderStages(){
+  const list=STAGES[APP.role];let h='';
+  list.forEach((s,i)=>{
+    const cls=i<APP.stage?'done':i===APP.stage?'on':'';
+    h+=`<div class="stg ${cls}" onclick="goStage(${i})"><span class="n">${i<APP.stage?'✓':i+1}</span>${s.label}</div>`;
+    if(i<list.length-1)h+=`<div class="conn ${i<APP.stage?'done':''}"></div>`;
+  });
+  const last=APP.stage>=list.length-1;
+  h+=`<span class="spacer"></span><button class="nextbtn" onclick="nextStage()" ${last?'disabled':''}>Next stage →</button>`;
+  $('#stagebar').innerHTML=h;
+}
+function goStage(i){APP.stage=i;render();}
+function nextStage(){const list=STAGES[APP.role];if(APP.stage<list.length-1){APP.stage++;render();}}
+function render(){
+  renderStages();
+  const key=STAGES[APP.role][APP.stage].key;
+  $('#caption').innerHTML='🧭 '+CAPTIONS[key];
+  $('#livebar').classList.toggle('show', key==='pool' && poolQueue.length>0);
+  if(key==='brief')renderBrief();
+  else if(key==='shortlist')renderShortlist();
+  else if(key==='pool')renderPool();
+  else if(key==='room')renderRoom();
+}
+
+/* =========================================================================
+   1. BRIEF BUILDER (creator)
+   ========================================================================= */
+const BB={mode:null,ingredients:[
+  {n:'Spring water',a:'88%',no:'Base'},{n:'Whey protein isolate',a:'9g/serv',no:'Grass-fed'},
+  {n:'Passion-fruit concentrate',a:'5%',no:'Natural'},{n:'Monk fruit',a:'0.25%',no:'Sweetener'}
+]};
+function renderBrief(){
+  if(!BB.mode){ $('#screen').innerHTML=briefDoor(); return; }
+  $('#screen').innerHTML=`<div class="split">
+    <div class="form" id="bform"></div>
+    <div class="preview"><div class="ph">👁 Manufacturer preview</div><div class="psub">How your brief appears in the pool</div><div id="bprev"></div></div>
+  </div>`;
+  briefForm();briefPrev();
+}
+function briefDoor(){
+  return `<div class="door">
+    <h1 class="disp">Create your own <em>product</em></h1>
+    <div class="sub">Two ways in — both end with your branded product made by a vetted iLaunchify manufacturer, under your control. Pick where you’re starting from.</div>
+    <div class="doors">
+      <div class="doorcard r" onclick="bbDoor('recipe')"><div class="em">🧪</div><h3 class="disp">I have a recipe</h3>
+        <p>You’ve got a formula or the key ingredients dialed in. Post it privately and get it made your way.</p>
+        <div class="go">Start with my formula →</div></div>
+      <div class="doorcard i" onclick="bbDoor('idea')"><div class="em">💡</div><h3 class="disp">I have an idea</h3>
+        <p>You know what you want to create but not how to make it. We’ll match a maker to formulate it — you approve every step.</p>
+        <div class="go">Start with my idea →</div></div>
+    </div>
+    <div class="foot">🔒 Your recipe &amp; targets stay private. The public brief shows only your <em>intent</em> — never your secret formula.</div>
+  </div>`;
+}
+function bbDoor(m){BB.mode=m;BRIEF.formulaMode=m==='recipe'?'self':'help';renderBrief();
+  toast(m==='recipe'?'Recipe path — your formula stays private 🔒':'Idea path — we’ll guide you','💡');}
+
+function briefForm(){
+  const niche=NICHES.find(n=>n.slug===BRIEF.niche);
+  const claims=CLAIM_POOL.map(c=>`<span class="chip ${BRIEF.claims.has(c)?'on':''}" onclick="bbClaim('${c}')">${BRIEF.claims.has(c)?'✓ ':''}${c}</span>`).join('');
+  const cats=CATEGORIES.map(c=>`<option ${c===BRIEF.category?'selected':''}>${c}</option>`).join('');
+  const niches=NICHES.map(n=>`<option value="${n.slug}" ${n.slug===BRIEF.niche?'selected':''}>${n.icon} ${n.name}</option>`).join('');
+  const formula = BRIEF.formulaMode==='self'?bbFormula():bbHelp();
+  $('#bform').innerHTML=`
+    <div class="steptag">${BB.mode==='recipe'?'🧪 Recipe path':'💡 Idea path'} · your brief</div>
+    <h2 class="disp">Build your product brief</h2>
+    <div class="hint">iLaunchify routes it to fit-matched, verified manufacturers in your niche.</div>
+
+    <div class="nichebar"><span class="ne">${niche.icon}</span><b>Niche:</b>&nbsp;${niche.name} <span class="muted">· surfaces niche-matched makers</span></div>
+
+    <div class="two">
+      <div class="field"><label>Creator niche</label><select onchange="bbSet('niche',this.value)">${niches}</select></div>
+      <div class="field"><label>Product category</label><select onchange="bbSet('category',this.value)">${cats}</select></div>
+    </div>
+    <div class="field"><label>Product name</label><input value="${esc(BRIEF.title)}" oninput="bbSet('title',this.value)" placeholder="e.g. Passion-fruit Protein Water"></div>
+    <div class="field"><label>Must-have claims</label><div class="chips">${claims}</div>
+      <button class="aibtn" onclick="bbAI('claims')">✨ Suggest claims for me</button></div>
+
+    <div class="field"><label>How do you want to formulate?</label>
+      <div class="choice">
+        <div class="opt ${BRIEF.formulaMode==='self'?'on':''}" onclick="bbSet('formulaMode','self')"><div class="t"><span class="radio"></span>🧪 I have the formula</div><div class="d">Share your recipe privately with the maker you pick.</div></div>
+        <div class="opt ${BRIEF.formulaMode==='help'?'on':''}" onclick="bbSet('formulaMode','help')"><div class="t"><span class="radio"></span>🤝 Help me create it</div><div class="d">A matched maker formulates it — you approve each version.</div></div>
+      </div>
+    </div>
+    ${formula}
+
+    <div class="two">
+      <div class="field"><label>Target volume</label><input value="${esc(BRIEF.volume)}" oninput="bbSet('volume',this.value)" placeholder="units"></div>
+      <div class="field"><label>Budget / unit</label><input value="${esc(BRIEF.budget)}" oninput="bbSet('budget',this.value)" placeholder="$"></div>
+      <div class="field"><label>Timeline</label><input value="${esc(BRIEF.timeline)}" oninput="bbSet('timeline',this.value)" placeholder="weeks"></div>
+    </div>
+    <button class="aibtn" onclick="bbAI('bench')">✨ Benchmark volume &amp; budget for me</button>
+
+    <div class="nav"><button class="btn ghost" onclick="bbReset()">← Change door</button><span class="spacer"></span>
+      <button class="btn primary big" onclick="bbPost()">🚀 Post to manufacturers</button></div>`;
+}
+function bbFormula(){
+  const rows=BB.ingredients.map((g,i)=>`<div class="ing">
+    <input class="n" value="${esc(g.n)}" oninput="bbIng(${i},'n',this.value)" placeholder="Ingredient">
+    <input class="a" value="${esc(g.a)}" oninput="bbIng(${i},'a',this.value)" placeholder="Amount">
+    <input class="no" value="${esc(g.no)}" oninput="bbIng(${i},'no',this.value)" placeholder="Note">
+    <button class="rm" onclick="bbRmIng(${i})">✕</button></div>`).join('');
+  return `<div class="field"><label>Your formula <span class="muted" style="text-transform:none;letter-spacing:0">— private</span></label>
+    ${rows}<div class="addrow" onclick="bbAddIng()">＋ Add ingredient</div>
+    <div class="privacy">🔒 <div><b>Kept secret.</b> Your formula is never in the public brief — revealed only inside the private room after NDA.</div></div></div>`;
+}
+function bbHelp(){
+  return `<div class="field"><label>Key ingredients you’d like (optional)</label>
+    <input value="${esc(BRIEF.keyIng||'Passion-fruit, plant or whey protein, no added sugar')}" oninput="bbSet('keyIng',this.value)">
+    <div class="privacy" style="background:var(--pink-50);border-color:var(--pink-200);color:var(--pink-700)">🤝 <div><b>No recipe needed.</b> Describe what you want; matched makers propose a formulation and you approve — or request changes — on every version.</div></div></div>`;
+}
+function bbSet(k,v){BRIEF[k]=v;if(k==='niche'){const n=NICHES.find(x=>x.slug===v);BRIEF.g=n.g;}if(k==='formulaMode'){briefForm();}briefPrev();if(k==='niche')briefForm();}
+function bbClaim(c){BRIEF.claims.has(c)?BRIEF.claims.delete(c):BRIEF.claims.add(c);briefForm();briefPrev();}
+function bbIng(i,f,v){BB.ingredients[i][f]=v;}
+function bbAddIng(){BB.ingredients.push({n:'',a:'',no:''});briefForm();}
+function bbRmIng(i){BB.ingredients.splice(i,1);briefForm();}
+function bbReset(){BB.mode=null;renderBrief();}
+function bbAI(k){
+  if(k==='claims'){['High-protein','No added sugar','Clean-label'].forEach(c=>BRIEF.claims.add(c));toast('Suggested 3 claims from your concept','✨');}
+  if(k==='bench'){BRIEF.volume=BRIEF.volume||'5,000';BRIEF.budget='$1.20–1.80';BRIEF.timeline=BRIEF.timeline||'8 weeks';toast('Benchmarked from comparable beverages','✨');}
+  briefForm();briefPrev();
+}
+function briefPrev(){
+  const niche=NICHES.find(n=>n.slug===BRIEF.niche);
+  const claims=[...BRIEF.claims];
+  const ch=claims.length?claims.map(c=>`<span class="pclaim">✓ ${c}</span>`).join(''):'<span class="small muted">add claims →</span>';
+  let n=0;[BRIEF.title,BRIEF.category,BRIEF.claims.size,BRIEF.volume,BRIEF.budget].forEach(x=>{if(x)n++;});
+  const comp=Math.round(n/5*100);
+  $('#bprev').innerHTML=`<div class="pcard">
+    <div class="art" style="background:var(${BRIEF.g})"></div>
+    <div class="in"><h3 class="disp">${esc(BRIEF.title)||'Untitled product'}</h3>
+      <div class="by">Maria Vega · @mariamakes · 240k · ${niche.icon} ${niche.name}</div>
+      <div class="pspecs">
+        <div class="pspec"><span class="l">Volume</span><span class="v">${esc(BRIEF.volume)||'—'}</span></div>
+        <div class="pspec"><span class="l">Budget</span><span class="v">${esc(BRIEF.budget)||'—'}</span></div>
+        <div class="pspec"><span class="l">Timeline</span><span class="v">${esc(BRIEF.timeline)||'—'}</span></div>
+      </div>
+      <div class="pclaims">${ch}</div></div>
+  </div>
+  <div class="match"><b>Est. reach:</b> ~7 verified makers in ${niche.name}.<div class="small muted" style="margin-top:5px">Brief completeness · ${comp}%</div><div class="cbar"><i style="width:${comp}%"></i></div></div>`;
+}
+function bbPost(){
+  const cols=['--g-purple','--g-pink','--g-lime','--g-sky','--g-coral'].map(g=>`<span class="m" style="background:var(${g})">🏭</span>`).join('');
+  showScrim(`<div class="success2"><div class="ring">🚀</div><h2 class="disp">Brief posted!</h2>
+    <p>“${esc(BRIEF.title)}” is live in the manufacturer pool — routed to <b>7 matched makers</b> in ${NICHES.find(n=>n.slug===BRIEF.niche).name}.</p>
+    <div class="routed">${cols}</div><p class="small">Interest usually starts within hours. Review each one, then pick your partner.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:6px">
+      <button class="btn ghost" onclick="hideScrim()">Post another</button>
+      <button class="btn pink big" onclick="hideScrim();nextStage()">Review interested makers →</button></div></div>`);
+}
+
+/* =========================================================================
+   2. SHORTLIST & SELECTION (creator)
+   ========================================================================= */
+const MAKERS=[
+  {id:1,name:'PureBrew Co.',emoji:'🏭',g:'--g-purple',rating:4.9,builds:32,loc:'Portland, OR',fit:96,
+   price:1.35,priceStr:'$1.35',moq:3000,moqStr:'3,000',lead:7,leadStr:'7 wk',sample:true,
+   claims:[['High-protein',1],['No added sugar',1],['Vegan',1]],
+   pitch:'We run cold-fill protein lines and already have a clean passion-fruit base ready to tune to your taste. Samples in 2 weeks.'},
+  {id:2,name:'Coastal Bottling',emoji:'🌊',g:'--g-sky',rating:4.8,builds:54,loc:'San Diego, CA',fit:88,
+   price:1.28,priceStr:'$1.28',moq:8000,moqStr:'8,000',lead:10,leadStr:'10 wk',sample:false,
+   claims:[['High-protein',1],['No added sugar',1],['Vegan',0]],
+   pitch:'High-volume specialist — best per-unit economics once you scale. Great if you expect to reorder big.'},
+  {id:3,name:'GreenFill Studio',emoji:'🌱',g:'--g-mint',rating:4.6,builds:12,loc:'Austin, TX',fit:84,
+   price:1.62,priceStr:'$1.62',moq:2000,moqStr:'2,000',lead:6,leadStr:'6 wk',sample:true,
+   claims:[['High-protein',1],['No added sugar',1],['Vegan',1]],
+   pitch:'Boutique &amp; fast. Lowest MOQ and quickest turnaround — ideal for a first small run before scaling.'},
+  {id:4,name:'NutriCraft Labs',emoji:'⚗️',g:'--g-yellow',rating:4.7,builds:21,loc:'Denver, CO',fit:80,
+   price:1.55,priceStr:'$1.55',moq:5000,moqStr:'5,000',lead:9,leadStr:'9 wk',sample:true,
+   claims:[['High-protein',1],['No added sugar',1],['Vegan',1]],
+   pitch:'Formulation-led. Strong R&amp;D team if you want to push the protein higher without the chalk.'},
+  {id:5,name:'Apex Beverage',emoji:'🔺',g:'--g-coral',rating:4.9,builds:68,loc:'Newark, NJ',fit:74,
+   price:1.20,priceStr:'$1.20',moq:10000,moqStr:'10,000',lead:12,leadStr:'12 wk',sample:false,
+   claims:[['High-protein',1],['No added sugar',1],['Vegan',0]],
+   pitch:'Cheapest per unit at scale and a huge track record — built for big volume and longer lead times.'}
+];
+const SL={tab:'all',shortlist:new Set(),compare:new Set(),selectId:null};
+const bestPrice=Math.min(...MAKERS.map(m=>m.price)),bestLead=Math.min(...MAKERS.map(m=>m.lead)),bestMoq=Math.min(...MAKERS.map(m=>m.moq));
+function renderShortlist(){
+  const niche=NICHES.find(n=>n.slug===BRIEF.niche);
+  $('#screen').innerHTML=`
+    <div class="briefhdr"><div class="em" style="background:var(${BRIEF.g})">${BRIEF.emoji}</div>
+      <div><h1 class="disp">${esc(BRIEF.title)}</h1><div class="sub">Your brief · ${niche.icon} ${niche.name} · ${BRIEF.volume} units · ${BRIEF.budget} · ${BRIEF.timeline}</div></div>
+      <div class="spacer"></div><div class="stat"><div class="n">5</div><div class="l">makers interested</div></div></div>
+    <div class="toolbar">
+      <div class="tabs"><button id="slt-all" class="${SL.tab==='all'?'on':''}" onclick="slTab('all')">All interested <span class="cnt">5</span></button>
+        <button id="slt-short" class="${SL.tab==='short'?'on':''}" onclick="slTab('short')">Shortlisted <span class="cnt" id="slcShort">${SL.shortlist.size}</span></button></div>
+      <span class="spacer"></span>
+      <button class="cmpbtn" id="slcmp" ${SL.compare.size<2?'disabled':''} onclick="slCompare()">⇄ Compare (${SL.compare.size})</button>
+      <span class="sort">Sort <select id="slsort" onchange="renderShortlist()">
+        <option value="fit">Best fit</option><option value="value">Best value</option><option value="fast">Fastest</option><option value="rated">Top rated</option></select></span>
+    </div>
+    <div class="list" id="sllist"></div>`;
+  const sort=(document.getElementById('slsort')||{}).value;
+  slList(sort);
+}
+function slList(sort){
+  let list=[...MAKERS];
+  if(SL.tab==='short')list=list.filter(m=>SL.shortlist.has(m.id));
+  if(sort==='value')list.sort((a,b)=>a.price-b.price);
+  else if(sort==='fast')list.sort((a,b)=>a.lead-b.lead);
+  else if(sort==='rated')list.sort((a,b)=>b.rating-a.rating||b.builds-a.builds);
+  else list.sort((a,b)=>b.fit-a.fit);
+  const el=$('#sllist');
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="em">☆</div><p class="b">No shortlisted makers yet</p><p class="small">Tap ☆ on a manufacturer to save them here.</p></div>`;return;}
+  el.innerHTML=list.map(slCard).join('');
+}
+function slCard(m){
+  const rec=m.fit>=95,star=SL.shortlist.has(m.id),chk=SL.compare.has(m.id);
+  const cls=m.fit>=80?'':'mid';
+  const claims=m.claims.map(c=>`<span class="mclaim ${c[1]?'':'miss'}">${c[1]?'✓':'△'} ${c[0]}</span>`).join('');
+  return `<div class="mk ${rec?'rec':''}">${rec?'<div class="ribbon">★ Best fit</div>':''}<div class="inner">
+    <div class="mhead"><div class="lg2" style="background:var(${m.g})">${m.emoji}</div>
+      <div class="mt"><h3 class="disp">${m.name} <span class="vchip">✓ Verified</span></h3>
+        <div class="mmeta"><span class="star2">★ ${m.rating.toFixed(1)}</span><span>${m.builds} creator builds</span><span>📍 ${m.loc}</span></div></div>
+      <div class="fit ${cls}"><div class="fn">${m.fit}%</div><div class="fl">fit</div><div class="fitbar"><i style="width:${m.fit}%"></i></div></div>
+      <button class="starbtn ${star?'on':''}" onclick="slStar(${m.id})">${star?'★':'☆'}</button></div>
+    <div class="terms">
+      <div class="term ${m.price===bestPrice?'best':''}"><div class="l">Price/unit</div><div class="v">${m.priceStr}</div></div>
+      <div class="term ${m.moq===bestMoq?'best':''}"><div class="l">MOQ</div><div class="v">${m.moqStr}</div></div>
+      <div class="term ${m.lead===bestLead?'best':''}"><div class="l">Lead time</div><div class="v">${m.leadStr}</div></div>
+      <div class="term"><div class="l">Paid sample</div><div class="v">${m.sample?'✓ Yes':'—'}</div></div></div>
+    <div class="mclaims">${claims}</div>
+    <div class="pitch">“${m.pitch}”</div>
+    <div class="mfoot"><label class="chk"><input type="checkbox" ${chk?'checked':''} onclick="slChk(${m.id})"> Compare</label>
+      <button class="linkbtn" onclick="toast('Opens a question thread with ${m.name} — no formula shared','💬')">💬 Ask a question</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" onclick="slStar(${m.id})">${star?'★ Shortlisted':'☆ Shortlist'}</button>
+      <button class="btn ${rec?'primary':'pink'}" onclick="slSelect(${m.id})">Select &amp; start →</button></div>
+  </div></div>`;
+}
+function slTab(t){SL.tab=t;renderShortlist();}
+function slStar(id){SL.shortlist.has(id)?SL.shortlist.delete(id):SL.shortlist.add(id);renderShortlist();
+  toast(SL.shortlist.has(id)?MAKERS.find(m=>m.id===id).name+' shortlisted':'Removed from shortlist','★');}
+function slChk(id){if(SL.compare.has(id))SL.compare.delete(id);else{if(SL.compare.size>=3){toast('Compare up to 3','⇄');renderShortlist();return;}SL.compare.add(id);}renderShortlist();}
+function slCompare(){
+  const ms=MAKERS.filter(m=>SL.compare.has(m.id));
+  const wp=Math.min(...ms.map(m=>m.price)),wl=Math.min(...ms.map(m=>m.lead)),wm=Math.min(...ms.map(m=>m.moq)),wr=Math.max(...ms.map(m=>m.rating));
+  const cols=ms.map(m=>`<th><div class="cmk"><span class="l" style="background:var(${m.g})">${m.emoji}</span>${m.name}</div></th>`).join('');
+  const row=(l,f)=>`<tr><td class="rh">${l}</td>${ms.map(m=>`<td>${f(m)}</td>`).join('')}</tr>`;
+  showScrim(`<div class="modal wide"><div class="mhd" style="display:flex;align-items:center"><div><h2 class="disp">Compare manufacturers</h2><p>Best value highlighted</p></div><span style="flex:1"></span><button class="linkbtn" style="font-size:20px" onclick="hideScrim()">✕</button></div>
+    <div class="mbd"><table class="ctable"><thead><tr><th></th>${cols}</tr></thead><tbody>
+    ${row('Price/unit',m=>`<span class="${m.price===wp?'win':''}">${m.priceStr}${m.price===wp?' ✓':''}</span>`)}
+    ${row('MOQ',m=>`<span class="${m.moq===wm?'win':''}">${m.moqStr}${m.moq===wm?' ✓':''}</span>`)}
+    ${row('Lead time',m=>`<span class="${m.lead===wl?'win':''}">${m.leadStr}${m.lead===wl?' ✓':''}</span>`)}
+    ${row('Rating',m=>`<span class="${m.rating===wr?'win':''}">★ ${m.rating.toFixed(1)}</span>`)}
+    ${row('Creator builds',m=>m.builds)}${row('Paid sample',m=>m.sample?'✓ Yes':'—')}${row('Location',m=>m.loc)}${row('Fit',m=>m.fit+'%')}
+    </tbody></table></div><div class="mft"><span class="small muted">You stay in control — decide when ready.</span><span class="spacer"></span><button class="btn ghost" onclick="hideScrim()">Close</button></div></div>`);
+}
+function slSelect(id){
+  SL.selectId=id;const m=MAKERS.find(x=>x.id===id);
+  showScrim(`<div class="modal"><div class="mhd"><h2 class="disp">Start with ${m.name}?</h2><p>This opens a private, protected room and begins the build:</p></div>
+    <div class="mbd">
+      <div class="commit"><div class="ic">📜</div><div class="t"><b>Mutual NDA auto-signed</b><div class="d">Confidentiality both ways, the moment you start.</div></div></div>
+      <div class="commit"><div class="ic">🔒</div><div class="t"><b>Recipe &amp; targets revealed only in-room</b><div class="d">${m.name} sees your secret details for the first time — nowhere public.</div></div></div>
+      <div class="commit"><div class="ic">💰</div><div class="t"><b>Discovery &amp; sample fee held in escrow</b><div class="d">Released only when you approve the first milestone.</div></div></div>
+      <div class="commit"><div class="ic">🤝</div><div class="t"><b>The other 4 makers are thanked</b><div class="d">Notified respectfully that you chose another partner.</div></div></div>
+      <div class="control">🧭 <div><b>You stay in control.</b> Nothing gets made without your approval — review every version, request changes, or pause anytime.</div></div></div>
+    <div class="mft"><span class="small muted">Reversible before the sample milestone.</span><span class="spacer"></span>
+      <button class="btn ghost" onclick="hideScrim()">Not yet</button>
+      <button class="btn primary big" onclick="slConfirm()">✓ Confirm &amp; open room</button></div></div>`);
+}
+function slConfirm(){
+  const m=MAKERS.find(x=>x.id===SL.selectId);
+  showScrim(`<div class="success2"><div class="ring">🤝</div><h2 class="disp">You’re building with ${m.name}!</h2>
+    <p>Mutual NDA signed · private room created · discovery fee in escrow. ${m.name} has been notified.</p>
+    <div style="display:flex;gap:10px;justify-content:center"><button class="btn ghost" onclick="hideScrim()">Back</button>
+      <button class="btn pink big" onclick="hideScrim();nextStage()">Open collaboration room →</button></div></div>`);
+  toast('Room created with '+m.name,'🤝');
+}
+
+/* =========================================================================
+   3. OPPORTUNITY POOL (manufacturer)
+   ========================================================================= */
+let poolTab='matched',poolCat='all';
+let uid=100;
+function pmk(o){return Object.assign({id:++uid,mates:o.mates||[],interested:o.interested||0,fresh:false},o);}
+let poolBriefs=[
+  pmk({title:'Passion-fruit Protein Water',cat:'Functional & Wellness Beverages',niche:'⚡ Energy & Performance',creator:'Maria Vega',handle:'@mariamakes · 240k',emoji:'🥤',g:'--g-purple',
+    vol:'5,000 u',budget:'$1.20–1.80',lead:'8 wk',fit:96,mins:118,posted:2,claims:[['High-protein',1],['No added sugar',1],['Vegan',0]],interested:3,mates:['--g-pink','--g-lime','--g-sky']}),
+  pmk({title:'Adaptogen Sparkling Tea',cat:'Functional & Wellness Beverages',niche:'🌿 Wellness',creator:'Leo Park',handle:'@leobrews · 88k',emoji:'🍵',g:'--g-mint',
+    vol:'3,000 u',budget:'$1.40–2.00',lead:'10 wk',fit:84,mins:340,posted:26,claims:[['Functional',1],['Adaptogenic',1],['Low-sugar',1]],interested:5,mates:['--g-lime','--g-sky','--g-coral','--g-pink','--g-yellow']}),
+  pmk({title:'Cold-Pressed Ginger Shots',cat:'Functional & Wellness Beverages',niche:'🥗 Healthy Lifestyle',creator:'Dev Rao',handle:'@devwellness · 33k',emoji:'🫚',g:'--g-yellow',
+    vol:'4,000 u',budget:'$1.80–2.60',lead:'6 wk',fit:89,mins:52,posted:8,claims:[['Clean-label',1],['Organic',1],['Glass bottle',0]],interested:2,mates:['--g-purple','--g-coral']}),
+  pmk({title:'Electrolyte Hydration Sticks',cat:'Supplements',niche:'⚡ Energy & Performance',creator:'Nia Adeyemi',handle:'@runwithnia · 512k',emoji:'⚡',g:'--g-lime',
+    vol:'20,000 u',budget:'$0.30–0.55',lead:'12 wk',fit:71,mins:900,posted:70,claims:[['Electrolytes',1],['No added sugar',1],['Sachet',0]],interested:8,mates:['--g-sky','--g-mint','--g-coral']})
+];
+let poolQueue=[],poolPending=[
+  pmk({title:'Prebiotic Soda — Yuzu',cat:'Refreshment Drinks',niche:'🥂 Social & Lifestyle',creator:'Theo Lang',handle:'@theotastes · 410k',emoji:'🥫',g:'--g-sky',
+    vol:'12,000 u',budget:'$0.90–1.40',lead:'9 wk',fit:93,mins:240,posted:0,claims:[['Functional',1],['Low-sugar',1],['Aluminum can',1]],interested:0,mates:[]}),
+  pmk({title:'Collagen Coffee Creamer',cat:'Coffee & Tea',niche:'✨ Beauty & Self-Care',creator:'Sofia Blanc',handle:'@sofiaglow · 190k',emoji:'☕',g:'--g-pink',
+    vol:'8,000 u',budget:'$2.10–3.00',lead:'11 wk',fit:78,mins:600,posted:0,claims:[['Clean-label',1],['Keto',1],['Powder',0]],interested:1,mates:['--g-yellow']})
+];
+let poolMine=[];
+function renderPool(){
+  const cats=['all','Functional & Wellness Beverages','Refreshment Drinks','Coffee & Tea','Supplements'];
+  const chipRow=cats.map(c=>`<span class="chip ${poolCat===c?'on':''}" onclick="poolSetCat('${c.replace(/'/g,"")}')">${c==='all'?'All categories':c}</span>`).join('');
+  $('#screen').innerHTML=`
+    <div class="briefhdr" style="background:var(--ink-50)">
+      <div class="em" style="background:var(--ink-900);color:#fff">🏭</div>
+      <div><h1 class="disp">PureBrew Co. <span class="vchip" style="vertical-align:middle">✓ Verified</span></h1>
+        <div class="sub">Your capabilities: Beverages · Protein / functional · Cold-fill · Aluminum can · MOQ 3,000+</div></div></div>
+    <div class="toolbar">
+      <div class="tabs">
+        <button class="${poolTab==='matched'?'on':''}" onclick="poolSetTab('matched')">Matched to you <span class="cnt">${poolBriefs.filter(b=>b.fit>=80).length}</span></button>
+        <button class="${poolTab==='all'?'on':''}" onclick="poolSetTab('all')">All open <span class="cnt">${poolBriefs.length}</span></button>
+        <button class="${poolTab==='mine'?'on':''}" onclick="poolSetTab('mine')">My interests <span class="cnt">${poolMine.length}</span></button>
+      </div><span class="spacer"></span>
+      <span class="sort">Sort <select id="poolsort" onchange="renderPool()">
+        <option value="fit">Best fit</option><option value="new">Newest</option><option value="close">Closing soon</option></select></span>
+    </div>
+    ${poolTab!=='mine'?`<div class="toolbar" style="border-top:none;padding-top:8px">${chipRow}</div>`:''}
+    <div class="list" id="poollist"></div>`;
+  poolListRender();
+}
+function poolListRender(){
+  const el=$('#poollist');
+  if(poolTab==='mine'){
+    if(!poolMine.length){el.innerHTML=`<div class="empty"><div class="em">📭</div><p class="b">No interests yet</p><p class="small">Express interest on a matched brief and it appears here with its status.</p></div>`;return;}
+    el.innerHTML=poolMine.map(poolMineCard).join('');return;
+  }
+  let list=poolBriefs.slice();
+  if(poolTab==='matched')list=list.filter(b=>b.fit>=80);
+  if(poolCat!=='all')list=list.filter(b=>b.cat===poolCat);
+  const s=(document.getElementById('poolsort')||{}).value;
+  if(s==='new')list.sort((a,b)=>a.posted-b.posted);else if(s==='close')list.sort((a,b)=>a.mins-b.mins);else list.sort((a,b)=>b.fit-a.fit);
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="em">🔍</div><p class="b">No briefs match this filter</p></div>`;return;}
+  el.innerHTML=list.map(poolCard).join('');
+}
+function tl(m){if(m<60)return m+'m';if(m<1440)return Math.round(m/60)+'h';return Math.round(m/1440)+'d';}
+function pa(m){if(m===0)return 'just now';if(m<60)return m+'m ago';return Math.round(m/60)+'h ago';}
+function matesHtml(a){if(!a.length)return '<span class="small muted">Be first to raise your hand</span>';
+  return '<span class="stack">'+a.slice(0,4).map(g=>`<span class="m" style="background:var(${g})"></span>`).join('')+(a.length>4?`<span class="m" style="background:var(--ink-400)">+${a.length-4}</span>`:'')+'</span>';}
+function poolCard(b){
+  const already=poolMine.find(x=>x.brief.id===b.id);
+  const cls=b.fit>=80?'':'mid';const urgent=b.mins<=120;
+  const claims=b.claims.map(c=>`<span class="mclaim ${c[1]?'':'miss'}">${c[1]?'✓':'△'} ${c[0]}</span>`).join('');
+  return `<div class="mk ${b.fresh?'fresh':''}"><div class="inner">
+    <div class="mhead"><div class="lg2" style="background:var(${b.g})">${b.emoji}</div>
+      <div class="mt"><h3 class="disp">${b.title}</h3><div class="mmeta"><span>${b.creator} · ${b.handle}</span><span>${b.niche}</span><span>posted ${pa(b.posted)}</span></div></div>
+      <div class="fit ${cls}"><div class="fn">${b.fit}%</div><div class="fl">fit</div><div class="fitbar"><i style="width:${b.fit}%"></i></div></div></div>
+    <div class="terms">
+      <div class="term"><div class="l">Volume</div><div class="v">${b.vol}</div></div>
+      <div class="term"><div class="l">Budget/unit</div><div class="v">${b.budget}</div></div>
+      <div class="term"><div class="l">Lead time</div><div class="v">${b.lead}</div></div>
+      <div class="term"><div class="l">Category</div><div class="v" style="font-size:11.5px">${b.cat}</div></div></div>
+    <div class="mclaims">${claims}</div>
+    <div class="mfoot"><div class="small muted" style="display:flex;align-items:center;gap:8px">${matesHtml(b.mates)}<span>${b.interested?b.interested+' interested':''}</span></div>
+      <span class="urgency ${urgent?'':'calm'}">${urgent?'⏳ closing in '+tl(b.mins):'⏱ '+tl(b.mins)+' to respond'}</span>
+      <span class="spacer"></span>
+      ${already?`<span class="pill p-await">⏳ Awaiting shortlist</span>`:`<button class="btn primary" onclick="poolInterest(${b.id})">✋ Express interest</button>`}</div>
+  </div></div>`;
+}
+function poolMineCard(m){
+  const b=m.brief;const cls={await:'p-await',short:'p-short',sel:'p-sel'}[m.status];
+  const lab={await:'⏳ Awaiting shortlist',short:'★ Shortlisted',sel:'✓ Selected — you won!'}[m.status];
+  return `<div class="mk"><div class="inner">
+    <div class="mhead"><div class="lg2" style="background:var(${b.g})">${b.emoji}</div>
+      <div class="mt"><h3 class="disp">${b.title}</h3><div class="mmeta"><span>${b.creator}</span><span>${b.niche}</span></div></div>
+      <span class="pill ${cls}">${lab}</span></div>
+    <div class="terms">
+      <div class="term"><div class="l">Your price</div><div class="v">${m.price}</div></div>
+      <div class="term"><div class="l">Your MOQ</div><div class="v">${m.moq}</div></div>
+      <div class="term"><div class="l">Your lead</div><div class="v">${m.lead}</div></div>
+      <div class="term"><div class="l">Paid sample</div><div class="v">${m.sample}</div></div></div>
+    <div class="pitch">Your note: ${m.note||'—'}</div>
+    <div class="mfoot"><span class="small muted">Submitted just now</span><span class="spacer"></span>
+      ${m.status==='sel'?`<button class="btn pink" onclick="nextStage()">Open room →</button>`:`<button class="btn ghost" onclick="poolWithdraw(${b.id})">Withdraw</button>`}</div>
+  </div></div>`;
+}
+function poolSetTab(t){poolTab=t;renderPool();}
+function poolSetCat(c){poolCat=c;renderPool();}
+let piId=null,piSample='yes';const PIC={};
+function poolInterest(id){
+  const b=poolBriefs.find(x=>x.id===id);piId=id;piSample='yes';
+  const caps=b.claims.map((c,i)=>{PIC[i]=!!c[1];return `<button class="tg ${c[1]?'on':''}" onclick="piTg(${i},this)">${c[1]?'✓':'＋'} ${c[0]}</button>`;}).join('');
+  showScrim(`<div class="modal"><div class="mhd" style="display:flex;align-items:center"><div><h2 class="disp">Express interest</h2><p>${b.title} · ${b.creator}</p></div><span style="flex:1"></span><button class="linkbtn" style="font-size:20px" onclick="hideScrim()">✕</button></div>
+    <div class="mbd">
+      <div class="guard">🔒 <div><b>Keep your formula to yourself.</b> This is just your fit &amp; terms so ${b.creator.split(' ')[0]} can shortlist you. Recipe work happens later, in a paid, NDA-protected room.</div></div>
+      <div class="frow">
+        <div class="field"><label>Price / unit</label><input id="pi-price" value="$1.35"></div>
+        <div class="field"><label>Your MOQ</label><input id="pi-moq" value="3,000"></div>
+        <div class="field"><label>Lead time</label><input id="pi-lead" value="7 wk"></div></div>
+      <div class="field" style="margin-bottom:13px"><label>Claims you can meet</label><div class="toggle-row">${caps}</div></div>
+      <div class="frow">
+        <div class="field"><label>Offer a paid sample?</label><div class="seg" id="pi-seg"><button class="on" onclick="piSeg('yes',this)">Yes — 6 units</button><button onclick="piSeg('no',this)">Not yet</button></div></div>
+        <div class="field"><label>Attach credentials</label><button class="btn ghost" style="width:100%;justify-content:center" onclick="toast('Cert attached (demo)','📎')">📎 SQF cert.pdf</button></div></div>
+      <div class="field"><label>Why you — one short pitch</label>
+        <textarea id="pi-note" maxlength="240">We run cold-fill protein lines and have a clean passion-fruit base ready to tune to your taste.</textarea></div>
+    </div>
+    <div class="mft"><span class="small muted">Free to send · ${b.creator.split(' ')[0]} reviews all interests, then picks one</span><span class="spacer"></span>
+      <button class="btn ghost" onclick="hideScrim()">Cancel</button><button class="btn primary" onclick="poolSubmit()">Send interest ✋</button></div></div>`);
+}
+function piTg(i,el){PIC[i]=!PIC[i];el.classList.toggle('on',PIC[i]);el.textContent=(PIC[i]?'✓':'＋')+el.textContent.slice(1);}
+function piSeg(v,el){piSample=v;[...$('#pi-seg').children].forEach(x=>x.classList.toggle('on',x===el));}
+function poolSubmit(){
+  const b=poolBriefs.find(x=>x.id===piId);
+  poolMine.unshift({brief:b,status:'await',price:$('#pi-price').value,moq:$('#pi-moq').value,lead:$('#pi-lead').value,sample:piSample==='yes'?'✓ 6 units':'—',note:$('#pi-note').value.trim()});
+  b.interested++;b.mates.unshift('--g-purple');
+  hideScrim();
+  // for the demo, the top-fit brief comes back "Selected — you won"
+  if(b.fit>=95){poolMine[0].status='sel';toast('You won this brief! Open the room from My interests','🎉');}
+  else toast('Interest sent to '+b.creator+' — good luck!','✋');
+  renderPool();
+}
+function poolWithdraw(id){poolMine=poolMine.filter(m=>m.brief.id!==id);const b=poolBriefs.find(x=>x.id===id);if(b){b.interested=Math.max(0,b.interested-1);b.mates.shift();}renderPool();toast('Interest withdrawn');}
+function poolStream(){if(!poolPending.length)return;const b=poolPending.shift();b.posted=0;poolQueue.push(b);
+  $('#livetext').textContent=poolQueue.length+' new '+(poolQueue.length>1?'briefs':'brief')+' matched';
+  if(STAGES[APP.role][APP.stage].key==='pool')$('#livebar').classList.add('show');}
+function poolLoadPending(){poolQueue.forEach(b=>{b.fresh=true;poolBriefs.unshift(b);});const n=poolQueue.length;poolQueue=[];$('#livebar').classList.remove('show');renderPool();toast(n+' new '+(n>1?'briefs':'brief')+' added','🟢');setTimeout(()=>poolBriefs.forEach(b=>b.fresh=false),1400);}
+setTimeout(poolStream,6000);setTimeout(poolStream,15000);
+
+/* =========================================================================
+   4. COLLABORATION ROOM (both roles)
+   ========================================================================= */
+const ROOM={
+  selected:'recipe',ver:'v2',tab:'act',
+  objects:{
+    recipe:{icon:'🧪',name:'Recipe / formula',status:'review',sub:'v2 · submitted by PureBrew'},
+    label:{icon:'🏷️',name:'Label',status:'draft',sub:'v1 · 2 open pins'},
+    packaging:{icon:'📦',name:'Packaging',status:'approved',sub:'12oz can · matte'},
+    sample:{icon:'🧾',name:'Sample & spec',status:'shipping',sub:'ETA Thu · tracking live'}
+  },
+  comments:{sweetener:[
+    {who:'m',name:'PureBrew',t:'Went with monk fruit to keep it zero-sugar and clean-label.',w:'2h ago'},
+    {who:'c',name:'Maria',t:'Love it. Can we push passion-fruit +10%? A touch tart.',w:'1h ago'}]},
+  pins:[{x:50,y:52,t:'Ingredient panel legal text too small — 6pt min.'},{x:50,y:22,t:'Nudge logo up ~4mm.'}],
+  messages:[{who:'m',name:'PureBrew',t:'Samples ship Thursday — tracking posts here automatically.'},{who:'c',name:'Maria',t:'Amazing, reviewing the formula now.'}],
+  activity:[{k:'a',t:'<b>iLaunchify</b> released <b>Discovery</b> milestone from escrow.',w:'Today · 9:12'},{k:'v',t:'<b>PureBrew</b> submitted <b>Recipe v2</b> for review.',w:'Today · 9:40'},{k:'c',t:'<b>Maria approved</b> the <b>Packaging</b> — locked.',w:'Yesterday'}],
+  esc:1
+};
+const PL={draft:'p-draft',review:'p-review',changes:'p-changes',approved:'p-approved',shipping:'p-shipping'};
+const PLAB={draft:'Draft',review:'Needs review',changes:'Changes requested',approved:'Approved',shipping:'Shipping'};
+const RECIPE={
+  v1:[{k:'base',n:'Spring water',no:'Base',v:'90%'},{k:'protein',n:'Whey protein isolate',no:'9g/serv',v:'—'},{k:'passion',n:'Passion-fruit concentrate',no:'Natural',v:'4%'},{k:'sweet',n:'Sweetener',no:'Stevia',v:'0.3%'},{k:'electro',n:'Electrolyte blend',no:'Na/K/Mg',v:'trace'}],
+  v2:[{k:'base',n:'Spring water',no:'Base',v:'88%',d:'dn',dl:'−2%'},{k:'protein',n:'Whey protein isolate',no:'9g/serv',v:'9g'},{k:'passion',n:'Passion-fruit concentrate',no:'Natural',v:'5%',d:'up',dl:'+1%'},{k:'sweet',n:'Sweetener',no:'Monk fruit',v:'0.25%',flag:true,d:'up',dl:'changed'},{k:'electro',n:'Electrolyte blend',no:'Na/K/Mg',v:'trace'}]
+};
+function meRole(){return APP.role==='creator'?'c':'m';}
+function meName(){return APP.role==='creator'?'Maria':'PureBrew';}
+function roomLog(k,t){ROOM.activity.unshift({k,t,w:'Just now'});roomFeed();}
+function renderRoom(){
+  const o=ROOM.objects;const roleName=APP.role==='creator'?'Maria (Creator)':'PureBrew (Manufacturer)';
+  $('#screen').innerHTML=`
+    <div class="roomtop">
+      <div class="av" style="background:var(--g-purple)">🥤</div>
+      <div class="rt"><b>Passion-fruit Protein Water</b><span>Maria Vega × PureBrew Co. · viewing as ${roleName}</span></div>
+      <div class="spacer"></div>
+      <span class="rbadge"><span class="g"></span> NDA signed</span>
+      <span class="rbadge">🔒 IP: Creator-owned</span></div>
+    <div class="roombody">
+      <div class="rcol">
+        <div class="rcolh">Build objects</div><div id="objlist"></div>
+        <div class="escrow"><div class="row"><span class="b">Escrow · milestones</span><span class="muted" id="escpct">${ROOM.esc} / 4 released</span></div>
+          <div class="ebar"><i id="escbar" style="width:${ROOM.esc*25}%"></i></div>
+          <div class="small muted" id="escnote">Discovery released · Sample held</div></div>
+      </div>
+      <div class="rcol center"><div id="detail"></div></div>
+      <div class="rcol">
+        <div class="rtab"><button id="rtA" class="on" onclick="roomTab('act')">Activity log</button><button id="rtM" onclick="roomTab('msg')">Messages</button></div>
+        <div id="feedAct" class="feed2"></div><div id="feedMsg" class="feed2" style="display:none"></div>
+        <div id="msgbar" class="msgbar" style="display:none"><input id="msgInput" placeholder="Message…" onkeydown="if(event.key==='Enter')roomSend()"><button onclick="roomSend()">➤</button></div>
+      </div>
+    </div>`;
+  roomObjs();roomDetail();roomFeed();roomMsgs();
+}
+function roomObjs(){
+  $('#objlist').innerHTML=Object.entries(ROOM.objects).map(([id,o])=>`
+    <div class="obj ${id===ROOM.selected?'sel':''}" onclick="roomSel('${id}')"><div class="ic">${o.icon}</div>
+      <div class="nm"><b>${o.name}</b><span class="small muted">${o.sub}</span></div>
+      <span class="pill ${PL[o.status]}">${PLAB[o.status]}</span></div>`).join('');
+}
+function roomSel(id){ROOM.selected=id;roomObjs();roomDetail();}
+function roomDetail(){
+  const id=ROOM.selected,o=ROOM.objects[id];
+  let body=id==='recipe'?roomRecipe():id==='label'?roomLabel():id==='packaging'?roomPack():roomSample();
+  $('#detail').innerHTML=`<div class="deth"><div class="ic">${o.icon}</div><div><h2 class="disp">${o.name}</h2><div class="s">${o.sub}</div></div><div style="flex:1"></div><span class="pill ${PL[o.status]}" style="font-size:12px;padding:6px 12px">${PLAB[o.status]}</span></div>
+    <div class="detb">${body}</div>${roomActions(id)}`;
+}
+function roomRecipe(){
+  const ver=ROOM.ver,cmp=ver==='compare';
+  const rows=(cmp?RECIPE.v2:RECIPE[ver]).map(r=>{
+    const has=ROOM.comments[r.k]&&ROOM.comments[r.k].length;
+    const delta=(cmp&&r.d)?`<span class="delta ${r.d}">${r.dl}</span>`:'';
+    return `<div class="irow ${r.flag?'flag':''}"><div class="lab"><b>${r.n}</b> <span class="small muted">· ${r.no}</span></div>
+      <div class="val">${r.v}${delta}</div>
+      <button class="cbtn ${has?'has':''}" onclick="roomThread('${r.k}')">💬 ${has?ROOM.comments[r.k].length:''}</button></div>
+      <div id="th-${r.k}" class="thread" style="display:${has&&r.k==='sweet'?'block':'none'}">${roomThreadHtml(r.k)}</div>`;
+  }).join('');
+  return `<div class="vtabs"><button class="${ver==='v1'?'on':''}" onclick="roomVer('v1')">v1</button><button class="${ver==='v2'?'on':''}" onclick="roomVer('v2')">v2 · latest</button><button class="${ver==='compare'?'on':''}" onclick="roomVer('compare')">⇄ Compare</button></div>
+    ${cmp?'<div class="small muted" style="margin:-4px 0 12px">v2 with changes vs v1 highlighted.</div>':''}${rows}`;
+}
+function roomThreadHtml(k){
+  const arr=ROOM.comments[k]||[];
+  return arr.map(c=>`<div class="cmt"><div class="cav ${c.who==='c'?'c':'m'}"></div><div class="bb"><b>${c.name}</b> <span class="w">${c.w}</span><div class="t">${c.t}</div></div></div>`).join('')+
+    `<div class="composer"><input id="ci-${k}" placeholder="Reply as ${meName()}…" onkeydown="if(event.key==='Enter')roomComment('${k}')"><button class="btn ghost" onclick="roomComment('${k}')">Send</button></div>`;
+}
+function roomThread(k){if(!ROOM.comments[k])ROOM.comments[k]=[];const t=$('#th-'+k);if(t)t.style.display=t.style.display==='none'?'block':'none';}
+function roomComment(k){const i=$('#ci-'+k);if(!i||!i.value.trim())return;if(!ROOM.comments[k])ROOM.comments[k]=[];ROOM.comments[k].push({who:meRole(),name:meName(),t:i.value.trim(),w:'Just now'});roomLog(meRole(),`<b>${meName()}</b> commented on the recipe.`);roomDetail();toast('Comment added to the formula','💬');}
+function roomVer(v){ROOM.ver=v;roomDetail();}
+function roomLabel(){
+  const pins=ROOM.pins.map((p,i)=>`<div class="pin" style="left:${p.x}%;top:${p.y}%" onclick="event.stopPropagation();toast('📍 Pin ${i+1}: ${p.t.replace(/'/g,'')}')">${i+1}</div>`).join('');
+  const list=ROOM.pins.map((p,i)=>`<div class="pn" onclick="toast('📍 Pin ${i+1}: ${p.t.replace(/'/g,'')}')"><div class="num">${i+1}</div><div class="small">${p.t}</div></div>`).join('');
+  return `<div class="proof"><div class="can">
+    <div class="art2" style="background:var(--g-purple)" onclick="roomAddPin(event)">${pins}<div class="lbl"><div class="l1">PASSION<br>PROTEIN</div><div class="l2">9g protein · 0g sugar</div></div></div>
+    <div class="hint">💡 Click the can to drop a feedback pin</div></div>
+    <div><div class="small b" style="margin-bottom:8px">Pinned feedback (${ROOM.pins.length})</div>${list||'<div class="small muted">No pins yet.</div>'}
+    <div class="small muted" style="margin-top:10px">${APP.role==='creator'?'You can also self-design on PureBrew’s dieline →':'Awaiting Maria’s pins before revising →'}</div></div></div>`;
+}
+function roomAddPin(e){const r=e.currentTarget.getBoundingClientRect();const x=Math.round((e.clientX-r.left)/r.width*100),y=Math.round((e.clientY-r.top)/r.height*100);const t=prompt('Pin note:','');if(t===null)return;ROOM.pins.push({x,y,t:t.trim()||'(note)'});ROOM.objects.label.sub=`v1 · ${ROOM.pins.length} open pins`;roomLog(meRole(),`<b>${meName()}</b> pinned feedback on the label.`);roomDetail();roomObjs();toast('Pin added to the label','📍');}
+function roomPack(){return `<div class="irow"><div class="lab"><b>Format</b> <span class="small muted">· 12oz slim aluminum can</span></div><div class="val">✓</div></div>
+  <div class="irow"><div class="lab"><b>Finish</b> <span class="small muted">· matte, soft-touch</span></div><div class="val">✓</div></div>
+  <div class="irow"><div class="lab"><b>Case pack</b> <span class="small muted">· 24 units</span></div><div class="val">✓</div></div>
+  <div class="privacy" style="margin-top:8px">✓ Approved by Maria · version locked. Any change re-opens review.</div>`;}
+function roomSample(){return `<div class="irow"><div class="lab"><b>First sample run</b> <span class="small muted">· 6 units</span></div><div class="val">In transit</div></div>
+  <div class="irow"><div class="lab"><b>Carrier</b> <span class="small muted">· UPS · 1Z…4A9</span></div><div class="val">ETA Thu</div></div>
+  <div class="irow"><div class="lab"><b>Spec sheet</b> <span class="small muted">· nutrition, allergens, shelf-life</span></div><div class="val">Attached</div></div>
+  <div class="small muted" style="margin-top:8px">Tracking updates post here automatically — no email needed.</div>`;}
+function roomActions(id){
+  const o=ROOM.objects[id],cr=APP.role==='creator';let left='',right='',note='';
+  if(id==='recipe'){
+    if(cr){if(o.status==='approved')note='✓ You approved this formula — locked for production.';
+      else{note='Review the formula, then decide.';left=`<button class="btn ghost" onclick="roomChanges('recipe')">Request changes</button>`;right=`<button class="btn primary" onclick="roomApprove('recipe')">✓ Approve v2</button>`;}}
+    else{note=o.status==='changes'?'Maria requested changes — revise & resubmit.':'Submitted for Maria’s review.';right=`<button class="btn pink" onclick="roomResubmit('recipe')">Submit new version</button>`;}
+  }else if(id==='label'){
+    if(cr){note=o.status==='approved'?'✓ Approved for print.':'Pin feedback, then approve when ready.';if(o.status!=='approved'){left=`<button class="btn ghost" onclick="roomChanges('label')">Send pins to maker</button>`;right=`<button class="btn primary" onclick="roomApprove('label')">✓ Approve for print</button>`;}}
+    else{note='Awaiting Maria’s approval or pins.';right=`<button class="btn pink" onclick="roomResubmit('label')">Upload new proof</button>`;}
+  }else if(id==='packaging'){note='Approved & locked.';right=`<button class="btn ghost" onclick="roomReopen('packaging')">Re-open</button>`;}
+  else{note='Sample in transit — action unlocks on arrival.';right=`<button class="btn ghost" disabled>Log sample feedback</button>`;}
+  return `<div class="actions"><span class="note">${note}</span><span class="spacer"></span>${left}${right}</div>`;
+}
+function roomApprove(id){ROOM.objects[id].status='approved';if(id==='recipe'){ROOM.objects.recipe.sub='v2 · approved by Maria';ROOM.esc=2;$('#escbar')&&($('#escbar').style.width='50%');$('#escpct')&&($('#escpct').textContent='2 / 4 released');$('#escnote')&&($('#escnote').textContent='Sample milestone released on approval');roomLog('a','<b>iLaunchify</b> released the <b>Sample</b> milestone from escrow.');}if(id==='label')ROOM.objects.label.sub='v1 · approved for print';roomLog('c',`<b>Maria approved</b> the ${ROOM.objects[id].name.toLowerCase()}. Locked.`);roomObjs();roomDetail();toast('Approved · logged in decision trail','✓');}
+function roomChanges(id){ROOM.objects[id].status='changes';roomLog('c',`<b>Maria requested changes</b> on the ${ROOM.objects[id].name.toLowerCase()}.`);roomObjs();roomDetail();toast('Change request sent to PureBrew');}
+function roomResubmit(id){ROOM.objects[id].status='review';roomLog('v',`<b>PureBrew</b> submitted a new version of the ${ROOM.objects[id].name.toLowerCase()}.`);roomObjs();roomDetail();toast('New version submitted for review');}
+function roomReopen(id){ROOM.objects[id].status='review';roomLog('a',`<b>${meName()}</b> re-opened the ${ROOM.objects[id].name.toLowerCase()}.`);roomObjs();roomDetail();toast('Object re-opened');}
+function roomTab(t){ROOM.tab=t;$('#rtA').classList.toggle('on',t==='act');$('#rtM').classList.toggle('on',t==='msg');$('#feedAct').style.display=t==='act'?'block':'none';$('#feedMsg').style.display=t==='msg'?'block':'none';$('#msgbar').style.display=t==='msg'?'flex':'none';}
+function roomFeed(){$('#feedAct').innerHTML=ROOM.activity.map((a,i)=>`<div class="act"><div class="rail"><div class="d ${a.k}"></div>${i<ROOM.activity.length-1?'<div class="ln"></div>':''}</div><div class="tx">${a.t}<span class="w">${a.w}</span></div></div>`).join('');}
+function roomMsgs(){const f=$('#feedMsg');if(!f)return;f.innerHTML=ROOM.messages.map(m=>{const me=m.who===meRole();return `<div class="msg ${me?'me':''}"><div class="cav ${m.who==='c'?'c':'m'}"></div><div class="bb"><div class="who">${m.name}</div>${m.t}</div></div>`;}).join('');f.scrollTop=f.scrollHeight;}
+function roomSend(){const i=$('#msgInput');if(!i.value.trim())return;ROOM.messages.push({who:meRole(),name:meName(),t:i.value.trim()});i.value='';roomMsgs();}
+
+/* ---- modal helpers ---- */
+function showScrim(html){$('#scrimBody').innerHTML=html;$('#scrim').classList.add('show');}
+function hideScrim(){$('#scrim').classList.remove('show');}
+$('#scrim').addEventListener('click',e=>{if(e.target===$('#scrim'))hideScrim();});
+
+/* ---- init ---- */
+render();
+</script>
+</body>
+</html>
