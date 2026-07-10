@@ -300,13 +300,16 @@ Emit events for: brief posted, interests per brief, time-to-first-interest, shor
 
 ## 15. Open decisions (need Pavel before/within build)
 
-- **D-CC1 — Fee model:** platform take-rate % on milestones vs. partner pool subscription vs. both. (`packages/plans` / `PARTNER_TIER_VS_MERIT.md` alignment.)
+- **D-CC1 — Fee model: DECIDED 2026-07-10** (research: `CO_CREATION_MONETIZATION_RESEARCH_2026-07-10.md`). Co-creation is monetized at the end of its own funnel — the CLOSED_WON production order pays the normal creator tier fee (`resolveCreatorFeeBps`) + manufacturer merit withhold. No third rake, ever. Staged:
+  - **V1:** creator access bundled in **Builder + Agency** (Maker sees an upgrade CTA — gate in `packages/auth`); manufacturer pool access **free** for verified partners (NO pool subscription — supplier-pays-to-access rejected: MFG.com churn, gamed Alibaba Gold badges, conflicts with never-sell-the-badge); milestones carry no platform fee (`RoomMilestone.feeBps` snapshot = 0).
+  - **V1.5 (post-liquidity):** apply the existing merit ladder (4.5/2.5/0, `resolveManufacturerMeritFeeBps`) to milestone **releases** — shadow-inert behind a new `applyMeritFeeToMilestones` admin toggle, same rollout pattern as the dispatch merit fee. Snapshot bps/cents at funding.
+  - **Mechanics:** Stripe separate-charges-and-transfers, one charge per milestone funding, platform fee netted at transfer (not `application_fee_amount`); US hold window ≤ 2 years. **User-facing copy says "milestone payment protection", never "escrow"** (Stripe disclaims escrow; internal `FUNDED_ESCROW` enum unaffected). Anti-circumvention + float terms go in the D7 counsel bundle (price the exit, don't block it — Upwork pattern).
 - **D-CC2 — Interest limits:** max concurrent interests per partner per tier; anti-spam throttle.
 - **D-CC3 — Reversibility:** can a creator switch makers after selection but before the Sample milestone? (Prototype implies yes.)
 - **D-CC4 — IP/NDA copy:** blocked on counsel (D7 cluster). Ship room with placeholder + gate go-live on legal.
-- **D-CC5 — `uuid` vs `cuid`:** confirm new-model id default (CLAUDE.md says `uuid`; legacy models use `cuid`).
+- **D-CC5 — `uuid` vs `cuid`: DECIDED 2026-07-10** — `uuid()` on all new co-creation models (built).
 - **D-CC6 — Merit in matching weight:** how heavily merit/rating ranks the pool + shortlist.
-- **D-CC7 — Category scope for launch:** concierge-MVP in ONE category first (recommend Functional & Wellness Beverages) vs. all 13.
+- **D-CC7 — Category scope for launch: DECIDED 2026-07-10** — all 13 categories open from day one (Pavel overrode the one-category recommendation); no schema gate, keep an admin-tunable allowlist escape hatch if liquidity spreads too thin.
 
 ---
 
