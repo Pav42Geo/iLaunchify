@@ -6,12 +6,14 @@
   "types": "./src/index.ts",
   "scripts": {
     "type-check": "tsc --noEmit",
+    "test": "vitest run",
     "clean": "rm -rf node_modules .turbo dist"
   },
   "dependencies": {
     "@ilaunchify/db": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
   }
 }
