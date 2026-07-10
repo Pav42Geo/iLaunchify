@@ -899,8 +899,10 @@ function ObjectDetail({
               : `Waiting for ${mode === 'creator' ? 'the maker' : 'the creator'} to submit the first version.`}
           </p>
         ) : isRecipe ? (
-          <div className={cn(hasFactsData && 'gap-s-4 xl:grid xl:grid-cols-[minmax(0,1fr)_270px]')}>
-          <div>
+          // Breathing room: extra right padding past the label column; the
+          // formula column caps its width so ingredient rows don't sprawl.
+          <div className={cn(hasFactsData && 'gap-s-5 xl:grid xl:grid-cols-[minmax(0,1fr)_270px] xl:pr-s-4')}>
+          <div className={cn(hasFactsData && 'xl:max-w-xl')}>
           {rows.map((r, idx) => {
             const anchor = `row:${idx}`
             const thread = threadFor(anchor)
