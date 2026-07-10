@@ -38,7 +38,7 @@ const FULFILLMENT_TAG: Record<string, { label: string; cls: string }> = {
   },
   BOTH: {
     label: 'Flexible',
-    cls: 'bg-[#B5FF3D] text-ink-900',
+    cls: 'bg-neon-500 text-ink-900',
   },
 }
 

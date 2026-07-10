@@ -436,7 +436,7 @@ function OrderCard({ order: o }: { order: OrderRow }) {
           {delivered && (
             <Link
               href={`/checkout?adjust=${o.id}`}
-              className="inline-flex items-center gap-1 rounded-full bg-[#B5FF3D] px-3 py-1.5 text-[12px] font-medium text-ink-900 hover:bg-[#9be62a]"
+              className="inline-flex items-center gap-1 rounded-full bg-neon-500 px-3 py-1.5 text-[12px] font-medium text-ink-900 hover:bg-neon-600"
             >
               <RotateCw className="h-3.5 w-3.5" /> Reorder
             </Link>

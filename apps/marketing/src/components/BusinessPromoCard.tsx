@@ -10,7 +10,7 @@ export function BusinessPromoCard() {
   return (
     <div className="mt-4 rounded-[var(--card-radius)] bg-[var(--ink-900)] p-4 text-white">
       <div className="flex items-center gap-2 font-display text-[16px] font-extrabold">
-        <span className="h-2.5 w-2.5 rounded-full bg-[#B5FF3D]" aria-hidden="true" />
+        <span className="h-2.5 w-2.5 rounded-full bg-neon-500" aria-hidden="true" />
         iLaunchify Business
       </div>
       <p className="mt-2 text-[12.5px] leading-relaxed text-ink-300">
@@ -19,7 +19,7 @@ export function BusinessPromoCard() {
       </p>
       <a
         href="/business"
-        className="mt-3 inline-flex items-center rounded-pill bg-[#B5FF3D] px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-900 transition-opacity hover:opacity-90"
+        className="mt-3 inline-flex items-center rounded-pill bg-neon-500 px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-900 transition-opacity hover:opacity-90"
       >
         Talk to our team →
       </a>

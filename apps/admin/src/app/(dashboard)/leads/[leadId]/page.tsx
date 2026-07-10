@@ -103,7 +103,7 @@ const STATUS_TONE: Record<
 const SERVICE_LABELS: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Warehouse / 3PL',
 }
 
@@ -185,6 +185,16 @@ export default async function LeadDetail({ params }: PageProps) {
     }
   })()
 
+  // Structured application signals (promoted out of the generic metadata dump).
+  const appStr = (k: string) => (typeof legacyRaw[k] === 'string' ? (legacyRaw[k] as string) : null)
+  const appProfile = {
+    yearsInBusiness: appStr('yearsInBusiness'),
+    facilityCount: appStr('facilityCount'),
+    companySize: appStr('companySize'),
+    entityType: appStr('entityType'),
+  }
+  const otcInterest = detectOtcInterest(legacyRaw.serviceDetails)
+
   const tone =
     STATUS_TONE[partner.status] ?? {
       dot: 'bg-ink-400',
@@ -261,6 +271,8 @@ export default async function LeadDetail({ params }: PageProps) {
             legacy={legacyRaw}
             servicesCount={partner.services.length}
             primaryRegionName={partner.primaryRegion?.name ?? null}
+            profile={appProfile}
+            otcInterest={otcInterest}
           />
           <ServicesCard services={partner.services} />
           <ActivityCard history={history} />
@@ -307,17 +319,32 @@ function SnapshotCard({
   legacy,
   servicesCount,
   primaryRegionName,
+  profile,
+  otcInterest,
 }: {
   partner: PartnerForSnapshot
   legacy: Record<string, unknown>
   servicesCount: number
   primaryRegionName: string | null
+  profile: {
+    yearsInBusiness: string | null
+    facilityCount: string | null
+    companySize: string | null
+    entityType: string | null
+  }
+  otcInterest: boolean
 }) {
   const location = [partner.city, partner.state, partner.country].filter(Boolean).join(', ')
   const stripeConnected = Boolean(partner.user.stripeAccountId)
 
   return (
     <Card icon={Info} title="Lead snapshot" subtitle="What we know so far.">
+      {otcInterest && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50 px-3 py-2 text-[12.5px] font-semibold text-pink-800">
+          <span className="h-2 w-2 rounded-full bg-pink-500" aria-hidden="true" />
+          Registered interest in <span className="uppercase">OTC drug</span> — domain not live yet
+        </div>
+      )}
       <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
         <Field
           label="Source"
@@ -375,6 +402,10 @@ function SnapshotCard({
           label="Primary region"
           value={primaryRegionName ?? '—'}
         />
+        <Field label="Years in business" value={profile.yearsInBusiness ?? '—'} />
+        <Field label="Facilities" value={profile.facilityCount ?? '—'} />
+        <Field label="Company size" value={profile.companySize ? `${profile.companySize} staff` : '—'} />
+        <Field label="Business entity" value={profile.entityType ? humanize(profile.entityType) : '—'} />
         <Field
           label="Stripe Connect"
           value={
@@ -402,9 +433,17 @@ function SnapshotCard({
             Application metadata
           </summary>
           <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {Object.entries(legacy).map(([k, v]) => (
-              <Field key={k} label={humanize(k)} value={String(v ?? '—')} />
-            ))}
+            {Object.entries(legacy)
+              // Skip keys already promoted to proper fields, and non-scalar
+              // values (serviceDetails/arrays) so we never print [object Object].
+              .filter(
+                ([k, v]) =>
+                  !PROMOTED_KEYS.has(k) &&
+                  (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'),
+              )
+              .map(([k, v]) => (
+                <Field key={k} label={humanize(k)} value={String(v ?? '—')} />
+              ))}
           </dl>
         </details>
       )}
@@ -598,6 +637,28 @@ function Empty({ label }: { label: string }) {
 // =============================================================================
 // Helpers
 // =============================================================================
+
+// Keys shown as proper snapshot fields — hidden from the raw metadata dump.
+const PROMOTED_KEYS = new Set([
+  'yearsInBusiness',
+  'facilityCount',
+  'companySize',
+  'entityType',
+  'contactName',
+  'phone',
+  'submittedAt',
+])
+
+// Any selected service that declared OTC in its product categories = interest in
+// the (not-yet-live) OTC domain. serviceDetails shape: { <SERVICE>: { categories: [...] } }.
+function detectOtcInterest(serviceDetails: unknown): boolean {
+  if (!serviceDetails || typeof serviceDetails !== 'object') return false
+  return Object.values(serviceDetails as Record<string, unknown>).some((svc) => {
+    if (!svc || typeof svc !== 'object') return false
+    const cats = (svc as Record<string, unknown>).categories
+    return Array.isArray(cats) && cats.includes('OTC')
+  })
+}
 
 function humanize(s: string): string {
   return s

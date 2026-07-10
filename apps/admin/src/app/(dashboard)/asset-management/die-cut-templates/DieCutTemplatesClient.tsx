@@ -223,7 +223,7 @@ export function DieCutTemplatesClient({ data }: { data: DieCutLibraryData }) {
                 </p>
                 <div className="mt-3 flex items-center gap-2">
                   <button onClick={() => toggleActive(r)}
-                    className={`rounded-full px-3 py-1 text-[12px] font-medium ${r.isActive ? 'bg-[#B5FF3D]/30 text-ink-900' : 'bg-ink-100 text-ink-500'}`}>
+                    className={`rounded-full px-3 py-1 text-[12px] font-medium ${r.isActive ? 'bg-neon-500/30 text-ink-900' : 'bg-ink-100 text-ink-500'}`}>
                     {r.isActive ? 'Active' : 'Inactive'}
                   </button>
                   <button onClick={() => toggleStandard(r)}

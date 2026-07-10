@@ -181,7 +181,7 @@ function ComingNextCard({
         </span>
         <span className="font-semibold text-ink-900">{title}</span>
         <span
-          className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#B5FF3D] px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-ink-900"
+          className="ml-auto inline-flex items-center gap-1 rounded-full bg-neon-500 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-ink-900"
           aria-label={`Available in ${tag}`}
         >
           {tag} · Coming next

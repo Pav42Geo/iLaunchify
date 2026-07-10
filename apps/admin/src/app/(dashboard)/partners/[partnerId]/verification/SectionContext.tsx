@@ -69,7 +69,7 @@ export function BusinessContext({
 const SERVICE_LABEL: Record<ServiceType, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Warehouse / 3PL',
 }
 

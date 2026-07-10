@@ -114,12 +114,12 @@ export default async function MandatoryPhrasesPage({
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <KpiWidget label="Total" value={total} icon={ScrollText} tone="ink" />
-        <KpiWidget label="Mandatory" value={mandatory} icon={ShieldAlert} tone="danger" />
-        <KpiWidget label="Recommended" value={recommended} icon={CheckCircle2} tone="success" />
-        <KpiWidget label="Warnings" value={warnings} icon={AlertTriangle} tone="warning" />
-        <KpiWidget label="Allergen" value={allergens} icon={FileText} tone="info" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <KpiWidget label="Total" value={total} icon={ScrollText} tone="ink" span={1} />
+        <KpiWidget label="Mandatory" value={mandatory} icon={ShieldAlert} tone="danger" span={1} />
+        <KpiWidget label="Recommended" value={recommended} icon={CheckCircle2} tone="success" span={1} />
+        <KpiWidget label="Warnings" value={warnings} icon={AlertTriangle} tone="warning" span={1} />
+        <KpiWidget label="Allergen" value={allergens} icon={FileText} tone="info" span={1} />
       </div>
 
       {/* Filter chips */}

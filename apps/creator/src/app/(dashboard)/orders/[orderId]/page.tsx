@@ -925,7 +925,7 @@ function ActionsCard({
           {isDelivered && productId && (
             <Link
               href={`/products/${productId}/checkout`}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#B5FF3D] px-4 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-ink-900 shadow-sm hover:bg-[#A4F127] focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-neon-500 px-4 py-2.5 text-[12.5px] font-semibold uppercase tracking-wider text-ink-900 shadow-sm hover:bg-neon-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-2"
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
               Reorder

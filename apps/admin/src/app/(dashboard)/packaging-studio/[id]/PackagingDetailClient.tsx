@@ -55,7 +55,7 @@ export function PackagingDetailClient({ data }: { data: PackagingTypeDetail }) {
         <span className="rounded-full bg-ink-100 px-2.5 py-1 font-medium text-ink-700">{data.containerCategory ? pretty(data.containerCategory) : 'Uncategorized'}</span>
         <span className="rounded-full bg-ink-100 px-2.5 py-1 font-medium text-ink-700">{pretty(data.topology)}</span>
         <span className={`rounded-full px-2.5 py-1 font-medium ${data.has3dModel ? 'bg-pink-50 text-pink-700' : 'bg-ink-100 text-ink-500'}`}>{data.has3dModel ? '3D model' : 'Parametric'}</span>
-        <button onClick={toggleStatus} className={`rounded-full px-2.5 py-1 font-medium ${status === 'ACTIVE' ? 'bg-[#B5FF3D]/30 text-ink-900' : 'bg-ink-100 text-ink-500'}`}>
+        <button onClick={toggleStatus} className={`rounded-full px-2.5 py-1 font-medium ${status === 'ACTIVE' ? 'bg-neon-500/30 text-ink-900' : 'bg-ink-100 text-ink-500'}`}>
           {status === 'ACTIVE' ? 'Active' : 'Deprecated'}
         </button>
       </div>
@@ -123,7 +123,7 @@ export function PackagingDetailClient({ data }: { data: PackagingTypeDetail }) {
                     <span className="text-ink-800">{s.label}</span>
                     <span className="flex items-center gap-2 text-[12px]">
                       {s.decorable ? <span className="rounded-full bg-ink-100 px-2 py-0.5 text-ink-600">Decorable</span> : <span className="text-ink-400">Non-print</span>}
-                      {s.bound ? <span className="rounded-full bg-[#B5FF3D]/30 px-2 py-0.5 text-ink-900">Die-line bound</span> : <span className="text-ink-400">Unbound</span>}
+                      {s.bound ? <span className="rounded-full bg-neon-500/30 px-2 py-0.5 text-ink-900">Die-line bound</span> : <span className="text-ink-400">Unbound</span>}
                     </span>
                   </li>
                 ))}
@@ -146,7 +146,7 @@ export function PackagingDetailClient({ data }: { data: PackagingTypeDetail }) {
                 <tbody className="divide-y divide-ink-100">
                   {data.dielines.map((d) => (
                     <tr key={d.id}>
-                      <td className="px-3 py-2 text-ink-800">{d.label}{d.confirmed && <span className="ml-2 rounded-full bg-[#B5FF3D]/30 px-1.5 py-0.5 text-[10px] text-ink-900">confirmed</span>}</td>
+                      <td className="px-3 py-2 text-ink-800">{d.label}{d.confirmed && <span className="ml-2 rounded-full bg-neon-500/30 px-1.5 py-0.5 text-[10px] text-ink-900">confirmed</span>}</td>
                       <td className="px-3 py-2 text-ink-600">{pretty(d.decoration)}</td>
                       <td className="px-3 py-2 text-ink-600">{d.canonicalShape ? `${d.canonicalShape}${d.matchConfidence != null ? ` · ${Math.round(d.matchConfidence * 100)}%` : ''}` : '—'}</td>
                       <td className="px-3 py-2"><span className="rounded-full bg-ink-100 px-2 py-0.5 text-[11px] text-ink-600">{pretty(d.status)}</span></td>
