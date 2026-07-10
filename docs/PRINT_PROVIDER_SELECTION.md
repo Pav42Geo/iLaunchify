@@ -126,6 +126,11 @@ UX exists; their SERVICE-scoped rating (FEEDBACK_MODULE §5.5) surfaces to admin
 now and pre-seeds a future co-packer directory. FC selection already has its own scorer; its
 rating becomes one more scorer input later (admin-only display, per Pavel).
 
+**Not to be confused with the print pool:** a co-packer (or manufacturer) that *also* offers a
+printing service is still barred from the public print rotation/discovery/RFQ pool by the
+main-role gate (§7.3, step 0) — its printing closes its own cycle only. Co-pack/FC public
+rotation is a separate, deferred question.
+
 ## §7 Capability & Compatibility Model — pairing providers to products (added 2026-07-05)
 
 **The concern (Pavel):** not every printer can print every product — a wrong pairing (a printer
@@ -186,6 +191,15 @@ pre-qualifying suppliers on certifications + documented processes is the procure
 
 `eligiblePrintProviders(product, component, qty)` — pure, in `@ilaunchify/orders`, used by cards
 (§3), pinning validation (§4), auto-routing (§5), and publish-time pre-flight (§2):
+0. **Main role = Print Provider (LOCKED 2026-07-09, Pavel) — the public-pool gate.** Only a
+   **pure printer** rotates / is browsable publicly / gets RFQ-broadcast: `PUBLIC`, has
+   `LABEL_PRINTING`, and runs **neither** `MANUFACTURING` nor `COPACKING` (warehouse is fine). A
+   manufacturer or co-packer that also prints closes its OWN cycle (owner-self bind / private
+   nomination) and never takes other partners' public print work. Predicate:
+   `isPublicPrintPoolEligible` (`rotation.ts`); enforced in `routing.ts`, `print-coverage.ts`
+   (RFQ broadcast), `marketing/print-providers.ts` (discovery), and capability-request claims +
+   nav. The owner-self label path (§4) and INVITED_ONLY nomination are unaffected — they are
+   deliberate bindings, not the public pool.
 1. Physics: (containerCategory × decorationMethod) valid per `PackagingDecorationCompatibility`
 2. Offering: ACTIVE `PartnerPackagingOffering` for (packagingType × decorationMethod)
 3. Quantity: `moq ≤ qty ≤ maxRunQty`

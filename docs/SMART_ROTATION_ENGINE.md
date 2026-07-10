@@ -69,6 +69,17 @@ model RotationPolicy {
 All knobs admin-gated, one row per serviceType, audited on every change (AuditLog).
 
 ### 2.2 Selection algorithm (printer leg; FC analogous)
+0. **Main-role gate (LOCKED 2026-07-09, Pavel)** — the public print rotation pool is ONLY for
+   partners whose MAIN role is Print Provider: a **pure printer** (`PUBLIC` participation, has
+   `LABEL_PRINTING`, runs **neither** `MANUFACTURING` nor `COPACKING`; a warehouse alongside
+   printing does not disqualify). A manufacturer or co-packer that also offers printing uses it
+   to close its OWN production cycle (the owner-self label bind, or a private nomination) and
+   NEVER rotates for other partners' jobs. Enforced by `isPublicPrintPoolEligible`
+   (`packages/orders/src/rotation.ts`) at every public-print surface: the rotation pool
+   (`routing.ts`), the RFQ broadcast (`print-coverage.ts`), public discovery
+   (`marketing/print-providers.ts`), and capability-request claims + nav. Corollary: a service
+   "going live" in Activation Setup means *usable in the partner's own cycle* — it does NOT
+   imply public-pool entry. (FC/warehouse rotation: same principle NOT yet applied — deferred.)
 1. **Hard filters first, always** — §7 capability + ops gates (ACTIVE, Stripe, blackout,
    offering). Rotation NEVER rescues a failed filter. Pinned picks (PS-3) and configuration-time
    bindings bypass rotation entirely — a manual pick is never rotated away.
