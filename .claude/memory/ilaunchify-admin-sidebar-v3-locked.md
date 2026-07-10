@@ -135,6 +135,13 @@ Help Center                              -> /support-tickets
   (the removed Communications group returning, now that pages exist). See
   `ilaunchify-notification-center.md`. Not drift — do not remove.
 
+- **2026-07-10 (co-creation P0):** MARKETPLACE gained **Briefs** (`/briefs`) and
+  **Rooms** (`/rooms`) — read-only co-creation oversight lists over
+  `ProductBrief` / `CoCreationRoom` (docs/CO_CREATION_MARKETPLACE_SPEC.md §10).
+  Placed after `Decoration compatibility`, before the audit pair — the
+  co-creation funnel is marketplace liquidity. Routes are built (no
+  hiddenUntilBuilt). Not drift — do not remove.
+
 # Rules that survive from v3
 1. **Names matter** -- labels are verbatim; a divergence is a bug.
 2. **Hide-until-built** -- unbuilt routes stay in config as `hiddenUntilBuilt: true`.

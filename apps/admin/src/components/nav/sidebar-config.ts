@@ -87,6 +87,8 @@ import {
   Landmark,
   Palette,
   Mail,
+  Lightbulb,
+  DoorOpen,
 } from 'lucide-react'
 
 // -----------------------------------------------------------------------------
@@ -429,6 +431,11 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Niche rules', icon: Workflow, href: '/niches/rules', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Lifestyle Tags', icon: Tag, href: '/lifestyle-tags', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Decoration compatibility', icon: Brush, href: '/decoration-compatibility' },
+        // Co-creation oversight (CO_CREATION_MARKETPLACE_SPEC §10, built 2026-07-10) —
+        // READ-ONLY lists over ProductBrief / CoCreationRoom. Lives in Marketplace: the
+        // co-creation funnel IS marketplace liquidity (briefs → interests → rooms).
+        { kind: 'item', label: 'Briefs', icon: Lightbulb, href: '/briefs' },
+        { kind: 'item', label: 'Rooms', icon: DoorOpen, href: '/rooms' },
         { kind: 'item', label: 'Niche audit', icon: History, href: '/niches/audit', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Phrase audit', icon: History, href: '/phrases/audit', hiddenUntilBuilt: false },
       ],
