@@ -8,6 +8,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, hasTier } from '@ilaunchify/auth'
 import { assertBriefTransition } from '@ilaunchify/orders'
+import { loadBriefBenchmark } from '@ilaunchify/marketplace'
 import { logAuditAs } from '@ilaunchify/audit'
 import { z } from 'zod'
 
@@ -38,6 +39,61 @@ export type PostBriefInput = z.infer<typeof PostBriefSchema>
 export type PostBriefResult =
   | { ok: true; briefId: string }
   | { ok: false; error: string }
+
+export type BenchmarkResult =
+  | {
+      ok: true
+      /** All monetary values in cents; the client formats. */
+      suggestedVolume: number
+      budgetLowCents: number
+      budgetHighCents: number
+      timelineWeeks: number
+      /** Provenance for the toast — never suggest without saying why. */
+      sampleSize: number
+      nicheScoped: boolean
+    }
+  | { ok: false; error: string }
+
+/**
+ * Deterministic catalog benchmark for the wizard's "✨ Benchmark volume &
+ * budget for me" (docs/CO_CREATION_MARKETPLACE_SPEC + Pavel 2026-07-10):
+ * percentiles over comparable PUBLISHED templates in the picked category
+ * (niche-scoped when the subset is large enough). Read-only; refuses to
+ * answer below the minimum sample instead of inventing numbers.
+ */
+export async function benchmarkBrief(input: {
+  nicheSlug: string
+  categoryId: string
+  makerFormulates: boolean
+}): Promise<BenchmarkResult> {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR' && user.role !== 'ADMIN') {
+    return { ok: false, error: 'Only creators can benchmark briefs' }
+  }
+  const category = await prisma.category.findFirst({
+    where: { id: input.categoryId, isActive: true },
+    select: { id: true },
+  })
+  if (!category) return { ok: false, error: 'Unknown category' }
+
+  const b = await loadBriefBenchmark({
+    categoryId: category.id,
+    nicheSlug: input.nicheSlug,
+    makerFormulates: !!input.makerFormulates,
+  })
+  if (!b) {
+    return { ok: false, error: 'Not enough comparable products in this category yet' }
+  }
+  return {
+    ok: true,
+    suggestedVolume: b.suggestedVolume,
+    budgetLowCents: b.budgetLowCents,
+    budgetHighCents: b.budgetHighCents,
+    timelineWeeks: b.timelineWeeks,
+    sampleSize: b.sampleSize,
+    nicheScoped: b.nicheScoped,
+  }
+}
 
 /**
  * Create the brief and take it live in the Opportunity Pool:

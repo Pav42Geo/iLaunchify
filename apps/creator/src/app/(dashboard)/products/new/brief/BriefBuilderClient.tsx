@@ -12,7 +12,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Input, Textarea, Label, BRIEF_CLAIM_POOL, nicheGradientKey } from '@ilaunchify/ui'
 import { productGradient, type ProductGradient } from '@ilaunchify/ui/tokens'
-import { postBrief } from './actions'
+import { benchmarkBrief, postBrief } from './actions'
 
 export interface NicheOption {
   slug: string
@@ -49,6 +49,8 @@ export function BriefBuilderClient({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [posted, setPosted] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const [benchmarking, setBenchmarking] = useState(false)
 
   // Door screen REMOVED (Pavel 2026-07-10): it only preset formulationMode —
   // the "How do you want to formulate?" choice below carries both on-ramps
@@ -70,6 +72,7 @@ export function BriefBuilderClient({
   const [timelineWeeks, setTimelineWeeks] = useState('')
 
   const niche = useMemo(() => niches.find((n) => n.slug === nicheSlug), [niches, nicheSlug])
+  const category = useMemo(() => categories.find((c) => c.id === categoryId), [categories, categoryId])
   const gradient = productGradient[nicheGradientKey(nicheSlug)]
 
   const completeness = useMemo(() => {
@@ -91,9 +94,38 @@ export function BriefBuilderClient({
     })
   }
 
-  // NOTE: the demo's "✨ Suggest claims / Benchmark" assist buttons are V1.5
-  // AI brief-assist (spec §3) — deliberately NOT rendered until they're wired
-  // to a real service (no canned/hardcoded behavior; Pavel 2026-07-10).
+  // NOTE: the demo's "✨ Suggest claims" button stays out until the V1.5 AI
+  // brief-assist exists (no canned behavior). "Benchmark" below is REAL:
+  // deterministic percentiles over comparable published catalog products.
+
+  function flash(msg: string) {
+    setToast(msg)
+    window.setTimeout(() => setToast(null), 3200)
+  }
+
+  /** Catalog benchmark — fills ONLY the fields the creator left empty. */
+  async function benchmark() {
+    setBenchmarking(true)
+    const res = await benchmarkBrief({
+      nicheSlug,
+      categoryId,
+      makerFormulates: formulationMode === 'MAKER_FORMULATES',
+    })
+    setBenchmarking(false)
+    if (!res.ok) {
+      flash(`✨ ${res.error}`)
+      return
+    }
+    if (!targetVolume && res.suggestedVolume > 0) setTargetVolume(String(res.suggestedVolume))
+    if (!budgetLow) setBudgetLow((res.budgetLowCents / 100).toFixed(2))
+    if (!budgetHigh) setBudgetHigh((res.budgetHighCents / 100).toFixed(2))
+    if (!timelineWeeks && res.timelineWeeks > 0) setTimelineWeeks(String(res.timelineWeeks))
+    flash(
+      `✨ Based on ${res.sampleSize} comparable products in ${
+        res.nicheScoped ? (niche?.name ?? 'your niche') : (category?.name ?? 'this category')
+      } — empty fields filled, yours kept`,
+    )
+  }
 
   function setIng(i: number, field: keyof IngredientRow, value: string) {
     setIngredients((rows) => rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)))
@@ -425,6 +457,15 @@ export function BriefBuilderClient({
               />
             </div>
           </div>
+          <button
+            type="button"
+            onClick={benchmark}
+            disabled={benchmarking}
+            className="mt-s-2 inline-flex gap-s-1 rounded-md bg-pink-50 px-s-3 py-s-2 text-ui-caption font-bold text-pink-700 transition hover:bg-pink-100 disabled:opacity-50"
+          >
+            {benchmarking ? '✨ Benchmarking…' : '✨ Benchmark volume & budget for me'}
+          </button>
+
           <div className="mt-s-4">
             <Label htmlFor="brief-notes" className={LABEL_CLS}>
               Private notes{' '}
@@ -515,6 +556,11 @@ export function BriefBuilderClient({
           </div>
         </aside>
       </div>
+      {toast ? (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-ink-900 px-s-4 py-s-3 text-ui-caption font-semibold text-white shadow-xl">
+          {toast}
+        </div>
+      ) : null}
     </div>
   )
 }

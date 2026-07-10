@@ -35,6 +35,13 @@ export { toPublicBriefProjection } from './brief-projection'
 export type { BriefProjectionInput, PublicBriefProjection } from './brief-projection'
 export { scoreBriefFit, FIT_WEIGHTS } from './brief-fit'
 export type { BriefFitFacts, PartnerFitFacts, BriefFitResult } from './brief-fit'
+export {
+  computeBriefBenchmark,
+  BENCHMARK_MIN_SAMPLE,
+  FORMULATION_BUFFER_WEEKS,
+} from './brief-benchmark'
+export type { BenchmarkRow, BriefBenchmark } from './brief-benchmark'
+export { loadBriefBenchmark } from './brief-benchmark-load'
 
 // Restricted-category eligibility evaluator (labeling ≠ licensing).
 export { evaluateProductRestrictions, RESTRICTED_RULES } from './evaluateRestrictions'
