@@ -45,14 +45,16 @@ export default async function PartnerRoomPage({
 
   return (
     <>
-      {/* Maker journey stepper — full-bleed direct child of the layout grid. */}
+      {/* Maker journey stepper — mb-0: the room's white top bar sits flush. */}
       <CoCreationStepper
-        className="col-span-full -mt-6 mb-s-5"
+        className="col-span-full -mt-6 mb-0"
         steps={[
           { key: 'pool', label: 'Opportunity pool', state: 'done', href: '/opportunities' },
           { key: 'room', label: 'Collaboration room', state: 'current' },
         ]}
       />
+      {/* Full-bleed, viewport-filling room; -mb-6 cancels the layout's bottom padding. */}
+      <div data-full-bleed className="col-span-full -mb-6">
       <RoomClient
       roomId={room.id}
       briefTitle={room.brief.title}
@@ -93,6 +95,7 @@ export default async function PartnerRoomPage({
         createdAt: m.createdAt.toISOString(),
       }))}
       />
+      </div>
     </>
   )
 }

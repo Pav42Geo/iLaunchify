@@ -89,6 +89,8 @@ export interface CoCreationRoomShellProps {
   /** Creator-only: recipe approved + room active → offer "confirm & create product". */
   canCloseWon?: boolean
   onCloseWon?: () => Promise<Result>
+  /** Fill the viewport below the page chrome; columns scroll internally (lg+). */
+  fullScreen?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -221,12 +223,32 @@ function AuthorAvatar({ role, className }: { role: string; className?: string })
 // ---------------------------------------------------------------------------
 
 export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
-  const { mode, objects } = props
+  const { mode, objects, fullScreen } = props
   const [selectedId, setSelectedId] = React.useState(objects[0]?.id ?? '')
   const [rightTab, setRightTab] = React.useState<'activity' | 'messages'>('activity')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const selected = objects.find((o) => o.id === selectedId) ?? objects[0]
+
+  // fullScreen: size the shell to the viewport remainder by MEASURING its own
+  // offset (header/stepper heights are theme-variable — no magic numbers).
+  // Desktop only; small screens keep natural stacking + page scroll.
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  React.useLayoutEffect(() => {
+    if (!fullScreen) return
+    const el = rootRef.current
+    if (!el) return
+    const update = () => {
+      if (window.matchMedia('(min-width: 1024px)').matches) {
+        el.style.height = `${window.innerHeight - el.getBoundingClientRect().top}px`
+      } else {
+        el.style.height = ''
+      }
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [fullScreen])
 
   async function run(fn: () => Promise<Result>) {
     setBusy(true)
@@ -241,9 +263,19 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
   const gradient = productGradient[props.accentGradient ?? 'pink']
 
   return (
-    <div className="overflow-hidden rounded-xl border border-ink-200 bg-white shadow-sm">
-      {/* Room top bar (demo .roomtop — dark, in-page chrome) */}
-      <div className="flex flex-wrap items-center gap-s-3 bg-ink-900 px-s-4 py-s-3 text-white">
+    <div
+      ref={rootRef}
+      className={cn(
+        'bg-white',
+        fullScreen
+          ? 'flex flex-col overflow-hidden border-b border-ink-200'
+          : 'overflow-hidden rounded-xl border border-ink-200 shadow-sm',
+      )}
+    >
+      {/* Room top bar — WHITE variant (Pavel 2026-07-10; was demo's dark
+          .roomtop). Neon is dark-surface-only, so status dots use the
+          semantic ramps here. Sits flush against the stepper. */}
+      <div className="flex flex-wrap items-center gap-s-3 border-b border-ink-200 bg-white px-s-4 py-s-3">
         <span
           aria-hidden
           className="flex h-8 w-8 items-center justify-center rounded-md text-ui-subhead"
@@ -253,20 +285,20 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         </span>
         <div>
           <b className="block text-ui-value">{props.briefTitle}</b>
-          <span className="text-ui-label normal-case tracking-normal text-ink-400">
+          <span className="text-ui-label normal-case tracking-normal text-ink-500">
             {props.creatorName} × {props.partnerName} · viewing as {meName} (
             {mode === 'creator' ? 'Creator' : 'Manufacturer'})
           </span>
         </div>
         <span className="flex-1" />
-        <span className="inline-flex items-center gap-s-1 rounded-pill border border-white/15 bg-white/10 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-100">
+        <span className="inline-flex items-center gap-s-1 rounded-pill border border-ink-200 bg-ink-50 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-700">
           <span
             aria-hidden
-            className={cn('h-2 w-2 rounded-pill', props.ndaSigned ? 'bg-neon-500' : 'bg-warning-500')}
+            className={cn('h-2 w-2 rounded-pill', props.ndaSigned ? 'bg-success-500' : 'bg-warning-500')}
           />
           {props.ndaSigned ? 'NDA signed' : 'NDA pending — with counsel'}
         </span>
-        <span className="rounded-pill border border-white/15 bg-white/10 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-100">
+        <span className="rounded-pill border border-ink-200 bg-ink-50 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-700">
           🔒 IP: Creator-owned
         </span>
       </div>
@@ -291,9 +323,9 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
       ) : null}
 
       {/* 3-column body (demo .roombody 250/1fr/290) */}
-      <div className="grid lg:grid-cols-[250px_1fr_290px]">
+      <div className={cn('grid lg:grid-cols-[250px_1fr_290px]', fullScreen && 'min-h-0 flex-1')}>
         {/* Left rail — objects + payment-protection strip */}
-        <div className="flex flex-col border-b border-ink-200 lg:border-b-0 lg:border-r">
+        <div className={cn('flex flex-col border-b border-ink-200 lg:border-b-0 lg:border-r', fullScreen && 'lg:min-h-0 lg:overflow-y-auto')}>
           <div className="border-b border-ink-100 px-s-4 py-s-3 text-ui-label uppercase text-ink-500">
             Build objects
           </div>
@@ -352,7 +384,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         </div>
 
         {/* Center — object detail on ink-50 canvas */}
-        <div className="flex min-h-[420px] flex-col border-b border-ink-200 bg-ink-50 lg:border-b-0 lg:border-r">
+        <div className={cn('flex min-h-[420px] flex-col border-b border-ink-200 bg-ink-50 lg:border-b-0 lg:border-r', fullScreen && 'lg:min-h-0')}>
           {selected ? (
             <ObjectDetail
               key={selected.id}
@@ -374,7 +406,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         </div>
 
         {/* Right rail — activity / messages (demo .rtab/.feed2) */}
-        <div className="flex min-h-[420px] flex-col">
+        <div className={cn('flex min-h-[420px] flex-col', fullScreen && 'lg:min-h-0')}>
           <div className="flex border-b border-ink-100">
             {(
               [
@@ -396,7 +428,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
             ))}
           </div>
           {rightTab === 'activity' ? (
-            <div className="flex-1 overflow-y-auto p-s-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-s-4">
               {props.events.length === 0 ? (
                 <p className="text-ui-caption text-ink-500">Decisions and submissions log here.</p>
               ) : (
@@ -529,7 +561,7 @@ function ObjectDetail({
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto p-s-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-s-4">
         {/* Version tabs (demo .vtabs segmented) */}
         {versions.length > 0 && !isLabel ? (
           <div className="mb-s-3 inline-flex rounded-lg bg-ink-100 p-s-1">
@@ -1049,7 +1081,7 @@ function MessagesRail({
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto p-s-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-s-4">
         {messages.length === 0 ? (
           <p className="text-ui-caption text-ink-500">
             Say hello — everything stays in the room, no email needed.

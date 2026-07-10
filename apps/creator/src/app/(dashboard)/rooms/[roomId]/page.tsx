@@ -48,14 +48,17 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
   return (
     <>
       {/* DIRECT child of <main>: data-full-bleed spans the layout grid. */}
+      {/* mb-0: the room's white top bar sits flush against the stepper. */}
       <CoCreationStepper
-        className="col-span-full -mt-6 mb-s-5"
+        className="col-span-full -mt-6 mb-0"
         steps={[
           { key: 'brief', label: 'Post a brief', state: 'done', href: '/products/new/brief' },
           { key: 'shortlist', label: 'Choose a maker', state: 'done', href: `/briefs/${room.brief.id}/interests` },
           { key: 'room', label: 'Collaboration room', state: 'current' },
         ]}
       />
+      {/* Full-bleed, viewport-filling room; -mb-6 cancels the layout's bottom padding. */}
+      <div data-full-bleed className="col-span-full -mb-6">
       <RoomClient
         roomId={room.id}
         briefTitle={room.brief.title}
@@ -97,6 +100,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
           createdAt: m.createdAt.toISOString(),
         }))}
       />
+      </div>
     </>
   )
 }

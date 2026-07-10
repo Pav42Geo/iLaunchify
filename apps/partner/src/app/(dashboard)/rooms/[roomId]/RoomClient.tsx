@@ -37,6 +37,7 @@ export function RoomClient(props: {
   return (
     <CoCreationRoomShell
       mode="partner"
+      fullScreen
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}
       creatorName={props.creatorName}
