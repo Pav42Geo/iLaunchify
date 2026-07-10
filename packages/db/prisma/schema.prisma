@@ -4790,6 +4790,8 @@ enum NotificationEvent {
   PARTNER_INVITED // admin qualified a lead → "you're selected, start onboarding" + magic link
   PARTNER_APPLICATION_RECEIVED // public "Become a partner" application acknowledgement
   NOMINATION_SERVICE_MISMATCH // invited co-partner onboarded without the invited leg → notify inviter (D7)
+  // Co-creation marketplace (CO_CREATION_MARKETPLACE_SPEC §12) — appended additively
+  BRIEF_INTEREST_RECEIVED // a manufacturer expressed interest on a creator's brief → notify creator
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

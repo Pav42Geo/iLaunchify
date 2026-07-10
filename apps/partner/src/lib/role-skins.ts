@@ -34,6 +34,7 @@ import {
   Medal,
   Handshake,
   Rocket,
+  Lightbulb,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -83,6 +84,10 @@ const NAV_CERTIFICATIONS: PartnerNavItem = { href: '/certifications', label: 'Ce
 const NAV_PAYMENTS: PartnerNavItem = { href: '/payments', label: 'Payments', icon: DollarSign }
 const NAV_SETTINGS: PartnerNavItem = { href: '/settings', label: 'Settings', icon: Settings }
 const NAV_COPARTNERS: PartnerNavItem = { href: '/co-partners', label: 'Co-partners', icon: Handshake }
+// Co-creation Opportunity Pool (CO_CREATION_MARKETPLACE_SPEC §10) — matched
+// creator briefs + Express Interest. Manufacturing-only, commercial (terms/
+// pricing) → org-admin.
+const NAV_OPPORTUNITIES: PartnerNavItem = { href: '/opportunities', label: 'Opportunities', icon: Lightbulb }
 const NAV_ACTIVATION: PartnerNavItem = { href: '/activation', label: 'Activation Setup', icon: Rocket }
 
 /**
@@ -125,6 +130,9 @@ export function roleNavFor(
     // Post-approval setup surface — the union of every service's activation track.
     nav.push(NAV_ACTIVATION)
     if (producing) nav.push(NAV_STANDING)
+    // Co-creation briefs — a manufacturer-only demand surface (pool gates on
+    // MANUFACTURING capability signals; see /opportunities loader).
+    if (producing) nav.push(NAV_OPPORTUNITIES)
     if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)
     nav.push(NAV_SERVICES)
     if (producing) nav.push(NAV_PACKAGING)

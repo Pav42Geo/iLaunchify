@@ -19,6 +19,7 @@ export interface TemplateData {
   PARTNER_INVITED: { companyName?: string; onboardingUrl?: string }
   PARTNER_APPLICATION_RECEIVED: { companyName?: string }
   NOMINATION_SERVICE_MISMATCH: { coPartnerName?: string; serviceLabel?: string }
+  BRIEF_INTEREST_RECEIVED: { briefId: string; briefTitle: string; partnerName?: string }
   PACKAGING_APPROVED: { name: string; category?: string }
   PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
@@ -261,6 +262,15 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `You're invited to join iLaunchify${d.companyName ? `, ${d.companyName}` : ''}`,
         body: "We reviewed your application and would love to have you in our production network. Click below to start your onboarding — it takes about 15 minutes.",
         link: d.onboardingUrl ?? '/onboarding',
+      }
+    }
+    case 'BRIEF_INTEREST_RECEIVED': {
+      const d = data as TemplateData['BRIEF_INTEREST_RECEIVED']
+      const who = d.partnerName ?? 'A verified manufacturer'
+      return {
+        title: `${who} raised a hand on “${d.briefTitle}”`,
+        body: `${who} expressed interest in producing your brief — fit, terms, and their pitch are ready to review. Compare everyone interested, then pick your partner.`,
+        link: `/briefs/${d.briefId}/interests`,
       }
     }
     case 'NOMINATION_SERVICE_MISMATCH': {
