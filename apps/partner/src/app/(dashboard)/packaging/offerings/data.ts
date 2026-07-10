@@ -14,13 +14,15 @@ import { loadEligibleDielines, type DielineOption } from '../dielines/data'
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Warehouse / 3PL',
 }
 
 export interface OfferingsContext {
   partnerId: string
   serviceIds: string[]
+  /** Raw ServiceType values the partner runs — drives role-aware page framing. */
+  serviceTypes: string[]
   services: ServiceOption[]
   packagingTypes: PackagingTypeOption[]
   /** C9 Phase 1 — partner's offering-eligible dielines for the binding dropdown. */
@@ -85,6 +87,7 @@ export async function loadOfferingsContext(): Promise<OfferingsContext | null> {
   return {
     partnerId: actor.partnerId,
     serviceIds,
+    serviceTypes: services.map((s) => s.type),
     services: services.map((s) => ({
       id: s.id,
       label: SERVICE_TYPE_LABELS[s.type] ?? s.type,

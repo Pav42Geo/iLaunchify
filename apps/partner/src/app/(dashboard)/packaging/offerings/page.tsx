@@ -29,6 +29,16 @@ export default async function OfferingsListPage() {
   const ctx = await loadOfferingsContext()
   if (!ctx) return null
 
+  // Role-aware framing: the offerings surface is shared by manufacturers and
+  // co-packers (both attach packaging offerings), so the eyebrow + intro reflect
+  // whichever the partner actually is instead of always saying "Manufacturing".
+  const isCopacker = ctx.serviceTypes.includes('COPACKING')
+  const isManufacturer = ctx.serviceTypes.includes('MANUFACTURING')
+  const roleWord = isManufacturer ? 'Manufacturing' : isCopacker ? 'Co-packing' : 'Partner'
+  const introLead = isManufacturer
+    ? 'The container-and-decoration combos you can produce'
+    : 'The container-and-decoration combos you can pack'
+
   const offerings = await prisma.partnerPackagingOffering.findMany({
     where: { partnerServiceId: { in: ctx.serviceIds } },
     include: { packagingType: { select: { displayName: true } } },
@@ -53,15 +63,14 @@ export default async function OfferingsListPage() {
               <ArrowLeft className="h-3.5 w-3.5" /> Packaging catalog
             </Link>
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · Packaging
+              {roleWord} · Packaging
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Decoration offerings
             </h1>
             <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-              The container-and-decoration combos you can produce, with MOQ, pricing tiers, lead
-              time, and fulfillment mode. Active offerings are selectable by creators when they
-              build a product.
+              {introLead}, with MOQ, pricing tiers, lead time, and fulfillment mode. Active
+              offerings are selectable by creators when they build a product.
             </p>
           </div>
           {ctx.services.length > 0 && (
@@ -74,12 +83,12 @@ export default async function OfferingsListPage() {
           )}
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <KpiWidget label="Total" value={total} icon={Layers} tone="ink" />
-          <KpiWidget label="Drafts" value={drafts} icon={Layers} tone="ink" />
-          <KpiWidget label="Pending review" value={pending} icon={Clock3} tone="warning" />
-          <KpiWidget label="Active" value={active} icon={CheckCircle2} tone="success" />
-          <KpiWidget label="Archived" value={archived} icon={Archive} tone="ink" />
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <KpiWidget label="Total" value={total} icon={Layers} tone="ink" span={1} />
+          <KpiWidget label="Drafts" value={drafts} icon={Layers} tone="ink" span={1} />
+          <KpiWidget label="Pending review" value={pending} icon={Clock3} tone="warning" span={1} />
+          <KpiWidget label="Active" value={active} icon={CheckCircle2} tone="success" span={1} />
+          <KpiWidget label="Archived" value={archived} icon={Archive} tone="ink" span={1} />
         </div>
       </div>
 
