@@ -6,11 +6,13 @@ import { requireUser } from '@ilaunchify/auth'
 import { getBillingProfile } from '@ilaunchify/db'
 import { BillingDetailsForm } from '@ilaunchify/ui'
 import { saveBillingDetails } from './actions'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Billing — iLaunchify' }
 
 export default async function PartnerBillingPage() {
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const profile = await getBillingProfile(user.id)
 
@@ -18,7 +20,7 @@ export default async function PartnerBillingPage() {
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Manufacturing · Settings
+          {roleWord} · Settings
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Billing

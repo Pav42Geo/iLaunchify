@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { requireUser } from '@ilaunchify/auth'
 import { prisma, getPartnerAnnualEarnings, listTaxDocuments } from '@ilaunchify/db'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Tax documents — Partner' }
@@ -34,6 +35,7 @@ export default async function TaxDocumentsPage({
   searchParams: Promise<{ year?: string; tax?: string }>
 }) {
   const sp = await searchParams
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
@@ -56,7 +58,7 @@ export default async function TaxDocumentsPage({
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Manufacturing · Settings
+          {roleWord} · Settings
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Tax documents

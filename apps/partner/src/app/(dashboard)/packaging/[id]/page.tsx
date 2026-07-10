@@ -12,6 +12,7 @@ import { cn } from '@ilaunchify/ui'
 import { PackagingForm } from '../PackagingForm'
 import { SurfacesPanel, type SurfaceRow } from '../SurfacesPanel'
 import { PackagingStatusToggle } from './PackagingStatusToggle'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 // v2 status pill — semantic tones
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
@@ -28,6 +29,7 @@ interface PageProps {
 
 export default async function PackagingEditPage({ params }: PageProps) {
   const { id } = await params
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
 
   const partner = await prisma.partner.findUnique({
@@ -106,7 +108,7 @@ export default async function PackagingEditPage({ params }: PageProps) {
               <ArrowLeft className="h-3.5 w-3.5" /> Back to catalog
             </Link>
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · Packaging
+              {roleWord} · Packaging
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
               {system.partnerName}

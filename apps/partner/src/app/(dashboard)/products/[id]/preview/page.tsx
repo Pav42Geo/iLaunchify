@@ -46,6 +46,7 @@ import { marketingUrl } from '@/lib/marketing-url'
 import { LiveToggle } from '../../LiveToggle'
 import { SaveAsTemplateButton } from './SaveAsTemplateButton'
 import { ReviewSummary } from '../../new/ReviewSummary'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,6 +91,7 @@ export default async function ProductPreviewPage({
 }) {
   const user = await requireUser()
   const { id } = await params
+  const roleWord = await getPartnerRoleWord()
 
   const tpl = await prisma.productTemplate.findFirst({
     where: {
@@ -306,7 +308,7 @@ export default async function ProductPreviewPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · Product record
+              {roleWord} · Product record
             </p>
             <h1 className="mt-1 flex flex-wrap items-center gap-3 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
               {tpl.name}

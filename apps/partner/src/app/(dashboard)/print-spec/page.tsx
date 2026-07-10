@@ -21,6 +21,7 @@ import {
   type PrintSpecInitial,
   type SubstrateOption,
 } from './PrintSpecForm'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Prepress output — iLaunchify Partners' }
@@ -28,7 +29,7 @@ export const metadata = { title: 'Prepress output — iLaunchify Partners' }
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Warehouse / 3PL',
 }
 
@@ -64,6 +65,7 @@ export default async function PrintSpecPage({
 }: {
   searchParams: Promise<{ serviceId?: string }>
 }) {
+  const roleWord = await getPartnerRoleWord()
   const actor = await requirePartnerActor()
   if (!actor.ok) return null
 
@@ -82,7 +84,7 @@ export default async function PrintSpecPage({
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Packaging catalog
       </Link>
       <p className="mt-2 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-        Manufacturing · Prepress
+        {roleWord} · Prepress
       </p>
       <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
         Prepress output

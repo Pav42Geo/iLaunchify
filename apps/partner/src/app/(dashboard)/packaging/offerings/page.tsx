@@ -13,6 +13,7 @@ import {
   firstTierPriceLabel,
 } from './constants'
 import { OfferingRowActions } from './OfferingRowActions'
+import { rolePrefix } from '@/lib/role-skins'
 
 // v2 status pills — semantic tones (replaces legacy ring badges on this surface)
 const OFFERING_STATUS_PILL: Record<string, { label: string; cls: string }> = {
@@ -32,9 +33,8 @@ export default async function OfferingsListPage() {
   // Role-aware framing: the offerings surface is shared by manufacturers and
   // co-packers (both attach packaging offerings), so the eyebrow + intro reflect
   // whichever the partner actually is instead of always saying "Manufacturing".
-  const isCopacker = ctx.serviceTypes.includes('COPACKING')
+  const roleWord = rolePrefix(ctx.serviceTypes)
   const isManufacturer = ctx.serviceTypes.includes('MANUFACTURING')
-  const roleWord = isManufacturer ? 'Manufacturing' : isCopacker ? 'Co-packing' : 'Partner'
   const introLead = isManufacturer
     ? 'The container-and-decoration combos you can produce'
     : 'The container-and-decoration combos you can pack'

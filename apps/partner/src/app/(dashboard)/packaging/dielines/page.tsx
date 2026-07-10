@@ -9,6 +9,7 @@ import { Plus, FileBox, Clock3, CheckCircle2, Archive, ArrowLeft } from 'lucide-
 import { loadDielinesContext } from './data'
 import { decorationLabel } from '../offerings/constants'
 import { DielineRowActions } from './DielineRowActions'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 // v2 status pills — semantic tones (replaces legacy ring badges on this surface)
 const DIELINE_STATUS_PILL: Record<string, { label: string; cls: string }> = {
@@ -24,6 +25,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Packaging dielines — iLaunchify Partners' }
 
 export default async function DielinesListPage() {
+  const roleWord = await getPartnerRoleWord()
   const ctx = await loadDielinesContext()
   if (!ctx) return null
 
@@ -54,7 +56,7 @@ export default async function DielinesListPage() {
               <ArrowLeft className="h-3.5 w-3.5" /> Packaging catalog
             </Link>
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · Packaging
+              {roleWord} · Packaging
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Dielines
@@ -75,12 +77,12 @@ export default async function DielinesListPage() {
           )}
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <KpiWidget label="Total" value={total} icon={FileBox} tone="ink" />
-          <KpiWidget label="Uploaded" value={uploaded} icon={Clock3} tone="warning" />
-          <KpiWidget label="Confirmed" value={confirmed} icon={CheckCircle2} tone="ink" />
-          <KpiWidget label="Active" value={active} icon={CheckCircle2} tone="success" />
-          <KpiWidget label="Archived" value={archived} icon={Archive} tone="ink" />
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <KpiWidget label="Total" value={total} icon={FileBox} tone="ink" span={1} />
+          <KpiWidget label="Uploaded" value={uploaded} icon={Clock3} tone="warning" span={1} />
+          <KpiWidget label="Confirmed" value={confirmed} icon={CheckCircle2} tone="ink" span={1} />
+          <KpiWidget label="Active" value={active} icon={CheckCircle2} tone="success" span={1} />
+          <KpiWidget label="Archived" value={archived} icon={Archive} tone="ink" span={1} />
         </div>
       </div>
 

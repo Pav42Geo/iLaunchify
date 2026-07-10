@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { prisma, getBillingProfile } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +29,7 @@ const PILL_TONE: Record<PillTone, string> = {
 }
 
 export default async function SettingsPage() {
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const [partner, dbUser, billing] = await Promise.all([
     prisma.partner.findUnique({
@@ -54,7 +56,7 @@ export default async function SettingsPage() {
       {/* Hero + account summary */}
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Manufacturing · Settings
+          {roleWord} · Settings
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Settings

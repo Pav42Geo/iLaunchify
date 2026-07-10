@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { Upload, FileText, X } from 'lucide-react'
 import { claimCertificate } from './actions'
 import { CERT_UPLOAD_CONSENT_TEXT } from './consent'
+import { CertificatePicker, type CertPickerOption } from '@/components/CertificatePicker'
 
 interface CertTypeOption {
   id: string
@@ -19,37 +20,33 @@ interface CertTypeOption {
   description: string
 }
 
-export function CertificationsClient({ availableTypes }: { availableTypes: CertTypeOption[] }) {
-  const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null)
-  const selected = availableTypes.find((t) => t.id === selectedTypeId) ?? null
+// Unified selector (Pavel 2026-07-09): the same CertificatePicker used at
+// application + onboarding. Single-select here — one PDF is claimed per cert, so
+// picking a type opens its claim form.
+export function CertificationsClient({ availableTypes }: { availableTypes: CertPickerOption[] }) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const selected = availableTypes.find((t) => t.id === (selectedIds[0] ?? null)) ?? null
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {availableTypes.map((t) => {
-          const isSelected = t.id === selectedTypeId
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setSelectedTypeId(isSelected ? null : t.id)}
-              className={`rounded-xl border p-3 text-left transition-colors ${
-                isSelected
-                  ? 'border-ink-900 bg-ink-900/[0.04] ring-1 ring-ink-900'
-                  : 'border-ink-200 bg-white hover:border-ink-400'
-              }`}
-            >
-              <div className="font-medium text-ink-900">{t.name}</div>
-              <div className="mt-1 line-clamp-2 text-xs text-ink-500">{t.description}</div>
-            </button>
-          )
-        })}
-      </div>
+      <CertificatePicker
+        options={availableTypes}
+        value={selectedIds}
+        onChange={setSelectedIds}
+        singleSelect
+        label="Choose a certificate to add"
+        requestHref="/certifications/request"
+      />
 
       {selected && (
         <ClaimForm
-          certType={selected}
-          onClose={() => setSelectedTypeId(null)}
+          certType={{
+            id: selected.id,
+            name: selected.name,
+            slug: selected.slug,
+            description: selected.description ?? '',
+          }}
+          onClose={() => setSelectedIds([])}
         />
       )}
     </div>

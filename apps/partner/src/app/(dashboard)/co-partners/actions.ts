@@ -252,6 +252,50 @@ export async function inviteCoPartner(input: {
   return { ok: true, nominationId: invitedPartner.id }
 }
 
+/**
+ * Unified "add a co-partner" by email: if the email already belongs to a partner
+ * on the platform, nominate them for each leg (existing path); otherwise invite
+ * them (invite-new path). One entry point for the surface. Gated + audited via the
+ * two underlying actions.
+ */
+export async function addCoPartnerByEmail(input: {
+  email: string
+  companyName: string
+  contactName: string
+  serviceTypes: NominatableLeg[]
+  acceptedTermsVersion: string
+}): Promise<NominateResult> {
+  if (!(await isNominationEnabled())) return DARK // gate
+  const legs = [...new Set(input.serviceTypes)]
+  if (legs.length === 0) return { ok: false, error: 'Pick at least one service.' }
+  const email = input.email.trim().toLowerCase()
+  if (!email) return { ok: false, error: 'An email is required.' }
+
+  const existing = await prisma.user.findUnique({ where: { email }, include: { partner: true } })
+  if (existing?.partner) {
+    // Already on the platform → nominate the existing partner for each leg.
+    let last: NominateResult = { ok: false, error: 'Nothing to do.' }
+    for (const leg of legs) {
+      last = await nominateExistingPartner({
+        nominatedPartnerId: existing.partner.id,
+        serviceType: leg,
+        acceptedTermsVersion: input.acceptedTermsVersion,
+      })
+      if (!last.ok) return last
+    }
+    return last
+  }
+
+  // Not on the platform → invite them.
+  return inviteCoPartner({
+    email,
+    companyName: input.companyName,
+    contactName: input.contactName,
+    serviceTypes: legs,
+    acceptedTermsVersion: input.acceptedTermsVersion,
+  })
+}
+
 /** This manufacturer's own nominations (for the co-partners surface). Read-only. */
 export async function listMyNominations() {
   const user = await requireUser()

@@ -142,13 +142,28 @@ export function roleNavFor(
 // Copy skins.
 // ---------------------------------------------------------------------------
 
+// Precedence for the eyebrow label when a partner runs several services — pick
+// the most "upstream" role so the prefix is specific and never generic. A
+// manufacturer that also co-packs reads "Manufacturing"; a co-packer that also
+// prints reads "Co-packing". Only a partner with NO known service falls back to
+// the generic "Partner".
+const ROLE_PREFIX_ORDER: PartnerServiceType[] = [
+  'MANUFACTURING',
+  'COPACKING',
+  'LABEL_PRINTING',
+  'WAREHOUSE',
+]
+
 /**
  * Role prefix for page eyebrows ("Fulfillment Center", "Manufacturing", …).
- * One service → its label; several (or none) → "Partner".
+ * Single service → its label; multiple → the most-upstream by ROLE_PREFIX_ORDER;
+ * none → "Partner". Replaces hardcoded "Manufacturing · X" eyebrows everywhere.
  */
 export function rolePrefix(serviceTypes: readonly string[]): string {
-  const known = serviceTypes.filter((t): t is PartnerServiceType => t in SERVICE_TYPE_LABEL)
-  return known.length === 1 && known[0] ? SERVICE_TYPE_LABEL[known[0]] : 'Partner'
+  for (const t of ROLE_PREFIX_ORDER) {
+    if (serviceTypes.includes(t)) return SERVICE_TYPE_LABEL[t]
+  }
+  return 'Partner'
 }
 
 /**

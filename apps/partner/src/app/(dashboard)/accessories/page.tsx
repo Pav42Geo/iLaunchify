@@ -13,6 +13,7 @@ import { getSignedReadUrl } from '@ilaunchify/storage'
 import { Button, KpiWidget } from '@ilaunchify/ui'
 import { Plus, Gift, Clock3, CheckCircle2, Archive } from 'lucide-react'
 import { AccessoryRowActions } from './AccessoryRowActions'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Accessories — iLaunchify Partners' }
@@ -43,6 +44,7 @@ function centsLabel(tiers: unknown): string {
 }
 
 export default async function AccessoriesListPage() {
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -77,7 +79,7 @@ export default async function AccessoriesListPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · Accessories
+              {roleWord} · Accessories
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Accessories
@@ -94,12 +96,12 @@ export default async function AccessoriesListPage() {
             <Plus className="h-4 w-4" aria-hidden="true" /> Add accessory
           </Link>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <KpiWidget label="Total" value={total} icon={Gift} tone="ink" />
-          <KpiWidget label="Pending review" value={pending} icon={Clock3} tone="warning" />
-          <KpiWidget label="Active" value={active} icon={CheckCircle2} tone="success" />
-          <KpiWidget label="Archived" value={archived} icon={Archive} tone="ink" />
-          <KpiWidget label="Categories" value={categories} icon={Gift} tone="info" />
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <KpiWidget label="Total" value={total} icon={Gift} tone="ink" span={1} />
+          <KpiWidget label="Pending review" value={pending} icon={Clock3} tone="warning" span={1} />
+          <KpiWidget label="Active" value={active} icon={CheckCircle2} tone="success" span={1} />
+          <KpiWidget label="Archived" value={archived} icon={Archive} tone="ink" span={1} />
+          <KpiWidget label="Categories" value={categories} icon={Gift} tone="info" span={1} />
         </div>
       </div>
 

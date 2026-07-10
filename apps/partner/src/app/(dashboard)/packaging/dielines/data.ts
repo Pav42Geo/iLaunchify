@@ -14,7 +14,7 @@ import { OFFERING_ELIGIBLE_DIELINE_STATUSES } from './constants'
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Warehouse / 3PL',
 }
 

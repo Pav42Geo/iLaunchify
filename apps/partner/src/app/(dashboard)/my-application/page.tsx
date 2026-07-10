@@ -19,6 +19,7 @@ import type {
   VerificationSectionStatus,
   VerificationSectionType,
 } from '@ilaunchify/db'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'My Application — Partner' }
@@ -65,6 +66,7 @@ function statusLabel(status: VerificationSectionStatus): string {
 }
 
 export default async function MyApplicationPage() {
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -104,7 +106,7 @@ export default async function MyApplicationPage() {
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Manufacturing · My application
+          {roleWord} · My application
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           My application

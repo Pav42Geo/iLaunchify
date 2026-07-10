@@ -36,6 +36,7 @@ import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { LiveToggle } from './LiveToggle'
 import { ProductsGetStarted } from './ProductsGetStarted'
 import { ProductImportButton } from './import/ProductImportButton'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Products — iLaunchify Partners' }
@@ -119,6 +120,7 @@ export default async function ProductsListPage({
   searchParams: Promise<{ tab?: string; sort?: string; dir?: string; view?: string; q?: string }>
 }) {
   const sp = await searchParams
+  const roleWord = await getPartnerRoleWord()
   const tab: Tab = isTab(sp.tab) ? sp.tab : 'all'
   const sort: SortKey = sp.sort === 'name' || sp.sort === 'price' ? sp.sort : 'updated'
   const dir: 'asc' | 'desc' = sp.dir === 'asc' ? 'asc' : 'desc'
@@ -243,7 +245,7 @@ export default async function ProductsListPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · Products
+              {roleWord} · Products
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Products

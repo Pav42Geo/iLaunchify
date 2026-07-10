@@ -16,6 +16,7 @@ import { cn } from '@ilaunchify/ui'
 import { Plus, Box, Layers, FileBox, CheckCircle2, FileEdit, Archive } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { topologyLabel } from './constants'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Packaging — iLaunchify Partners' }
@@ -35,6 +36,7 @@ const REVIEW_PILL: Record<string, { label: string; cls: string }> = {
 }
 
 export default async function PackagingListPage() {
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -73,7 +75,7 @@ export default async function PackagingListPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              Manufacturing · Packaging
+              {roleWord} · Packaging
             </p>
             <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
               Packaging catalog

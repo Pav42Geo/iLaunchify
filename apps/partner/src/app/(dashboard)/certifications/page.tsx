@@ -24,6 +24,7 @@ import { ShieldCheck, FileText, AlertTriangle, CheckCircle2, Clock, type LucideI
 import { CertificationsClient } from './CertificationsClient'
 import { RenewCertButton } from './RenewCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Certifications — iLaunchify Partners' }
@@ -34,6 +35,7 @@ export default async function CertificationsPage({
   searchParams: Promise<{ renew?: string }>
 }) {
   const { renew: renewId } = await searchParams
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -44,7 +46,7 @@ export default async function CertificationsPage({
   const [certTypes, instances] = await Promise.all([
     prisma.certificateType.findMany({
       where: { status: 'ACTIVE' },
-      select: { id: true, name: true, slug: true, description: true },
+      select: { id: true, name: true, slug: true, description: true, thumbnailFileId: true },
       orderBy: { name: 'asc' },
     }),
     prisma.partnerCertificateInstance.findMany({
@@ -67,6 +69,17 @@ export default async function CertificationsPage({
   )
   const availableTypes = certTypes.filter((t) => !claimedTypeIds.has(t.id))
 
+  // Build CertificatePicker options (with branded badge thumbnails) for the
+  // unified "Add a certification" selector.
+  const availableBadgeUrls = await resolveCertBadgeUrls(availableTypes.map((t) => t.thumbnailFileId))
+  const availableTypeOptions = availableTypes.map((t) => ({
+    id: t.id,
+    slug: t.slug,
+    name: t.name,
+    description: t.description,
+    thumbnailUrl: t.thumbnailFileId ? (availableBadgeUrls.get(t.thumbnailFileId) ?? null) : null,
+  }))
+
   const verified = instances.filter((i) => i.status === 'VERIFIED')
   const pending = instances.filter((i) => i.status === 'PENDING_REVIEW')
   const issues = instances.filter((i) => i.status === 'REJECTED' || i.status === 'EXPIRED')
@@ -85,7 +98,7 @@ export default async function CertificationsPage({
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Manufacturing · Certifications
+          {roleWord} · Certifications
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Certifications
@@ -178,7 +191,7 @@ export default async function CertificationsPage({
         </CardHeader>
         {availableTypes.length > 0 && (
           <CardContent>
-            <CertificationsClient availableTypes={availableTypes} />
+            <CertificationsClient availableTypes={availableTypeOptions} />
           </CardContent>
         )}
         <CardContent className="border-t border-ink-100 pt-4">

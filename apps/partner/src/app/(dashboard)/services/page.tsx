@@ -9,6 +9,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import { ServiceProfileForm } from '../../(onboarding)/onboarding/service/ServiceProfileForm'
+import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Services — Partners' }
@@ -16,7 +17,7 @@ export const metadata = { title: 'Services — Partners' }
 const SERVICE_LABEL: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Label printing',
+  LABEL_PRINTING: 'Packaging printing',
   WAREHOUSE: 'Warehouse / 3PL',
 }
 
@@ -27,6 +28,7 @@ const SERVICE_STATUS_PILL: Record<string, string> = {
 }
 
 export default async function ServicesPage() {
+  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -40,7 +42,7 @@ export default async function ServicesPage() {
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Manufacturing · Services
+          {roleWord} · Services
         </p>
         <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
           Your services
