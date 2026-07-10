@@ -34,6 +34,16 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
   })
   if (!room) notFound()
 
+  // "Confirm & create product" unlocks when the recipe is approved, the room
+  // is still active, and nothing was materialized yet (§6 CLOSED_WON).
+  const recipe = room.objects.find((o) => o.kind === 'RECIPE')
+  const canCloseWon =
+    room.status === 'ACTIVE' &&
+    !room.materializedProductId &&
+    !!recipe &&
+    (recipe.status === 'APPROVED' || recipe.status === 'LOCKED') &&
+    recipe.versions.length > 0
+
   return (
     <RoomClient
       roomId={room.id}
@@ -41,6 +51,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
       creatorName={room.brief.creator.displayName}
       partnerName={room.partner.companyName}
       ndaSigned={!!room.ndaSignedAt}
+      canCloseWon={canCloseWon}
       objects={room.objects.map((o) => ({
         id: o.id,
         kind: o.kind,

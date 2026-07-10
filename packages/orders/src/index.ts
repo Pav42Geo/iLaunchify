@@ -68,6 +68,14 @@ export {
   addRoomMessage,
 } from './room-service'
 export type { RoomActor, RoomCtx, RoomRole, RoomResult } from './room-service'
+// CLOSED_WON materialization (§6 "reuse, don't duplicate" — recipe → Product/Recipe)
+export {
+  materializeRoomWon,
+  parseAmountToGrams,
+  normalizeRecipeRows,
+  slugifyTitle,
+} from './recipe-materialize'
+export type { MaterializeResult, RecipeRowInput } from './recipe-materialize'
 export {
   transitionDispatch,
   assertDispatchTransition,

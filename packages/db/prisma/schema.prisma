@@ -2019,6 +2019,8 @@ model Product {
   accessories             ProductAccessory[]
   // Favorites — creators who saved this own product (docs/FAVORITES_MANAGEMENT.md)
   favorites               Favorite[]
+  // Co-creation: the room this product was materialized from, if any (§6)
+  coCreationRoom          CoCreationRoom?
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
@@ -9634,9 +9636,14 @@ model CoCreationRoom {
   partnerId   String // the selected maker
   status      RoomStatus      @default(ACTIVE)
   ndaSignedAt DateTime? // mutual NDA + IP terms (§9 — counsel-gated copy)
+  // CLOSED_WON materialization back-link: the Product created from the
+  // approved RECIPE object (§6 "reuse, don't duplicate"). One room → at most
+  // one product; the BuildObjectVersion payload stays the immutable source.
+  materializedProductId String? @unique
   // Relations
   brief       ProductBrief    @relation(fields: [briefId], references: [id], onDelete: Restrict)
   partner     Partner         @relation("PartnerCoCreationRooms", fields: [partnerId], references: [id], onDelete: Restrict)
+  materializedProduct Product? @relation(fields: [materializedProductId], references: [id], onDelete: Restrict)
   objects     BuildObject[]
   milestones  RoomMilestone[]
   messages    RoomMessage[]

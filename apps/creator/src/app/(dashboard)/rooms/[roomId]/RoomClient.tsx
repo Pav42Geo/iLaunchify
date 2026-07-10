@@ -12,6 +12,7 @@ import {
   type RoomShellObject,
 } from '@ilaunchify/ui'
 import {
+  creatorCloseRoomWon,
   creatorComment,
   creatorMessage,
   creatorReopen,
@@ -25,6 +26,7 @@ export function RoomClient(props: {
   creatorName: string
   partnerName: string
   ndaSigned: boolean
+  canCloseWon: boolean
   objects: RoomShellObject[]
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
@@ -59,6 +61,14 @@ export function RoomClient(props: {
         refresh(creatorComment(props.roomId, objectId, body, anchor))
       }
       onMessage={(body) => refresh(creatorMessage(props.roomId, body))}
+      canCloseWon={props.canCloseWon}
+      onCloseWon={async () => {
+        const res = await creatorCloseRoomWon(props.roomId)
+        if (res.ok && res.productId) {
+          router.push(`/products/${res.productId}/customize`)
+        }
+        return res
+      }}
     />
   )
 }

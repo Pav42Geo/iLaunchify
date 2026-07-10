@@ -81,6 +81,9 @@ export interface CoCreationRoomShellProps {
   onReopen: (objectId: string) => Promise<Result>
   onComment: (objectId: string, body: string, anchor?: string) => Promise<Result>
   onMessage: (body: string) => Promise<Result>
+  /** Creator-only: recipe approved + room active → offer "confirm & create product". */
+  canCloseWon?: boolean
+  onCloseWon?: () => Promise<Result>
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +218,20 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         <p className="rounded-xl bg-danger-50 px-3 py-2 text-ui-caption text-danger-700" role="alert">
           {error}
         </p>
+      ) : null}
+
+      {mode === 'creator' && props.canCloseWon && props.onCloseWon ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-pink-500 bg-pink-50 px-5 py-4">
+          <div className="text-ui-caption text-pink-700">
+            <b>Recipe approved.</b> Ready to make this real? Closing the room creates your draft
+            product with this formula — you finish packaging and place the production order from
+            your products page.
+          </div>
+          <span className="flex-1" />
+          <Button variant="primary" size="sm" disabled={busy} onClick={() => run(props.onCloseWon!)}>
+            {busy ? 'Creating…' : '✓ Confirm & create product →'}
+          </Button>
+        </div>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr_300px]">

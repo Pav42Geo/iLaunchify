@@ -119,3 +119,20 @@ export async function creatorMessage(roomId: string, body: string): Promise<Room
   revalidatePath(`/rooms/${roomId}`)
   return res
 }
+
+/**
+ * Close the room as WON: materialize the approved recipe into a draft
+ * Product + Recipe (template-less; spec §6), room → CLOSED_WON, brief →
+ * IN_PRODUCTION. Ordering then runs through the normal checkout. Creator-only.
+ */
+export async function creatorCloseRoomWon(
+  roomId: string,
+): Promise<RoomActionResult & { productId?: string }> {
+  const ctx = await creatorRoomCtx(roomId)
+  if (!ctx) return guardFail()
+  const { materializeRoomWon } = await import('@ilaunchify/orders')
+  const res = await materializeRoomWon(ctx.actor, roomId)
+  revalidatePath(`/rooms/${roomId}`)
+  if (res.ok) revalidatePath('/products')
+  return res.ok ? { ok: true, productId: res.productId } : res
+}
