@@ -16,6 +16,7 @@ import {
   type RoomRecipeLabelView,
 } from '@ilaunchify/ui'
 import { partnerComment, partnerMessage, partnerSubmitVersion } from './actions'
+import { roomSearchIngredients } from './ingredient-search-action'
 
 export function RoomClient(props: {
   roomId: string
@@ -44,6 +45,7 @@ export function RoomClient(props: {
       fullScreen
       rooms={props.rooms}
       recipeLabels={props.recipeLabels}
+      onSearchIngredients={roomSearchIngredients}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}
       creatorName={props.creatorName}

@@ -109,6 +109,96 @@ async function main() {
     console.log(`   ↺ removed ${old.length} previous demo brief(s)`)
   }
 
+  // ── Catalog ingredients for the demo recipes ──────────────────────────────
+  // The room's live Facts label resolves rows against the REAL Ingredient
+  // catalog (honesty gate: unmatched rows are excluded + coverage disclosed).
+  // Without these rows the demo shows "Facts from 1 of 4 ingredients", so the
+  // demo seeds its own LIBRARY entries. Create-if-missing by name — never
+  // duplicates or clobbers existing catalog rows.
+  const demoIngredients: {
+    name: string
+    labelDeclarationName: string
+    nutritionPer100g: Record<string, number>
+    densityGPerML: number | null
+    allergenFlags: string[]
+  }[] = [
+    {
+      name: 'Spring water',
+      labelDeclarationName: 'Spring Water',
+      nutritionPer100g: {},
+      densityGPerML: 1.0,
+      allergenFlags: [],
+    },
+    {
+      name: 'Whey protein isolate',
+      labelDeclarationName: 'Whey Protein Isolate',
+      nutritionPer100g: {
+        calories: 370, protein: 90, totalFat: 1, saturatedFat: 0.5, cholesterol: 10,
+        sodium: 200, totalCarbohydrate: 2, totalSugars: 1, calcium: 500, potassium: 500,
+      },
+      densityGPerML: null,
+      allergenFlags: ['milk'],
+    },
+    {
+      name: 'Passion-fruit concentrate',
+      labelDeclarationName: 'Passion Fruit Juice Concentrate',
+      nutritionPer100g: {
+        calories: 210, protein: 2, totalCarbohydrate: 50, totalSugars: 42,
+        dietaryFiber: 1, sodium: 20, potassium: 1100, vitaminC: 90,
+      },
+      densityGPerML: 1.3,
+      allergenFlags: [],
+    },
+    {
+      name: 'Monk fruit',
+      labelDeclarationName: 'Monk Fruit Extract',
+      nutritionPer100g: {},
+      densityGPerML: null,
+      allergenFlags: [],
+    },
+    {
+      name: 'Stevia',
+      labelDeclarationName: 'Stevia Leaf Extract',
+      nutritionPer100g: {},
+      densityGPerML: null,
+      allergenFlags: [],
+    },
+  ]
+  let ingCreated = 0
+  for (const ing of demoIngredients) {
+    const existing = await prisma.ingredient.findFirst({
+      where: {
+        AND: [
+          { OR: [{ ownerPartnerId: null }, { ownerPartnerId: partner.id }] },
+          {
+            OR: [
+              { name: { equals: ing.name, mode: 'insensitive' } },
+              { internalName: { equals: ing.name, mode: 'insensitive' } },
+            ],
+          },
+        ],
+      },
+      select: { id: true },
+    })
+    if (existing) continue
+    await prisma.ingredient.create({
+      data: {
+        name: ing.name,
+        internalName: ing.name,
+        labelDeclarationName: ing.labelDeclarationName,
+        nutritionPer100g: ing.nutritionPer100g as Prisma.InputJsonValue,
+        densityGPerML: ing.densityGPerML,
+        allergenFlags: ing.allergenFlags,
+        allergens: ing.allergenFlags,
+        source: 'LIBRARY',
+        verificationStatus: 'LIBRARY_PROMOTED',
+        ownerPartnerId: null,
+      },
+    })
+    ingCreated++
+  }
+  if (ingCreated) console.log(`   + seeded ${ingCreated} catalog ingredient(s) for the demo recipes`)
+
   const catA = await pickCategory(0)
   const catB = await pickCategory(1)
   const now = Date.now()

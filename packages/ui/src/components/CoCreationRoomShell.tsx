@@ -102,6 +102,18 @@ export interface CoCreationRoomShellProps {
       versions omitted) — the facts sidebar follows the viewed version and
       the compare view diffs the two labels. */
   recipeLabels?: { version: number; label: RoomRecipeLabelView }[]
+  /** Partner-side: catalog search for pinning ingredient matches in the
+      recipe draft editor (visibility scoping lives in the server action). */
+  onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
+}
+
+/** One catalog candidate in the recipe-row match picker. */
+export interface IngredientPick {
+  id: string
+  name: string
+  declarationName: string
+  source: string
+  allergenFlags: string[]
 }
 
 /** Serialized label bundle (structural mirror of @ilaunchify/orders' RoomRecipeLabel). */
@@ -479,6 +491,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               briefTitle={props.briefTitle}
               partnerName={props.partnerName}
               recipeLabels={props.recipeLabels ?? []}
+              onSearchIngredients={props.onSearchIngredients}
               onSubmitVersion={(payload) => run(() => props.onSubmitVersion(selected.id, payload))}
               onReview={(d, note) => run(() => props.onReview(selected.id, d, note))}
               onReopen={() => run(() => props.onReopen(selected.id))}
@@ -681,6 +694,7 @@ function ObjectDetail({
   briefTitle,
   partnerName,
   recipeLabels,
+  onSearchIngredients,
   onSubmitVersion,
   onReview,
   onReopen,
@@ -694,6 +708,7 @@ function ObjectDetail({
   briefTitle: string
   partnerName: string
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
+  onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
   onSubmitVersion: (payload: Record<string, unknown>) => void
   onReview: (decision: 'APPROVE' | 'REQUEST_CHANGES', note?: string) => void
   onReopen: () => void
@@ -705,6 +720,10 @@ function ObjectDetail({
   const latest = versions[versions.length - 1]
   const [viewVersion, setViewVersion] = React.useState<number | 'compare'>(latest?.version ?? 1)
   const [editing, setEditing] = React.useState(false)
+  /** Draft-row index whose catalog match picker is open. */
+  const [matchOpen, setMatchOpen] = React.useState<number | null>(null)
+  /** Declaration names for draft pins made this session (display only). */
+  const [draftPinNames, setDraftPinNames] = React.useState<Record<string, string>>({})
   const [changeNote, setChangeNote] = React.useState('')
   const [openThread, setOpenThread] = React.useState<string | null>(null)
   const [reply, setReply] = React.useState('')
@@ -1023,39 +1042,86 @@ function ObjectDetail({
               <div className="mt-s-2">
                 {isRecipe
                   ? draftRows.map((r, i) => (
-                      <div key={i} className="mb-s-2 flex gap-s-2">
-                        <Input
-                          value={r.name}
-                          placeholder="Ingredient"
-                          onChange={(e) =>
-                            setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
-                          }
-                          className="flex-[2]"
-                        />
-                        <Input
-                          value={r.amount}
-                          placeholder="Amount"
-                          onChange={(e) =>
-                            setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))
-                          }
-                          className="flex-1"
-                        />
-                        <Input
-                          value={r.note}
-                          placeholder="Note"
-                          onChange={(e) =>
-                            setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))
-                          }
-                          className="flex-[2]"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label="Remove row"
-                          onClick={() => setDraftRows((rows2) => rows2.filter((_, j) => j !== i))}
-                        >
-                          ✕
-                        </Button>
+                      <div key={i} className="mb-s-2">
+                        <div className="flex gap-s-2">
+                          <Input
+                            value={r.name}
+                            placeholder="Ingredient"
+                            onChange={(e) =>
+                              setDraftRows((rows2) =>
+                                rows2.map((x, j) =>
+                                  // Renaming voids the pin — the name no longer describes it.
+                                  j === i ? { ...x, name: e.target.value, ingredientId: undefined } : x,
+                                ),
+                              )
+                            }
+                            className="flex-[2]"
+                          />
+                          <Input
+                            value={r.amount}
+                            placeholder="Amount"
+                            onChange={(e) =>
+                              setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))
+                            }
+                            className="flex-1"
+                          />
+                          <Input
+                            value={r.note}
+                            placeholder="Note"
+                            onChange={(e) =>
+                              setDraftRows((rows2) => rows2.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))
+                            }
+                            className="flex-[2]"
+                          />
+                          {onSearchIngredients ? (
+                            <button
+                              type="button"
+                              onClick={() => setMatchOpen(matchOpen === i ? null : i)}
+                              className={cn(
+                                'flex-none rounded-pill px-s-2 py-s-1 text-ui-label tracking-normal transition',
+                                r.ingredientId
+                                  ? 'bg-success-50 text-success-700 hover:bg-success-100'
+                                  : 'bg-warning-50 text-warning-700 hover:bg-warning-100',
+                              )}
+                              title={
+                                r.ingredientId
+                                  ? `Matched to ${draftPinNames[r.ingredientId] ?? 'a catalog ingredient'} — click to change`
+                                  : 'Match to a catalog ingredient so the facts label can compute'
+                              }
+                            >
+                              {r.ingredientId ? '✓ matched' : 'match'}
+                            </button>
+                          ) : null}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Remove row"
+                            onClick={() => setDraftRows((rows2) => rows2.filter((_, j) => j !== i))}
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                        {onSearchIngredients && matchOpen === i ? (
+                          <IngredientMatchPicker
+                            initialQuery={r.name}
+                            pinned={!!r.ingredientId}
+                            search={onSearchIngredients}
+                            onPick={(p) => {
+                              setDraftRows((rows2) =>
+                                rows2.map((x, j) => (j === i ? { ...x, ingredientId: p.id } : x)),
+                              )
+                              setDraftPinNames((m) => ({ ...m, [p.id]: p.declarationName || p.name }))
+                              setMatchOpen(null)
+                            }}
+                            onClear={() => {
+                              setDraftRows((rows2) =>
+                                rows2.map((x, j) => (j === i ? { ...x, ingredientId: undefined } : x)),
+                              )
+                              setMatchOpen(null)
+                            }}
+                            onClose={() => setMatchOpen(null)}
+                          />
+                        ) : null}
                       </div>
                     ))
                   : draftFields.map((f, i) => (
@@ -1227,6 +1293,109 @@ function ObjectDetail({
         ) : null}
       </div>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Ingredient match picker (Pavel 2026-07-10) — pins a catalog ingredient to a
+// draft recipe row so the facts label can compute. Search runs through the
+// caller's server action (partner visibility scoping + rate limit live there).
+// ---------------------------------------------------------------------------
+
+function IngredientMatchPicker({
+  initialQuery,
+  pinned,
+  search,
+  onPick,
+  onClear,
+  onClose,
+}: {
+  initialQuery: string
+  pinned: boolean
+  search: (query: string) => Promise<IngredientPick[]>
+  onPick: (pick: IngredientPick) => void
+  onClear: () => void
+  onClose: () => void
+}) {
+  const [query, setQuery] = React.useState(initialQuery)
+  const [results, setResults] = React.useState<IngredientPick[] | null>(null)
+  const [loading, setLoading] = React.useState(false)
+
+  // Debounced search — also fires once on mount with the row's name.
+  React.useEffect(() => {
+    let alive = true
+    const t = setTimeout(() => {
+      setLoading(true)
+      search(query)
+        .then((r) => {
+          if (alive) setResults(r)
+        })
+        .catch(() => {
+          if (alive) setResults([])
+        })
+        .finally(() => {
+          if (alive) setLoading(false)
+        })
+    }, 250)
+    return () => {
+      alive = false
+      clearTimeout(t)
+    }
+  }, [query, search])
+
+  return (
+    <div className="mt-s-1 rounded-lg border border-ink-200 bg-ink-50 p-s-2">
+      <div className="flex items-center gap-s-2">
+        <Input
+          autoFocus
+          value={query}
+          placeholder="Search the ingredient catalog…"
+          onChange={(e) => setQuery(e.target.value)}
+          className="flex-1"
+        />
+        {pinned ? (
+          <Button variant="ghost" size="sm" onClick={onClear}>
+            Unlink
+          </Button>
+        ) : null}
+        <Button variant="ghost" size="sm" aria-label="Close match picker" onClick={onClose}>
+          ✕
+        </Button>
+      </div>
+      <div className="mt-s-1 max-h-44 overflow-y-auto">
+        {loading && !results ? (
+          <p className="px-s-2 py-s-1 text-ui-label normal-case tracking-normal text-ink-500">Searching…</p>
+        ) : results && results.length === 0 ? (
+          <p className="px-s-2 py-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+            No catalog match — add it as a private ingredient in your product editor, then match here.
+          </p>
+        ) : (
+          (results ?? []).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onPick(p)}
+              className="flex w-full items-center gap-s-2 rounded-md px-s-2 py-s-1 text-left transition hover:bg-white"
+            >
+              <span className="min-w-0 flex-1 truncate text-ui-caption">
+                <b>{p.name}</b>
+                {p.declarationName && p.declarationName !== p.name ? (
+                  <span className="text-ink-500"> · label: {p.declarationName}</span>
+                ) : null}
+              </span>
+              {p.allergenFlags.length > 0 ? (
+                <span className="flex-none text-ui-label normal-case tracking-normal text-warning-700">
+                  ⚠ {p.allergenFlags.join(', ')}
+                </span>
+              ) : null}
+              <span className="flex-none rounded-pill bg-ink-100 px-s-2 py-0.5 text-ui-label tracking-normal text-ink-600">
+                {sourceChipLabel(p.source)}
+              </span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
   )
 }
 
