@@ -3931,6 +3931,8 @@ model Category {
   regulatoryRequirements Json?
   designRestrictions     Json?
   subcategories          Subcategory[]
+  // Co-creation briefs filed under this Layer-2 category (CO_CREATION_MARKETPLACE_SPEC §6)
+  productBriefs          ProductBrief[]
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 }
@@ -9542,7 +9544,12 @@ model ProductBrief {
   status          BriefStatus       @default(DRAFT)
   title           String
   nicheSlug       String // Layer-1 niche slug (8 locked) — must match seed-niches / apps/marketing niches.ts
-  category        ProductCategory // Layer-2 — reuse existing enum; D-CC7: no schema-level category gate
+  // Label DOMAIN (5-value enum), derived from the picked Category.labelingType
+  // at write time. NOTE: spec §6 "reuse existing enum (13 locked)" conflated
+  // this enum with the Category TABLE — the 13 locked Layer-2 categories live
+  // in `Category`, referenced by categoryId (D-CC7: all 13 open, no gate).
+  category        ProductCategory
+  categoryId      String? // -> Category (13 locked, exactly-one) — required at POST, nullable while DRAFT
   claims          String[] // must-have claims
   targetVolume    Int?
   budgetLow       Decimal?          @db.Decimal(12, 2)
@@ -9555,6 +9562,7 @@ model ProductBrief {
   privateNotes    String?
   // Relations
   creator         CreatorProfile    @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  categoryRef     Category?         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   attachments     BriefAttachment[]
   interests       BriefInterest[]
   room            CoCreationRoom?
@@ -9562,6 +9570,7 @@ model ProductBrief {
   updatedAt       DateTime          @updatedAt
 
   @@index([status, nicheSlug])
+  @@index([status, categoryId])
   @@index([creatorId])
 }
 

@@ -30,6 +30,12 @@ export { recordPhraseAssignment } from './recordPhraseAssignment'
 export { PHRASE_FACT_FLAGS, PHRASE_FACT_KEYS } from './phraseFacts'
 export type { PhraseFactFlag } from './phraseFacts'
 
+// Co-creation marketplace (docs/CO_CREATION_MARKETPLACE_SPEC.md §8/§9).
+export { toPublicBriefProjection } from './brief-projection'
+export type { BriefProjectionInput, PublicBriefProjection } from './brief-projection'
+export { scoreBriefFit, FIT_WEIGHTS } from './brief-fit'
+export type { BriefFitFacts, PartnerFitFacts, BriefFitResult } from './brief-fit'
+
 // Restricted-category eligibility evaluator (labeling ≠ licensing).
 export { evaluateProductRestrictions, RESTRICTED_RULES } from './evaluateRestrictions'
 export type {
