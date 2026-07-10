@@ -87,8 +87,7 @@ import {
   Landmark,
   Palette,
   Mail,
-  Lightbulb,
-  DoorOpen,
+  Hammer,
 } from 'lucide-react'
 
 // -----------------------------------------------------------------------------
@@ -422,6 +421,11 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Product Mockups (2D)', icon: Eye, href: '/asset-management/product-mockups' },
       ],
     },
+    // Product Builder — co-creation oversight (CO_CREATION_MARKETPLACE_SPEC §10).
+    // ONE tabbed page (?view=briefs|rooms) over ProductBrief / CoCreationRoom;
+    // the former Marketplace › Briefs + Rooms items combined into this single
+    // top-level item (Pavel 2026-07-10). Old routes redirect.
+    { kind: 'item', label: 'Product Builder', icon: Hammer, href: '/product-builder' },
     {
       kind: 'group',
       label: 'Marketplace',
@@ -431,11 +435,6 @@ const APPLICATIONS: SidebarRegion = {
         { kind: 'item', label: 'Niche rules', icon: Workflow, href: '/niches/rules', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Lifestyle Tags', icon: Tag, href: '/lifestyle-tags', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Decoration compatibility', icon: Brush, href: '/decoration-compatibility' },
-        // Co-creation oversight (CO_CREATION_MARKETPLACE_SPEC §10, built 2026-07-10) —
-        // READ-ONLY lists over ProductBrief / CoCreationRoom. Lives in Marketplace: the
-        // co-creation funnel IS marketplace liquidity (briefs → interests → rooms).
-        { kind: 'item', label: 'Briefs', icon: Lightbulb, href: '/briefs' },
-        { kind: 'item', label: 'Rooms', icon: DoorOpen, href: '/rooms' },
         { kind: 'item', label: 'Niche audit', icon: History, href: '/niches/audit', hiddenUntilBuilt: false },
         { kind: 'item', label: 'Phrase audit', icon: History, href: '/phrases/audit', hiddenUntilBuilt: false },
       ],

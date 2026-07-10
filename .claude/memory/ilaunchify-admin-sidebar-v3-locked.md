@@ -71,6 +71,10 @@ PACKAGING STUDIO   (3D/structural + its assets; the group != the tool)
   3D Models & Surfaces (/packaging-studio, the tool) . Die-cut Templates .
   Packing Types . Packaging Symbols . Product Mockups (2D)
 
+PRODUCT BUILDER                          -> /product-builder
+  (top-level item, not a group — one tabbed page, ?view=briefs|rooms;
+   co-creation oversight, added Pavel 2026-07-10)
+
 MARKETPLACE
   Niches . Niche rules . Lifestyle Tags . Decoration compatibility .
   Niche audit . Phrase audit
@@ -135,12 +139,21 @@ Help Center                              -> /support-tickets
   (the removed Communications group returning, now that pages exist). See
   `ilaunchify-notification-center.md`. Not drift — do not remove.
 
-- **2026-07-10 (co-creation P0):** MARKETPLACE gained **Briefs** (`/briefs`) and
-  **Rooms** (`/rooms`) — read-only co-creation oversight lists over
-  `ProductBrief` / `CoCreationRoom` (docs/CO_CREATION_MARKETPLACE_SPEC.md §10).
-  Placed after `Decoration compatibility`, before the audit pair — the
-  co-creation funnel is marketplace liquidity. Routes are built (no
-  hiddenUntilBuilt). Not drift — do not remove.
+- **2026-07-10 (co-creation P0) — SUPERSEDED same day, see next entry:**
+  MARKETPLACE briefly gained **Briefs** (`/briefs`) and **Rooms** (`/rooms`) —
+  read-only co-creation oversight lists over `ProductBrief` / `CoCreationRoom`
+  (docs/CO_CREATION_MARKETPLACE_SPEC.md §10).
+- **2026-07-10 (Pavel):** the admin co-creation module is renamed
+  **Product Builder** — the Marketplace › Briefs + Rooms items were REMOVED and
+  replaced by ONE top-level APPLICATIONS item:
+  `Product Builder` (icon `Hammer`) → `/product-builder`, placed directly
+  BEFORE the Marketplace group. The two lists combine into one tabbed page
+  (`?view=briefs|rooms`, default briefs); each tab keeps its own filter params
+  (q/status/niche/sort/dir/page) and every href carries `view=…`. Old list
+  routes `/briefs` and `/rooms` are thin redirects to
+  `/product-builder?view=…`; DETAIL routes `/briefs/[briefId]` and
+  `/rooms/[roomId]` stay unchanged (deep-linked from row actions,
+  notifications, cross-links). Not drift — do not remove.
 
 # Rules that survive from v3
 1. **Names matter** -- labels are verbatim; a divergence is a bug.

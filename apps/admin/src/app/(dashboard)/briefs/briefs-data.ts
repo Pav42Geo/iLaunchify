@@ -262,6 +262,11 @@ export function buildBriefsHref(
     dir: SortDir
     page: number
   }>,
+  // Mount point — the list section renders inside /product-builder (?view=briefs)
+  // since Pavel 2026-07-10, so every filter/sort/page href builds on the mount
+  // path and always carries the extra params (e.g. view=briefs).
+  basePath: string = '/briefs',
+  extraParams?: Record<string, string>,
 ): string {
   const q = overrides.q !== undefined ? overrides.q : current.q
   const status =
@@ -273,6 +278,9 @@ export function buildBriefsHref(
   const page = overrides.page !== undefined ? overrides.page : current.page
 
   const params = new URLSearchParams()
+  if (extraParams) {
+    for (const [key, value] of Object.entries(extraParams)) params.set(key, value)
+  }
   if (q) params.set('q', q)
   if (status) params.set('status', status)
   if (niche) params.set('niche', niche)
@@ -280,5 +288,5 @@ export function buildBriefsHref(
   if (dir !== 'desc') params.set('dir', dir)
   if (page > 1) params.set('page', String(page))
   const qs = params.toString()
-  return qs ? `/briefs?${qs}` : '/briefs'
+  return qs ? `${basePath}?${qs}` : basePath
 }

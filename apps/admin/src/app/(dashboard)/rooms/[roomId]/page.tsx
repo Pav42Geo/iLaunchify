@@ -126,7 +126,7 @@ export default async function RoomDetailPage({ params }: PageProps) {
   return (
     <div className="space-y-6">
       <AdminDetailHeader
-        backHref="/rooms"
+        backHref="/product-builder?view=rooms"
         backLabel="All rooms"
         eyebrow="Marketplace · Co-creation · Room"
         title={room.brief.title}

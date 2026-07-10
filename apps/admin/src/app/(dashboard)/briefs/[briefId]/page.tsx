@@ -94,7 +94,7 @@ export default async function BriefDetailPage({ params }: PageProps) {
   return (
     <div className="space-y-6">
       <AdminDetailHeader
-        backHref="/briefs"
+        backHref="/product-builder?view=briefs"
         backLabel="All briefs"
         eyebrow="Marketplace · Co-creation · Brief"
         title={brief.title}
