@@ -135,7 +135,11 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
       // reduces the amount sent, never below 0; partial recoup carries to a future
       // payout. The clawback rows are reduced in the SAME txn that settles the
       // transfer (below) — never before — so a failed/raced payout can't under-recoup.
-      let sendAmount = t.amountCents
+      // Merit withhold first (FEE_MODEL_RECONCILIATION_SPEC 2026-07-09): the payout is net of the
+      // manufacturer merit fee BEFORE clawback recoupment. 0 for non-manufacturer transfers and
+      // while the engine is disabled. Snapshotted at ship (shipDispatch); the executor only nets it.
+      const meritFeeCents = t.meritFeeCents ?? 0
+      let sendAmount = t.amountCents - meritFeeCents
       let netting: ClawbackNetting | null = null
       if (clawbackNettingEnabled()) {
         const approved = await (
@@ -152,7 +156,7 @@ export async function executePendingTransfers(limit = 100): Promise<ExecuteTrans
           })
           .catch(() => [] as Array<{ id: string; amountCents: number; remainingCents: number | null }>)
         netting = computeClawbackNetting(
-          t.amountCents,
+          sendAmount, // net-of-merit pool
           approved.map((c) => ({ id: c.id, remainingCents: c.remainingCents ?? c.amountCents })),
         )
         sendAmount = netting.netAmountCents

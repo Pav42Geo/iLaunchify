@@ -16,6 +16,7 @@ import { generateOrderManifest } from './manifest'
 import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
+import { resolveManufacturerMeritFeeBps, meritWithholdCents } from './manufacturer-merit-fee'
 import {
   selectRotatingProvider,
   buildRotationAwardPayload,
@@ -726,13 +727,32 @@ export async function createDispatches(params: {
     return { ok: false, reason: 'NO_DISPATCHES', message: 'No dispatches were produced' }
   }
 
+  // Snapshot the manufacturer MERIT fee onto each PRODUCT leg (FEE_MODEL_RECONCILIATION_SPEC
+  // 2026-07-09). Merit (4.5/2.5/0%) is WITHHELD from the manufacturer's payout at ship, so we
+  // FREEZE the bps here (the badge could change before ship) and precompute the withheld cents
+  // from the leg cost. Non-PRODUCT legs (LABEL/COPACKING) carry no merit. The resolver is
+  // shadow-safe: 0 until MeritPolicy.enabled — so this snapshot is 0 today. Resolved once per
+  // distinct manufacturer service (a multi-item order can have several).
+  const meritBpsByService = new Map<string, number>()
+  const dispatchRowsWithMerit = await Promise.all(
+    dispatchRows.map(async (row) => {
+      if (row.type !== 'PRODUCT') return { ...row, meritFeeBps: 0, meritFeeCents: 0 }
+      let bps = meritBpsByService.get(row.partnerServiceId)
+      if (bps === undefined) {
+        bps = await resolveManufacturerMeritFeeBps(row.partnerServiceId)
+        meritBpsByService.set(row.partnerServiceId, bps)
+      }
+      return { ...row, meritFeeBps: bps, meritFeeCents: meritWithholdCents(row.costCents, bps) }
+    }),
+  )
+
   await prisma.$transaction(async (tx) => {
     // orderItemId (Phase 3) + the COPACKING type (Phase 2b) are both pending the
     // Mac migration, so the generated client doesn't type them yet — cast-guarded
     // createMany so this compiles before `prisma db push`. One createMany for every
     // leg of every item.
     await (tx as unknown as { orderDispatch: { createMany: (a: unknown) => Promise<unknown> } }).orderDispatch.createMany({
-      data: dispatchRows,
+      data: dispatchRowsWithMerit,
     })
     await tx.order.update({
       where: { id: order.id },

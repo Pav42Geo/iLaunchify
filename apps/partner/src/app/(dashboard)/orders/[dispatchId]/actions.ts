@@ -660,6 +660,11 @@ export async function shipDispatch({
     const charge = await tx.charge.findFirst({ where: { orderId: dispatch.orderId } })
     if (charge) {
       const partner = dispatch.partnerService.partner
+      // Manufacturer merit-fee withhold (FEE_MODEL_RECONCILIATION_SPEC 2026-07-09 — "merit eats
+      // the manufacturer"). Only the PRODUCT leg carries it; the value was frozen at routing and
+      // is 0 until MeritPolicy.enabled. amountCents stays GROSS (the leg cost); the executor
+      // subtracts meritFeeCents at send, same as nettedCents. sent = amount − merit − netted.
+      const meritFeeCents = dispatch.type === 'PRODUCT' ? (dispatch.meritFeeCents ?? 0) : 0
       await tx.transfer.create({
         data: {
           chargeId: charge.id,
@@ -667,6 +672,7 @@ export async function shipDispatch({
           destinationUserId: partner.userId,
           destinationType: dispatch.type === 'PRODUCT' ? 'MANUFACTURER' : 'PRINT_PROVIDER',
           amountCents: dispatch.costCents,
+          meritFeeCents,
           reason: dispatch.type === 'PRODUCT' ? 'PRODUCT_COST' : 'LABEL_COST',
           status: 'PENDING',
           scheduledFor: new Date(),
