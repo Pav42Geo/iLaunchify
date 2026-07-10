@@ -65,10 +65,22 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <DashboardSidebar />
           {/* overflow-x-clip lets a landing page's hero break full-bleed
               (margin-left: calc(50% - 50vw); width: 100vw) and get clipped to
-              the content area instead of spilling under the sidebar. Account
-              pages keep their max-w-6xl shape via the wrapper below. */}
-          <main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50 p-6">
-            <div className="mx-auto max-w-6xl">{children}</div>
+              the content area instead of spilling under the sidebar.
+
+              FULL-BLEED GRID (2026-07-10): main is a 3-column grid replacing
+              the old p-6 + max-w-6xl wrapper — visually identical for every
+              page (center column = min(72rem, 100% − 3rem), 1.5rem gutters,
+              py-6). A page child marked data-full-bleed spans all columns and
+              hugs the sidebar edge exactly, tracking its fold/unfold because
+              main is the sidebar's flex sibling (co-creation stepper uses it). */}
+          <main className="min-w-0 flex-1 overflow-x-clip overflow-y-auto bg-ink-50">
+            {/* Grid lives on an inner block (NOT the scroll container itself)
+                — grid/flex scroll containers drop bottom padding from the
+                scrollable overflow in some engines, which cut off the page
+                end. Scroll math stays classic; full-bleed still spans main. */}
+            <div className="grid content-start grid-cols-[minmax(1.5rem,1fr)_minmax(0,72rem)_minmax(1.5rem,1fr)] py-6 [&>*:not([data-full-bleed])]:col-start-2">
+              {children}
+            </div>
           </main>
         </div>
       </div>

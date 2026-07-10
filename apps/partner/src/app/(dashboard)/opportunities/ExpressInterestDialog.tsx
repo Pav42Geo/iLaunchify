@@ -216,7 +216,7 @@ export function ExpressInterestDialog({
           <span className="mr-auto text-ui-caption text-ink-500">
             Free to send · {firstName} reviews all interests, then picks one
           </span>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
+          <Button variant="secondary" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button variant="primary" onClick={submit} disabled={isPending || !pitch.trim()}>

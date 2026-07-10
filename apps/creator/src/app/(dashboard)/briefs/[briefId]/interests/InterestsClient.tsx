@@ -331,7 +331,7 @@ export function InterestsClient({
             </table>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setCompareOpen(false)}>
+            <Button variant="secondary" onClick={() => setCompareOpen(false)}>
               Close
             </Button>
           </DialogFooter>
@@ -369,7 +369,7 @@ export function InterestsClient({
             </p>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setSelecting(null)}>
+            <Button variant="secondary" onClick={() => setSelecting(null)}>
               Not yet
             </Button>
             <Button variant="primary" onClick={confirmSelect} disabled={isPending}>

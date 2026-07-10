@@ -22,18 +22,27 @@ export function CoCreationStepper({ steps, className }: { steps: CoCreationStep[
   return (
     <nav
       aria-label="Co-creation progress"
+      // Demo .stagebar: flush full-width strip, bottom hairline only.
+      // data-full-bleed: opts out of the dashboard layout's centered grid
+      // column — the stepper spans <main> edge-to-edge, hugging the sidebar
+      // and tracking its fold/unfold natively (no viewport math). Requires
+      // being a DIRECT child of <main> (pages return fragments).
+      // relative z-0: stays beneath the sidebar's fold toggle (z-20) which
+      // deliberately straddles the sidebar/main border.
+      data-full-bleed=""
       className={cn(
-        'flex items-center gap-s-1 overflow-x-auto rounded-xl border border-ink-200 bg-ink-50 px-s-4 py-s-2',
+        'relative z-0 flex items-center gap-s-1 overflow-x-auto border-b border-ink-200 bg-ink-50 px-s-5 py-s-2',
         className,
       )}
     >
       {steps.map((s, i) => {
         const body = (
           <>
+            {/* Demo .stg .n — 20px circle, 11px/800 numeral */}
             <span
               aria-hidden
               className={cn(
-                'flex h-5 w-5 flex-none items-center justify-center rounded-pill text-ui-label tracking-normal',
+                'flex h-5 w-5 flex-none items-center justify-center rounded-pill text-label-sm font-extrabold tracking-normal',
                 s.state === 'done' && 'bg-success-500 text-white',
                 s.state === 'current' && 'bg-pink-500 text-white',
                 s.state === 'upcoming' && 'bg-ink-200 text-ink-600',

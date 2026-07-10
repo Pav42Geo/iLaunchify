@@ -15,7 +15,7 @@ import { prisma, getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { brandLimits, normalizeTier, type TierKey, type User } from '@ilaunchify/auth'
 import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
 import { TopbarRight } from './TopbarRight'
-import { MarketplaceSearchLauncher } from './MarketplaceSearchLauncher'
+import { CoCreationSublabel, CreatorTopbarCenter } from './CoCreationTopbarSlots'
 
 const COOKIE_NAME = 'active_brand_id'
 
@@ -71,8 +71,15 @@ export async function DashboardTopbar({ user }: { user: User }) {
     <AppHeader
       brandHref="/dashboard"
       flushLeft
-      brand={brand}
-      center={<MarketplaceSearchLauncher />}
+      // Co-creation routes append the demo's "| Co-Creation Studio" sublabel
+      // and hide the search (both route-aware client slots; no-ops elsewhere).
+      brand={
+        <>
+          {brand}
+          <CoCreationSublabel />
+        </>
+      }
+      center={<CreatorTopbarCenter />}
       right={
         <TopbarRight
           email={user.email}

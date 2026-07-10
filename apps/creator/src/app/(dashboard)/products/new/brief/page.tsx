@@ -65,10 +65,12 @@ export default async function BriefBuilderPage() {
   ])
 
   return (
-    <div className="space-y-6">
-      {/* Creator journey stepper (demo .stagebar): later stages unlock once a
-          brief exists — no dead links. */}
+    <>
+      {/* Creator journey stepper — DIRECT child of <main> so data-full-bleed
+          spans the layout grid edge-to-edge (hugs the sidebar as it folds).
+          Later stages unlock once a brief exists — no dead links. */}
       <CoCreationStepper
+        className="col-span-full -mt-6 mb-s-5"
         steps={[
           { key: 'brief', label: 'Post a brief', state: 'current' },
           { key: 'shortlist', label: 'Choose a maker', state: 'upcoming' },
@@ -81,6 +83,6 @@ export default async function BriefBuilderPage() {
         creatorName={profile.displayName}
         creatorHandle={profile.handle ? `@${profile.handle}` : null}
       />
-    </div>
+    </>
   )
 }

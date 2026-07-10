@@ -70,14 +70,17 @@ export default async function BriefInterestsPage({
   }))
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* DIRECT child of <main>: data-full-bleed spans the layout grid. */}
       <CoCreationStepper
+        className="col-span-full -mt-6 mb-s-5"
         steps={[
           { key: 'brief', label: 'Post a brief', state: 'done', href: '/products/new/brief' },
           { key: 'shortlist', label: 'Choose a maker', state: 'current' },
           { key: 'room', label: 'Collaboration room', state: 'upcoming' },
         ]}
       />
+      <div className="space-y-6">
       <div>
         <nav className="mb-2 text-ui-caption text-ink-500">
           <Link href="/products" className="hover:underline">
@@ -114,6 +117,7 @@ export default async function BriefInterestsPage({
       ) : (
         <InterestsClient briefId={brief.id} briefClaims={brief.claims} interests={cards} />
       )}
-    </div>
+      </div>
+    </>
   )
 }

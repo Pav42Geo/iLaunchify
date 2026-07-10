@@ -46,8 +46,10 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
     recipe.versions.length > 0
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* DIRECT child of <main>: data-full-bleed spans the layout grid. */}
       <CoCreationStepper
+        className="col-span-full -mt-6 mb-s-5"
         steps={[
           { key: 'brief', label: 'Post a brief', state: 'done', href: '/products/new/brief' },
           { key: 'shortlist', label: 'Choose a maker', state: 'done', href: `/briefs/${room.brief.id}/interests` },
@@ -95,6 +97,6 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
           createdAt: m.createdAt.toISOString(),
         }))}
       />
-    </div>
+    </>
   )
 }
