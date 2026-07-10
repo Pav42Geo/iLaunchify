@@ -38,15 +38,31 @@ const RESTRICTED_NAV: PartnerNavItem[] = [
 // finishing Activation Setup (not yet live on every service). Setup essentials
 // only — operational surfaces (orders, inventory, performance, billing) appear
 // once every service goes live. Pavel 2026-07-09.
-const LIMITED_ACTIVATION_NAV: PartnerNavItem[] = [
-  { href: '/activation',          label: 'Activation Setup', icon: Rocket },
-  { href: '/products',            label: 'Products',         icon: Boxes },
-  { href: '/packaging/offerings', label: 'Packaging',        icon: Package },
-  { href: '/certifications',      label: 'Certifications',   icon: ShieldCheck },
-  { href: '/services',            label: 'Services',         icon: Wrench },
-  { href: '/settings',            label: 'Settings',         icon: Settings },
-  { href: '/help',                label: 'Support',          icon: LifeBuoy },
-]
+// Role-aware so an activating co-packer/printer isn't shown "Products" (a
+// producer-only concept whose empty state is manufacturer-framed) — mirrors
+// roleNavFor's rule that Products is producing-only and Packaging shows for
+// anyone who offers packaging/decoration/print. Empty serviceTypes (legacy
+// rows) falls back to the full union so nothing a partner relied on disappears.
+function limitedActivationNav(serviceTypes: readonly string[]): PartnerNavItem[] {
+  const effective: readonly string[] =
+    serviceTypes.length > 0
+      ? serviceTypes
+      : ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']
+  const has = (t: string) => effective.includes(t)
+  const producing = has('MANUFACTURING')
+  const offersPackaging = producing || has('COPACKING') || has('LABEL_PRINTING')
+
+  const nav: PartnerNavItem[] = [{ href: '/activation', label: 'Activation Setup', icon: Rocket }]
+  if (producing) nav.push({ href: '/products', label: 'Products', icon: Boxes })
+  if (offersPackaging) nav.push({ href: '/packaging/offerings', label: 'Packaging', icon: Package })
+  nav.push(
+    { href: '/certifications', label: 'Certifications', icon: ShieldCheck },
+    { href: '/services', label: 'Services', icon: Wrench },
+    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/help', label: 'Support', icon: LifeBuoy },
+  )
+  return nav
+}
 
 interface PartnerSidebarProps {
   status: PartnerStatus
@@ -89,7 +105,7 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
   const nav = restricted
     ? RESTRICTED_NAV
     : activationLimited
-      ? LIMITED_ACTIVATION_NAV
+      ? limitedActivationNav(serviceTypes ?? [])
       : roleNavFor(serviceTypes ?? [], { isOrgAdmin, showCoPartners })
   const badge = statusBadge(status)
 
