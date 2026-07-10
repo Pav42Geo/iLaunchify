@@ -249,8 +249,8 @@ const FEE_CONST_RX = /\bPLATFORM_FEE_BPS\s*=\s*\d+|\bfeePct:\s*0\.(?:15|12|08)\b
 // Reviewed exceptions (2026-07-09) — the exact call sites the fee-reconciliation
 // spec migrates to resolveCreatorFeeBps. Delete the entry when the file is fixed.
 const FEE_CONST_ALLOWLIST = new Set([
-  'apps/creator/src/app/(checkout)/products/[productId]/checkout/cart-actions.ts',   // PLATFORM_FEE_BPS = 500 → resolveCreatorFeeBps (spec §3.4)
-  'apps/creator/src/app/(dashboard)/channels/orders/route-actions.ts',              // PLATFORM_FEE_BPS = 500 → resolveCreatorFeeBps (spec §3.5)
+  // cart-actions.ts + route-actions.ts retired 2026-07-09 — both now resolve via
+  // resolveCreatorFeeBps (FEE_CREATOR_CHECKOUT_PATCH); the guardrail enforces them now.
   'apps/creator/src/app/(dashboard)/subscriptions/page.tsx',                        // feePct display copy → read from plans (spec §3)
 ])
 function checkNoHardcodedFee() {

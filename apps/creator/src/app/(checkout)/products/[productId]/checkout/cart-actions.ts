@@ -47,9 +47,9 @@ import {
   recordOrderVelocityAtCheckout,
   evaluateCapacityGateForCheckout,
   type CapacityGateInfo,
-  resolveOrderProductionFeeBps,
   assertOrderTransition,
 } from '@ilaunchify/orders'
+import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
 import {
   createCheckoutSession,
   createProductionSubscription,
@@ -73,7 +73,6 @@ import { loadProductLabelCompliance } from '@/lib/dieline-compliance'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
-const PLATFORM_FEE_BPS = 500 // V1 5% — moves to PlatformFeeConfig long-term
 
 export interface PlaceOrderOptions {
   /** DS-69-style ack payload. Set when blocking compliance findings remain
@@ -621,19 +620,15 @@ export async function placeOrderFromCheckoutDraft(
   const shippingCents =
     freeThreshold != null && productionTotalCents >= freeThreshold ? 0 : baseShippingCents
 
-  // --- 7. Platform fee (admin-tunable; falls back to PLATFORM_FEE_BPS) --------
-  // MM-8: the fee resolves from the fulfilling MANUFACTURER's standing badge +
-  // any active fee-grace promo. Shadow-safe — with the merit engine disabled and
-  // no promo it returns the base rate unchanged, so this is inert until go-live.
-  const baseFeeBps = orderSettings.productionFeeBps ?? PLATFORM_FEE_BPS
-  const { feeBps } = await resolveOrderProductionFeeBps({
-    manufacturerServiceId: product.productTemplate?.manufacturerServiceId ?? null,
-    baseFeeBps,
-  })
-  // PS-3c — the FC labeling fee is a production service: it joins the fee base
-  // and the subtotal, not the shipping line.
-  const feeBase = productionTotalCents + fcLabelingCents + shippingCents
-  const platformFeeCents = Math.floor(feeBase * (feeBps / 10000))
+  // --- 7. Platform fee — creator SUBSCRIPTION-TIER rate (FEE_MODEL_RECONCILIATION_SPEC
+  //        2026-07-09). 15/12/8%, admin-editable in Tiers & Plans (FeeRule). Retires the
+  //        flat 5% + manufacturer-merit-on-the-creator model: merit now eats the
+  //        MANUFACTURER's payout, not this charge. Fee base = production subtotal + FC
+  //        labeling (a production service); shipping is NOT in the base (Pavel 2026-07-09).
+  const { feeBps, source: platformFeeSource } = await resolveCreatorFeeBps(creatorTier)
+  const feeBounds = await resolveCreatorFeeBounds(creatorTier)
+  const feeBase = productionTotalCents + fcLabelingCents
+  const platformFeeCents = creatorFeeCents(feeBase, feeBps, feeBounds)
   const grossTotalCents =
     productionTotalCents + fcLabelingCents + shippingCents + platformFeeCents
 
@@ -809,6 +804,11 @@ export async function placeOrderFromCheckoutDraft(
         shippingCents,
         taxCents: 0,
         totalCents,
+        // Creator tier-fee snapshot (FEE_MODEL_RECONCILIATION_SPEC) — frozen so a
+        // historical order reproduces regardless of later FeeRule edits.
+        platformFeeBps: feeBps,
+        platformFeeCents,
+        platformFeeSource,
         manufacturerServiceId: routing.manufacturingServiceId,
         printProviderServiceId: routing.labelPrintingServiceId,
         shipToType: shipTo.data.shipToType,
@@ -988,6 +988,8 @@ export async function placeOrderFromCheckoutDraft(
       fcLabelingCents,
       shippingCents,
       platformFeeCents,
+      platformFeeBps: feeBps,
+      platformFeeSource,
       sampleCreditAppliedCents,
       totalCents,
       shipToType: shipTo.data.shipToType,

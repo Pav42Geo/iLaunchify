@@ -14,14 +14,14 @@
 // internalNotes and flag the enum addition to the logistics workstream.
 
 import { prisma } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier } from '@ilaunchify/auth'
+import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
 import { logAuditAs } from '@ilaunchify/audit'
 import { createOrderWithNumber, assertOrderTransition } from '@ilaunchify/orders'
 import { createCheckoutSession } from '@ilaunchify/payments'
 import { resolveChannelAdapter, applyLedgerEntry, type ChannelCode } from '@ilaunchify/channels'
 import { recomputeStockAlert } from '../inventory/alerts'
 
-const PLATFORM_FEE_BPS = 500 // mirror checkout's V1 5% (moves to PlatformFeeConfig)
 
 type AnyDelegate = {
   findFirst?: (a: unknown) => Promise<Record<string, unknown> | null>
@@ -46,6 +46,11 @@ interface ShipTo {
 /** Route ONE ready channel order: create production order(s) + payment session. */
 export async function routeChannelOrderToProduction(channelOrderId: string): Promise<RouteResult> {
   const user = await requireUser()
+  // Creator tier fee for this batch (FEE_MODEL_RECONCILIATION_SPEC 2026-07-09) — same
+  // SSOT as checkout; resolved once, reused per order. Retires the hardcoded 5%.
+  const creatorTier = await getCreatorTier(user.id)
+  const creatorFee = await resolveCreatorFeeBps(creatorTier)
+  const creatorFeeBounds = await resolveCreatorFeeBounds(creatorTier)
   const od = d('channelOrder')
   if (!od?.findFirst || !od.update) return { ok: false, error: 'Channel-order tables not migrated yet.' }
 
@@ -146,6 +151,9 @@ export async function routeChannelOrderToProduction(channelOrderId: string): Pro
 
     const subtotalCents = product.priceCents * qty
     const totalCents = subtotalCents // shipping/tax legs land with the logistics rail
+    // Channel reorders use the SAME creator tier fee as checkout (base = subtotal;
+    // channel orders have no FC-labeling/shipping legs at this stage).
+    const platformFeeCents = creatorFeeCents(subtotalCents, creatorFee.feeBps, creatorFeeBounds)
 
     const order = await createOrderWithNumber(async (orderNumber) => {
       const created = await prisma.order.create({
@@ -158,6 +166,9 @@ export async function routeChannelOrderToProduction(channelOrderId: string): Pro
           shippingCents: 0,
           taxCents: 0,
           totalCents,
+          platformFeeBps: creatorFee.feeBps,
+          platformFeeCents,
+          platformFeeSource: creatorFee.source,
           manufacturerServiceId,
           shipToType: 'CREATOR_ADDRESS', // DIRECT_CONSUMER enum pending (logistics)
           shipToContactName: ship.name ?? 'Consumer',
@@ -196,7 +207,7 @@ export async function routeChannelOrderToProduction(channelOrderId: string): Pro
           successUrl: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/channels/orders?paid=1`,
           cancelUrl: `${process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'}/channels/orders`,
           lineItems: [{ productName: `${product.name} (channel on-demand ×${qty})`, unitAmountCents: product.priceCents, quantity: qty }],
-          applicationFeeCents: Math.round((subtotalCents * PLATFORM_FEE_BPS) / 10_000),
+          applicationFeeCents: platformFeeCents,
         })
         firstCheckoutUrl = session.url
       } catch (err) {
