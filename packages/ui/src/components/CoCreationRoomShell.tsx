@@ -12,6 +12,7 @@
 // rule: "milestone payment protection", never "escrow" (Stripe posture).
 
 import * as React from 'react'
+import Link from 'next/link'
 import { Button } from '../primitives/button'
 import { Input } from '../primitives/input'
 import { Textarea } from '../primitives/textarea'
@@ -91,6 +92,22 @@ export interface CoCreationRoomShellProps {
   onCloseWon?: () => Promise<Result>
   /** Fill the viewport below the page chrome; columns scroll internally (lg+). */
   fullScreen?: boolean
+  /** All of this user's active rooms (incl. the current one) — the title
+      becomes a switcher dropdown when there's more than one. */
+  rooms?: RoomSwitcherEntry[]
+}
+
+export interface RoomSwitcherEntry {
+  id: string
+  title: string
+  counterpartName: string
+  /** e.g. "recipe v2 in review" — derived by the page from the RECIPE object. */
+  statusLine: string
+  /** Chip text when this room needs the viewer's action (e.g. "your review"). */
+  attention: string | null
+  icon: string
+  gradientKey: ProductGradient
+  href: string
 }
 
 // ---------------------------------------------------------------------------
@@ -281,10 +298,10 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
           className="flex h-8 w-8 items-center justify-center rounded-md text-ui-subhead"
           style={{ background: gradient }}
         >
-          🥤
+          {props.rooms?.find((r) => r.title === props.briefTitle)?.icon ?? '🥤'}
         </span>
         <div>
-          <b className="block text-ui-value">{props.briefTitle}</b>
+          <RoomSwitcher mode={mode} title={props.briefTitle} rooms={props.rooms ?? []} />
           <span className="text-ui-label normal-case tracking-normal text-ink-500">
             {props.creatorName} × {props.partnerName} · viewing as {meName} (
             {mode === 'creator' ? 'Creator' : 'Manufacturer'})
@@ -460,6 +477,126 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Room switcher — the title opens a dropdown of the user's active rooms
+// (Pavel 2026-07-10, mockup-approved). Renders a plain title with 0–1 rooms.
+// ---------------------------------------------------------------------------
+
+function RoomSwitcher({
+  mode,
+  title,
+  rooms,
+}: {
+  mode: 'creator' | 'partner'
+  title: string
+  rooms: RoomSwitcherEntry[]
+}) {
+  const [open, setOpen] = React.useState(false)
+  const wrapRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [open])
+
+  if (rooms.length < 2) {
+    return <b className="block text-ui-value">{title}</b>
+  }
+
+  const footer =
+    mode === 'creator'
+      ? { label: 'All briefs →', href: '/briefs' }
+      : { label: 'My interests →', href: '/opportunities?tab=mine' }
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-s-1 rounded-md text-ui-value font-bold transition hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+      >
+        {title}
+        <span aria-hidden className={cn('text-ink-400 transition-transform', open && 'rotate-180')}>
+          ⌄
+        </span>
+        <span className="rounded-pill bg-pink-50 px-s-2 py-0.5 text-ui-label tracking-normal text-pink-700">
+          {rooms.length} rooms
+        </span>
+      </button>
+
+      {open ? (
+        <div
+          role="listbox"
+          aria-label="Your active rooms"
+          className="absolute left-0 top-full z-30 mt-s-1 w-80 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-lg"
+        >
+          <p className="px-s-3 pb-s-1 pt-s-2 text-ui-label uppercase text-ink-500">Your active rooms</p>
+          {rooms.map((r) => {
+            const current = r.title === title
+            return (
+              <Link
+                key={r.id}
+                href={r.href}
+                role="option"
+                aria-selected={current}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'flex items-center gap-s-2 border-t border-ink-100 px-s-3 py-s-2 transition',
+                  current ? 'bg-pink-50' : 'hover:bg-ink-50',
+                )}
+              >
+                <span
+                  aria-hidden
+                  className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-ui-caption"
+                  style={{ background: productGradient[r.gradientKey] }}
+                >
+                  {r.icon}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={cn('block truncate text-ui-caption font-bold', current && 'text-pink-800')}>
+                    {r.title}
+                  </span>
+                  <span className={cn('block truncate text-ui-label normal-case tracking-normal', current ? 'text-pink-700' : 'text-ink-500')}>
+                    {r.counterpartName} · {r.statusLine}
+                  </span>
+                </span>
+                {current ? (
+                  <span aria-hidden className="text-ui-caption text-pink-700">✓</span>
+                ) : r.attention ? (
+                  <span className="inline-flex flex-none items-center gap-s-1 rounded-pill bg-warning-50 px-s-2 py-0.5 text-ui-label tracking-normal text-warning-700">
+                    <span aria-hidden className="h-1.5 w-1.5 rounded-pill bg-warning-500" />
+                    {r.attention}
+                  </span>
+                ) : null}
+              </Link>
+            )
+          })}
+          <div className="border-t border-ink-100 px-s-3 py-s-2">
+            <Link
+              href={footer.href}
+              onClick={() => setOpen(false)}
+              className="text-ui-caption font-bold text-pink-700 hover:underline"
+            >
+              {footer.label}
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
   type RoomShellMessage,
   type RoomShellMilestone,
   type RoomShellObject,
+  type RoomSwitcherEntry,
 } from '@ilaunchify/ui'
 import {
   creatorCloseRoomWon,
@@ -23,6 +24,7 @@ import {
 
 export function RoomClient(props: {
   roomId: string
+  rooms: RoomSwitcherEntry[]
   briefTitle: string
   briefNicheSlug: string
   creatorName: string
@@ -45,6 +47,7 @@ export function RoomClient(props: {
     <CoCreationRoomShell
       mode="creator"
       fullScreen
+      rooms={props.rooms}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}
       creatorName={props.creatorName}

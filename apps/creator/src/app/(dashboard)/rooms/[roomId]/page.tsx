@@ -1,7 +1,12 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
-import { CoCreationStepper } from '@ilaunchify/ui'
+import {
+  CoCreationStepper,
+  nicheGradientKey,
+  roomRecipeStatusLine,
+  type RoomSwitcherEntry,
+} from '@ilaunchify/ui'
 import { RoomClient } from './RoomClient'
 
 export const dynamic = 'force-dynamic'
@@ -35,6 +40,36 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
   })
   if (!room) notFound()
 
+  // Room switcher (mockup-approved 2026-07-10): every ACTIVE room this
+  // creator owns, with a status line + attention chip from the RECIPE object.
+  const [activeRooms, nicheRows] = await Promise.all([
+    prisma.coCreationRoom.findMany({
+      where: { status: 'ACTIVE', brief: { creator: { userId: user.id } } },
+      include: {
+        brief: { select: { title: true, nicheSlug: true } },
+        partner: { select: { companyName: true } },
+        objects: { where: { kind: 'RECIPE' }, select: { status: true, currentVersion: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+    }),
+    prisma.niche.findMany({ where: { isActive: true }, select: { slug: true, iconEmoji: true } }),
+  ])
+  const nicheIcon = new Map(nicheRows.map((n) => [n.slug, n.iconEmoji ?? '🧪']))
+  const switcherRooms: RoomSwitcherEntry[] = activeRooms.map((r) => {
+    const s = roomRecipeStatusLine(r.objects[0] ?? null, 'creator')
+    return {
+      id: r.id,
+      title: r.brief.title,
+      counterpartName: r.partner.companyName,
+      statusLine: s.line,
+      attention: r.id === room.id ? null : s.attention,
+      icon: nicheIcon.get(r.brief.nicheSlug) ?? '🧪',
+      gradientKey: nicheGradientKey(r.brief.nicheSlug),
+      href: `/rooms/${r.id}`,
+    }
+  })
+
   // "Confirm & create product" unlocks when the recipe is approved, the room
   // is still active, and nothing was materialized yet (§6 CLOSED_WON).
   const recipe = room.objects.find((o) => o.kind === 'RECIPE')
@@ -61,6 +96,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
       <div data-full-bleed className="col-span-full -mb-6">
       <RoomClient
         roomId={room.id}
+        rooms={switcherRooms}
         briefTitle={room.brief.title}
         briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}

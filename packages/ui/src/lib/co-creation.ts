@@ -46,3 +46,34 @@ export const NICHE_GRADIENT: Record<string, ProductGradient> = {
 export function nicheGradientKey(slug: string | null | undefined): ProductGradient {
   return (slug && NICHE_GRADIENT[slug]) || 'pink'
 }
+
+/**
+ * One-line room status for the switcher, derived from the RECIPE object —
+ * plus an attention chip when the ball is in the VIEWER's court.
+ * (creator reviews; maker submits/revises.)
+ */
+export function roomRecipeStatusLine(
+  recipe: { status: string; currentVersion: number } | null,
+  mode: 'creator' | 'partner',
+): { line: string; attention: string | null } {
+  if (!recipe || recipe.status === 'DRAFT') {
+    return mode === 'creator'
+      ? { line: "awaiting maker's v1", attention: null }
+      : { line: 'submit your v1', attention: 'your move' }
+  }
+  switch (recipe.status) {
+    case 'SUBMITTED':
+    case 'IN_REVIEW':
+      return {
+        line: `recipe v${recipe.currentVersion} in review`,
+        attention: mode === 'creator' ? 'your review' : null,
+      }
+    case 'CHANGES_REQUESTED':
+      return { line: 'changes requested', attention: mode === 'partner' ? 'revise' : null }
+    case 'APPROVED':
+    case 'LOCKED':
+      return { line: 'recipe approved', attention: null }
+    default:
+      return { line: recipe.status.toLowerCase().replaceAll('_', ' '), attention: null }
+  }
+}

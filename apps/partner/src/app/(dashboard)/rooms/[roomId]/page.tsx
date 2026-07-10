@@ -1,7 +1,12 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import { notFound, redirect } from 'next/navigation'
-import { CoCreationStepper } from '@ilaunchify/ui'
+import {
+  CoCreationStepper,
+  nicheGradientKey,
+  roomRecipeStatusLine,
+  type RoomSwitcherEntry,
+} from '@ilaunchify/ui'
 import { RoomClient } from './RoomClient'
 
 export const dynamic = 'force-dynamic'
@@ -43,6 +48,34 @@ export default async function PartnerRoomPage({
   })
   if (!room) notFound()
 
+  // Room switcher — every ACTIVE room this maker org is in.
+  const [activeRooms, nicheRows] = await Promise.all([
+    prisma.coCreationRoom.findMany({
+      where: { status: 'ACTIVE', partnerId: access.partnerId },
+      include: {
+        brief: { select: { title: true, nicheSlug: true, creator: { select: { displayName: true } } } },
+        objects: { where: { kind: 'RECIPE' }, select: { status: true, currentVersion: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+    }),
+    prisma.niche.findMany({ where: { isActive: true }, select: { slug: true, iconEmoji: true } }),
+  ])
+  const nicheIcon = new Map(nicheRows.map((n) => [n.slug, n.iconEmoji ?? '🧪']))
+  const switcherRooms: RoomSwitcherEntry[] = activeRooms.map((r) => {
+    const s = roomRecipeStatusLine(r.objects[0] ?? null, 'partner')
+    return {
+      id: r.id,
+      title: r.brief.title,
+      counterpartName: r.brief.creator.displayName,
+      statusLine: s.line,
+      attention: r.id === room.id ? null : s.attention,
+      icon: nicheIcon.get(r.brief.nicheSlug) ?? '🧪',
+      gradientKey: nicheGradientKey(r.brief.nicheSlug),
+      href: `/rooms/${r.id}`,
+    }
+  })
+
   return (
     <>
       {/* Maker journey stepper — mb-0: the room's white top bar sits flush. */}
@@ -57,6 +90,7 @@ export default async function PartnerRoomPage({
       <div data-full-bleed className="col-span-full -mb-6">
       <RoomClient
       roomId={room.id}
+      rooms={switcherRooms}
       briefTitle={room.brief.title}
       briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}
