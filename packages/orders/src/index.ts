@@ -375,6 +375,9 @@ export type { FeeSource, ResolvedManufacturerFee, PromoSource, GraceUnit, GraceP
 // MM-8 — the go-live seam: badge/promo-aware production fee for checkout.
 export { resolveOrderProductionFeeBps } from './production-fee-resolver'
 export type { ResolvedOrderFee } from './production-fee-resolver'
+// Manufacturer merit-fee WITHHOLD (FEE_MODEL_RECONCILIATION_SPEC_2026-07-09) — the
+// merit fee eats the manufacturer's payout, not the creator's charge. Shadow-safe.
+export { resolveManufacturerMeritFeeBps, meritWithholdCents } from './manufacturer-merit-fee'
 
 // Risk Center M1 — capacity ledger + checkout hook (docs/RISK_CENTER_IMPLEMENTATION_PLAN.md)
 export {

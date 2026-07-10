@@ -34,6 +34,17 @@ export {
 
 export type { PlanFeatureValue, FeeRuleValue } from './lookups'
 
+// Creator platform-fee SSOT (FEE_MODEL_RECONCILIATION_SPEC_2026-07-09) — the creator
+// pays their subscription-tier rate (15/12/8%); every charge path resolves it here.
+export {
+  resolveCreatorFeeBps,
+  resolveCreatorFeeBounds,
+  creatorFeeFromRule,
+  creatorFeeCents,
+  CREATOR_FEE_FALLBACK_BPS,
+} from './creator-fee'
+export type { CreatorFee, CreatorFeeSource, CreatorTier, FeeRuleBounds } from './creator-fee'
+
 export {
   SUBSCRIPTION_DISCOUNT_LADDER,
   getMaxDiscountBp,

@@ -2901,6 +2901,14 @@ model Order {
   shippingCents            Int                     @default(0)
   taxCents                 Int                     @default(0)
   totalCents               Int // subtotal + tax + shipping + platform fee
+  // Platform fee snapshot — creator TIER fee (docs/FEE_MODEL_RECONCILIATION_SPEC_2026-07-09).
+  // What the creator was charged as the platform application fee, FROZEN at checkout
+  // so a historical order reproduces regardless of later FeeRule edits. Additive +
+  // nullable: pre-spec rows stay null. Sourced from the creator's subscription-tier
+  // FeeRule (15/12/8%), NOT the retired flat 5% OrderSettings.productionFeeBps.
+  platformFeeBps           Int? // creator tier rate in bps (1500 / 1200 / 800)
+  platformFeeCents         Int? // resolved application fee at checkout
+  platformFeeSource        String? // 'TIER_RULE' | 'FALLBACK'
   // Routing references — chosen partner services
   manufacturerServiceId    String?
   printProviderServiceId   String?
@@ -3305,6 +3313,13 @@ model OrderDispatch {
   deliveredAt              DateTime?
   // Costs (for transfer reference)
   costCents                Int
+  // Manufacturer merit-fee snapshot (docs/FEE_MODEL_RECONCILIATION_SPEC_2026-07-09).
+  // The merit fee WITHHELD from THIS leg's payout ("eats the manufacturer"), frozen
+  // at routing so the withhold is stable + auditable. 0 until MeritPolicy.enabled;
+  // only the PRODUCT (manufacturer) leg is withheld — printer/packer/FC legs stay 0.
+  // Read at shipDispatch to compute Transfer.meritFeeCents. Additive + nullable.
+  meritFeeBps              Int? // 0 / 450 / 250 / 0 (or promo) at snapshot time
+  meritFeeCents            Int? // = round(costCents * meritFeeBps / 10000)
   // Phase G8 — production bundle. Manifest is generated synchronously at
   // order placement (substrate / packaging / finishes / die-cut / ship-to
   // — no canvas needed). The actual print-ready PDF + die-line SVG land
@@ -3444,6 +3459,11 @@ model Transfer {
   // netted). Default 0 = no netting; preserves the amountCents ledger while the
   // Stripe transfer carries the reduced net. See clawback-netting.ts.
   nettedCents         Int                 @default(0)
+  // Merit fee withheld from this manufacturer payout (docs/FEE_MODEL_RECONCILIATION_SPEC_2026-07-09).
+  // Parallels nettedCents: sent = amountCents − nettedCents − meritFeeCents. 0 for
+  // non-manufacturer transfers and while the merit engine is disabled. Recorded so
+  // the withheld amount is auditable at execution time (transfer-execute.ts).
+  meritFeeCents       Int                 @default(0)
   reason              TransferReason
   stripeTransferId    String?             @unique
   status              TransferStatus      @default(PENDING)
