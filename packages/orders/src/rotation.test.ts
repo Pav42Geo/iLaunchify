@@ -2,9 +2,36 @@ import { describe, expect, it } from 'vitest'
 import {
   selectRotatingProvider,
   validateRotationPolicy,
+  isPublicPrintPoolEligible,
   type RotationCandidate,
   type RotationPolicyInput,
 } from './rotation'
+
+describe('isPublicPrintPoolEligible — main-role rule (public print pool = pure printers only)', () => {
+  it('pure printer, public → eligible', () => {
+    expect(isPublicPrintPoolEligible({ participationMode: 'PUBLIC', serviceTypes: ['LABEL_PRINTING'] })).toBe(true)
+  })
+  it('printer that also warehouses, public → still eligible (warehouse does not disqualify)', () => {
+    expect(
+      isPublicPrintPoolEligible({ participationMode: 'PUBLIC', serviceTypes: ['LABEL_PRINTING', 'WAREHOUSE'] }),
+    ).toBe(true)
+  })
+  it('manufacturer that also prints → excluded from the public pool', () => {
+    expect(
+      isPublicPrintPoolEligible({ participationMode: 'PUBLIC', serviceTypes: ['MANUFACTURING', 'LABEL_PRINTING'] }),
+    ).toBe(false)
+  })
+  it('co-packer that also prints → excluded from the public pool', () => {
+    expect(
+      isPublicPrintPoolEligible({ participationMode: 'PUBLIC', serviceTypes: ['COPACKING', 'LABEL_PRINTING'] }),
+    ).toBe(false)
+  })
+  it('pure printer but INVITED_ONLY → not in the public pool (nomination-only)', () => {
+    expect(isPublicPrintPoolEligible({ participationMode: 'INVITED_ONLY', serviceTypes: ['LABEL_PRINTING'] })).toBe(
+      false,
+    )
+  })
+})
 
 const basePolicy: RotationPolicyInput = {
   enabled: true,

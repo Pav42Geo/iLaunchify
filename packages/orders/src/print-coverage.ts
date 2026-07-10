@@ -202,7 +202,15 @@ export async function loadCapabilityShortlist(
     where: {
       type: 'LABEL_PRINTING',
       status: 'ACTIVE',
-      partner: { status: 'ACTIVE', user: { stripeAccountStatus: 'ACTIVE' } },
+      // MAIN-ROLE RULE (Pavel 2026-07-09): an RFQ broadcast is an invitation into
+      // public print work, so it goes ONLY to partners whose main role is Print
+      // Provider — pure printers. A manufacturer/co-packer that also prints closes
+      // its own cycle and is never broadcast to. (Mirrors isPublicPrintPoolEligible.)
+      partner: {
+        status: 'ACTIVE',
+        user: { stripeAccountStatus: 'ACTIVE' },
+        services: { none: { type: { in: ['MANUFACTURING', 'COPACKING'] } } },
+      },
     },
     select: {
       id: true,

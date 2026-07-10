@@ -284,3 +284,22 @@ export function buildRotationAwardPayload(
     rolls,
   }
 }
+
+/**
+ * MAIN-ROLE RULE (Pavel 2026-07-09): the public print rotation pool is ONLY for
+ * partners whose MAIN role is Print Provider — a *pure* printer.
+ *
+ * A manufacturer or co-packer that also offers a printing service uses it to
+ * close its OWN production cycle (the owner-self label bind, or a private
+ * nomination), and must NEVER rotate for other people's print jobs. So a partner
+ * is public-pool eligible only when (a) it participates publicly and (b) it runs
+ * neither MANUFACTURING nor COPACKING. Pure + dependency-free so routing can gate
+ * on it and tests can assert it without a DB.
+ */
+export function isPublicPrintPoolEligible(input: {
+  participationMode: string
+  serviceTypes: readonly string[]
+}): boolean {
+  if (input.participationMode !== 'PUBLIC') return false
+  return !input.serviceTypes.some((t) => t === 'MANUFACTURING' || t === 'COPACKING')
+}

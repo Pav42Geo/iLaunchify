@@ -19,6 +19,7 @@ import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './d
 import {
   selectRotatingProvider,
   buildRotationAwardPayload,
+  isPublicPrintPoolEligible,
   type RotationCandidate,
   type RotationPolicyInput,
 } from './rotation'
@@ -357,7 +358,9 @@ export async function findRouting(params: {
         dieCutSupport: { some: { dieCutTemplateId } },
       },
       include: {
-        partner: { include: { user: true } },
+        // `services` (type only) lets us enforce the pure-printer pool rule below:
+        // only a partner whose MAIN role is Print Provider rotates publicly.
+        partner: { include: { user: true, services: { select: { type: true } } } },
         // Capacity pause (PARTNER_ROLE_ACCOUNTS §3.3.D) — an active blackout window
         // hard-excludes the printer from the commodity shop below.
         blackoutDates: { where: { startsOn: { lte: now }, endsOn: { gte: now } }, take: 1 },
@@ -394,8 +397,18 @@ export async function findRouting(params: {
       // ENTIRELY — they take work only via direct nomination (pinned earlier via
       // pinnedPrintServiceId), never auto-rotation, and never via the engine's
       // never-strand fallback. Owner-self (above) is unaffected.
-      const rotationEligible = eligiblePrinters.filter(
-        (s) => s.partner.participationMode === 'PUBLIC',
+      //
+      // MAIN-ROLE RULE (Pavel 2026-07-09): the public rotation pool is ONLY for
+      // partners whose MAIN role is Print Provider — a *pure* printer. A
+      // manufacturer or co-packer that also offers printing uses that service to
+      // close its OWN production cycle (owner-self bind above, or private
+      // nomination), and NEVER rotates for other people's jobs. Derived gate:
+      // exclude any printer partner that also runs MANUFACTURING or COPACKING.
+      const rotationEligible = eligiblePrinters.filter((s) =>
+        isPublicPrintPoolEligible({
+          participationMode: s.partner.participationMode,
+          serviceTypes: s.partner.services.map((x) => x.type),
+        }),
       )
       if (rotationEligible.length > 0) {
         const decided = await rotatePrintShop({
