@@ -773,6 +773,8 @@ model CreatorProfile {
   // Favorites — private per-creator saved list (docs/FAVORITES_MANAGEMENT.md)
   favorites                Favorite[]
   favoriteCollections      FavoriteCollection[]
+  // Co-creation P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md §6)
+  productBriefs            ProductBrief[]
   createdAt                DateTime         @default(now())
   updatedAt                DateTime         @updatedAt
 }
@@ -994,6 +996,9 @@ model Partner {
   agreementSignatures     PartnerAgreementSignature[]   @relation("PartnerAgreementSignatures")
   nominations             PartnerNomination[]           @relation("PartnerNominations")
   nominationsMade         PartnerNomination[]           @relation("PartnerNominationsMade")
+  // Co-creation P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md §6)
+  briefInterests                BriefInterest[]               @relation("PartnerBriefInterests")
+  coCreationRooms               CoCreationRoom[]              @relation("PartnerCoCreationRooms")
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 }
@@ -1238,6 +1243,9 @@ model PartnerService {
   coPackerAssignments              ProductTemplatePackaging[]        @relation("CoPackerAssignment")
   // Slice C9 — prepress output preferences (source of truth for export bundles).
   printOutputSpec                  PartnerPrintOutputSpec?
+  // Co-creation P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md §6) — Express-Interest
+  // rows where this service is the matched line.
+  briefInterests                   BriefInterest[]                   @relation("PartnerServiceBriefInterests")
   // ---- Logistics L0 — storage + fulfillment capabilities (typed, drives matching
   // like Phase G3; docs/LOGISTICS_AND_FULFILLMENT.md §3–4). Meaningful on
   // type=WAREHOUSE (FC node) and on producing services that offer storage.
@@ -3853,7 +3861,7 @@ enum LabelingType {
 model DomainSetting {
   domain    String   @id // FOOD | DIETARY_SUPPLEMENT | PET_PRODUCT | OTC | COSMETIC
   enabled   Boolean  @default(true)
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 // Nutrition Facts audience (21 CFR 101.9(j)(5)) — selects the Daily Value table +
@@ -9377,7 +9385,7 @@ model PartnerAgreementSignature {
 model PartnerAccessSetting {
   id          String            @id @default("singleton")
   mode        PartnerAccessMode @default(PRIVATE)
-  updatedAt   DateTime          @updatedAt @default(now())
+  updatedAt   DateTime          @default(now()) @updatedAt
   updatedById String?
 }
 
@@ -9438,6 +9446,278 @@ model PartnerNomination {
 model NominationSetting {
   id          String   @id @default("singleton")
   enabled     Boolean  @default(false)
-  updatedAt   DateTime @updatedAt @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
   updatedById String?
+}
+
+// =============================================================================
+// CO-CREATION MARKETPLACE — P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md §6)
+// Creator-originated products: two-door Brief Builder → manufacturer
+// Opportunity Pool (Express-Interest, staged reveal §9) → Shortlist &
+// Selection → on-platform Collaboration Room (structured build objects +
+// approvals + milestone escrow). Decisions: D-CC1 (no per-milestone platform
+// fee YET — nullable feeBps/feeCents snapshot columns reserved), D-CC5 (uuid
+// ids), D-CC7 (all categories — no schema-level gate).
+// Additive 2026-07-10 — apply via `pnpm db:push` + `pnpm db:generate`.
+// =============================================================================
+
+enum BriefStatus {
+  DRAFT
+  POSTED
+  INTEREST_OPEN
+  SHORTLISTING
+  MATCHED
+  IN_ROOM
+  IN_PRODUCTION
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+// The two doors of the Brief Builder (§2).
+enum BriefOrigin {
+  HAVE_RECIPE
+  HAVE_IDEA
+}
+
+enum FormulationMode {
+  CREATOR_PROVIDED
+  MAKER_FORMULATES
+}
+
+enum InterestStatus {
+  SUBMITTED
+  SHORTLISTED
+  SELECTED
+  PASSED
+  WITHDRAWN
+}
+
+enum RoomStatus {
+  ACTIVE
+  PAUSED
+  CLOSED_WON
+  CLOSED_CANCELLED
+}
+
+enum BuildObjectKind {
+  RECIPE
+  LABEL
+  PACKAGING
+  SAMPLE
+  SPEC_SHEET
+}
+
+enum BuildObjectStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  CHANGES_REQUESTED
+  APPROVED
+  LOCKED
+}
+
+enum MilestoneKind {
+  DISCOVERY
+  SAMPLE
+  TOOLING
+  PRODUCTION
+}
+
+enum MilestoneStatus {
+  PENDING
+  FUNDED_ESCROW
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+/// A creator-originated product brief (§2). The PUBLIC projection (pool +
+/// interest APIs) MUST exclude privateFormula / privateNotes / private
+/// attachments — server-side projection function, staged reveal per §9.
+model ProductBrief {
+  id              String            @id @default(uuid())
+  creatorId       String // -> CreatorProfile
+  origin          BriefOrigin
+  status          BriefStatus       @default(DRAFT)
+  title           String
+  nicheSlug       String // Layer-1 niche slug (8 locked) — must match seed-niches / apps/marketing niches.ts
+  category        ProductCategory // Layer-2 — reuse existing enum; D-CC7: no schema-level category gate
+  claims          String[] // must-have claims
+  targetVolume    Int?
+  budgetLow       Decimal?          @db.Decimal(12, 2)
+  budgetHigh      Decimal?          @db.Decimal(12, 2)
+  timelineWeeks   Int?
+  formulationMode FormulationMode
+  // PRIVATE payload — NOT in the public projection (staged reveal, §9).
+  // Reveals only after selection + mutual NDA, inside the room.
+  privateFormula  Json? // creator-provided ingredients/targets
+  privateNotes    String?
+  // Relations
+  creator         CreatorProfile    @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  attachments     BriefAttachment[]
+  interests       BriefInterest[]
+  room            CoCreationRoom?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([status, nicheSlug])
+  @@index([creatorId])
+}
+
+/// File attached to a brief. isPrivate=true rows are part of the staged-reveal
+/// private payload (§9) — never serve them through pool/interest APIs.
+model BriefAttachment {
+  id        String       @id @default(uuid())
+  briefId   String
+  isPrivate Boolean      @default(true)
+  assetId   String // soft FK -> Asset (matches PartnerAgreementSignature.signedPdfAssetId pattern)
+  kind      String // e.g. 'inspiration' | 'spec' | 'coa' | 'deck'
+  brief     ProductBrief @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@index([briefId])
+}
+
+/// A manufacturer's Express-Interest on a posted brief (§3). One per
+/// (brief, partner). fitScore computed by the matching engine (§8).
+model BriefInterest {
+  id            String          @id @default(uuid())
+  briefId       String
+  partnerId     String // -> Partner (a verified manufacturer)
+  serviceId     String? // -> PartnerService (the matched line)
+  status        InterestStatus  @default(SUBMITTED)
+  fitScore      Int // 0..100 (§8)
+  priceLow      Decimal?        @db.Decimal(12, 2)
+  priceHigh     Decimal?        @db.Decimal(12, 2)
+  moq           Int?
+  leadTimeWeeks Int?
+  claimFit      Json // which of the brief's claims they can meet
+  offersSample  Boolean         @default(false)
+  pitch         String // short "why us" — cap enforced at the API layer
+  // Relations
+  brief         ProductBrief    @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  partner       Partner         @relation("PartnerBriefInterests", fields: [partnerId], references: [id], onDelete: Restrict)
+  service       PartnerService? @relation("PartnerServiceBriefInterests", fields: [serviceId], references: [id], onDelete: Restrict)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([briefId, partnerId])
+  @@index([briefId, status])
+  @@index([partnerId])
+  @@index([serviceId])
+}
+
+/// The on-platform Collaboration Room (§5) — created on selection, 1:1 with
+/// the brief. Restrict (not Cascade) from brief/partner: the room carries the
+/// escrow + decision-log evidence trail and must never vanish implicitly.
+model CoCreationRoom {
+  id          String          @id @default(uuid())
+  briefId     String          @unique
+  partnerId   String // the selected maker
+  status      RoomStatus      @default(ACTIVE)
+  ndaSignedAt DateTime? // mutual NDA + IP terms (§9 — counsel-gated copy)
+  // Relations
+  brief       ProductBrief    @relation(fields: [briefId], references: [id], onDelete: Restrict)
+  partner     Partner         @relation("PartnerCoCreationRooms", fields: [partnerId], references: [id], onDelete: Restrict)
+  objects     BuildObject[]
+  milestones  RoomMilestone[]
+  messages    RoomMessage[]
+  events      RoomEvent[] // decision/activity log — dispute evidence trail
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([partnerId, status])
+}
+
+/// Structured build object in a room (§5/§7): one per kind. On CLOSED_WON the
+/// approved RECIPE payload materializes into Recipe + RecipeIngredient — do
+/// not fork recipe storage.
+model BuildObject {
+  id             String               @id @default(uuid())
+  roomId         String
+  kind           BuildObjectKind
+  status         BuildObjectStatus    @default(DRAFT)
+  currentVersion Int                  @default(1)
+  // Relations
+  room           CoCreationRoom       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  versions       BuildObjectVersion[]
+  comments       BuildObjectComment[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([roomId, kind])
+}
+
+/// Append-only version of a build object's payload.
+model BuildObjectVersion {
+  id                 String      @id @default(uuid())
+  objectId           String
+  version            Int
+  payload            Json // recipe rows / label proof ref / pack spec
+  submittedByPartner Boolean
+  object             BuildObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  createdAt          DateTime    @default(now())
+
+  @@unique([objectId, version])
+}
+
+/// Anchored review comment on a build object (formula line key or label pin).
+model BuildObjectComment {
+  id         String      @id @default(uuid())
+  objectId   String
+  anchor     String? // formula line key OR label pin "x,y"
+  authorRole String // 'CREATOR' | 'PARTNER'
+  body       String
+  resolved   Boolean     @default(false)
+  object     BuildObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+
+  @@index([objectId, resolved])
+}
+
+/// Escrow milestone (§9): Discovery → Sample → Tooling → Production. Funds
+/// held via packages/payments; released on creator approval of the tied
+/// object. D-CC1: NO per-milestone platform fee in V1 — feeBps/feeCents are
+/// nullable snapshot columns reserved so a future fee freezes per-row without
+/// a migration. Leave null until a fee decision lands.
+model RoomMilestone {
+  id         String          @id @default(uuid())
+  roomId     String
+  kind       MilestoneKind
+  status     MilestoneStatus @default(PENDING)
+  amount     Decimal         @db.Decimal(12, 2)
+  feeBps     Int? // D-CC1 snapshot — null in V1 (no per-milestone platform fee yet)
+  feeCents   Int? // D-CC1 snapshot — null in V1
+  stripeRef  String? // via packages/payments (escrow)
+  releasedAt DateTime?
+  room       CoCreationRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([roomId, status])
+}
+
+/// Append-only room chat message.
+model RoomMessage {
+  id         String         @id @default(uuid())
+  roomId     String
+  authorRole String // 'CREATOR' | 'PARTNER'
+  body       String
+  room       CoCreationRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdAt  DateTime       @default(now())
+
+  @@index([roomId, createdAt])
+}
+
+/// Append-only decision/activity log row — the dispute evidence trail (§9).
+model RoomEvent {
+  id        String         @id @default(uuid())
+  roomId    String
+  kind      String // e.g. 'OBJECT_APPROVED' | 'MILESTONE_FUNDED' | 'NDA_SIGNED'
+  data      Json
+  room      CoCreationRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+
+  @@index([roomId, createdAt])
 }

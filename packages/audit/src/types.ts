@@ -154,6 +154,12 @@ export const AUDIT_ENTITY_TYPES = [
   'PartnerAccessSetting', // private↔public access mode toggle (§7)
   'PartnerNomination', // D7 nomination — directed-partner pin + consent (dark until counsel)
   'NominationSetting', // nomination feature gate (enabled=false until counsel blesses D7)
+  // Co-creation marketplace P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md, 2026-07-10)
+  'ProductBrief', // creator-originated brief — two doors, staged reveal
+  'BriefInterest', // manufacturer expression of interest (terms only, never a formula)
+  'CoCreationRoom', // private NDA'd collaboration room
+  'BuildObject', // structured recipe/label/packaging/sample object + FSM
+  'RoomMilestone', // escrow milestone (Discovery→Sample→Tooling→Production)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
@@ -170,6 +176,7 @@ export const AUDIT_ACTIONS = [
   'PARTNER_SUSPEND',
   'PARTNER_REACTIVATE',
   'PARTNER_REQUEST_CHANGES',
+  'PARTNER_DECLARE_CERTS',
   // Verification
   'VERIFICATION_SECTION_VERIFY',
   'VERIFICATION_SECTION_NEEDS_CHANGES',
@@ -308,6 +315,26 @@ export const AUDIT_ACTIONS = [
   'DESIGN_ALTERNATE_PROMOTED',
   'DESIGN_ALTERNATE_DELETED',
   'DESIGN_VERSION_RESTORED_BY_ADMIN',
+  // Co-creation marketplace P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md §5/§12)
+  'BRIEF_CREATED',
+  'BRIEF_POSTED',
+  'BRIEF_STATUS_CHANGED', // fromValue/toValue carry the BriefStatus edge
+  'INTEREST_SUBMITTED',
+  'INTEREST_SHORTLISTED',
+  'INTEREST_SELECTED',
+  'INTEREST_PASSED',
+  'INTEREST_WITHDRAWN',
+  'ROOM_CREATED', // selection → NDA + room + milestone-1 escrow
+  'ROOM_STATUS_CHANGED',
+  'BUILD_OBJECT_SUBMITTED',
+  'BUILD_OBJECT_CHANGES_REQUESTED',
+  'BUILD_OBJECT_APPROVED',
+  'BUILD_OBJECT_LOCKED',
+  'BUILD_OBJECT_REOPENED',
+  'MILESTONE_FUNDED',
+  'MILESTONE_RELEASED',
+  'MILESTONE_REFUNDED',
+  'MILESTONE_DISPUTED',
 ] as const
 export type AuditAction = (typeof AUDIT_ACTIONS)[number] | (string & {})
 

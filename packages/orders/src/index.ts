@@ -39,6 +39,26 @@ export {
   isServiceTransitionAllowed,
   assertServiceTransition,
 } from './service-fsm'
+// Co-creation marketplace FSMs (docs/CO_CREATION_MARKETPLACE_SPEC.md §5)
+export {
+  BRIEF_ALLOWED_TRANSITIONS,
+  isBriefTransitionAllowed,
+  assertBriefTransition,
+  INTEREST_ALLOWED_TRANSITIONS,
+  isInterestTransitionAllowed,
+  assertInterestTransition,
+} from './brief-fsm'
+export {
+  BUILD_OBJECT_ALLOWED_TRANSITIONS,
+  isBuildObjectTransitionAllowed,
+  assertBuildObjectTransition,
+  ROOM_ALLOWED_TRANSITIONS,
+  isRoomTransitionAllowed,
+  assertRoomTransition,
+  MILESTONE_ALLOWED_TRANSITIONS,
+  isMilestoneTransitionAllowed,
+  assertMilestoneTransition,
+} from './room-object-fsm'
 export {
   transitionDispatch,
   assertDispatchTransition,
@@ -331,6 +351,7 @@ export {
 export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'
 export { scoreAndSelectFc, buildScoredAwardPayload } from './fc-scorer'
 export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry, FcRotationPolicy } from './fc-scorer'
+export { isPublicFcPoolEligible, PUBLIC_FC_PARTNER_FILTER } from './fc-pool'
 
 // Manufacturer Merit Engine — pure scoring core (docs/MANUFACTURER_MERIT_ENGINE.md, MM-1/MM-2).
 export {
