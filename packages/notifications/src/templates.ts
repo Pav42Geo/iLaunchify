@@ -20,6 +20,9 @@ export interface TemplateData {
   PARTNER_APPLICATION_RECEIVED: { companyName?: string }
   NOMINATION_SERVICE_MISMATCH: { coPartnerName?: string; serviceLabel?: string }
   BRIEF_INTEREST_RECEIVED: { briefId: string; briefTitle: string; partnerName?: string }
+  BRIEF_INTEREST_SHORTLISTED: { briefTitle: string; creatorName?: string }
+  BRIEF_INTEREST_SELECTED: { briefTitle: string; creatorName?: string; roomId?: string }
+  BRIEF_INTEREST_PASSED: { briefTitle: string }
   PACKAGING_APPROVED: { name: string; category?: string }
   PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
@@ -271,6 +274,30 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `${who} raised a hand on “${d.briefTitle}”`,
         body: `${who} expressed interest in producing your brief — fit, terms, and their pitch are ready to review. Compare everyone interested, then pick your partner.`,
         link: `/briefs/${d.briefId}/interests`,
+      }
+    }
+    case 'BRIEF_INTEREST_SHORTLISTED': {
+      const d = data as TemplateData['BRIEF_INTEREST_SHORTLISTED']
+      return {
+        title: `You're shortlisted for “${d.briefTitle}”`,
+        body: `${d.creatorName ?? 'The creator'} starred your interest — you're in the final comparison. No action needed yet; we'll notify you the moment they decide.`,
+        link: '/opportunities?tab=mine',
+      }
+    }
+    case 'BRIEF_INTEREST_SELECTED': {
+      const d = data as TemplateData['BRIEF_INTEREST_SELECTED']
+      return {
+        title: `You won “${d.briefTitle}”! 🎉`,
+        body: `${d.creatorName ?? 'The creator'} picked you as their manufacturing partner. A private collaboration room is opening — introduce yourself and kick off the Discovery milestone.`,
+        link: d.roomId ? `/rooms/${d.roomId}` : '/opportunities?tab=mine',
+      }
+    }
+    case 'BRIEF_INTEREST_PASSED': {
+      const d = data as TemplateData['BRIEF_INTEREST_PASSED']
+      return {
+        title: `Update on “${d.briefTitle}”`,
+        body: 'The creator chose another partner for this brief. Thanks for raising your hand — your interest and terms made the comparison stronger, and new matched briefs keep coming.',
+        link: '/opportunities',
       }
     }
     case 'NOMINATION_SERVICE_MISMATCH': {
