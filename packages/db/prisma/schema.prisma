@@ -4792,6 +4792,9 @@ enum NotificationEvent {
   NOMINATION_SERVICE_MISMATCH // invited co-partner onboarded without the invited leg → notify inviter (D7)
   // Co-creation marketplace (CO_CREATION_MARKETPLACE_SPEC §12) — appended additively
   BRIEF_INTEREST_RECEIVED // a manufacturer expressed interest on a creator's brief → notify creator
+  BRIEF_INTEREST_SHORTLISTED // creator starred the maker's interest → notify partner
+  BRIEF_INTEREST_SELECTED // creator picked this maker — room opening → notify partner
+  BRIEF_INTEREST_PASSED // creator chose another maker — thanked respectfully → notify partner
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
