@@ -67,7 +67,7 @@ export function ContestRatingButton({
         placeholder="Why is this rating unfair or misattributed? An admin will review it."
         className="w-full rounded-lg border border-ink-200 px-2.5 py-2 text-[12.5px] text-ink-900 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-300"
       />
-      {err && <p className="text-[11.5px] text-red-600">{err}</p>}
+      {err && <p className="text-[11.5px] text-danger-600">{err}</p>}
       <div className="flex items-center gap-2">
         <button type="button" disabled={pending} onClick={submit}
           className="rounded-full bg-ink-900 px-3 py-1 text-[11.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50">

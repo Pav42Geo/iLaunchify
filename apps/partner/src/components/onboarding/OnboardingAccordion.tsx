@@ -18,9 +18,11 @@ import type { PartnerFile, ServiceType } from '@ilaunchify/db'
 import { YourBusinessSection } from './sections/YourBusinessSection'
 import { YourCompanySection, type CompanyState } from './sections/YourCompanySection'
 import { WhatYouCanDoSection, type CapsByType } from './sections/WhatYouCanDoSection'
+import { CertDeclareSection } from './sections/CertDeclareSection'
 import { PaymentContractSection, type PaymentContractState } from './sections/PaymentContractSection'
 import { SectionShell, type SectionStatus } from './SectionShell'
 import { submitForReview } from '../../app/(onboarding)/onboarding/actions'
+import type { CertPickerOption } from '@/components/CertificatePicker'
 
 interface MarketOption {
   id: string
@@ -54,6 +56,9 @@ interface OnboardingAccordionProps {
   initialPayment: PaymentContractState
   markets: MarketOption[]
   regions: RegionOption[]
+  /** Eligibility-filtered cert library + the partner's current declaration. */
+  certOptions: CertPickerOption[]
+  initialDeclaredCertIds: string[]
   /** Optional server-rendered banner (e.g. the invited co-partner notice) shown
    *  at the top of the main column so it aligns with the redesigned two-column shell. */
   banner?: ReactNode
@@ -71,6 +76,7 @@ const SECTION_LABEL: Record<SectionId, string> = {
 const STATUS_GLYPH: Record<SectionStatus, { mark: string; cls: string }> = {
   COMPLETE: { mark: '✓', cls: 'bg-success-100 text-success-800' },
   IN_PROGRESS: { mark: '•', cls: 'bg-warning-100 text-warning-800' },
+  NEEDS_CHANGES: { mark: '!', cls: 'bg-pink-100 text-pink-700' },
   NOT_STARTED: { mark: '', cls: 'bg-ink-100 text-ink-400' },
 }
 
@@ -83,6 +89,8 @@ export function OnboardingAccordion({
   initialPayment,
   markets,
   regions,
+  certOptions,
+  initialDeclaredCertIds,
   banner,
 }: OnboardingAccordionProps) {
   const router = useRouter()
@@ -213,6 +221,7 @@ export function OnboardingAccordion({
             initialCaps={caps}
             onChange={setCaps}
           />
+          <CertDeclareSection options={certOptions} initialSelected={initialDeclaredCertIds} />
         </SectionShell>
 
         <SectionShell

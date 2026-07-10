@@ -23,7 +23,7 @@ const STATUS_PILL: Record<string, string> = {
 const SLA_PILL: Record<string, string> = {
   ON_TIME: 'text-ink-400',
   ACK_OVERDUE: 'text-warning-700',
-  RESOLVE_OVERDUE: 'text-red-600',
+  RESOLVE_OVERDUE: 'text-danger-600',
 }
 const SLA_LABEL: Record<string, string> = { ON_TIME: 'On time', ACK_OVERDUE: 'Ack overdue', RESOLVE_OVERDUE: 'Resolve overdue' }
 

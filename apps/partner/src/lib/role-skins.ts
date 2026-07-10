@@ -111,6 +111,10 @@ export function roleNavFor(
   const producing = has('MANUFACTURING')
   const prepress = has('MANUFACTURING') || has('COPACKING') || has('LABEL_PRINTING')
   const fulfillment = has('WAREHOUSE')
+  // MAIN-ROLE RULE (Pavel 2026-07-09): only a partner whose main role is Print
+  // Provider (a pure printer — no MANUFACTURING/COPACKING) takes public print
+  // work. A producer/co-packer that also prints closes its own cycle instead.
+  const purePrinter = has('LABEL_PRINTING') && !producing && !has('COPACKING')
 
   // P3 §2 role scoping: non-admin members get the OPERATIONAL surfaces of
   // their services; commercial + catalog surfaces (products, packaging,
@@ -125,8 +129,9 @@ export function roleNavFor(
     nav.push(NAV_SERVICES)
     if (producing) nav.push(NAV_PACKAGING)
     if (prepress) nav.push(NAV_PRINT_SPEC)
-    // PS-8c — claimable capability RFQs (printers who can produce uncovered specs).
-    if (has('LABEL_PRINTING')) nav.push(NAV_CAPABILITY)
+    // PS-8c — claimable capability RFQs. Public print work → pure printers only
+    // (a producer/co-packer that also prints closes its own cycle, doesn't claim).
+    if (purePrinter) nav.push(NAV_CAPABILITY)
     if (producing) nav.push(NAV_ACCESSORIES)
     // Co-partners (D7) — a manufacturer directs its own print/pack subcontractors.
     // Gated on the nomination feature being enabled (dark until counsel clears it).

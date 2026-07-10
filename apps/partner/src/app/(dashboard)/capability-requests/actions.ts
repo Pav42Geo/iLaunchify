@@ -37,6 +37,21 @@ export async function claimCapabilityRequest(
     return { ok: false, error: 'Your account has no printing service to claim this with.' }
   }
 
+  // MAIN-ROLE RULE (Pavel 2026-07-09): public print work (rotation pool AND these
+  // capability-gap claims) is ONLY for partners whose main role is Print Provider.
+  // A manufacturer or co-packer that also prints uses printing to close its own
+  // cycle and never takes other people's public print jobs — block the claim.
+  const producerService = await prisma.partnerService.findFirst({
+    where: { partnerId: actor.partnerId, type: { in: ['MANUFACTURING', 'COPACKING'] } },
+    select: { id: true },
+  })
+  if (producerService) {
+    return {
+      ok: false,
+      error: 'Capability requests are for dedicated print providers. Your printing closes your own production cycle.',
+    }
+  }
+
   const request = await prisma.printCapabilityRequest.findUnique({
     where: { id: requestId },
     select: {

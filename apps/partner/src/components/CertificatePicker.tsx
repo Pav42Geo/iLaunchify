@@ -25,6 +25,7 @@ export function CertificatePicker({
   onChange,
   requestHref,
   label = 'Choose certificate',
+  singleSelect = false,
 }: {
   options: CertPickerOption[]
   value: string[]
@@ -32,6 +33,8 @@ export function CertificatePicker({
   /** Authenticated hosts pass the "request a new cert type" route. */
   requestHref?: string
   label?: string
+  /** Claim flows (one PDF per cert) pick exactly one type at a time. */
+  singleSelect?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -48,6 +51,11 @@ export function CertificatePicker({
   const selected = value.map((id) => byId.get(id)).filter((o): o is CertPickerOption => !!o)
 
   function toggle(id: string) {
+    if (singleSelect) {
+      onChange(value.includes(id) ? [] : [id])
+      setOpen(false)
+      return
+    }
     onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id])
   }
 

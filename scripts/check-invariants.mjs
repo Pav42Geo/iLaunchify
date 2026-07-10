@@ -236,12 +236,47 @@ function checkPrismaClientFresh() {
 }
 
 // =============================================================================
+// CHECK 6 — hardcoded platform / creator fee constant outside the SSOT  (WARN)
+// FEE_MODEL_RECONCILIATION_SPEC_2026-07-09: the creator platform fee is the
+// subscription-tier rate (15/12/8%), resolved ONCE via @ilaunchify/plans
+// (resolveCreatorFeeBps). No app/package may re-declare a platform-fee constant —
+// that is exactly the drift the 2026-07-09 audit found (flat 5% charged while
+// 15/12/8 advertised; two PLATFORM_FEE_BPS = 500 copies). Any NEW hardcoded fee
+// constant re-warns. The known Phase-1 offenders are allowlisted so today's
+// baseline is 0 (CI --strict stays green); remove an entry as Phase 1 fixes it.
+// =============================================================================
+const FEE_CONST_RX = /\bPLATFORM_FEE_BPS\s*=\s*\d+|\bfeePct:\s*0\.(?:15|12|08)\b/
+// Reviewed exceptions (2026-07-09) — the exact call sites the fee-reconciliation
+// spec migrates to resolveCreatorFeeBps. Delete the entry when the file is fixed.
+const FEE_CONST_ALLOWLIST = new Set([
+  'apps/creator/src/app/(checkout)/products/[productId]/checkout/cart-actions.ts',   // PLATFORM_FEE_BPS = 500 → resolveCreatorFeeBps (spec §3.4)
+  'apps/creator/src/app/(dashboard)/channels/orders/route-actions.ts',              // PLATFORM_FEE_BPS = 500 → resolveCreatorFeeBps (spec §3.5)
+  'apps/creator/src/app/(dashboard)/subscriptions/page.tsx',                        // feePct display copy → read from plans (spec §3)
+])
+function checkNoHardcodedFee() {
+  const hits = []
+  for (const f of collect(CODE, ['.ts', '.tsx'])) {
+    if (f.includes('packages/plans/')) continue // the SSOT home
+    if (/\.test\.[tj]sx?$/.test(f)) continue
+    if (FEE_CONST_ALLOWLIST.has(f)) continue
+    read(f).split('\n').forEach((line, i) => {
+      const code = line.split('//')[0]
+      if (FEE_CONST_RX.test(code)) {
+        hits.push(`${f}:${i + 1}  hardcoded platform-fee constant — resolve via @ilaunchify/plans resolveCreatorFeeBps`)
+      }
+    })
+  }
+  return { name: 'no hardcoded platform-fee constant (fee SSOT)', level: 'warn', hits }
+}
+
+// =============================================================================
 const CHECKS = [
   checkNoDbText,
   checkCrossAppLink,
   checkMutationHasAudit,
   checkFsmBypass,
   checkPrismaClientFresh,
+  checkNoHardcodedFee,
 ]
 
 let errorCount = 0

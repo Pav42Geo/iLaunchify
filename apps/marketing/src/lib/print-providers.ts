@@ -89,10 +89,18 @@ export async function getPrintProviderCards(templateSlug: string): Promise<Print
         status: 'ACTIVE',
         // INVITED_ONLY (private) operators are invisible in public discovery —
         // reachable only via a direct nomination, never browsed/picked by others.
+        //
+        // MAIN-ROLE RULE (Pavel 2026-07-09): the public print pool is ONLY for
+        // partners whose main role is Print Provider (a pure printer). A
+        // manufacturer or co-packer that also prints uses it to close its OWN
+        // cycle and is NOT a browsable public print provider — exclude any partner
+        // that also runs MANUFACTURING or COPACKING. Mirrors isPublicPrintPoolEligible
+        // in the routing engine.
         partner: {
           status: 'ACTIVE',
           participationMode: 'PUBLIC',
           user: { stripeAccountStatus: 'ACTIVE' },
+          services: { none: { type: { in: ['MANUFACTURING', 'COPACKING'] } } },
         },
         packagingOfferings: { some: { status: 'ACTIVE' } },
       },

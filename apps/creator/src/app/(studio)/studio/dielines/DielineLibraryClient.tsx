@@ -22,10 +22,10 @@ import type { DielineLibraryData, DielineLibItem } from './loader'
 
 const STATUS_STYLE: Record<string, string> = {
   UPLOADED: 'bg-ink-100 text-ink-600',
-  PARSED: 'bg-sky-50 text-sky-700',
-  PARTNER_CONFIRMED: 'bg-amber-50 text-amber-700',
+  PARSED: 'bg-info-50 text-info-700',
+  PARTNER_CONFIRMED: 'bg-warning-50 text-warning-700',
   ADMIN_VERIFIED: 'bg-pink-50 text-pink-700',
-  ACTIVE: 'bg-emerald-50 text-emerald-700',
+  ACTIVE: 'bg-success-50 text-success-700',
   ARCHIVED: 'bg-ink-100 text-ink-400',
 }
 const prettyStatus = (s: string) => s.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
@@ -90,7 +90,7 @@ export function DielineLibraryClient({ data }: { data: DielineLibraryData }) {
             <button
               onClick={onVerify}
               disabled={verifying || verified}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${verified ? 'bg-emerald-50 text-emerald-700' : 'border border-pink-500 bg-pink-500 text-white hover:bg-pink-600'}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${verified ? 'bg-success-50 text-success-700' : 'border border-pink-500 bg-pink-500 text-white hover:bg-pink-600'}`}
             >
               {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : verified ? <Check className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
               {verified ? 'Verified' : 'Mark verified'}
@@ -241,7 +241,7 @@ function LibraryDrawer({
                           >
                             {loadingId === it.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <PencilRuler className="h-3 w-3" />} Curate
                           </button>
-                          {it.hasFrames && <span className="text-[10px] text-emerald-600">✓ framed</span>}
+                          {it.hasFrames && <span className="text-[10px] text-success-600">✓ framed</span>}
                           {it.verified && <span className="inline-flex items-center gap-0.5 text-[10px] text-pink-600"><ShieldCheck className="h-3 w-3" /> verified</span>}
                         </div>
                       </div>

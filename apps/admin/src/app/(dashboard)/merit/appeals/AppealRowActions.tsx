@@ -62,7 +62,7 @@ export function AppealRowActions({ appealId, status }: { appealId: string; statu
         className="rounded-full border border-info-200 bg-info-50 px-2.5 py-1 text-[11px] font-semibold text-info-800 hover:bg-info-100 disabled:opacity-50">
         Re-attribute
       </button>
-      {err && <span className="text-[11px] text-red-600">{err}</span>}
+      {err && <span className="text-[11px] text-danger-600">{err}</span>}
     </div>
   )
 }
