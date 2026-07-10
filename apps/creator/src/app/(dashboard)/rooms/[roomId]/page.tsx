@@ -1,6 +1,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
+import { resolveRoomRecipeLabel } from '@ilaunchify/orders'
 import {
   CoCreationStepper,
   nicheGradientKey,
@@ -70,6 +71,18 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
     }
   })
 
+  // Live domain-aware label bundle from the latest recipe version (facts
+  // panel + mandatory statements; honesty-gated in resolveRoomRecipeLabel).
+  const recipeObj = room.objects.find((o) => o.kind === 'RECIPE')
+  const latestRecipeVersion = recipeObj?.versions[recipeObj.versions.length - 1]
+  const recipeLabel = latestRecipeVersion
+    ? await resolveRoomRecipeLabel({
+        partnerId: room.partnerId,
+        domain: room.brief.category,
+        payload: latestRecipeVersion.payload,
+      })
+    : null
+
   // "Confirm & create product" unlocks when the recipe is approved, the room
   // is still active, and nothing was materialized yet (§6 CLOSED_WON).
   const recipe = room.objects.find((o) => o.kind === 'RECIPE')
@@ -97,6 +110,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
       <RoomClient
         roomId={room.id}
         rooms={switcherRooms}
+        recipeLabel={recipeLabel}
         briefTitle={room.brief.title}
         briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}

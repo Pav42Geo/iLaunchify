@@ -12,6 +12,7 @@ import {
   type RoomShellMilestone,
   type RoomShellObject,
   type RoomSwitcherEntry,
+  type RoomRecipeLabelView,
 } from '@ilaunchify/ui'
 import {
   creatorCloseRoomWon,
@@ -25,6 +26,7 @@ import {
 export function RoomClient(props: {
   roomId: string
   rooms: RoomSwitcherEntry[]
+  recipeLabel: RoomRecipeLabelView | null
   briefTitle: string
   briefNicheSlug: string
   creatorName: string
@@ -48,6 +50,7 @@ export function RoomClient(props: {
       mode="creator"
       fullScreen
       rooms={props.rooms}
+      recipeLabel={props.recipeLabel}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}
       creatorName={props.creatorName}

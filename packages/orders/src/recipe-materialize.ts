@@ -34,6 +34,8 @@ export interface RecipeRowInput {
   name: string
   amount: string
   note: string
+  /** Pinned catalog ingredient (room match flow) — skips name resolution. */
+  ingredientId?: string
 }
 
 /**
@@ -66,6 +68,7 @@ export function normalizeRecipeRows(payload: unknown): RecipeRowInput[] {
       name,
       amount: String(r?.amount ?? '').trim(),
       note: String(r?.note ?? '').trim(),
+      ...(r?.ingredientId ? { ingredientId: String(r.ingredientId) } : {}),
     })
   }
   return [...byName.values()]
@@ -123,6 +126,23 @@ export async function materializeRoomWon(
   const rows = normalizeRecipeRows(latestVersion.payload)
   if (rows.length === 0) return { ok: false, error: 'The approved recipe has no ingredient rows' }
 
+  // Serving block from the room's facts-panel flow (optional, additive).
+  const servingRaw =
+    latestVersion.payload && typeof latestVersion.payload === 'object'
+      ? (latestVersion.payload as { serving?: Record<string, unknown> }).serving
+      : null
+  const posNum = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null)
+  const roomServing = servingRaw
+    ? {
+        sizeG: posNum(servingRaw.sizeG),
+        perContainer: posNum(servingRaw.perContainer),
+        sizeDesc:
+          typeof servingRaw.sizeDesc === 'string' && servingRaw.sizeDesc.trim()
+            ? String(servingRaw.sizeDesc).trim()
+            : null,
+      }
+    : null
+
   // FSM edges asserted up front.
   assertRoomTransition(room.status, 'CLOSED_WON')
   assertBriefTransition(room.brief.status, 'IN_PRODUCTION')
@@ -147,6 +167,20 @@ export async function materializeRoomWon(
   // owned by the maker (they authored the formula).
   const ingredientIds: { ingredientId: string; row: RecipeRowInput }[] = []
   for (const row of rows) {
+    // Room-pinned match wins (set by the in-room resolution flow).
+    if (row.ingredientId) {
+      const pinned = await prisma.ingredient.findFirst({
+        where: {
+          id: row.ingredientId,
+          OR: [{ ownerPartnerId: null }, { ownerPartnerId: room.partnerId }],
+        },
+        select: { id: true },
+      })
+      if (pinned) {
+        ingredientIds.push({ ingredientId: pinned.id, row })
+        continue
+      }
+    }
     const existing = await prisma.ingredient.findFirst({
       where: {
         name: { equals: row.name, mode: 'insensitive' },
@@ -199,11 +233,12 @@ export async function materializeRoomWon(
         recipe: {
           create: {
             status: 'DRAFT',
-            // Placeholder serving fields (required columns): the creator
-            // finishes real serving data in the product editor before any
-            // label/nutrition math runs.
-            servingsPerContainer: 1,
-            servingSizeG: 100,
+            // Real serving data when the room provided it (facts-panel flow);
+            // neutral placeholders otherwise — the creator finishes them in
+            // the product editor before any label/nutrition math runs.
+            servingsPerContainer: roomServing?.perContainer ?? 1,
+            servingSizeG: roomServing?.sizeG ?? 100,
+            ...(roomServing?.sizeDesc ? { servingSizeDesc: roomServing.sizeDesc } : {}),
           },
         },
       },

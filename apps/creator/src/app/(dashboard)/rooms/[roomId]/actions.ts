@@ -27,9 +27,28 @@ const PayloadSchema = z
           name: z.string().trim().max(120),
           amount: z.string().trim().max(40),
           note: z.string().trim().max(120),
+          ingredientId: z.string().max(64).optional(),
         }),
       )
       .max(60)
+      .optional(),
+    // Facts-panel serving block (RECIPE) — drives the live label math.
+    serving: z
+      .object({
+        sizeG: z.number().positive().max(100_000).nullable().optional(),
+        sizeDesc: z.string().trim().max(60).optional(),
+        perContainer: z.number().int().positive().max(10_000).nullable().optional(),
+        netQuantity: z
+          .object({
+            kind: z.enum(['solid', 'liquid', 'count']),
+            grams: z.number().positive().max(1_000_000).optional(),
+            milliliters: z.number().positive().max(1_000_000).optional(),
+            count: z.number().int().positive().max(100_000).optional(),
+            countUnit: z.string().trim().max(30).optional(),
+          })
+          .nullable()
+          .optional(),
+      })
       .optional(),
     fields: z
       .array(z.object({ label: z.string().trim().max(80), value: z.string().trim().max(300) }))

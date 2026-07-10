@@ -76,6 +76,9 @@ export {
   slugifyTitle,
 } from './recipe-materialize'
 export type { MaterializeResult, RecipeRowInput } from './recipe-materialize'
+// Live domain-aware label bundle for the room recipe (facts + mandatory statements)
+export { resolveRoomRecipeLabel, autoMatchRecipePayload } from './room-label'
+export type { RoomRecipeLabel, RoomRecipeRowResolution, RoomRecipeServing } from './room-label'
 export {
   transitionDispatch,
   assertDispatchTransition,

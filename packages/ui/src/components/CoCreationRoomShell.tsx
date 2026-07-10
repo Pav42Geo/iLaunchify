@@ -13,11 +13,14 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import type { PanelData } from '@ilaunchify/types'
 import { Button } from '../primitives/button'
 import { Input } from '../primitives/input'
 import { Textarea } from '../primitives/textarea'
 import { cn } from '../lib/utils'
 import { productGradient, type ProductGradient } from '../tokens/colors'
+import { NutritionFactsRenderer } from '../nutrition/NutritionFactsRenderer'
+import { formatNetQuantity } from '../canvas/netQuantity'
 
 // ---------------------------------------------------------------------------
 // Data shapes (serialized by the server page — no Prisma types cross here)
@@ -95,6 +98,41 @@ export interface CoCreationRoomShellProps {
   /** All of this user's active rooms (incl. the current one) — the title
       becomes a switcher dropdown when there's more than one. */
   rooms?: RoomSwitcherEntry[]
+  /** Live domain-aware label bundle for the latest recipe version. */
+  recipeLabel?: RoomRecipeLabelView | null
+}
+
+/** Serialized label bundle (structural mirror of @ilaunchify/orders' RoomRecipeLabel). */
+export interface RoomRecipeLabelView {
+  domain: string
+  rows: {
+    name: string
+    amount: string
+    note: string
+    grams: number | null
+    ingredientId: string | null
+    declarationName: string | null
+    source: string | null
+  }[]
+  coverage: { resolved: number; total: number; unresolvedNames: string[] }
+  serving: {
+    sizeG: number | null
+    sizeDesc: string | null
+    perContainer: number | null
+    netQuantity: {
+      kind: 'solid' | 'liquid' | 'count'
+      grams?: number
+      milliliters?: number
+      count?: number
+      countUnit?: string
+    } | null
+  }
+  panel: PanelData | null
+  statement: string | null
+  containsLine: string | null
+  containsIncomplete: boolean
+  inciText: string | null
+  petOrder: string[] | null
 }
 
 export interface RoomSwitcherEntry {
@@ -118,6 +156,13 @@ const OBJECT_META: Record<string, { icon: string; name: string }> = {
   PACKAGING: { icon: '📦', name: 'Packaging' },
   SAMPLE: { icon: '🧾', name: 'Sample & spec' },
   SPEC_SHEET: { icon: '📄', name: 'Spec sheet' },
+}
+
+/** Canonical rail order (Pavel 2026-07-10) — independent of DB insertion order. */
+const OBJECT_KIND_ORDER = ['RECIPE', 'PACKAGING', 'LABEL', 'SAMPLE', 'SPEC_SHEET'] as const
+function kindRank(kind: string): number {
+  const i = (OBJECT_KIND_ORDER as readonly string[]).indexOf(kind)
+  return i === -1 ? OBJECT_KIND_ORDER.length : i
 }
 
 /** Demo status pills (.p-*) on token ramps. */
@@ -159,6 +204,8 @@ interface RecipeRow {
   name: string
   amount: string
   note: string
+  /** Pinned catalog match — preserved across resubmits. */
+  ingredientId?: string
 }
 
 function recipeRows(payload: unknown): RecipeRow[] {
@@ -167,9 +214,22 @@ function recipeRows(payload: unknown): RecipeRow[] {
       name: String(r.name ?? ''),
       amount: String(r.amount ?? ''),
       note: String(r.note ?? ''),
+      ...(r.ingredientId ? { ingredientId: String(r.ingredientId) } : {}),
     }))
   }
   return []
+}
+
+/** Ingredient.source → resolution chip label. */
+function sourceChipLabel(source: string | null): string {
+  switch (source) {
+    case 'USDA':
+      return 'USDA'
+    case 'PARTNER_PRIVATE':
+      return "Maker's own"
+    default:
+      return 'Catalog'
+  }
 }
 
 interface FieldRow {
@@ -240,7 +300,11 @@ function AuthorAvatar({ role, className }: { role: string; className?: string })
 // ---------------------------------------------------------------------------
 
 export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
-  const { mode, objects, fullScreen } = props
+  const { mode, fullScreen } = props
+  const objects = React.useMemo(
+    () => [...props.objects].sort((a, b) => kindRank(a.kind) - kindRank(b.kind)),
+    [props.objects],
+  )
   const [selectedId, setSelectedId] = React.useState(objects[0]?.id ?? '')
   const [rightTab, setRightTab] = React.useState<'activity' | 'messages'>('activity')
   const [busy, setBusy] = React.useState(false)
@@ -412,6 +476,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               gradient={gradient}
               briefTitle={props.briefTitle}
               partnerName={props.partnerName}
+              recipeLabel={props.recipeLabel ?? null}
               onSubmitVersion={(payload) => run(() => props.onSubmitVersion(selected.id, payload))}
               onReview={(d, note) => run(() => props.onReview(selected.id, d, note))}
               onReopen={() => run(() => props.onReopen(selected.id))}
@@ -613,6 +678,7 @@ function ObjectDetail({
   gradient,
   briefTitle,
   partnerName,
+  recipeLabel,
   onSubmitVersion,
   onReview,
   onReopen,
@@ -625,6 +691,7 @@ function ObjectDetail({
   gradient: string
   briefTitle: string
   partnerName: string
+  recipeLabel: RoomRecipeLabelView | null
   onSubmitVersion: (payload: Record<string, unknown>) => void
   onReview: (decision: 'APPROVE' | 'REQUEST_CHANGES', note?: string) => void
   onReopen: () => void
@@ -656,6 +723,34 @@ function ObjectDetail({
   const [draftFields, setDraftFields] = React.useState<FieldRow[]>(() =>
     latest && fieldRows(latest.payload).length ? fieldRows(latest.payload) : [{ label: '', value: '' }],
   )
+  // Serving block (RECIPE) — seeds the live facts panel; carried on the payload.
+  const latestServing =
+    latest?.payload && typeof latest.payload === 'object'
+      ? ((latest.payload as { serving?: Record<string, unknown> }).serving ?? null)
+      : null
+  const [draftServing, setDraftServing] = React.useState(() => ({
+    sizeG: typeof latestServing?.sizeG === 'number' ? String(latestServing.sizeG) : '',
+    sizeDesc: typeof latestServing?.sizeDesc === 'string' ? latestServing.sizeDesc : '',
+    perContainer:
+      typeof latestServing?.perContainer === 'number' ? String(latestServing.perContainer) : '',
+    nqKind: ((latestServing?.netQuantity as { kind?: string } | null)?.kind ?? 'liquid') as
+      | 'solid'
+      | 'liquid'
+      | 'count',
+    nqValue: (() => {
+      const nq = latestServing?.netQuantity as
+        | { grams?: number; milliliters?: number; count?: number }
+        | null
+        | undefined
+      const v = nq?.milliliters ?? nq?.grams ?? nq?.count
+      return typeof v === 'number' ? String(v) : ''
+    })(),
+  }))
+
+  // Facts sidebar renders against the LATEST version only (older/compare
+  // views show formula history, not a stale label).
+  const viewingLatest = viewVersion === latest?.version
+  const showFacts = isRecipe && viewingLatest && recipeLabel !== null && recipeLabel.rows.length > 0
 
   const canSubmit =
     (mode === 'partner' || isLabel) && (object.status === 'DRAFT' || object.status === 'CHANGES_REQUESTED')
@@ -667,8 +762,27 @@ function ObjectDetail({
   }
 
   function submitDraft() {
+    const nqValue = Number(draftServing.nqValue)
     const payload = isRecipe
-      ? { rows: draftRows.filter((r) => r.name.trim()) }
+      ? {
+          rows: draftRows.filter((r) => r.name.trim()),
+          serving: {
+            sizeG: draftServing.sizeG ? Number(draftServing.sizeG) : null,
+            ...(draftServing.sizeDesc.trim() ? { sizeDesc: draftServing.sizeDesc.trim() } : {}),
+            perContainer: draftServing.perContainer ? Number(draftServing.perContainer) : null,
+            netQuantity:
+              draftServing.nqValue && Number.isFinite(nqValue) && nqValue > 0
+                ? {
+                    kind: draftServing.nqKind,
+                    ...(draftServing.nqKind === 'liquid'
+                      ? { milliliters: nqValue }
+                      : draftServing.nqKind === 'solid'
+                        ? { grams: nqValue }
+                        : { count: Math.round(nqValue) }),
+                  }
+                : null,
+          },
+        }
       : { fields: draftFields.filter((f) => f.label.trim() || f.value.trim()) }
     onSubmitVersion(payload)
     setEditing(false)
@@ -754,23 +868,37 @@ function ObjectDetail({
               : `Waiting for ${mode === 'creator' ? 'the maker' : 'the creator'} to submit the first version.`}
           </p>
         ) : isRecipe ? (
-          rows.map((r, idx) => {
+          <div className={cn(showFacts && 'gap-s-4 xl:grid xl:grid-cols-[minmax(0,1fr)_270px]')}>
+          <div>
+          {rows.map((r, idx) => {
             const anchor = `row:${idx}`
             const thread = threadFor(anchor)
             const prev = viewVersion === 'compare' ? prevRows[idx] : undefined
             const changed = prev && (prev.amount !== r.amount || prev.name !== r.name || prev.note !== r.note)
+            const res = showFacts ? (recipeLabel?.rows[idx] ?? null) : null
             return (
               <div key={idx}>
                 <div
                   className={cn(
                     'mb-s-2 flex items-center gap-s-3 rounded-lg border bg-white px-s-3 py-s-2',
-                    changed ? 'border-danger-200 bg-danger-50' : 'border-ink-200',
+                    changed ? 'border-danger-200 bg-danger-50' : res && !res.ingredientId ? 'border-warning-200' : 'border-ink-200',
                   )}
                 >
                   <span className="min-w-0 flex-1 truncate text-ui-caption">
                     <b>{r.name}</b>
                     {r.note ? <span className="text-ink-500"> · {r.note}</span> : null}
                   </span>
+                  {res ? (
+                    res.ingredientId ? (
+                      <span className="flex-none rounded-pill bg-success-50 px-s-2 py-0.5 text-ui-label tracking-normal text-success-700">
+                        {sourceChipLabel(res.source)}
+                      </span>
+                    ) : (
+                      <span className="flex-none rounded-pill bg-warning-50 px-s-2 py-0.5 text-ui-label tracking-normal text-warning-700">
+                        unmatched
+                      </span>
+                    )
+                  ) : null}
                   <span className="text-ui-caption font-bold">
                     {r.amount}
                     {changed && prev ? (
@@ -832,7 +960,10 @@ function ObjectDetail({
                 ) : null}
               </div>
             )
-          })
+          })}
+          </div>
+          {showFacts && recipeLabel ? <RecipeFactsSidebar label={recipeLabel} /> : null}
+          </div>
         ) : fields.length ? (
           fields.map((f, idx) => (
             <div key={idx} className="mb-s-2 flex items-center gap-s-3 rounded-lg border border-ink-200 bg-white px-s-3 py-s-2">
@@ -919,6 +1050,63 @@ function ObjectDetail({
                         </Button>
                       </div>
                     ))}
+                {isRecipe ? (
+                  <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
+                    <div className="mb-s-2 text-ui-label uppercase text-ink-500">
+                      Serving &amp; net quantity — drives the live facts label
+                    </div>
+                    <div className="flex flex-wrap gap-s-2">
+                      <Input
+                        aria-label="Serving size in grams"
+                        type="number"
+                        min={0}
+                        value={draftServing.sizeG}
+                        placeholder="Serving g"
+                        onChange={(e) => setDraftServing((s) => ({ ...s, sizeG: e.target.value }))}
+                        className="w-24"
+                      />
+                      <Input
+                        aria-label="Serving size description"
+                        value={draftServing.sizeDesc}
+                        placeholder="e.g. 12 fl oz (355g)"
+                        onChange={(e) => setDraftServing((s) => ({ ...s, sizeDesc: e.target.value }))}
+                        className="flex-1"
+                      />
+                      <Input
+                        aria-label="Servings per container"
+                        type="number"
+                        min={1}
+                        value={draftServing.perContainer}
+                        placeholder="Servings"
+                        onChange={(e) => setDraftServing((s) => ({ ...s, perContainer: e.target.value }))}
+                        className="w-24"
+                      />
+                    </div>
+                    <div className="mt-s-2 flex gap-s-2">
+                      <select
+                        aria-label="Net quantity kind"
+                        value={draftServing.nqKind}
+                        onChange={(e) =>
+                          setDraftServing((s) => ({ ...s, nqKind: e.target.value as 'solid' | 'liquid' | 'count' }))
+                        }
+                        className="rounded-md border border-ink-300 bg-white px-s-2 py-s-1 text-ui-caption"
+                      >
+                        <option value="liquid">Net contents (mL)</option>
+                        <option value="solid">Net weight (g)</option>
+                        <option value="count">Count</option>
+                      </select>
+                      <Input
+                        aria-label="Net quantity value"
+                        type="number"
+                        min={0}
+                        value={draftServing.nqValue}
+                        placeholder="e.g. 355"
+                        onChange={(e) => setDraftServing((s) => ({ ...s, nqValue: e.target.value }))}
+                        className="w-28"
+                      />
+                    </div>
+                  </div>
+                ) : null}
                 <div className="flex gap-s-2">
                   <Button
                     variant="outline"
@@ -1003,6 +1191,97 @@ function ObjectDetail({
         ) : null}
       </div>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Live facts label + MANDATORY statements (Pavel 2026-07-10, mockup-approved).
+// Domain-aware; every value computed by @ilaunchify/nutrition from resolved
+// catalog rows — coverage is always disclosed, allergens gated on 100%.
+// ---------------------------------------------------------------------------
+
+function RecipeFactsSidebar({ label }: { label: RoomRecipeLabelView }) {
+  const partial = label.coverage.resolved < label.coverage.total
+  const netLine = label.serving.netQuantity ? formatNetQuantity(label.serving.netQuantity) : null
+  const isFoodish = label.domain === 'FOOD' || label.domain === 'BEVERAGE_FUNCTIONAL'
+
+  return (
+    <aside aria-label="Live label preview" className="mt-s-4 xl:mt-0">
+      {partial ? (
+        <div className="mb-s-2 rounded-lg bg-warning-50 px-s-3 py-s-2 text-ui-label normal-case tracking-normal text-warning-700">
+          ⚠ Facts from {label.coverage.resolved} of {label.coverage.total} ingredients — match{' '}
+          {label.coverage.unresolvedNames.slice(0, 2).join(', ')}
+          {label.coverage.unresolvedNames.length > 2 ? '…' : ''} to complete.
+        </div>
+      ) : null}
+
+      {isFoodish ? (
+        label.panel ? (
+          <NutritionFactsRenderer data={label.panel} />
+        ) : (
+          <p className="rounded-lg bg-white px-s-3 py-s-3 text-ui-label normal-case tracking-normal text-ink-500">
+            Add serving size &amp; servings per container in the next version to compute the
+            Nutrition Facts panel.
+          </p>
+        )
+      ) : null}
+
+      {/* Mandatory statements block */}
+      <div className="mt-s-2 rounded-lg border border-ink-200 bg-white p-s-3">
+        {label.domain === 'COSMETIC' && label.inciText ? (
+          <>
+            <div className="text-ui-label uppercase text-ink-900">Ingredients (INCI)</div>
+            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-700">{label.inciText}</p>
+          </>
+        ) : label.domain === 'PET' && label.petOrder ? (
+          <>
+            <div className="text-ui-label uppercase text-ink-900">Ingredients</div>
+            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-700">
+              {label.petOrder.join(', ')}
+            </p>
+            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+              Guaranteed analysis values come from the maker's lab results.
+            </p>
+          </>
+        ) : label.statement ? (
+          <>
+            <div className="text-ui-label uppercase text-ink-900">Ingredients</div>
+            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-700">{label.statement}</p>
+          </>
+        ) : (
+          <p className="text-ui-label normal-case tracking-normal text-ink-500">
+            Ingredient statement needs gram amounts on matched rows.
+          </p>
+        )}
+
+        {/* FALCPA Contains — safety-gated on full resolution */}
+        <div className="mt-s-2 border-t border-ink-100 pt-s-2">
+          {label.containsIncomplete ? (
+            <p className="text-ui-label normal-case tracking-normal text-warning-700">
+              ⚠ Allergen statement pending — {label.coverage.unresolvedNames.length} ingredient
+              {label.coverage.unresolvedNames.length === 1 ? '' : 's'} unresolved.
+            </p>
+          ) : label.containsLine ? (
+            <p className="text-ui-label normal-case tracking-normal text-ink-900">
+              <b>Contains:</b> {label.containsLine}
+            </p>
+          ) : (
+            <p className="text-ui-label normal-case tracking-normal text-ink-500">
+              No Big-9 allergens declared by the matched ingredients.
+            </p>
+          )}
+        </div>
+
+        {netLine ? (
+          <div className="mt-s-2 border-t border-ink-100 pt-s-2">
+            <p className="text-ui-label uppercase tracking-normal text-ink-900">{netLine}</p>
+          </div>
+        ) : null}
+      </div>
+      <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-400">
+        Live preview — computed from catalog data, updates with each version.
+      </p>
+    </aside>
   )
 }
 

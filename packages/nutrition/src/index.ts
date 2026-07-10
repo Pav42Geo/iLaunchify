@@ -15,6 +15,7 @@ export * from './domain-labels'
 export * from './marketplace-recompose'
 export * from './contains-allergens'
 export * from './flavor-recipe-rows'
+export * from './mandatory-statements'
 
 // ---------------------------------------------------------------------------
 // Public-vs-preview selection helpers.

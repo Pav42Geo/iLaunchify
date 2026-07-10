@@ -229,17 +229,24 @@ async function main() {
     })
 
     const v1Rows = [
-      { name: 'Spring water', amount: '90g', note: 'Base' },
+      { name: 'Spring water', amount: '312g', note: 'Base' },
       { name: 'Whey protein isolate', amount: '9g', note: 'Grass-fed' },
-      { name: 'Passion-fruit concentrate', amount: '4g', note: 'Natural' },
-      { name: 'Stevia', amount: '0.3g', note: 'Sweetener' },
+      { name: 'Passion-fruit concentrate', amount: '15g', note: 'Natural' },
+      { name: 'Stevia', amount: '1g', note: 'Sweetener' },
     ]
     const v2Rows = [
-      { name: 'Spring water', amount: '88g', note: 'Base' },
+      { name: 'Spring water', amount: '310g', note: 'Base' },
       { name: 'Whey protein isolate', amount: '9g', note: 'Grass-fed' },
-      { name: 'Passion-fruit concentrate', amount: '5g', note: 'Natural' },
-      { name: 'Monk fruit', amount: '0.25g', note: 'Sweetener — swapped from stevia' },
+      { name: 'Passion-fruit concentrate', amount: '17g', note: 'Natural' },
+      { name: 'Monk fruit', amount: '0.9g', note: 'Sweetener — swapped from stevia' },
     ]
+    // Serving block feeds the live facts panel (rows are per-container).
+    const serving = {
+      sizeG: 355,
+      sizeDesc: '12 fl oz (355g)',
+      perContainer: 1,
+      netQuantity: { kind: 'liquid', milliliters: 355 },
+    }
     const twoVersions = opts.recipeStatus === 'IN_REVIEW'
 
     const room = await prisma.coCreationRoom.create({
@@ -258,10 +265,10 @@ async function main() {
               versions: {
                 create: twoVersions
                   ? [
-                      { version: 1, payload: { rows: v1Rows } as Prisma.InputJsonValue, submittedByPartner: true, createdAt: hoursAgo(opts.createdHoursAgo - 6) },
-                      { version: 2, payload: { rows: v2Rows } as Prisma.InputJsonValue, submittedByPartner: true, createdAt: hoursAgo(3) },
+                      { version: 1, payload: { rows: v1Rows, serving } as Prisma.InputJsonValue, submittedByPartner: true, createdAt: hoursAgo(opts.createdHoursAgo - 6) },
+                      { version: 2, payload: { rows: v2Rows, serving } as Prisma.InputJsonValue, submittedByPartner: true, createdAt: hoursAgo(3) },
                     ]
-                  : [{ version: 1, payload: { rows: v2Rows } as Prisma.InputJsonValue, submittedByPartner: true, createdAt: hoursAgo(6) }],
+                  : [{ version: 1, payload: { rows: v2Rows, serving } as Prisma.InputJsonValue, submittedByPartner: true, createdAt: hoursAgo(6) }],
               },
               comments: twoVersions
                 ? {

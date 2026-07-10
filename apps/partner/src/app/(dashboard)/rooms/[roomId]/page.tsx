@@ -1,6 +1,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import { notFound, redirect } from 'next/navigation'
+import { resolveRoomRecipeLabel } from '@ilaunchify/orders'
 import {
   CoCreationStepper,
   nicheGradientKey,
@@ -48,6 +49,17 @@ export default async function PartnerRoomPage({
   })
   if (!room) notFound()
 
+  // Live domain-aware label bundle from the latest recipe version.
+  const recipeObj = room.objects.find((o) => o.kind === 'RECIPE')
+  const latestRecipeVersion = recipeObj?.versions[recipeObj.versions.length - 1]
+  const recipeLabel = latestRecipeVersion
+    ? await resolveRoomRecipeLabel({
+        partnerId: room.partnerId,
+        domain: room.brief.category,
+        payload: latestRecipeVersion.payload,
+      })
+    : null
+
   // Room switcher — every ACTIVE room this maker org is in.
   const [activeRooms, nicheRows] = await Promise.all([
     prisma.coCreationRoom.findMany({
@@ -91,6 +103,7 @@ export default async function PartnerRoomPage({
       <RoomClient
       roomId={room.id}
       rooms={switcherRooms}
+      recipeLabel={recipeLabel}
       briefTitle={room.brief.title}
       briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}

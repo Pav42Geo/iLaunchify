@@ -17,6 +17,7 @@ import { prisma, type Prisma } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { assertBuildObjectTransition } from './room-object-fsm'
+import { autoMatchRecipePayload } from './room-label'
 
 /** The session user shape logAuditAs expects. */
 export type RoomActor = { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER'; adminRole?: string | null }
@@ -55,6 +56,16 @@ export async function submitObjectVersion(
 
   assertBuildObjectTransition(object.status, 'SUBMITTED')
   assertBuildObjectTransition('SUBMITTED', 'IN_REVIEW')
+
+  // RECIPE rows auto-match against the catalog at submit time so the live
+  // facts panel starts resolved (name-exact; the maker can pin misses later).
+  if (object.kind === 'RECIPE') {
+    const room = await prisma.coCreationRoom.findUnique({
+      where: { id: ctx.roomId },
+      select: { partnerId: true },
+    })
+    if (room) payload = await autoMatchRecipePayload(payload, room.partnerId)
+  }
 
   // First submission keeps version 1; each resubmission increments.
   const version = object.status === 'DRAFT' ? 1 : object.currentVersion + 1
