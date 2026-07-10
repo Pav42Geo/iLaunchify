@@ -14,6 +14,7 @@ import {
   Sparkles,
   Settings,
   LifeBuoy,
+  Lightbulb,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -33,6 +34,8 @@ const NAV: Array<{
   { href: '/dashboard',                    label: 'Dashboard',   icon: Home },
   { href: marketingUrl('/marketplace'),    label: 'Marketplace', icon: Store, external: true },
   { href: '/products',                     label: 'Products',    icon: Package },
+  // Co-creation briefs (CO_CREATION_MARKETPLACE_SPEC §10 — Co-Creation Studio)
+  { href: '/briefs',                       label: 'Briefs',      icon: Lightbulb },
   { href: '/orders',                       label: 'Orders',      icon: ShoppingBag },
   { href: '/inventory',                    label: 'Inventory',   icon: Boxes },
   { href: '/channels',                     label: 'Channels',    icon: Plug },

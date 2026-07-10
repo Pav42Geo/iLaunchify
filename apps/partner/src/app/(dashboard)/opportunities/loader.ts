@@ -34,6 +34,8 @@ export interface MyInterestEntry {
   briefId: string
   briefTitle: string
   nicheSlug: string
+  /** Set when SELECTED — the private room to open. */
+  roomId: string | null
   priceLow: string | null
   priceHigh: string | null
   moq: number | null
@@ -158,7 +160,11 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
 
   const myRows = await prisma.briefInterest.findMany({
     where: { partnerId },
-    include: { brief: { select: { id: true, title: true, nicheSlug: true } } },
+    include: {
+      brief: {
+        select: { id: true, title: true, nicheSlug: true, room: { select: { id: true, partnerId: true } } },
+      },
+    },
     orderBy: { createdAt: 'desc' },
     take: 50,
   })
@@ -168,6 +174,9 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
     briefId: i.brief.id,
     briefTitle: i.brief.title,
     nicheSlug: i.brief.nicheSlug,
+    // Only surface the room when it's OURS (SELECTED) — a room created with a
+    // different maker after a pass must never leak here.
+    roomId: i.brief.room && i.brief.room.partnerId === partnerId ? i.brief.room.id : null,
     priceLow: i.priceLow === null ? null : String(i.priceLow),
     priceHigh: i.priceHigh === null ? null : String(i.priceHigh),
     moq: i.moq,

@@ -235,6 +235,15 @@ export default async function OpportunitiesPage({
                     <div className="mt-3 flex justify-end">
                       <WithdrawInterestButton interestId={m.id} />
                     </div>
+                  ) : m.status === 'SELECTED' && m.roomId ? (
+                    <div className="mt-3 flex justify-end">
+                      <Link
+                        href={`/rooms/${m.roomId}`}
+                        className="inline-flex items-center rounded-pill bg-pink-500 px-s-4 py-s-2 text-ui-caption font-bold text-white transition hover:bg-pink-600"
+                      >
+                        Open room →
+                      </Link>
+                    </div>
                   ) : null}
                 </div>
               )
