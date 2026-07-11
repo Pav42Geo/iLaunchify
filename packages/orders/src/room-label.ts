@@ -75,6 +75,38 @@ export interface RoomRecipeLabel {
   petOrder: string[] | null
   /** SUPPLEMENT: "Other ingredients:" line items (rendered below the box). */
   otherIngredients: string[] | null
+  /** PET: maker-entered Guaranteed Analysis block (lab results, never computed). */
+  petGa: {
+    rows: { label: string; value: string }[]
+    adequacyStatement: string | null
+    feedingDirections: string | null
+  } | null
+}
+
+/** PET payload block — GA values come from the maker's LAB RESULTS; the
+ *  platform carries them verbatim (operational-trust: nothing invented). */
+function payloadPetGa(payload: unknown): RoomRecipeLabel['petGa'] {
+  const p =
+    payload && typeof payload === 'object'
+      ? (payload as { pet?: Record<string, unknown> }).pet
+      : null
+  if (!p || typeof p !== 'object') return null
+  const rawRows = Array.isArray(p.gaRows) ? p.gaRows : []
+  const rows = (rawRows as Partial<{ label: string; value: string }>[])
+    .filter((r) => String(r?.label ?? '').trim() && String(r?.value ?? '').trim())
+    .map((r) => ({ label: String(r.label).trim(), value: String(r.value).trim() }))
+  if (rows.length === 0) return null
+  return {
+    rows,
+    adequacyStatement:
+      typeof p.adequacyStatement === 'string' && p.adequacyStatement.trim()
+        ? p.adequacyStatement.trim()
+        : null,
+    feedingDirections:
+      typeof p.feedingDirections === 'string' && p.feedingDirections.trim()
+        ? p.feedingDirections.trim()
+        : null,
+  }
 }
 
 /**
@@ -344,6 +376,7 @@ export async function resolveRoomRecipeLabel(input: {
     inciText,
     petOrder,
     otherIngredients,
+    petGa: input.domain === 'PET' ? payloadPetGa(input.payload) : null,
   }
 }
 

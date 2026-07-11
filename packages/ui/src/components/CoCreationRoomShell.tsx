@@ -158,6 +158,12 @@ export interface RoomRecipeLabelView {
   petOrder: string[] | null
   /** SUPPLEMENT: "Other ingredients:" items rendered below the box. */
   otherIngredients: string[] | null
+  /** PET: maker-entered Guaranteed Analysis (lab results, never computed). */
+  petGa: {
+    rows: { label: string; value: string }[]
+    adequacyStatement: string | null
+    feedingDirections: string | null
+  } | null
 }
 
 export interface RoomSwitcherEntry {
@@ -822,6 +828,35 @@ function ObjectDetail({
     }
   })
 
+  // PET Guaranteed Analysis draft — values are the maker's LAB RESULTS,
+  // carried verbatim (nothing computed). Seeds AAFCO's standard four rows.
+  const isPet = briefDomain === 'PET'
+  const latestPet =
+    latest?.payload && typeof latest.payload === 'object'
+      ? ((latest.payload as { pet?: Record<string, unknown> }).pet ?? null)
+      : null
+  const [draftPet, setDraftPet] = React.useState<{
+    rows: { label: string; value: string }[]
+    adequacyStatement: string
+    feedingDirections: string
+  }>(() => {
+    const raw = Array.isArray(latestPet?.gaRows)
+      ? (latestPet!.gaRows as Partial<{ label: string; value: string }>[])
+      : []
+    return {
+      rows: raw.length
+        ? raw.map((r) => ({ label: String(r.label ?? ''), value: String(r.value ?? '') }))
+        : [
+            { label: 'Crude Protein (min)', value: '' },
+            { label: 'Crude Fat (min)', value: '' },
+            { label: 'Crude Fiber (max)', value: '' },
+            { label: 'Moisture (max)', value: '' },
+          ],
+      adequacyStatement: typeof latestPet?.adequacyStatement === 'string' ? latestPet.adequacyStatement : '',
+      feedingDirections: typeof latestPet?.feedingDirections === 'string' ? latestPet.feedingDirections : '',
+    }
+  })
+
   // Facts sidebar follows the VIEWED version (every version gets its own
   // computed label); compare mode diffs previous → latest side by side.
   const labelFor = React.useCallback(
@@ -872,9 +907,26 @@ function ObjectDetail({
             },
           }
         : {}
+    // PET block — only rows with a value make it onto the label.
+    const gaRows = draftPet.rows.filter((r) => r.label.trim() && r.value.trim())
+    const petBlock =
+      isPet && (gaRows.length > 0 || draftPet.adequacyStatement.trim() || draftPet.feedingDirections.trim())
+        ? {
+            pet: {
+              gaRows,
+              ...(draftPet.adequacyStatement.trim()
+                ? { adequacyStatement: draftPet.adequacyStatement.trim() }
+                : {}),
+              ...(draftPet.feedingDirections.trim()
+                ? { feedingDirections: draftPet.feedingDirections.trim() }
+                : {}),
+            },
+          }
+        : {}
     const payload = isRecipe
       ? {
           ...supplementBlock,
+          ...petBlock,
           rows: draftRows.filter((r) => r.name.trim()),
           serving: {
             sizeG: draftServing.sizeG ? Number(draftServing.sizeG) : null,
@@ -1233,6 +1285,76 @@ function ObjectDetail({
                         </Button>
                       </div>
                     ))}
+                {isRecipe && isPet ? (
+                  <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
+                    <div className="mb-s-2 text-ui-label uppercase text-ink-500">
+                      Guaranteed Analysis — values from your lab results
+                    </div>
+                    {draftPet.rows.map((r, i) => (
+                      <div key={i} className="mb-s-2 flex items-center gap-s-2">
+                        <Input
+                          value={r.label}
+                          placeholder="Guarantee, e.g. Crude Protein (min)"
+                          onChange={(e) =>
+                            setDraftPet((s) => ({
+                              ...s,
+                              rows: s.rows.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                            }))
+                          }
+                          className="flex-[2]"
+                        />
+                        <Input
+                          aria-label="Guaranteed value"
+                          value={r.value}
+                          placeholder="e.g. 26.0%"
+                          onChange={(e) =>
+                            setDraftPet((s) => ({
+                              ...s,
+                              rows: s.rows.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)),
+                            }))
+                          }
+                          className="w-28"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Remove guarantee row"
+                          onClick={() =>
+                            setDraftPet((s) => ({ ...s, rows: s.rows.filter((_, j) => j !== i) }))
+                          }
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setDraftPet((s) => ({ ...s, rows: [...s.rows, { label: '', value: '' }] }))
+                      }
+                    >
+                      ＋ Add guarantee
+                    </Button>
+                    <div className="mt-s-2 flex flex-col gap-s-2">
+                      <Input
+                        aria-label="Nutritional adequacy statement"
+                        value={draftPet.adequacyStatement}
+                        placeholder="Adequacy statement, e.g. Formulated to meet AAFCO … profiles for adult dogs"
+                        onChange={(e) => setDraftPet((s) => ({ ...s, adequacyStatement: e.target.value }))}
+                      />
+                      <Input
+                        aria-label="Feeding directions"
+                        value={draftPet.feedingDirections}
+                        placeholder="Feeding directions, e.g. Feed 1 cup per 10 lbs body weight daily"
+                        onChange={(e) => setDraftPet((s) => ({ ...s, feedingDirections: e.target.value }))}
+                      />
+                    </div>
+                    <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
+                      Rows without a value are left off the label — nothing is invented.
+                    </p>
+                  </div>
+                ) : null}
                 {isRecipe && isSupplement ? (
                   <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
                     <div className="mb-s-2 text-ui-label uppercase text-ink-500">
@@ -1683,19 +1805,24 @@ function RecipeFactsSidebar({
             widthPx={null}
           />
         </div>
-      ) : label.domain === 'PET' && label.petOrder ? (
+      ) : label.domain === 'PET' && (label.petOrder || label.petGa) ? (
         <>
           <div className="rounded-lg border border-ink-200 bg-white p-s-2">
             <GuaranteedAnalysisSvg
-              gaRows={[]}
-              ingredients={label.petOrder.join(', ')}
+              gaRows={label.petGa?.rows ?? []}
+              ingredients={label.petOrder?.join(', ') ?? undefined}
+              adequacyStatement={label.petGa?.adequacyStatement ?? undefined}
+              feedingDirections={label.petGa?.feedingDirections ?? undefined}
               netContents={netLine ?? undefined}
               widthPx={null}
             />
           </div>
-          <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
-            Guaranteed analysis values come from the maker's lab results.
-          </p>
+          {!label.petGa ? (
+            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+              Add guaranteed-analysis values from lab results in the next version to complete
+              the panel.
+            </p>
+          ) : null}
         </>
       ) : label.statement ? (
         // No printable artifact yet (e.g. SUPPLEMENT panel pending) — show the
@@ -1783,6 +1910,18 @@ function diffLabels(prev: RoomRecipeLabelView, next: RoomRecipeLabelView): Label
     if (!nm.has(key)) items.push({ name: p.label, from: p.value, to: null })
   }
 
+  // PET Guaranteed Analysis — diff by row label (values are lab results).
+  const gaPrev = new Map((prev.petGa?.rows ?? []).map((r) => [r.label, r.value]))
+  const gaNext = new Map((next.petGa?.rows ?? []).map((r) => [r.label, r.value]))
+  for (const [k, v] of gaNext) {
+    const p = gaPrev.get(k)
+    if (p === undefined) items.push({ name: k, from: null, to: v })
+    else if (p !== v) items.push({ name: k, from: p, to: v })
+  }
+  for (const [k, v] of gaPrev) {
+    if (!gaNext.has(k)) items.push({ name: k, from: v, to: null })
+  }
+
   // Mandatory statements — long text collapses to "updated".
   const stmtOf = (l: RoomRecipeLabelView) =>
     l.inciText ?? l.petOrder?.join(', ') ?? l.otherIngredients?.join(', ') ?? l.statement
@@ -1865,6 +2004,16 @@ function RecipeFactsCompare({
           <SupplementFactsSvg
             data={latest.panel}
             otherIngredients={latest.otherIngredients ?? []}
+            widthPx={null}
+          />
+        </div>
+      ) : latest.domain === 'PET' && (latest.petOrder || latest.petGa) ? (
+        <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+          <GuaranteedAnalysisSvg
+            gaRows={latest.petGa?.rows ?? []}
+            ingredients={latest.petOrder?.join(', ') ?? undefined}
+            adequacyStatement={latest.petGa?.adequacyStatement ?? undefined}
+            feedingDirections={latest.petGa?.feedingDirections ?? undefined}
             widthPx={null}
           />
         </div>
