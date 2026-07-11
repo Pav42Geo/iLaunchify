@@ -202,6 +202,15 @@ export interface TemplateData {
     role: 'manufacturer' | 'creator'
     href: string
   }
+  // PS-8b / PS-7 §8.4 — pause-side counterpart of COVERAGE_RESTORED. Tells the
+  // manufacturer their template auto-PAUSED and how to bring it back. Reason-branched:
+  // 'coverage_drop' (a printer RFQ is already out) vs 'application_gap' (they need a
+  // co-pack route or a self-applying manufacturer for the label).
+  MANUFACTURER_TEMPLATE_PAUSED: {
+    productName: string
+    reason: 'coverage_drop' | 'application_gap'
+    href: string
+  }
   // MM-7 — fee grace/promo started for a manufacturer.
   MANUFACTURER_FEE_GRANT_STARTED: {
     feePct: string // e.g. "0%"
@@ -907,6 +916,20 @@ export function renderTemplate<E extends NotificationEvent>(
         : {
             title: `${d.productName} is available again`,
             body: 'Printing is sorted — pick up your design and place your order whenever you\'re ready.',
+            link: d.href,
+          }
+    }
+    case 'MANUFACTURER_TEMPLATE_PAUSED': {
+      const d = data as TemplateData['MANUFACTURER_TEMPLATE_PAUSED']
+      return d.reason === 'coverage_drop'
+        ? {
+            title: `${d.productName} was paused — no printer covers it right now`,
+            body: 'We\'ve paused marketplace ordering and already sent a print RFQ to matching printers. As soon as one is verified it re-lists automatically — no action needed unless you want to add or verify a printing partner yourself.',
+            link: d.href,
+          }
+        : {
+            title: `${d.productName} was paused — label application needs a home`,
+            body: 'An order couldn\'t be routed because nothing in the chain can apply this product\'s label. We\'ve paused ordering until that\'s resolved — enable a co-pack route or add a manufacturer that self-applies, and it re-lists automatically.',
             link: d.href,
           }
     }

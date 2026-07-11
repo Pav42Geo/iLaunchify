@@ -89,6 +89,7 @@ export const REQUIRED_PAYLOAD_KEYS: {
   CREATOR_SAMPLE_VERDICT: ['orderId'],
   PARTNER_CAPABILITY_RFQ: ['packagingLabel', 'href'],
   COVERAGE_RESTORED: ['productName', 'href'],
+  MANUFACTURER_TEMPLATE_PAUSED: ['productName', 'href'],
   MANUFACTURER_FEE_GRANT_STARTED: ['feePct', 'endsAt', 'href'],
 }
 

@@ -4801,6 +4801,10 @@ enum NotificationEvent {
   // Coverage restored (§10.1) — a paused-for-coverage template is live again.
   // One event, role-branched copy (manufacturer vs waiting creator).
   COVERAGE_RESTORED // printing is sorted — your product is orderable again
+  // Pause-side counterpart of COVERAGE_RESTORED (PS-8b coverage-drop + PS-7 §8.4
+  // application-gap). Tells the manufacturer their product auto-PAUSED and how to
+  // fix it. One event, reason-branched copy (coverage_drop vs application_gap).
+  MANUFACTURER_TEMPLATE_PAUSED // your product was paused — here's how to bring it back
   // MM-7 — a fee grace / promo grant started for a manufacturer (0% or reduced
   // platform fee for a window). Positive, once-per-grant; never a recurring reminder.
   MANUFACTURER_FEE_GRANT_STARTED

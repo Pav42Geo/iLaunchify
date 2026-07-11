@@ -146,6 +146,8 @@ export const EVENT_TOKEN_PALETTE: {
   PARTNER_CAPABILITY_RFQ: ['packagingLabel', 'decorationLabel', 'runBand', 'region', 'href'],
   // PS-8 follow-up — coverage restored (role-branched)
   COVERAGE_RESTORED: ['productName', 'role', 'href'],
+  // PS-8b / PS-7 §8.4 — template auto-paused (reason-branched)
+  MANUFACTURER_TEMPLATE_PAUSED: ['productName', 'reason', 'href'],
   MANUFACTURER_FEE_GRANT_STARTED: ['feePct', 'endsAt', 'global', 'href'],
 }
 

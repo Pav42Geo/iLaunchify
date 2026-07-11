@@ -59,6 +59,7 @@ import {
   getOrCreateCreatorCustomer,
 } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
+import { dispatchToPartnerService } from '@ilaunchify/notifications'
 import {
   validatePackSelection,
   composePack,
@@ -538,6 +539,16 @@ export async function placeOrderFromCheckoutDraft(
             notified: rfq.notified,
           },
         })
+        // Pause-side counterpart of COVERAGE_RESTORED — tell the manufacturer their
+        // product paused on an unresolved label-application point. Best-effort.
+        const pausedServiceId = product.productTemplate?.manufacturerServiceId
+        if (pausedServiceId) {
+          await dispatchToPartnerService(pausedServiceId, {
+            event: 'MANUFACTURER_TEMPLATE_PAUSED',
+            audience: 'partner',
+            data: { productName: product.name, reason: 'application_gap', href: '/products' },
+          }).catch(() => 0)
+        }
       } catch {
         // Pause/broadcast is best-effort; the order block below is the hard gate.
       }
