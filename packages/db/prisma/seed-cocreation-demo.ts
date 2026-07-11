@@ -101,10 +101,10 @@ async function main() {
   // ── Idempotent cleanup: nuke previous Demo rows for this creator ─────────
   const old = await prisma.productBrief.findMany({
     where: { creatorId: creator.id, title: { startsWith: DEMO_PREFIX } },
-    include: { room: { select: { id: true } } },
+    include: { rooms: { select: { id: true } } },
   })
   for (const b of old) {
-    if (b.room) await prisma.coCreationRoom.delete({ where: { id: b.room.id } }) // children cascade
+    for (const r of b.rooms) await prisma.coCreationRoom.delete({ where: { id: r.id } }) // children cascade
   }
   if (old.length) {
     await prisma.productBrief.deleteMany({ where: { id: { in: old.map((b) => b.id) } } }) // interests/attachments cascade

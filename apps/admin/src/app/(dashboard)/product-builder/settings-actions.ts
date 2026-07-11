@@ -48,6 +48,13 @@ export async function saveCoCreationSettings(
     set('locationWeightPct', 0, 100)
     set('benchmarkMinSample', 1, 50)
     set('maxShortlistSize', 0, 20)
+    set('maxMakerSwitches', 0, 10)
+    if (
+      patch.makerSwitchPolicy !== undefined &&
+      ['UNTIL_FUNDED', 'UNTIL_RECIPE_APPROVED', 'DISABLED'].includes(patch.makerSwitchPolicy)
+    ) {
+      data.makerSwitchPolicy = patch.makerSwitchPolicy
+    }
     set('promotedSlotsPerBrief', 0, 10)
     set('promoTokenPriceCents', 0, 1_000_00)
     if (patch.promotedInterestsEnabled !== undefined)

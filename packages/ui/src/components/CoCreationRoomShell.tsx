@@ -105,6 +105,10 @@ export interface CoCreationRoomShellProps {
   /** Creator-only: recipe approved + room active → offer "confirm & create product". */
   canCloseWon?: boolean
   onCloseWon?: () => Promise<Result>
+  /** Creator-only (D-CC3): switch to a different maker — policy + cutoffs
+      enforced server-side; this only shows the entry point. */
+  canSwitchMaker?: boolean
+  onSwitchMaker?: () => Promise<Result>
   /** Milestone terms negotiation — maker proposes, creator agrees/declines.
       Funding stays gated on payments verification (no fund action here). */
   onProposeMilestoneTerms?: (milestoneId: string, amount: number, note?: string) => Promise<Result>
@@ -352,6 +356,8 @@ function eventText(e: RoomShellEvent): string {
       return 'Room created — private workspace initialized.'
     case 'ROOM_CLOSED_WON':
       return 'Room closed — recipe materialized into a draft product.'
+    case 'ROOM_CLOSED_SWITCHED':
+      return `${by} switched makers — room archived, shortlist re-opened.`
     case 'OBJECT_SUBMITTED':
       return `${by} submitted ${kind}${v} for review.`
     case 'OBJECT_APPROVED':
@@ -481,6 +487,24 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         <span className="rounded-pill border border-ink-200 bg-ink-50 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-700">
           🔒 IP: Creator-owned
         </span>
+        {mode === 'creator' && props.canSwitchMaker && props.onSwitchMaker ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              if (
+                window.confirm(
+                  `Switch makers? This archives the room with ${props.partnerName} (its decision log is kept), notifies them respectfully, and re-opens your shortlist so you can pick again.`,
+                )
+              ) {
+                void run(props.onSwitchMaker!)
+              }
+            }}
+            className="rounded-pill border border-ink-200 bg-white px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-500 transition hover:border-danger-200 hover:text-danger-700"
+          >
+            Switch maker…
+          </button>
+        ) : null}
       </div>
 
       {error ? (

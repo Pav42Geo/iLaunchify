@@ -187,7 +187,12 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
     where: { partnerId },
     include: {
       brief: {
-        select: { id: true, title: true, nicheSlug: true, room: { select: { id: true, partnerId: true } } },
+        select: {
+          id: true,
+          title: true,
+          nicheSlug: true,
+          rooms: { where: { status: 'ACTIVE' }, take: 1, select: { id: true, partnerId: true } },
+        },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -201,7 +206,8 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
     nicheSlug: i.brief.nicheSlug,
     // Only surface the room when it's OURS (SELECTED) — a room created with a
     // different maker after a pass must never leak here.
-    roomId: i.brief.room && i.brief.room.partnerId === partnerId ? i.brief.room.id : null,
+    roomId:
+      i.brief.rooms[0] && i.brief.rooms[0].partnerId === partnerId ? i.brief.rooms[0].id : null,
     priceLow: i.priceLow === null ? null : String(i.priceLow),
     priceHigh: i.priceHigh === null ? null : String(i.priceHigh),
     moq: i.moq,

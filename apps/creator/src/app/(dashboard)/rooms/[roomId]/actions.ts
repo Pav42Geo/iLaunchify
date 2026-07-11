@@ -5,18 +5,22 @@
 // notification mechanics live in @ilaunchify/orders room-service.
 
 import { revalidatePath } from 'next/cache'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import {
   addObjectComment,
   addRoomMessage,
   agreeMilestoneTerms,
+  assertBriefTransition,
+  assertInterestTransition,
   declineMilestoneTerms,
   reopenObject,
   reviewObject,
   submitObjectVersion,
   type RoomCtx,
 } from '@ilaunchify/orders'
+import { logAuditAs } from '@ilaunchify/audit'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { z } from 'zod'
 
 export type RoomActionResult = { ok: boolean; error?: string }
@@ -224,6 +228,123 @@ export async function creatorMessage(roomId: string, body: string): Promise<Room
   const res = await addRoomMessage(ctx, body)
   revalidatePath(`/rooms/${roomId}`)
   return res
+}
+
+/**
+ * D-CC3 — switch makers (policy admin-choosable in Co-Creation Settings).
+ * Archives THIS room as CLOSED_CANCELLED (full decision log preserved as
+ * dispute evidence), old maker's interest → PASSED (respectful notice),
+ * previously-passed interests reopen → SHORTLISTED, brief → SHORTLISTING so
+ * the creator picks again. Cutoffs enforced per policy; switching after money
+ * moves is a support/dispute path, never this action.
+ */
+export async function creatorSwitchMaker(
+  roomId: string,
+): Promise<RoomActionResult & { briefId?: string }> {
+  const user = await requireUser()
+  const room = await prisma.coCreationRoom.findFirst({
+    where: { id: roomId, status: 'ACTIVE', brief: { creator: { userId: user.id } } },
+    include: {
+      brief: { include: { interests: true, creator: { select: { displayName: true } } } },
+      milestones: { select: { status: true } },
+      objects: { where: { kind: 'RECIPE' }, select: { status: true } },
+      partner: { select: { userId: true, companyName: true } },
+    },
+  })
+  if (!room) return guardFail()
+
+  const settings = await getCoCreationSettings()
+  if (settings.makerSwitchPolicy === 'DISABLED') {
+    return { ok: false, error: 'Maker switching is disabled — contact support if the room is stuck' }
+  }
+  // Cutoff 1 (all policies): no money may have moved.
+  if (room.milestones.some((m) => m.status !== 'PENDING')) {
+    return {
+      ok: false,
+      error: 'A milestone has already funded — switching now goes through support, not a one-click swap',
+    }
+  }
+  // Cutoff 2 (stricter policy): approved recipe closes the door too.
+  if (settings.makerSwitchPolicy === 'UNTIL_RECIPE_APPROVED') {
+    const recipe = room.objects[0]
+    if (recipe && (recipe.status === 'APPROVED' || recipe.status === 'LOCKED')) {
+      return { ok: false, error: 'The recipe is approved — switching closed under the current policy' }
+    }
+  }
+  // Per-brief switch cap (prior archived rooms = past switches).
+  if (settings.maxMakerSwitches > 0) {
+    const prior = await prisma.coCreationRoom.count({
+      where: { briefId: room.briefId, status: { not: 'ACTIVE' } },
+    })
+    if (prior >= settings.maxMakerSwitches) {
+      return {
+        ok: false,
+        error: `This brief already switched ${prior} time${prior === 1 ? '' : 's'} — the limit is ${settings.maxMakerSwitches}`,
+      }
+    }
+  }
+
+  // FSM edges asserted up front (brief-fsm carries the D-CC3 edges).
+  try {
+    assertBriefTransition(room.brief.status, 'SHORTLISTING')
+    assertInterestTransition('SELECTED', 'PASSED')
+    assertInterestTransition('PASSED', 'SHORTLISTED')
+  } catch {
+    return { ok: false, error: 'This brief is not in a switchable state' }
+  }
+
+  const selected = room.brief.interests.find(
+    (i) => i.status === 'SELECTED' && i.partnerId === room.partnerId,
+  )
+  const reopenIds = room.brief.interests.filter((i) => i.status === 'PASSED').map((i) => i.id)
+
+  await prisma.$transaction(async (tx) => {
+    await tx.coCreationRoom.update({ where: { id: room.id }, data: { status: 'CLOSED_CANCELLED' } })
+    await tx.roomEvent.create({
+      data: {
+        roomId: room.id,
+        kind: 'ROOM_CLOSED_SWITCHED',
+        data: { by: room.brief.creator.displayName, partnerName: room.partner.companyName },
+      },
+    })
+    if (selected) {
+      await tx.briefInterest.update({ where: { id: selected.id }, data: { status: 'PASSED' } })
+    }
+    if (reopenIds.length) {
+      await tx.briefInterest.updateMany({
+        where: { id: { in: reopenIds } },
+        data: { status: 'SHORTLISTED' },
+      })
+    }
+    await tx.productBrief.update({ where: { id: room.briefId }, data: { status: 'SHORTLISTING' } })
+  })
+
+  await logAuditAs(user, {
+    entityType: 'CoCreationRoom',
+    entityId: room.id,
+    action: 'COCREATION_MAKER_SWITCHED',
+    fromValue: 'ACTIVE',
+    toValue: 'CLOSED_CANCELLED',
+    payload: {
+      briefId: room.briefId,
+      oldPartnerId: room.partnerId,
+      policy: settings.makerSwitchPolicy,
+      reopenedInterests: reopenIds.length,
+    },
+  })
+
+  // Respectful notice to the old maker (same copy family as a pass).
+  await dispatchNotification({
+    userId: room.partner.userId,
+    event: 'BRIEF_INTEREST_PASSED',
+    audience: 'partner',
+    data: { briefTitle: room.brief.title },
+  })
+
+  revalidatePath(`/rooms/${roomId}`)
+  revalidatePath(`/briefs/${room.briefId}/interests`)
+  revalidatePath('/briefs')
+  return { ok: true, briefId: room.briefId }
 }
 
 /**

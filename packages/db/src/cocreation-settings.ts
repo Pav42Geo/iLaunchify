@@ -19,6 +19,9 @@ export interface CoCreationSettingsValues {
   // Creator side
   benchmarkMinSample: number
   maxShortlistSize: number
+  // Maker switching (D-CC3 — admin-choosable policy)
+  makerSwitchPolicy: 'UNTIL_FUNDED' | 'UNTIL_RECIPE_APPROVED' | 'DISABLED'
+  maxMakerSwitches: number
   // Promoted interests (labeled slots — never touch ranking)
   promotedInterestsEnabled: boolean
   promotedSlotsPerBrief: number
@@ -36,6 +39,8 @@ export const COCREATION_SETTINGS_DEFAULTS: CoCreationSettingsValues = {
   locationWeightPct: 15,
   benchmarkMinSample: 3,
   maxShortlistSize: 5,
+  makerSwitchPolicy: 'UNTIL_FUNDED',
+  maxMakerSwitches: 1,
   promotedInterestsEnabled: false,
   promotedSlotsPerBrief: 2,
   promoTokenPriceCents: 2500,
@@ -63,6 +68,8 @@ export async function getCoCreationSettings(): Promise<CoCreationSettingsValues>
           locationWeightPct: true,
           benchmarkMinSample: true,
           maxShortlistSize: true,
+          makerSwitchPolicy: true,
+          maxMakerSwitches: true,
           promotedInterestsEnabled: true,
           promotedSlotsPerBrief: true,
           promoTokenPriceCents: true,

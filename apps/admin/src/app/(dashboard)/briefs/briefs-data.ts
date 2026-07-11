@@ -199,7 +199,7 @@ export async function loadBriefsData(
       include: {
         creator: { select: { id: true, displayName: true } },
         categoryRef: { select: { name: true } },
-        room: { select: { id: true } },
+        rooms: { orderBy: { createdAt: 'desc' as const }, take: 1, select: { id: true } },
         _count: { select: { interests: true } },
       },
       orderBy: orderBy as never,
@@ -231,7 +231,7 @@ export async function loadBriefsData(
     creatorId: b.creator.id,
     creatorName: b.creator.displayName ?? '—',
     interestsCount: b._count.interests,
-    roomId: b.room?.id ?? null,
+    roomId: b.rooms[0]?.id ?? null,
     createdAt: b.createdAt,
   }))
 

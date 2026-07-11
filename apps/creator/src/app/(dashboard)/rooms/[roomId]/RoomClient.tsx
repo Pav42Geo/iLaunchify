@@ -23,6 +23,7 @@ import {
   creatorReopen,
   creatorReview,
   creatorSubmitVersion,
+  creatorSwitchMaker,
 } from './actions'
 
 export function RoomClient(props: {
@@ -36,6 +37,7 @@ export function RoomClient(props: {
   partnerName: string
   ndaSigned: boolean
   canCloseWon: boolean
+  canSwitchMaker: boolean
   objects: RoomShellObject[]
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
@@ -82,6 +84,14 @@ export function RoomClient(props: {
         refresh(creatorDeclineMilestoneTerms(props.roomId, milestoneId))
       }
       canCloseWon={props.canCloseWon}
+      canSwitchMaker={props.canSwitchMaker}
+      onSwitchMaker={async () => {
+        const res = await creatorSwitchMaker(props.roomId)
+        if (res.ok && res.briefId) {
+          router.push(`/briefs/${res.briefId}/interests`)
+        }
+        return res
+      }}
       onCloseWon={async () => {
         const res = await creatorCloseRoomWon(props.roomId)
         if (res.ok && res.productId) {

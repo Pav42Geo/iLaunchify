@@ -9592,7 +9592,9 @@ model ProductBrief {
   categoryRef     Category?         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   attachments     BriefAttachment[]
   interests       BriefInterest[]
-  room            CoCreationRoom?
+  // 1:N since 2026-07-10 (D-CC3): at most one ACTIVE room; archived rooms keep
+  // their decision logs. Pick with rooms(where: {status: ACTIVE}) or latest.
+  rooms           CoCreationRoom[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -9649,7 +9651,10 @@ model BriefInterest {
 /// escrow + decision-log evidence trail and must never vanish implicitly.
 model CoCreationRoom {
   id          String          @id @default(uuid())
-  briefId     String          @unique
+  // 1:N since 2026-07-10 (D-CC3 maker switching): a brief can have multiple
+  // rooms over its life — at most ONE ACTIVE; older ones archive as
+  // CLOSED_CANCELLED with their full decision log (dispute evidence).
+  briefId     String
   partnerId   String // the selected maker
   status      RoomStatus      @default(ACTIVE)
   ndaSignedAt DateTime? // mutual NDA + IP terms (§9 — counsel-gated copy)
@@ -9668,6 +9673,7 @@ model CoCreationRoom {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
+  @@index([briefId, status])
   @@index([partnerId, status])
 }
 
@@ -9766,6 +9772,13 @@ model CoCreationSettings {
   // ---- Creator side ----
   benchmarkMinSample Int @default(3) // min comparable products before the benchmark fills numbers
   maxShortlistSize   Int @default(5) // max concurrently shortlisted interests per brief
+
+  // ---- Maker switching (D-CC3, admin-choosable policy 2026-07-10) ----
+  // UNTIL_FUNDED (default): switch allowed while no milestone has funded.
+  // UNTIL_RECIPE_APPROVED: also closes once the creator approves the recipe.
+  // DISABLED: selection is final until a dispute flow exists.
+  makerSwitchPolicy String @default("UNTIL_FUNDED")
+  maxMakerSwitches  Int    @default(1) // per brief; 0 = unlimited
 
   // ---- Promoted interests (StaffMeUp-inverted: labeled slots, rank untouched) ----
   promotedInterestsEnabled    Boolean @default(false) // master switch; token checkout gated on payments go-live

@@ -76,7 +76,7 @@ export default async function BriefDetailPage({ params }: PageProps) {
     include: {
       creator: { select: { id: true, displayName: true } },
       categoryRef: { select: { name: true } },
-      room: { select: { id: true, status: true } },
+      rooms: { orderBy: { createdAt: 'desc' }, take: 1, select: { id: true, status: true } },
       attachments: { orderBy: { createdAt: 'asc' } },
       interests: {
         orderBy: [{ fitScore: 'desc' }, { createdAt: 'asc' }],

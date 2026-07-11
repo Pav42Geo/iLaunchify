@@ -1,4 +1,4 @@
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
 import { resolveRoomRecipeLabel } from '@ilaunchify/orders'
@@ -100,6 +100,16 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
     (recipe.status === 'APPROVED' || recipe.status === 'LOCKED') &&
     recipe.versions.length > 0
 
+  // D-CC3 — "Switch maker" entry point. Server action re-checks everything;
+  // this only decides whether to show the control at all.
+  const ccSettings = await getCoCreationSettings()
+  const recipeApproved = !!recipe && (recipe.status === 'APPROVED' || recipe.status === 'LOCKED')
+  const canSwitchMaker =
+    room.status === 'ACTIVE' &&
+    ccSettings.makerSwitchPolicy !== 'DISABLED' &&
+    !room.milestones.some((m) => m.status !== 'PENDING') &&
+    !(ccSettings.makerSwitchPolicy === 'UNTIL_RECIPE_APPROVED' && recipeApproved)
+
   return (
     <>
       {/* DIRECT child of <main>: data-full-bleed spans the layout grid. */}
@@ -125,6 +135,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
       partnerName={room.partner.companyName}
       ndaSigned={!!room.ndaSignedAt}
       canCloseWon={canCloseWon}
+      canSwitchMaker={canSwitchMaker}
       objects={room.objects.map((o) => ({
         id: o.id,
         kind: o.kind,

@@ -41,7 +41,9 @@ export default async function BriefsIndexPage() {
   const briefs = await prisma.productBrief.findMany({
     where: { creatorId: profile.id },
     include: {
-      room: { select: { id: true } },
+      // Latest room = current context (ACTIVE, or CLOSED_WON post-
+      // materialization). 1:N since D-CC3 maker switching.
+      rooms: { orderBy: { createdAt: 'desc' }, take: 1, select: { id: true } },
       categoryRef: { select: { name: true } },
       _count: { select: { interests: { where: { status: { in: ['SUBMITTED', 'SHORTLISTED', 'SELECTED'] } } } } },
     },
@@ -98,7 +100,7 @@ export default async function BriefsIndexPage() {
             return (
               <Link
                 key={b.id}
-                href={briefHref({ id: b.id, status: b.status, roomId: b.room?.id ?? null })}
+                href={briefHref({ id: b.id, status: b.status, roomId: b.rooms[0]?.id ?? null })}
                 className="flex items-center gap-s-3 rounded-xl border border-ink-200 bg-white p-s-4 shadow-sm transition hover:border-pink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
               >
                 <span

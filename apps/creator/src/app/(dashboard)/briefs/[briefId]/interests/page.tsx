@@ -25,7 +25,7 @@ export default async function BriefInterestsPage({
   const brief = await prisma.productBrief.findFirst({
     where: { id: briefId, creator: { userId: user.id } },
     include: {
-      room: { select: { id: true } },
+      rooms: { where: { status: 'ACTIVE' }, take: 1, select: { id: true } },
       interests: {
         where: { status: { in: ['SUBMITTED', 'SHORTLISTED', 'SELECTED'] } },
         include: {
@@ -40,9 +40,9 @@ export default async function BriefInterestsPage({
   })
   if (!brief) notFound()
 
-  // Already matched → go straight to the room.
-  if (brief.status === 'IN_ROOM' && brief.room) {
-    redirect(`/rooms/${brief.room.id}`)
+  // Already matched → go straight to the ACTIVE room.
+  if (brief.status === 'IN_ROOM' && brief.rooms[0]) {
+    redirect(`/rooms/${brief.rooms[0].id}`)
   }
 
   const niche = await prisma.niche.findFirst({
