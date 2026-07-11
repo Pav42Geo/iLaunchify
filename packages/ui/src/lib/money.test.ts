@@ -13,6 +13,11 @@ describe('formatCents', () => {
     expect(formatCents(1)).toBe('$0.01')
     expect(formatCents(0)).toBe('$0.00')
   })
+  it('groups thousands (en-US, pinned locale)', () => {
+    expect(formatCents(123456)).toBe('$1,234.56')
+    expect(formatCents(100000000)).toBe('$1,000,000.00')
+    expect(formatCents(-123456)).toBe('$-1,234.56')
+  })
 })
 
 describe('formatCentsOrDash', () => {
