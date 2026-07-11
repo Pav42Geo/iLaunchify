@@ -30,7 +30,7 @@ Cross-app links require `marketingUrl()` / `creatorUrl()` / `partnerUrl()` helpe
 - `packages/notifications` — dispatcher + Resend
 - `packages/orders` — order routing + manifest generation + FC selection (fc-selector V1 nearest, fc-scorer V1.5 weighted + rotation band)
 - `packages/shipping` — logistics substrate (built 2026-07-02): shipment classifier, carrier eligibility + rate shop, EasyPost gateway (DI'd http — tests network-free), dispatch doc gates, receiving checklists, cold-pack + storage-accrual math, channel-inbound gates. Prisma-free by design; pure suites run in run-vitest-suites.mjs.
-- `packages/compliance` — FDA rule packs + label validator (Python service)
+- `services/compliance` — FDA rule packs + label validator (Python/FastAPI service: nutrition calculation, compliance rule evaluation, label PDF rendering) · `packages/compliance-client` — typed TS client to it
 
 ## Database
 
