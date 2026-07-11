@@ -40,7 +40,8 @@
     "seed:activation-nudge-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-activation-nudge-demo.ts",
     "seed:partner-agreement": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-partner-agreement.ts",
     "seed:certificate-types": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/run-certificate-types.ts",
-    "seed:cocreation-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-cocreation-demo.ts"
+    "seed:cocreation-demo": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-cocreation-demo.ts",
+    "seed:legal": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-legal.ts"
   },
   "prisma": {
     "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts"

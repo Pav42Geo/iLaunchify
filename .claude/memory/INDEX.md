@@ -92,3 +92,5 @@ cp "$LATEST"/*.md .claude/memory/
 
 - `ilaunchify-logistics-built.md` — logistics LOCKED+BUILT L0–L4a (2026-07-02): 4 ship-to types, packages/shipping, FC scorer, gates pattern, invariants, external blockers. Read before ANY logistics-shaped work.
 - Print selection + rotation (2026-07-06, docs are the memory): `PRINT_PROVIDER_SELECTION.md` PS-1→PS-3d BUILT — pinned picks never silently rerouted · labels never route to an FC by destination · label-hop freight bills the creator's shipping line (one line + breakdown). Rotation: `SMART_ROTATION_ENGINE.md` (§3 checklist; RotationPolicy `enabled=false` until admin flips; SR-1 engine BUILT). §10 Coverage/RFQ specced, unbuilt. Feedback/ratings: `FEEDBACK_AND_RATINGS_CHECKLIST.md` Stages 1–7 BUILT.
+
+- `ilaunchify-legal-document-management.md` — Admin→Settings→Legal CMS. L0 substrate BUILT 2026-07-11 (schema LegalDocument/Version/File/Acceptance + packages/legal + seed:legal), gates on db:push+generate. Generalizes PartnerAgreement e-sign pattern; forced re-accept on MATERIAL change; §9 defaults locked. Spec: docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md

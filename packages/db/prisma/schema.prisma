@@ -9892,3 +9892,142 @@ model RoomEvent {
 
   @@index([roomId, createdAt])
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEGAL DOCUMENT MANAGEMENT (Admin → Settings → Legal)
+// Spec: docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md (Phase L0 substrate).
+// Generalizes the proven PartnerAgreement + PartnerAgreementSignature pattern
+// into a polymorphic legal CMS: one document identity → immutable versions
+// (editor body + uploaded files) → a per-user consent ledger with ESIGN/UETA
+// evidence (see packages/legal). Additive migration; CockroachDB-safe
+// (bare String, uuid ids, no @db.Text). Every mutating action writes AuditLog.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// One row per legal document TYPE (Terms, Privacy, Accessibility, …). The
+/// stable identity; the live text lives in the pointed-to current version.
+model LegalDocument {
+  id                    String                 @id @default(uuid())
+  slug                  String                 @unique // "terms" | "privacy" | "creator-agreement" | "accessibility" …
+  title                 String
+  kind                  LegalDocKind // POLICY | AGREEMENT | NOTICE
+  audience              LegalAudience // PUBLIC | CREATOR | PARTNER | ALL
+  /// false = notify-only doc (e.g. Cookie Policy); true = raises the re-acceptance gate.
+  requiresAcceptance    Boolean                @default(false)
+  /// null = event-driven re-consent only; N = re-prompt every N days (cookie/privacy cadence).
+  reconsentIntervalDays Int?
+  isActive              Boolean                @default(true)
+  /// Scalar pointer to the live PUBLISHED version (no relation, to avoid a circular
+  /// self-reference with versions[]). Resolved by getPublishedLegalDocument().
+  currentVersionId      String?                @unique
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  versions              LegalDocumentVersion[]
+  acceptances           LegalAcceptance[]
+
+  @@index([audience, isActive])
+}
+
+/// Immutable, versioned rendering of a document — the thing users see + accept.
+/// Never edited in place once PUBLISHED; a change creates a new version.
+model LegalDocumentVersion {
+  id                String              @id @default(uuid())
+  documentId        String
+  document          LegalDocument       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version           String // "v1.0" | "2026-07-11" — unique per document
+  status            LegalVersionStatus  @default(DRAFT) // DRAFT | PUBLISHED | ARCHIVED
+  changeType        LegalChangeType? // MATERIAL | MINOR — set at publish; MATERIAL fires gate + email
+  bodyHtml          String // canonical in-app editor content (rendered live on public pages)
+  bodyText          String // plain-text fallback / search / hashing input
+  contentSha256     String // tamper-evident hash of the canonical body
+  summaryOfChanges  String? // changelog highlight shown to users + in the notice email
+  announceAt        DateTime? // when notice emails fire (future-datable, e.g. 30d ahead)
+  effectiveAt       DateTime? // when the version + gate become live
+  publishedAt       DateTime?
+  publishedByUserId String?
+  createdAt         DateTime            @default(now())
+
+  files             LegalDocumentFile[]
+  acceptances       LegalAcceptance[]
+
+  @@unique([documentId, version])
+  @@index([documentId, status])
+}
+
+/// An uploaded authoritative file for a version (the counsel-delivered artifact).
+model LegalDocumentFile {
+  id               String               @id @default(uuid())
+  versionId        String
+  version          LegalDocumentVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  format           LegalFileFormat // PDF | DOCX | HTML | MD
+  assetId          String // existing asset/storage reference
+  fileName         String
+  sha256           String
+  sizeBytes        Int
+  isPrimary        Boolean              @default(false) // the authoritative download for this version
+  uploadedByUserId String?
+  createdAt        DateTime             @default(now())
+
+  @@index([versionId])
+}
+
+/// Consent ledger — one row per (user, version accepted). Carries the ESIGN/UETA
+/// evidence shape (built by packages/legal). @@unique prevents double-recording.
+model LegalAcceptance {
+  id                 String               @id @default(uuid())
+  documentId         String
+  document           LegalDocument        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentVersionId  String
+  documentVersion    LegalDocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  userId             String // creator or partner user id
+  actorType          LegalActorType // CREATOR | PARTNER | ADMIN
+  method             String // "clickwrap" | "typed-signature"
+  signerName         String? // typed legal name for AGREEMENTs
+  ipAddress          String?
+  userAgent          String?
+  consentTextVersion String // version of the "I agree" wording shown
+  contentSha256      String // snapshot of the version body hash at acceptance time
+  recordSha256       String // hash of the canonical acceptance record — tamper-evidence
+  acceptedAt         DateTime             @default(now())
+
+  @@unique([userId, documentVersionId])
+  @@index([documentId, userId])
+  @@index([userId, acceptedAt])
+}
+
+enum LegalDocKind {
+  POLICY
+  AGREEMENT
+  NOTICE
+}
+
+enum LegalAudience {
+  PUBLIC
+  CREATOR
+  PARTNER
+  ALL
+}
+
+enum LegalVersionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LegalChangeType {
+  MATERIAL
+  MINOR
+}
+
+enum LegalFileFormat {
+  PDF
+  DOCX
+  HTML
+  MD
+}
+
+enum LegalActorType {
+  CREATOR
+  PARTNER
+  ADMIN
+}
