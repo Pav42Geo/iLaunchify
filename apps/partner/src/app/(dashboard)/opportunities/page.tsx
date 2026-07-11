@@ -241,7 +241,8 @@ export default async function OpportunitiesPage({
                       {pill.label}
                     </span>
                   </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+                  {/* Demo .terms: compact left-hugging chips, not a full-width grid */}
+                  <dl className="mt-3 flex flex-wrap gap-2">
                     <Term label="Your price" value={m.priceLow ? `$${m.priceLow}${m.priceHigh ? `–${m.priceHigh}` : ''}` : '—'} />
                     <Term label="Your MOQ" value={m.moq?.toLocaleString() ?? '—'} />
                     <Term label="Your lead" value={m.leadTimeWeeks ? `${m.leadTimeWeeks} wk` : '—'} />
@@ -318,7 +319,7 @@ export default async function OpportunitiesPage({
                     </div>
                   </div>
                 </div>
-                <dl className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+                <dl className="mt-3 flex flex-wrap gap-2">
                   <Term label="Volume" value={e.brief.targetVolume?.toLocaleString() ?? '—'} />
                   <Term
                     label="Budget/unit"
@@ -390,9 +391,11 @@ export default async function OpportunitiesPage({
   )
 }
 
+/** Demo .term chip — Pavel-tuned 2026-07-10: left-hugging flex row, slightly
+ *  wider than the prototype's 84px minimum, label + value both centered. */
 function Term({ label, value, small }: { label: string; value: string; small?: boolean }) {
   return (
-    <div className="rounded-lg border border-ink-100 bg-ink-50 px-s-3 py-s-1">
+    <div className="min-w-[120px] rounded-lg border border-ink-100 bg-ink-50 px-s-3 py-s-1 text-center">
       <dt className="text-ui-label uppercase text-ink-500">{label}</dt>
       <dd className={`text-ui-value ${small ? 'text-ui-caption' : ''}`}>{value}</dd>
     </div>
