@@ -65,7 +65,7 @@ Hand-rolled string unions replaced with the generated Prisma enum (or canonical 
 - **React 18 vs documented 19** — all four apps pin `react ^18.3.1` while CLAUDE.md/memory say "React 19"; Next 15.0.2 defaults to 19. **Decide which is true and align** (pin 19 + test, or update the docs to say 18). Also `packages/ui/package.json` lists `next`/`react` twice — tidy.
 - **Env-var name fragmentation** — the same host is read via 2–3 names (`NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_CREATOR_URL` / `CREATOR_LOGIN_HOST`). Pick one canonical name per app URL; alias the rest. Convention change + a small codemod.
 - **`ChannelOrderLine` missing `createdAt`/`updatedAt`** (`schema.prisma` ~5390) while its siblings carry both — a one-line additive migration (quick Code task).
-- **Debug noise** — ~40 `console.error` in `apps/partner/.../products/new/build-actions.ts`; route through `packages/logger`. **Dead code:** the deprecated `rules-of-hooks`-disabled `SubscribeChoiceRail` component in the checkout tree — delete (Code's checkout zone).
+- **Debug noise** — ~40 `console.error` in `apps/partner/.../products/new/build-actions.ts`; route through `packages/logger`. **Dead code:** NOT the `SubscribeChoiceRail` export — that's LIVE (rendered in `CheckoutWizard.tsx:621`; its marketing sibling `SubscribeChoice` is live too). The genuinely-dead symbol is the private `function _BuilderLockBadgeWithHoverCard_DEPRECATED()` at `SubscribeChoiceRail.tsx:630` — unrendered, zero references, source of the `rules-of-hooks` disable. Deleting just that function (Code's checkout zone) is safe; harmless if left. (Corrected 2026-07-11 — the original "delete SubscribeChoiceRail" wording was imprecise.)
 
 ---
 
