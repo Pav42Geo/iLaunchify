@@ -30,6 +30,11 @@ const GATES: { key: string; enabled: boolean; note: string }[] = [
   { key: 'channel_inbound:TIKTOK_FBT', enabled: false, note: 'Phase L4 (FBT mandate since 2026-02-25)' },
   { key: 'destination:HOLD_AT_MANUFACTURER', enabled: false, note: 'Phase L1: enable with the partner storage editor' },
   { key: 'destination:CHANNEL_INBOUND', enabled: false, note: 'Phase L3: enable with the first channel adapter' },
+  // PS-7 freight bearer (Pavel DECIDED 2026-07-11, PRINT_PROVIDER_SELECTION §8.5):
+  // OFF = CREATOR pays inter-partner hops (printer→applier, mfr→co-packer) inside
+  // the single Shipping line — the default. ON = PLATFORM absorbs them. Billing
+  // attribution only (each hop is its own ledger item); routing never changes.
+  { key: 'billing:platform_pays_interpartner_freight', enabled: false, note: 'PS-7 2026-07-11: OFF = creator pays inter-partner hops (default). Flip = platform absorbs; attribution-only, no routing change.' },
 ]
 
 // ---------------------------------------------------------------------------

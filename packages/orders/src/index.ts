@@ -224,6 +224,20 @@ export type {
   GraphCompletenessResult,
   GraphIncompleteness,
 } from './application-point'
+// PS-7 per-hop leg planning (§8.3 + freight-bearer decision 2026-07-11) —
+// Code's dispatch-planner consumes this to set OrderDispatch.shipToNodeId and
+// emit PLANNED ShipmentLeg rows; checkout uses it for the per-hop breakdown.
+export { planShipmentHops } from './hop-planner'
+export type {
+  HopPlan,
+  HopPlanInput,
+  PlannedHop,
+  HopKind,
+  HopBillTo,
+  HopNode,
+  HopNodeKind,
+  HopDestinationKind,
+} from './hop-planner'
 // Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8a).
 export {
   computeTemplatePrintCoverage,

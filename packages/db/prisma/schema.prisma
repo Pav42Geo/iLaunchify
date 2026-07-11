@@ -3340,6 +3340,12 @@ model OrderDispatch {
   // Read at shipDispatch to compute Transfer.meritFeeCents. Additive + nullable.
   meritFeeBps              Int? // 0 / 450 / 250 / 0 (or promo) at snapshot time
   meritFeeCents            Int? // = round(costCents * meritFeeBps / 10000)
+  // PS-7 (docs/PRINT_PROVIDER_SELECTION.md §8.2) — the next PHYSICAL node this
+  // dispatch's output ships to (soft FK → PartnerService.id). On a LABEL
+  // dispatch this is the APPLICATION POINT (resolveApplicationPoint) — labels
+  // never address the order destination. Null = legacy behavior (ship per
+  // order.shipTo*). Set by createDispatches via planShipmentHops; additive.
+  shipToNodeId             String?
   // Phase G8 — production bundle. Manifest is generated synchronously at
   // order placement (substrate / packaging / finishes / die-cut / ship-to
   // — no canvas needed). The actual print-ready PDF + die-line SVG land
