@@ -21,10 +21,10 @@ export async function LegalDocument({ slug, doc: docOverride }: { slug?: string;
   let isDraft = true
   let updatedLabel = 'June 1, 2026'
 
-  if (docOverride) {
-    title = docOverride.title
-    html = docOverride.html
-  } else if (slug) {
+  // DB-first: a PUBLISHED version always wins (drops the draft banner). `doc`
+  // is a hand-authored draft fallback (e.g. Membership, Accessibility) used only
+  // until that slug is published; LEGAL_DOCS is the legacy auto-generated fallback.
+  if (slug) {
     const live = await getLiveLegalDoc(slug)
     if (live) {
       title = live.title
@@ -38,12 +38,14 @@ export async function LegalDocument({ slug, doc: docOverride }: { slug?: string;
           day: 'numeric',
         })
       }
-    } else {
-      const fallback = LEGAL_DOCS[slug]
-      if (fallback) {
-        title = fallback.title
-        html = fallback.html
-      }
+    }
+  }
+
+  if (title === undefined || html === undefined) {
+    const fallback = docOverride ?? (slug ? LEGAL_DOCS[slug] : undefined)
+    if (fallback) {
+      title = fallback.title
+      html = fallback.html
     }
   }
 

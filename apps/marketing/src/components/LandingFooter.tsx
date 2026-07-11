@@ -72,6 +72,7 @@ export async function LandingFooter() {
             <FooterLink href="/privacy">Privacy</FooterLink>
             <FooterLink href="/policies/creator-agreement">Creator Agreement</FooterLink>
             <FooterLink href="/policies/partner-agreement">Partner Agreement</FooterLink>
+            <FooterLink href="/accessibility">Accessibility</FooterLink>
           </FooterCol>
         </div>
 
