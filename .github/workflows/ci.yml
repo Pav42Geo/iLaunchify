@@ -65,6 +65,19 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Money-path suites (pure shim harness)
+        # scripts/run-vitest-suites.mjs compiles + runs the money-path *.test.ts
+        # suites under a minimal shim — no per-package vitest install needed, so it
+        # gates the fee / orders / shipping / plans / etc. pure suites reliably in CI
+        # (the per-package `pnpm test` above can silently skip a package whose vitest
+        # isn't wired). Exits 1 on any failure.
+        run: node scripts/run-vitest-suites.mjs
+
+      - name: Security headers test
+        # Standalone assert-based test (not a vitest suite) — invoked directly so it
+        # actually gates PRs. Sets a non-zero exit on failure.
+        run: node packages/security/headers.test.mjs
+
       - name: Validate rule pack JSON
         run: |
           for file in services/compliance/app/rule_packs/*.json; do
