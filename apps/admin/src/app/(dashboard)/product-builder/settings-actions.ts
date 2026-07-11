@@ -49,9 +49,18 @@ export async function saveCoCreationSettings(
     set('benchmarkMinSample', 1, 50)
     set('maxShortlistSize', 0, 20)
     set('maxMakerSwitches', 0, 10)
+    set('makerSwitchGraceDays', 0, 90)
     if (
       patch.makerSwitchPolicy !== undefined &&
-      ['UNTIL_FUNDED', 'UNTIL_RECIPE_APPROVED', 'DISABLED'].includes(patch.makerSwitchPolicy)
+      [
+        'DISABLED',
+        'WITHIN_GRACE_DAYS',
+        'UNTIL_NDA_SIGNED',
+        'UNTIL_FIRST_SUBMISSION',
+        'UNTIL_TERMS_AGREED',
+        'UNTIL_RECIPE_APPROVED',
+        'UNTIL_FUNDED',
+      ].includes(patch.makerSwitchPolicy)
     ) {
       data.makerSwitchPolicy = patch.makerSwitchPolicy
     }

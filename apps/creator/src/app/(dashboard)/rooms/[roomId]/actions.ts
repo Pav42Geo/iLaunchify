@@ -14,6 +14,7 @@ import {
   assertBriefTransition,
   assertInterestTransition,
   declineMilestoneTerms,
+  evaluateMakerSwitch,
   reopenObject,
   reviewObject,
   submitObjectVersion,
@@ -246,43 +247,37 @@ export async function creatorSwitchMaker(
     where: { id: roomId, status: 'ACTIVE', brief: { creator: { userId: user.id } } },
     include: {
       brief: { include: { interests: true, creator: { select: { displayName: true } } } },
-      milestones: { select: { status: true } },
-      objects: { where: { kind: 'RECIPE' }, select: { status: true } },
+      milestones: { select: { status: true, termsStatus: true } },
+      objects: { select: { kind: true, status: true, _count: { select: { versions: true } } } },
       partner: { select: { userId: true, companyName: true } },
     },
   })
   if (!room) return guardFail()
 
-  const settings = await getCoCreationSettings()
-  if (settings.makerSwitchPolicy === 'DISABLED') {
-    return { ok: false, error: 'Maker switching is disabled — contact support if the room is stuck' }
-  }
-  // Cutoff 1 (all policies): no money may have moved.
-  if (room.milestones.some((m) => m.status !== 'PENDING')) {
-    return {
-      ok: false,
-      error: 'A milestone has already funded — switching now goes through support, not a one-click swap',
-    }
-  }
-  // Cutoff 2 (stricter policy): approved recipe closes the door too.
-  if (settings.makerSwitchPolicy === 'UNTIL_RECIPE_APPROVED') {
-    const recipe = room.objects[0]
-    if (recipe && (recipe.status === 'APPROVED' || recipe.status === 'LOCKED')) {
-      return { ok: false, error: 'The recipe is approved — switching closed under the current policy' }
-    }
-  }
-  // Per-brief switch cap (prior archived rooms = past switches).
-  if (settings.maxMakerSwitches > 0) {
-    const prior = await prisma.coCreationRoom.count({
-      where: { briefId: room.briefId, status: { not: 'ACTIVE' } },
-    })
-    if (prior >= settings.maxMakerSwitches) {
-      return {
-        ok: false,
-        error: `This brief already switched ${prior} time${prior === 1 ? '' : 's'} — the limit is ${settings.maxMakerSwitches}`,
-      }
-    }
-  }
+  const [settings, priorRooms] = await Promise.all([
+    getCoCreationSettings(),
+    prisma.coCreationRoom.count({ where: { briefId: room.briefId, status: { not: 'ACTIVE' } } }),
+  ])
+
+  // One cutoff engine for action + page (packages/orders/maker-switch.ts).
+  const verdict = evaluateMakerSwitch(
+    {
+      policy: settings.makerSwitchPolicy,
+      graceDays: settings.makerSwitchGraceDays,
+      maxSwitches: settings.maxMakerSwitches,
+    },
+    {
+      roomStatus: room.status,
+      roomCreatedAt: room.createdAt,
+      ndaSignedAt: room.ndaSignedAt,
+      milestoneStatuses: room.milestones.map((m) => m.status),
+      milestoneTermsStatuses: room.milestones.map((m) => m.termsStatus),
+      recipeStatus: room.objects.find((o) => o.kind === 'RECIPE')?.status ?? null,
+      hasAnySubmission: room.objects.some((o) => o._count.versions > 0),
+      priorRooms,
+    },
+  )
+  if (!verdict.allowed) return { ok: false, error: verdict.reason }
 
   // FSM edges asserted up front (brief-fsm carries the D-CC3 edges).
   try {

@@ -19,8 +19,17 @@ export interface CoCreationSettingsValues {
   // Creator side
   benchmarkMinSample: number
   maxShortlistSize: number
-  // Maker switching (D-CC3 — admin-choosable policy)
-  makerSwitchPolicy: 'UNTIL_FUNDED' | 'UNTIL_RECIPE_APPROVED' | 'DISABLED'
+  // Maker switching (D-CC3 — admin-choosable policy ladder, strict → loose;
+  // money-funded is a hard stop under every policy)
+  makerSwitchPolicy:
+    | 'DISABLED'
+    | 'WITHIN_GRACE_DAYS'
+    | 'UNTIL_NDA_SIGNED'
+    | 'UNTIL_FIRST_SUBMISSION'
+    | 'UNTIL_TERMS_AGREED'
+    | 'UNTIL_RECIPE_APPROVED'
+    | 'UNTIL_FUNDED'
+  makerSwitchGraceDays: number
   maxMakerSwitches: number
   // Promoted interests (labeled slots — never touch ranking)
   promotedInterestsEnabled: boolean
@@ -39,7 +48,10 @@ export const COCREATION_SETTINGS_DEFAULTS: CoCreationSettingsValues = {
   locationWeightPct: 15,
   benchmarkMinSample: 3,
   maxShortlistSize: 5,
-  makerSwitchPolicy: 'UNTIL_FUNDED',
+  // DEFAULT = first submission (Pavel 2026-07-10): unpaid maker labor starts
+  // at the first submitted version; switching closes the moment work lands.
+  makerSwitchPolicy: 'UNTIL_FIRST_SUBMISSION',
+  makerSwitchGraceDays: 14,
   maxMakerSwitches: 1,
   promotedInterestsEnabled: false,
   promotedSlotsPerBrief: 2,
@@ -69,6 +81,7 @@ export async function getCoCreationSettings(): Promise<CoCreationSettingsValues>
           benchmarkMinSample: true,
           maxShortlistSize: true,
           makerSwitchPolicy: true,
+          makerSwitchGraceDays: true,
           maxMakerSwitches: true,
           promotedInterestsEnabled: true,
           promotedSlotsPerBrief: true,

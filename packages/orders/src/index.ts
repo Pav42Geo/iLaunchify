@@ -80,6 +80,9 @@ export {
 } from './recipe-materialize'
 export type { MaterializeResult, RecipeRowInput } from './recipe-materialize'
 // Live domain-aware label bundle for the room recipe (facts + mandatory statements)
+// D-CC3 maker-switch cutoff engine (pure — action + page share the verdict)
+export { evaluateMakerSwitch, MAKER_SWITCH_POLICIES } from './maker-switch'
+export type { MakerSwitchPolicy, MakerSwitchFacts, MakerSwitchVerdict } from './maker-switch'
 export { resolveRoomRecipeLabel, autoMatchRecipePayload } from './room-label'
 export type { RoomRecipeLabel, RoomRecipeRowResolution, RoomRecipeServing } from './room-label'
 export {

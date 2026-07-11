@@ -9774,11 +9774,17 @@ model CoCreationSettings {
   maxShortlistSize   Int @default(5) // max concurrently shortlisted interests per brief
 
   // ---- Maker switching (D-CC3, admin-choosable policy 2026-07-10) ----
-  // UNTIL_FUNDED (default): switch allowed while no milestone has funded.
-  // UNTIL_RECIPE_APPROVED: also closes once the creator approves the recipe.
-  // DISABLED: selection is final until a dispute flow exists.
-  makerSwitchPolicy String @default("UNTIL_FUNDED")
-  maxMakerSwitches  Int    @default(1) // per brief; 0 = unlimited
+  // Policy ladder (strict → loose); money-funded is a HARD stop under every
+  // policy. Values = packages/orders maker-switch.ts MAKER_SWITCH_POLICIES:
+  // DISABLED · WITHIN_GRACE_DAYS · UNTIL_NDA_SIGNED · UNTIL_FIRST_SUBMISSION
+  // · UNTIL_TERMS_AGREED · UNTIL_RECIPE_APPROVED · UNTIL_FUNDED.
+  // DEFAULT = UNTIL_FIRST_SUBMISSION (Pavel 2026-07-10): the maker's unpaid
+  // labor starts at their first submitted version — switching stays free while
+  // the room is just conversation, and closes the moment real work lands.
+  // Revisit toward UNTIL_FUNDED once paid Discovery precedes formulation.
+  makerSwitchPolicy    String @default("UNTIL_FIRST_SUBMISSION")
+  makerSwitchGraceDays Int    @default(14) // WITHIN_GRACE_DAYS window; 0 = no time limit
+  maxMakerSwitches     Int    @default(1) // per brief; 0 = unlimited
 
   // ---- Promoted interests (StaffMeUp-inverted: labeled slots, rank untouched) ----
   promotedInterestsEnabled    Boolean @default(false) // master switch; token checkout gated on payments go-live

@@ -155,7 +155,7 @@ export function CoCreationSettingsForm({ initial }: { initial: CoCreationSetting
       >
         <Field
           label="Switch policy"
-          hint="Until first milestone funds: free to switch while no money has moved. Until recipe approval: also closes once the recipe is approved (protects unpaid formulation work). Disabled: selection is final."
+          hint="Ladder from strict to loose. A funded milestone is a HARD stop under every option — from there problems route through support/dispute, never a one-click swap."
         >
           <select
             aria-label="Maker switch policy"
@@ -167,13 +167,22 @@ export function CoCreationSettingsForm({ initial }: { initial: CoCreationSetting
               }))
               setStatus(null)
             }}
-            className="w-56 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+            className="w-72 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
           >
-            <option value="UNTIL_FUNDED">Until first milestone funds</option>
-            <option value="UNTIL_RECIPE_APPROVED">Until recipe approval</option>
             <option value="DISABLED">Disabled — selection is final</option>
+            <option value="WITHIN_GRACE_DAYS">Within a grace window after the room opens</option>
+            <option value="UNTIL_NDA_SIGNED">Until the mutual NDA signs (IP exposure point)</option>
+            <option value="UNTIL_FIRST_SUBMISSION">Until the maker submits any work</option>
+            <option value="UNTIL_TERMS_AGREED">Until milestone terms are agreed</option>
+            <option value="UNTIL_RECIPE_APPROVED">Until recipe approval</option>
+            <option value="UNTIL_FUNDED">Until first milestone funds (loosest)</option>
           </select>
         </Field>
+        {v.makerSwitchPolicy === 'WITHIN_GRACE_DAYS' ? (
+          <Field label="Grace window (days)" hint="Switching allowed only this many days after the room opens. 0 = no time limit (money backstop still applies).">
+            <input className={NUM} type="number" min={0} max={90} value={v.makerSwitchGraceDays} onChange={num('makerSwitchGraceDays', 0)} />
+          </Field>
+        ) : null}
         <Field label="Max switches per brief" hint="How many times one brief can change makers. 0 = unlimited.">
           <input className={NUM} type="number" min={0} max={10} value={v.maxMakerSwitches} onChange={num('maxMakerSwitches', 0)} />
         </Field>

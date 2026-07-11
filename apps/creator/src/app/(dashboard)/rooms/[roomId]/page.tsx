@@ -1,7 +1,7 @@
 import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
-import { resolveRoomRecipeLabel } from '@ilaunchify/orders'
+import { resolveRoomRecipeLabel, evaluateMakerSwitch } from '@ilaunchify/orders'
 import {
   CoCreationStepper,
   nicheGradientKey,
@@ -100,15 +100,29 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
     (recipe.status === 'APPROVED' || recipe.status === 'LOCKED') &&
     recipe.versions.length > 0
 
-  // D-CC3 — "Switch maker" entry point. Server action re-checks everything;
-  // this only decides whether to show the control at all.
-  const ccSettings = await getCoCreationSettings()
-  const recipeApproved = !!recipe && (recipe.status === 'APPROVED' || recipe.status === 'LOCKED')
-  const canSwitchMaker =
-    room.status === 'ACTIVE' &&
-    ccSettings.makerSwitchPolicy !== 'DISABLED' &&
-    !room.milestones.some((m) => m.status !== 'PENDING') &&
-    !(ccSettings.makerSwitchPolicy === 'UNTIL_RECIPE_APPROVED' && recipeApproved)
+  // D-CC3 — "Switch maker" entry point: same pure cutoff engine as the server
+  // action, so the button never shows when the action would refuse.
+  const [ccSettings, priorRooms] = await Promise.all([
+    getCoCreationSettings(),
+    prisma.coCreationRoom.count({ where: { briefId: room.briefId, status: { not: 'ACTIVE' } } }),
+  ])
+  const canSwitchMaker = evaluateMakerSwitch(
+    {
+      policy: ccSettings.makerSwitchPolicy,
+      graceDays: ccSettings.makerSwitchGraceDays,
+      maxSwitches: ccSettings.maxMakerSwitches,
+    },
+    {
+      roomStatus: room.status,
+      roomCreatedAt: room.createdAt,
+      ndaSignedAt: room.ndaSignedAt,
+      milestoneStatuses: room.milestones.map((m) => m.status),
+      milestoneTermsStatuses: room.milestones.map((m) => m.termsStatus),
+      recipeStatus: recipe?.status ?? null,
+      hasAnySubmission: room.objects.some((o) => o.versions.length > 0),
+      priorRooms,
+    },
+  ).allowed
 
   return (
     <>
