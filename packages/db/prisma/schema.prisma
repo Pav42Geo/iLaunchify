@@ -1002,6 +1002,7 @@ model Partner {
   // Co-creation P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md §6)
   briefInterests                BriefInterest[]               @relation("PartnerBriefInterests")
   coCreationRooms               CoCreationRoom[]              @relation("PartnerCoCreationRooms")
+  promoTokenLedger              PromoTokenLedger[]            @relation("PartnerPromoTokens")
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 }
@@ -9633,6 +9634,9 @@ model BriefInterest {
   claimFit      Json // which of the brief's claims they can meet
   offersSample  Boolean         @default(false)
   pitch         String // short "why us" — cap enforced at the API layer
+  // Promoted interest (2026-07-10, StaffMeUp-inverted): a LABELED pinned slot
+  // bought with a promo token. NEVER touches fitScore/merit/ranking math.
+  promotedAt    DateTime?
   // Relations
   brief         ProductBrief    @relation(fields: [briefId], references: [id], onDelete: Cascade)
   partner       Partner         @relation("PartnerBriefInterests", fields: [partnerId], references: [id], onDelete: Restrict)
@@ -9644,6 +9648,23 @@ model BriefInterest {
   @@index([briefId, status])
   @@index([partnerId])
   @@index([serviceId])
+}
+
+/// Promo-token ledger (2026-07-10) — append-only delta rows; balance = SUM.
+/// V1 credits arrive via ADMIN_GRANT; PURCHASE rows land with the payments
+/// slice (token checkout). Spending is 1 token per promoted interest.
+model PromoTokenLedger {
+  id        String   @id @default(uuid())
+  partnerId String
+  delta     Int // +grant/+purchase, -spend
+  reason    String // 'ADMIN_GRANT' | 'PROMOTION_SPENT' | 'PURCHASE' | 'REFUND'
+  refId     String? // interestId for spends; Stripe ref for purchases
+  note      String? // admin grant note
+  actorId   String? // User who caused the row (admin / partner founder)
+  partner   Partner  @relation("PartnerPromoTokens", fields: [partnerId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@index([partnerId, createdAt])
 }
 
 /// The on-platform Collaboration Room (§5) — created on selection, 1:1 with

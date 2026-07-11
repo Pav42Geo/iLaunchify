@@ -42,6 +42,8 @@ export interface MyInterestEntry {
   leadTimeWeeks: number | null
   offersSample: boolean
   pitch: string
+  /** Set when this interest holds a promoted slot (labeled, rank-neutral). */
+  promotedAt: string | null
   createdAt: string
 }
 
@@ -110,6 +112,8 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
   facts: PartnerPoolFacts
   entries: PoolEntry[]
   myInterests: MyInterestEntry[]
+  /** Promoted-interests surface state (labeled slots — never touch ranking). */
+  promo: { enabled: boolean; tokenBalance: number; priceCents: number }
 }> {
   const [facts, settings] = await Promise.all([
     loadPartnerFitFacts(partnerId),
@@ -214,8 +218,34 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
     leadTimeWeeks: i.leadTimeWeeks,
     offersSample: i.offersSample,
     pitch: i.pitch,
+    promotedAt: i.promotedAt ? i.promotedAt.toISOString() : null,
     createdAt: i.createdAt.toISOString(),
   }))
 
-  return { facts, entries, myInterests }
+  // Promo token balance (append-only ledger; SUM = balance). Cast-guarded
+  // like the settings loader until db:push lands the model.
+  let tokenBalance = 0
+  try {
+    const bal = await (
+      prisma as unknown as {
+        promoTokenLedger: {
+          aggregate: (a: unknown) => Promise<{ _sum: { delta: number | null } }>
+        }
+      }
+    ).promoTokenLedger.aggregate({ where: { partnerId }, _sum: { delta: true } })
+    tokenBalance = bal._sum.delta ?? 0
+  } catch {
+    tokenBalance = 0
+  }
+
+  return {
+    facts,
+    entries,
+    myInterests,
+    promo: {
+      enabled: settings.promotedInterestsEnabled,
+      tokenBalance,
+      priceCents: settings.promoTokenPriceCents,
+    },
+  }
 }

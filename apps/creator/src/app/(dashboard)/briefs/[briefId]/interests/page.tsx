@@ -65,6 +65,7 @@ export default async function BriefInterestsPage({
     moq: i.moq,
     leadTimeWeeks: i.leadTimeWeeks,
     offersSample: i.offersSample,
+    promoted: i.promotedAt !== null,
     pitch: i.pitch,
     claimFit: (i.claimFit ?? {}) as Record<string, boolean>,
   }))

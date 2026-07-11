@@ -8,6 +8,7 @@ import { getActingPartner } from '@/lib/partner-context'
 import { loadOpportunityPool, type PoolEntry } from './loader'
 import { ExpressInterestDialog } from './ExpressInterestDialog'
 import { WithdrawInterestButton } from './WithdrawInterestButton'
+import { PromoteInterestButton } from './PromoteInterestButton'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Opportunities — iLaunchify Partners' }
@@ -66,7 +67,7 @@ export default async function OpportunitiesPage({
   const sort: SortKey = sp.sort === 'new' ? 'new' : 'fit'
   const cat = sp.cat ?? ''
 
-  const [{ facts, entries, myInterests }, niches] = await Promise.all([
+  const [{ facts, entries, myInterests, promo }, niches] = await Promise.all([
     loadOpportunityPool(partner.id),
     prisma.niche.findMany({ where: { isActive: true }, select: { slug: true, name: true, iconEmoji: true } }),
   ])
@@ -200,6 +201,16 @@ export default async function OpportunitiesPage({
       ) : null}
 
       {/* Lists */}
+      {tab === 'mine' && promo.enabled ? (
+        <p className="text-ui-caption text-ink-500">
+          ✨ Promo tokens: <b className="text-ink-900">{promo.tokenBalance}</b> · a token pins one
+          interest in a labeled Promoted slot — the creator's ranking is never affected.
+          {promo.tokenBalance === 0
+            ? ` Token purchase ($${(promo.priceCents / 100).toFixed(2)}) opens with payments go-live.`
+            : ''}
+        </p>
+      ) : null}
+
       {tab === 'mine' ? (
         myInterests.length === 0 ? (
           <EmptyState emoji="📭" title="No interests yet">
@@ -220,7 +231,13 @@ export default async function OpportunitiesPage({
                         {postedAgo(m.createdAt)}
                       </p>
                     </div>
-                    <span className={`ml-auto rounded-full border px-3 py-1 text-ui-caption font-medium ${pill.cls}`}>
+                    <span className="ml-auto" />
+                    {m.promotedAt ? (
+                      <span className="rounded-full bg-pink-50 px-3 py-1 text-ui-caption font-bold text-pink-700">
+                        ✨ Promoted
+                      </span>
+                    ) : null}
+                    <span className={`rounded-full border px-3 py-1 text-ui-caption font-medium ${pill.cls}`}>
                       {pill.label}
                     </span>
                   </div>
@@ -232,7 +249,10 @@ export default async function OpportunitiesPage({
                   </dl>
                   <p className="mt-3 text-ui-caption text-ink-500">Your note: {m.pitch || '—'}</p>
                   {m.status === 'SUBMITTED' || m.status === 'SHORTLISTED' ? (
-                    <div className="mt-3 flex justify-end">
+                    <div className="mt-3 flex items-center justify-end gap-3">
+                      {promo.enabled && !m.promotedAt ? (
+                        <PromoteInterestButton interestId={m.id} tokenBalance={promo.tokenBalance} />
+                      ) : null}
                       <WithdrawInterestButton interestId={m.id} />
                     </div>
                   ) : m.status === 'SELECTED' && m.roomId ? (

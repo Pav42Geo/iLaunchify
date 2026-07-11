@@ -6,7 +6,11 @@
 
 import * as React from 'react'
 import { Radar, RefreshCcw, Scale, Sparkles, Wand2 } from 'lucide-react'
-import { saveCoCreationSettings, type CoCreationSettingsValues } from './settings-actions'
+import {
+  saveCoCreationSettings,
+  grantPromoTokens,
+  type CoCreationSettingsValues,
+} from './settings-actions'
 
 const NUM =
   'w-36 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
@@ -67,6 +71,54 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 const intOr = (e: React.ChangeEvent<HTMLInputElement>, min: number) =>
   Math.max(min, parseInt(e.target.value, 10) || min)
+
+/** V1 token credits — admin grants until the payments slice ships checkout. */
+function GrantTokensRow() {
+  const [email, setEmail] = React.useState('')
+  const [tokens, setTokens] = React.useState(3)
+  const [pending, start] = React.useTransition()
+  const [msg, setMsg] = React.useState<{ ok: boolean; text: string } | null>(null)
+
+  return (
+    <div className="mt-2 rounded-xl border border-dashed border-ink-200 bg-ink-50 p-3">
+      <div className="text-[13px] font-medium text-ink-800">Grant tokens (V1 credits)</div>
+      <div className="text-[11.5px] text-ink-500">
+        Manual grants until token checkout ships with payments. Append-only ledger, audited.
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input
+          type="email"
+          value={email}
+          placeholder="partner login email"
+          onChange={(e) => { setEmail(e.target.value); setMsg(null) }}
+          className="w-64 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+        />
+        <input
+          type="number"
+          min={1}
+          max={100}
+          value={tokens}
+          onChange={(e) => { setTokens(Math.max(1, parseInt(e.target.value, 10) || 1)); setMsg(null) }}
+          className="w-20 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+        />
+        <button
+          type="button"
+          disabled={pending || !email.trim()}
+          onClick={() =>
+            start(async () => {
+              const r = await grantPromoTokens(email, tokens)
+              setMsg(r.ok ? { ok: true, text: `Granted ${tokens} token${tokens === 1 ? '' : 's'}.` } : { ok: false, text: r.error })
+            })
+          }
+          className="rounded-full bg-ink-900 px-4 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
+        >
+          {pending ? 'Granting…' : 'Grant'}
+        </button>
+        {msg && <span className={`text-[12.5px] ${msg.ok ? 'text-success-700' : 'text-danger-600'}`}>{msg.text}</span>}
+      </div>
+    </div>
+  )
+}
 
 export function CoCreationSettingsForm({ initial }: { initial: CoCreationSettingsValues }) {
   const [v, setV] = React.useState(initial)
@@ -208,6 +260,7 @@ export function CoCreationSettingsForm({ initial }: { initial: CoCreationSetting
         >
           <Toggle checked={v.requireVerifiedForPromotion} onChange={(x) => patch('requireVerifiedForPromotion', x)} />
         </Field>
+        <GrantTokensRow />
       </Card>
 
       <div className="flex items-center gap-3">

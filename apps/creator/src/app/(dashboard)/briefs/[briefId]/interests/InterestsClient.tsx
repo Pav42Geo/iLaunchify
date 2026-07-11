@@ -33,6 +33,8 @@ export interface InterestCard {
   offersSample: boolean
   pitch: string
   claimFit: Record<string, boolean>
+  /** Labeled promoted slot (maker paid a token) — NEVER affects fit/ranking. */
+  promoted: boolean
 }
 
 type SortKey = 'fit' | 'value' | 'fast' | 'rated'
@@ -68,8 +70,11 @@ export function InterestsClient({
     else if (sort === 'fast') l.sort((a, b) => (a.leadTimeWeeks ?? 1e9) - (b.leadTimeWeeks ?? 1e9))
     else if (sort === 'rated') l.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
     else l.sort((a, b) => b.fitScore - a.fitScore)
-    return l
+    // Promoted slots pin ABOVE the organic order (labeled, disclosed) — the
+    // sort itself never sees promotion; within each group order is organic.
+    return [...l.filter((i) => i.promoted), ...l.filter((i) => !i.promoted)]
   }, [interests, tab, sort])
+  const hasPromoted = list.some((i) => i.promoted)
 
   function star(i: InterestCard) {
     setError(null)
@@ -173,17 +178,36 @@ export function InterestsClient({
           </p>
         </div>
       ) : (
-        list.map((i) => {
+        list.map((i, idx) => {
           const rec = i.fitScore === bestFit && i.fitScore >= 90
           const starred = i.status === 'SHORTLISTED'
           const highFit = i.fitScore >= 80
           return (
+            <div key={i.id}>
+            {/* Disclosure line where promoted slots end and organic ranking begins */}
+            {hasPromoted && idx === 0 && i.promoted ? (
+              <p className="mb-s-2 text-ui-label normal-case tracking-normal text-ink-400">
+                ✨ Promoted — these makers paid to appear first. The ranking below is unaffected.
+              </p>
+            ) : null}
+            {hasPromoted && !i.promoted && idx > 0 && list[idx - 1]?.promoted ? (
+              <p className="mb-s-2 mt-s-1 text-ui-label normal-case tracking-normal text-ink-400">
+                Ranked by {sort === 'fit' ? 'fit' : sort === 'value' ? 'price' : sort === 'fast' ? 'lead time' : 'rating'}
+              </p>
+            ) : null}
             <div
-              key={i.id}
               className={`relative overflow-hidden rounded-xl border bg-white p-s-4 shadow-sm ${
                 rec ? 'border-pink-500 ring-2 ring-pink-50' : 'border-ink-200'
               }`}
             >
+              {i.promoted ? (
+                <span
+                  className="absolute left-0 top-0 rounded-br-lg bg-pink-50 px-s-3 py-s-1 text-ui-label uppercase text-pink-700"
+                  title="This maker paid to appear in a promoted slot — fit scores and ranking are unaffected."
+                >
+                  ✨ Promoted
+                </span>
+              ) : null}
               {rec ? (
                 <span className="absolute right-0 top-0 rounded-bl-lg bg-pink-500 px-s-3 py-s-1 text-ui-label uppercase text-white">
                   ★ Best fit
@@ -295,6 +319,7 @@ export function InterestsClient({
                   Select &amp; start →
                 </Button>
               </div>
+            </div>
             </div>
           )
         })

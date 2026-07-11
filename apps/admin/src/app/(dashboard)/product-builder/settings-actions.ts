@@ -99,3 +99,48 @@ export async function saveCoCreationSettings(
     return { ok: false, error: (err as Error).message }
   }
 }
+
+/**
+ * Grant promo tokens to a partner (V1 credit path — token PURCHASE ships with
+ * the payments slice). Append-only ledger row + audit; balance = SUM(delta).
+ */
+export async function grantPromoTokens(
+  partnerEmail: string,
+  tokens: number,
+  note?: string,
+): Promise<Result> {
+  const admin = await requireCapability('platform:admin')
+  const count = clampInt(tokens, 1, 100)
+  if (count === null) return { ok: false, error: 'Invalid token count' }
+  const email = partnerEmail.trim().toLowerCase()
+  if (!email) return { ok: false, error: 'Partner email required' }
+
+  try {
+    const partner = await prisma.partner.findFirst({
+      where: { user: { email } },
+      select: { id: true, companyName: true },
+    })
+    if (!partner) return { ok: false, error: `No partner found for ${email}` }
+
+    await (
+      prisma as unknown as { promoTokenLedger: { create: (a: unknown) => Promise<unknown> } }
+    ).promoTokenLedger.create({
+      data: {
+        partnerId: partner.id,
+        delta: count,
+        reason: 'ADMIN_GRANT',
+        note: note?.trim().slice(0, 200) || null,
+        actorId: admin.id,
+      },
+    })
+    await logAuditAs(admin, {
+      entityType: 'PromoTokenLedger',
+      entityId: partner.id,
+      action: 'PROMO_TOKENS_GRANTED',
+      payload: { partnerId: partner.id, companyName: partner.companyName, tokens: count, note: note ?? null },
+    })
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}

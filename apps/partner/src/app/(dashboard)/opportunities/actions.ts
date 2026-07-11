@@ -35,6 +35,81 @@ const ExpressInterestSchema = z.object({
 export type ExpressInterestInput = z.infer<typeof ExpressInterestSchema>
 export type ActionResult = { ok: true } | { ok: false; error: string }
 
+/**
+ * Promote a live interest into a LABELED pinned slot (StaffMeUp-inverted,
+ * decided 2026-07-10). Spends ONE promo token (append-only ledger). The
+ * guardrails that keep this compatible with never-sell-the-badge:
+ *   • ranking math never sees promotion (fitScore/merit untouched);
+ *   • only brief-eligible makers have interests at all (fit floor inherent);
+ *   • only ACTIVE partners reach this action (good-standing floor);
+ *   • per-brief slot cap + one promotion per interest;
+ *   • balance + slots re-checked INSIDE the transaction (no race double-spend).
+ */
+export async function promoteInterest(interestId: string): Promise<ActionResult> {
+  const user = await requireUser()
+  const partner = await requireActivePartner(user.id)
+  if (!partner) return { ok: false, error: 'Only active partners can promote an interest' }
+
+  const settings = await getCoCreationSettings()
+  if (!settings.promotedInterestsEnabled) {
+    return { ok: false, error: 'Promoted interests are not enabled yet' }
+  }
+
+  const interest = await prisma.briefInterest.findFirst({
+    where: { id: interestId, partnerId: partner.id },
+    include: { brief: { select: { id: true, status: true } } },
+  })
+  if (!interest) return { ok: false, error: 'Interest not found' }
+  if (interest.promotedAt) return { ok: false, error: 'This interest is already promoted' }
+  if (interest.status !== 'SUBMITTED' && interest.status !== 'SHORTLISTED') {
+    return { ok: false, error: 'Only live interests can be promoted' }
+  }
+  if (interest.brief.status !== 'INTEREST_OPEN' && interest.brief.status !== 'SHORTLISTING') {
+    return { ok: false, error: 'This brief is no longer comparing makers' }
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const bal = await tx.promoTokenLedger.aggregate({
+        where: { partnerId: partner.id },
+        _sum: { delta: true },
+      })
+      if ((bal._sum.delta ?? 0) < 1) {
+        throw new Error('No promo tokens available — token purchase opens with payments go-live')
+      }
+      const promoted = await tx.briefInterest.count({
+        where: {
+          briefId: interest.briefId,
+          promotedAt: { not: null },
+          status: { in: ['SUBMITTED', 'SHORTLISTED'] },
+        },
+      })
+      if (promoted >= settings.promotedSlotsPerBrief) {
+        throw new Error(`All ${settings.promotedSlotsPerBrief} promoted slots on this brief are taken`)
+      }
+      await tx.promoTokenLedger.create({
+        data: { partnerId: partner.id, delta: -1, reason: 'PROMOTION_SPENT', refId: interest.id, actorId: user.id },
+      })
+      await tx.briefInterest.update({
+        where: { id: interest.id },
+        data: { promotedAt: new Date() },
+      })
+    })
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+
+  await logAuditAs(user, {
+    entityType: 'BriefInterest',
+    entityId: interest.id,
+    action: 'INTEREST_PROMOTED',
+    payload: { briefId: interest.briefId, partnerId: partner.id },
+  })
+
+  revalidatePath('/opportunities')
+  return { ok: true }
+}
+
 async function requireActivePartner(userId: string) {
   const access = await getPartnerAccess(userId)
   if (!access) return null
