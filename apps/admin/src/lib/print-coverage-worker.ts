@@ -23,6 +23,7 @@ import {
   broadcastCapabilityRequestsForTemplate,
   recoverTemplateCoverage,
 } from '@ilaunchify/orders'
+import { dispatchToPartnerService } from '@ilaunchify/notifications'
 
 export interface PrintCoverageSweepResult {
   templatesChecked: number
@@ -64,7 +65,7 @@ export async function runPrintCoverageSweep(): Promise<PrintCoverageSweepResult>
   // ── 1. Coverage-drop watch over PUBLISHED templates ──────────────────────
   const published = await prisma.productTemplate.findMany({
     where: { status: 'PUBLISHED' },
-    select: { id: true, name: true },
+    select: { id: true, name: true, manufacturerServiceId: true },
   })
   for (const tpl of published) {
     result.templatesChecked += 1
@@ -90,6 +91,16 @@ export async function runPrintCoverageSweep(): Promise<PrintCoverageSweepResult>
         toValue: 'PAUSED',
         payload: { name: tpl.name, requestsOpen: rfq.requestsOpen, notified: rfq.notified },
       })
+      // Pause-side counterpart of COVERAGE_RESTORED — tell the manufacturer their
+      // product paused and that a printer RFQ is already out. Best-effort: a
+      // notification hiccup must never leave a template un-paused.
+      if (tpl.manufacturerServiceId) {
+        await dispatchToPartnerService(tpl.manufacturerServiceId, {
+          event: 'MANUFACTURER_TEMPLATE_PAUSED',
+          audience: 'partner',
+          data: { productName: tpl.name, reason: 'coverage_drop', href: '/products' },
+        }).catch(() => 0)
+      }
     } catch {
       // per-template failure is non-fatal — continue the sweep.
     }
