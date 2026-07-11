@@ -246,6 +246,10 @@ export {
   loadCapabilityShortlist,
 } from './print-coverage'
 export type { TemplatePrintCoverage } from './print-coverage'
+// PS-7 publish-time honey-problem gate (§8.2.4). validateTemplateGraph reads the
+// `graph:*` LogisticsSetting knobs; the publish action gates on graph:enforce_publish_gate.
+export { validateTemplateGraph, templatePublishGraphInputs } from './template-graph'
+export type { TemplateGraphResult } from './template-graph'
 export { rankCapabilityShortlist } from './capability-shortlist'
 export {
   broadcastCapabilityRequestsForTemplate,
