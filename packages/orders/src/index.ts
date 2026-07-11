@@ -415,6 +415,14 @@ export {
 } from './rating-appeal'
 export type { RatingAppealStatus, AppealSlaPolicy, AppealSlaState } from './rating-appeal'
 export { recomputePartnerRatingAggregate } from './partner-rating-recompute'
+// P1 two-sided room reviews — creator⇄maker ratings after CLOSED_WON
+export {
+  rateRoomMaker,
+  rateRoomCreator,
+  recomputeCreatorRatingAggregate,
+  CO_CREATION_RATING_DIMENSIONS,
+  CREATOR_RATING_DIMENSIONS,
+} from './room-rating'
 // MM-5 — badge → production-fee resolution (shadow-safe, reversible).
 // MM-7 — fee-grace / promo layer (global grace + manual grants).
 export { resolveManufacturerFeeBps, feeBpsToPct, resolveActivePromo, addMonths, addDays, addDuration } from './merit-fee'

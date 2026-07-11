@@ -1,7 +1,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import { notFound, redirect } from 'next/navigation'
-import { resolveRoomRecipeLabel } from '@ilaunchify/orders'
+import { resolveRoomRecipeLabel, CREATOR_RATING_DIMENSIONS } from '@ilaunchify/orders'
 import {
   CoCreationStepper,
   nicheGradientKey,
@@ -95,6 +95,28 @@ export default async function PartnerRoomPage({
     }
   })
 
+  // P1 two-sided reviews — after CLOSED_WON the maker rates the creator.
+  const myRating =
+    room.status === 'CLOSED_WON'
+      ? await prisma.creatorRating.findFirst({
+          where: { partnerId: access.partnerId, roomId: room.id },
+          select: { dimensions: true, comment: true },
+        })
+      : null
+  const ratingProp =
+    room.status === 'CLOSED_WON'
+      ? {
+          counterpartName: room.brief.creator.displayName,
+          dimensions: [...CREATOR_RATING_DIMENSIONS],
+          mine: myRating
+            ? {
+                dimensions: (myRating.dimensions ?? {}) as Record<string, number>,
+                comment: myRating.comment,
+              }
+            : null,
+        }
+      : undefined
+
   return (
     <>
       {/* Maker journey stepper — mb-0: the room's white top bar sits flush. */}
@@ -111,6 +133,7 @@ export default async function PartnerRoomPage({
       roomId={room.id}
       rooms={switcherRooms}
       recipeLabels={recipeLabels}
+      rating={ratingProp}
       briefDomain={room.brief.category}
       briefTitle={room.brief.title}
       briefNicheSlug={room.brief.nicheSlug}

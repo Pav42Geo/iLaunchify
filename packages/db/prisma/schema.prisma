@@ -724,6 +724,12 @@ model CreatorProfile {
   displayName              String
   bio                      String?
   audienceSizeBand         String? // "10K-100K", "100K-1M", "1M+"
+  // P1 two-sided reviews (2026-07-10): maker→creator rating aggregate,
+  // recomputed by recomputeCreatorRatingAggregate (single writer). Surfaces
+  // on the maker's pool cards once ratingCount ≥ MIN_RATINGS_FOR_DISPLAY.
+  ratingMean               Decimal?         @db.Decimal(3, 2)
+  ratingBayesian           Decimal?         @db.Decimal(4, 3)
+  ratingCount              Int              @default(0)
   // Logistics L0 — AAFCO pet-food state registrations (docs/LOGISTICS_AND_FULFILLMENT.md §1).
   // Pet-food products may only route to ship-to states in this list (2-letter codes).
   // Empty = no states registered yet; the routing gate surfaces "register in state X".
@@ -5074,8 +5080,13 @@ model FeedbackPromptSetting {
 
 model PartnerRating {
   id               String   @id @default(uuid())
-  orderId          String // soft FK → Order
-  dispatchId       String // soft FK → OrderDispatch
+  // Verified linkage — exactly ONE of (dispatchId) or (roomId) is set:
+  //   • dispatch-scoped (original): production order delivered;
+  //   • room-scoped (P1 co-creation, 2026-07-10): room CLOSED_WON. Both feed
+  //     the SAME PartnerService.ratingBayesian aggregate → merit in ranking.
+  orderId          String? // soft FK → Order (null for room-scoped ratings)
+  dispatchId       String? // soft FK → OrderDispatch (null for room-scoped)
+  roomId           String? // soft FK → CoCreationRoom (null for dispatch-scoped)
   partnerServiceId String // soft FK → PartnerService (the rated SERVICE)
   creatorUserId    String // soft FK → User
   role             String // MANUFACTURER | PRINTER | COPACKER | WAREHOUSE (denormalized)
@@ -5092,8 +5103,33 @@ model PartnerRating {
   updatedAt        DateTime @updatedAt
 
   @@unique([creatorUserId, dispatchId])
+  @@unique([creatorUserId, roomId])
   @@index([partnerServiceId, createdAt])
   @@index([orderId])
+  @@index([roomId])
+}
+
+/// P1 two-sided reviews (2026-07-10): the maker rates the CREATOR after a
+/// room closes WON — brief clarity, responsiveness, decisiveness. Surfaces on
+/// future briefs in the pool so makers can judge who they'd work with.
+/// One rating per partner per room; verified by construction (CLOSED_WON).
+model CreatorRating {
+  id               String   @id @default(uuid())
+  roomId           String // soft FK → CoCreationRoom (CLOSED_WON)
+  creatorProfileId String // soft FK → CreatorProfile (the rated creator)
+  partnerId        String // soft FK → Partner (the rating maker org)
+  raterUserId      String // soft FK → User (who clicked)
+  dimensions       Json // CREATOR_RATING_DIMENSIONS slugs → 1..5
+  overall          Decimal  @db.Decimal(3, 2)
+  comment          String?
+  editableUntil    DateTime // 30d mind-change window (mirrors PartnerRating)
+  excludedAt       DateTime?
+  excludedReason   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([partnerId, roomId])
+  @@index([creatorProfileId, createdAt])
 }
 
 // ---------------------------------------------------------------------------

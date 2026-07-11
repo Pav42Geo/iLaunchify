@@ -332,8 +332,14 @@ export default async function OpportunitiesPage({
                     <h3 className="font-display text-ui-section">{e.brief.title}</h3>
                     <p className="mt-s-1 text-ui-caption text-ink-500">
                       {e.brief.creator?.displayName ?? 'Creator'}
-                      {e.brief.creator?.handle ? ` · ${e.brief.creator.handle}` : ''} ·{' '}
-                      {n ? `${n.iconEmoji ?? ''} ${n.name}` : e.brief.nicheSlug} · posted{' '}
+                      {e.brief.creator?.handle ? ` · ${e.brief.creator.handle}` : ''}
+                      {e.creatorRating ? (
+                        <span title={`Rated by ${e.creatorRating.count} maker${e.creatorRating.count === 1 ? '' : 's'} after completed rooms`}>
+                          {' '}· <span className="font-bold text-warning-500">★ {e.creatorRating.mean.toFixed(1)}</span>{' '}
+                          creator
+                        </span>
+                      ) : null}{' '}
+                      · {n ? `${n.iconEmoji ?? ''} ${n.name}` : e.brief.nicheSlug} · posted{' '}
                       {postedAgo(e.brief.createdAt)}
                     </p>
                   </div>

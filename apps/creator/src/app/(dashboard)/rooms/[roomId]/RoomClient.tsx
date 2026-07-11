@@ -17,6 +17,7 @@ import {
 import {
   creatorAgreeMilestoneTerms,
   creatorCloseRoomWon,
+  creatorRateMaker,
   creatorComment,
   creatorDeclineMilestoneTerms,
   creatorMessage,
@@ -38,6 +39,11 @@ export function RoomClient(props: {
   ndaSigned: boolean
   canCloseWon: boolean
   canSwitchMaker: boolean
+  rating?: {
+    counterpartName: string
+    dimensions: { slug: string; label: string; sublabel: string }[]
+    mine: { dimensions: Record<string, number>; comment: string | null } | null
+  }
   objects: RoomShellObject[]
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
@@ -85,6 +91,10 @@ export function RoomClient(props: {
       }
       canCloseWon={props.canCloseWon}
       canSwitchMaker={props.canSwitchMaker}
+      rating={props.rating}
+      onRateCounterpart={(scores, comment) =>
+        refresh(creatorRateMaker(props.roomId, scores, comment))
+      }
       onSwitchMaker={async () => {
         const res = await creatorSwitchMaker(props.roomId)
         if (res.ok && res.briefId) {

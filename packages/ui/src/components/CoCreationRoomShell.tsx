@@ -109,6 +109,15 @@ export interface CoCreationRoomShellProps {
       enforced server-side; this only shows the entry point. */
   canSwitchMaker?: boolean
   onSwitchMaker?: () => Promise<Result>
+  /** P1 two-sided reviews: shown when the room is CLOSED_WON. Each side
+      rates its counterpart on its own dimension set; server owns the guards. */
+  rating?: {
+    counterpartName: string
+    dimensions: { slug: string; label: string; sublabel: string }[]
+    /** This viewer's existing rating, if any (pre-fills; edit-window server-side). */
+    mine: { dimensions: Record<string, number>; comment: string | null } | null
+  }
+  onRateCounterpart?: (scores: Record<string, number>, comment?: string) => Promise<Result>
   /** Milestone terms negotiation — maker proposes, creator agrees/declines.
       Funding stays gated on payments verification (no fund action here). */
   onProposeMilestoneTerms?: (milestoneId: string, amount: number, note?: string) => Promise<Result>
@@ -511,6 +520,14 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         <p className="border-b border-danger-100 bg-danger-50 px-s-4 py-s-2 text-ui-caption text-danger-700" role="alert">
           {error}
         </p>
+      ) : null}
+
+      {props.rating && props.onRateCounterpart ? (
+        <RoomRatingCard
+          rating={props.rating}
+          busy={busy}
+          onSubmit={(scores, comment) => run(() => props.onRateCounterpart!(scores, comment))}
+        />
       ) : null}
 
       {mode === 'creator' && props.canCloseWon && props.onCloseWon ? (
@@ -2087,6 +2104,141 @@ function ObjectDetail({
         ) : null}
       </div>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// P1 two-sided review card (2026-07-10) — appears once the room is CLOSED_WON.
+// Star rows per dimension (mirrors the order rating page's Amazon-modal rows);
+// pink stars per FEEDBACK_MODULE; server enforces the 30-day edit window.
+// ---------------------------------------------------------------------------
+
+function StarRow({
+  label,
+  sublabel,
+  value,
+  onChange,
+}: {
+  label: string
+  sublabel: string
+  value: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <div className="flex items-center gap-s-3">
+      <div className="w-40 min-w-0">
+        <div className="text-ui-caption font-bold">{label}</div>
+        <div className="truncate text-ui-label normal-case tracking-normal text-ink-500">{sublabel}</div>
+      </div>
+      <div className="flex gap-0.5" role="radiogroup" aria-label={`${label} stars`}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={value === n}
+            aria-label={`${n} star${n === 1 ? '' : 's'}`}
+            onClick={() => onChange(value === n ? 0 : n)}
+            className={cn('text-ui-section transition', n <= value ? 'text-pink-500' : 'text-ink-200 hover:text-pink-300')}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RoomRatingCard({
+  rating,
+  busy,
+  onSubmit,
+}: {
+  rating: NonNullable<CoCreationRoomShellProps['rating']>
+  busy: boolean
+  onSubmit: (scores: Record<string, number>, comment?: string) => void
+}) {
+  const [open, setOpen] = React.useState(!rating.mine)
+  const [scores, setScores] = React.useState<Record<string, number>>(rating.mine?.dimensions ?? {})
+  const [comment, setComment] = React.useState(rating.mine?.comment ?? '')
+  const rated = Object.entries(scores).filter(([, v]) => v > 0)
+
+  if (!open) {
+    const mine = rating.mine
+    const mean =
+      mine && Object.values(mine.dimensions).length
+        ? (
+            Object.values(mine.dimensions).reduce((a, b) => a + b, 0) /
+            Object.values(mine.dimensions).length
+          ).toFixed(1)
+        : null
+    return (
+      <div className="flex flex-wrap items-center gap-s-3 border-b border-success-100 bg-success-50 px-s-4 py-s-2">
+        <span className="text-ui-caption text-success-700">
+          ✓ You rated {rating.counterpartName}
+          {mean ? (
+            <>
+              {' '}
+              — <span className="text-pink-500">★</span> <b>{mean}</b>
+            </>
+          ) : null}
+        </span>
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-ui-label normal-case tracking-normal text-ink-500 underline-offset-2 hover:underline"
+        >
+          Edit (30-day window)
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border-b border-pink-100 bg-pink-50/50 px-s-4 py-s-3">
+      <div className="text-ui-caption font-bold">
+        How was working with {rating.counterpartName}?
+      </div>
+      <p className="text-ui-label normal-case tracking-normal text-ink-500">
+        Your rating feeds their standing on the platform — rate what you experienced.
+      </p>
+      <div className="mt-s-2 grid gap-s-2 sm:grid-cols-2">
+        {rating.dimensions.map((d) => (
+          <StarRow
+            key={d.slug}
+            label={d.label}
+            sublabel={d.sublabel}
+            value={scores[d.slug] ?? 0}
+            onChange={(v) => setScores((s) => ({ ...s, [d.slug]: v }))}
+          />
+        ))}
+      </div>
+      <div className="mt-s-2 flex flex-wrap items-center gap-s-2">
+        <Input
+          value={comment}
+          placeholder="Optional note (visible to admins and the rated party)"
+          onChange={(e) => setComment(e.target.value)}
+          className="min-w-56 flex-1"
+        />
+        {rating.mine ? (
+          <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+        ) : null}
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={busy || rated.length === 0}
+          onClick={() => {
+            onSubmit(Object.fromEntries(rated), comment.trim() || undefined)
+            setOpen(false)
+          }}
+        >
+          {busy ? 'Saving…' : rating.mine ? 'Update rating' : 'Submit rating'}
+        </Button>
+      </div>
+    </div>
   )
 }
 

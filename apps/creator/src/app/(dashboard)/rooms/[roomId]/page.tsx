@@ -1,7 +1,11 @@
 import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { notFound } from 'next/navigation'
-import { resolveRoomRecipeLabel, evaluateMakerSwitch } from '@ilaunchify/orders'
+import {
+  resolveRoomRecipeLabel,
+  evaluateMakerSwitch,
+  CO_CREATION_RATING_DIMENSIONS,
+} from '@ilaunchify/orders'
 import {
   CoCreationStepper,
   nicheGradientKey,
@@ -124,6 +128,28 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
     },
   ).allowed
 
+  // P1 two-sided reviews — after CLOSED_WON the creator rates the maker.
+  const myRating =
+    room.status === 'CLOSED_WON'
+      ? await prisma.partnerRating.findFirst({
+          where: { creatorUserId: user.id, roomId: room.id },
+          select: { dimensions: true, comment: true },
+        })
+      : null
+  const ratingProp =
+    room.status === 'CLOSED_WON'
+      ? {
+          counterpartName: room.partner.companyName,
+          dimensions: [...CO_CREATION_RATING_DIMENSIONS],
+          mine: myRating
+            ? {
+                dimensions: (myRating.dimensions ?? {}) as Record<string, number>,
+                comment: myRating.comment,
+              }
+            : null,
+        }
+      : undefined
+
   return (
     <>
       {/* DIRECT child of <main>: data-full-bleed spans the layout grid. */}
@@ -150,6 +176,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
       ndaSigned={!!room.ndaSignedAt}
       canCloseWon={canCloseWon}
       canSwitchMaker={canSwitchMaker}
+      rating={ratingProp}
       objects={room.objects.map((o) => ({
         id: o.id,
         kind: o.kind,

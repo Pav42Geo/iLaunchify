@@ -189,6 +189,24 @@ export async function partnerProposeMilestoneTerms(
   return res
 }
 
+/**
+ * P1 two-sided reviews — the maker rates the CREATOR after CLOSED_WON.
+ * Feeds the CreatorProfile aggregate shown on future pool cards.
+ */
+export async function partnerRateCreator(
+  roomId: string,
+  scores: Record<string, number>,
+  comment?: string,
+): Promise<RoomActionResult> {
+  const user = await requireUser()
+  const access = await getPartnerAccess(user.id)
+  if (!access) return guardFail()
+  const { rateRoomCreator } = await import('@ilaunchify/orders')
+  const res = await rateRoomCreator(user, access.partnerId, roomId, scores, comment)
+  revalidatePath(`/rooms/${roomId}`)
+  return res
+}
+
 export async function partnerMessage(roomId: string, body: string): Promise<RoomActionResult> {
   const ctx = await partnerRoomCtx(roomId)
   if (!ctx) return guardFail()

@@ -30,6 +30,9 @@ export interface PoolEntry {
   /** Epoch ms when the response window closes (settings.interestWindowDays);
       null = no window. Powers the card countdown — REAL, loader-enforced. */
   respondByMs: number | null
+  /** P1 two-sided reviews: the creator's maker-given rating (null below the
+      display floor — "New creator" instead of thin-sample stars). */
+  creatorRating: { mean: number; count: number } | null
 }
 
 export interface MyInterestEntry {
@@ -156,7 +159,14 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
             : {}),
         },
         include: {
-          creator: { select: { displayName: true, handle: true } },
+          creator: {
+            select: {
+              displayName: true,
+              handle: true,
+              ratingMean: true,
+              ratingCount: true,
+            },
+          },
           categoryRef: { select: { id: true, name: true } },
           interests: { select: { id: true, partnerId: true, status: true, claimFit: true } },
         },
@@ -221,6 +231,11 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
           }
         : null,
       respondByMs,
+      // MIN_RATINGS_FOR_DISPLAY mirror: thin samples show "New creator", not stars.
+      creatorRating:
+        b.creator.ratingMean !== null && b.creator.ratingCount >= 3
+          ? { mean: Number(b.creator.ratingMean), count: b.creator.ratingCount }
+          : null,
     })
   }
 

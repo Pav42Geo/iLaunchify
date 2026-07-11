@@ -343,6 +343,23 @@ export async function creatorSwitchMaker(
 }
 
 /**
+ * P1 two-sided reviews — creator rates the maker after CLOSED_WON. The
+ * service does its own guards (room won + owned + edit window); the rating
+ * flows into the SAME PartnerService.ratingBayesian that ranks the pool.
+ */
+export async function creatorRateMaker(
+  roomId: string,
+  scores: Record<string, number>,
+  comment?: string,
+): Promise<RoomActionResult> {
+  const user = await requireUser()
+  const { rateRoomMaker } = await import('@ilaunchify/orders')
+  const res = await rateRoomMaker(user, roomId, scores, comment)
+  revalidatePath(`/rooms/${roomId}`)
+  return res
+}
+
+/**
  * Close the room as WON: materialize the approved recipe into a draft
  * Product + Recipe (template-less; spec §6), room → CLOSED_WON, brief →
  * IN_PRODUCTION. Ordering then runs through the normal checkout. Creator-only.

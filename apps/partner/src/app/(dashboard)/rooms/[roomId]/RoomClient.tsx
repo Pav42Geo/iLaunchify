@@ -19,6 +19,7 @@ import {
   partnerComment,
   partnerMessage,
   partnerProposeMilestoneTerms,
+  partnerRateCreator,
   partnerSubmitVersion,
 } from './actions'
 import { roomSearchIngredients, roomCreateIngredient } from './ingredient-search-action'
@@ -27,6 +28,11 @@ export function RoomClient(props: {
   roomId: string
   rooms: RoomSwitcherEntry[]
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
+  rating?: {
+    counterpartName: string
+    dimensions: { slug: string; label: string; sublabel: string }[]
+    mine: { dimensions: Record<string, number>; comment: string | null } | null
+  }
   briefDomain: string
   briefTitle: string
   briefNicheSlug: string
@@ -51,6 +57,10 @@ export function RoomClient(props: {
       fullScreen
       rooms={props.rooms}
       recipeLabels={props.recipeLabels}
+      rating={props.rating}
+      onRateCounterpart={(scores, comment) =>
+        refresh(partnerRateCreator(props.roomId, scores, comment))
+      }
       briefDomain={props.briefDomain}
       onSearchIngredients={roomSearchIngredients}
       onCreateIngredient={roomCreateIngredient}

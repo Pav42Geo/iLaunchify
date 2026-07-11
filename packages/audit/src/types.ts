@@ -26,6 +26,7 @@ export const AUDIT_ENTITY_TYPES = [
   'OrderSettings', // Order-policy admin settings (2026-06-11)
   'CoCreationSettings', // Co-creation module policy admin settings (2026-07-10)
   'PromoTokenLedger', // promoted-interest token grants/spends (2026-07-10)
+  'CreatorRating', // maker→creator room rating (P1 two-sided reviews, 2026-07-10)
   'IngredientSourceConfig', // Ingredient data-source admin settings (2026-06-11)
   'DomainSetting', // Product-domain on/off admin settings (2026-06-14)
   'LogisticsSetting', // Logistics gate on/off admin settings (Phase L1, 2026-07-02)
