@@ -1,10 +1,12 @@
 import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, hasTier } from '@ilaunchify/auth'
+import { resolveCreatorTierPricing } from '@ilaunchify/plans'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CoCreationStepper } from '@ilaunchify/ui'
 import { marketingUrl } from '@/lib/marketing-url'
 import { BriefBuilderClient } from './BriefBuilderClient'
+import { CoCreationUpgradePanel } from '@/components/cocreation/CoCreationUpgradePanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,26 +51,12 @@ export default async function BriefBuilderPage() {
     )
   }
 
-  // D-CC1 tier gate (UX layer — the server action re-checks).
+  // D-CC1 tier gate (UX layer — the server action re-checks). Shares the same
+  // upgrade modal as the /briefs CTA; pricing resolves live from the plan ladder.
   const tier = await getEffectiveCreatorTier(user)
   if (!hasTier(tier, 'builder')) {
-    return (
-      <div className="mx-auto max-w-xl rounded-3xl border border-ink-200 bg-white p-10 text-center">
-        <div className="text-4xl">🤝</div>
-        <h1 className="mt-3 font-display text-ui-title">Co-create with a manufacturer</h1>
-        <p className="mt-2 text-ui-body text-ink-500">
-          Post your own product brief — a recipe or just an idea — and get it formulated, branded,
-          and produced by a matched, verified maker. Co-creation briefs are included in the{' '}
-          <b>Builder</b> and <b>Agency</b> plans.
-        </p>
-        <Link
-          href="/settings/plan"
-          className="mt-6 inline-flex items-center justify-center rounded-full bg-ink-900 px-6 py-3 text-ui-body font-semibold text-white transition hover:-translate-y-px"
-        >
-          Upgrade to Builder →
-        </Link>
-      </div>
-    )
+    const pricing = await resolveCreatorTierPricing()
+    return <CoCreationUpgradePanel pricing={pricing} />
   }
 
   // Taxonomy for the wizard: 8 locked niches + 13 locked categories (D-CC7:

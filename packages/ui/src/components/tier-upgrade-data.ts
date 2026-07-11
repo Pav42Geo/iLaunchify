@@ -110,6 +110,78 @@ export const CREATOR_UPGRADE_ROWS: UpgradeBenefitRow[] = [
   },
 ]
 
+// -----------------------------------------------------------------------------
+// Live pricing overlay
+// -----------------------------------------------------------------------------
+//
+// The plans (prices + fee) can be resolved live from the DB by a server
+// component (@ilaunchify/plans resolveCreatorTierPricing) and passed into the
+// modal so the numbers never drift from the plan ladder. Shape is kept
+// structurally identical to @ilaunchify/plans' CreatorTierPricing so the
+// resolver's result drops straight in — no cross-package type import needed.
+
+export interface CreatorTierPriceInput {
+  monthlyCents: number
+  annualCents: number
+  feePercent: number
+}
+export interface CreatorTierPricingInput {
+  maker: CreatorTierPriceInput
+  builder: CreatorTierPriceInput
+  agency: CreatorTierPriceInput
+}
+
+/** "$29" for whole dollars, "$29.50" otherwise; "" for free. */
+function usd(cents: number): string {
+  if (cents <= 0) return ''
+  const n = cents / 100
+  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
+}
+
+/**
+ * Merge live pricing into the plan display map. Falls back to the static
+ * CREATOR_UPGRADE_PLANS when no pricing is supplied (keeps the modal usable
+ * standalone / in tests).
+ */
+export function buildUpgradePlans(
+  pricing?: CreatorTierPricingInput,
+): Record<CreatorPlanKey, UpgradePlan> {
+  if (!pricing) return CREATOR_UPGRADE_PLANS
+  const money = (key: CreatorPlanKey): UpgradePlan => {
+    const p = pricing[key]
+    const base = CREATOR_UPGRADE_PLANS[key]
+    if (key === 'maker') {
+      return { ...base, price: '', priceSub: `Free · ${p.feePercent}% platform fee`, columnCaption: 'Current · free' }
+    }
+    const monthly = usd(p.monthlyCents)
+    const annual = usd(p.annualCents)
+    return {
+      ...base,
+      price: monthly,
+      priceSub: `/month · or ${annual}/yr · ${p.feePercent}% platform fee`,
+      columnCaption: `${monthly}/mo`,
+    }
+  }
+  return { maker: money('maker'), builder: money('builder'), agency: money('agency') }
+}
+
+/** Fee-row cell values, live when pricing is supplied, else the static row. */
+export function feeRowValues(pricing?: CreatorTierPricingInput): Record<CreatorPlanKey, string> {
+  if (pricing) {
+    return {
+      maker: `${pricing.maker.feePercent}%`,
+      builder: `${pricing.builder.feePercent}%`,
+      agency: `${pricing.agency.feePercent}%`,
+    }
+  }
+  const row = CREATOR_UPGRADE_ROWS.find((r) => r.key === 'fee')
+  return {
+    maker: String(row?.values.maker ?? '15%'),
+    builder: String(row?.values.builder ?? '12%'),
+    agency: String(row?.values.agency ?? '8%'),
+  }
+}
+
 /** Per-feature framing — the ONLY thing that differs between gated surfaces. */
 export interface UpgradeFeature {
   /** Eyebrow chip, e.g. "🤝 Co-creation is a Builder feature". */

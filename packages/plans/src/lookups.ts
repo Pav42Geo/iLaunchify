@@ -10,6 +10,7 @@
 // — a 60s stale read is acceptable for tier-level config.
 
 import { prisma } from '@ilaunchify/db'
+import { FEE_EVENTS } from './codes'
 import type {
   CreatorPlanCode,
   FeatureCode,
@@ -236,4 +237,60 @@ export async function lookupFeeRate(
   // (V1 seed inserts platform-wide defaults as planId-null rows fetched
   // separately in getCache() if needed. Keeping the simpler path for now.)
   return null
+}
+
+// -----------------------------------------------------------------------------
+// Creator tier pricing (for the upgrade modal — reads live so it never drifts)
+// -----------------------------------------------------------------------------
+
+export interface CreatorTierPrice {
+  /** Recurring monthly price in cents (0 = free). */
+  monthlyCents: number
+  /** Annual price in cents (0 = free). */
+  annualCents: number
+  /** Production platform fee as a percent (e.g. 15, 12, 8). */
+  feePercent: number
+}
+
+export interface CreatorTierPricing {
+  maker: CreatorTierPrice
+  builder: CreatorTierPrice
+  agency: CreatorTierPrice
+}
+
+// Mirrors the seed (packages/db seed-subscription-plans.ts). Used only when the
+// DB is empty / unreachable so the modal always renders sane numbers.
+const CREATOR_TIER_PRICING_FALLBACK: CreatorTierPricing = {
+  maker: { monthlyCents: 0, annualCents: 0, feePercent: 15 },
+  builder: { monthlyCents: 2900, annualCents: 29000, feePercent: 12 },
+  agency: { monthlyCents: 9900, annualCents: 99000, feePercent: 8 },
+}
+
+/**
+ * Resolve the live creator tier pricing (price + production fee) from the plan
+ * ladder — the single source of truth for the upgrade modal. Server-only.
+ * Falls back to the seed values if a plan or fee rule is missing so callers
+ * never render blanks. Cached via the shared plans cache (60s TTL).
+ */
+export async function resolveCreatorTierPricing(): Promise<CreatorTierPricing> {
+  const tiers = ['maker', 'builder', 'agency'] as const
+  try {
+    const out = {} as CreatorTierPricing
+    for (const tier of tiers) {
+      const code = creatorTierToPlanCode(tier)
+      const [plan, fee] = await Promise.all([
+        getPlanByCode(code),
+        lookupFeeRate(code, FEE_EVENTS.PRODUCTION_ORDER_SUBTOTAL),
+      ])
+      const fb = CREATOR_TIER_PRICING_FALLBACK[tier]
+      out[tier] = {
+        monthlyCents: plan?.monthlyPriceCents ?? fb.monthlyCents,
+        annualCents: plan?.annualPriceCents ?? fb.annualCents,
+        feePercent: fee?.ratePercent ?? fb.feePercent,
+      }
+    }
+    return out
+  } catch {
+    return CREATOR_TIER_PRICING_FALLBACK
+  }
 }

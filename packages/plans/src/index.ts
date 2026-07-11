@@ -29,10 +29,16 @@ export {
   getFeatureLimit,
   getFeatureString,
   lookupFeeRate,
+  resolveCreatorTierPricing,
   invalidatePlansCache,
 } from './lookups'
 
-export type { PlanFeatureValue, FeeRuleValue } from './lookups'
+export type {
+  PlanFeatureValue,
+  FeeRuleValue,
+  CreatorTierPrice,
+  CreatorTierPricing,
+} from './lookups'
 
 // Creator platform-fee SSOT (FEE_MODEL_RECONCILIATION_SPEC_2026-07-09) — the creator
 // pays their subscription-tier rate (15/12/8%); every charge path resolves it here.

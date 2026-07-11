@@ -18,9 +18,11 @@ import { X, Check } from 'lucide-react'
 import { cn } from '../lib/utils'
 import {
   CREATOR_PLAN_ORDER,
-  CREATOR_UPGRADE_PLANS,
   CREATOR_UPGRADE_ROWS,
+  buildUpgradePlans,
+  feeRowValues,
   type CreatorPlanKey,
+  type CreatorTierPricingInput,
   type UpgradeFeature,
 } from './tier-upgrade-data'
 
@@ -35,6 +37,11 @@ export interface TierUpgradeModalProps {
   manageHref?: string
   /** Optional click handler; when set the CTA calls it instead of navigating. */
   onUpgrade?: (planKey: CreatorPlanKey) => void
+  /**
+   * Live tier pricing (from @ilaunchify/plans resolveCreatorTierPricing, resolved
+   * in a server component). When omitted, the static seed-mirror values are used.
+   */
+  pricing?: CreatorTierPricingInput
 }
 
 function Cell({ value }: { value: boolean | string }) {
@@ -50,9 +57,14 @@ export function TierUpgradeModal({
   currentTier = 'maker',
   manageHref = '/settings/plan',
   onUpgrade,
+  pricing,
 }: TierUpgradeModalProps) {
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
+
+  // Live-or-static plan display + fee-row values (single source of truth).
+  const plans = React.useMemo(() => buildUpgradePlans(pricing), [pricing])
+  const feeValues = React.useMemo(() => feeRowValues(pricing), [pricing])
 
   // Upgrade options = every tier strictly above the current one.
   const currentIdx = CREATOR_PLAN_ORDER.indexOf(currentTier)
@@ -80,7 +92,7 @@ export function TierUpgradeModal({
 
   if (!mounted || !open) return null
 
-  const selectedPlan = CREATOR_UPGRADE_PLANS[selected]
+  const selectedPlan = plans[selected]
   const ctaLabel = `Upgrade to ${selectedPlan.name}${feature.ctaSuffix ? ` ${feature.ctaSuffix}` : ''} →`
 
   return createPortal(
@@ -120,7 +132,7 @@ export function TierUpgradeModal({
 
           <div className="space-y-3">
             {upgradeKeys.map((key) => {
-              const plan = CREATOR_UPGRADE_PLANS[key]
+              const plan = plans[key]
               const isSel = selected === key
               const recommended = key === feature.requiredTier
               const tag = recommended ? feature.unlocksLabel : plan.defaultTag
@@ -210,7 +222,7 @@ export function TierUpgradeModal({
                   Benefit
                 </th>
                 {CREATOR_PLAN_ORDER.map((key) => {
-                  const plan = CREATOR_UPGRADE_PLANS[key]
+                  const plan = plans[key]
                   const isSel = key === selected
                   return (
                     <th
@@ -251,7 +263,9 @@ export function TierUpgradeModal({
                     </td>
                     {CREATOR_PLAN_ORDER.map((key) => {
                       const isSel = key === selected
-                      const isCurrent = CREATOR_UPGRADE_PLANS[key].isCurrent
+                      const isCurrent = plans[key].isCurrent
+                      // Fee row reads live percentages; everything else is the row's own value.
+                      const value = row.key === 'fee' ? feeValues[key] : row.values[key]
                       return (
                         <td
                           key={key}
@@ -261,10 +275,10 @@ export function TierUpgradeModal({
                             isCurrent && 'text-ink-400',
                           )}
                         >
-                          {isCurrent && typeof row.values[key] !== 'boolean' ? (
-                            <span className="font-bold tabular-nums text-ink-400">{row.values[key] as string}</span>
+                          {isCurrent && typeof value !== 'boolean' ? (
+                            <span className="font-bold tabular-nums text-ink-400">{value}</span>
                           ) : (
-                            <Cell value={row.values[key]} />
+                            <Cell value={value} />
                           )}
                         </td>
                       )

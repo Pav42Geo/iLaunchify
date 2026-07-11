@@ -8,14 +8,21 @@
 // (CREATOR_UPGRADE_FEATURES.cocreation → the "Unlocks co-creation" tag + the
 // spotlighted row). Gate another feature by adding a registry entry, not a modal.
 
-import { TierUpgradeModal, CREATOR_UPGRADE_FEATURES } from '@ilaunchify/ui'
+import {
+  TierUpgradeModal,
+  CREATOR_UPGRADE_FEATURES,
+  type CreatorTierPricingInput,
+} from '@ilaunchify/ui'
 
 export function CoCreationUpgradeModal({
   open,
   onClose,
+  pricing,
 }: {
   open: boolean
   onClose: () => void
+  /** Live tier pricing resolved server-side (falls back to seed values when absent). */
+  pricing?: CreatorTierPricingInput
 }) {
   return (
     <TierUpgradeModal
@@ -23,6 +30,7 @@ export function CoCreationUpgradeModal({
       onClose={onClose}
       feature={CREATOR_UPGRADE_FEATURES.cocreation}
       manageHref="/settings/plan"
+      pricing={pricing}
     />
   )
 }

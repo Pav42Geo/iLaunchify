@@ -1,5 +1,6 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, hasTier } from '@ilaunchify/auth'
+import { resolveCreatorTierPricing } from '@ilaunchify/plans'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { nicheGradientKey } from '@ilaunchify/ui'
@@ -59,6 +60,9 @@ export default async function BriefsIndexPage() {
   const nicheBySlug = new Map(niches.map((n) => [n.slug, n]))
   const tier = await getEffectiveCreatorTier(user)
   const canPost = hasTier(tier, 'builder')
+  // Live tier pricing for the Maker upgrade modal — resolved from the plan ladder
+  // (never drifts). Only fetched when the creator is actually gated.
+  const pricing = canPost ? undefined : await resolveCreatorTierPricing()
 
   return (
     <div className="space-y-6">
@@ -72,7 +76,7 @@ export default async function BriefsIndexPage() {
         <span className="flex-1" />
         {/* Maker-tier gate lives here: Builder+ links to the builder, Maker
             opens the upgrade modal (Pavel 2026-07-11). */}
-        <PostBriefCta canPost={canPost} label={canPost ? '＋ Post a brief' : 'Co-create a product →'} />
+        <PostBriefCta canPost={canPost} pricing={pricing} label={canPost ? '＋ Post a brief' : 'Co-create a product →'} />
       </div>
 
       {briefs.length === 0 ? (
@@ -84,7 +88,7 @@ export default async function BriefsIndexPage() {
             raise their hands. You compare, pick one, and build together in a private room.
           </p>
           <div className="mt-s-4">
-            <PostBriefCta canPost={canPost} label="Start your first brief →" variant="link" />
+            <PostBriefCta canPost={canPost} pricing={pricing} label="Start your first brief →" variant="link" />
           </div>
         </div>
       ) : (

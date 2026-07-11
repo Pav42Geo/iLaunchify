@@ -9,6 +9,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
+import type { CreatorTierPricingInput } from '@ilaunchify/ui'
 import { CoCreationUpgradeModal } from '@/components/cocreation/CoCreationUpgradeModal'
 
 const HREF = '/products/new/brief'
@@ -17,11 +18,14 @@ export function PostBriefCta({
   canPost,
   label,
   variant = 'primary',
+  pricing,
 }: {
   canPost: boolean
   label: string
   /** 'primary' = black pill button; 'link' = inline pink text link. */
   variant?: 'primary' | 'link'
+  /** Live tier pricing for the upgrade modal (Maker gate). */
+  pricing?: CreatorTierPricingInput
 }) {
   const [open, setOpen] = React.useState(false)
 
@@ -43,7 +47,7 @@ export function PostBriefCta({
       <button type="button" onClick={() => setOpen(true)} className={className}>
         {label}
       </button>
-      <CoCreationUpgradeModal open={open} onClose={() => setOpen(false)} />
+      <CoCreationUpgradeModal open={open} onClose={() => setOpen(false)} pricing={pricing} />
     </>
   )
 }
