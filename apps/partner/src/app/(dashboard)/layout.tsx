@@ -133,6 +133,22 @@ export default async function PartnerDashboardLayout({ children }: { children: R
     return <LegalGate docs={outstandingLegal} />
   }
 
+  // Header "Customize Your Product" icon → shows only for partners eligible to
+  // see the Co-Creation Opportunity Pool. Mirrors roleNavFor's Opportunities
+  // rule: org admins on an ACTIVE partner, module on, and either a producer or
+  // a co-packer when the admin's pool policy allows co-packers. Empty
+  // serviceTypes (legacy rows) falls back to the full union, same as the nav.
+  const effectivePoolServiceTypes =
+    serviceTypes.length > 0
+      ? serviceTypes
+      : ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']
+  const poolEligible =
+    !restricted &&
+    access.isAdmin &&
+    briefPoolEnabled &&
+    (effectivePoolServiceTypes.includes('MANUFACTURING') ||
+      (effectivePoolServiceTypes.includes('COPACKING') && copackBriefPool))
+
   return (
     <div className="flex h-screen flex-col">
       {/* showMyApplication: the menu row only exists pre-activation (Pavel 2026-07-06). */}
@@ -141,6 +157,7 @@ export default async function PartnerDashboardLayout({ children }: { children: R
         companyName={partner.companyName}
         tier={partner.tier}
         showMyApplication={restricted}
+        poolEligible={poolEligible}
       />
       <div className="flex min-h-0 flex-1">
         {/* The /products/new builder hides the sidebar + neutralizes this

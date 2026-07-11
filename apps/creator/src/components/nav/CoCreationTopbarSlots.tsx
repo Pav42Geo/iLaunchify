@@ -10,7 +10,10 @@
 import { usePathname } from 'next/navigation'
 import { MarketplaceSearchLauncher } from './MarketplaceSearchLauncher'
 
-function isCoCreationPath(pathname: string | null): boolean {
+/** True on any creator Co-Creation Studio route (brief builder, briefs index,
+ *  collaboration rooms). Exported so the sidebar + header icon nav share one
+ *  definition of "we're inside the tool". */
+export function isCoCreationPath(pathname: string | null): boolean {
   if (!pathname) return false
   return (
     pathname.startsWith('/products/new/brief') ||

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { nicheGradientKey } from '@ilaunchify/ui'
 import { productGradient } from '@ilaunchify/ui/tokens'
+import { PostBriefCta } from './PostBriefCta'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Your briefs — iLaunchify' }
@@ -69,12 +70,9 @@ export default async function BriefsIndexPage() {
           </p>
         </div>
         <span className="flex-1" />
-        <Link
-          href="/products/new/brief"
-          className="inline-flex items-center rounded-pill bg-ink-900 px-s-5 py-s-3 text-ui-caption font-bold text-white transition hover:-translate-y-px"
-        >
-          {canPost ? '＋ Post a brief' : 'Co-create a product →'}
-        </Link>
+        {/* Maker-tier gate lives here: Builder+ links to the builder, Maker
+            opens the upgrade modal (Pavel 2026-07-11). */}
+        <PostBriefCta canPost={canPost} label={canPost ? '＋ Post a brief' : 'Co-create a product →'} />
       </div>
 
       {briefs.length === 0 ? (
@@ -85,12 +83,9 @@ export default async function BriefsIndexPage() {
             Bring a recipe or just an idea — post a brief and fit-matched, verified manufacturers
             raise their hands. You compare, pick one, and build together in a private room.
           </p>
-          <Link
-            href="/products/new/brief"
-            className="mt-s-4 inline-block text-ui-caption font-bold text-pink-700 hover:underline"
-          >
-            Start your first brief →
-          </Link>
+          <div className="mt-s-4">
+            <PostBriefCta canPost={canPost} label="Start your first brief →" variant="link" />
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

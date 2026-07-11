@@ -15,9 +15,11 @@ import {
   ShieldCheck,
   Wrench,
   Settings,
+  Lightbulb,
 } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
 import { roleNavFor, type PartnerNavItem } from '@/lib/role-skins'
+import { isCoCreationPath } from './CoCreationTopbarSlots'
 
 // Full nav is now resolved per role — docs/PARTNER_ROLE_ACCOUNTS.md §2 (one
 // chassis, role skins). The registry owns which surfaces each ServiceType
@@ -32,6 +34,13 @@ import { roleNavFor, type PartnerNavItem } from '@/lib/role-skins'
 const RESTRICTED_NAV: PartnerNavItem[] = [
   { href: '/my-application',  label: 'My Application',  icon: FileCheck2 },
   { href: '/help',            label: 'Help',            icon: LifeBuoy },
+]
+
+// Co-Creation Studio mode: while inside the tool the sidebar shows ONLY the
+// tool's own navigation (Pavel 2026-07-11). Home / Marketplace / back-out live
+// in the header icon cluster.
+const CO_CREATION_NAV: PartnerNavItem[] = [
+  { href: '/opportunities', label: 'Opportunity pool', icon: Lightbulb },
 ]
 
 // Limited "in-profile" nav shown post-approval while the partner is still
@@ -103,27 +112,44 @@ function statusBadge(status: PartnerStatus): {
 }
 
 const STORAGE_KEY = 'ilf-partner-sidebar-collapsed'
+// Co-creation keeps its OWN fold state so the focused tool starts folded by
+// default (Pavel 2026-07-11) without touching the partner's global preference.
+// Still fully togglable — once expanded, the choice persists here.
+const CC_STORAGE_KEY = 'ilf-partner-cocreation-sidebar-collapsed'
 
 export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled, activationLimited }: PartnerSidebarProps) {
   const pathname = usePathname()
-  const nav = restricted
-    ? RESTRICTED_NAV
-    : activationLimited
-      ? limitedActivationNav(serviceTypes ?? [])
-      : roleNavFor(serviceTypes ?? [], { isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled })
+  // Inside the Co-Creation Studio the sidebar shows ONLY the tool's nav
+  // (Pavel 2026-07-11) — regardless of role skin.
+  const coCreation = isCoCreationPath(pathname)
+  const nav = coCreation
+    ? CO_CREATION_NAV
+    : restricted
+      ? RESTRICTED_NAV
+      : activationLimited
+        ? limitedActivationNav(serviceTypes ?? [])
+        : roleNavFor(serviceTypes ?? [], { isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled })
   const badge = statusBadge(status)
 
   const [collapsed, setCollapsed] = useState(false)
+  // Co-creation fold state — starts collapsed (default), persisted separately.
+  const [ccCollapsed, setCcCollapsed] = useState(true)
 
   // Persist the fold state across navigations / refreshes (mirrors the creator
-  // sidebar — its own key so the two apps don't share state).
+  // sidebar — its own key so the two apps don't share state). Co-creation reads
+  // its own key and DEFAULTS to collapsed when unset (only an explicit '0'
+  // expands it) so the tool opens folded the first time.
   useEffect(() => {
     try {
       setCollapsed(window.localStorage.getItem(STORAGE_KEY) === '1')
+      setCcCollapsed(window.localStorage.getItem(CC_STORAGE_KEY) !== '0')
     } catch {
       /* localStorage unavailable — stay expanded */
     }
   }, [])
+
+  // Effective fold state for the CURRENT surface (co-creation vs everywhere else).
+  const collapsedNow = coCreation ? ccCollapsed : collapsed
 
   // Bridge: the Add-Product builder folds this sidebar to icons (and moves it to
   // the right via body.gb-active CSS) on enter, and restores the prior state on
@@ -139,10 +165,12 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
   }, [])
 
   function toggle() {
-    setCollapsed((c) => {
+    const key = coCreation ? CC_STORAGE_KEY : STORAGE_KEY
+    const setter = coCreation ? setCcCollapsed : setCollapsed
+    setter((c) => {
       const next = !c
       try {
-        window.localStorage.setItem(STORAGE_KEY, next ? '1' : '0')
+        window.localStorage.setItem(key, next ? '1' : '0')
       } catch {
         /* ignore */
       }
@@ -154,23 +182,32 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
     <aside
       data-partner-sidebar
       className={cn(
-        'relative hidden shrink-0 border-r border-ink-200 bg-white p-3 transition-[width] duration-200 ease-out lg:block',
-        collapsed ? 'w-[68px]' : 'w-56',
+        'relative hidden shrink-0 border-r border-ink-200 p-3 transition-[width] duration-200 ease-out lg:block',
+        // Co-creation mode: sidebar background matches the content area (light gray).
+        coCreation ? 'bg-ink-50' : 'bg-white',
+        collapsedNow ? 'w-[68px]' : 'w-56',
       )}
     >
       {/* Fold toggle — circular button straddling the right border (Printful-style) */}
       <button
         type="button"
         onClick={toggle}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        title={collapsed ? 'Expand' : 'Collapse'}
+        aria-label={collapsedNow ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={collapsedNow ? 'Expand' : 'Collapse'}
         className="absolute -right-3 top-5 z-20 inline-flex h-6 w-6 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-500 shadow-sm transition-colors hover:border-ink-300 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
       >
-        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+        {collapsedNow ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
       </button>
 
-      {/* Status block — full when expanded, a single status dot when collapsed */}
-      {collapsed ? (
+      {/* Co-creation mode: a tool label replaces the partner-portal status block
+          so the reduced nav reads intentionally. */}
+      {coCreation ? (
+        !collapsedNow && (
+          <div className="mb-4 mt-1 px-2 text-ui-label uppercase tracking-wide text-ink-400">
+            Co-Creation Studio
+          </div>
+        )
+      ) : collapsedNow ? (
         <div className="mb-4 mt-1 flex justify-center" title={`Partner portal · ${badge.label}`}>
           <span className={cn('inline-block h-2.5 w-2.5 rounded-full', badge.dotClassName)} />
         </div>
@@ -193,21 +230,21 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
             <Link
               key={href}
               href={href}
-              title={collapsed ? label : undefined}
+              title={collapsedNow ? label : undefined}
               className={cn(
                 'flex items-center rounded-md text-sm transition-colors',
-                collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
+                collapsedNow ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
                 active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
               )}
             >
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {!collapsed && <span>{label}</span>}
+              {!collapsedNow && <span>{label}</span>}
             </Link>
           )
         })}
       </nav>
 
-      {restricted && !collapsed && (
+      {restricted && !coCreation && !collapsedNow && (
         <p className="mt-6 px-2 text-ui-caption text-ink-500">
           {status === 'UNDER_REVIEW' && (
             <>Your application is being reviewed. We&apos;ll email you when there&apos;s an update.</>

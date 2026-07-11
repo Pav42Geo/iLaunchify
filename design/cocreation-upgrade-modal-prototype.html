@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>iLaunchify · Co-Creation upgrade modal — prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --pink:#FF2E63; --pink-600:#e01e52; --pink-700:#c4123f; --pink-50:#fff1f5; --pink-100:#ffe0e9;
+    --ink-900:#14161c; --ink-800:#20242e; --ink-700:#333a46; --ink-600:#525a68;
+    --ink-500:#6b7280; --ink-400:#98a1af; --ink-300:#cbd2db; --ink-200:#e6e9ef; --ink-100:#f1f3f7; --ink-50:#f7f8fa;
+    --white:#fff; --radius:26px;
+    --shadow:0 30px 80px -20px rgba(20,22,28,.45), 0 8px 24px -12px rgba(20,22,28,.25);
+    --sans:'Inter',system-ui,-apple-system,sans-serif;
+    --display:'Bricolage Grotesque','Inter',sans-serif;
+    --serif:'Fraunces',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:var(--sans);color:var(--ink-900);
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #ffe6ee 0%, transparent 55%),
+      radial-gradient(1000px 500px at 100% 0%, #eef1ff 0%, transparent 50%),
+      var(--ink-50);
+    -webkit-font-smoothing:antialiased;}
+
+  /* faux page behind the modal, blurred to fake context */
+  .page{position:fixed;inset:0;padding:48px;filter:blur(3px) saturate(.9);opacity:.5;pointer-events:none}
+  .page h1{font-family:var(--display);font-size:34px;margin:80px 0 6px}
+  .page p{color:var(--ink-500);max-width:460px}
+  .page .row{height:74px;border:1px solid var(--ink-200);border-radius:16px;background:#fff;margin-top:14px;max-width:640px}
+
+  .scrim{position:fixed;inset:0;background:rgba(20,22,28,.5);backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
+  .scrim.hidden{display:none}
+
+  .modal{position:relative;width:100%;max-width:1000px;background:var(--white);
+    border:1px solid var(--ink-200);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;
+    display:grid;grid-template-columns:400px 1fr;animation:pop .28s cubic-bezier(.2,.9,.3,1.2)}
+  @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+
+  .close{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--ink-200);background:#fff;color:var(--ink-500);font-size:18px;line-height:1;
+    display:grid;place-items:center;cursor:pointer;z-index:3;transition:.15s}
+  .close:hover{background:var(--ink-50);color:var(--ink-900);border-color:var(--ink-300)}
+
+  /* LEFT — plan chooser */
+  .left{padding:40px 34px 32px;border-right:1px solid var(--ink-100);
+    background:linear-gradient(180deg,#fff 0%, #fff 55%, #fff7fa 100%)}
+  .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.02em;
+    color:var(--pink-700);background:var(--pink-50);border:1px solid var(--pink-100);
+    padding:6px 11px;border-radius:999px}
+  .left h2{font-family:var(--display);font-weight:800;font-size:30px;line-height:1.08;letter-spacing:-.02em;margin:16px 0 8px}
+  .left h2 .em{font-family:var(--serif);font-style:italic;font-weight:600;color:var(--pink);}
+  .left .sub{color:var(--ink-500);font-size:14.5px;line-height:1.5;margin:0 0 22px}
+
+  .plan{width:100%;text-align:left;display:flex;align-items:flex-start;gap:13px;
+    border:1.5px solid var(--ink-200);border-radius:16px;padding:15px 16px;background:#fff;cursor:pointer;
+    transition:.15s;margin-bottom:12px}
+  .plan:hover{border-color:var(--ink-300)}
+  .plan.sel{border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
+  .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--ink-300);flex:none;margin-top:2px;
+    display:grid;place-items:center;transition:.15s}
+  .plan.sel .radio{border-color:var(--pink)}
+  .plan.sel .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--pink)}
+  .plan .body{flex:1;min-width:0}
+  .plan .title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .plan .title b{font-size:16px;font-weight:800;letter-spacing:-.01em}
+  .plan .price{font-size:13px;color:var(--ink-500);margin-top:3px}
+  .plan .price strong{color:var(--ink-900)}
+  .tag{font-size:10.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;
+    padding:3px 8px;border-radius:999px;background:var(--pink);color:#fff}
+  .tag.soft{background:var(--ink-100);color:var(--ink-600)}
+
+  .cta{margin-top:18px;width:100%;border:none;cursor:pointer;
+    background:var(--ink-900);color:#fff;font-family:var(--sans);font-weight:700;font-size:15px;
+    padding:15px 18px;border-radius:999px;transition:.15s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+  .cta:hover{background:#000;transform:translateY(-1px)}
+  .fineprint{text-align:center;color:var(--ink-400);font-size:12px;margin:12px 4px 0;line-height:1.5}
+  .later{display:block;margin:14px auto 0;background:none;border:none;color:var(--ink-500);
+    font-weight:600;font-size:13.5px;cursor:pointer}
+  .later:hover{color:var(--ink-900)}
+
+  /* RIGHT — benefits table */
+  .right{padding:38px 34px 30px}
+  .right h3{font-family:var(--display);font-weight:700;font-size:16px;margin:0 0 2px}
+  .right .cap{color:var(--ink-500);font-size:13px;margin:0 0 18px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{padding:11px 8px;text-align:center}
+  th:first-child,td:first-child{text-align:left;color:var(--ink-700);font-weight:500}
+  thead th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;font-weight:800;color:var(--ink-700);
+    border-bottom:1px solid var(--ink-200);padding-bottom:12px}
+  thead th small{display:block;font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-400);margin-top:2px}
+  .col-cur{color:var(--ink-400)!important}
+  th.col-b,td.col-b{background:var(--pink-50)}
+  th.col-b{color:var(--pink-700);border-bottom-color:var(--pink-100)}
+  tbody tr{border-bottom:1px solid var(--ink-100)}
+  tbody tr:last-child{border-bottom:none}
+  tbody td{color:var(--ink-600)}
+  td.val{font-weight:700;color:var(--ink-900);font-variant-numeric:tabular-nums}
+  td.col-cur.val{color:var(--ink-400)}
+  .check{color:var(--pink-600);font-weight:800}
+  .dash{color:var(--ink-300)}
+  .hero-row{background:linear-gradient(90deg,#fff7fa,transparent);}
+  .hero-row td:first-child{font-weight:700;color:var(--ink-900)}
+  .hero-row td:first-child .why{display:block;font-weight:500;font-size:11.5px;color:var(--pink-700);margin-top:2px}
+  .more{color:var(--ink-400);font-size:12.5px;margin-top:14px;text-align:center}
+
+  .reopen{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;
+    background:var(--ink-900);color:#fff;border:none;border-radius:999px;padding:11px 20px;font-weight:700;
+    font-size:13px;cursor:pointer;box-shadow:var(--shadow);display:none}
+  .reopen.show{display:inline-flex;gap:8px;align-items:center}
+
+  @media (max-width:880px){
+    .modal{grid-template-columns:1fr;max-width:520px;max-height:92vh;overflow:auto}
+    .left{border-right:none;border-bottom:1px solid var(--ink-100)}
+  }
+</style>
+</head>
+<body>
+  <!-- faux dimmed page for context -->
+  <div class="page" aria-hidden="true">
+    <h1>Your briefs</h1>
+    <p>Products you're co-creating with iLaunchify manufacturers — from idea to production.</p>
+    <div class="row"></div><div class="row"></div><div class="row"></div>
+  </div>
+
+  <!-- MODAL -->
+  <div class="scrim" id="scrim">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Upgrade to co-create">
+      <button class="close" id="close" aria-label="Close">✕</button>
+
+      <!-- LEFT: plan chooser -->
+      <section class="left">
+        <span class="eyebrow">🤝 Co-creation is a Builder feature</span>
+        <h2>Co-create your <span class="em">next product</span></h2>
+        <p class="sub">Post a brief — a recipe or just an idea — and matched, verified makers raise their hands to build it with you. Included on Builder and Agency.</p>
+
+        <button class="plan sel" data-plan="builder" data-cta="Upgrade to Builder &amp; post my brief →">
+          <span class="radio"></span>
+          <span class="body">
+            <span class="title"><b>Builder</b><span class="tag">Unlocks co-creation</span></span>
+            <span class="price"><strong>$29</strong>/month · or $290/yr · 12% platform fee</span>
+          </span>
+        </button>
+
+        <button class="plan" data-plan="agency" data-cta="Upgrade to Agency &amp; post my brief →">
+          <span class="radio"></span>
+          <span class="body">
+            <span class="title"><b>Agency</b><span class="tag soft">Lowest fee · scale</span></span>
+            <span class="price"><strong>$99</strong>/month · or $990/yr · 8% platform fee</span>
+          </span>
+        </button>
+
+        <button class="cta" id="cta">Upgrade to Builder &amp; post my brief →</button>
+        <p class="fineprint">Change or cancel anytime from Plan &amp; billing. Upgrades are prorated — you keep every brand, product, and order.</p>
+        <button class="later" id="later">Maybe later</button>
+      </section>
+
+      <!-- RIGHT: benefits comparison -->
+      <section class="right">
+        <h3>What each plan unlocks</h3>
+        <p class="cap">The unit cost of production is the same on every plan — higher tiers pay a lower platform fee and unlock more.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Benefit</th>
+              <th class="col-cur">Maker<small>Current · free</small></th>
+              <th class="col-b">Builder<small>$29/mo</small></th>
+              <th>Agency<small>$99/mo</small></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="hero-row">
+              <td>Co-create products with makers<span class="why">The reason you're here — post briefs to the maker pool</span></td>
+              <td class="col-cur"><span class="dash">—</span></td>
+              <td class="col-b"><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Platform fee on production</td>
+              <td class="col-cur val">15%</td>
+              <td class="col-b val">12%</td>
+              <td class="val">8%</td>
+            </tr>
+            <tr>
+              <td>Brand kits</td>
+              <td class="col-cur val">1</td>
+              <td class="col-b val">3</td>
+              <td class="val">Unlimited</td>
+            </tr>
+            <tr>
+              <td>Saved templates per kit</td>
+              <td class="col-cur val">3</td>
+              <td class="col-b val">15</td>
+              <td class="val">Unlimited</td>
+            </tr>
+            <tr>
+              <td>Connected sales channels</td>
+              <td class="col-cur val">1</td>
+              <td class="col-b val">3</td>
+              <td class="val">Unlimited</td>
+            </tr>
+            <tr>
+              <td>Design alternates per slot</td>
+              <td class="col-cur val">2</td>
+              <td class="col-b val">5</td>
+              <td class="val">Unlimited</td>
+            </tr>
+            <tr>
+              <td>Custom brand font upload</td>
+              <td class="col-cur"><span class="dash">—</span></td>
+              <td class="col-b"><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+            </tr>
+            <tr>
+              <td>Compliance label file downloads</td>
+              <td class="col-cur"><span class="dash">—</span></td>
+              <td class="col-b"><span class="dash">—</span></td>
+              <td><span class="check">✓</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="more">Plus much more — palette extraction, template recolor, and priority matching on Agency.</p>
+      </section>
+    </div>
+  </div>
+
+  <button class="reopen" id="reopen">◧ Reopen upgrade modal</button>
+
+<script>
+  const scrim=document.getElementById('scrim');
+  const reopen=document.getElementById('reopen');
+  const cta=document.getElementById('cta');
+  const plans=[...document.querySelectorAll('.plan')];
+
+  function closeModal(){scrim.classList.add('hidden');reopen.classList.add('show');}
+  function openModal(){scrim.classList.remove('hidden');reopen.classList.remove('show');}
+
+  document.getElementById('close').onclick=closeModal;
+  document.getElementById('later').onclick=closeModal;
+  reopen.onclick=openModal;
+  scrim.addEventListener('click',e=>{if(e.target===scrim)closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+  // column highlight map
+  const cols={builder:'col-b',agency:'col-ag'};
+  plans.forEach(p=>p.addEventListener('click',()=>{
+    plans.forEach(x=>x.classList.remove('sel'));
+    p.classList.add('sel');
+    cta.innerHTML=p.dataset.cta;
+    // move the pink emphasis column to the chosen plan
+    const idx=p.dataset.plan==='agency'?4:3; // nth-child in table (1=benefit,2=maker,3=builder,4=agency)
+    document.querySelectorAll('th,td').forEach(c=>c.classList.remove('col-b'));
+    document.querySelectorAll('tr').forEach(tr=>{
+      const cells=tr.children;
+      if(cells[idx-1]) cells[idx-1].classList.add('col-b');
+    });
+  }));
+  // seed the CTA
+  cta.innerHTML=document.querySelector('.plan.sel').dataset.cta;
+  cta.onclick=()=>{cta.innerHTML='✓ Redirecting to Plan &amp; billing…';cta.style.background='var(--pink)';};
+</script>
+</body>
+</html>

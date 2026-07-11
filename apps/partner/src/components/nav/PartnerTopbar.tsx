@@ -10,12 +10,14 @@ import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
 import { getPublicBrandLogos, getLogoPlacement } from '@ilaunchify/db'
 import { PartnerTopbarRight } from './PartnerTopbarRight'
 import { CoCreationSublabel } from './CoCreationTopbarSlots'
+import { PartnerCenterNav } from './PartnerCenterNav'
 
 export async function PartnerTopbar({
   user,
   companyName,
   tier = null,
   showMyApplication = false,
+  poolEligible = false,
 }: {
   user: User
   companyName: string
@@ -23,6 +25,8 @@ export async function PartnerTopbar({
   tier?: 'VERIFIED' | 'TRUSTED' | 'PREMIER' | null
   /** True while the partner is pre-activation (menu shows "My application"). */
   showMyApplication?: boolean
+  /** Eligible to see the Co-Creation Opportunity Pool → shows the third header icon. */
+  poolEligible?: boolean
 }) {
   const [logos, placement] = await Promise.all([getPublicBrandLogos(), getLogoPlacement('partnerHeader')])
   const brand =
@@ -43,10 +47,20 @@ export async function PartnerTopbar({
           <CoCreationSublabel />
         </>
       }
-      // Empty portal targets the product builder injects its Saved chip + Save
-      // Draft (center, next to the logo) and Next button (right, next to the
-      // bell) into. Harmless on every other page.
-      center={<div id="gb-topbar-center" style={{ display: 'contents' }} />}
+      // Facebook-style icon cluster (absolutely centered, mirrors admin) plus
+      // the guided-builder portal target. The product builder injects its Saved
+      // chip + Save Draft into gb-topbar-center (display:contents keeps them in
+      // normal flow); the icon nav hides itself while the builder is active.
+      center={
+        <div className="relative flex flex-1 items-center">
+          <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
+            <div className="pointer-events-auto">
+              <PartnerCenterNav poolEligible={poolEligible} />
+            </div>
+          </div>
+          <div id="gb-topbar-center" style={{ display: 'contents' }} />
+        </div>
+      }
       right={
         <>
           <div id="gb-topbar-right" style={{ display: 'contents' }} />

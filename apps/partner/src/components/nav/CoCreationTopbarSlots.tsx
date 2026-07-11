@@ -7,7 +7,9 @@
 
 import { usePathname } from 'next/navigation'
 
-function isCoCreationPath(pathname: string | null): boolean {
+/** True on any partner Co-Creation Studio route (opportunity pool, collaboration
+ *  rooms). Exported so the sidebar + header icon nav share one definition. */
+export function isCoCreationPath(pathname: string | null): boolean {
   if (!pathname) return false
   return pathname.startsWith('/opportunities') || pathname.startsWith('/rooms')
 }

@@ -15,11 +15,13 @@ import {
   Settings,
   LifeBuoy,
   Lightbulb,
+  FilePlus2,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
 import { LaunchChecklistTrigger } from '@/components/checklist/LaunchChecklistTrigger'
 import { marketingUrl } from '@/lib/marketing-url'
+import { isCoCreationPath } from './CoCreationTopbarSlots'
 
 // Marketplace is the only entry that lives on apps/marketing (port 3010
 // in dev). We render it as a plain <a> so navigation triggers a real
@@ -44,30 +46,64 @@ const NAV: Array<{
   { href: '/help',                         label: 'Help',        icon: LifeBuoy },
 ]
 
+// Co-Creation Studio mode: while inside the tool the sidebar is reduced to
+// the tool's own navigation and nothing else (Pavel 2026-07-11). Home /
+// Marketplace / back-out live in the header icon cluster.
+const CO_CREATION_NAV: Array<{
+  href: string
+  label: string
+  icon: typeof Home
+  external?: boolean
+}> = [
+  { href: '/briefs',            label: 'Your briefs', icon: Lightbulb },
+  { href: '/products/new/brief', label: 'Post a brief', icon: FilePlus2 },
+]
+
 const STORAGE_KEY = 'ilf-creator-sidebar-collapsed'
+// Co-creation keeps its OWN fold state so the focused tool starts folded by
+// default (Pavel 2026-07-11) without touching the creator's global preference.
+// Still fully togglable — once the user expands it, the choice persists here.
+const CC_STORAGE_KEY = 'ilf-creator-cocreation-sidebar-collapsed'
 
 export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
-  // Co-creation kick-off switch (Pavel 2026-07-10): the layout hides Briefs
-  // until the module opens — unless this creator already has briefs in flight.
-  const nav = showBriefs ? NAV : NAV.filter((n) => n.href !== '/briefs')
+  // Inside the Co-Creation Studio the sidebar shows ONLY the tool's nav
+  // (Pavel 2026-07-11). Elsewhere: the full nav, minus Briefs until the module
+  // opens (unless this creator already has briefs in flight).
+  const coCreation = isCoCreationPath(pathname)
+  const nav = coCreation
+    ? CO_CREATION_NAV
+    : showBriefs
+      ? NAV
+      : NAV.filter((n) => n.href !== '/briefs')
+
+  // Co-creation fold state — starts collapsed (default), persisted separately.
+  const [ccCollapsed, setCcCollapsed] = useState(true)
 
   // Persist the fold state across navigations / refreshes. Reads on mount
-  // (slight flash from the expanded default is acceptable for V1).
+  // (slight flash from the expanded default is acceptable for V1). Co-creation
+  // reads its own key and DEFAULTS to collapsed when unset (only an explicit
+  // '0' expands it) so the tool opens folded the first time.
   useEffect(() => {
     try {
       setCollapsed(window.localStorage.getItem(STORAGE_KEY) === '1')
+      setCcCollapsed(window.localStorage.getItem(CC_STORAGE_KEY) !== '0')
     } catch {
       /* localStorage unavailable — stay expanded */
     }
   }, [])
 
+  // Effective fold state for the CURRENT surface (co-creation vs everywhere else).
+  const collapsedNow = coCreation ? ccCollapsed : collapsed
+
   function toggle() {
-    setCollapsed((c) => {
+    const key = coCreation ? CC_STORAGE_KEY : STORAGE_KEY
+    const setter = coCreation ? setCcCollapsed : setCollapsed
+    setter((c) => {
       const next = !c
       try {
-        window.localStorage.setItem(STORAGE_KEY, next ? '1' : '0')
+        window.localStorage.setItem(key, next ? '1' : '0')
       } catch {
         /* ignore */
       }
@@ -78,20 +114,29 @@ export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }
   return (
     <aside
       className={cn(
-        'relative hidden shrink-0 border-r border-ink-200 bg-white p-3 transition-[width] duration-200 ease-out lg:block',
-        collapsed ? 'w-[68px]' : 'w-56',
+        'relative hidden shrink-0 border-r border-ink-200 p-3 transition-[width] duration-200 ease-out lg:block',
+        // Co-creation mode: sidebar background matches the content area (light gray).
+        coCreation ? 'bg-ink-50' : 'bg-white',
+        collapsedNow ? 'w-[68px]' : 'w-56',
       )}
     >
       {/* Fold toggle — circular button straddling the right border (Printful-style) */}
       <button
         type="button"
         onClick={toggle}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        title={collapsed ? 'Expand' : 'Collapse'}
+        aria-label={collapsedNow ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={collapsedNow ? 'Expand' : 'Collapse'}
         className="absolute -right-3 top-5 z-20 inline-flex h-6 w-6 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-500 shadow-sm transition-colors hover:border-ink-300 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
       >
-        {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+        {collapsedNow ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
       </button>
+
+      {/* Tool-context label so the reduced Co-Creation nav reads intentionally. */}
+      {coCreation && !collapsedNow && (
+        <div className="mb-2 px-3 text-ui-label uppercase tracking-wide text-ink-400">
+          Co-Creation Studio
+        </div>
+      )}
 
       <nav className="space-y-1">
         {nav.map(({ href, label, icon: Icon, external }) => {
@@ -100,24 +145,24 @@ export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }
             (pathname === href || (href !== '/dashboard' && pathname.startsWith(href)))
           const className = cn(
             'flex items-center rounded-md text-sm transition-colors',
-            collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
+            collapsedNow ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
             active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
           )
           const inner = (
             <>
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {!collapsed && <span>{label}</span>}
+              {!collapsedNow && <span>{label}</span>}
             </>
           )
           if (external) {
             return (
-              <a key={label} href={href} className={className} title={collapsed ? label : undefined}>
+              <a key={label} href={href} className={className} title={collapsedNow ? label : undefined}>
                 {inner}
               </a>
             )
           }
           return (
-            <Link key={href} href={href} className={className} title={collapsed ? label : undefined}>
+            <Link key={href} href={href} className={className} title={collapsedNow ? label : undefined}>
               {inner}
             </Link>
           )
@@ -125,8 +170,9 @@ export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }
 
         {/* Launch Checklist trigger — full form only when expanded (its label +
             count badge don't fit the icon rail). Lives inside the
-            LaunchChecklistProvider context wrapped by (dashboard)/layout.tsx. */}
-        {!collapsed && (
+            LaunchChecklistProvider context wrapped by (dashboard)/layout.tsx.
+            Hidden in co-creation mode (not part of the tool's nav). */}
+        {!collapsedNow && !coCreation && (
           <div className="mt-4 border-t border-ink-200 pt-4">
             <LaunchChecklistTrigger />
           </div>

@@ -16,6 +16,7 @@ import { brandLimits, normalizeTier, type TierKey, type User } from '@ilaunchify
 import { AppHeader, Brand, BrandMark } from '@ilaunchify/ui'
 import { TopbarRight } from './TopbarRight'
 import { CoCreationSublabel, CreatorTopbarCenter } from './CoCreationTopbarSlots'
+import { CreatorCenterNav } from './CreatorCenterNav'
 
 const COOKIE_NAME = 'active_brand_id'
 
@@ -79,7 +80,21 @@ export async function DashboardTopbar({ user }: { user: User }) {
           <CoCreationSublabel />
         </>
       }
-      center={<CreatorTopbarCenter />}
+      center={
+        <div className="relative flex flex-1 items-center">
+          {/* Facebook-style icon cluster — absolutely centered so the search
+              launcher on the right never offsets it (mirrors the admin header). */}
+          <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
+            <div className="pointer-events-auto">
+              <CreatorCenterNav />
+            </div>
+          </div>
+          {/* Marketplace search — route-aware slot (null on co-creation routes). */}
+          <div className="ml-auto">
+            <CreatorTopbarCenter />
+          </div>
+        </div>
+      }
       right={
         <TopbarRight
           email={user.email}
