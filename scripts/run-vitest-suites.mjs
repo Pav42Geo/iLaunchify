@@ -121,8 +121,15 @@ for (const pkgSrc of PKGS) {
     writeFileSync(join(d, 'index.js'), 'module.exports = new Proxy({}, { get: () => undefined });')
   }
 
-  for (const f of readdirSync(outDir).filter((f) => f.endsWith('.test.js'))) {
-    suite = `${pkgSrc.split('/')[1]}/${f.replace('.test.js', '')}`
+  // RECURSIVE (2026-07-10 fix): when a tested dir imports a sibling dir (e.g.
+  // ui/lib → ui/tokens), tsc infers a rootDir ABOVE the glob and nests the
+  // output — a top-level readdir then finds no *.test.js and the whole
+  // package's tests silently skip. Walk the tree instead.
+  const testFiles = readdirSync(outDir, { recursive: true })
+    .map(String)
+    .filter((f) => f.endsWith('.test.js') && !f.includes('node_modules'))
+  for (const f of testFiles) {
+    suite = `${pkgSrc.split('/')[1]}/${f.replace(/\\/g, '/').replace('.test.js', '')}`
     try { require(join(outDir, f)) } catch (e) { fail++; failures.push(`${suite} — load error: ${e.message}`) }
   }
 }

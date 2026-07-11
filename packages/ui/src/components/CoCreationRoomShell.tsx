@@ -22,6 +22,7 @@ import { productGradient, type ProductGradient } from '../tokens/colors'
 // Print-grade, CSS-immune label artifacts — the platform's single source of
 // truth for how regulated labels LOOK (21 CFR 101.9(d) / INCI / AAFCO). The
 // room previews the same artifacts the product builder and label download use.
+import { checkRoomLabelReadiness } from '../lib/room-compliance'
 import { NutritionFactsSvg } from '../nutrition/NutritionFactsSvg'
 import { SupplementFactsSvg } from '../nutrition/SupplementFactsSvg'
 import { InciDeclarationSvg } from '../nutrition/InciDeclarationSvg'
@@ -2830,7 +2831,73 @@ function RecipeFactsSidebar({
           Live preview — computed from catalog data, updates with each version.
         </p>
       )}
+
+      <CompliancePrecheck label={label} />
     </aside>
+  )
+}
+
+/** P2 label compliance pre-check — per-domain mandatory-element readiness.
+ *  INFORMS, never blocks: the full compliance scan runs in the Studio. */
+function CompliancePrecheck({ label }: { label: RoomRecipeLabelView }) {
+  const [open, setOpen] = React.useState(false)
+  const report = checkRoomLabelReadiness(label)
+  const blocking = report.items.filter((i) => i.severity === 'BLOCKING').length
+  const warnings = report.items.length - blocking
+
+  return (
+    <div className="mt-s-2 rounded-lg border border-ink-200 bg-white p-s-2">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-s-2 text-left"
+        aria-expanded={open}
+      >
+        <span
+          className={cn(
+            'rounded-pill px-s-2 py-0.5 text-ui-label tracking-normal',
+            report.outcome === 'READY'
+              ? 'bg-success-50 text-success-700'
+              : report.outcome === 'READY_WITH_WARNINGS'
+                ? 'bg-warning-50 text-warning-700'
+                : 'bg-danger-50 text-danger-700',
+          )}
+        >
+          {report.outcome === 'READY'
+            ? '✓ label pre-check passed'
+            : report.outcome === 'READY_WITH_WARNINGS'
+              ? `⚠ ${warnings} warning${warnings === 1 ? '' : 's'}`
+              : `✕ ${blocking} blocking · ${warnings} warning${warnings === 1 ? '' : 's'}`}
+        </span>
+        <span className="flex-1" />
+        {report.items.length > 0 ? (
+          <span className="text-ui-label normal-case tracking-normal text-ink-400">{open ? '▴' : '▾'}</span>
+        ) : null}
+      </button>
+      {open && report.items.length > 0 ? (
+        <ul className="mt-s-2 space-y-s-1">
+          {report.items.map((i) => (
+            <li
+              key={i.id}
+              className={cn(
+                'text-ui-label normal-case tracking-normal',
+                i.severity === 'BLOCKING' ? 'text-danger-700' : 'text-warning-700',
+              )}
+              title={i.cfr}
+            >
+              {i.severity === 'BLOCKING' ? '✕' : '⚠'} {i.message}
+              {i.cfr ? <span className="text-ink-400"> · {i.cfr}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {open ? (
+        <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-400">
+          Early warning only — the full compliance scan runs when the product is finished in the
+          Studio.
+        </p>
+      ) : null}
+    </div>
   )
 }
 
