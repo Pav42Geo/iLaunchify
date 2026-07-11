@@ -526,6 +526,59 @@ export async function generateOrderManifest(
     changeoverDays,
   })
 
+  // PS-7 §8.2.5 — a LABEL leg addresses the APPLIER (OrderDispatch.shipToNodeId),
+  // never the order's final destination: the printer ships labels to whoever applies
+  // them (manufacturer / co-packer / FC), not to the creator/warehouse. Resolve the
+  // applier's facility/partner address; fall back to legacy order.shipTo* when
+  // shipToNodeId is null (or resolution fails), which preserves today's behavior.
+  const shipToNodeId = (dispatch as unknown as { shipToNodeId: string | null }).shipToNodeId
+  const legacyShipTo = {
+    type: dispatch.order.shipToType,
+    contactName: dispatch.order.shipToContactName,
+    addressLine1: dispatch.order.shipToAddressLine1,
+    addressLine2: dispatch.order.shipToAddressLine2,
+    city: dispatch.order.shipToCity,
+    state: dispatch.order.shipToState,
+    postalCode: dispatch.order.shipToPostalCode,
+    country: dispatch.order.shipToCountry,
+    warehousePartnerServiceId: dispatch.order.shipToPartnerServiceId,
+  }
+  let resolvedShipTo = legacyShipTo
+  if (dispatch.type === 'LABEL' && shipToNodeId) {
+    const applier = await tx.partnerService.findUnique({
+      where: { id: shipToNodeId },
+      select: {
+        partner: {
+          select: {
+            companyName: true,
+            addressLine1: true,
+            addressLine2: true,
+            city: true,
+            state: true,
+            postalCode: true,
+            country: true,
+          },
+        },
+      },
+    })
+    if (applier?.partner) {
+      // Spread legacy (keeps the OrderShipToType) and swap in the applier's address;
+      // warehousePartnerServiceId points at the applier node. Nullable partner fields
+      // coalesce to '' (an incomplete partner address is still the correct node).
+      resolvedShipTo = {
+        ...legacyShipTo,
+        contactName: applier.partner.companyName,
+        addressLine1: applier.partner.addressLine1 ?? '',
+        addressLine2: applier.partner.addressLine2,
+        city: applier.partner.city ?? '',
+        state: applier.partner.state ?? '',
+        postalCode: applier.partner.postalCode ?? '',
+        country: applier.partner.country,
+        warehousePartnerServiceId: shipToNodeId,
+      }
+    }
+  }
+
   return {
     manifestVersion: MANIFEST_VERSION,
     generatedAt: new Date().toISOString(),
@@ -602,17 +655,7 @@ export async function generateOrderManifest(
       flavorCount: itemFlavors.length,
       basis: itemFlavors.length > 0 ? 'MULTI_FLAVOR' : 'STANDARD',
     },
-    shipTo: {
-      type: dispatch.order.shipToType,
-      contactName: dispatch.order.shipToContactName,
-      addressLine1: dispatch.order.shipToAddressLine1,
-      addressLine2: dispatch.order.shipToAddressLine2,
-      city: dispatch.order.shipToCity,
-      state: dispatch.order.shipToState,
-      postalCode: dispatch.order.shipToPostalCode,
-      country: dispatch.order.shipToCountry,
-      warehousePartnerServiceId: dispatch.order.shipToPartnerServiceId,
-    },
+    shipTo: resolvedShipTo,
     partnerActionItems: [],
   }
 }
