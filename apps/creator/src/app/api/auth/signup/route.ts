@@ -18,7 +18,7 @@
 // 409 if email taken, 500 on DB error.
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createUserWithRole } from '@ilaunchify/auth'
+import { createUserWithRole, verifyTurnstile, requestIp } from '@ilaunchify/auth'
 import { signIn } from '@ilaunchify/auth'
 
 export const dynamic = 'force-dynamic'
@@ -37,12 +37,23 @@ export async function POST(req: NextRequest) {
     email?: string
     brandName?: string
     launch?: Record<string, string>
+    turnstileToken?: string
   }
 
   if (!data.name || !data.email) {
     return NextResponse.json(
       { error: 'INVALID_INPUT', message: 'Name and email are required.' },
       { status: 400 },
+    )
+  }
+
+  // Bot defense on the open signup form (H5 A4). Skips (allows) when Turnstile is
+  // unconfigured; a bad/absent token when it IS configured → 403 before any DB write.
+  const turnstile = await verifyTurnstile({ token: data.turnstileToken, ip: await requestIp() })
+  if (!turnstile.ok) {
+    return NextResponse.json(
+      { error: 'TURNSTILE_FAILED', message: 'Verification failed — please retry.' },
+      { status: 403 },
     )
   }
 

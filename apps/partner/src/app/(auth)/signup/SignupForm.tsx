@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, Input, Label, Checkbox } from '@ilaunchify/ui'
+import { Button, Input, Label, Checkbox, TurnstileWidget } from '@ilaunchify/ui'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { marketingUrl } from '@/lib/marketing-url'
@@ -14,12 +14,16 @@ type SignupResponse =
   | { ok: true; nextStep: 'CHECK_EMAIL'; warning?: string }
   | { ok: false; error: string; message: string }
 
+// Turnstile is only enforced when a site key is present (feature-gated). (H5 A4)
+const TURNSTILE_ON = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
 export function SignupForm({ prefillEmail, prefillCompany }: SignupFormProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState(prefillEmail ?? '')
   const [companyName, setCompanyName] = useState(prefillCompany ?? '')
   const [roleAtCompany, setRoleAtCompany] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -33,7 +37,13 @@ export function SignupForm({ prefillEmail, prefillCompany }: SignupFormProps) {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, companyName, roleAtCompany: roleAtCompany || undefined }),
+        body: JSON.stringify({
+          name,
+          email,
+          companyName,
+          roleAtCompany: roleAtCompany || undefined,
+          ...(turnstileToken ? { turnstileToken } : {}),
+        }),
       })
       const data = (await res.json()) as SignupResponse
 
@@ -131,7 +141,15 @@ export function SignupForm({ prefillEmail, prefillCompany }: SignupFormProps) {
         }
       />
 
-      <Button type="submit" className="w-full" disabled={busy || !agreedToTerms || !name || !email || !companyName}>
+      <TurnstileWidget onToken={setTurnstileToken} />
+
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={
+          busy || !agreedToTerms || !name || !email || !companyName || (TURNSTILE_ON && !turnstileToken)
+        }
+      >
         {busy ? 'Creating account…' : 'Apply to join the network'}
       </Button>
     </form>

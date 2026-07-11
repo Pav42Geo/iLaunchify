@@ -1,6 +1,6 @@
 'use client'
 
-import { Button, Input, Label, Checkbox } from '@ilaunchify/ui'
+import { Button, Input, Label, Checkbox, TurnstileWidget } from '@ilaunchify/ui'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { marketingUrl } from '@/lib/marketing-url'
@@ -31,11 +31,16 @@ type SignupResponse =
   | { ok: true; nextStep: 'CHECK_EMAIL'; warning?: string }
   | { ok: false; error: string; message: string }
 
+// Turnstile is only enforced when a site key is present (feature-gated). When it is,
+// the submit button waits for a live token. (H5 A4)
+const TURNSTILE_ON = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
 export function SignupForm({ prefillEmail, prefillBrand }: SignupFormProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState(prefillEmail ?? '')
   const [brandName, setBrandName] = useState(prefillBrand ?? '')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -59,6 +64,7 @@ export function SignupForm({ prefillEmail, prefillBrand }: SignupFormProps) {
           email,
           brandName: brandName || undefined,
           ...(launch ? { launch } : {}),
+          ...(turnstileToken ? { turnstileToken } : {}),
         }),
       })
       const data = (await res.json()) as SignupResponse
@@ -145,7 +151,13 @@ export function SignupForm({ prefillEmail, prefillBrand }: SignupFormProps) {
         }
       />
 
-      <Button type="submit" className="w-full" disabled={busy || !agreedToTerms || !name || !email}>
+      <TurnstileWidget onToken={setTurnstileToken} />
+
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={busy || !agreedToTerms || !name || !email || (TURNSTILE_ON && !turnstileToken)}
+      >
         {busy ? 'Creating account…' : 'Start my creator account'}
       </Button>
     </form>
