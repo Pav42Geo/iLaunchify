@@ -28,6 +28,7 @@ const SUITES = [
   { base: 'packages/auth/src', deps: ['admin-invite.ts'], test: 'admin-invite.test.ts', label: 'Admin-invite acceptance' },
   { base: 'packages/auth/src', deps: ['ownership-rules.ts'], test: 'ownership.test.ts', label: 'Ownership guards' },
   { base: 'packages/auth/src', deps: ['dev-guard.ts'], test: 'dev-guard.test.ts', label: 'Dev sign-in bypass guards (H5)' },
+  { base: 'packages/auth/src', deps: ['turnstile.ts'], test: 'turnstile.test.ts', label: 'Turnstile siteverify interpret (H5 A4)' },
   { base: 'apps/admin/src/lib', deps: ['partner-fsm.ts'], test: 'partner-fsm.test.ts', label: 'Partner status FSM' },
   { base: 'packages/marketplace/src', deps: ['niche-rule-eval.ts'], test: 'suggestNiches.test.ts', label: 'Niche suggestion engine' },
   { base: 'packages/marketplace/src', deps: ['phrase-rule-eval.ts'], test: 'suggestPhrases.test.ts', label: 'Phrase suggestion engine' },

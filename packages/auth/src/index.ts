@@ -39,6 +39,9 @@ export type {
 // Tier 0.3 (docs/SECURITY_ARCHITECTURE.md) — DB-backed rate limiting.
 export { checkRateLimit, requestIp } from './rate-limit'
 export type { RateLimitOptions, RateLimitResult } from './rate-limit'
+// H5 A4 (docs/A4_TURNSTILE_BUILD_SPEC_2026-07-11.md) — Cloudflare Turnstile bot defense.
+export { interpretSiteverify, verifyTurnstile } from './turnstile'
+export type { TurnstileResult, SiteverifyBody } from './turnstile'
 // Tier 1.1 (docs/SECURITY_ARCHITECTURE.md) — centralized ownership guards.
 // NEW server actions use these, never ad-hoc checks (see CLAUDE.md).
 export {
