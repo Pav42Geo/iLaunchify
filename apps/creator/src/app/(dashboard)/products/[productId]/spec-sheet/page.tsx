@@ -8,13 +8,11 @@ import Link from 'next/link'
 import { ArrowLeft, FileText } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { NutritionFactsRenderer } from '@ilaunchify/ui'
+import { NutritionFactsRenderer, formatCents } from '@ilaunchify/ui'
 import type { SpecSheetSnapshot } from '../configure/spec-sheet-types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Spec sheet' }
-
-const money = (c: number) => `$${(c / 100).toFixed(2)}`
 
 interface PageProps {
   params: Promise<{ productId: string }>
@@ -136,22 +134,22 @@ function SpecSheetView({
 
       <Card title="Quote (locked)">
         <dl className="divide-y divide-ink-100 text-[13px]">
-          <Line label="Per unit" value={money(q.unitCostCents)} />
+          <Line label="Per unit" value={formatCents(q.unitCostCents)} />
           <Line label="Lead time" value={`${q.leadTimeDays} days`} />
           <Line label="MOQ" value={q.moq.toLocaleString()} />
-          {q.oneTimeFeesCents > 0 && <Line label="One-time fees" value={money(q.oneTimeFeesCents)} />}
-          {q.perUnitFeesCents > 0 && <Line label="Per-unit fees" value={money(q.perUnitFeesCents)} />}
-          {q.perOrderFeesCents > 0 && <Line label="Per-order fees" value={money(q.perOrderFeesCents)} />}
-          <Line label="Production subtotal" value={money(q.subtotalCents)} />
+          {q.oneTimeFeesCents > 0 && <Line label="One-time fees" value={formatCents(q.oneTimeFeesCents)} />}
+          {q.perUnitFeesCents > 0 && <Line label="Per-unit fees" value={formatCents(q.perUnitFeesCents)} />}
+          {q.perOrderFeesCents > 0 && <Line label="Per-order fees" value={formatCents(q.perOrderFeesCents)} />}
+          <Line label="Production subtotal" value={formatCents(q.subtotalCents)} />
           {q.platformFeeCents != null && (
             <Line
               label={`Platform fee${q.platformFeePercent != null ? ` (${q.platformFeePercent}%)` : ''}`}
-              value={money(q.platformFeeCents)}
+              value={formatCents(q.platformFeeCents)}
             />
           )}
           <Line
             label="Total"
-            value={<strong>{money(q.allInTotalCents ?? q.subtotalCents)}</strong>}
+            value={<strong>{formatCents(q.allInTotalCents ?? q.subtotalCents)}</strong>}
           />
         </dl>
       </Card>

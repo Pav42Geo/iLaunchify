@@ -7,13 +7,11 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { resolveConfiguredSelection, calculateLabel, toPanelData } from '@ilaunchify/nutrition'
-import { NutritionFactsRenderer, Checkbox } from '@ilaunchify/ui'
+import { NutritionFactsRenderer, Checkbox, formatCents } from '@ilaunchify/ui'
 import { composeQuote, type QuoteValueDelta } from './quote'
 import type { ConfiguratorData, ConfiguratorAxis, ConfiguratorValue } from './configure-data'
 import { issueProductSpecSheet } from './configure-actions'
 import type { SpecSheetSnapshot } from './spec-sheet-types'
-
-const money = (c: number) => `$${(c / 100).toFixed(2)}`
 
 export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
   const router = useRouter()
@@ -208,7 +206,7 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
                   {f.priceDeltaCents !== 0 && (
                     <span className="text-[10.5px] text-ink-500">
                       {f.priceDeltaCents > 0 ? '+' : ''}
-                      {money(f.priceDeltaCents)}
+                      {formatCents(f.priceDeltaCents)}
                     </span>
                   )}
                 </button>
@@ -230,7 +228,7 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
                   {v.unitCostDeltaCents !== 0 && (
                     <span className="text-[10.5px] text-ink-500">
                       {v.unitCostDeltaCents > 0 ? '+' : ''}
-                      {money(v.unitCostDeltaCents)}/u
+                      {formatCents(v.unitCostDeltaCents)}/u
                     </span>
                   )}
                 </button>
@@ -283,26 +281,26 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
         <div className="rounded-2xl border border-ink-200 bg-white p-4">
           <h3 className="font-display text-[15px] font-semibold text-ink-900">Your quote</h3>
           <dl className="mt-3 space-y-1.5 text-[13px]">
-            <Qline label="Per unit" value={money(quote.unitCostCents)} />
+            <Qline label="Per unit" value={formatCents(quote.unitCostCents)} />
             <Qline label="Quantity" value={`${quote.quantity.toLocaleString()} units`} />
             <Qline label="Lead time" value={`${quote.leadTimeDays} days`} />
             {quote.oneTimeFeesCents > 0 && (
-              <Qline label="One-time fees" value={money(quote.oneTimeFeesCents)} />
+              <Qline label="One-time fees" value={formatCents(quote.oneTimeFeesCents)} />
             )}
             {quote.perUnitFeesCents > 0 && (
-              <Qline label="Per-unit fees" value={money(quote.perUnitFeesCents)} />
+              <Qline label="Per-unit fees" value={formatCents(quote.perUnitFeesCents)} />
             )}
             {quote.perOrderFeesCents > 0 && (
-              <Qline label="Per-order fees" value={money(quote.perOrderFeesCents)} />
+              <Qline label="Per-order fees" value={formatCents(quote.perOrderFeesCents)} />
             )}
-            <Qline label="Production subtotal" value={money(quote.subtotalCents)} />
+            <Qline label="Production subtotal" value={formatCents(quote.subtotalCents)} />
             <Qline
               label={`Platform fee · ${data.creatorTier} · ${data.platformFeePercent}%`}
-              value={money(platformFeeCents)}
+              value={formatCents(platformFeeCents)}
             />
             <div className="mt-1 flex items-center justify-between border-t border-ink-100 pt-2 text-[14px] font-semibold text-ink-900">
               <span>Your total</span>
-              <span className="tabular-nums">{money(allInCents)}</span>
+              <span className="tabular-nums">{formatCents(allInCents)}</span>
             </div>
           </dl>
           <p className="mt-2 text-[10.5px] text-ink-400">
