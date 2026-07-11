@@ -18,9 +18,11 @@ const COOKIE_NAME = 'authjs.session-token'
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60 // 30 days
 
 export async function GET(req: NextRequest) {
-  if (process.env.NODE_ENV === 'production') {
+  // Dead unless BOTH: non-prod AND an explicit local opt-in. A reachable preview
+  // deploy (NODE_ENV!=='production') no longer exposes one-request session forgery. (H5 A0)
+  if (process.env.NODE_ENV === 'production' || process.env.ENABLE_DEV_LOGIN !== 'true') {
     return NextResponse.json(
-      { error: 'Dev sign-in is disabled in production' },
+      { error: 'Dev sign-in is disabled' },
       { status: 403 },
     )
   }
