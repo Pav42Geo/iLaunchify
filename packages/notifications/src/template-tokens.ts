@@ -81,6 +81,7 @@ export const EVENT_TOKEN_PALETTE: {
   MILESTONE_TERMS_PROPOSED: ['roomId', 'milestoneKind', 'amount', 'byName', 'note'],
   MILESTONE_TERMS_AGREED: ['roomId', 'milestoneKind', 'amount', 'byName'],
   MILESTONE_TERMS_DECLINED: ['roomId', 'milestoneKind', 'byName', 'note'],
+  LEGAL_DOCUMENT_UPDATED: ['title', 'version', 'effectiveAt', 'summary', 'href'],
   PACKAGING_APPROVED: ['name', 'category'],
   PACKAGING_REJECTED: ['name', 'notes'],
   DISPATCH_RECEIVED: ['orderId', 'brandName', 'type'],

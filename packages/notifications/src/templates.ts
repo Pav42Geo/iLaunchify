@@ -30,6 +30,13 @@ export interface TemplateData {
   MILESTONE_TERMS_PROPOSED: { roomId: string; milestoneKind: string; amount: string; byName?: string; note?: string }
   MILESTONE_TERMS_AGREED: { roomId: string; milestoneKind: string; amount?: string; byName?: string }
   MILESTONE_TERMS_DECLINED: { roomId: string; milestoneKind: string; byName?: string; note?: string }
+  LEGAL_DOCUMENT_UPDATED: {
+    title: string
+    version: string
+    effectiveAt: string
+    summary?: string
+    href: string
+  }
   PACKAGING_APPROVED: { name: string; category?: string }
   PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
@@ -385,6 +392,18 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `${mk[0]?.toUpperCase()}${mk.slice(1)} terms declined`,
         body: `${d.byName ?? 'The creator'} declined the proposal${d.note ? `: “${d.note}”` : ''}. Adjust the amount or scope and re-propose in the room.`,
         link: `/rooms/${d.roomId}`,
+      }
+    }
+    case 'LEGAL_DOCUMENT_UPDATED': {
+      const d = data as TemplateData['LEGAL_DOCUMENT_UPDATED']
+      const eff = new Date(d.effectiveAt)
+      const effLabel = Number.isNaN(eff.getTime())
+        ? null
+        : eff.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      return {
+        title: `We've updated our ${d.title}`,
+        body: `${d.summary ? `${d.summary} ` : ''}The updated ${d.title} (${d.version})${effLabel ? ` takes effect ${effLabel}` : ''}. Please review it and re-accept to continue using iLaunchify.`,
+        link: d.href,
       }
     }
     case 'NOMINATION_SERVICE_MISMATCH': {

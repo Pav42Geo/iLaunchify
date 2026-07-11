@@ -97,6 +97,13 @@ export const NOTIFICATION_CATEGORIES: Record<
     // Marketing is EMAIL-only and lives on the external ESP; no in-app rows.
     defaultChannels: ['EMAIL'],
   },
+  legal: {
+    slug: 'legal',
+    label: 'Legal & policy updates',
+    description: 'Changes to Terms, Privacy, and other legal documents. Mandatory notices.',
+    optOutable: false,
+    defaultChannels: BOTH,
+  },
 }
 
 /**
@@ -133,6 +140,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   MILESTONE_TERMS_PROPOSED: 'orders',
   MILESTONE_TERMS_AGREED: 'orders',
   MILESTONE_TERMS_DECLINED: 'orders',
+  // Legal & policy updates (L4) — mandatory notice on material publish.
+  LEGAL_DOCUMENT_UPDATED: 'legal',
   PARTNER_APPLIED: 'account',
   PARTNER_SUBMITTED: 'account',
   PACKAGING_APPROVED: 'account',

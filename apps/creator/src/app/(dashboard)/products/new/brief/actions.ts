@@ -100,6 +100,80 @@ export async function benchmarkBrief(input: {
  * DRAFT → POSTED → INTEREST_OPEN, each edge FSM-asserted + audited.
  * D-CC1: co-creation access is a Builder/Agency feature — enforced here.
  */
+/**
+ * V1.5 AI brief-assist (2026-07-11) — turns the creator's rough idea into
+ * suggested title / claims / key ingredients / maker notes. Same gates as
+ * posting (role, Builder+ tier, module kick-off) + a daily rate limit;
+ * Haiku-backed via @ilaunchify/ai with the closed-vocabulary claim guard
+ * (BRIEF_CLAIM_POOL feeds fit-scoring — hallucinated claims never leak).
+ * Fail-soft: any error just leaves the manual flow untouched.
+ */
+export async function assistBriefAction(input: {
+  idea: string
+  nicheSlug: string
+  categoryId: string
+}): Promise<
+  | { ok: true; suggestion: { title: string; claims: string[]; keyIngredients: string; makerNotes: string } }
+  | { ok: false; error: string }
+> {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR' && user.role !== 'ADMIN') {
+    return { ok: false, error: 'Only creators can use brief assist' }
+  }
+  const tier = await getEffectiveCreatorTier(user)
+  if (!hasTier(tier, 'builder')) {
+    return { ok: false, error: 'Brief assist is part of Builder and Agency plans' }
+  }
+  const { getCoCreationSettings } = await import('@ilaunchify/db')
+  if (!(await getCoCreationSettings()).moduleEnabled) {
+    return { ok: false, error: 'Co-creation is not open yet' }
+  }
+  const { checkRateLimit } = await import('@ilaunchify/auth')
+  const rate = await checkRateLimit({ scope: 'brief-assist', id: user.id, limit: 20, windowSec: 86_400 })
+  if (!rate.ok) return { ok: false, error: 'Assist limit reached for today — write it your way, you know it best' }
+
+  const [niche, category] = await Promise.all([
+    prisma.niche.findFirst({ where: { slug: input.nicheSlug, isActive: true }, select: { name: true } }),
+    prisma.category.findFirst({ where: { id: input.categoryId, isActive: true }, select: { name: true } }),
+  ])
+
+  try {
+    const { assistBrief } = await import('@ilaunchify/ai')
+    const { BRIEF_CLAIM_POOL } = await import('@ilaunchify/ui')
+    const res = await assistBrief({
+      idea: String(input.idea ?? '').slice(0, 2_000),
+      nicheName: niche?.name ?? input.nicheSlug,
+      categoryName: category?.name ?? 'CPG product',
+      allowedClaims: BRIEF_CLAIM_POOL,
+    })
+    if (!res.ok) {
+      return {
+        ok: false,
+        error:
+          res.error === 'input-empty'
+            ? 'Type a few words about your idea first'
+            : 'Assist couldn’t parse that — try rephrasing or fill the form manually',
+      }
+    }
+    await logAuditAs(user, {
+      entityType: 'CreatorProfile',
+      entityId: user.id,
+      action: 'BRIEF_ASSIST_RUN',
+      payload: {
+        promptTokens: res.promptTokens,
+        completionTokens: res.completionTokens,
+        estimatedCostUsd: res.estimatedCostUsd,
+        modelUsed: res.modelUsed,
+        rejectedClaims: res.rejectedClaims,
+      },
+    })
+    return { ok: true, suggestion: res.suggestion }
+  } catch {
+    // No ANTHROPIC_API_KEY / provider down — manual flow is always available.
+    return { ok: false, error: 'AI assist isn’t available right now — the form works without it' }
+  }
+}
+
 export async function postBrief(input: PostBriefInput): Promise<PostBriefResult> {
   const user = await requireUser()
   if (user.role !== 'CREATOR' && user.role !== 'ADMIN') {

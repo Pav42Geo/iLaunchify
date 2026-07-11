@@ -12,7 +12,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Input, Textarea, Label, BRIEF_CLAIM_POOL, nicheGradientKey } from '@ilaunchify/ui'
 import { productGradient, type ProductGradient } from '@ilaunchify/ui/tokens'
-import { benchmarkBrief, postBrief } from './actions'
+import { assistBriefAction, benchmarkBrief, postBrief } from './actions'
 
 export interface NicheOption {
   slug: string
@@ -94,13 +94,56 @@ export function BriefBuilderClient({
     })
   }
 
-  // NOTE: the demo's "✨ Suggest claims" button stays out until the V1.5 AI
-  // brief-assist exists (no canned behavior). "Benchmark" below is REAL:
-  // deterministic percentiles over comparable published catalog products.
+  // V1.5 AI brief-assist (2026-07-11) — the demo's "✨ Suggest" is now REAL:
+  // Haiku via @ilaunchify/ai, closed-vocabulary claims, fills ONLY empty
+  // fields (benchmark's contract). "Benchmark" below stays deterministic.
 
   function flash(msg: string) {
     setToast(msg)
     window.setTimeout(() => setToast(null), 3200)
+  }
+
+  const [assisting, setAssisting] = useState(false)
+
+  /** AI assist — suggestions land only where the creator left blanks. */
+  async function suggest() {
+    const idea = [title.trim(), keyIngredients.trim(), privateNotes.trim()]
+      .filter(Boolean)
+      .join('\n')
+    if (!idea) {
+      flash('✨ Type a few words about your idea first — title, ingredients, anything')
+      return
+    }
+    setAssisting(true)
+    const res = await assistBriefAction({ idea, nicheSlug, categoryId })
+    setAssisting(false)
+    if (!res.ok) {
+      flash(`✨ ${res.error}`)
+      return
+    }
+    const s = res.suggestion
+    let touched = 0
+    if (!title.trim() && s.title) {
+      setTitle(s.title)
+      touched++
+    }
+    if (claims.size === 0 && s.claims.length) {
+      setClaims(new Set(s.claims))
+      touched += s.claims.length
+    }
+    if (!keyIngredients.trim() && s.keyIngredients) {
+      setKeyIngredients(s.keyIngredients)
+      touched++
+    }
+    if (!privateNotes.trim() && s.makerNotes) {
+      setPrivateNotes(s.makerNotes)
+      touched++
+    }
+    flash(
+      touched > 0
+        ? '✨ AI suggestions filled the blanks — everything stays editable, yours kept'
+        : '✨ Nothing to fill — your brief already covers it',
+    )
   }
 
   /** Catalog benchmark — fills ONLY the fields the creator left empty. */
@@ -464,6 +507,15 @@ export function BriefBuilderClient({
             className="mt-s-2 inline-flex gap-s-1 rounded-md bg-pink-50 px-s-3 py-s-2 text-ui-caption font-bold text-pink-700 transition hover:bg-pink-100 disabled:opacity-50"
           >
             {benchmarking ? '✨ Benchmarking…' : '✨ Benchmark volume & budget for me'}
+          </button>
+          <button
+            type="button"
+            onClick={suggest}
+            disabled={assisting}
+            title="AI fills only the fields you left blank — title, claims (from the platform vocabulary), key ingredients, maker notes. Everything stays editable."
+            className="ml-s-2 mt-s-2 inline-flex gap-s-1 rounded-md bg-ink-100 px-s-3 py-s-2 text-ui-caption font-bold text-ink-700 transition hover:bg-ink-200 disabled:opacity-50"
+          >
+            {assisting ? '✨ Thinking…' : '✨ Suggest title & claims for me'}
           </button>
 
           <div className="mt-s-4">

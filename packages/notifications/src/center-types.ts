@@ -27,6 +27,7 @@ export type NotificationCategorySlug =
   | 'inventory' // Stock alerts
   | 'reminders' // Accept reminders, SLA nudges, daily digest
   | 'marketing' // Marketing & product updates (external ESP; consent lives here)
+  | 'legal' // Legal & policy updates — mandatory notices
 
 export interface NotificationCategoryConfig {
   slug: NotificationCategorySlug

@@ -17,6 +17,7 @@ import { createHash } from 'node:crypto'
 import { prisma } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -215,7 +216,8 @@ export async function publishVersion(input: {
       version: true,
       documentId: true,
       contentSha256: true,
-      document: { select: { slug: true, currentVersionId: true } },
+      summaryOfChanges: true,
+      document: { select: { slug: true, title: true, audience: true, currentVersionId: true } },
     },
   })
   if (!version) return { ok: false, error: 'Version not found.' }
@@ -266,10 +268,74 @@ export async function publishVersion(input: {
       },
     })
 
+    // L4: MATERIAL changes fan out a mandatory notice email + in-app to the
+    // document's audience. Best-effort — a notify failure must not fail the
+    // (already-committed, audited) publish. MINOR changes send nothing.
+    if (input.changeType === 'MATERIAL') {
+      try {
+        await notifyLegalAudience({
+          audience: version.document.audience,
+          slug: version.document.slug,
+          title: version.document.title,
+          version: version.version,
+          effectiveAt,
+          summary: version.summaryOfChanges,
+        })
+      } catch {
+        // swallow — publish already succeeded
+      }
+    }
+
     revalidatePath(`/settings/legal/${version.document.slug}`)
     revalidatePath('/settings/legal')
     return { ok: true }
   } catch (err) {
     return { ok: false, error: `Could not publish: ${(err as Error).message}` }
+  }
+}
+
+/**
+ * Fan out the LEGAL_DOCUMENT_UPDATED notice to every user in the doc's audience.
+ * Mandatory `legal` category (bypasses opt-outs); immediate (no digest). The
+ * deep link points at the public policy page (marketing host from env; relative
+ * fallback), and the re-acceptance gate catches acceptance-required docs in-app.
+ */
+async function notifyLegalAudience(input: {
+  audience: 'PUBLIC' | 'CREATOR' | 'PARTNER' | 'ALL'
+  slug: string
+  title: string
+  version: string
+  effectiveAt: Date
+  summary: string | null
+}): Promise<void> {
+  // PUBLIC + ALL notices reach every creator + partner; role-scoped docs their role.
+  const roleIn: Array<'CREATOR' | 'PARTNER'> =
+    input.audience === 'CREATOR'
+      ? ['CREATOR']
+      : input.audience === 'PARTNER'
+        ? ['PARTNER']
+        : ['CREATOR', 'PARTNER']
+
+  const users = await prisma.user.findMany({ where: { role: { in: roleIn } }, select: { id: true } })
+  if (users.length === 0) return
+
+  const base = process.env.NEXT_PUBLIC_MARKETING_URL ?? process.env.MARKETING_URL ?? ''
+  const href = base ? `${base.replace(/\/$/, '')}/${input.slug}` : `/${input.slug}`
+  const data = {
+    title: input.title,
+    version: input.version,
+    effectiveAt: input.effectiveAt.toISOString(),
+    summary: input.summary ?? undefined,
+    href,
+  }
+
+  // Batch to avoid a thundering herd on large audiences.
+  const BATCH = 50
+  for (let i = 0; i < users.length; i += BATCH) {
+    await Promise.allSettled(
+      users
+        .slice(i, i + BATCH)
+        .map((u) => dispatchNotification({ userId: u.id, event: 'LEGAL_DOCUMENT_UPDATED', data })),
+    )
   }
 }
