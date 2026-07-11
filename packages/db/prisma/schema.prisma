@@ -4820,6 +4820,8 @@ enum NotificationEvent {
   MILESTONE_TERMS_PROPOSED // maker proposed milestone amount + scope → notify creator (additive 2026-07-10)
   MILESTONE_TERMS_AGREED // creator agreed to the terms → notify partner
   MILESTONE_TERMS_DECLINED // creator declined — maker can re-propose → notify partner
+  // Legal (L4) — a legal document was published with a MATERIAL change.
+  LEGAL_DOCUMENT_UPDATED // notify the doc's audience that terms changed
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
