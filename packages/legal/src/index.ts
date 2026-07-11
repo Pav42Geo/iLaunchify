@@ -16,7 +16,9 @@ export {
 } from './acceptance'
 export {
   getPublishedLegalDocument,
+  getLegalDocumentForDisplay,
   type LegalPrismaLike,
   type PublishedLegalDocument,
   type PublishedLegalVersion,
+  type DisplayLegalDocument,
 } from './document'

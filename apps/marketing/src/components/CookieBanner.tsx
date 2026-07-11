@@ -44,10 +44,10 @@ export function CookieBanner() {
         <p className="flex-1 text-[13px] leading-[1.5] text-ink-700">
           We use cookies to run the site and improve your experience. See our{' '}
           <Link
-            href="/privacy"
+            href="/cookie-policy"
             className="font-semibold text-pink-700 underline hover:text-pink-600"
           >
-            Privacy Policy
+            Cookie Policy
           </Link>
           .
         </p>

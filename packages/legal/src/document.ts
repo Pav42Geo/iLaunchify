@@ -97,3 +97,45 @@ export async function getPublishedLegalDocument(
     currentVersion: current,
   }
 }
+
+export interface DisplayLegalDocument extends PublishedLegalDocument {
+  /** true = the current version is PUBLISHED; false = falling back to the latest DRAFT. */
+  isPublished: boolean
+}
+
+/**
+ * Resolve a document for public display: the live PUBLISHED version if one exists,
+ * otherwise the latest DRAFT. This makes the DB the single source of truth — public
+ * pages render the seeded/edited draft (with a draft banner) until it is published,
+ * then the published version automatically. Returns null only if the document or
+ * any version is entirely absent.
+ */
+export async function getLegalDocumentForDisplay(
+  prisma: LegalPrismaLike,
+  slug: string,
+  now: Date = new Date(),
+): Promise<DisplayLegalDocument | null> {
+  const published = await getPublishedLegalDocument(prisma, slug, now)
+  if (published) return { ...published, isPublished: true }
+
+  const doc = await prisma.legalDocument.findUnique({ where: { slug } })
+  if (!doc) return null
+  const rows = await prisma.legalDocumentVersion.findMany({
+    where: { documentId: doc.id, status: 'DRAFT' },
+    orderBy: [{ createdAt: 'desc' }],
+    take: 1,
+  })
+  const draft = rows[0]
+  if (!draft) return null
+
+  return {
+    id: doc.id,
+    slug: doc.slug,
+    title: doc.title,
+    kind: doc.kind,
+    audience: doc.audience,
+    requiresAcceptance: doc.requiresAcceptance,
+    currentVersion: draft,
+    isPublished: false,
+  }
+}

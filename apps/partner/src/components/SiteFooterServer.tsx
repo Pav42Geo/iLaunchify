@@ -7,13 +7,16 @@
 // of truth — the modals now render the same DB text the public pages do.
 
 import { prisma } from '@ilaunchify/db'
-import { getPublishedLegalDocument } from '@ilaunchify/legal'
+import { getLegalDocumentForDisplay } from '@ilaunchify/legal'
 import { SiteFooter } from './SiteFooter'
 
 export async function SiteFooterServer() {
+  // DB is the single source of truth: render the published version if any, else
+  // the latest draft. The hardcoded legal-docs.ts paras remain only as a last
+  // resort if the CMS has no version at all (e.g. unseeded environment).
   const [terms, privacy] = await Promise.all([
-    getPublishedLegalDocument(prisma, 'terms'),
-    getPublishedLegalDocument(prisma, 'privacy'),
+    getLegalDocumentForDisplay(prisma, 'terms'),
+    getLegalDocumentForDisplay(prisma, 'privacy'),
   ])
 
   return (

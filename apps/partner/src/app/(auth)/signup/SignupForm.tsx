@@ -3,6 +3,7 @@
 import { Button, Input, Label, Checkbox } from '@ilaunchify/ui'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { marketingUrl } from '@/lib/marketing-url'
 
 interface SignupFormProps {
   prefillEmail?: string
@@ -122,12 +123,16 @@ export function SignupForm({ prefillEmail, prefillCompany }: SignupFormProps) {
         label={
           <span>
             I agree to the{' '}
-            <a href="/terms" className="underline">
-              partner terms
-            </a>{' '}
-            and{' '}
-            <a href="/privacy" className="underline">
-              privacy policy
+            <a href={marketingUrl('/terms')} className="underline" target="_blank" rel="noreferrer">
+              Terms
+            </a>
+            , the{' '}
+            <a href={marketingUrl('/partner-agreement')} className="underline" target="_blank" rel="noreferrer">
+              Partner Agreement
+            </a>
+            , and the{' '}
+            <a href={marketingUrl('/privacy')} className="underline" target="_blank" rel="noreferrer">
+              Privacy Policy
             </a>
             . I understand I&apos;ll need to complete identity verification before becoming active.
           </span>

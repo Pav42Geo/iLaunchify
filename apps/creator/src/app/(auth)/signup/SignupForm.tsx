@@ -3,6 +3,7 @@
 import { Button, Input, Label, Checkbox } from '@ilaunchify/ui'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { marketingUrl } from '@/lib/marketing-url'
 
 interface SignupFormProps {
   prefillEmail?: string
@@ -135,12 +136,16 @@ export function SignupForm({ prefillEmail, prefillBrand }: SignupFormProps) {
         label={
           <span>
             I agree to the{' '}
-            <a href="/terms" className="underline">
-              terms
-            </a>{' '}
-            and{' '}
-            <a href="/privacy" className="underline">
-              privacy policy
+            <a href={marketingUrl('/terms')} className="underline" target="_blank" rel="noreferrer">
+              Terms
+            </a>
+            , the{' '}
+            <a href={marketingUrl('/creator-agreement')} className="underline" target="_blank" rel="noreferrer">
+              Creator Agreement
+            </a>
+            , and the{' '}
+            <a href={marketingUrl('/privacy')} className="underline" target="_blank" rel="noreferrer">
+              Privacy Policy
             </a>
             .
           </span>
