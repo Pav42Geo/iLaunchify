@@ -11,7 +11,7 @@
 //      session and creates the Product
 //   3. redirects to the Design Studio canvas
 
-import { createUserWithRole } from '@ilaunchify/auth'
+import { createUserWithRole, verifyTurnstile, requestIp } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { creatorUrl } from './app-urls'
 import type { StartLaunchInput } from './launch-actions'
@@ -20,12 +20,14 @@ export interface GuestSignupAndLaunchInput extends StartLaunchInput {
   name: string
   email: string
   brandName: string
+  turnstileToken?: string
 }
 
 export type GuestSignupAndLaunchResult =
   | { ok: true; signinUrl: string }
   | { ok: false; reason: 'EMAIL_TAKEN'; message: string }
   | { ok: false; reason: 'INVALID_INPUT'; message: string }
+  | { ok: false; reason: 'TURNSTILE_FAILED'; message: string }
   | { ok: false; reason: 'INTERNAL'; message: string }
 
 export async function signupGuestAndPrepareLaunch(
@@ -44,6 +46,13 @@ export async function signupGuestAndPrepareLaunch(
       reason: 'INVALID_INPUT',
       message: 'Pick a brand name (you can change it later).',
     }
+  }
+
+  // Bot defense on this SECOND open creator-signup door (H5 A4 — the marketplace
+  // guest gate mirrors /api/auth/signup, which is P0). Skips (allows) when unconfigured.
+  const turnstile = await verifyTurnstile({ token: input.turnstileToken, ip: await requestIp() })
+  if (!turnstile.ok) {
+    return { ok: false, reason: 'TURNSTILE_FAILED', message: 'Verification failed — please retry.' }
   }
 
   // 1. Create the user + creator profile.

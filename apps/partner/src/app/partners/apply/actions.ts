@@ -3,6 +3,7 @@
 import { prisma } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
+import { verifyTurnstile, requestIp } from '@ilaunchify/auth'
 import { z } from 'zod'
 
 const LeadSchema = z.object({
@@ -28,6 +29,8 @@ const LeadSchema = z.object({
   certificateTypeIds: z.array(z.string()).default([]),
   producedFor: z.string().max(600).optional().or(z.literal('')),
   successDescription: z.string().min(20).max(800),
+  // H5 A4 — bot defense on this public unauthenticated lead-creation form.
+  turnstileToken: z.string().optional(),
 })
 
 export type SubmitLeadResult = { ok: true } | { ok: false; error: string }
@@ -62,6 +65,11 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
   const parsed = LeadSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
   const v = parsed.data
+
+  // Bot defense before creating any User+Partner LEAD rows / fanning out email
+  // (H5 A4 — public unauthenticated form). Skips (allows) when unconfigured.
+  const turnstile = await verifyTurnstile({ token: v.turnstileToken, ip: await requestIp() })
+  if (!turnstile.ok) return { ok: false, error: 'Verification failed — please retry.' }
 
   // Server-side backstop: a manufacturer must declare ≥1 product category (the
   // routing match key) — mirrors the client gate on the Manufacturing card.

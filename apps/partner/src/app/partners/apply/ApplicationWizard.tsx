@@ -11,11 +11,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import { Input, Label } from '@ilaunchify/ui'
+import { Input, Label, TurnstileWidget } from '@ilaunchify/ui'
 import { ContainerCategory, StructuralPackType, DieCutCategory, StorageClass, FcVasJobType } from '@ilaunchify/db'
 import { MANUFACTURING_PROCESS_OPTIONS } from '@ilaunchify/types'
 import { CertificatePicker, type CertPickerOption } from '@/components/CertificatePicker'
 import { submitLead } from './actions'
+
+// Turnstile is only enforced when a site key is present (feature-gated). (H5 A4)
+const TURNSTILE_ON = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 const Schema = z.object({
   companyName: z.string().min(2, 'Company name required').max(120),
@@ -165,6 +168,7 @@ export function ApplicationWizard({
   const [step, setStep] = useState(0)
   const [dir, setDir] = useState<'next' | 'back'>('next')
   const [busy, setBusy] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [stepError, setStepError] = useState<string | null>(null)
   const [details, setDetails] = useState<Record<string, Detail>>({})
 
@@ -265,7 +269,7 @@ export function ApplicationWizard({
     setBusy(true)
     const serviceDetails: Record<string, unknown> = {}
     for (const s of activeServices) serviceDetails[s] = details[s] ?? {}
-    const r = await submitLead({ ...values, serviceDetails })
+    const r = await submitLead({ ...values, serviceDetails, turnstileToken: turnstileToken ?? undefined })
     if (!r.ok) {
       toast.error(r.error)
       setBusy(false)
@@ -683,6 +687,12 @@ export function ApplicationWizard({
             {stepError}
           </p>
         )}
+        {/* Turnstile on the final step only — gates the actual lead submission. (H5 A4) */}
+        {last && (
+          <div className="mt-5">
+            <TurnstileWidget onToken={setTurnstileToken} />
+          </div>
+        )}
         <div className="mt-6 flex items-center justify-between">
           <button
             type="button"
@@ -695,7 +705,7 @@ export function ApplicationWizard({
           <button
             type="button"
             onClick={next}
-            disabled={busy}
+            disabled={busy || (last && TURNSTILE_ON && !turnstileToken)}
             className={
               'rounded-full px-6 py-3 text-[14px] font-bold text-white disabled:opacity-60 ' +
               (last ? 'bg-pink-600 hover:opacity-90' : 'bg-ink-900 hover:opacity-90')

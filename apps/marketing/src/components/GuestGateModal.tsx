@@ -18,11 +18,14 @@
 import * as React from 'react'
 import { useState, useTransition } from 'react'
 import { X } from 'lucide-react'
-import { Button } from '@ilaunchify/ui'
+import { Button, TurnstileWidget } from '@ilaunchify/ui'
 import {
   signupGuestAndPrepareLaunch,
   type GuestSignupAndLaunchInput,
 } from '@/lib/guest-gate-actions'
+
+// Turnstile is only enforced when a site key is present (feature-gated). (H5 A4)
+const TURNSTILE_ON = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 export interface GuestGateModalProps {
   open: boolean
@@ -42,6 +45,7 @@ export function GuestGateModal({
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [brandName, setBrandName] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -66,11 +70,12 @@ export function GuestGateModal({
         name,
         email,
         brandName,
+        ...(turnstileToken ? { turnstileToken } : {}),
       })
       if (result.ok) {
-        // Hard-nav across origins; preserves the dev-login redirect
-        // chain (sets cookie, then /api/launch-after-signin creates
-        // the product, then canvas).
+        // Hard-nav across origins to the REAL creator /login (magic-link/Google,
+        // no bypass — H5 A2); after sign-in /api/launch-after-signin creates the
+        // product and redirects to the canvas.
         window.location.href = result.signinUrl
         return
       }
@@ -160,6 +165,8 @@ export function GuestGateModal({
             </p>
           )}
 
+          <TurnstileWidget onToken={setTurnstileToken} />
+
           <div className="flex items-center justify-end gap-2 pt-1">
             <Button
               type="button"
@@ -170,7 +177,12 @@ export function GuestGateModal({
             >
               Cancel
             </Button>
-            <Button type="submit" variant="primary" size="md" disabled={isPending}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              disabled={isPending || (TURNSTILE_ON && !turnstileToken)}
+            >
               {isPending ? 'Creating your account…' : 'Continue to Design Studio →'}
             </Button>
           </div>
