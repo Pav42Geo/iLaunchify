@@ -1,18 +1,20 @@
 // Seed the core Legal Document identities for the admin-managed Legal CMS.
-// Spec: docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md (Phase L0 substrate).
+// Spec: docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md.
 //
-// L0 seeds document IDENTITIES + an initial DRAFT version each (placeholder body).
-// The REAL bodies are backfilled in L2 from the current sources
-// (apps/marketing/src/content/legal/content.ts, membership-terms.ts, and the
-// existing PartnerAgreement rows) when the public renderers are switched to
-// getPublishedLegalDocument(). Nothing here is published, so no live page changes.
+// Creates each document IDENTITY + an initial DRAFT version. For most docs the
+// body is a placeholder backfilled from the current source; for the net-new docs
+// authored in L5 (Accessibility Statement, Cookie Policy) a real draft body is
+// seeded from BODY_OVERRIDES. Nothing here is published, so no live page changes
+// until an admin publishes in Settings → Legal.
 //
-// Idempotent: upserts each document by slug; creates a v0.1-draft version only if
-// the document has none yet. Never edits a published version.
-// Run: pnpm --filter @ilaunchify/db seed:legal
+// Idempotent: upserts each document by slug; creates a v0.1-draft only if none
+// exists; and BACKFILLS an override body into an existing placeholder draft (so
+// re-running after L0 fills in the L5-authored content). Never edits a PUBLISHED
+// version. Run: pnpm --filter @ilaunchify/db seed:legal
 
 import { createHash } from 'node:crypto'
 import { PrismaClient } from '@prisma/client'
+import { LEGAL_BODIES } from './legal-content'
 
 const prisma = new PrismaClient()
 
@@ -30,8 +32,6 @@ interface Seed {
   reconsentIntervalDays?: number | null
 }
 
-// The core set. Missing docs (cookie-policy, accessibility, refund/dispute, AUP,
-// sub-processors, DPA) are created here as identities so admin can author them.
 const DOCS: Seed[] = [
   { slug: 'terms', title: 'Terms of Service', kind: 'POLICY', audience: 'ALL', requiresAcceptance: true },
   { slug: 'privacy', title: 'Privacy Policy', kind: 'POLICY', audience: 'ALL', requiresAcceptance: true, reconsentIntervalDays: 365 },
@@ -40,11 +40,23 @@ const DOCS: Seed[] = [
   { slug: 'partner-agreement', title: 'iLaunchify Standard Partner Agreement', kind: 'AGREEMENT', audience: 'PARTNER', requiresAcceptance: true },
   { slug: 'membership-subscription-terms', title: 'Membership & Subscription Terms', kind: 'POLICY', audience: 'CREATOR', requiresAcceptance: true },
   { slug: 'accessibility', title: 'Accessibility Statement', kind: 'NOTICE', audience: 'PUBLIC', requiresAcceptance: false },
+  // L5 — additional identities so admin can author them (draft, pending counsel).
+  { slug: 'acceptable-use', title: 'Acceptable Use Policy', kind: 'POLICY', audience: 'ALL', requiresAcceptance: false },
+  { slug: 'refund-dispute-policy', title: 'Cancellation, Refund & Dispute Policy', kind: 'POLICY', audience: 'ALL', requiresAcceptance: false },
+  { slug: 'subprocessors', title: 'Sub-processors', kind: 'NOTICE', audience: 'PUBLIC', requiresAcceptance: false },
+  { slug: 'dpa', title: 'Data Processing Addendum', kind: 'AGREEMENT', audience: 'PARTNER', requiresAcceptance: false },
 ]
 
+// Authored professional draft bodies for every document, kept in ./legal-content.
+// NOT legal advice / not counsel-reviewed — seeded as DRAFT until an admin reviews
+// and publishes. The seed backfills these into a still-placeholder DRAFT version.
+const BODY_OVERRIDES: Record<string, { html: string; text: string }> = LEGAL_BODIES
+
 const PLACEHOLDER = (title: string) =>
-  `<p><strong>${title}</strong></p><p><em>Draft placeholder — content is backfilled from the ` +
-  `current source in Phase L2. Not published, not live, not legally binding.</em></p>`
+  `<p><strong>${title}</strong></p><p><em>Draft placeholder — content is authored in ` +
+  `Settings → Legal. Not published, not live, not legally binding.</em></p>`
+const PLACEHOLDER_TEXT = (title: string) => `${title} — draft placeholder.`
+const isPlaceholder = (bodyText: string) => bodyText.includes('draft placeholder')
 
 async function main() {
   for (const d of DOCS) {
@@ -67,26 +79,47 @@ async function main() {
       },
     })
 
-    const existingVersions = await prisma.legalDocumentVersion.count({
+    const override = BODY_OVERRIDES[d.slug]
+    const versions = await prisma.legalDocumentVersion.findMany({
       where: { documentId: doc.id },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, status: true, bodyText: true },
     })
-    if (existingVersions === 0) {
-      const bodyHtml = PLACEHOLDER(d.title)
-      const bodyText = `${d.title} — draft placeholder (backfilled in L2).`
+
+    if (versions.length === 0) {
+      const html = override?.html ?? PLACEHOLDER(d.title)
+      const text = override?.text ?? PLACEHOLDER_TEXT(d.title)
       await prisma.legalDocumentVersion.create({
         data: {
           documentId: doc.id,
           version: 'v0.1-draft',
           status: 'DRAFT',
-          bodyHtml,
-          bodyText,
-          contentSha256: sha256(bodyText),
+          bodyHtml: html,
+          bodyText: text,
+          contentSha256: sha256(text),
         },
       })
-      console.log(`  + ${d.slug}: created identity + v0.1-draft`)
-    } else {
-      console.log(`  = ${d.slug}: identity present (${existingVersions} version[s]), left as-is`)
+      console.log(`  + ${d.slug}: created identity + v0.1-draft${override ? ' (authored body)' : ''}`)
+      continue
     }
+
+    // Backfill an authored body into a still-placeholder DRAFT (idempotent).
+    if (override) {
+      const draft = versions.find((v) => v.status === 'DRAFT')
+      if (draft && isPlaceholder(draft.bodyText)) {
+        await prisma.legalDocumentVersion.update({
+          where: { id: draft.id },
+          data: {
+            bodyHtml: override.html,
+            bodyText: override.text,
+            contentSha256: sha256(override.text),
+          },
+        })
+        console.log(`  ~ ${d.slug}: backfilled authored draft body`)
+        continue
+      }
+    }
+    console.log(`  = ${d.slug}: identity present (${versions.length} version[s]), left as-is`)
   }
   console.log(`Seeded ${DOCS.length} legal document identities.`)
 }

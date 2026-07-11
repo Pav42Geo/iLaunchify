@@ -1,0 +1,308 @@
+// Professional draft bodies for the Legal CMS, authored to reflect the CURRENT
+// iLaunchify build (docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md + CLAUDE.md
+// + docs/legal/*). Consumed by seed-legal.ts as version body overrides.
+//
+// IMPORTANT: These are working professional DRAFTS written to be accurate to how
+// the platform actually operates — they are NOT legal advice and have not been
+// reviewed by counsel. They render with the "Draft — pending legal review" banner
+// until an admin publishes them in Settings → Legal. Keep them updated as the
+// build changes; the DB version history preserves each published revision.
+//
+// Model facts these drafts encode (keep true to the build):
+//   • iLaunchify is a B2B production + orchestration marketplace for CPG creators.
+//   • Creators design products; Partners (manufacturers, printers, co-packers,
+//     warehouses/FCs) produce + fulfill; end buyers are the creator's OWN channels
+//     (Shopify, TikTok Shop, etc.) — end buyers never transact with iLaunchify.
+//   • Creators pay a subscription tier (Maker/Builder/Agency) + a production fee
+//     charged as the Stripe application fee at checkout (15% / 12% / 8%).
+//   • Manufacturer merit fee (Verified 4.5% / Trusted 2.5% / Premier 0%) is
+//     withheld from the manufacturer's payout; it is earned, never sold.
+//   • Payments run on Stripe Connect; subscriptions on Stripe Billing.
+//   • V1 is US-only. FDA/label regulatory responsibility is shared per the
+//     compliance tooling; creators own their brand claims.
+
+interface LegalBody {
+  html: string
+  text: string
+}
+
+const P = (parts: string[]) => parts.join('\n')
+const DRAFT_NOTE =
+  '<p><em>This is a working draft written to reflect how iLaunchify currently operates. It is not legal advice and has not been reviewed by counsel. Effective date and final terms will be set on publication.</em></p>'
+
+// ── Terms of Service ────────────────────────────────────────────────────────
+const TERMS: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>These Terms of Service ("Terms") govern your access to and use of the iLaunchify platform, websites, and services (collectively, the "Platform") operated by iLaunchify, Inc. ("iLaunchify", "we", "us"). By creating an account or using the Platform, you agree to these Terms.</p>',
+    '<h2>1. What iLaunchify is</h2>',
+    '<p>iLaunchify is a business-to-business production and orchestration marketplace for consumer packaged goods ("CPG"). Creators design products in our Design Studio; production and fulfillment partners (manufacturers, printers, co-packers, and warehouses/fulfillment centers) produce and ship those products. iLaunchify decomposes each order into a workflow across one or more partners and coordinates it on your behalf.</p>',
+    '<p>iLaunchify is not a consumer storefront. Your end customers are the sales channels you already own (for example, Shopify or TikTok Shop); they do not transact with iLaunchify. You are responsible for your relationship with your end customers.</p>',
+    '<h2>2. Accounts and eligibility</h2>',
+    '<p>You must be at least 18 years old and able to form a binding contract to use the Platform. You are responsible for your account credentials and for all activity under your account. Provide accurate information and keep it current. We may suspend or terminate accounts that violate these Terms or that create risk for the Platform, partners, or other users.</p>',
+    '<h2>3. Subscriptions and fees</h2>',
+    '<p>Access to creator features is provided through a paid subscription tier (for example, Maker, Builder, or Agency). Production orders are charged a production fee at checkout, calculated from your subscription tier and disclosed to you before you place the order. Fees, tiers, and their rates may change; changes are shown in-product and, where they materially affect you, communicated in advance. Taxes are your responsibility unless stated otherwise. See our Membership & Subscription Terms and Cancellation, Refund & Dispute Policy for details.</p>',
+    '<h2>4. Payments</h2>',
+    '<p>Payments are processed by third-party processors (including Stripe). By transacting, you also agree to the applicable processor terms. You authorize us and our processors to charge your payment method for subscriptions and orders you place. We do not store full payment card numbers.</p>',
+    '<h2>5. Your content and designs</h2>',
+    '<p>You retain ownership of the brand assets, artwork, formulas, and other materials you upload ("Your Content"). You grant iLaunchify and the partners we route your orders to a limited license to host, reproduce, and use Your Content solely to provide the Platform and produce and fulfill your orders. You represent that you have the rights to Your Content and that it does not infringe others’ rights.</p>',
+    '<h2>6. Product responsibility and compliance</h2>',
+    '<p>You are responsible for your products, brand claims, labeling, and their compliance with applicable law (including, where relevant, U.S. Food and Drug Administration requirements). Our compliance tooling and partners assist you, but you remain the responsible party for what you choose to bring to market. You must not use the Platform for prohibited, unsafe, or misbranded products. See our Acceptable Use Policy.</p>',
+    '<h2>7. Orchestration and partners</h2>',
+    '<p>iLaunchify selects and coordinates partners to produce and fulfill your orders. We aim for reliable outcomes but do not guarantee any particular partner, capacity, timeline, or yield except as expressly stated in an order. Roles, responsibilities, and quality standards for partners are governed by the Partner Agreement.</p>',
+    '<h2>8. On-platform transactions</h2>',
+    '<p>Relationships and introductions that originate through the Platform are Platform transactions. You agree not to use the Platform to circumvent iLaunchify’s fees by taking an introduced relationship off-platform, except as permitted in writing.</p>',
+    '<h2>9. Intellectual property</h2>',
+    '<p>The Platform, including its software, design system, and content (excluding Your Content), is owned by iLaunchify and its licensors and is protected by law. We grant you a limited, non-exclusive, non-transferable right to use the Platform per these Terms.</p>',
+    '<h2>10. Disclaimers and limitation of liability</h2>',
+    '<p>The Platform is provided "as is" without warranties of any kind to the fullest extent permitted by law. To the maximum extent permitted by law, iLaunchify is not liable for indirect, incidental, or consequential damages, and our aggregate liability is limited as set out in the final published Terms. Nothing limits liability that cannot be limited by law.</p>',
+    '<h2>11. Termination</h2>',
+    '<p>You may stop using the Platform at any time. We may suspend or terminate access for breach, risk, or as required by law. Certain provisions survive termination, including ownership, fees accrued, and limitations of liability.</p>',
+    '<h2>12. Changes to these Terms</h2>',
+    '<p>We may update these Terms. When we make material changes, we will notify you and, where required, ask you to accept the updated Terms before continuing to use the Platform. The current version and its effective date are always available on this page.</p>',
+    '<h2>13. Governing law and contact</h2>',
+    '<p>These Terms are governed by the laws of the State of Delaware, without regard to conflict-of-laws rules, and V1 of the Platform is offered in the United States. Questions: legal@ilaunchify.com.</p>',
+  ]),
+  text: 'iLaunchify Terms of Service (draft). Governs use of the B2B CPG production + orchestration platform: accounts, subscriptions + production fees, payments via Stripe, your content/designs license, product compliance responsibility, partner orchestration, on-platform transactions, IP, disclaimers, termination, changes with re-acceptance, Delaware law. Not legal advice; pending counsel.',
+}
+
+// ── Privacy Policy ──────────────────────────────────────────────────────────
+const PRIVACY: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>This Privacy Policy explains how iLaunchify, Inc. ("iLaunchify", "we") collects, uses, and shares personal information when you use our Platform. It applies to creators, partners, and visitors.</p>',
+    '<h2>1. Information we collect</h2>',
+    '<p>We collect information you provide (such as name, business details, email, and content you upload), information generated as you use the Platform (such as orders, designs, and activity logs), and technical information (such as device and usage data and cookies). For partners, we also collect onboarding, verification, certification, and payout information. We do not intend to collect information from your end customers through the Platform.</p>',
+    '<h2>2. How we use information</h2>',
+    '<p>We use information to operate the Platform; create and orchestrate production and fulfillment; process subscriptions, orders, and payouts; verify partners; provide support; maintain security and prevent abuse; meet legal and compliance obligations; and improve our services. We use it to send you transactional and, where permitted, product communications.</p>',
+    '<h2>3. How we share information</h2>',
+    '<p>We share information with the production and fulfillment partners needed to make and ship your orders (for example, artwork, specifications, and shipping details), and with service providers who help us run the Platform (for example, payment processors such as Stripe, cloud hosting, email delivery, and analytics). A current list of sub-processors is available on our Sub-processors page. We may share information to comply with law, protect rights and safety, or in a business transfer. We do not sell your personal information.</p>',
+    '<h2>4. Payments</h2>',
+    '<p>Payments and payouts are handled by third-party processors. We receive limited transaction details but do not store full payment card numbers.</p>',
+    '<h2>5. Data retention</h2>',
+    '<p>We keep information for as long as needed to provide the Platform, meet legal, tax, and accounting obligations, resolve disputes, and preserve records (for example, order and acceptance records for legal reproducibility). We then delete or de-identify it.</p>',
+    '<h2>6. Your choices and rights</h2>',
+    '<p>You can access and update your account information and manage notification preferences in-product. Depending on your location, you may have rights to access, correct, delete, or port your information, or to object to certain processing. To exercise these rights, contact privacy@ilaunchify.com. Mandatory legal and transactional notices may be sent regardless of marketing preferences.</p>',
+    '<h2>7. Cookies</h2>',
+    '<p>We use cookies and similar technologies as described in our Cookie Policy.</p>',
+    '<h2>8. Security</h2>',
+    '<p>We use technical and organizational measures to protect information, including tenant isolation, access controls, encryption in transit, and audit logging. No system is perfectly secure; we work to protect your information and to respond appropriately to incidents.</p>',
+    '<h2>9. International and regional notes</h2>',
+    '<p>V1 of the Platform is offered in the United States. As we expand, region-specific terms may apply. This page will reflect those changes.</p>',
+    '<h2>10. Changes and contact</h2>',
+    '<p>We may update this Policy; material changes are notified and, where required, re-acknowledged. The current version and effective date are always shown here. Contact: privacy@ilaunchify.com.</p>',
+  ]),
+  text: 'iLaunchify Privacy Policy (draft). What we collect (account, business, designs, usage, partner onboarding/payout), how we use it (operate + orchestrate production, payments/payouts via Stripe, verification, support, security, compliance), sharing with production partners + service providers (see Sub-processors), no sale of personal info, retention, your rights (privacy@ilaunchify.com), cookies, security (tenant isolation, encryption, audit), US-only V1, changes with re-acknowledgement. Not legal advice; pending counsel.',
+}
+
+// ── Creator Agreement ───────────────────────────────────────────────────────
+const CREATOR_AGREEMENT: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>This Creator Agreement supplements the Terms of Service and governs your use of iLaunchify as a creator to design, order, and sell CPG products.</p>',
+    '<h2>1. Your role</h2>',
+    '<p>As a creator, you design products, configure packaging and labeling, and place production orders. You own and operate your brand and your sales channels; iLaunchify and its partners produce and fulfill what you order.</p>',
+    '<h2>2. Subscription and production fees</h2>',
+    '<p>You subscribe to a creator tier (Maker, Builder, or Agency), each with its own features and production-fee rate applied at checkout. Current rates are shown in-product before you order and in the Membership & Subscription Terms. Production fees are calculated on the production subtotal (plus fulfillment-center labeling where applicable) and charged as part of your order.</p>',
+    '<h2>3. Your brand, claims, and compliance</h2>',
+    '<p>You are responsible for your brand, product claims, ingredient and nutrition declarations, and label content, and for their compliance with applicable law (including FDA requirements where relevant). Our Design Studio, nutrition engine, and compliance tooling assist you, but you approve and own what you bring to market. You must hold the rights to the artwork, marks, and formulas you use.</p>',
+    '<h2>4. Orders and approvals</h2>',
+    '<p>When you place an order you approve your design and specifications for production. Once production begins, changes may not be possible. Your acceptance of applicable terms at checkout is recorded. Timelines, minimums, and yields depend on the selected product and partners.</p>',
+    '<h2>5. Selling to your customers</h2>',
+    '<p>You sell finished products to your own end customers through your own channels. You are responsible for your customer relationships, storefront terms, consumer disclosures, returns, and post-sale support. iLaunchify is not a party to your sales to end customers.</p>',
+    '<h2>6. Payments and payouts</h2>',
+    '<p>You pay subscription and order charges through our payment processor. You are responsible for chargebacks and payment obligations arising from your orders.</p>',
+    '<h2>7. On-platform transactions</h2>',
+    '<p>You agree to keep introduced production relationships on the Platform and not to circumvent iLaunchify’s fees, except as permitted in writing.</p>',
+    '<h2>8. Term and changes</h2>',
+    '<p>This Agreement continues while you use the Platform. We may update it; material changes are notified and re-accepted where required.</p>',
+  ]),
+  text: 'iLaunchify Creator Agreement (draft). Creator role (design + order + sell via own channels), subscription tiers + production fees at checkout, creator owns brand/claims/label compliance (FDA where relevant) with Studio/compliance tooling assistance, order approval + recorded acceptance, creator owns end-customer relationship, payments/chargebacks, on-platform transaction commitment, changes with re-acceptance. Not legal advice; pending counsel.',
+}
+
+// ── Partner Agreement (CMS summary; the e-signed STANDARD_V1.0 is separate) ──
+const PARTNER_AGREEMENT: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>This Partner Agreement governs participation in the iLaunchify production network as a manufacturer, printer, co-packer, or warehouse/fulfillment partner. The binding, e-signed Standard Partner Agreement accepted during onboarding controls where the two differ.</p>',
+    '<h2>1. Eligibility and verification</h2>',
+    '<p>You represent that you are a validly organized business authorized to perform your services in the United States, and you will complete onboarding truthfully, including entity, facility, insurance, and certification information (for example, FDA facility registration, cGMP, or GFSI-recognized certification where applicable). iLaunchify may verify, approve, decline, suspend, or remove partners at its discretion. Approval is not a promise of order volume.</p>',
+    '<h2>2. Services and standards</h2>',
+    '<p>You perform only the services, at the facilities, and in the domains for which you are qualified and configured. You will meet the quality, safety, timeline, and documentation standards for accepted orders and keep your capabilities and certifications current.</p>',
+    '<h2>3. Orders and orchestration</h2>',
+    '<p>iLaunchify routes orders and may decompose them across multiple partners. You are responsible for your portion of each order and for accurate status, receiving, and dispatch documentation.</p>',
+    '<h2>4. Fees, tiers, and payouts</h2>',
+    '<p>Partner standing tiers (Verified, Trusted, Premier) are earned through the Merit Engine, not purchased. A merit fee (currently Verified 4.5%, Trusted 2.5%, Premier 0%) is withheld from your payout on applicable orders; it is netted at payout, not added to the creator’s charge. Payouts are made through our payment processor after the applicable order milestones.</p>',
+    '<h2>5. Confidentiality and creator content</h2>',
+    '<p>You will keep creator designs, formulas, and business information confidential and use them only to perform accepted orders. You will not reproduce or sell creator products outside the Platform.</p>',
+    '<h2>6. Anti-circumvention</h2>',
+    '<p>You will not use Platform-originated relationships to transact off-platform or to circumvent iLaunchify’s fees, except as permitted in writing.</p>',
+    '<h2>7. Nominated co-partners</h2>',
+    '<p>Where you direct a print or packaging co-partner for an order, you do so subject to the nomination terms and associated responsibilities in the Standard Partner Agreement.</p>',
+    '<h2>8. Term and changes</h2>',
+    '<p>This Agreement continues while you participate. Material changes are notified and re-accepted where required.</p>',
+  ]),
+  text: 'iLaunchify Partner Agreement (draft; binding e-signed STANDARD_V1.0 controls). Eligibility + verification (entity/facility/insurance/certs, FDA/cGMP/GFSI), services + standards, order orchestration + docs, EARNED merit tiers (Verified/Trusted/Premier) with merit fee withheld from payout (4.5/2.5/0), confidentiality of creator content, anti-circumvention, nominated co-partners, changes with re-acceptance. Not legal advice; pending counsel.',
+}
+
+// ── Membership & Subscription Terms ─────────────────────────────────────────
+const MEMBERSHIP: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>These Membership & Subscription Terms govern paid iLaunchify creator subscriptions and are designed to align with applicable auto-renewal and "click-to-cancel" requirements.</p>',
+    '<h2>1. Plans and billing</h2>',
+    '<p>Creator subscriptions (for example, Maker, Builder, and Agency) are billed on a recurring basis (monthly unless stated otherwise) at the price shown at signup. Each tier includes its own features and production-fee rate. Applicable taxes may be added.</p>',
+    '<h2>2. Automatic renewal</h2>',
+    '<p>Your subscription automatically renews at the end of each billing period at the then-current price until you cancel. By subscribing, you authorize recurring charges to your payment method.</p>',
+    '<h2>3. Cancellation</h2>',
+    '<p>You may cancel at any time from your account settings. Cancellation takes effect at the end of the current billing period; you keep access until then. We do not require you to contact support to cancel.</p>',
+    '<h2>4. Price changes</h2>',
+    '<p>We may change subscription prices or fee rates. We will give advance notice of material changes, and changes apply from your next renewal. Continuing after the effective date constitutes acceptance; if you disagree, you may cancel before renewal.</p>',
+    '<h2>5. Refunds</h2>',
+    '<p>Subscription fees are generally non-refundable except where required by law or as stated in our Cancellation, Refund & Dispute Policy. Production orders are governed by that Policy.</p>',
+    '<h2>6. Free trials and promotions</h2>',
+    '<p>If offered, trials convert to paid subscriptions unless canceled before the trial ends. Promotional pricing reverts to standard pricing at renewal.</p>',
+    '<h2>7. Changes and contact</h2>',
+    '<p>We may update these Terms; material changes are notified and re-acknowledged where required. Billing questions: billing@ilaunchify.com.</p>',
+  ]),
+  text: 'iLaunchify Membership & Subscription Terms (draft). Recurring creator subscriptions (Maker/Builder/Agency) with per-tier production-fee rate, automatic renewal + recurring charge authorization, self-serve click-to-cancel effective end of period, advance notice of price changes, subscription fees generally non-refundable, trials/promos, changes with re-acknowledgement. FTC auto-renewal aligned. Not legal advice; pending counsel.',
+}
+
+// ── Acceptable Use Policy ───────────────────────────────────────────────────
+const ACCEPTABLE_USE: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>This Acceptable Use Policy ("AUP") describes conduct and content that are not allowed on the iLaunchify Platform. It supplements the Terms of Service.</p>',
+    '<h2>1. Prohibited products</h2>',
+    '<p>You may not use the Platform to design, order, or produce products that are unlawful, unsafe, misbranded, or that violate applicable regulatory requirements (including FDA rules where relevant); controlled substances or products making prohibited health claims; or products that infringe intellectual property or other rights.</p>',
+    '<h2>2. Prohibited content and claims</h2>',
+    '<p>You may not upload content or make label or marketing claims that are false, misleading, deceptive, infringing, defamatory, or that you are not authorized to use. You are responsible for the accuracy and legality of your brand claims.</p>',
+    '<h2>3. Prohibited conduct</h2>',
+    '<p>You may not misuse the Platform, including: attempting to breach security or access data you are not entitled to; interfering with the Platform or other users; scraping or overloading the service; circumventing fees or routing controls; or using the Platform to harm partners, creators, or end customers.</p>',
+    '<h2>4. Partner obligations</h2>',
+    '<p>Partners must perform only services they are qualified and certified for, maintain safe and compliant facilities, and handle creator content confidentially.</p>',
+    '<h2>5. Enforcement</h2>',
+    '<p>We may remove content, halt orders, and suspend or terminate accounts that violate this AUP, and we may report unlawful activity to authorities. We may act to protect the safety and integrity of the Platform, its users, and end customers.</p>',
+    '<h2>6. Reporting and changes</h2>',
+    '<p>Report suspected violations to trust@ilaunchify.com. We may update this AUP; the current version and effective date are always shown here.</p>',
+  ]),
+  text: 'iLaunchify Acceptable Use Policy (draft). Prohibits unlawful/unsafe/misbranded products, false or infringing content and claims, security misuse, scraping, fee circumvention, and harm to users; partner qualification + confidentiality obligations; enforcement (content removal, order halt, suspension, reporting); report to trust@ilaunchify.com. Not legal advice; pending counsel.',
+}
+
+// ── Cancellation, Refund & Dispute Policy ───────────────────────────────────
+const REFUND_DISPUTE: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>This Policy explains cancellations, refunds, and disputes for iLaunchify production orders and subscriptions. It supplements the Terms of Service and Membership & Subscription Terms.</p>',
+    '<h2>1. Order cancellation</h2>',
+    '<p>Because production begins soon after you place an order, cancellation is only possible before production starts. Once a partner has begun producing your order, it generally cannot be canceled. The current status of each order is shown in-product.</p>',
+    '<h2>2. Production refunds</h2>',
+    '<p>If a production order is defective, materially non-conforming to the approved specification, or not delivered, you may be eligible for a remake, replacement, or refund of the affected portion, subject to review. Refunds do not typically cover issues arising from your approved design, claims, or specifications, or from factors outside our or the partner’s control.</p>',
+    '<h2>3. Subscription refunds</h2>',
+    '<p>Subscription fees are generally non-refundable; cancellation stops future renewals as described in the Membership & Subscription Terms.</p>',
+    '<h2>4. Fees</h2>',
+    '<p>Where a refund is issued, applicable platform and production fees are handled consistently with the refunded amounts. Payment-processor fees may be non-refundable.</p>',
+    '<h2>5. Disputes</h2>',
+    '<p>If you have a problem with an order, contact us first so we can investigate with the relevant partner. We use order records, dispatch documentation, and acceptance history to resolve disputes fairly. Please raise disputes promptly after delivery.</p>',
+    '<h2>6. Chargebacks</h2>',
+    '<p>Initiating a chargeback without first contacting us may delay resolution. You are responsible for chargebacks arising from your orders and from your own end-customer sales.</p>',
+    '<h2>7. Changes and contact</h2>',
+    '<p>We may update this Policy; the current version and effective date are always shown here. Contact: support@ilaunchify.com.</p>',
+  ]),
+  text: 'iLaunchify Cancellation, Refund & Dispute Policy (draft). Cancel only before production starts; production refunds/remakes for defective/non-conforming/undelivered orders (not approved-design issues); subscription fees non-refundable; fee handling on refunds; dispute resolution via order + dispatch + acceptance records; chargeback responsibility; contact support@ilaunchify.com. Not legal advice; pending counsel.',
+}
+
+// ── Sub-processors ──────────────────────────────────────────────────────────
+const SUBPROCESSORS: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>iLaunchify uses trusted third-party service providers ("sub-processors") to help operate the Platform. This page lists the categories of sub-processors we use and is updated as they change.</p>',
+    '<h2>Categories of sub-processors</h2>',
+    '<p><strong>Payments &amp; payouts</strong> — payment processing and Connect payouts (e.g., Stripe).</p>',
+    '<p><strong>Cloud hosting &amp; database</strong> — application hosting and managed database services.</p>',
+    '<p><strong>Email &amp; notifications</strong> — transactional email delivery.</p>',
+    '<p><strong>Shipping &amp; logistics</strong> — carrier rating, labels, and tracking (e.g., EasyPost) and fulfillment integrations.</p>',
+    '<p><strong>Analytics &amp; monitoring</strong> — product analytics and error/performance monitoring.</p>',
+    '<p><strong>Production &amp; fulfillment partners</strong> — the manufacturers, printers, co-packers, and warehouses that produce and ship your orders receive the information needed to do so.</p>',
+    '<h2>Updates</h2>',
+    '<p>We may add or change sub-processors as the Platform evolves. Where required, we will provide notice of material changes. The current list and effective date are shown here. Questions: privacy@ilaunchify.com.</p>',
+  ]),
+  text: 'iLaunchify Sub-processors (draft). Categories: payments/payouts (Stripe), cloud hosting + database, transactional email, shipping/logistics (EasyPost) + fulfillment, analytics + monitoring, and the production/fulfillment partners that make + ship orders. Updated as sub-processors change; privacy@ilaunchify.com. Not legal advice; pending counsel.',
+}
+
+// ── Data Processing Addendum ────────────────────────────────────────────────
+const DPA: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>This Data Processing Addendum ("DPA") applies where iLaunchify processes personal data on behalf of a partner or business customer ("Controller") in connection with the Platform. It forms part of the Terms/Partner Agreement.</p>',
+    '<h2>1. Roles</h2>',
+    '<p>The Controller determines the purposes and means of processing the personal data it provides; iLaunchify acts as processor for that data and processes it only on documented instructions, including as needed to provide and orchestrate production and fulfillment.</p>',
+    '<h2>2. Scope of processing</h2>',
+    '<p>iLaunchify processes personal data (such as contact, account, order, and fulfillment details) for the duration of the engagement and for the purposes of operating the Platform, coordinating partners, processing payments/payouts, providing support, and meeting legal obligations.</p>',
+    '<h2>3. Confidentiality and security</h2>',
+    '<p>iLaunchify keeps personal data confidential, restricts access to authorized personnel, and maintains appropriate technical and organizational measures (including tenant isolation, access controls, encryption in transit, and audit logging).</p>',
+    '<h2>4. Sub-processors</h2>',
+    '<p>The Controller authorizes iLaunchify to use the sub-processors listed on our Sub-processors page. iLaunchify imposes data-protection obligations on sub-processors consistent with this DPA and will provide notice of material changes where required.</p>',
+    '<h2>5. Data subject requests and assistance</h2>',
+    '<p>iLaunchify will provide reasonable assistance to the Controller in responding to data-subject requests and in meeting security, breach-notification, and impact-assessment obligations, taking into account the nature of processing and the information available.</p>',
+    '<h2>6. Breach notification</h2>',
+    '<p>iLaunchify will notify the Controller without undue delay after becoming aware of a personal-data breach affecting the Controller’s data and will provide information reasonably available to support the Controller’s obligations.</p>',
+    '<h2>7. Return or deletion</h2>',
+    '<p>On termination, iLaunchify will delete or return the Controller’s personal data as instructed, except where retention is required by law or for legal-reproducibility records.</p>',
+    '<h2>8. Changes and contact</h2>',
+    '<p>We may update this DPA; material changes are notified. Contact: privacy@ilaunchify.com.</p>',
+  ]),
+  text: 'iLaunchify Data Processing Addendum (draft). Controller/processor roles; scope (contact/account/order/fulfillment data to operate + orchestrate + pay + support + comply); confidentiality + security (tenant isolation, access controls, encryption, audit); authorized sub-processors (see Sub-processors page); assistance with data-subject requests + breach notification + impact assessments; breach notice without undue delay; return/deletion on termination. Not legal advice; pending counsel.',
+}
+
+// ── Accessibility Statement ─────────────────────────────────────────────────
+const ACCESSIBILITY: LegalBody = {
+  html: P([
+    '<p>iLaunchify is committed to making our platform accessible to everyone, including people with disabilities. We are working to conform to the Web Content Accessibility Guidelines (WCAG) 2.1 Level AA, and we treat WCAG 2.2 Level AA as our best-practice benchmark.</p>',
+    '<h2>Conformance status</h2>',
+    '<p>We are actively working toward WCAG 2.1 AA conformance across our creator, partner, and marketing surfaces. Accessibility is an ongoing effort and some areas may not yet fully conform; where we are aware of gaps, we prioritize fixes and note known limitations below.</p>',
+    '<h2>Measures we take</h2>',
+    '<p>We include accessibility in our design and engineering process — semantic markup, keyboard operability, visible focus states, sufficient color contrast, descriptive labels and alternative text, and compatibility with common assistive technologies. Accessibility considerations are part of our design-system tokens and component reviews.</p>',
+    '<h2>Scope</h2>',
+    '<p>This statement applies to the iLaunchify web applications and marketing site. It does not cover third-party content or services that we link to but do not control.</p>',
+    '<h2>Known limitations</h2>',
+    '<p>Some complex, interactive areas — for example the design studio canvas and certain data-dense tables — may have partial assistive-technology support while we continue improvements. We welcome reports so we can prioritize them.</p>',
+    '<h2>Feedback</h2>',
+    '<p>If you encounter an accessibility barrier, or need content in an alternative format, contact us at accessibility@ilaunchify.com. Please describe the issue, the page or feature, and the assistive technology you were using. We aim to acknowledge feedback promptly and to resolve issues as quickly as we reasonably can.</p>',
+    '<h2>Assessment</h2>',
+    '<p>We evaluate accessibility through a combination of automated testing and manual review, including keyboard-only and screen-reader checks. We update this statement as our conformance and processes evolve.</p>',
+  ]),
+  text: 'iLaunchify Accessibility Statement (draft). Committed to WCAG 2.1 AA (2.2 AA best practice) across creator, partner, and marketing surfaces; accessibility built into design + engineering; scope + known limitations (studio canvas, dense tables); feedback at accessibility@ilaunchify.com; automated + manual assessment. Pending review.',
+}
+
+// ── Cookie Policy ───────────────────────────────────────────────────────────
+const COOKIE: LegalBody = {
+  html: P([
+    DRAFT_NOTE,
+    '<p>This Cookie Policy explains how iLaunchify uses cookies and similar technologies. It should be read together with our Privacy Policy.</p>',
+    '<h2>What cookies are</h2>',
+    '<p>Cookies are small text files stored on your device when you visit a website. They help the site function, remember your preferences, and understand how the site is used.</p>',
+    '<h2>How we use cookies</h2>',
+    '<p>We use strictly necessary cookies to operate the platform (for example, to keep you signed in and to secure your session). Where applicable, we may use preference cookies to remember your settings and analytics cookies to understand and improve how the platform is used. We do not sell your personal information.</p>',
+    '<h2>Managing cookies</h2>',
+    '<p>You can control and delete cookies through your browser settings. Blocking strictly necessary cookies may prevent parts of the platform from working. Where required, we present a cookie choice and record your preference.</p>',
+    '<h2>Changes</h2>',
+    '<p>We may update this Cookie Policy from time to time; the current version and its effective date are always shown here.</p>',
+  ]),
+  text: 'iLaunchify Cookie Policy (draft). Strictly necessary cookies to operate + secure the platform; optional preference + analytics cookies; no sale of personal info; control via browser; read with the Privacy Policy. Not legal advice; pending counsel.',
+}
+
+/** Slug → authored draft body. Consumed by seed-legal.ts. */
+export const LEGAL_BODIES: Record<string, LegalBody> = {
+  terms: TERMS,
+  privacy: PRIVACY,
+  'cookie-policy': COOKIE,
+  'creator-agreement': CREATOR_AGREEMENT,
+  'partner-agreement': PARTNER_AGREEMENT,
+  'membership-subscription-terms': MEMBERSHIP,
+  accessibility: ACCESSIBILITY,
+  'acceptable-use': ACCEPTABLE_USE,
+  'refund-dispute-policy': REFUND_DISPUTE,
+  subprocessors: SUBPROCESSORS,
+  dpa: DPA,
+}
