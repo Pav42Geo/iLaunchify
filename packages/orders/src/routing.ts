@@ -11,13 +11,14 @@
 // Outputs: chosen manufacturing service + chosen label-printing service (or null
 // if no match — order is flagged for admin manual routing).
 
-import { prisma, getActiveNominatedServiceId } from '@ilaunchify/db'
+import { prisma, getActiveNominatedServiceId, getLogisticsSettings } from '@ilaunchify/db'
 import { generateOrderManifest } from './manifest'
 import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
 import { resolveManufacturerMeritFeeBps, meritWithholdCents } from './manufacturer-merit-fee'
 import { resolveApplicationPoint, APPLIED_DECORATIONS } from './application-point'
+import { planShipmentHops, type PlannedHop, type HopDestinationKind } from './hop-planner'
 import {
   selectRotatingProvider,
   buildRotationAwardPayload,
@@ -629,14 +630,33 @@ async function rotatePrintShop(args: {
  * unlabeled PRODUCT leg (GOODS_TRANSFER). Best-effort — returns nulls (legacy
  * order.shipTo* addressing) on any miss, so it never blocks routing.
  */
-async function resolveItemShipToNodes(args: {
+function mapHopDestination(order: {
+  shipToType: string | null
+  shipToPartnerServiceId: string | null
+}): { kind: HopDestinationKind; fcServiceId?: string | null } {
+  switch (order.shipToType) {
+    case 'WAREHOUSE_PARTNER':
+      return { kind: 'WAREHOUSE_PARTNER', fcServiceId: order.shipToPartnerServiceId }
+    case 'HOLD_AT_MANUFACTURER':
+      return { kind: 'HOLD_AT_MANUFACTURER' }
+    case 'CHANNEL_INBOUND':
+      return { kind: 'CHANNEL_INBOUND' }
+    default:
+      return { kind: 'CREATOR_ADDRESS' } // CREATOR_ADDRESS / SAVED_ADDRESS / NEW_ADDRESS
+  }
+}
+
+async function planItemShipment(args: {
   routing: { manufacturingServiceId: string; labelPrintingServiceId: string }
   components: Array<{ decorationMethod: string; appliesLabels: boolean | null }>
   coPackerServiceId: string | null
   order: { shipToType: string | null; shipToPartnerServiceId: string | null }
-}): Promise<{ labelNodeId: string | null; productNodeId: string | null }> {
-  const NONE = { labelNodeId: null, productNodeId: null }
-  const decorated = args.components.find((c) => APPLIED_DECORATIONS.has(c.decorationMethod))
+}): Promise<{ labelNodeId: string | null; productNodeId: string | null; hops: PlannedHop[] }> {
+  const NONE = { labelNodeId: null, productNodeId: null, hops: [] as PlannedHop[] }
+  // The decorated component drives application resolution; fall back to the first
+  // component (a non-applied method resolves trivially to "no application step").
+  const decorated =
+    args.components.find((c) => APPLIED_DECORATIONS.has(c.decorationMethod)) ?? args.components[0]
   if (!decorated) return NONE
 
   // A separate print partner produces the decoration → a real application step.
@@ -666,17 +686,35 @@ async function resolveItemShipToNodes(args: {
     }
   }
 
-  const resolved = resolveApplicationPoint({
+  const applicationPoint = resolveApplicationPoint({
     decorationMethod: decorated.decorationMethod,
     manufacturer: { serviceId: args.routing.manufacturingServiceId, appliesLabels: mfr?.appliesLabels ?? true },
     coPacker,
     fc,
     externalPrint,
   })
-  if (!resolved.ok || !resolved.node) return NONE
-  // A co-packer applier pulls the unlabeled PRODUCT leg (manufacturer → co-packer).
-  const productNodeId = resolved.node.kind === 'COPACKER' ? resolved.node.serviceId : null
-  return { labelNodeId: resolved.node.serviceId, productNodeId }
+  // UNRESOLVED shouldn't reach routing (the §8 checkout gate blocks it), but be
+  // defensive — no hops, legacy addressing, never throw.
+  if (!applicationPoint.ok) return NONE
+
+  // PLANNED hop structure. Costs are 0 until the admin rate card / EasyPost rating
+  // lands (the leg records the physical movement; ratedCostCents fills in at booking).
+  const logisticsGates = await getLogisticsSettings()
+  const platformPaysInterPartnerFreight =
+    logisticsGates['billing:platform_pays_interpartner_freight'] === true
+  const plan = planShipmentHops({
+    applicationPoint,
+    externalPrint,
+    printerServiceId: args.routing.labelPrintingServiceId,
+    manufacturerServiceId: args.routing.manufacturingServiceId,
+    coPackerServiceId: args.coPackerServiceId,
+    destination: mapHopDestination(args.order),
+    costs: { labelHopCents: 0, goodsTransferCents: 0, finishedGoodsCents: 0 },
+    platformPaysInterPartnerFreight,
+  })
+  const productNodeId =
+    applicationPoint.node?.kind === 'COPACKER' ? applicationPoint.node.serviceId : null
+  return { labelNodeId: plan.labelShipToServiceId, productNodeId, hops: plan.hops }
 }
 
 export async function createDispatches(params: {
@@ -705,6 +743,7 @@ export async function createDispatches(params: {
   )
 
   const dispatchRows: DispatchRow[] = []
+  const plannedHops: PlannedHop[] = [] // PS-7 — one PLANNED ShipmentLeg per hop, emitted in the txn
   const failures: string[] = []
   let primaryManufacturerId: string | null = null
   let primaryPrintId: string | null = null
@@ -773,7 +812,7 @@ export async function createDispatches(params: {
     // (GOODS_TRANSFER). Null = legacy addressing (order.shipTo*). Best-effort — a
     // resolution miss just leaves the legacy null, never blocks routing.
     const coPackerServiceId = plan.rows.find((r) => r.type === 'COPACKING')?.partnerServiceId ?? null
-    const shipToNodes = await resolveItemShipToNodes({
+    const shipment = await planItemShipment({
       routing,
       components: components.map((c) => ({
         decorationMethod: String(c.decorationMethod),
@@ -783,9 +822,10 @@ export async function createDispatches(params: {
       order: { shipToType: order.shipToType, shipToPartnerServiceId: order.shipToPartnerServiceId },
     })
     for (const row of plan.rows) {
-      if (row.type === 'LABEL') row.shipToNodeId = shipToNodes.labelNodeId
-      else if (row.type === 'PRODUCT') row.shipToNodeId = shipToNodes.productNodeId
+      if (row.type === 'LABEL') row.shipToNodeId = shipment.labelNodeId
+      else if (row.type === 'PRODUCT') row.shipToNodeId = shipment.productNodeId
     }
+    plannedHops.push(...shipment.hops)
 
     dispatchRows.push(...plan.rows)
     if (!primaryManufacturerId) {
@@ -847,8 +887,32 @@ export async function createDispatches(params: {
     // OrderItem.designVersionId and renders the Fabric JSON).
     const dispatches = await tx.orderDispatch.findMany({
       where: { orderId: order.id },
-      select: { id: true, type: true },
+      select: { id: true, type: true, partnerServiceId: true },
     })
+
+    // PS-7 (§8.3) — one PLANNED ShipmentLeg per planned hop. Attach each hop to the
+    // dispatch it originates from (hop.from.serviceId === dispatch.partnerServiceId):
+    // LABELS ← the printer's LABEL leg, GOODS_TRANSFER ← the manufacturer's PRODUCT
+    // leg, FINISHED_GOODS ← the final holder's leg. Costs are 0 until the rate card /
+    // EasyPost rating lands; the leg records the physical movement + bearer attribution.
+    for (const hop of plannedHops) {
+      const fromId = hop.from.serviceId
+      if (!fromId) continue
+      const d = dispatches.find((x) => x.partnerServiceId === fromId)
+      if (!d) continue
+      await (
+        tx as unknown as { shipmentLeg: { create: (a: unknown) => Promise<unknown> } }
+      ).shipmentLeg.create({
+        data: {
+          orderDispatchId: d.id,
+          mode: 'PARCEL', // carrier eligibility sets the real mode at booking (V2)
+          status: 'PLANNED',
+          ratedCostCents: hop.costCents,
+          shipFromJson: hop.from,
+          shipToJson: hop.to,
+        },
+      })
+    }
     // Final shipper = the hop that physically ships finished goods to the order's
     // ship-to: the co-packer when assembly exists, else the manufacturer. Printers
     // ship labels UPSTREAM (never final); warehouses always get the full address
