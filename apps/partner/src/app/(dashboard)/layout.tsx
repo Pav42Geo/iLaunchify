@@ -13,8 +13,9 @@
 // problem when admin flips the partner. Welcome detection uses a JSON flag
 // in Partner.onboardingProgress so we don't show it twice.
 
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getOutstandingLegalDocs } from '@ilaunchify/auth'
 import { prisma, isNominationEnabled } from '@ilaunchify/db'
+import { LegalGate } from './LegalGate'
 import { getActingPartner } from '@/lib/partner-context'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -123,6 +124,14 @@ export default async function PartnerDashboardLayout({ children }: { children: R
   // short-circuited via a sticky flag once complete so we don't re-run the
   // status queries on every subsequent page load.
   const activationLimited = restricted ? false : await resolveActivationLimited(partner)
+
+  // Legal re-acceptance gate (L3): after onboarding/status routing, block the
+  // dashboard behind an interstitial for any published, acceptance-required docs
+  // this partner hasn't accepted at the current version. Inert until published.
+  const outstandingLegal = await getOutstandingLegalDocs(user.id, user.role)
+  if (outstandingLegal.length > 0) {
+    return <LegalGate docs={outstandingLegal} />
+  }
 
   return (
     <div className="flex h-screen flex-col">

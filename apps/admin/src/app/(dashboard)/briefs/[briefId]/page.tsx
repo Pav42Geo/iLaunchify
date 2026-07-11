@@ -431,7 +431,8 @@ function MetaCard({
     status: string
     createdAt: Date
     updatedAt: Date
-    room: { id: string; status: string } | null
+    // 1:N since D-CC3 maker switching — query takes the latest room.
+    rooms: { id: string; status: string }[]
     creator: { id: string; displayName: string | null }
   }
 }) {
@@ -440,9 +441,9 @@ function MetaCard({
       <dl className="divide-y divide-ink-100">
         <Row label="Status">{BRIEF_STATUS_LABEL[brief.status as never] ?? brief.status}</Row>
         <Row label="Room">
-          {brief.room ? (
+          {brief.rooms[0] ? (
             <Link
-              href={`/rooms/${brief.room.id}`}
+              href={`/rooms/${brief.rooms[0].id}`}
               className="inline-flex items-center gap-1 font-semibold text-pink-700 hover:text-pink-800 focus-visible:outline-none focus-visible:underline"
             >
               <DoorOpen className="h-3 w-3" aria-hidden="true" />

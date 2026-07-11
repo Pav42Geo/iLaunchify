@@ -3,7 +3,7 @@ import { getPublicBrandLogos, getLogoPlacement, prisma } from '@ilaunchify/db'
 import { marketingUrl } from '@/lib/marketing-url'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { ApplicationWizard } from './ApplicationWizard'
-import { SiteFooter } from '@/components/SiteFooter'
+import { SiteFooterServer } from '@/components/SiteFooterServer'
 
 export const metadata = { title: 'Apply to join the iLaunchify partner network' }
 
@@ -78,7 +78,7 @@ export default async function ApplyPage({
       </header>
 
       <ApplicationWizard defaultServiceTypes={[type]} certOptions={certOptions} regions={regions} />
-      <SiteFooter />
+      <SiteFooterServer />
     </div>
   )
 }

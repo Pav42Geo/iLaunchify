@@ -18,6 +18,7 @@
     "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/compliance-client": "workspace:*",
     "@ilaunchify/db": "workspace:*",
+    "@ilaunchify/legal": "workspace:*",
     "@ilaunchify/marketplace": "workspace:*",
     "@ilaunchify/notifications": "workspace:*",
     "@ilaunchify/nutrition": "workspace:*",

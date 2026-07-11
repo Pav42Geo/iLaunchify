@@ -31,6 +31,7 @@ import {
   resolveDestinationOptions,
   scoreAndSelectFc,
   loadFcRotationPolicy,
+  PUBLIC_FC_PARTNER_FILTER,
   type DestinationOption,
   type FcCandidate,
   type FcScoreResult,
@@ -189,7 +190,7 @@ export async function listFulfillmentOptions(
 
   const [warehouses, savedAddresses] = await Promise.all([
     prisma.partnerService.findMany({
-      where: { type: 'WAREHOUSE', status: 'ACTIVE' },
+      where: { type: 'WAREHOUSE', status: 'ACTIVE', ...PUBLIC_FC_PARTNER_FILTER },
       select: {
         id: true,
         capabilities: true,
@@ -303,7 +304,7 @@ export async function listDestinationOptions(
       },
     }),
     prisma.partnerService.findMany({
-      where: { type: 'WAREHOUSE', status: 'ACTIVE' },
+      where: { type: 'WAREHOUSE', status: 'ACTIVE', ...PUBLIC_FC_PARTNER_FILTER },
       select: {
         id: true,
         storageClasses: true,
@@ -1138,7 +1139,7 @@ async function resolveQuoteDestination(
     input.warehousePartnerServiceId
   ) {
     const w = await prisma.partnerService.findFirst({
-      where: { id: input.warehousePartnerServiceId, type: 'WAREHOUSE', status: 'ACTIVE' },
+      where: { id: input.warehousePartnerServiceId, type: 'WAREHOUSE', status: 'ACTIVE', ...PUBLIC_FC_PARTNER_FILTER },
       select: {
         partner: {
           select: {

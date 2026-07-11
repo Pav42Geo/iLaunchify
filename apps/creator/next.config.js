@@ -5,6 +5,7 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: [
     '@ilaunchify/db',
+    '@ilaunchify/legal',
     '@ilaunchify/types',
     '@ilaunchify/ui',
     '@ilaunchify/auth',

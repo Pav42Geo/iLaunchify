@@ -21,7 +21,7 @@ import {
   type ActivationStep,
 } from '@/lib/activation-tracks'
 import { getPartnerActivationStatus } from '@/lib/activation-status'
-import { SiteFooter } from '@/components/SiteFooter'
+import { SiteFooterServer } from '@/components/SiteFooterServer'
 import { setActivationStepComplete } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -220,7 +220,7 @@ export default async function ActivationPage() {
           </ol>
         </section>
       ))}
-      <SiteFooter />
+      <SiteFooterServer />
     </div>
   )
 }

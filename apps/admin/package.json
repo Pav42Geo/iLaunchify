@@ -16,6 +16,7 @@
     "@ilaunchify/auth": "workspace:*",
     "@sentry/nextjs": "^8.45.0",
     "@ilaunchify/db": "workspace:*",
+    "@ilaunchify/legal": "workspace:*",
     "@ilaunchify/marketplace": "workspace:*",
     "@ilaunchify/notifications": "workspace:*",
     "@ilaunchify/nutrition": "workspace:*",

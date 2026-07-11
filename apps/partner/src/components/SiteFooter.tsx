@@ -15,7 +15,15 @@ import { submitContactMessage } from '@/lib/contact-actions'
 
 type ModalKey = 'terms' | 'privacy' | 'contact' | null
 
-export function SiteFooter() {
+export function SiteFooter({
+  termsHtml,
+  privacyHtml,
+}: {
+  /** Published Terms body from the Legal CMS; falls back to the draft paras when null. */
+  termsHtml?: string | null
+  /** Published Privacy body from the Legal CMS; falls back to the draft paras when null. */
+  privacyHtml?: string | null
+} = {}) {
   const [open, setOpen] = useState<ModalKey>(null)
   const year = new Date().getFullYear()
 
@@ -33,12 +41,12 @@ export function SiteFooter() {
 
       {open === 'terms' && (
         <Modal title="Terms of Use" onClose={() => setOpen(null)}>
-          <LegalDoc paras={TERMS_OF_USE} />
+          <LegalDoc html={termsHtml} paras={TERMS_OF_USE} />
         </Modal>
       )}
       {open === 'privacy' && (
         <Modal title="Privacy Policy" onClose={() => setOpen(null)}>
-          <LegalDoc paras={PRIVACY_POLICY} />
+          <LegalDoc html={privacyHtml} paras={PRIVACY_POLICY} />
         </Modal>
       )}
       {open === 'contact' && (
@@ -94,7 +102,17 @@ function Modal({
   )
 }
 
-function LegalDoc({ paras }: { paras: LegalPara[] }) {
+function LegalDoc({ html, paras }: { html?: string | null; paras: LegalPara[] }) {
+  // Prefer the admin-published version from the Legal CMS (no draft banner);
+  // fall back to the hardcoded draft paras (with banner) until a version is published.
+  if (html) {
+    return (
+      <div
+        className="space-y-2 text-[12.5px] leading-relaxed text-ink-600 [&_h1]:mt-3 [&_h1]:text-[14px] [&_h1]:font-bold [&_h1]:text-ink-900 [&_h2]:mt-3 [&_h2]:text-[13px] [&_h2]:font-bold [&_h2]:text-ink-900 [&_strong]:text-ink-900"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    )
+  }
   return (
     <div className="space-y-2">
       <div className="mb-3 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[11.5px] text-warning-800">

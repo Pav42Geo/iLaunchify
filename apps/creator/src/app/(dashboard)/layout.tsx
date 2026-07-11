@@ -10,8 +10,9 @@
 // onboardingProgress.checklistOpenedAt server-side on mount so subsequent
 // visits leave the drawer closed (creator can re-open from the sidebar).
 
-import { requireRole } from '@ilaunchify/auth'
+import { requireRole, getOutstandingLegalDocs } from '@ilaunchify/auth'
 import { prisma, getCoCreationSettings } from '@ilaunchify/db'
+import { LegalGate } from './LegalGate'
 import { DashboardSidebar } from '@/components/nav/DashboardSidebar'
 import { DashboardTopbar } from '@/components/nav/DashboardTopbar'
 import { LaunchChecklistDrawer } from '@/components/checklist/LaunchChecklistDrawer'
@@ -24,6 +25,15 @@ import { getCreatorChecklistState } from './_actions/checklist-actions'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await requireRole(['CREATOR', 'ADMIN'])
+
+  // Legal re-acceptance gate (L3): block the app behind a blocking interstitial
+  // when there are published, acceptance-required docs this creator hasn't
+  // accepted at the current version. Inert until docs are published in admin.
+  const outstandingLegal = await getOutstandingLegalDocs(user.id, user.role)
+  if (outstandingLegal.length > 0) {
+    return <LegalGate docs={outstandingLegal} />
+  }
+
   const state = await getCreatorChecklistState()
 
   // Hydrate the snapshot from CreatorProfile.onboardingProgress JSON +

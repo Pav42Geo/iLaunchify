@@ -19,6 +19,13 @@ export {
 } from './capabilities'
 export { createUserWithRole } from './signup'
 export type { SignupInput, SignupResult, SignupError } from './signup'
+// Legal re-acceptance gate (docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md §5.2).
+export {
+  getOutstandingLegalDocs,
+  recordLegalAcceptances,
+  LEGAL_CONSENT_TEXT_VERSION,
+  type OutstandingLegalDoc,
+} from './legal-gate'
 // Admin-team invite — pure acceptance decision (docs/ADMIN_RBAC.md).
 export { evaluateInviteAcceptance } from './admin-invite'
 export type {

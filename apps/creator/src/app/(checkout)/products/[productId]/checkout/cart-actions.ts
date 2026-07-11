@@ -39,6 +39,7 @@ import {
   scoreAndSelectFc,
   loadFcRotationPolicy,
   buildScoredAwardPayload,
+  PUBLIC_FC_PARTNER_FILTER,
   type FcCandidate,
   type FcScoringWeights,
   type FcAwardHistoryEntry,
@@ -1428,7 +1429,7 @@ async function resolveShipTo({
             })
           : Promise.resolve(null),
         prisma.partnerService.findMany({
-          where: { type: 'WAREHOUSE', status: 'ACTIVE' },
+          where: { type: 'WAREHOUSE', status: 'ACTIVE', ...PUBLIC_FC_PARTNER_FILTER },
           select: {
             id: true,
             storageClasses: true,
@@ -1496,7 +1497,7 @@ async function resolveShipTo({
         // have empty storageClasses and rank ineligible). No award log: the
         // fallback is not an algorithmic pick.
         const closest = await prisma.partnerService.findFirst({
-          where: { type: 'WAREHOUSE', status: 'ACTIVE' },
+          where: { type: 'WAREHOUSE', status: 'ACTIVE', ...PUBLIC_FC_PARTNER_FILTER },
           select: { id: true },
         })
         warehouseId = closest?.id ?? null
@@ -1504,7 +1505,7 @@ async function resolveShipTo({
     }
     if (!warehouseId) return { ok: false, error: 'No eligible warehouse partner.' }
     const warehouse = await prisma.partnerService.findFirst({
-      where: { id: warehouseId, type: 'WAREHOUSE', status: 'ACTIVE' },
+      where: { id: warehouseId, type: 'WAREHOUSE', status: 'ACTIVE', ...PUBLIC_FC_PARTNER_FILTER },
       include: { partner: true },
     })
     if (!warehouse) return { ok: false, error: 'Warehouse partner unavailable.' }
