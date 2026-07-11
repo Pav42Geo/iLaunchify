@@ -91,6 +91,15 @@ Use the `marketplace-taxonomy-guardian` subagent before adding any new taxonomy 
 - Creator: `maker | builder | agency` (not Master) — `packages/auth/tiers.ts`. **Paid subscription.**
 - Partner: `VERIFIED | TRUSTED | PREMIER` — **EARNED via the Merit Engine, not purchased** (decision C, docs/PARTNER_TIER_VS_MERIT.md; supersedes the old "no behavioral binding" note). The badge now binds to the production fee (Verified 4.5% / Trusted 2.5% / Premier 0%, admin-tunable in the Merit console) and, going forward, to perks. The Merit Engine is the single decider of `Partner.tier`; the `/tiers` hand-set is an audited admin override, and the partner `SubscriptionPlan` rows are the earned perk ladder (their price/FeeRule are NOT the live source). Never sell a partner badge.
 
+## Fee model (RECONCILED 2026-07-09 — read before touching any money path)
+
+**Two independent fees on two parties, two SSOTs. Never conflate them, never hardcode a fee.**
+
+- **Creator production fee** = the creator's subscription-tier rate: **Maker 15% / Builder 12% / Agency 8%**, charged as the Stripe application fee at checkout. Admin-editable in **Tiers & Plans** (`FeeRule`). SSOT = `@ilaunchify/plans` `resolveCreatorFeeBps` — every charge path resolves it here; nothing else recomputes a platform fee. Fee base = production subtotal + FC labeling (shipping excluded). Snapshotted onto `Order.platformFeeBps/Cents/Source`.
+- **Manufacturer merit fee** = **Verified 4.5% / Trusted 2.5% / Premier 0%**, **withheld from the MANUFACTURER's payout** (it "eats the manufacturer"), NOT added to the creator's charge. SSOT = `MeritPolicy` + badge via `@ilaunchify/orders` `resolveManufacturerMeritFeeBps`. **Shadow-inert until `MeritPolicy.enabled`.** Snapshotted at routing onto `OrderDispatch.meritFeeBps/Cents`, netted at payout on `Transfer.meritFeeCents`.
+- **RETIRED:** the flat 5% `OrderSettings.productionFeeBps` as the creator-fee source (column kept, deprecated). A `check:invariants` rule now warns on any new hardcoded platform-fee constant outside `@ilaunchify/plans`.
+- Full model + ready-to-apply patches: `docs/FEE_MODEL_RECONCILIATION_SPEC_2026-07-09.md` (+ `FEE_CREATOR_CHECKOUT_PATCH` / `FEE_SHIPDISPATCH_MERIT_PATCH`). Origin: `AUDIT_2026-07-09_CONSISTENCY.md`.
+
 ## Gotchas
 
 1. **Legacy FOD frontend squats port 3000** — Pavel's Mac runs an old `ilaunchify-frontend` Docker container on 3000. ANY localhost:3000 weirdness → check `docker ps | grep frontend` FIRST.

@@ -71,15 +71,29 @@ Consumer purchases on creator's channel:
 
 All values below are **admin-editable defaults** via the Subscription & Fee Manager module (spec at the bottom of this section). They are not hardcoded.
 
+> **Fee model — RECONCILED 2026-07-09 (Pavel). READ THIS FIRST.**
+> The platform charges **two independent fees on two different parties**, resolved from two different SSOTs. Do not conflate them.
+>
+> 1. **Creator production fee** — the creator's **subscription-tier** rate, charged to the creator as the Stripe application fee at checkout:
+>    **Maker 15% · Builder 12% · Agency 8%** (admin-editable in **Tiers & Plans** → `FeeRule`). SSOT: `@ilaunchify/plans` `resolveCreatorFeeBps`. Fee base = production subtotal + FC labeling (shipping excluded). Snapshotted onto `Order.platformFeeBps/Cents/Source`.
+> 2. **Manufacturer merit fee** — **Verified 4.5% · Trusted 2.5% · Premier 0%**, **withheld from the MANUFACTURER's payout** (it "eats the manufacturer"), NOT added to the creator's charge. SSOT: `MeritPolicy` + partner badge via `@ilaunchify/orders` `resolveManufacturerMeritFeeBps`. Shadow-inert until `MeritPolicy.enabled`. Snapshotted at routing onto `OrderDispatch.meritFeeBps/Cents`.
+>
+> **RETIRED:** the flat 5% `OrderSettings.productionFeeBps` as the creator-fee source (kept in schema, deprecated).
+> **CORRECTED:** Agency creator fee is **8%** (matches the seed `FeeRule` + implementation), not 9%.
+> **SUPERSEDED:** the "per-tier marketplace commission (Verified 15 / Trusted 12 / Premier 8)" table below is the OLD partner model — the live partner fee is the merit withhold (4.5/2.5/0). The partner `SubscriptionPlan` FeeRule rows are the earned perk ladder, NOT the live fee.
+> Details + ready-to-apply patches: `docs/FEE_MODEL_RECONCILIATION_SPEC_2026-07-09.md`, `FEE_CREATOR_CHECKOUT_PATCH_2026-07-09.md`, `FEE_SHIPDISPATCH_MERIT_PATCH_2026-07-09.md`.
+
 #### Default per-tier platform fee on production orders
 
 | Creator tier | Production-order fee |
 | --- | --- |
 | Maker | 15% |
 | Builder | 12% |
-| Agency | 9% |
+| Agency | 8% |
 
 #### Default per-tier marketplace commission (iLaunchify's cut of partner revenue)
+
+> ⚠️ **SUPERSEDED 2026-07-09** — the live partner fee is the **merit withhold (Verified 4.5% / Trusted 2.5% / Premier 0%)** withheld from the manufacturer payout, not the 15/12/8 below. Retained for historical context only.
 
 | Partner tier | Marketplace commission |
 | --- | --- |
@@ -96,7 +110,7 @@ Billing: Maker free; Builder + Agency offer **monthly OR annual** (annual = 2 mo
 | --- | --- | --- | --- |
 | Active products | Unlimited | Unlimited | Unlimited |
 | Brand profiles | 1 | 3 | Unlimited |
-| Production-order fee | 15% | 12% | 9% |
+| Production-order fee | 15% | 12% | 8% |
 | Routing priority | Standard | Priority queue | First-look |
 | Channel connections (V1.1+) | 1 | 3 | All 6 |
 | Sample-order fee | Standard | Discount on first sample (see activation perk) | Free + credited against main order if placed within 30 days |
