@@ -19,6 +19,42 @@
 
 ---
 
+## STATUS UPDATE — 2026-07-11 (supersedes the "as of 2026-07-02" status above)
+
+**~450 commits since 2026-07-03.** V1 core is functionally built; what remains for launch is **integration + verification, not net-new features.**
+
+### Shipped / matured since the last roadmap
+- **Co-creation marketplace (P0)** — creator briefs → manufacturer opportunity pool → NDA'd collaboration rooms → milestone escrow.
+- **Nomination model** — manufacturer directs a print/pack co-partner (dark until counsel blesses D7).
+- **Print Coverage & Capability RFQ (PS-7/PS-8)** + **Smart Rotation Engine** (admin-controlled auto-rotation, shadow until enabled).
+- **Manufacturer Merit Engine (MM)** — badge→fee, shadow-inert until `MeritPolicy.enabled`.
+- **Feedback & Ratings**, **Partner Onboarding v2 + Activation Setup**, **Legal Document CMS**, **Risk Management Center (M1)**, **Favorites**.
+- **Platform consistency audit + remediation (this cycle)** — fee model reconciled (two-fee), **8 CI guardrails** now enforcing (`--strict`), characterization tests added to audit/security/compliance-client/notifications/plans. See `AUDIT_STATE_2026-07-11.md`.
+
+### V1 launch gate — the real critical path (2026-07-11)
+
+| Gate | Status | Owner |
+|---|---|---|
+| **MONEY — fee patches** (checkout charges tier fee not flat 5%; merit withhold) | ⏳ SSOT+snapshots landed; 2 hot-file patches **staged** | Code (`FEE_*_PATCH` docs) + `db:push` |
+| **MONEY — Stripe test-mode verification** (payment + payout handshake; refunds off until passed) | ⏳ pending — **THE money gate** | Pavel + Code (`STRIPE_TESTMODE_VERIFICATION.md`) |
+| **AUTH — login provider env** (`AUTH_SECRET` + Google/Resend) | ⏳ | Pavel |
+| **AUTH — retire `/api/dev/login`** (H5 A0–A3) | ⏳ specced; Code mid-build (`ENABLE_DEV_LOGIN` landed) | Code |
+| **AUTH — Turnstile (A4)** + **rotate the committed secret** | ⏳ specced (`A4_TURNSTILE_BUILD_SPEC`) | Code + Pavel (rotate) |
+| **AUTH — admin TOTP 2FA** | ⏳ specced (`AUTH_ENTRANCE_SECURITY §4B`) | Code |
+| **DATA/CI** — schema pushed, typecheck + `check:invariants --strict` + tests green | ✅ guardrails enforcing; `db:push`+`generate` before the fee patches | — |
+| **OPS/EXTERNAL** — FC dry-run + carrier setup; Shopify/Amazon/ShipBob/image-gen | ⏳ **V1.5-deferrable** (channels C1/C4 + AI-gen P3 already deferred) | Pavel accounts |
+
+### When are you ready to deploy?
+The gating list above is **short and well-defined** — no new feature build. Soft-launch-ready when:
+1. Code lands the two **fee hot-file patches** + `db:push` (checkout money correct).
+2. **Stripe test-mode verification** passes (the money handshake; unblocks refunds).
+3. **Auth**: provider env set → Code lands **A0–A3** (dev-login retired) → **rotate the Turnstile secret** → build **A4** + **admin TOTP**.
+4. **Green CI** + a staging **smoke test**: signup → design → checkout → dispatch → payout, in Stripe test mode.
+
+**Read:** the external accounts (Shopify / Amazon / ShipBob / image-gen) can follow as V1.5 without blocking a *controlled soft launch*, because channels and AI-gen are already deferred. No hard date (depends on Code throughput + external verification), but the path to soft-launch is integration-and-verify, not build.
+
+---
+
 ## FEATURE AREA BREAKDOWN
 
 ### 1. CREATOR ONBOARDING & TIERS
