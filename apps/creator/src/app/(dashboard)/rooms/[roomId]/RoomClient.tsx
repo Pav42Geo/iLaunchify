@@ -15,8 +15,10 @@ import {
   type RoomRecipeLabelView,
 } from '@ilaunchify/ui'
 import {
+  creatorAgreeMilestoneTerms,
   creatorCloseRoomWon,
   creatorComment,
+  creatorDeclineMilestoneTerms,
   creatorMessage,
   creatorReopen,
   creatorReview,
@@ -73,6 +75,12 @@ export function RoomClient(props: {
         refresh(creatorComment(props.roomId, objectId, body, anchor))
       }
       onMessage={(body) => refresh(creatorMessage(props.roomId, body))}
+      onAgreeMilestoneTerms={(milestoneId) =>
+        refresh(creatorAgreeMilestoneTerms(props.roomId, milestoneId))
+      }
+      onDeclineMilestoneTerms={(milestoneId) =>
+        refresh(creatorDeclineMilestoneTerms(props.roomId, milestoneId))
+      }
       canCloseWon={props.canCloseWon}
       onCloseWon={async () => {
         const res = await creatorCloseRoomWon(props.roomId)

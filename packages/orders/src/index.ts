@@ -66,6 +66,9 @@ export {
   reopenObject,
   addObjectComment,
   addRoomMessage,
+  proposeMilestoneTerms,
+  agreeMilestoneTerms,
+  declineMilestoneTerms,
 } from './room-service'
 export type { RoomActor, RoomCtx, RoomRole, RoomResult } from './room-service'
 // CLOSED_WON materialization (§6 "reuse, don't duplicate" — recipe → Product/Recipe)

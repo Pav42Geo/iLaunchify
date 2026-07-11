@@ -62,6 +62,11 @@ export interface RoomShellMilestone {
   id: string
   kind: string
   status: string
+  /** Dollar amount as a decimal string ("450.00"); "0" while terms are unset. */
+  amount: string
+  /** UNSET | PROPOSED | AGREED — negotiation stage within PENDING. */
+  termsStatus: string
+  termsNote: string | null
 }
 
 export interface RoomShellEvent {
@@ -100,6 +105,11 @@ export interface CoCreationRoomShellProps {
   /** Creator-only: recipe approved + room active → offer "confirm & create product". */
   canCloseWon?: boolean
   onCloseWon?: () => Promise<Result>
+  /** Milestone terms negotiation — maker proposes, creator agrees/declines.
+      Funding stays gated on payments verification (no fund action here). */
+  onProposeMilestoneTerms?: (milestoneId: string, amount: number, note?: string) => Promise<Result>
+  onAgreeMilestoneTerms?: (milestoneId: string) => Promise<Result>
+  onDeclineMilestoneTerms?: (milestoneId: string) => Promise<Result>
   /** Fill the viewport below the page chrome; columns scroll internally (lg+). */
   fullScreen?: boolean
   /** All of this user's active rooms (incl. the current one) — the title
@@ -261,7 +271,12 @@ function eventDotCls(kind: string): string {
       return 'bg-ink-900'
     case 'OBJECT_CHANGES_REQUESTED':
     case 'OBJECT_REOPENED':
+    case 'MILESTONE_TERMS_DECLINED':
       return 'bg-warning-500'
+    case 'MILESTONE_TERMS_PROPOSED':
+      return 'bg-ink-900'
+    case 'MILESTONE_TERMS_AGREED':
+      return 'bg-success-500'
     case 'COMMENT_ADDED':
       return 'bg-pink-500'
     default:
@@ -347,6 +362,19 @@ function eventText(e: RoomShellEvent): string {
       return `${by} re-opened ${kind}.`
     case 'COMMENT_ADDED':
       return `${by} commented on ${kind}.`
+    case 'MILESTONE_TERMS_PROPOSED': {
+      const mk = typeof e.data.milestoneKind === 'string' ? (MILESTONE_LABEL[e.data.milestoneKind] ?? e.data.milestoneKind) : 'milestone'
+      const amt = typeof e.data.amount === 'string' ? ` — $${e.data.amount}` : ''
+      return `${by} proposed ${mk} terms${amt}.`
+    }
+    case 'MILESTONE_TERMS_AGREED': {
+      const mk = typeof e.data.milestoneKind === 'string' ? (MILESTONE_LABEL[e.data.milestoneKind] ?? e.data.milestoneKind) : 'milestone'
+      return `${by} agreed to the ${mk} terms.`
+    }
+    case 'MILESTONE_TERMS_DECLINED': {
+      const mk = typeof e.data.milestoneKind === 'string' ? (MILESTONE_LABEL[e.data.milestoneKind] ?? e.data.milestoneKind) : 'milestone'
+      return `${by} declined the ${mk} proposal.`
+    }
     default:
       return e.kind.replaceAll('_', ' ').toLowerCase()
   }
@@ -378,6 +406,8 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
   const [rightTab, setRightTab] = React.useState<'activity' | 'messages'>('activity')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  /** Milestone row whose terms panel is expanded. */
+  const [openMilestone, setOpenMilestone] = React.useState<string | null>(null)
   const selected = objects.find((o) => o.id === selectedId) ?? objects[0]
 
   // fullScreen: size the shell to the viewport remainder by MEASURING its own
@@ -525,10 +555,29 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               />
             </div>
             {props.milestones.map((m) => (
-              <div key={m.id} className="flex justify-between text-ui-label normal-case tracking-normal text-ink-500">
-                <span>{MILESTONE_LABEL[m.kind] ?? m.kind}</span>
-                <span>{m.status === 'PENDING' ? 'awaiting terms' : m.status.toLowerCase().replaceAll('_', ' ')}</span>
-              </div>
+              <MilestoneTermsRow
+                key={m.id}
+                milestone={m}
+                mode={mode}
+                busy={busy}
+                open={openMilestone === m.id}
+                onToggle={() => setOpenMilestone(openMilestone === m.id ? null : m.id)}
+                onPropose={
+                  props.onProposeMilestoneTerms
+                    ? (amount, note) => run(() => props.onProposeMilestoneTerms!(m.id, amount, note))
+                    : undefined
+                }
+                onAgree={
+                  props.onAgreeMilestoneTerms
+                    ? () => run(() => props.onAgreeMilestoneTerms!(m.id))
+                    : undefined
+                }
+                onDecline={
+                  props.onDeclineMilestoneTerms
+                    ? () => run(() => props.onDeclineMilestoneTerms!(m.id))
+                    : undefined
+                }
+              />
             ))}
           </div>
         </div>
@@ -2014,6 +2063,151 @@ function ObjectDetail({
         ) : null}
       </div>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Milestone terms row (2026-07-10). Terms settle while PENDING: the maker
+// proposes amount + scope, the creator agrees or declines. Funding stays
+// gated on payments verification — copy says "payment protection", never
+// "escrow" (D-CC1 mechanics note).
+// ---------------------------------------------------------------------------
+
+function milestoneStatusLine(m: RoomShellMilestone): string {
+  if (m.status !== 'PENDING') return m.status.toLowerCase().replaceAll('_', ' ')
+  if (m.termsStatus === 'PROPOSED') return `$${m.amount} proposed`
+  if (m.termsStatus === 'AGREED') return `$${m.amount} agreed`
+  return 'awaiting terms'
+}
+
+function MilestoneTermsRow({
+  milestone: m,
+  mode,
+  busy,
+  open,
+  onToggle,
+  onPropose,
+  onAgree,
+  onDecline,
+}: {
+  milestone: RoomShellMilestone
+  mode: 'creator' | 'partner'
+  busy: boolean
+  open: boolean
+  onToggle: () => void
+  onPropose?: (amount: number, note?: string) => void
+  onAgree?: () => void
+  onDecline?: () => void
+}) {
+  const [amount, setAmount] = React.useState(Number(m.amount) > 0 ? m.amount : '')
+  const [note, setNote] = React.useState(m.termsNote ?? '')
+  const negotiable = m.status === 'PENDING'
+  const canPropose = mode === 'partner' && negotiable && !!onPropose
+  const canDecide = mode === 'creator' && negotiable && m.termsStatus === 'PROPOSED'
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between rounded-md px-s-1 py-0.5 text-left text-ui-label normal-case tracking-normal text-ink-500 transition hover:bg-ink-100 hover:text-ink-900"
+      >
+        <span>{MILESTONE_LABEL[m.kind] ?? m.kind}</span>
+        <span
+          className={cn(
+            m.termsStatus === 'AGREED' && m.status === 'PENDING' && 'text-success-700',
+            m.termsStatus === 'PROPOSED' && m.status === 'PENDING' && 'text-ink-900 font-bold',
+          )}
+        >
+          {milestoneStatusLine(m)}
+        </span>
+      </button>
+
+      {open ? (
+        <div className="mb-s-2 mt-s-1 rounded-lg border border-ink-200 bg-white p-s-2">
+          {m.termsNote && !(canPropose && m.termsStatus !== 'PROPOSED') ? (
+            <p className="mb-s-2 text-ui-label normal-case tracking-normal text-ink-700">
+              <b>Scope:</b> {m.termsNote}
+            </p>
+          ) : null}
+
+          {canPropose ? (
+            <>
+              <div className="flex gap-s-2">
+                <Input
+                  aria-label="Milestone amount in dollars"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={amount}
+                  placeholder="$ amount"
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-24"
+                />
+                <Input
+                  aria-label="Scope note"
+                  value={note}
+                  placeholder="Scope, e.g. 2 bench samples + 1 revision"
+                  onChange={(e) => setNote(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
+              <div className="mt-s-2 flex items-center gap-s-2">
+                <span className="flex-1 text-ui-label normal-case tracking-normal text-ink-500">
+                  {m.termsStatus === 'AGREED'
+                    ? 'Agreed — re-proposing restarts the agreement.'
+                    : m.termsStatus === 'PROPOSED'
+                      ? 'Waiting on the creator.'
+                      : null}
+                </span>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={busy || !(Number(amount) > 0)}
+                  onClick={() => onPropose!(Number(amount), note.trim() || undefined)}
+                >
+                  {m.termsStatus === 'UNSET' ? 'Propose terms' : 'Re-propose'}
+                </Button>
+              </div>
+            </>
+          ) : canDecide ? (
+            <div className="flex items-center gap-s-2">
+              <span className="flex-1 text-ui-label normal-case tracking-normal text-ink-700">
+                <b>${m.amount}</b> proposed by the maker.
+              </span>
+              {onDecline ? (
+                <Button variant="ghost" size="sm" disabled={busy} onClick={onDecline}>
+                  Decline
+                </Button>
+              ) : null}
+              {onAgree ? (
+                <Button variant="primary" size="sm" disabled={busy} onClick={onAgree}>
+                  ✓ Agree
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-ui-label normal-case tracking-normal text-ink-500">
+              {m.status !== 'PENDING'
+                ? `This milestone is ${m.status.toLowerCase().replaceAll('_', ' ')}.`
+                : m.termsStatus === 'AGREED'
+                  ? 'Terms agreed. Funding with payment protection opens once payments verification completes.'
+                  : m.termsStatus === 'PROPOSED'
+                    ? 'Waiting on the creator to agree or decline.'
+                    : mode === 'creator'
+                      ? 'Waiting for the maker to propose terms.'
+                      : 'Terms not set yet.'}
+            </p>
+          )}
+
+          {m.termsStatus === 'AGREED' && m.status === 'PENDING' && canPropose ? (
+            <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+              Funding with payment protection opens once payments verification completes.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   )
 }
 

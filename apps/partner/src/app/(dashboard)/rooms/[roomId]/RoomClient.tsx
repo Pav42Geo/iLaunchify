@@ -15,7 +15,12 @@ import {
   type RoomSwitcherEntry,
   type RoomRecipeLabelView,
 } from '@ilaunchify/ui'
-import { partnerComment, partnerMessage, partnerSubmitVersion } from './actions'
+import {
+  partnerComment,
+  partnerMessage,
+  partnerProposeMilestoneTerms,
+  partnerSubmitVersion,
+} from './actions'
 import { roomSearchIngredients, roomCreateIngredient } from './ingredient-search-action'
 
 export function RoomClient(props: {
@@ -67,6 +72,9 @@ export function RoomClient(props: {
         refresh(partnerComment(props.roomId, objectId, body, anchor))
       }
       onMessage={(body) => refresh(partnerMessage(props.roomId, body))}
+      onProposeMilestoneTerms={(milestoneId, amount, note) =>
+        refresh(partnerProposeMilestoneTerms(props.roomId, milestoneId, amount, note))
+      }
     />
   )
 }

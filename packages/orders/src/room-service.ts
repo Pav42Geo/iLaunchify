@@ -234,6 +234,156 @@ export async function addObjectComment(
   return { ok: true }
 }
 
+// ---------------------------------------------------------------------------
+// Milestone TERMS negotiation (2026-07-10). Terms settle while the milestone
+// is PENDING; funding (→ FUNDED_ESCROW) stays gated on Stripe test-mode
+// verification (docs/STRIPE_TESTMODE_VERIFICATION.md). Copy says "milestone
+// payment protection", never "escrow" (D-CC1 mechanics note).
+// ---------------------------------------------------------------------------
+
+async function loadMilestone(roomId: string, milestoneId: string) {
+  return prisma.roomMilestone.findFirst({ where: { id: milestoneId, roomId } })
+}
+
+/** Maker proposes (or re-proposes) amount + scope for a PENDING milestone. */
+export async function proposeMilestoneTerms(
+  ctx: RoomCtx,
+  milestoneId: string,
+  input: { amount: number; note?: string },
+): Promise<RoomResult> {
+  if (ctx.actingAs !== 'PARTNER') return { ok: false, error: 'Only the maker proposes terms' }
+  const m = await loadMilestone(ctx.roomId, milestoneId)
+  if (!m) return { ok: false, error: 'Milestone not found' }
+  if (m.status !== 'PENDING') return { ok: false, error: 'Terms are locked once funding starts' }
+  if (!Number.isFinite(input.amount) || input.amount <= 0 || input.amount > 1_000_000) {
+    return { ok: false, error: 'Invalid amount' }
+  }
+
+  const note = input.note?.trim().slice(0, 500) || null
+  const amount = input.amount.toFixed(2)
+
+  await prisma.$transaction(async (tx) => {
+    await tx.roomMilestone.update({
+      where: { id: m.id },
+      data: {
+        amount,
+        termsStatus: 'PROPOSED',
+        termsNote: note,
+        proposedAt: new Date(),
+        agreedAt: null,
+      },
+    })
+    await tx.roomEvent.create({
+      data: {
+        roomId: ctx.roomId,
+        kind: 'MILESTONE_TERMS_PROPOSED',
+        data: {
+          milestoneId: m.id,
+          milestoneKind: m.kind,
+          amount,
+          by: ctx.actorName,
+          ...(note ? { note } : {}),
+        },
+      },
+    })
+  })
+
+  await logAuditAs(ctx.actor, {
+    entityType: 'RoomMilestone',
+    entityId: m.id,
+    action: 'MILESTONE_TERMS_PROPOSED',
+    fromValue: m.termsStatus,
+    toValue: 'PROPOSED',
+    payload: { roomId: ctx.roomId, kind: m.kind, amount, note },
+  })
+
+  return { ok: true }
+}
+
+/** Creator agrees to the proposed terms (funding unlocks when payments do). */
+export async function agreeMilestoneTerms(ctx: RoomCtx, milestoneId: string): Promise<RoomResult> {
+  if (ctx.actingAs !== 'CREATOR') return { ok: false, error: 'Only the creator agrees to terms' }
+  const m = await loadMilestone(ctx.roomId, milestoneId)
+  if (!m) return { ok: false, error: 'Milestone not found' }
+  if (m.status !== 'PENDING') return { ok: false, error: 'Terms are locked once funding starts' }
+  if (m.termsStatus !== 'PROPOSED') return { ok: false, error: 'No proposed terms to agree to' }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.roomMilestone.update({
+      where: { id: m.id },
+      data: { termsStatus: 'AGREED', agreedAt: new Date() },
+    })
+    await tx.roomEvent.create({
+      data: {
+        roomId: ctx.roomId,
+        kind: 'MILESTONE_TERMS_AGREED',
+        data: {
+          milestoneId: m.id,
+          milestoneKind: m.kind,
+          amount: m.amount.toString(),
+          by: ctx.actorName,
+        },
+      },
+    })
+  })
+
+  await logAuditAs(ctx.actor, {
+    entityType: 'RoomMilestone',
+    entityId: m.id,
+    action: 'MILESTONE_TERMS_AGREED',
+    fromValue: 'PROPOSED',
+    toValue: 'AGREED',
+    payload: { roomId: ctx.roomId, kind: m.kind, amount: m.amount.toString() },
+  })
+
+  return { ok: true }
+}
+
+/** Creator declines the proposal — back to UNSET; the maker can re-propose. */
+export async function declineMilestoneTerms(
+  ctx: RoomCtx,
+  milestoneId: string,
+  reason?: string,
+): Promise<RoomResult> {
+  if (ctx.actingAs !== 'CREATOR') return { ok: false, error: 'Only the creator declines terms' }
+  const m = await loadMilestone(ctx.roomId, milestoneId)
+  if (!m) return { ok: false, error: 'Milestone not found' }
+  if (m.status !== 'PENDING') return { ok: false, error: 'Terms are locked once funding starts' }
+  if (m.termsStatus !== 'PROPOSED') return { ok: false, error: 'No proposed terms to decline' }
+
+  const note = reason?.trim().slice(0, 500) || null
+
+  await prisma.$transaction(async (tx) => {
+    await tx.roomMilestone.update({
+      where: { id: m.id },
+      data: { termsStatus: 'UNSET', agreedAt: null },
+    })
+    await tx.roomEvent.create({
+      data: {
+        roomId: ctx.roomId,
+        kind: 'MILESTONE_TERMS_DECLINED',
+        data: {
+          milestoneId: m.id,
+          milestoneKind: m.kind,
+          by: ctx.actorName,
+          ...(note ? { note } : {}),
+        },
+      },
+    })
+  })
+
+  await logAuditAs(ctx.actor, {
+    entityType: 'RoomMilestone',
+    entityId: m.id,
+    action: 'MILESTONE_TERMS_DECLINED',
+    fromValue: 'PROPOSED',
+    toValue: 'UNSET',
+    payload: { roomId: ctx.roomId, kind: m.kind, note },
+  })
+
+  return { ok: true }
+}
+
 /** Send a room message (chat rail). Plain content — no audit, no event. */
 export async function addRoomMessage(ctx: RoomCtx, body: string): Promise<RoomResult> {
   const trimmed = body.trim()

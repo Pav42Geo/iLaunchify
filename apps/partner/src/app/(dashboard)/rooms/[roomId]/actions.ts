@@ -11,6 +11,7 @@ import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import {
   addObjectComment,
   addRoomMessage,
+  proposeMilestoneTerms,
   submitObjectVersion,
   type RoomCtx,
 } from '@ilaunchify/orders'
@@ -47,6 +48,66 @@ const PayloadSchema = z
           })
           .nullable()
           .optional(),
+      })
+      .optional(),
+    // Domain label blocks (RECIPE) — structured maker-authored data the room's
+    // facts label renders verbatim / through the canonical engines.
+    supplement: z
+      .object({
+        dietaryIngredients: z
+          .array(
+            z.object({
+              id: z.string().max(64),
+              name: z.string().trim().max(160),
+              amountPerServing: z.number().positive().max(1_000_000),
+              unit: z.string().trim().max(20),
+              percentDV: z.number().min(0).max(100_000).nullable().optional(),
+              isOtherIngredient: z.boolean().optional(),
+              sortWeight: z.number().optional(),
+              blendId: z.string().max(64).optional(),
+            }),
+          )
+          .max(80),
+        blends: z
+          .array(
+            z.object({
+              id: z.string().max(64),
+              name: z.string().trim().max(120),
+              totalAmount: z.number().positive().max(1_000_000),
+              unit: z.string().trim().max(20),
+              percentDV: z.number().nullable().optional(),
+            }),
+          )
+          .max(20),
+        servingForm: z.string().trim().max(60),
+        servingsPerContainer: z.number().positive().max(10_000),
+        nutrition: z.record(z.string(), z.number()).optional(),
+      })
+      .optional(),
+    pet: z
+      .object({
+        gaRows: z
+          .array(z.object({ label: z.string().trim().max(80), value: z.string().trim().max(40) }))
+          .max(40),
+        adequacyStatement: z.string().trim().max(500).optional(),
+        feedingDirections: z.string().trim().max(1000).optional(),
+      })
+      .optional(),
+    otc: z
+      .object({
+        activeIngredients: z
+          .array(
+            z.object({ name: z.string().trim().max(160), purpose: z.string().trim().max(120) }),
+          )
+          .max(20),
+        uses: z.array(z.string().trim().max(200)).max(20),
+        warnings: z
+          .array(z.object({ text: z.string().trim().max(300), bold: z.boolean().optional() }))
+          .max(60),
+        directions: z.string().trim().max(1000),
+        otherInformation: z.array(z.string().trim().max(200)).max(20).optional(),
+        inactiveIngredients: z.string().trim().max(1000),
+        questions: z.string().trim().max(120).optional(),
       })
       .optional(),
     fields: z
@@ -104,6 +165,26 @@ export async function partnerComment(
   const ctx = await partnerRoomCtx(roomId)
   if (!ctx) return guardFail()
   const res = await addObjectComment(ctx, objectId, body, anchor)
+  revalidatePath(`/rooms/${roomId}`)
+  return res
+}
+
+/** Propose (or re-propose) milestone terms: amount in dollars + scope note. */
+export async function partnerProposeMilestoneTerms(
+  roomId: string,
+  milestoneId: string,
+  amount: number,
+  note?: string,
+): Promise<RoomActionResult> {
+  const ctx = await partnerRoomCtx(roomId)
+  if (!ctx) return guardFail()
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+    return { ok: false, error: 'Invalid amount' }
+  }
+  const res = await proposeMilestoneTerms(ctx, milestoneId, {
+    amount,
+    ...(note ? { note: String(note) } : {}),
+  })
   revalidatePath(`/rooms/${roomId}`)
   return res
 }

@@ -9547,6 +9547,17 @@ enum MilestoneStatus {
   DISPUTED
 }
 
+/// Terms-negotiation stage WITHIN MilestoneStatus.PENDING (2026-07-10):
+/// maker proposes amount + scope → creator agrees (or declines back to UNSET).
+/// Funding (PENDING → FUNDED_ESCROW) stays gated on Stripe test-mode
+/// verification; terms can be settled before payments go live.
+/// Additive — run `pnpm db:push` + `pnpm db:generate`.
+enum MilestoneTermsStatus {
+  UNSET
+  PROPOSED
+  AGREED
+}
+
 /// A creator-originated product brief (§2). The PUBLIC projection (pool +
 /// interest APIs) MUST exclude privateFormula / privateNotes / private
 /// attachments — server-side projection function, staged reveal per §9.
@@ -9709,18 +9720,24 @@ model BuildObjectComment {
 /// nullable snapshot columns reserved so a future fee freezes per-row without
 /// a migration. Leave null until a fee decision lands.
 model RoomMilestone {
-  id         String          @id @default(uuid())
-  roomId     String
-  kind       MilestoneKind
-  status     MilestoneStatus @default(PENDING)
-  amount     Decimal         @db.Decimal(12, 2)
-  feeBps     Int? // D-CC1 snapshot — null in V1 (no per-milestone platform fee yet)
-  feeCents   Int? // D-CC1 snapshot — null in V1
-  stripeRef  String? // via packages/payments (escrow)
-  releasedAt DateTime?
-  room       CoCreationRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  id          String               @id @default(uuid())
+  roomId      String
+  kind        MilestoneKind
+  status      MilestoneStatus      @default(PENDING)
+  amount      Decimal              @db.Decimal(12, 2)
+  // Terms negotiation (additive 2026-07-10): maker proposes amount + scope,
+  // creator agrees. Funding remains Stripe-verification-gated.
+  termsStatus MilestoneTermsStatus @default(UNSET)
+  termsNote   String? // maker's scope note ("2 bench samples + 1 revision")
+  proposedAt  DateTime?
+  agreedAt    DateTime?
+  feeBps      Int? // D-CC1 snapshot — null in V1 (no per-milestone platform fee yet)
+  feeCents    Int? // D-CC1 snapshot — null in V1
+  stripeRef   String? // via packages/payments (escrow)
+  releasedAt  DateTime?
+  room        CoCreationRoom       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   @@index([roomId, status])
 }

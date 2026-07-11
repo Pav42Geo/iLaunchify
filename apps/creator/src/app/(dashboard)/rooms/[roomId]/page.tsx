@@ -144,7 +144,14 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
           createdAt: c.createdAt.toISOString(),
         })),
       }))}
-      milestones={room.milestones.map((m) => ({ id: m.id, kind: m.kind, status: m.status }))}
+      milestones={room.milestones.map((m) => ({
+        id: m.id,
+        kind: m.kind,
+        status: m.status,
+        amount: m.amount.toString(),
+        termsStatus: m.termsStatus,
+        termsNote: m.termsNote,
+      }))}
       events={room.events.map((e) => ({
         id: e.id,
         kind: e.kind,
