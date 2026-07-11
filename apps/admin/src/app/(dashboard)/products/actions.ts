@@ -13,12 +13,13 @@
 //   PUBLISHED            -> PAUSED          (admin hides from marketplace; reversible)
 //   PAUSED               -> PUBLISHED       (re-list)
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, isLogisticsEnabled } from '@ilaunchify/db'
 import { requireRole, requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { recordNicheAssignment, suggestPhrases, recordPhraseAssignment } from '@ilaunchify/marketplace'
 import {
   recomputeTemplateCoverage,
+  validateTemplateGraph,
   broadcastCapabilityRequestsForTemplate,
 } from '@ilaunchify/orders'
 import type { PhraseRequirement } from '@ilaunchify/db'
@@ -88,6 +89,29 @@ export async function approveProductTemplate(productTemplateId: string): Promise
       ok: false,
       error:
         'Print coverage: 0 — no active printer can produce this template yet. A capability request has been broadcast to qualified printers; it will publish once one is verified.',
+    }
+  }
+
+  // PS-7 honey-problem gate (§8.2.4) — behind the admin master graph:enforce_publish_gate
+  // (ships OFF → advisory/no-op until flipped). Blocks a decorated template that can't
+  // resolve an application point: the bound manufacturer doesn't self-apply and (per
+  // graph:publish_allow_copack_application) no co-pack node applies. Fails soft
+  // (applicable=false) on any missing datum, so a valid publish is never blocked.
+  if (await isLogisticsEnabled('graph:enforce_publish_gate')) {
+    const graph = await validateTemplateGraph(productTemplateId)
+    if (graph.applicable && !graph.complete) {
+      await logAuditAs(admin, {
+        entityType: 'ProductTemplate',
+        entityId: productTemplateId,
+        action: 'PRODUCT_TEMPLATE_PUBLISH_BLOCKED_NO_APPLICATION_POINT',
+        fromValue: tpl.status,
+        payload: { name: tpl.name, problems: graph.problems },
+      })
+      return {
+        ok: false,
+        error:
+          'Application point unresolved — this template uses an applied decoration (e.g. pressure-sensitive label) but neither the manufacturer nor a co-packer can apply it. Enable a co-pack route or a self-applying manufacturer before publishing.',
+      }
     }
   }
 
