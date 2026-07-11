@@ -105,7 +105,13 @@ const NAV_ACTIVATION: PartnerNavItem = { href: '/activation', label: 'Activation
  */
 export function roleNavFor(
   serviceTypes: readonly string[],
-  opts: { isOrgAdmin?: boolean; showCoPartners?: boolean } = {},
+  opts: {
+    isOrgAdmin?: boolean
+    showCoPartners?: boolean
+    copackBriefPool?: boolean
+    /** Co-creation module kick-off switch — false hides Opportunities for everyone. */
+    briefPoolEnabled?: boolean
+  } = {},
 ): PartnerNavItem[] {
   const isOrgAdmin = opts.isOrgAdmin ?? true // founders/back-compat default
   const effective: readonly string[] =
@@ -130,9 +136,16 @@ export function roleNavFor(
     // Post-approval setup surface — the union of every service's activation track.
     nav.push(NAV_ACTIVATION)
     if (producing) nav.push(NAV_STANDING)
-    // Co-creation briefs — a manufacturer-only demand surface (pool gates on
-    // MANUFACTURING capability signals; see /opportunities loader).
-    if (producing) nav.push(NAV_OPPORTUNITIES)
+    // Co-creation briefs (Pavel 2026-07-10, admin-choosable poolAccessPolicy):
+    // manufacturers always; co-packers unless the admin set MFG_ONLY (layout
+    // passes copackBriefPool from settings). Recipe-door-only scoping for
+    // co-packers is enforced in the pool loader + express-interest action.
+    if (
+      opts.briefPoolEnabled !== false &&
+      (producing || (has('COPACKING') && opts.copackBriefPool !== false))
+    ) {
+      nav.push(NAV_OPPORTUNITIES)
+    }
     if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)
     nav.push(NAV_SERVICES)
     if (producing) nav.push(NAV_PACKAGING)

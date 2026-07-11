@@ -73,6 +73,10 @@ interface PartnerSidebarProps {
   isOrgAdmin?: boolean
   /** Nomination feature enabled → show the Co-partners nav item (manufacturers). */
   showCoPartners?: boolean
+  /** Pool-access policy allows co-packers → show Opportunities on COPACKING-only orgs. */
+  copackBriefPool?: boolean
+  /** Co-creation module kick-off switch — false hides Opportunities entirely. */
+  briefPoolEnabled?: boolean
   /** ACTIVE but not yet live on every service → show the limited setup nav. */
   activationLimited?: boolean
 }
@@ -100,13 +104,13 @@ function statusBadge(status: PartnerStatus): {
 
 const STORAGE_KEY = 'ilf-partner-sidebar-collapsed'
 
-export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, showCoPartners, activationLimited }: PartnerSidebarProps) {
+export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled, activationLimited }: PartnerSidebarProps) {
   const pathname = usePathname()
   const nav = restricted
     ? RESTRICTED_NAV
     : activationLimited
       ? limitedActivationNav(serviceTypes ?? [])
-      : roleNavFor(serviceTypes ?? [], { isOrgAdmin, showCoPartners })
+      : roleNavFor(serviceTypes ?? [], { isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled })
   const badge = statusBadge(status)
 
   const [collapsed, setCollapsed] = useState(false)

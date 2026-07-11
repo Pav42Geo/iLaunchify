@@ -5,7 +5,7 @@
 // Mirrors OrderSettingsForms' conventions (Card/Field/SaveBar, NUM input).
 
 import * as React from 'react'
-import { Radar, RefreshCcw, Scale, Sparkles, Wand2 } from 'lucide-react'
+import { Power, Radar, RefreshCcw, Scale, Sparkles, Wand2 } from 'lucide-react'
 import {
   saveCoCreationSettings,
   grantPromoTokens,
@@ -145,10 +145,44 @@ export function CoCreationSettingsForm({ initial }: { initial: CoCreationSetting
   return (
     <div className="space-y-5">
       <Card
+        icon={Power}
+        title="Module kick-off"
+        desc="The pool/briefs marketplace needs two-sided liquidity — keep it OFF while onboarding partners, flip it when there are enough makers to answer briefs. Entry surfaces (Brief Builder, Opportunities pool, notifications) gate on this; rooms and interests already in flight stay accessible."
+      >
+        <Field
+          label="Co-creation module enabled"
+          hint={v.moduleEnabled ? 'LIVE — creators can post briefs and makers see the pool.' : 'Off — creators see a “coming soon” panel; the pool is hidden.'}
+        >
+          <Toggle checked={v.moduleEnabled} onChange={(x) => patch('moduleEnabled', x)} />
+        </Field>
+      </Card>
+
+      <Card
         icon={Radar}
         title="Pool & interests"
         desc="Who sees a brief, when — and how many irons a maker can have in the fire (D-CC2)."
       >
+        <Field
+          label="Pool access"
+          hint="Manufacturers are always in. Co-packers execute recipes — the recommended middle option lets them see recipe-door briefs only."
+        >
+          <select
+            aria-label="Pool access policy"
+            value={v.poolAccessPolicy}
+            onChange={(e) => {
+              setV((s) => ({
+                ...s,
+                poolAccessPolicy: e.target.value as CoCreationSettingsValues['poolAccessPolicy'],
+              }))
+              setStatus(null)
+            }}
+            className="w-72 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+          >
+            <option value="MFG_ONLY">Manufacturers only</option>
+            <option value="MFG_ALL_COPACK_RECIPE">Mfrs all · co-packers recipe-door only</option>
+            <option value="MFG_COPACK_EQUAL">Manufacturers + co-packers equally</option>
+          </select>
+        </Field>
         <Field
           label="Pool exclusivity window (days)"
           hint="A brief's first N days surface only to strong fits, so best-match makers get first look. 0 disables."

@@ -7,11 +7,15 @@
 import { prisma } from './index'
 
 export interface CoCreationSettingsValues {
+  /** Master kick-off switch (OFF until liquidity) — gates every entry surface. */
+  moduleEnabled: boolean
   // Pool & matching
   poolExclusivityDays: number
   exclusivityMinFit: number
   maxOpenInterestsPerPartner: number
   interestWindowDays: number
+  // Pool access (Pavel 2026-07-10): manufacturers always in; co-packers per policy.
+  poolAccessPolicy: 'MFG_ONLY' | 'MFG_ALL_COPACK_RECIPE' | 'MFG_COPACK_EQUAL'
   // Fit weights (D-CC6) — raw magnitudes, renormalized by the scorer.
   claimsWeightPct: number
   volumeWeightPct: number
@@ -40,10 +44,12 @@ export interface CoCreationSettingsValues {
 }
 
 export const COCREATION_SETTINGS_DEFAULTS: CoCreationSettingsValues = {
+  moduleEnabled: false,
   poolExclusivityDays: 15,
   exclusivityMinFit: 60,
   maxOpenInterestsPerPartner: 10,
   interestWindowDays: 14,
+  poolAccessPolicy: 'MFG_ALL_COPACK_RECIPE',
   claimsWeightPct: 40,
   volumeWeightPct: 20,
   meritWeightPct: 25,
@@ -73,10 +79,12 @@ export async function getCoCreationSettings(): Promise<CoCreationSettingsValues>
       .findUnique({
         where: { id: 'default' },
         select: {
+          moduleEnabled: true,
           poolExclusivityDays: true,
           exclusivityMinFit: true,
           maxOpenInterestsPerPartner: true,
           interestWindowDays: true,
+          poolAccessPolicy: true,
           claimsWeightPct: true,
           volumeWeightPct: true,
           meritWeightPct: true,

@@ -109,6 +109,14 @@ export default async function PartnerDashboardLayout({ children }: { children: R
   // Co-partners nav (D7) shows only when nomination is enabled platform-wide.
   const showCoPartners = await isNominationEnabled()
 
+  // Co-creation nav gates (Pavel 2026-07-10): master module switch hides
+  // Opportunities for everyone until kick-off; pool-access policy decides
+  // whether co-packers see it. Recipe-door scoping happens server-side.
+  const { getCoCreationSettings } = await import('@ilaunchify/db')
+  const ccSettings = await getCoCreationSettings()
+  const briefPoolEnabled = ccSettings.moduleEnabled
+  const copackBriefPool = ccSettings.poolAccessPolicy !== 'MFG_ONLY'
+
   // ACTIVE but still finishing Activation Setup → show the limited "in-profile"
   // nav until every service is live (D8). Only computed for non-restricted
   // (ACTIVE) partners so restricted shells aren't charged the extra query, and
@@ -135,6 +143,8 @@ export default async function PartnerDashboardLayout({ children }: { children: R
           restricted={restricted}
           serviceTypes={serviceTypes}
           showCoPartners={showCoPartners}
+          copackBriefPool={copackBriefPool}
+          briefPoolEnabled={briefPoolEnabled}
           isOrgAdmin={access.isAdmin}
           activationLimited={activationLimited}
         />

@@ -51,6 +51,9 @@ export async function promoteInterest(interestId: string): Promise<ActionResult>
   if (!partner) return { ok: false, error: 'Only active partners can promote an interest' }
 
   const settings = await getCoCreationSettings()
+  if (!settings.moduleEnabled) {
+    return { ok: false, error: 'Co-creation is not open yet' }
+  }
   if (!settings.promotedInterestsEnabled) {
     return { ok: false, error: 'Promoted interests are not enabled yet' }
   }
@@ -125,7 +128,10 @@ export async function countNewPoolBriefs(
   const since = new Date(sinceIso)
   if (Number.isNaN(since.getTime())) return { ok: false, error: 'Bad timestamp' }
 
-  const facts = await loadPartnerFitFacts(partner.id)
+  const pollSettings = await getCoCreationSettings()
+  if (!pollSettings.moduleEnabled) return { ok: true, count: 0 }
+
+  const facts = await loadPartnerFitFacts(partner.id, pollSettings.poolAccessPolicy)
   if (!facts.hasCapabilitySignal) return { ok: true, count: 0 }
 
   const count = await prisma.productBrief.count({
@@ -167,6 +173,9 @@ export async function expressInterest(input: ExpressInterestInput): Promise<Acti
   if (!rl.ok) return { ok: false, error: 'Too many interests today — try again tomorrow' }
 
   const settings = await getCoCreationSettings()
+  if (!settings.moduleEnabled) {
+    return { ok: false, error: 'Co-creation is not open yet' }
+  }
   if (settings.maxOpenInterestsPerPartner > 0) {
     const activeCount = await prisma.briefInterest.count({
       where: { partnerId: partner.id, status: { in: ['SUBMITTED', 'SHORTLISTED'] } },
@@ -189,7 +198,16 @@ export async function expressInterest(input: ExpressInterestInput): Promise<Acti
 
   // Re-check eligibility server-side — the pool UI already hard-filters, but
   // never trust the client (§13 tenant isolation posture).
-  const facts = await loadPartnerFitFacts(partner.id)
+  const facts = await loadPartnerFitFacts(partner.id, settings.poolAccessPolicy)
+  // Pool-access policy (admin-choosable): under the default, a partner without
+  // a MANUFACTURING line can only respond to recipe-door briefs.
+  if (
+    settings.poolAccessPolicy === 'MFG_ALL_COPACK_RECIPE' &&
+    !facts.canFormulate &&
+    brief.origin !== 'HAVE_RECIPE'
+  ) {
+    return { ok: false, error: 'Idea briefs need formulation capability — this one is looking for a manufacturer' }
+  }
   const fit = scoreBriefFit(
     {
       nicheSlug: brief.nicheSlug,

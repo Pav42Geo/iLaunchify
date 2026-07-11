@@ -46,9 +46,12 @@ const NAV: Array<{
 
 const STORAGE_KEY = 'ilf-creator-sidebar-collapsed'
 
-export function DashboardSidebar() {
+export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  // Co-creation kick-off switch (Pavel 2026-07-10): the layout hides Briefs
+  // until the module opens — unless this creator already has briefs in flight.
+  const nav = showBriefs ? NAV : NAV.filter((n) => n.href !== '/briefs')
 
   // Persist the fold state across navigations / refreshes. Reads on mount
   // (slight flash from the expanded default is acceptable for V1).
@@ -91,7 +94,7 @@ export function DashboardSidebar() {
       </button>
 
       <nav className="space-y-1">
-        {NAV.map(({ href, label, icon: Icon, external }) => {
+        {nav.map(({ href, label, icon: Icon, external }) => {
           const active =
             !external &&
             (pathname === href || (href !== '/dashboard' && pathname.startsWith(href)))

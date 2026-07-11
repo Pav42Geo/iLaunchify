@@ -106,6 +106,13 @@ export async function postBrief(input: PostBriefInput): Promise<PostBriefResult>
     return { ok: false, error: 'Only creators can post briefs' }
   }
 
+  // Module kick-off switch (Pavel 2026-07-10): entry gated until the admin
+  // opens the marketplace (two-sided liquidity first).
+  const { getCoCreationSettings } = await import('@ilaunchify/db')
+  if (!(await getCoCreationSettings()).moduleEnabled) {
+    return { ok: false, error: 'Co-creation is not open yet — check back soon' }
+  }
+
   // D-CC1 tier gate (server-side; the page also gates for UX).
   const tier = await getEffectiveCreatorTier(user)
   if (!hasTier(tier, 'builder')) {
@@ -208,12 +215,15 @@ export async function postBrief(input: PostBriefInput): Promise<PostBriefResult>
   try {
     const { findMatchedPartners } = await import('@ilaunchify/marketplace')
     const { dispatchNotification } = await import('@ilaunchify/notifications')
-    const matched = await findMatchedPartners({
-      nicheSlug: niche.slug,
-      categoryId: category.id,
-      claims: data.claims,
-      targetVolume: data.targetVolume,
-    })
+    const matched = await findMatchedPartners(
+      {
+        nicheSlug: niche.slug,
+        categoryId: category.id,
+        claims: data.claims,
+        targetVolume: data.targetVolume,
+      },
+      data.origin,
+    )
     await Promise.allSettled(
       matched.map((m) =>
         dispatchNotification({

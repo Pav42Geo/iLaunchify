@@ -9781,6 +9781,13 @@ model RoomMilestone {
 model CoCreationSettings {
   id String @id @default("default")
 
+  // ---- Module kick-off (Pavel 2026-07-10) ----
+  // Master switch, OFF by default: the pool/briefs marketplace needs two-sided
+  // liquidity — the admin flips this when enough partners are onboarded.
+  // Gates every ENTRY surface (Brief Builder, pool, express, fan-out); rooms
+  // and interests already in flight stay accessible (never strand work).
+  moduleEnabled Boolean @default(false)
+
   // ---- Pool & matching ----
   poolExclusivityDays        Int @default(15) // brief's first N days: only strong fits surface (0 = off)
   exclusivityMinFit          Int @default(60) // fit-score floor applied during the exclusivity window
@@ -9788,6 +9795,10 @@ model CoCreationSettings {
   // Response window (2026-07-10): briefs stop surfacing to NEW makers after N
   // days — powers the honest "time to respond" countdown on pool cards. 0 = off.
   interestWindowDays         Int @default(14)
+  // Who accesses the pool (Pavel 2026-07-10, admin-choosable):
+  // MFG_ONLY · MFG_ALL_COPACK_RECIPE (default: manufacturers see all, pure
+  // co-packers see HAVE_RECIPE briefs only) · MFG_COPACK_EQUAL.
+  poolAccessPolicy           String @default("MFG_ALL_COPACK_RECIPE")
   // Fit weights (D-CC6) — raw magnitudes, renormalized to 100 by the scorer.
   claimsWeightPct   Int @default(40)
   volumeWeightPct   Int @default(20)

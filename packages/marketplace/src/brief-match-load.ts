@@ -18,8 +18,14 @@ export interface MatchedPartner {
   fitScore: number
 }
 
-export async function findMatchedPartners(brief: BriefFitFacts): Promise<MatchedPartner[]> {
+export async function findMatchedPartners(
+  brief: BriefFitFacts,
+  /** BriefOrigin — under the default pool-access policy, non-formulating
+      partners (no MANUFACTURING line) only match HAVE_RECIPE briefs. */
+  origin: string,
+): Promise<MatchedPartner[]> {
   const settings = await getCoCreationSettings()
+  if (!settings.moduleEnabled) return [] // module kick-off switch — no fan-out while closed
   const weights = {
     claims: settings.claimsWeightPct,
     volume: settings.volumeWeightPct,
@@ -29,13 +35,15 @@ export async function findMatchedPartners(brief: BriefFitFacts): Promise<Matched
   // At post time the exclusivity window is (by definition) active — only
   // makers who'd actually SEE the brief right now get pinged.
   const minFit = settings.poolExclusivityDays > 0 ? settings.exclusivityMinFit : 0
+  const types: ('MANUFACTURING' | 'COPACKING')[] =
+    settings.poolAccessPolicy === 'MFG_ONLY' ? ['MANUFACTURING'] : ['MANUFACTURING', 'COPACKING']
 
   const partners = await prisma.partner.findMany({
     where: {
       status: { in: ['ACTIVE', 'INTEGRATION_ENHANCED'] },
       services: {
         some: {
-          type: 'MANUFACTURING',
+          type: { in: types },
           status: 'ACTIVE',
           productTemplates: {
             some: { status: 'PUBLISHED', niches: { some: { niche: { slug: brief.nicheSlug } } } },
@@ -47,8 +55,9 @@ export async function findMatchedPartners(brief: BriefFitFacts): Promise<Matched
       id: true,
       userId: true,
       services: {
-        where: { type: 'MANUFACTURING', status: 'ACTIVE' },
+        where: { type: { in: types }, status: 'ACTIVE' },
         select: {
+          type: true,
           ratingBayesian: true,
           productTemplates: {
             where: { status: 'PUBLISHED' },
@@ -66,6 +75,15 @@ export async function findMatchedPartners(brief: BriefFitFacts): Promise<Matched
 
   const matched: MatchedPartner[] = []
   for (const p of partners) {
+    // Mirror of the pool loader's recipe-door rule (admin-choosable policy).
+    const canFormulate = p.services.some((s) => s.type === 'MANUFACTURING')
+    if (
+      settings.poolAccessPolicy === 'MFG_ALL_COPACK_RECIPE' &&
+      !canFormulate &&
+      origin !== 'HAVE_RECIPE'
+    ) {
+      continue
+    }
     const templates = p.services.flatMap((s) => s.productTemplates)
     const nicheSlugs = [...new Set(templates.flatMap((t) => t.niches.map((n) => n.niche.slug)))]
     const categoryIds = [

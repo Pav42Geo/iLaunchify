@@ -63,6 +63,23 @@ export default async function OpportunitiesPage({
     redirect('/dashboard')
   }
 
+  // Module kick-off switch (Pavel 2026-07-10): pool hidden until the admin
+  // opens the marketplace. In-flight rooms stay reachable via /rooms.
+  const { getCoCreationSettings } = await import('@ilaunchify/db')
+  if (!(await getCoCreationSettings()).moduleEnabled) {
+    return (
+      <div className="mx-auto max-w-xl rounded-3xl border border-ink-200 bg-white p-10 text-center">
+        <div className="text-4xl">🧪</div>
+        <h1 className="mt-3 font-display text-ui-title">The brief pool opens soon</h1>
+        <p className="mt-2 text-ui-body text-ink-500">
+          Creators will post product briefs matched to your capabilities — you compare, express
+          interest, and build together in a private room. Publish your products now so your
+          matching signal is ready on day one.
+        </p>
+      </div>
+    )
+  }
+
   const sp = await searchParams
   const tab: Tab = sp.tab === 'all' || sp.tab === 'mine' ? sp.tab : 'matched'
   const sort: SortKey = sp.sort === 'new' ? 'new' : 'fit'

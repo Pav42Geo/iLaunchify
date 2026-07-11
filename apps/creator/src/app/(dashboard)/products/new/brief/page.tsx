@@ -1,4 +1,4 @@
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, hasTier } from '@ilaunchify/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -26,6 +26,28 @@ export default async function BriefBuilderPage() {
     where: { userId: user.id },
   })
   if (!profile) redirect('/onboarding/creator')
+
+  // Module kick-off switch (Pavel 2026-07-10): the marketplace opens when the
+  // admin flips it — until then, an honest "coming soon" panel.
+  if (!(await getCoCreationSettings()).moduleEnabled) {
+    return (
+      <div className="mx-auto max-w-xl rounded-3xl border border-ink-200 bg-white p-10 text-center">
+        <div className="text-4xl">🚀</div>
+        <h1 className="mt-3 font-display text-ui-title">Co-creation is almost here</h1>
+        <p className="mt-2 text-ui-body text-ink-500">
+          Post a brief — a recipe or just an idea — and matched, verified manufacturers raise
+          their hands to build it with you. We&apos;re onboarding makers now so your brief gets
+          real answers on day one.
+        </p>
+        <Link
+          href="/products/new"
+          className="mt-6 inline-flex items-center justify-center rounded-full bg-ink-900 px-6 py-3 text-ui-body font-semibold text-white transition hover:-translate-y-px"
+        >
+          Browse ready-to-brand products →
+        </Link>
+      </div>
+    )
+  }
 
   // D-CC1 tier gate (UX layer — the server action re-checks).
   const tier = await getEffectiveCreatorTier(user)

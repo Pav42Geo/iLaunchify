@@ -43,6 +43,12 @@ export async function saveCoCreationSettings(
     set('exclusivityMinFit', 0, 100)
     set('maxOpenInterestsPerPartner', 0, 100)
     set('interestWindowDays', 0, 90)
+    if (
+      patch.poolAccessPolicy !== undefined &&
+      ['MFG_ONLY', 'MFG_ALL_COPACK_RECIPE', 'MFG_COPACK_EQUAL'].includes(patch.poolAccessPolicy)
+    ) {
+      data.poolAccessPolicy = patch.poolAccessPolicy
+    }
     set('claimsWeightPct', 0, 100)
     set('volumeWeightPct', 0, 100)
     set('meritWeightPct', 0, 100)
@@ -67,6 +73,7 @@ export async function saveCoCreationSettings(
     }
     set('promotedSlotsPerBrief', 0, 10)
     set('promoTokenPriceCents', 0, 1_000_00)
+    if (patch.moduleEnabled !== undefined) data.moduleEnabled = !!patch.moduleEnabled
     if (patch.promotedInterestsEnabled !== undefined)
       data.promotedInterestsEnabled = !!patch.promotedInterestsEnabled
     if (patch.requireVerifiedForPromotion !== undefined)

@@ -52,18 +52,29 @@ export interface MyInterestEntry {
 }
 
 export interface PartnerPoolFacts extends PartnerFitFacts {
-  /** First ACTIVE MANUFACTURING service — snapshotted onto BriefInterest.serviceId. */
+  /** Best producing service (MANUFACTURING preferred) — snapshotted onto BriefInterest.serviceId. */
   serviceId: string | null
   hasCapabilitySignal: boolean
+  /** Has a MANUFACTURING line ⇒ can formulate. Co-packers (COPACKING only)
+      surface HAVE_RECIPE briefs exclusively (Pavel 2026-07-10). */
+  canFormulate: boolean
 }
 
-/** Assemble the fit facts for one partner (MANUFACTURING lines only). */
-export async function loadPartnerFitFacts(partnerId: string): Promise<PartnerPoolFacts> {
+/** Assemble the fit facts for one partner. Producing lines per the admin's
+ *  poolAccessPolicy: MFG always; COPACKING unless policy is MFG_ONLY. */
+export async function loadPartnerFitFacts(
+  partnerId: string,
+  policyArg?: string,
+): Promise<PartnerPoolFacts> {
+  const policy = policyArg ?? (await getCoCreationSettings()).poolAccessPolicy
+  const types: ('MANUFACTURING' | 'COPACKING')[] =
+    policy === 'MFG_ONLY' ? ['MANUFACTURING'] : ['MANUFACTURING', 'COPACKING']
   const services = await prisma.partnerService.findMany({
-    where: { partnerId, type: 'MANUFACTURING', status: 'ACTIVE' },
-    select: { id: true, ratingBayesian: true },
+    where: { partnerId, type: { in: types }, status: 'ACTIVE' },
+    select: { id: true, type: true, ratingBayesian: true },
   })
   const serviceIds = services.map((s) => s.id)
+  const canFormulate = services.some((s) => s.type === 'MANUFACTURING')
 
   const templates = serviceIds.length
     ? await prisma.productTemplate.findMany({
@@ -100,8 +111,10 @@ export async function loadPartnerFitFacts(partnerId: string): Promise<PartnerPoo
     moqFloor: moqs.length ? Math.min(...moqs) : null,
     volumeCapacity: null,
     meritRating: ratings.length ? Math.max(...ratings) : null,
-    serviceId: serviceIds[0] ?? null,
+    serviceId:
+      services.find((s) => s.type === 'MANUFACTURING')?.id ?? serviceIds[0] ?? null,
     hasCapabilitySignal: nicheSlugs.length > 0,
+    canFormulate,
   }
 }
 
@@ -119,10 +132,8 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
   /** Promoted-interests surface state (labeled slots — never touch ranking). */
   promo: { enabled: boolean; tokenBalance: number; priceCents: number }
 }> {
-  const [facts, settings] = await Promise.all([
-    loadPartnerFitFacts(partnerId),
-    getCoCreationSettings(),
-  ])
+  const settings = await getCoCreationSettings()
+  const facts = await loadPartnerFitFacts(partnerId, settings.poolAccessPolicy)
   const fitWeights = {
     claims: settings.claimsWeightPct,
     volume: settings.volumeWeightPct,
@@ -134,7 +145,16 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
 
   const briefs = facts.hasCapabilitySignal
     ? await prisma.productBrief.findMany({
-        where: { status: 'INTEREST_OPEN', nicheSlug: { in: [...facts.nicheSlugs] } },
+        where: {
+          status: 'INTEREST_OPEN',
+          nicheSlug: { in: [...facts.nicheSlugs] },
+          // Co-packers execute recipes, they don't formulate ideas — under the
+          // default policy only recipe-door briefs surface without a
+          // MANUFACTURING line (admin-choosable, Pavel 2026-07-10).
+          ...(settings.poolAccessPolicy === 'MFG_ALL_COPACK_RECIPE' && !facts.canFormulate
+            ? { origin: 'HAVE_RECIPE' as const }
+            : {}),
+        },
         include: {
           creator: { select: { displayName: true, handle: true } },
           categoryRef: { select: { id: true, name: true } },

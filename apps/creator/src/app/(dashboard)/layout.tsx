@@ -11,6 +11,7 @@
 // visits leave the drawer closed (creator can re-open from the sidebar).
 
 import { requireRole } from '@ilaunchify/auth'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { DashboardSidebar } from '@/components/nav/DashboardSidebar'
 import { DashboardTopbar } from '@/components/nav/DashboardTopbar'
 import { LaunchChecklistDrawer } from '@/components/checklist/LaunchChecklistDrawer'
@@ -57,12 +58,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
     !!state &&
     typeof progress.checklistOpenedAt !== 'string'
 
+  // Co-creation kick-off switch (Pavel 2026-07-10): Briefs nav hides until
+  // the admin opens the module — unless this creator already has briefs in
+  // flight (never strand existing work behind a hidden door).
+  const ccEnabled = (await getCoCreationSettings()).moduleEnabled
+  const showBriefs =
+    ccEnabled ||
+    (await prisma.productBrief.count({ where: { creator: { userId: user.id } } })) > 0
+
   return (
     <LaunchChecklistProvider initialSnapshot={snapshot} meta={{ shouldAutoOpen }}>
       <div className="flex h-screen flex-col">
         <DashboardTopbar user={user} />
         <div className="flex min-h-0 flex-1">
-          <DashboardSidebar />
+          <DashboardSidebar showBriefs={showBriefs} />
           {/* overflow-x-clip lets a landing page's hero break full-bleed
               (margin-left: calc(50% - 50vw); width: 100vw) and get clipped to
               the content area instead of spilling under the sidebar.
