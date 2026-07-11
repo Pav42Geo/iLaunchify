@@ -17,6 +17,7 @@
 // Shipping + tax remain placeholders here — they land in G4 (fulfillment
 // + carrier rates) and G5 (tax computation at My cart).
 
+import { formatCents } from '@ilaunchify/ui'
 import type { CheckoutDraftState, WizardStepIndex } from './types'
 import type { CostBreakdown } from './production-actions'
 import type { ShippingHop } from './shipping-hops'
@@ -255,10 +256,6 @@ function Row({
       <dd className="font-medium tabular-nums">{value}</dd>
     </div>
   )
-}
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
 }
 
 // C8.2 — turn a DecorationMethod enum value (DIRECT_PRINT) into a readable

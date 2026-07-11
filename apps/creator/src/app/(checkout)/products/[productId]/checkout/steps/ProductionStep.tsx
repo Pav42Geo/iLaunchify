@@ -38,6 +38,7 @@ import {
   type PackMode,
   type FlavorRules,
   type VarietyPackValue,
+  formatCents,
 } from '@ilaunchify/ui'
 import { getVarietyPreviewColumns } from '@/components/labels/label-actions'
 import { StepShell } from './_StepShell'
@@ -658,10 +659,6 @@ function Reassurance({
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
-}
 
 function humanTier(tier: string): string {
   switch (tier) {

@@ -29,7 +29,7 @@ import {
   Truck,
   Warehouse,
 } from 'lucide-react'
-import { Checkbox } from '@ilaunchify/ui'
+import { Checkbox, formatCents } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { StepShell } from './_StepShell'
 import type {
@@ -817,7 +817,7 @@ function HoldAtManufacturerBlock({
             <div className="flex justify-between gap-3">
               <dt className="text-ink-500">Pick fee</dt>
               <dd className="font-semibold text-ink-900">
-                {usd(offer.pickFeeCents)} per order
+                {formatCents(offer.pickFeeCents)} per order
               </dd>
             </div>
           )}
@@ -825,7 +825,7 @@ function HoldAtManufacturerBlock({
             <div className="flex justify-between gap-3">
               <dt className="text-ink-500">Pack fee</dt>
               <dd className="font-semibold text-ink-900">
-                {usd(offer.packFeeCents)} per order
+                {formatCents(offer.packFeeCents)} per order
               </dd>
             </div>
           )}
@@ -978,14 +978,10 @@ function StorageModeCard({
   )
 }
 
-function usd(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
-}
-
 function formatStorageRate(offer: HoldStorageOffer): string {
   if (offer.rateCents == null) return 'Set at agreement'
   const unit = offer.billingUnit === 'CUFT_MONTH' ? 'cu ft / month' : 'pallet / month'
-  return `${usd(offer.rateCents)} per ${unit}`
+  return `${formatCents(offer.rateCents)} per ${unit}`
 }
 
 function SpecificWarehouseBlock({
