@@ -41,13 +41,10 @@ export function assertDispatchTransition(from: DispatchStatus, to: DispatchStatu
   }
 }
 
-export async function transitionDispatch(
-  _dispatchId: string,
-  _to: DispatchStatus,
-): Promise<void> {
-  // Implemented in Week 8
-  throw new Error('transitionDispatch: not yet implemented')
-}
+// (transitionDispatch removed 2026-07-11 — a throwing "not yet implemented" stub
+// with no callers. Live dispatch transitions validate through assertDispatchTransition
+// above; the Week-8 auto-reroute path will implement the persisting transition fresh,
+// against a real consumer, when it lands.)
 
 export const DEFAULT_ACCEPT_WINDOW_HOURS = 24
 /** Default reroute cap when OrderSettings.maxReroutes is unset. */

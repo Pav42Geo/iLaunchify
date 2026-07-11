@@ -86,7 +86,6 @@ export type { MakerSwitchPolicy, MakerSwitchFacts, MakerSwitchVerdict } from './
 export { resolveRoomRecipeLabel, autoMatchRecipePayload } from './room-label'
 export type { RoomRecipeLabel, RoomRecipeRowResolution, RoomRecipeServing } from './room-label'
 export {
-  transitionDispatch,
   assertDispatchTransition,
   DEFAULT_ACCEPT_WINDOW_HOURS,
   MAX_REROUTES,
