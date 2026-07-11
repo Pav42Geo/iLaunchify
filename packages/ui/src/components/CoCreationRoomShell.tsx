@@ -23,6 +23,13 @@ import { productGradient, type ProductGradient } from '../tokens/colors'
 // truth for how regulated labels LOOK (21 CFR 101.9(d) / INCI / AAFCO). The
 // room previews the same artifacts the product builder and label download use.
 import { checkRoomLabelReadiness } from '../lib/room-compliance'
+import {
+  SAMPLE_CARRIERS,
+  CARRIER_LABELS,
+  carrierTrackingUrl,
+  sampleShipmentFromPayload,
+  type SampleCarrier,
+} from '../lib/sample-shipment'
 import { NutritionFactsSvg } from '../nutrition/NutritionFactsSvg'
 import { SupplementFactsSvg } from '../nutrition/SupplementFactsSvg'
 import { InciDeclarationSvg } from '../nutrition/InciDeclarationSvg'
@@ -903,6 +910,7 @@ function ObjectDetail({
 
   const isRecipe = object.kind === 'RECIPE'
   const isLabel = object.kind === 'LABEL'
+  const isSample = object.kind === 'SAMPLE'
   const rows = viewing ? recipeRows(viewing.payload) : []
   const prevRows = previous ? recipeRows(previous.payload) : []
   const fields = viewing ? fieldRows(viewing.payload) : []
@@ -1057,6 +1065,25 @@ function ObjectDetail({
     }
   })
 
+  // P2 sample logistics — shipment block on the SAMPLE payload; the object
+  // FSM does the rest (submit = shipped → review = inspect on arrival).
+  const viewShipment = isSample && viewing ? sampleShipmentFromPayload(viewing.payload) : null
+  const latestShipment =
+    isSample && latest ? sampleShipmentFromPayload(latest.payload) : null
+  const [draftShip, setDraftShip] = React.useState<{
+    carrier: SampleCarrier
+    trackingNumber: string
+    eta: string
+    notes: string
+  }>(() => ({
+    carrier: (SAMPLE_CARRIERS as readonly string[]).includes(latestShipment?.carrier ?? '')
+      ? ((latestShipment?.carrier ?? 'USPS') as SampleCarrier)
+      : 'USPS',
+    trackingNumber: latestShipment?.trackingNumber ?? '',
+    eta: latestShipment?.eta ?? '',
+    notes: latestShipment?.notes ?? '',
+  }))
+
   // Facts sidebar follows the VIEWED version (every version gets its own
   // computed label); compare mode diffs previous → latest side by side.
   const labelFor = React.useCallback(
@@ -1180,7 +1207,20 @@ function ObjectDetail({
                 : null,
           },
         }
-      : { fields: draftFields.filter((f) => f.label.trim() || f.value.trim()) }
+      : {
+          fields: draftFields.filter((f) => f.label.trim() || f.value.trim()),
+          // SAMPLE (P2): shipment block — submit = "sample shipped".
+          ...(isSample && draftShip.trackingNumber.trim()
+            ? {
+                shipment: {
+                  carrier: draftShip.carrier,
+                  trackingNumber: draftShip.trackingNumber.trim(),
+                  ...(draftShip.eta.trim() ? { eta: draftShip.eta.trim() } : {}),
+                  ...(draftShip.notes.trim() ? { notes: draftShip.notes.trim() } : {}),
+                },
+              }
+            : {}),
+        }
     onSubmitVersion(payload)
     setEditing(false)
   }
@@ -1387,13 +1427,50 @@ function ObjectDetail({
             />
           ) : null}
           </div>
-        ) : fields.length ? (
-          fields.map((f, idx) => (
-            <div key={idx} className="mb-s-2 flex items-center gap-s-3 rounded-lg border border-ink-200 bg-white px-s-3 py-s-2">
-              <span className="min-w-0 flex-1 truncate text-ui-caption font-bold">{f.label}</span>
-              <span className="text-ui-caption text-ink-700">{f.value}</span>
-            </div>
-          ))
+        ) : fields.length || viewShipment ? (
+          <>
+            {viewShipment ? (
+              <div className="mb-s-2 rounded-lg border border-ink-200 bg-white p-s-3">
+                <div className="flex flex-wrap items-center gap-s-2">
+                  <span className="rounded-pill bg-ink-900 px-s-2 py-0.5 text-ui-label tracking-normal text-white">
+                    📦 {CARRIER_LABELS[(viewShipment.carrier as SampleCarrier)] ?? viewShipment.carrier}
+                  </span>
+                  {carrierTrackingUrl(viewShipment.carrier, viewShipment.trackingNumber) ? (
+                    <a
+                      href={carrierTrackingUrl(viewShipment.carrier, viewShipment.trackingNumber)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-ui-caption font-bold text-pink-700 underline-offset-2 hover:underline"
+                    >
+                      {viewShipment.trackingNumber} ↗
+                    </a>
+                  ) : (
+                    <span className="text-ui-caption font-bold">{viewShipment.trackingNumber || 'No tracking number'}</span>
+                  )}
+                  {viewShipment.eta ? (
+                    <span className="text-ui-label normal-case tracking-normal text-ink-500">
+                      · maker's ETA {viewShipment.eta}
+                    </span>
+                  ) : null}
+                </div>
+                {viewShipment.notes ? (
+                  <p className="mt-s-1 text-ui-caption text-ink-600">{viewShipment.notes}</p>
+                ) : null}
+                {mode === 'creator' && object.status === 'IN_REVIEW' ? (
+                  <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
+                    Approve once the sample arrives and passes your inspection — request changes to
+                    flag issues (the maker ships a revised sample).
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {fields.map((f, idx) => (
+              <div key={idx} className="mb-s-2 flex items-center gap-s-3 rounded-lg border border-ink-200 bg-white px-s-3 py-s-2">
+                <span className="min-w-0 flex-1 truncate text-ui-caption font-bold">{f.label}</span>
+                <span className="text-ui-caption text-ink-700">{f.value}</span>
+              </div>
+            ))}
+          </>
         ) : versions.length > 0 ? (
           <p className="rounded-lg bg-white px-s-3 py-s-3 text-ui-caption text-ink-500">
             This version has no structured fields.
@@ -1521,6 +1598,54 @@ function ObjectDetail({
                         </Button>
                       </div>
                     ))}
+                {isSample ? (
+                  <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
+                    <div className="mb-s-2 text-ui-label uppercase text-ink-500">
+                      Shipment — submitting marks the sample as SHIPPED
+                    </div>
+                    <div className="flex flex-wrap items-center gap-s-2">
+                      <select
+                        aria-label="Carrier"
+                        value={draftShip.carrier}
+                        onChange={(e) =>
+                          setDraftShip((s) => ({ ...s, carrier: e.target.value as SampleCarrier }))
+                        }
+                        className="rounded-md border border-ink-300 bg-white px-s-2 py-s-1 text-ui-caption"
+                      >
+                        {SAMPLE_CARRIERS.map((c) => (
+                          <option key={c} value={c}>
+                            {CARRIER_LABELS[c]}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        aria-label="Tracking number"
+                        value={draftShip.trackingNumber}
+                        placeholder="Tracking number"
+                        onChange={(e) => setDraftShip((s) => ({ ...s, trackingNumber: e.target.value }))}
+                        className="min-w-44 flex-1"
+                      />
+                      <Input
+                        aria-label="Expected arrival date"
+                        type="date"
+                        value={draftShip.eta}
+                        onChange={(e) => setDraftShip((s) => ({ ...s, eta: e.target.value }))}
+                        className="w-40"
+                      />
+                    </div>
+                    <Input
+                      aria-label="Shipment note"
+                      value={draftShip.notes}
+                      placeholder="What's in the box, e.g. 2× passion-fruit bench samples + 1 control"
+                      onChange={(e) => setDraftShip((s) => ({ ...s, notes: e.target.value }))}
+                      className="mt-s-2"
+                    />
+                    <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
+                      The creator inspects on arrival and approves (or requests changes) — same
+                      review flow as every other build object.
+                    </p>
+                  </div>
+                ) : null}
                 {isRecipe && isOtc ? (
                   <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
                     <div className="mb-s-2 text-ui-label uppercase text-ink-500">

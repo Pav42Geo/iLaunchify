@@ -115,6 +115,15 @@ const PayloadSchema = z
       .array(z.object({ label: z.string().trim().max(80), value: z.string().trim().max(300) }))
       .max(40)
       .optional(),
+    // SAMPLE (P2 sample logistics): shipment block — submit = "shipped".
+    shipment: z
+      .object({
+        carrier: z.enum(['USPS', 'UPS', 'FEDEX', 'DHL', 'OTHER']),
+        trackingNumber: z.string().trim().min(1).max(60),
+        eta: z.string().trim().max(10).optional(),
+        notes: z.string().trim().max(300).optional(),
+      })
+      .optional(),
   })
   .strict()
 
