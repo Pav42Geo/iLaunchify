@@ -28,7 +28,7 @@ export const RFQ_EXPIRY_DAYS = 14
 /** Partner-app landing for a claim — the capability inbox (PS-8c). */
 const PARTNER_CLAIM_PATH = '/capability-requests'
 
-export type RfqBroadcastReason = 'PUBLISH_GATE' | 'COVERAGE_DROP' | 'REBROADCAST'
+export type RfqBroadcastReason = 'PUBLISH_GATE' | 'COVERAGE_DROP' | 'REBROADCAST' | 'CHECKOUT_UNRESOLVED'
 
 export interface CapabilityBroadcastResult {
   /** False when sourcing is IN_HOUSE / template missing — RFQ doesn't apply. */

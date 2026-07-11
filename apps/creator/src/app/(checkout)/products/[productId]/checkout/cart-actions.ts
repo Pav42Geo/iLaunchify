@@ -49,6 +49,8 @@ import {
   evaluateCapacityGateForCheckout,
   type CapacityGateInfo,
   assertOrderTransition,
+  resolveOrderApplication,
+  broadcastCapabilityRequestsForTemplate,
 } from '@ilaunchify/orders'
 import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
 import {
@@ -493,6 +495,58 @@ export async function placeOrderFromCheckoutDraft(
     // No verified offer → the flag is stale (FC changed, admin unverified, or
     // the manufacturer applies after all). Proceed WITHOUT the fee — the
     // default path (labels finish at the manufacturer) still stands.
+  }
+
+  // --- 4a2. PS-7 §8.4 honey-problem backstop (behind graph:enforce_checkout_gate,
+  //          ships OFF → advisory). The order's application point is unresolved when
+  //          the manufacturer/co-packer can't self-apply (labelingCtx.needsExternalApplication)
+  //          AND the chosen ship-to FC can't relabel this method (under
+  //          graph:checkout_allow_fc_relabel). Then: block "temporarily unavailable",
+  //          reuse the PS-8 machinery (pause template + broadcast RFQ + audit), notify —
+  //          no creator-facing fix-it (2026-07-11 decision). Fails soft: a hiccup in the
+  //          pause/broadcast never lets an unresolved order through — the block stands.
+  const graphGates = await getLogisticsSettings()
+  if (graphGates['graph:enforce_checkout_gate'] && product.productTemplateId) {
+    const chosenFcCovers =
+      labelingCtx.needsExternalApplication &&
+      shipTo.data.shipToType === 'WAREHOUSE_PARTNER' &&
+      labelingCtx.offers.some((o) => o.partnerServiceId === shipTo.data.shipToPartnerServiceId)
+    const app = resolveOrderApplication({
+      needsExternalApplication: labelingCtx.needsExternalApplication,
+      decorationMethod: labelingCtx.decorationMethod ?? '',
+      shipToFcRelabelMethods: chosenFcCovers ? [labelingCtx.decorationMethod ?? ''] : [],
+      allowFcRelabel: graphGates['graph:checkout_allow_fc_relabel'] === true,
+    })
+    if (!app.resolved) {
+      try {
+        await prisma.productTemplate.update({
+          where: { id: product.productTemplateId },
+          data: { status: 'PAUSED' },
+        })
+        const rfq = await broadcastCapabilityRequestsForTemplate(product.productTemplateId, {
+          reason: 'CHECKOUT_UNRESOLVED',
+        })
+        await logAuditAs(user, {
+          entityType: 'ProductTemplate',
+          entityId: product.productTemplateId,
+          action: 'PRODUCT_TEMPLATE_PAUSED_APPLICATION_UNRESOLVED',
+          toValue: 'PAUSED',
+          payload: {
+            productId: product.id,
+            decorationMethod: labelingCtx.decorationMethod,
+            requestsOpen: rfq.requestsOpen,
+            notified: rfq.notified,
+          },
+        })
+      } catch {
+        // Pause/broadcast is best-effort; the order block below is the hard gate.
+      }
+      return {
+        ok: false,
+        error:
+          'This product is temporarily unavailable while we line up label application. We’ll email you the moment it’s back.',
+      }
+    }
   }
 
   // --- 4b. Risk Center capacity gate (M5-prep) --------------------------------

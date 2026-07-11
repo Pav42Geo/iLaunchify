@@ -24,6 +24,7 @@ export const LOGISTICS_GATE_KEYS = [
   // checkout validators read these; keeping them here keeps the admin Gates page
   // and the enforcement in one vocabulary.
   'graph:enforce_publish_gate',
+  'graph:enforce_checkout_gate',
   'graph:publish_allow_copack_application',
   'graph:checkout_allow_fc_relabel',
   'graph:enforce_assembly_resolution',

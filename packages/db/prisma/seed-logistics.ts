@@ -38,6 +38,7 @@ const GATES: { key: string; enabled: boolean; note: string }[] = [
   // PS-7 graph resolution / honey-problem gates (§8.2.4 / §8.4). Policy knobs
   // ship ON; the enforce MASTER ships OFF so the gate is advisory until admin flips it.
   { key: 'graph:enforce_publish_gate', enabled: false, note: 'PS-7: OFF = graph-completeness check is advisory at publish. Flip ON to BLOCK publishing a decorated template that cannot resolve an application point.' },
+  { key: 'graph:enforce_checkout_gate', enabled: false, note: 'PS-7 §8.4: OFF = advisory. Flip ON to BLOCK placeOrder when the application point is unresolved (temporarily unavailable) + broadcast/pause/notify. The §8 hard backstop.' },
   { key: 'graph:publish_allow_copack_application', enabled: true, note: 'PS-7: ON = a template co-pack node (appliesLabels) is a valid application point at publish (Option 2). OFF = manufacturer self-apply only.' },
   { key: 'graph:checkout_allow_fc_relabel', enabled: true, note: 'PS-7 §8.1a: ON = a verified FC RELABEL VAS resolves the application point at checkout. OFF = block when only an FC could apply.' },
   { key: 'graph:enforce_assembly_resolution', enabled: true, note: 'PS-7: ON = carton/multipack templates need an assembler (manufacturer self-assembles or a co-packer).' },

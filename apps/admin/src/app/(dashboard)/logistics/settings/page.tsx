@@ -93,6 +93,12 @@ const GATE_META: Record<string, { label: string; group: string; description: str
     description:
       'OFF = the graph-completeness check is advisory at publish. Flip ON to BLOCK publishing a decorated template that cannot resolve an application point (no self-apply manufacturer, no co-pack route).',
   },
+  'graph:enforce_checkout_gate': {
+    label: 'Enforce checkout gate (master)',
+    group: 'Graph resolution',
+    description:
+      "OFF = advisory. Flip ON to BLOCK an order at Pay when its application point is unresolved (“temporarily unavailable”) — then broadcast a capability request, pause the template, and notify admin + manufacturer. The §8 hard backstop.",
+  },
   'graph:publish_allow_copack_application': {
     label: 'Publish: co-pack node counts',
     group: 'Graph resolution',
