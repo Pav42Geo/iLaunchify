@@ -840,7 +840,8 @@ function ObjectDetail({
       ? ((latest.payload as { supplement?: Record<string, unknown> }).supplement ?? null)
       : null
   const [draftSupp, setDraftSupp] = React.useState<{
-    rows: { name: string; amount: string; unit: string; dv: string; isOther: boolean }[]
+    rows: { name: string; amount: string; unit: string; dv: string; isOther: boolean; blendId: string }[]
+    blends: { id: string; name: string; total: string; unit: string }[]
     servingForm: string
     perContainer: string
   }>(() => {
@@ -851,7 +852,11 @@ function ObjectDetail({
           unit: string
           percentDV: number | null
           isOtherIngredient: boolean
+          blendId: string | null
         }>[])
+      : []
+    const rawBlends = Array.isArray(latestSupp?.blends)
+      ? (latestSupp!.blends as Partial<{ id: string; name: string; totalAmount: number; unit: string }>[])
       : []
     return {
       rows: raw.length
@@ -861,8 +866,17 @@ function ObjectDetail({
             unit: String(d.unit ?? 'mg'),
             dv: typeof d.percentDV === 'number' ? String(d.percentDV) : '',
             isOther: !!d.isOtherIngredient,
+            blendId: d.blendId ? String(d.blendId) : '',
           }))
-        : [{ name: '', amount: '', unit: 'mg', dv: '', isOther: false }],
+        : [{ name: '', amount: '', unit: 'mg', dv: '', isOther: false, blendId: '' }],
+      blends: rawBlends
+        .filter((b) => String(b?.name ?? '').trim())
+        .map((b, i) => ({
+          id: String(b.id ?? `blend-${i}`),
+          name: String(b.name),
+          total: typeof b.totalAmount === 'number' ? String(b.totalAmount) : '',
+          unit: String(b.unit ?? 'mg'),
+        })),
       servingForm: String(latestSupp?.servingForm ?? ''),
       perContainer:
         typeof latestSupp?.servingsPerContainer === 'number'
@@ -968,6 +982,9 @@ function ObjectDetail({
     const suppRows = draftSupp.rows.filter(
       (r) => r.name.trim() && Number(r.amount) > 0 && r.unit.trim(),
     )
+    // Blends need a name + positive total; rows pointing at a dropped blend unpin.
+    const suppBlends = draftSupp.blends.filter((b) => b.name.trim() && Number(b.total) > 0)
+    const blendIds = new Set(suppBlends.map((b) => b.id))
     const supplementBlock =
       isSupplement && suppRows.length > 0
         ? {
@@ -980,8 +997,15 @@ function ObjectDetail({
                 percentDV: r.dv.trim() ? Number(r.dv) : null,
                 isOtherIngredient: r.isOther,
                 sortWeight: suppRows.length - i,
+                ...(r.blendId && blendIds.has(r.blendId) ? { blendId: r.blendId } : {}),
               })),
-              blends: Array.isArray(latestSupp?.blends) ? latestSupp!.blends : [],
+              blends: suppBlends.map((b) => ({
+                id: b.id,
+                name: b.name.trim(),
+                totalAmount: Number(b.total),
+                unit: b.unit.trim(),
+                percentDV: null,
+              })),
               servingForm: draftSupp.servingForm.trim() || '1 serving',
               servingsPerContainer: Number(draftSupp.perContainer) > 0 ? Number(draftSupp.perContainer) : 1,
             },
@@ -1693,6 +1717,26 @@ function ObjectDetail({
                           />
                           other
                         </label>
+                        {draftSupp.blends.length > 0 ? (
+                          <select
+                            aria-label="Proprietary blend membership"
+                            value={r.blendId}
+                            onChange={(e) =>
+                              setDraftSupp((s) => ({
+                                ...s,
+                                rows: s.rows.map((x, j) => (j === i ? { ...x, blendId: e.target.value } : x)),
+                              }))
+                            }
+                            className="rounded-md border border-ink-300 bg-white px-s-2 py-s-1 text-ui-caption"
+                          >
+                            <option value="">No blend</option>
+                            {draftSupp.blends.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name || 'Unnamed blend'}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1705,6 +1749,74 @@ function ObjectDetail({
                         </Button>
                       </div>
                     ))}
+    {/* Proprietary blends (21 CFR 101.36(c)) — members hide their amounts,
+                        only the blend total prints. Assign rows via the per-row select. */}
+                    {draftSupp.blends.length > 0 ? (
+                      <div className="mb-s-2 mt-s-1 border-t border-ink-200 pt-s-2">
+                        <div className="mb-s-1 text-ui-label uppercase text-ink-500">Proprietary blends</div>
+                        {draftSupp.blends.map((b, i) => (
+                          <div key={b.id} className="mb-s-2 flex items-center gap-s-2">
+                            <Input
+                              value={b.name}
+                              placeholder="Blend name, e.g. Energy Blend"
+                              onChange={(e) =>
+                                setDraftSupp((s) => ({
+                                  ...s,
+                                  blends: s.blends.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)),
+                                }))
+                              }
+                              className="flex-[2]"
+                            />
+                            <Input
+                              aria-label="Blend total per serving"
+                              type="number"
+                              min={0}
+                              value={b.total}
+                              placeholder="Total"
+                              onChange={(e) =>
+                                setDraftSupp((s) => ({
+                                  ...s,
+                                  blends: s.blends.map((x, j) => (j === i ? { ...x, total: e.target.value } : x)),
+                                }))
+                              }
+                              className="w-20"
+                            />
+                            <select
+                              aria-label="Blend unit"
+                              value={b.unit}
+                              onChange={(e) =>
+                                setDraftSupp((s) => ({
+                                  ...s,
+                                  blends: s.blends.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)),
+                                }))
+                              }
+                              className="rounded-md border border-ink-300 bg-white px-s-2 py-s-1 text-ui-caption"
+                            >
+                              {['mg', 'mcg', 'g'].map((u) => (
+                                <option key={u} value={u}>
+                                  {u}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Remove blend"
+                              onClick={() =>
+                                setDraftSupp((s) => ({
+                                  ...s,
+                                  blends: s.blends.filter((_, j) => j !== i),
+                                  // Unassign members of the removed blend.
+                                  rows: s.rows.map((x) => (x.blendId === b.id ? { ...x, blendId: '' } : x)),
+                                }))
+                              }
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-s-2">
                       <Button
                         variant="outline"
@@ -1712,11 +1824,29 @@ function ObjectDetail({
                         onClick={() =>
                           setDraftSupp((s) => ({
                             ...s,
-                            rows: [...s.rows, { name: '', amount: '', unit: 'mg', dv: '', isOther: false }],
+                            rows: [
+                              ...s.rows,
+                              { name: '', amount: '', unit: 'mg', dv: '', isOther: false, blendId: '' },
+                            ],
                           }))
                         }
                       >
                         ＋ Add dietary ingredient
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setDraftSupp((s) => ({
+                            ...s,
+                            blends: [
+                              ...s.blends,
+                              { id: `blend-${Date.now()}-${s.blends.length}`, name: '', total: '', unit: 'mg' },
+                            ],
+                          }))
+                        }
+                      >
+                        ＋ Add blend
                       </Button>
                       <span className="flex-1" />
                       <Input
@@ -1738,7 +1868,8 @@ function ObjectDetail({
                     </div>
                     <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
                       Blank %DV prints “†” (Daily Value not established). “Other” rows print in the
-                      Other-ingredients line below the box.
+                      Other-ingredients line below the box. Blend members hide their amounts — only
+                      the blend total prints (101.36(c)).
                     </p>
                   </div>
                 ) : null}
