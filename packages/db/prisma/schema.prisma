@@ -213,9 +213,12 @@ enum ProductCategory {
   SUPPLEMENT
   COSMETIC
   PET
+  OTC
   // Owned-Product category. Mirrors the label-domain set so creators can own
   // cosmetic + pet products (and order samples for them), not just food/supp.
   // Additive 2026-06-28 — run `pnpm db:push` + `pnpm db:generate`.
+  // OTC added 2026-07-10 — dormant until the admin Domain toggle enables the
+  // OTC labelingType; 21 CFR 201.66 Drug Facts. Additive — db:push + generate.
 }
 
 enum ProductStatus {

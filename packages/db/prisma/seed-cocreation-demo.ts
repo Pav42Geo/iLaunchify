@@ -92,9 +92,11 @@ async function main() {
         ? ('COSMETIC' as const)
         : cat.labelingType === 'PET_PRODUCT'
           ? ('PET' as const)
-          : cat.mainCategory === 'Beverages'
-            ? ('BEVERAGE_FUNCTIONAL' as const)
-            : ('FOOD' as const)
+          : cat.labelingType === 'OTC'
+            ? ('OTC' as const)
+            : cat.mainCategory === 'Beverages'
+              ? ('BEVERAGE_FUNCTIONAL' as const)
+              : ('FOOD' as const)
 
   // ── Idempotent cleanup: nuke previous Demo rows for this creator ─────────
   const old = await prisma.productBrief.findMany({

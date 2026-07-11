@@ -26,6 +26,7 @@ import { NutritionFactsSvg } from '../nutrition/NutritionFactsSvg'
 import { SupplementFactsSvg } from '../nutrition/SupplementFactsSvg'
 import { InciDeclarationSvg } from '../nutrition/InciDeclarationSvg'
 import { GuaranteedAnalysisSvg } from '../nutrition/GuaranteedAnalysisSvg'
+import { DrugFactsSvg } from '../nutrition/DrugFactsSvg'
 import { formatNetQuantity } from '../canvas/netQuantity'
 
 // ---------------------------------------------------------------------------
@@ -163,6 +164,17 @@ export interface RoomRecipeLabelView {
     rows: { label: string; value: string }[]
     adequacyStatement: string | null
     feedingDirections: string | null
+  } | null
+  /** OTC: maker-entered Drug Facts (21 CFR 201.66), carried verbatim.
+      Dormant until the admin enables the OTC domain toggle. */
+  drugFacts: {
+    activeIngredients: { name: string; purpose: string }[]
+    uses: string[]
+    warnings: { text: string; bold?: boolean }[]
+    directions: string
+    otherInformation?: string[]
+    inactiveIngredients: string
+    questions?: string
   } | null
 }
 
@@ -857,6 +869,43 @@ function ObjectDetail({
     }
   })
 
+  // OTC Drug Facts draft (21 CFR 201.66) — regulated copy authored by the
+  // maker, carried verbatim. otherInformation/questions carry forward from
+  // the previous version (no in-room editor for them yet).
+  const isOtc = briefDomain === 'OTC'
+  const latestOtc =
+    latest?.payload && typeof latest.payload === 'object'
+      ? ((latest.payload as { otc?: Record<string, unknown> }).otc ?? null)
+      : null
+  const [draftOtc, setDraftOtc] = React.useState<{
+    actives: { name: string; purpose: string }[]
+    uses: string[]
+    warnings: { text: string; bold: boolean }[]
+    directions: string
+    inactives: string
+  }>(() => {
+    const rawA = Array.isArray(latestOtc?.activeIngredients)
+      ? (latestOtc!.activeIngredients as Partial<{ name: string; purpose: string }>[])
+      : []
+    const rawW = Array.isArray(latestOtc?.warnings)
+      ? (latestOtc!.warnings as Partial<{ text: string; bold: boolean }>[])
+      : []
+    return {
+      actives: rawA.length
+        ? rawA.map((a) => ({ name: String(a.name ?? ''), purpose: String(a.purpose ?? '') }))
+        : [{ name: '', purpose: '' }],
+      uses: Array.isArray(latestOtc?.uses) && latestOtc!.uses.length
+        ? (latestOtc!.uses as unknown[]).map((u) => String(u ?? ''))
+        : [''],
+      warnings: rawW.length
+        ? rawW.map((w) => ({ text: String(w.text ?? ''), bold: !!w.bold }))
+        : [{ text: '', bold: false }],
+      directions: typeof latestOtc?.directions === 'string' ? latestOtc.directions : '',
+      inactives:
+        typeof latestOtc?.inactiveIngredients === 'string' ? latestOtc.inactiveIngredients : '',
+    }
+  })
+
   // Facts sidebar follows the VIEWED version (every version gets its own
   // computed label); compare mode diffs previous → latest side by side.
   const labelFor = React.useCallback(
@@ -923,10 +972,35 @@ function ObjectDetail({
             },
           }
         : {}
+    // OTC block — needs ≥1 active ingredient; other sections optional.
+    const otcActives = draftOtc.actives.filter((a) => a.name.trim())
+    const otcBlock =
+      isOtc && otcActives.length > 0
+        ? {
+            otc: {
+              activeIngredients: otcActives.map((a) => ({
+                name: a.name.trim(),
+                purpose: a.purpose.trim(),
+              })),
+              uses: draftOtc.uses.map((u) => u.trim()).filter(Boolean),
+              warnings: draftOtc.warnings
+                .filter((w) => w.text.trim())
+                .map((w) => ({ text: w.text.trim(), ...(w.bold ? { bold: true } : {}) })),
+              directions: draftOtc.directions.trim(),
+              inactiveIngredients: draftOtc.inactives.trim(),
+              // Carry forward sections without an in-room editor yet.
+              ...(Array.isArray(latestOtc?.otherInformation)
+                ? { otherInformation: latestOtc!.otherInformation }
+                : {}),
+              ...(typeof latestOtc?.questions === 'string' ? { questions: latestOtc.questions } : {}),
+            },
+          }
+        : {}
     const payload = isRecipe
       ? {
           ...supplementBlock,
           ...petBlock,
+          ...otcBlock,
           rows: draftRows.filter((r) => r.name.trim()),
           serving: {
             sizeG: draftServing.sizeG ? Number(draftServing.sizeG) : null,
@@ -1285,6 +1359,161 @@ function ObjectDetail({
                         </Button>
                       </div>
                     ))}
+                {isRecipe && isOtc ? (
+                  <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
+                    <div className="mb-s-2 text-ui-label uppercase text-ink-500">
+                      Drug Facts (21 CFR 201.66) — a panel needs at least one active ingredient
+                    </div>
+                    {draftOtc.actives.map((a, i) => (
+                      <div key={i} className="mb-s-2 flex items-center gap-s-2">
+                        <Input
+                          value={a.name}
+                          placeholder="Active ingredient, e.g. Acetaminophen 500 mg (in each caplet)"
+                          onChange={(e) =>
+                            setDraftOtc((s) => ({
+                              ...s,
+                              actives: s.actives.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)),
+                            }))
+                          }
+                          className="flex-[3]"
+                        />
+                        <Input
+                          value={a.purpose}
+                          placeholder="Purpose, e.g. Pain reliever"
+                          onChange={(e) =>
+                            setDraftOtc((s) => ({
+                              ...s,
+                              actives: s.actives.map((x, j) => (j === i ? { ...x, purpose: e.target.value } : x)),
+                            }))
+                          }
+                          className="flex-[2]"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Remove active ingredient"
+                          onClick={() =>
+                            setDraftOtc((s) => ({ ...s, actives: s.actives.filter((_, j) => j !== i) }))
+                          }
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setDraftOtc((s) => ({ ...s, actives: [...s.actives, { name: '', purpose: '' }] }))
+                      }
+                    >
+                      ＋ Active ingredient
+                    </Button>
+
+                    <div className="mb-s-1 mt-s-3 text-ui-label uppercase text-ink-500">Uses</div>
+                    {draftOtc.uses.map((u, i) => (
+                      <div key={i} className="mb-s-2 flex items-center gap-s-2">
+                        <Input
+                          value={u}
+                          placeholder="e.g. temporarily relieves minor aches and pains"
+                          onChange={(e) =>
+                            setDraftOtc((s) => ({
+                              ...s,
+                              uses: s.uses.map((x, j) => (j === i ? e.target.value : x)),
+                            }))
+                          }
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Remove use"
+                          onClick={() =>
+                            setDraftOtc((s) => ({ ...s, uses: s.uses.filter((_, j) => j !== i) }))
+                          }
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDraftOtc((s) => ({ ...s, uses: [...s.uses, ''] }))}
+                    >
+                      ＋ Use
+                    </Button>
+
+                    <div className="mb-s-1 mt-s-3 text-ui-label uppercase text-ink-500">Warnings</div>
+                    {draftOtc.warnings.map((w, i) => (
+                      <div key={i} className="mb-s-2 flex items-center gap-s-2">
+                        <Input
+                          value={w.text}
+                          placeholder='Warning line — bold for sub-headers like "Do not use"'
+                          onChange={(e) =>
+                            setDraftOtc((s) => ({
+                              ...s,
+                              warnings: s.warnings.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)),
+                            }))
+                          }
+                          className="flex-1"
+                        />
+                        <label className="flex items-center gap-s-1 text-ui-label normal-case tracking-normal text-ink-600">
+                          <input
+                            type="checkbox"
+                            checked={w.bold}
+                            onChange={(e) =>
+                              setDraftOtc((s) => ({
+                                ...s,
+                                warnings: s.warnings.map((x, j) =>
+                                  j === i ? { ...x, bold: e.target.checked } : x,
+                                ),
+                              }))
+                            }
+                          />
+                          bold
+                        </label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Remove warning line"
+                          onClick={() =>
+                            setDraftOtc((s) => ({ ...s, warnings: s.warnings.filter((_, j) => j !== i) }))
+                          }
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setDraftOtc((s) => ({ ...s, warnings: [...s.warnings, { text: '', bold: false }] }))
+                      }
+                    >
+                      ＋ Warning line
+                    </Button>
+
+                    <div className="mt-s-3 flex flex-col gap-s-2">
+                      <Input
+                        aria-label="Directions"
+                        value={draftOtc.directions}
+                        placeholder="Directions, e.g. Adults: take 2 caplets every 6 hours…"
+                        onChange={(e) => setDraftOtc((s) => ({ ...s, directions: e.target.value }))}
+                      />
+                      <Input
+                        aria-label="Inactive ingredients"
+                        value={draftOtc.inactives}
+                        placeholder="Inactive ingredients, e.g. corn starch, hypromellose…"
+                        onChange={(e) => setDraftOtc((s) => ({ ...s, inactives: e.target.value }))}
+                      />
+                    </div>
+                    <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
+                      Regulated copy is yours — the platform prints it verbatim in the 201.66 format.
+                    </p>
+                  </div>
+                ) : null}
                 {isRecipe && isPet ? (
                   <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
                     <div className="mb-s-2 text-ui-label uppercase text-ink-500">
@@ -1797,6 +2026,17 @@ function RecipeFactsSidebar({
             next version to render the Supplement Facts panel.
           </p>
         )
+      ) : label.domain === 'OTC' ? (
+        label.drugFacts ? (
+          <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+            <DrugFactsSvg data={label.drugFacts} widthPx={null} />
+          </div>
+        ) : (
+          <p className="rounded-lg bg-white px-s-3 py-s-3 text-ui-label normal-case tracking-normal text-ink-500">
+            Add the Drug Facts sections (at least one active ingredient) in the next version to
+            render the panel.
+          </p>
+        )
       ) : label.domain === 'COSMETIC' && label.inciText ? (
         <div className="rounded-lg border border-ink-200 bg-white p-s-2">
           <InciDeclarationSvg
@@ -1922,6 +2162,33 @@ function diffLabels(prev: RoomRecipeLabelView, next: RoomRecipeLabelView): Label
     if (!gaNext.has(k)) items.push({ name: k, from: v, to: null })
   }
 
+  // OTC Drug Facts — actives diffed by name; long sections collapse to "updated".
+  const dfPrev = prev.drugFacts
+  const dfNext = next.drugFacts
+  if (dfPrev || dfNext) {
+    const aPrev = new Map((dfPrev?.activeIngredients ?? []).map((a) => [a.name, a.purpose]))
+    const aNext = new Map((dfNext?.activeIngredients ?? []).map((a) => [a.name, a.purpose]))
+    for (const [k, v] of aNext) {
+      const p = aPrev.get(k)
+      if (p === undefined) items.push({ name: k, from: null, to: v || 'added' })
+      else if (p !== v) items.push({ name: k, from: p, to: v })
+    }
+    for (const [k, v] of aPrev) {
+      if (!aNext.has(k)) items.push({ name: k, from: v || 'present', to: null })
+    }
+    const section = (name: string, a: string, b: string) => {
+      if (a !== b) items.push({ name, from: a ? 'previous' : null, to: b ? 'updated' : null })
+    }
+    section('Uses', (dfPrev?.uses ?? []).join('|'), (dfNext?.uses ?? []).join('|'))
+    section(
+      'Warnings',
+      (dfPrev?.warnings ?? []).map((w) => w.text).join('|'),
+      (dfNext?.warnings ?? []).map((w) => w.text).join('|'),
+    )
+    section('Directions', dfPrev?.directions ?? '', dfNext?.directions ?? '')
+    section('Inactive ingredients', dfPrev?.inactiveIngredients ?? '', dfNext?.inactiveIngredients ?? '')
+  }
+
   // Mandatory statements — long text collapses to "updated".
   const stmtOf = (l: RoomRecipeLabelView) =>
     l.inciText ?? l.petOrder?.join(', ') ?? l.otherIngredients?.join(', ') ?? l.statement
@@ -2006,6 +2273,10 @@ function RecipeFactsCompare({
             otherIngredients={latest.otherIngredients ?? []}
             widthPx={null}
           />
+        </div>
+      ) : latest.domain === 'OTC' && latest.drugFacts ? (
+        <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+          <DrugFactsSvg data={latest.drugFacts} widthPx={null} />
         </div>
       ) : latest.domain === 'PET' && (latest.petOrder || latest.petGa) ? (
         <div className="rounded-lg border border-ink-200 bg-white p-s-2">

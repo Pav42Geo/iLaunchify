@@ -144,9 +144,11 @@ export async function postBrief(input: PostBriefInput): Promise<PostBriefResult>
         ? 'COSMETIC'
         : lt === 'PET_PRODUCT'
           ? 'PET'
-          : category.mainCategory === 'Beverages'
-            ? 'BEVERAGE_FUNCTIONAL'
-            : 'FOOD'
+          : lt === 'OTC'
+            ? 'OTC'
+            : category.mainCategory === 'Beverages'
+              ? 'BEVERAGE_FUNCTIONAL'
+              : 'FOOD'
 
   // Private formula payload only makes sense on the recipe door.
   const privateFormula =

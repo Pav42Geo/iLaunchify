@@ -81,6 +81,56 @@ export interface RoomRecipeLabel {
     adequacyStatement: string | null
     feedingDirections: string | null
   } | null
+  /** OTC: maker-entered Drug Facts (21 CFR 201.66) — structural mirror of the
+   *  UI's DrugFactsData, carried verbatim. Dormant until the admin enables
+   *  the OTC domain toggle. */
+  drugFacts: RoomDrugFacts | null
+}
+
+export interface RoomDrugFacts {
+  activeIngredients: { name: string; purpose: string }[]
+  uses: string[]
+  warnings: { text: string; bold?: boolean }[]
+  directions: string
+  otherInformation?: string[]
+  inactiveIngredients: string
+  questions?: string
+}
+
+/** OTC payload block — regulated copy is authored by the maker; the platform
+ *  validates shape only and carries it verbatim (nothing invented). */
+function payloadDrugFacts(payload: unknown): RoomDrugFacts | null {
+  const d =
+    payload && typeof payload === 'object'
+      ? (payload as { otc?: Record<string, unknown> }).otc
+      : null
+  if (!d || typeof d !== 'object') return null
+  const actives = (Array.isArray(d.activeIngredients) ? d.activeIngredients : [])
+    .map((a: Partial<{ name: string; purpose: string }>) => ({
+      name: String(a?.name ?? '').trim(),
+      purpose: String(a?.purpose ?? '').trim(),
+    }))
+    .filter((a) => a.name)
+  if (actives.length === 0) return null // a Drug Facts panel without actives is meaningless
+  const strList = (v: unknown) =>
+    (Array.isArray(v) ? v : []).map((x) => String(x ?? '').trim()).filter(Boolean)
+  const warnings = (Array.isArray(d.warnings) ? d.warnings : [])
+    .map((w: Partial<{ text: string; bold: boolean }>) => ({
+      text: String(w?.text ?? '').trim(),
+      ...(w?.bold ? { bold: true } : {}),
+    }))
+    .filter((w) => w.text)
+  const otherInformation = strList(d.otherInformation)
+  const questions = typeof d.questions === 'string' && d.questions.trim() ? d.questions.trim() : undefined
+  return {
+    activeIngredients: actives,
+    uses: strList(d.uses),
+    warnings,
+    directions: String(d.directions ?? '').trim(),
+    ...(otherInformation.length ? { otherInformation } : {}),
+    inactiveIngredients: String(d.inactiveIngredients ?? '').trim(),
+    ...(questions ? { questions } : {}),
+  }
 }
 
 /** PET payload block — GA values come from the maker's LAB RESULTS; the
@@ -232,7 +282,8 @@ export async function resolveRoomRecipeLabel(input: {
 }): Promise<RoomRecipeLabel | null> {
   const rows = payloadRows(input.payload)
   const supplement = input.domain === 'SUPPLEMENT' ? payloadSupplement(input.payload) : null
-  if (rows.length === 0 && !supplement) return null
+  const drugFacts = input.domain === 'OTC' ? payloadDrugFacts(input.payload) : null
+  if (rows.length === 0 && !supplement && !drugFacts) return null
   const serving = payloadServing(input.payload)
 
   const visibility = { OR: [{ ownerPartnerId: null }, { ownerPartnerId: input.partnerId }] }
@@ -377,6 +428,7 @@ export async function resolveRoomRecipeLabel(input: {
     petOrder,
     otherIngredients,
     petGa: input.domain === 'PET' ? payloadPetGa(input.payload) : null,
+    drugFacts,
   }
 }
 
