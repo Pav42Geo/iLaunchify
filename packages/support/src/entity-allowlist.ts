@@ -14,6 +14,7 @@ export const LINKABLE_ENTITY_TYPES = [
   'Brand',
   'CreatorProfile',
   'Partner',
+  'CoCreationRoom', // P1 co-creation dispute surface (2026-07-10) — room decision log is the evidence trail
 ] as const
 
 export type LinkableEntityType = (typeof LINKABLE_ENTITY_TYPES)[number]

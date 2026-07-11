@@ -17,6 +17,7 @@ import {
 import {
   creatorAgreeMilestoneTerms,
   creatorCloseRoomWon,
+  creatorOpenRoomDispute,
   creatorRateMaker,
   creatorComment,
   creatorDeclineMilestoneTerms,
@@ -95,6 +96,11 @@ export function RoomClient(props: {
       onRateCounterpart={(scores, comment) =>
         refresh(creatorRateMaker(props.roomId, scores, comment))
       }
+      onOpenDispute={async (description) => {
+        const res = await creatorOpenRoomDispute(props.roomId, description)
+        if (res.ok && res.ticketId) router.push(`/help/${res.ticketId}`)
+        return res
+      }}
       onSwitchMaker={async () => {
         const res = await creatorSwitchMaker(props.roomId)
         if (res.ok && res.briefId) {

@@ -18,6 +18,7 @@ import {
 import {
   partnerComment,
   partnerMessage,
+  partnerOpenRoomDispute,
   partnerProposeMilestoneTerms,
   partnerRateCreator,
   partnerSubmitVersion,
@@ -61,6 +62,11 @@ export function RoomClient(props: {
       onRateCounterpart={(scores, comment) =>
         refresh(partnerRateCreator(props.roomId, scores, comment))
       }
+      onOpenDispute={async (description) => {
+        const res = await partnerOpenRoomDispute(props.roomId, description)
+        if (res.ok && res.ticketId) router.push(`/help/${res.ticketId}`)
+        return res
+      }}
       briefDomain={props.briefDomain}
       onSearchIngredients={roomSearchIngredients}
       onCreateIngredient={roomCreateIngredient}

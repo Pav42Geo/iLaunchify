@@ -118,6 +118,9 @@ export interface CoCreationRoomShellProps {
     mine: { dimensions: Record<string, number>; comment: string | null } | null
   }
   onRateCounterpart?: (scores: Record<string, number>, comment?: string) => Promise<Result>
+  /** P1 dispute surface — opens a support ticket linked to this room; the
+      caller navigates to the ticket on success. */
+  onOpenDispute?: (description: string) => Promise<Result>
   /** Milestone terms negotiation — maker proposes, creator agrees/declines.
       Funding stays gated on payments verification (no fund action here). */
   onProposeMilestoneTerms?: (milestoneId: string, amount: number, note?: string) => Promise<Result>
@@ -286,6 +289,8 @@ function eventDotCls(kind: string): string {
     case 'OBJECT_REOPENED':
     case 'MILESTONE_TERMS_DECLINED':
       return 'bg-warning-500'
+    case 'ROOM_DISPUTE_OPENED':
+      return 'bg-danger-500'
     case 'MILESTONE_TERMS_PROPOSED':
       return 'bg-ink-900'
     case 'MILESTONE_TERMS_AGREED':
@@ -367,6 +372,8 @@ function eventText(e: RoomShellEvent): string {
       return 'Room closed — recipe materialized into a draft product.'
     case 'ROOM_CLOSED_SWITCHED':
       return `${by} switched makers — room archived, shortlist re-opened.`
+    case 'ROOM_DISPUTE_OPENED':
+      return `${by} opened a dispute — an admin will mediate (decision log is the evidence trail).`
     case 'OBJECT_SUBMITTED':
       return `${by} submitted ${kind}${v} for review.`
     case 'OBJECT_APPROVED':
@@ -520,6 +527,14 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         <p className="border-b border-danger-100 bg-danger-50 px-s-4 py-s-2 text-ui-caption text-danger-700" role="alert">
           {error}
         </p>
+      ) : null}
+
+      {props.onOpenDispute ? (
+        <RoomDisputeControl
+          counterpartName={mode === 'creator' ? props.partnerName : props.creatorName}
+          busy={busy}
+          onSubmit={(description) => run(() => props.onOpenDispute!(description))}
+        />
       ) : null}
 
       {props.rating && props.onRateCounterpart ? (
@@ -2104,6 +2119,70 @@ function ObjectDetail({
         ) : null}
       </div>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// P1 dispute control (2026-07-10) — a quiet entry point that expands into a
+// description box. Opens a HIGH-priority support ticket linked to the room;
+// the decision log is the evidence trail and admin mediates. Deliberately
+// understated: disputes are the exception, not a call to action.
+// ---------------------------------------------------------------------------
+
+function RoomDisputeControl({
+  counterpartName,
+  busy,
+  onSubmit,
+}: {
+  counterpartName: string
+  busy: boolean
+  onSubmit: (description: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [text, setText] = React.useState('')
+
+  if (!open) {
+    return (
+      <div className="flex justify-end border-b border-ink-100 bg-white px-s-4 py-s-1">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-ui-label normal-case tracking-normal text-ink-400 underline-offset-2 transition hover:text-danger-700 hover:underline"
+        >
+          Problem with this collaboration? Get help
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border-b border-danger-100 bg-danger-50/50 px-s-4 py-s-3">
+      <div className="text-ui-caption font-bold">Open a dispute about this room</div>
+      <p className="text-ui-label normal-case tracking-normal text-ink-500">
+        This creates a support ticket for our team — the room's decision log is attached as
+        evidence, {counterpartName} sees the dispute in the activity feed, and an admin mediates.
+        Nothing in the room changes until then.
+      </p>
+      <div className="mt-s-2 flex flex-wrap items-center gap-s-2">
+        <Input
+          value={text}
+          placeholder="What happened? (specifics + dates help the mediator)"
+          onChange={(e) => setText(e.target.value)}
+          className="min-w-64 flex-1"
+        />
+        <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={busy || text.trim().length < 20}
+          onClick={() => onSubmit(text)}
+        >
+          {busy ? 'Opening…' : 'Open dispute'}
+        </Button>
+      </div>
+    </div>
   )
 }
 

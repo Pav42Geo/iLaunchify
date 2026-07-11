@@ -105,6 +105,15 @@ const STARTER_CATEGORIES: StarterCategory[] = [
     sortOrder: 90,
   },
   {
+    slug: 'co-creation-dispute',
+    name: 'Co-creation dispute',
+    description:
+      'Creator ⇄ manufacturer conflict inside a collaboration room (unresponsive counterpart, contested work, terms disagreement). The room decision log is the evidence trail — admin mediates.',
+    defaultPriority: TicketPriority.HIGH,
+    slaResponseMinutes: 240, // 4h — money + relationships at stake
+    sortOrder: 95,
+  },
+  {
     slug: 'other',
     name: 'Other',
     description:

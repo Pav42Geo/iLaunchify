@@ -15,6 +15,7 @@ import {
   submitObjectVersion,
   type RoomCtx,
 } from '@ilaunchify/orders'
+import { logAuditAs } from '@ilaunchify/audit'
 import { z } from 'zod'
 
 export type RoomActionResult = { ok: boolean; error?: string }
@@ -187,6 +188,63 @@ export async function partnerProposeMilestoneTerms(
   })
   revalidatePath(`/rooms/${roomId}`)
   return res
+}
+
+/**
+ * P1 dispute surface — maker-side mirror of the creator action: HIGH-priority
+ * support ticket linked to the room + ROOM_DISPUTE_OPENED feed event. Admin
+ * mediates; room state is never changed unilaterally.
+ */
+export async function partnerOpenRoomDispute(
+  roomId: string,
+  description: string,
+): Promise<RoomActionResult & { ticketId?: string }> {
+  const user = await requireUser()
+  const access = await getPartnerAccess(user.id)
+  if (!access) return guardFail()
+  const room = await prisma.coCreationRoom.findFirst({
+    where: { id: roomId, partnerId: access.partnerId },
+    include: {
+      brief: { select: { title: true, creator: { select: { displayName: true } } } },
+      partner: { select: { companyName: true } },
+    },
+  })
+  if (!room) return { ok: false, error: 'Room not found' }
+  const body = description.trim()
+  if (body.length < 20) return { ok: false, error: 'Describe the issue in a bit more detail (20+ characters)' }
+
+  const { createTicket } = await import('@ilaunchify/support')
+  const input = {
+    requesterUserId: user.id,
+    requesterRole: 'PARTNER' as const,
+    subject: `Dispute: ${room.brief.title}`.slice(0, 180),
+    body: `${body.slice(0, 8000)}\n\n---\nRoom: ${room.id}\nCreator: ${room.brief.creator.displayName}\nRoom status: ${room.status}`,
+    entityType: 'CoCreationRoom',
+    entityId: room.id,
+  }
+  let ticket
+  try {
+    ticket = await createTicket({ ...input, categorySlug: 'co-creation-dispute' })
+  } catch {
+    ticket = await createTicket({ ...input, categorySlug: 'other' })
+  }
+
+  await prisma.roomEvent.create({
+    data: {
+      roomId: room.id,
+      kind: 'ROOM_DISPUTE_OPENED',
+      data: { by: room.partner.companyName, ticketId: ticket.id },
+    },
+  })
+  await logAuditAs(user, {
+    entityType: 'CoCreationRoom',
+    entityId: room.id,
+    action: 'ROOM_DISPUTE_OPENED',
+    payload: { ticketId: ticket.id },
+  })
+
+  revalidatePath(`/rooms/${roomId}`)
+  return { ok: true, ticketId: ticket.id }
 }
 
 /**
