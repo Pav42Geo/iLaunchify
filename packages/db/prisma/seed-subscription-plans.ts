@@ -122,11 +122,13 @@ const CREATOR_PLANS: PlanInput[] = [
 // -----------------------------------------------------------------------------
 // Partner plans — Verified / Trusted / Premier (PLATFORM_SPEC §Tier 1)
 //
-// Note on commission rates: spec lists 15% / 12% / 8% which mirrors the
-// creator side but applies to the platform's cut of partner revenue
-// (partner is paid via Stripe Connect; iLaunchify keeps the percent).
-// Same triggerEvent code (production_order_subtotal) is used — billing
-// helpers look up the rate based on which side they're charging.
+// Fee reconciliation 2026-07-11 (FEE_MODEL_RECONCILIATION_SPEC_2026-07-09): the LIVE
+// partner fee is the MERIT withhold (Verified 4.5% / Trusted 2.5% / Premier 0%),
+// held from the manufacturer's payout — SSOT = MeritPolicy, NOT these FeeRule rows.
+// The old 15/12/8 "commission" here mirrored the creator side and was STALE/wrong.
+// These rows are kept only as the perk-ladder container; the FeeRule below now
+// MIRRORS the merit defaults (4.5/2.5/0) so nothing that reads it shows a
+// contradictory number. Do not treat it as the live source.
 // -----------------------------------------------------------------------------
 
 const PARTNER_PLANS: PlanInput[] = [
@@ -156,7 +158,7 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'declare_nutrition_panel',     label: 'Declared nutrition panel (Mode 3)',    description: 'Type Nutrition/Supplement Facts directly. Free for all partners.', boolValue: true },
     ],
     feeRules: [
-      { triggerEvent: 'production_order_subtotal', ratePercent: 15.00, notes: 'Verified commission (iLaunchify cut)' },
+      { triggerEvent: 'production_order_subtotal', ratePercent: 4.50, notes: 'Verified merit fee — display mirror of MeritPolicy (NOT live source; MeritPolicy is). Reconciled 2026-07-11.' },
     ],
   },
   {
@@ -185,7 +187,7 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'declare_nutrition_panel',     label: 'Declared nutrition panel (Mode 3)',    description: 'Type Nutrition/Supplement Facts directly. Free for all partners.', boolValue: true },
     ],
     feeRules: [
-      { triggerEvent: 'production_order_subtotal', ratePercent: 12.00, notes: 'Trusted commission' },
+      { triggerEvent: 'production_order_subtotal', ratePercent: 2.50, notes: 'Trusted merit fee — display mirror of MeritPolicy (NOT live source). Reconciled 2026-07-11.' },
     ],
   },
   {
@@ -214,7 +216,7 @@ const PARTNER_PLANS: PlanInput[] = [
       { code: 'declare_nutrition_panel',     label: 'Declared nutrition panel (Mode 3)',    description: 'Type Nutrition/Supplement Facts directly. Free for all partners.', boolValue: true },
     ],
     feeRules: [
-      { triggerEvent: 'production_order_subtotal', ratePercent: 8.00, notes: 'Premier commission' },
+      { triggerEvent: 'production_order_subtotal', ratePercent: 0.00, notes: 'Premier merit fee — display mirror of MeritPolicy (NOT live source). Reconciled 2026-07-11.' },
     ],
   },
 ]

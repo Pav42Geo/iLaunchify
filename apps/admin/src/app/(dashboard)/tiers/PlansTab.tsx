@@ -8,6 +8,7 @@
 import Link from 'next/link'
 import { Check, X, Infinity as InfinityIcon } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
+import { DEFAULT_MERIT_POLICY } from '@ilaunchify/orders'
 
 export async function PlansTab() {
   const plans = await prisma.subscriptionPlan.findMany({
@@ -25,10 +26,13 @@ export async function PlansTab() {
   // the Merit Engine, not purchased. Show the Merit commission by badge and drop
   // the "price" framing on partner cards. tierOrder 0/1/2 → Verified/Trusted/Premier.
   const meritPolicy = await prisma.meritPolicy.findUnique({ where: { id: 1 } }).catch(() => null)
+  // Fee reconciliation 2026-07-11: fall back to the canonical merit defaults
+  // (4.5/2.5/0) when the MeritPolicy row is unseeded — NEVER to the partner FeeRule,
+  // whose rows are the perk ladder, not the live fee (stale-15/12/8 audit finding).
   const meritFeeByOrder: (number | undefined)[] = [
-    meritPolicy?.verifiedFeeBps,
-    meritPolicy?.trustedFeeBps,
-    meritPolicy?.premierFeeBps,
+    meritPolicy?.verifiedFeeBps ?? DEFAULT_MERIT_POLICY.feeBpsByBadge.VERIFIED,
+    meritPolicy?.trustedFeeBps ?? DEFAULT_MERIT_POLICY.feeBpsByBadge.TRUSTED,
+    meritPolicy?.premierFeeBps ?? DEFAULT_MERIT_POLICY.feeBpsByBadge.PREMIER,
   ]
 
   if (plans.length === 0) {
@@ -148,7 +152,10 @@ function PlanCard({ plan, meritFeeBps }: { plan: PlanRow; meritFeeBps?: number }
           // Earned badge — no purchase price. Show the Merit commission for this badge.
           <div>
             <div className="font-display text-[26px] font-bold leading-none tracking-tight text-ink-900">
-              {meritFeeBps != null ? feePct(meritFeeBps) : productionFee?.ratePercent != null ? `${Number(productionFee.ratePercent.toString()).toFixed(2)}%` : '—'}
+              {/* Fee reconciliation 2026-07-11: partner fee = MERIT only (never the stale
+                  partner FeeRule). meritFeeBps is now always defaulted upstream, so this
+                  is effectively always the merit branch. */}
+              {meritFeeBps != null ? feePct(meritFeeBps) : '—'}
               <span className="ml-1.5 text-[12px] font-normal text-ink-500">commission</span>
             </div>
             <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-pink-50 px-2.5 py-1 text-[11px] font-semibold text-pink-700">

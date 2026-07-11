@@ -270,6 +270,65 @@ function checkNoHardcodedFee() {
 }
 
 // =============================================================================
+// CHECK 7 — new model using @default(cuid()) instead of uuid()  (WARN)
+// CLAUDE.md: "id is String @id @default(uuid()) not cuid() ... (no sequential
+// hotspots)." cuid v1's monotonic prefix funnels inserts into one CockroachDB
+// range = write hotspot. 136 legacy models predate the rule (frozen baseline
+// below); this FREEZES growth so NEW models can't reintroduce the hotspot. When
+// a legacy model is migrated cuid→uuid it simply stops matching — harmless.
+// Audit finding H3 (AUDIT_2026-07-09_CONSISTENCY.md). Model-name keyed = never
+// goes stale on line shifts.
+// =============================================================================
+const CUID_BASELINE = new Set([
+  'Account','Asset','AuditLog','BannedIngredient','Brand','CancellationRequest','CarrierAccount','CarrierServiceRule','Category','CertificateAssetVariant','CertificateType','CertificateTypeRequest','Channel','ChannelConnection','ChannelInboundPlan','ChannelProductLink','Charge','CheckoutDraft','ComplianceCheck','ContractTerms','ControversialIngredient','CreatorOnboardingProgress','CreatorProfile','CreatorSavedAddress','Design','DesignFinishApplication','DesignLibraryItem','DesignVersion','DieCutTemplate','Dispute','DocumentAccessLog','FcAwardLog','FeeRule','FinishType','FlavorPreset','FlavorRecipeOptional','FlavorRecipeReplacement','FlavorRecipeSlot','InboundReceipt','InboundReceiptLine','Ingredient','IngredientUsage','LabelClaimConsent','LabelingSymbol','LabelingSymbolVariant','LifestyleTag','Market','MarketConfig','MarketLanguage','MockupTemplate','Niche','NicheAssignmentAudit','NicheRule','Notification','NotificationPreference','Order','OrderDispatch','OrderDispute','OrderItem','OrderItemFlavor','OrderSettingsOverride','PackagingMaterial','PackagingSurface','PackagingSymbol','PackagingSymbolVariant','PackagingSystem','PackagingType','Partner','PartnerBlackoutDate','PartnerCertificateInstance','PartnerClawback','PartnerCommercialTerms','PartnerDocument','PartnerFile','PartnerFinish','PartnerIntegrationCapability','PartnerInvite','PartnerMembership','PartnerOnboardingProgress','PartnerOperationalCapability','PartnerOperationalStandards','PartnerService','PartnerServiceMembership','PartnerServicePackagingMaterial','PartnerServiceSubstrate','PartnerStrike','PartnerVerificationSection','PlanFeature','PlatformFeeConfig','PlatformMandatedStandards','Product','ProductChangeApprovalRule','ProductNote','ProductOptionAxis','ProductOptionRule','ProductOptionValue','ProductReviewItem','ProductSampleOption','ProductSpecSheet','ProductTemplate','ProductTemplateFee','ProductTemplatePricingTier','ProductTemplateVariant','ProductionLot','ProductionSubscription','ProofRound','ReceivingDiscrepancy','Recipe','RecipeIngredient','Refund','Region','RulePack','RulePackVersion','SampleCredit','Session','ShipmentDocument','ShipmentLeg','SocialAccount','StorageAgreement','StorageReleaseOrder','Subcategory','SubscriptionPlan','Substrate','SupportCannedReply','Template','TemplateIngredientReplacement','TemplateIngredientSlot','TemplateOptionalIngredient','TemplateVersion','Ticket','TicketCategory','TicketEvent','TicketReply','Transfer','TypographyFont','User',
+])
+function checkNoNewCuid() {
+  const hits = []
+  const schema = 'packages/db/prisma/schema.prisma'
+  if (!existsSync(schema)) return { name: 'no new cuid() id (uuid mandate)', level: 'warn', hits }
+  let model = null
+  read(schema).split('\n').forEach((line, i) => {
+    const mm = line.match(/^model\s+(\w+)\s*\{/)
+    if (mm) { model = mm[1]; return }
+    if (/@default\(cuid\(\)\)/.test(line) && model && !CUID_BASELINE.has(model)) {
+      hits.push(`${schema}:${i + 1}  model ${model} — new model on @default(cuid()); use @default(uuid()) (CockroachDB hotspot, H3)`)
+    }
+  })
+  return { name: 'no new cuid() id (uuid mandate)', level: 'warn', hits }
+}
+
+// =============================================================================
+// CHECK 8 — new Decimal money field  (WARN)
+// Money is integer cents everywhere; the channel layer's Decimal-dollars fields
+// are the isolated exception the audit flagged (M1) — a ×100/rounding seam. This
+// FREEZES the set so no NEW money field lands as Decimal. Reviewed exceptions are
+// keyed by Model.field (stable across line shifts). Audit finding M1.
+// =============================================================================
+const DECIMAL_MONEY_ALLOWLIST = new Set([
+  'ChannelProductLink.price',   // channel-layer dollars (M1) — reconcile to cents later
+  'ChannelVariantLink.price',
+  'ChannelOrder.totalPrice',
+  'ChannelOrderLine.unitPrice',
+  'RoomMilestone.amount',       // co-creation escrow milestone
+])
+const MONEY_FIELD_RX = /^\s*(price|unitPrice|totalPrice|amount|subtotal)\s+.*@db\.Decimal/
+function checkNoNewDecimalMoney() {
+  const hits = []
+  const schema = 'packages/db/prisma/schema.prisma'
+  if (!existsSync(schema)) return { name: 'no new Decimal money field (cents SSOT)', level: 'warn', hits }
+  let model = null
+  read(schema).split('\n').forEach((line, i) => {
+    const mm = line.match(/^model\s+(\w+)\s*\{/)
+    if (mm) { model = mm[1]; return }
+    const fm = line.match(MONEY_FIELD_RX)
+    if (fm && model && !DECIMAL_MONEY_ALLOWLIST.has(`${model}.${fm[1]}`)) {
+      hits.push(`${schema}:${i + 1}  ${model}.${fm[1]} is Decimal money — use Int cents (M1)`)
+    }
+  })
+  return { name: 'no new Decimal money field (cents SSOT)', level: 'warn', hits }
+}
+
+// =============================================================================
 const CHECKS = [
   checkNoDbText,
   checkCrossAppLink,
@@ -277,6 +336,8 @@ const CHECKS = [
   checkFsmBypass,
   checkPrismaClientFresh,
   checkNoHardcodedFee,
+  checkNoNewCuid,
+  checkNoNewDecimalMoney,
 ]
 
 let errorCount = 0
