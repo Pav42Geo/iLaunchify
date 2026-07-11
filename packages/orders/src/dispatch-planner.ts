@@ -43,6 +43,13 @@ export interface DispatchRow {
   status: 'PENDING_ACCEPT'
   acceptDeadlineAt: Date
   costCents: number
+  /**
+   * PS-7 (§8.2.5) — the NEXT physical node this leg ships to (OrderDispatch.shipToNodeId).
+   * Stamped in createDispatches from the resolved application point: the LABEL leg
+   * ships to the applier (manufacturer / co-packer / FC), the PRODUCT leg to the
+   * co-packer on a GOODS_TRANSFER hop. Null = legacy addressing (order.shipTo*).
+   */
+  shipToNodeId?: string | null
 }
 
 export interface ItemDispatchPlan {

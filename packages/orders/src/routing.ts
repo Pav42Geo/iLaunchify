@@ -17,6 +17,7 @@ import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
 import { resolveManufacturerMeritFeeBps, meritWithholdCents } from './manufacturer-merit-fee'
+import { resolveApplicationPoint, APPLIED_DECORATIONS } from './application-point'
 import {
   selectRotatingProvider,
   buildRotationAwardPayload,
@@ -621,6 +622,63 @@ async function rotatePrintShop(args: {
  * Create the two OrderDispatch rows (PRODUCT + LABEL) for a paid order.
  * Called from the Stripe webhook after payment_intent.succeeded.
  */
+/**
+ * PS-7 (§8.2.5) — resolve the LABEL/PRODUCT shipToNodeId for one routed item from
+ * its application point (§8.2): the applier (manufacturer self-apply / co-packer /
+ * a verified FC RELABEL) is where labels ship; a co-packer applier also pulls the
+ * unlabeled PRODUCT leg (GOODS_TRANSFER). Best-effort — returns nulls (legacy
+ * order.shipTo* addressing) on any miss, so it never blocks routing.
+ */
+async function resolveItemShipToNodes(args: {
+  routing: { manufacturingServiceId: string; labelPrintingServiceId: string }
+  components: Array<{ decorationMethod: string; appliesLabels: boolean | null }>
+  coPackerServiceId: string | null
+  order: { shipToType: string | null; shipToPartnerServiceId: string | null }
+}): Promise<{ labelNodeId: string | null; productNodeId: string | null }> {
+  const NONE = { labelNodeId: null, productNodeId: null }
+  const decorated = args.components.find((c) => APPLIED_DECORATIONS.has(c.decorationMethod))
+  if (!decorated) return NONE
+
+  // A separate print partner produces the decoration → a real application step.
+  const externalPrint = args.routing.labelPrintingServiceId !== args.routing.manufacturingServiceId
+
+  const mfr = await prisma.partnerService.findUnique({
+    where: { id: args.routing.manufacturingServiceId },
+    select: { appliesLabels: true },
+  })
+  let coPacker: { serviceId: string; appliesLabels: boolean } | null = null
+  if (args.coPackerServiceId) {
+    const cp = await prisma.partnerService.findUnique({
+      where: { id: args.coPackerServiceId },
+      select: { appliesLabels: true },
+    })
+    if (cp) coPacker = { serviceId: args.coPackerServiceId, appliesLabels: cp.appliesLabels }
+  }
+  let fc: { serviceId: string; relabelMethods: string[] } | null = null
+  if (args.order.shipToType === 'WAREHOUSE_PARTNER' && args.order.shipToPartnerServiceId) {
+    const rows = await prisma.fcValueAddedService.findMany({
+      where: { partnerServiceId: args.order.shipToPartnerServiceId, jobType: 'RELABEL', status: 'ACTIVE' },
+      select: { labelMethods: true },
+    })
+    fc = {
+      serviceId: args.order.shipToPartnerServiceId,
+      relabelMethods: rows.flatMap((r) => (r.labelMethods as string[]) ?? []),
+    }
+  }
+
+  const resolved = resolveApplicationPoint({
+    decorationMethod: decorated.decorationMethod,
+    manufacturer: { serviceId: args.routing.manufacturingServiceId, appliesLabels: mfr?.appliesLabels ?? true },
+    coPacker,
+    fc,
+    externalPrint,
+  })
+  if (!resolved.ok || !resolved.node) return NONE
+  // A co-packer applier pulls the unlabeled PRODUCT leg (manufacturer → co-packer).
+  const productNodeId = resolved.node.kind === 'COPACKER' ? resolved.node.serviceId : null
+  return { labelNodeId: resolved.node.serviceId, productNodeId }
+}
+
 export async function createDispatches(params: {
   orderId: string
   acceptWindowHours?: number
@@ -680,6 +738,7 @@ export async function createDispatches(params: {
                 id: true,
                 type: true,
                 status: true,
+                appliesLabels: true, // PS-7 — application-point resolution
                 partner: { select: { status: true, userId: true, user: { select: { stripeAccountStatus: true } } } },
               },
             },
@@ -707,6 +766,26 @@ export async function createDispatches(params: {
       })),
       acceptDeadlineAt,
     })
+
+    // PS-7 (§8.2.5) — resolve this item's application point and stamp shipToNodeId
+    // on its legs: the LABEL leg ships to the applier (manufacturer / co-packer / FC),
+    // and the PRODUCT leg ships to the co-packer only when the co-packer applies
+    // (GOODS_TRANSFER). Null = legacy addressing (order.shipTo*). Best-effort — a
+    // resolution miss just leaves the legacy null, never blocks routing.
+    const coPackerServiceId = plan.rows.find((r) => r.type === 'COPACKING')?.partnerServiceId ?? null
+    const shipToNodes = await resolveItemShipToNodes({
+      routing,
+      components: components.map((c) => ({
+        decorationMethod: String(c.decorationMethod),
+        appliesLabels: c.partnerOffering?.partnerService?.appliesLabels ?? null,
+      })),
+      coPackerServiceId,
+      order: { shipToType: order.shipToType, shipToPartnerServiceId: order.shipToPartnerServiceId },
+    })
+    for (const row of plan.rows) {
+      if (row.type === 'LABEL') row.shipToNodeId = shipToNodes.labelNodeId
+      else if (row.type === 'PRODUCT') row.shipToNodeId = shipToNodes.productNodeId
+    }
 
     dispatchRows.push(...plan.rows)
     if (!primaryManufacturerId) {
