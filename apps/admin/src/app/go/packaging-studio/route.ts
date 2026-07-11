@@ -15,12 +15,14 @@ export async function GET(req: NextRequest) {
   const user = await requireCapability('catalog:write')
 
   const base = process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'
-  const isDev = process.env.NODE_ENV !== 'production'
+  // Only hop through creator dev-login when it's enabled (H5 A0). Else → straight to dest.
+  const useDevLogin =
+    process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEV_LOGIN === 'true'
   const packagingTypeId = req.nextUrl.searchParams.get('packagingTypeId') ?? ''
   const dest = `/studio/packaging${packagingTypeId ? `?packagingTypeId=${encodeURIComponent(packagingTypeId)}` : ''}`
 
   const target =
-    isDev && user.email
+    useDevLogin && user.email
       ? `${base}/api/dev/login?email=${encodeURIComponent(user.email)}&callbackUrl=${encodeURIComponent(dest)}`
       : `${base}${dest}`
 

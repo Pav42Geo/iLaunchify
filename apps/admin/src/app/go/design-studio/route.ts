@@ -21,10 +21,14 @@ export async function GET() {
   const user = await requireCapability('catalog:write')
 
   const base = process.env.NEXT_PUBLIC_CREATOR_URL ?? 'http://localhost:3000'
-  const isDev = process.env.NODE_ENV !== 'production'
+  // Only hop through the creator dev-login when it's actually enabled (H5 A0 gates
+  // it behind ENABLE_DEV_LOGIN). Otherwise — prod, or local dev without the opt-in
+  // — go straight to /studio and rely on the real shared session.
+  const useDevLogin =
+    process.env.NODE_ENV !== 'production' && process.env.ENABLE_DEV_LOGIN === 'true'
 
   const target =
-    isDev && user.email
+    useDevLogin && user.email
       ? `${base}/api/dev/login?email=${encodeURIComponent(user.email)}&callbackUrl=${encodeURIComponent('/studio')}`
       : `${base}/studio`
 

@@ -5,15 +5,11 @@
 // Goal: a guest hits Start Launching on a marketplace detail page →
 // inline modal collects name / email / brand name → one round-trip
 // creates the User + CreatorProfile + Brand, then returns a URL that:
-//   1. signs the new user in (writes the session cookie on the
-//      apps/creator origin via /api/dev/login)
-//   2. bounces to /api/launch-after-signin which has the new session
-//      and creates the Product
+//   1. sends the new user to the real creator /login (magic-link / Google) —
+//      no bypass (H5 A2); the launch intent rides on callbackUrl
+//   2. after sign-in, bounces to /api/launch-after-signin which has the new
+//      session and creates the Product
 //   3. redirects to the Design Studio canvas
-//
-// V1 dev uses /api/dev/login (cookie set on creator origin, callbackUrl
-// preserved). For prod this swaps to real auth (magic-link or password)
-// — TODO inline.
 
 import { createUserWithRole } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
@@ -105,16 +101,11 @@ export async function signupGuestAndPrepareLaunch(
     }
   }
 
-  // 3. Build the signin URL that:
-  //    a) hits creator /api/dev/login → sets the session cookie on
-  //       the apps/creator origin
-  //    b) then bounces to /api/launch-after-signin which has the
-  //       fresh session and creates the Product + redirects to canvas.
-  //
-  // TODO(prod): swap /api/dev/login for the real magic-link or
-  // password sign-in flow once we wire Resend/etc. The shape of
-  // launch-after-signin stays identical — only the cookie setter
-  // changes.
+  // 3. Build the sign-in URL. The guest goes through the REAL creator login
+  //    (magic-link / Google) — never the dev-login bypass (H5 A2). The launch
+  //    intent rides on callbackUrl: after sign-in, the creator origin has a real
+  //    session and /api/launch-after-signin resumes the launch (creates the
+  //    Product + redirects to canvas), its shape unchanged.
   const launchCallback = creatorUrl('/api/launch-after-signin', {
     template: input.templateSlug,
     ...(input.flavor ? { flavor: input.flavor } : {}),
@@ -125,8 +116,8 @@ export async function signupGuestAndPrepareLaunch(
     // post-signin product gets its primary PackagingComponent.
     ...(input.partnerOfferingId ? { partnerOfferingId: input.partnerOfferingId } : {}),
   })
-  const signinUrl = creatorUrl('/api/dev/login', {
-    email,
+  const signinUrl = creatorUrl('/login', {
+    email, // prefill hint for the login form
     callbackUrl: launchCallback,
   })
 

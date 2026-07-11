@@ -1,24 +1,24 @@
 // REBUILD R4 — second leg of the guest-gate flow.
 //
-// /api/dev/login sets the session cookie + redirects here with the
-// launch params in the query string. Now that the user is signed in,
-// create the Product row and redirect to the Design Studio canvas.
+// The guest signs in through the real creator /login (magic-link / Google),
+// which then redirects here (its callbackUrl) with the launch params in the
+// query string. Now that the user is signed in, create the Product row and
+// redirect to the Design Studio canvas.
 //
 // Flow:
 //   GuestGateModal (apps/marketing)
 //     → signupGuestAndPrepareLaunch (server action)
 //       creates User + CreatorProfile + Brand
-//     → returns signinUrl = /api/dev/login?email=…&callbackUrl=this-route
-//   /api/dev/login
-//     → sets session cookie + redirects to this route
+//     → returns signinUrl = /login?callbackUrl=this-route
+//   creator /login (real magic-link / Google — no bypass, H5 A2)
+//     → establishes the session + redirects to this route
 //   /api/launch-after-signin (this file)
-//     → has the fresh session, runs the same product-creation logic
+//     → has the session, runs the same product-creation logic
 //       as startLaunchFromTemplate, redirects to the canvas
 //
 // Mirrors apps/marketing/src/lib/launch-actions.ts intentionally —
 // kept here as a route handler instead of a server action because we
-// need it to run after a cross-origin cookie hand-off and the dev-login
-// redirect chain.
+// need it to run after the sign-in redirect chain establishes the session.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, getOrCreateDefaultBrand } from '@ilaunchify/db'
@@ -30,8 +30,8 @@ export const runtime = 'nodejs'
 export async function GET(req: NextRequest) {
   const session = await auth().catch(() => null)
   if (!session?.user?.id || session.user.role !== 'CREATOR') {
-    // Session cookie didn't land — bounce to /login. Shouldn't happen
-    // in the normal flow because /api/dev/login set it just now.
+    // Session didn't land — bounce to /login. Shouldn't happen in the normal
+    // flow because sign-in just established it before redirecting here.
     return NextResponse.redirect(new URL('/login', req.url))
   }
   const userId = session.user.id

@@ -22,9 +22,6 @@ export function LoginForm({
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
 
-  // Dev mode: only Credentials is registered.
-  const devOnly = providers.credentials && !providers.resend && !providers.google
-
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
@@ -42,53 +39,11 @@ export function LoginForm({
     }
   }
 
-  async function handleDevSignIn(e: React.FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    // Use the /api/dev/login bypass route — it skips Auth.js and directly
-    // creates a Session row + cookie. Most reliable in local dev where the
-    // Auth.js Credentials provider has historically been finicky.
-    const url = new URL('/api/dev/login', window.location.origin)
-    url.searchParams.set('email', email)
-    url.searchParams.set('callbackUrl', callbackUrl)
-    window.location.href = url.toString()
-  }
-
   async function handleGoogle() {
     setBusy(true)
     await signIn('google', { callbackUrl })
   }
 
-  // -------- Dev-only sign-in UI --------
-  if (devOnly) {
-    return (
-      <div className="space-y-4">
-        <div className="rounded-md border border-warning-200 bg-warning-50 p-3 text-xs text-warning-900">
-          <strong>Dev mode.</strong> No Google or Resend credentials configured. Sign in by typing
-          the email of any seeded user — no password needed.
-        </div>
-        <form onSubmit={handleDevSignIn} className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              value={email}
-              placeholder="georgiev.pavel@gmail.com"
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={busy}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={busy || !email}>
-            {busy ? 'Signing in…' : 'Sign in (dev)'}
-          </Button>
-        </form>
-      </div>
-    )
-  }
-
-  // -------- Production sign-in UI --------
   return (
     <div className="space-y-4">
       {providers.google && (
