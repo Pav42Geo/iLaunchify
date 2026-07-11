@@ -8830,6 +8830,17 @@ enum ShipmentLegStatus {
   CANCELLED
 }
 
+// PS-7 (§8.3) — which party bears an inter-partner hop's freight. Snapshotted per
+// ShipmentLeg from the planShipmentHops bearer attribution (LogisticsSetting
+// `billing:platform_pays_interpartner_freight`): inter-partner hops (LABELS,
+// GOODS_TRANSFER) flip to PLATFORM when the admin absorbs; FINISHED_GOODS always
+// CREATOR. The per-hop ledger item — platformAbsorbedCents = Σ billedCostCents of
+// the PLATFORM legs, never blended into the creator production-fee base.
+enum ShipmentLegBillTo {
+  CREATOR
+  PLATFORM
+}
+
 enum CarrierAccountType {
   PLATFORM_CHILD // EasyPost Forge child user — platform pays, marks up, recharges (L3/L5)
   BYO_PARCEL // partner's own UPS/FedEx credentials attached to their child user
@@ -8925,6 +8936,7 @@ model ShipmentLeg {
   // Money (rated vs billed; carrier adjustments re-billed per contract)
   ratedCostCents       Int?
   billedCostCents      Int?
+  billTo               ShipmentLegBillTo? // PS-7 per-hop freight bearer (null = legacy/unattributed)
   declaredValueCents   Int?
   insured              Boolean            @default(false)
   // Addresses snapshotted at booking (legal reproducibility)

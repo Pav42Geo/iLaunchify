@@ -908,6 +908,7 @@ export async function createDispatches(params: {
           mode: 'PARCEL', // carrier eligibility sets the real mode at booking (V2)
           status: 'PLANNED',
           ratedCostCents: hop.costCents,
+          billTo: hop.billTo, // PS-7 per-hop freight bearer (the ledger attribution)
           shipFromJson: hop.from,
           shipToJson: hop.to,
         },
