@@ -5493,6 +5493,8 @@ model ChannelOrderLine {
   quantity             Int
   unitPrice            Decimal      @db.Decimal(10, 2)
   title                String?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
   channelOrder         ChannelOrder @relation(fields: [channelOrderId], references: [id], onDelete: Cascade)
 
   @@index([channelOrderId])
