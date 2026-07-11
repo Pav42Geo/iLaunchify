@@ -128,6 +128,10 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   BUILD_OBJECT_SUBMITTED: 'proofs',
   BUILD_OBJECT_CHANGES_REQUESTED: 'proofs',
   BUILD_OBJECT_APPROVED: 'proofs',
+  // Milestone terms are money conversations → 'orders' like the brief events.
+  MILESTONE_TERMS_PROPOSED: 'orders',
+  MILESTONE_TERMS_AGREED: 'orders',
+  MILESTONE_TERMS_DECLINED: 'orders',
   PARTNER_APPLIED: 'account',
   PARTNER_SUBMITTED: 'account',
   PACKAGING_APPROVED: 'account',

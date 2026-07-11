@@ -297,6 +297,19 @@ export async function proposeMilestoneTerms(
     payload: { roomId: ctx.roomId, kind: m.kind, amount, note },
   })
 
+  await dispatchNotification({
+    userId: ctx.counterpartUserId,
+    event: 'MILESTONE_TERMS_PROPOSED',
+    audience: 'creator',
+    data: {
+      roomId: ctx.roomId,
+      milestoneKind: m.kind,
+      amount,
+      byName: ctx.actorName,
+      ...(note ? { note } : {}),
+    },
+  })
+
   return { ok: true }
 }
 
@@ -334,6 +347,18 @@ export async function agreeMilestoneTerms(ctx: RoomCtx, milestoneId: string): Pr
     fromValue: 'PROPOSED',
     toValue: 'AGREED',
     payload: { roomId: ctx.roomId, kind: m.kind, amount: m.amount.toString() },
+  })
+
+  await dispatchNotification({
+    userId: ctx.counterpartUserId,
+    event: 'MILESTONE_TERMS_AGREED',
+    audience: 'partner',
+    data: {
+      roomId: ctx.roomId,
+      milestoneKind: m.kind,
+      amount: m.amount.toString(),
+      byName: ctx.actorName,
+    },
   })
 
   return { ok: true }
@@ -379,6 +404,18 @@ export async function declineMilestoneTerms(
     fromValue: 'PROPOSED',
     toValue: 'UNSET',
     payload: { roomId: ctx.roomId, kind: m.kind, note },
+  })
+
+  await dispatchNotification({
+    userId: ctx.counterpartUserId,
+    event: 'MILESTONE_TERMS_DECLINED',
+    audience: 'partner',
+    data: {
+      roomId: ctx.roomId,
+      milestoneKind: m.kind,
+      byName: ctx.actorName,
+      ...(note ? { note } : {}),
+    },
   })
 
   return { ok: true }

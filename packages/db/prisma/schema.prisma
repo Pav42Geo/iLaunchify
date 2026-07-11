@@ -4803,6 +4803,9 @@ enum NotificationEvent {
   BUILD_OBJECT_SUBMITTED // a room object version was submitted for review → notify the other side
   BUILD_OBJECT_CHANGES_REQUESTED // reviewer requested changes → notify submitter
   BUILD_OBJECT_APPROVED // reviewer approved the object → notify submitter
+  MILESTONE_TERMS_PROPOSED // maker proposed milestone amount + scope → notify creator (additive 2026-07-10)
+  MILESTONE_TERMS_AGREED // creator agreed to the terms → notify partner
+  MILESTONE_TERMS_DECLINED // creator declined — maker can re-propose → notify partner
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

@@ -26,6 +26,9 @@ export interface TemplateData {
   BUILD_OBJECT_SUBMITTED: { roomId: string; objectKind: string; version?: number; byName?: string }
   BUILD_OBJECT_CHANGES_REQUESTED: { roomId: string; objectKind: string; version?: number; byName?: string; note?: string }
   BUILD_OBJECT_APPROVED: { roomId: string; objectKind: string; version?: number; byName?: string }
+  MILESTONE_TERMS_PROPOSED: { roomId: string; milestoneKind: string; amount: string; byName?: string; note?: string }
+  MILESTONE_TERMS_AGREED: { roomId: string; milestoneKind: string; amount?: string; byName?: string }
+  MILESTONE_TERMS_DECLINED: { roomId: string; milestoneKind: string; byName?: string; note?: string }
   PACKAGING_APPROVED: { name: string; category?: string }
   PACKAGING_REJECTED: { name: string; notes?: string }
   DISPATCH_RECEIVED: { orderId: string; brandName?: string; type: string }
@@ -221,6 +224,13 @@ const OBJECT_KIND_LABEL: Record<string, string> = {
   SPEC_SHEET: 'spec sheet',
 }
 
+const MILESTONE_KIND_LABEL: Record<string, string> = {
+  DISCOVERY: 'Discovery',
+  SAMPLE: 'Sample',
+  TOOLING: 'Tooling',
+  PRODUCTION: 'Production',
+}
+
 export function renderTemplate<E extends NotificationEvent>(
   event: E,
   data: TemplateData[E],
@@ -336,6 +346,35 @@ export function renderTemplate<E extends NotificationEvent>(
       return {
         title: `${kind[0]?.toUpperCase()}${kind.slice(1)} approved ✓`,
         body: `${d.byName ?? 'The reviewer'} approved the ${kind}${d.version ? ` (v${d.version})` : ''} — it's locked into the decision log. On to the next step.`,
+        link: `/rooms/${d.roomId}`,
+      }
+    }
+    case 'MILESTONE_TERMS_PROPOSED': {
+      const d = data as TemplateData['MILESTONE_TERMS_PROPOSED']
+      const mk = MILESTONE_KIND_LABEL[d.milestoneKind] ?? d.milestoneKind.toLowerCase()
+      return {
+        title: `${d.byName ?? 'Your maker'} proposed ${mk} terms — $${d.amount}`,
+        body: d.note
+          ? `Scope: “${d.note}”. Review and agree (or decline) in the collaboration room.`
+          : 'Review the proposed amount and scope in the collaboration room — agree or decline.',
+        link: `/rooms/${d.roomId}`,
+      }
+    }
+    case 'MILESTONE_TERMS_AGREED': {
+      const d = data as TemplateData['MILESTONE_TERMS_AGREED']
+      const mk = MILESTONE_KIND_LABEL[d.milestoneKind] ?? d.milestoneKind.toLowerCase()
+      return {
+        title: `${d.byName ?? 'The creator'} agreed to the ${mk} terms ✓`,
+        body: `${d.amount ? `$${d.amount} is locked in. ` : ''}Funding with payment protection opens once payments verification completes — the terms are in the decision log.`,
+        link: `/rooms/${d.roomId}`,
+      }
+    }
+    case 'MILESTONE_TERMS_DECLINED': {
+      const d = data as TemplateData['MILESTONE_TERMS_DECLINED']
+      const mk = MILESTONE_KIND_LABEL[d.milestoneKind] ?? d.milestoneKind.toLowerCase()
+      return {
+        title: `${mk[0]?.toUpperCase()}${mk.slice(1)} terms declined`,
+        body: `${d.byName ?? 'The creator'} declined the proposal${d.note ? `: “${d.note}”` : ''}. Adjust the amount or scope and re-propose in the room.`,
         link: `/rooms/${d.roomId}`,
       }
     }
