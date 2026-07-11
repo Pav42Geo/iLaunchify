@@ -13,6 +13,7 @@ import Credentials from 'next-auth/providers/credentials'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prisma } from '@ilaunchify/db'
 import { checkRateLimit } from './rate-limit'
+import { isDevSignInAllowed } from './dev-guard'
 
 declare module 'next-auth' {
   interface Session {
@@ -56,8 +57,20 @@ if (process.env.AUTH_RESEND_KEY && process.env.AUTH_EMAIL_FROM) {
 // Dev-only fallback: sign in by email (must match a seeded User row).
 // Only loads when no real provider is configured AND not in production.
 // Credentials provider requires JWT sessions (not database).
-const isDevSignInOnly =
-  providers.length === 0 && process.env.NODE_ENV !== 'production'
+// Predicate lives in ./dev-guard (unit-tested SSOT) so this can't silently drift. (H5 A3)
+const isDevSignInOnly = isDevSignInAllowed(providers.length)
+
+// Fail-closed (H5 A3): the dev Credentials provider must NEVER exist in a production
+// runtime. isDevSignInAllowed already excludes prod by construction, but assert it
+// explicitly at boot so a future refactor of that predicate can't re-open the bypass
+// in prod without tripping this. Skipped during `next build` (isDevSignInOnly is false
+// there regardless — NODE_ENV=production — so this never fires at build time).
+if (process.env.NODE_ENV === 'production' && isDevSignInOnly) {
+  throw new Error(
+    'FATAL: dev credentials sign-in resolved active in a production runtime. ' +
+      'This must never happen — configure a real provider (AUTH_RESEND_KEY / AUTH_GOOGLE_*).',
+  )
+}
 
 if (isDevSignInOnly) {
   providers.push(

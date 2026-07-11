@@ -2,6 +2,9 @@
 export { auth, handlers, signIn, signOut } from './config'
 export { requireRole, requireUser, requireSession } from './guards'
 export type { Session, User, Role } from './types'
+// Dev sign-in bypass predicates — pure, unit-tested SSOT (H5). The dev Credentials
+// provider (config.ts) and the /api/dev/login routes gate on these.
+export { isDevSignInAllowed, isDevLoginBlocked } from './dev-guard'
 
 // Admin RBAC — capability layer (docs/ADMIN_RBAC.md).
 export {
