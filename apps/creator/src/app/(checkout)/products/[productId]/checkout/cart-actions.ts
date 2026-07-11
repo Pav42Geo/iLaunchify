@@ -59,6 +59,7 @@ import {
   getOrCreateCreatorCustomer,
 } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
+import { dispatchToPartnerService } from '@ilaunchify/notifications'
 import {
   validatePackSelection,
   composePack,
@@ -538,6 +539,16 @@ export async function placeOrderFromCheckoutDraft(
             notified: rfq.notified,
           },
         })
+        // Tell the manufacturer their template was paused + how to fix it (the
+        // pause-side counterpart to COVERAGE_RESTORED). PS-8b's coverage-drop pause
+        // reuses this same event via reason:'coverage_drop' (task_cc70cd51).
+        if (product.productTemplate?.manufacturerServiceId) {
+          await dispatchToPartnerService(product.productTemplate.manufacturerServiceId, {
+            event: 'MANUFACTURER_TEMPLATE_PAUSED',
+            audience: 'partner',
+            data: { productName: product.name, reason: 'application_gap', href: '/products' },
+          }).catch(() => {})
+        }
       } catch {
         // Pause/broadcast is best-effort; the order block below is the hard gate.
       }

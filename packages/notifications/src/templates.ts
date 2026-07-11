@@ -202,6 +202,11 @@ export interface TemplateData {
     role: 'manufacturer' | 'creator'
     href: string
   }
+  MANUFACTURER_TEMPLATE_PAUSED: {
+    productName: string
+    reason: 'application_gap' | 'coverage_drop'
+    href: string
+  }
   // MM-7 — fee grace/promo started for a manufacturer.
   MANUFACTURER_FEE_GRANT_STARTED: {
     feePct: string // e.g. "0%"
@@ -907,6 +912,20 @@ export function renderTemplate<E extends NotificationEvent>(
         : {
             title: `${d.productName} is available again`,
             body: 'Printing is sorted — pick up your design and place your order whenever you\'re ready.',
+            link: d.href,
+          }
+    }
+    case 'MANUFACTURER_TEMPLATE_PAUSED': {
+      const d = data as TemplateData['MANUFACTURER_TEMPLATE_PAUSED']
+      return d.reason === 'application_gap'
+        ? {
+            title: `${d.productName} was paused — label application isn't covered`,
+            body: 'This product uses an applied decoration (e.g. pressure-sensitive label) but nothing in its workflow can apply it. Enable a co-pack route or a self-applying manufacturer, then it re-lists automatically.',
+            link: d.href,
+          }
+        : {
+            title: `${d.productName} was paused — no printer covers it`,
+            body: 'Its print coverage dropped to zero, so ordering is paused. We\'ve broadcast a capability request to qualified printers; it re-lists automatically once one is verified.',
             link: d.href,
           }
     }
