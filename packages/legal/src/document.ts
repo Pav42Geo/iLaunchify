@@ -37,17 +37,15 @@ export interface PublishedLegalDocument {
  */
 export interface LegalPrismaLike {
   legalDocument: {
-    findUnique(args: {
-      where: { slug: string }
-      include?: unknown
-    }): PromiseLike<LegalDocumentRow | null>
+    // args typed `any` at this adapter seam: Prisma's generated method signatures
+    // (SelectSubset generics, specific include/where types) can't be matched by a
+    // hand-written structural type, so we constrain only the RETURN shape.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    findUnique(args: any): PromiseLike<LegalDocumentRow | null>
   }
   legalDocumentVersion: {
-    findMany(args: {
-      where: Record<string, unknown>
-      orderBy?: unknown
-      take?: number
-    }): PromiseLike<PublishedLegalVersion[]>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    findMany(args: any): PromiseLike<PublishedLegalVersion[]>
   }
 }
 
