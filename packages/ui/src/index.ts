@@ -58,6 +58,7 @@ export * from './primitives/row-actions-menu'
 
 // Object-view components
 export * from './components/InfoTip'
+export * from './components/TurnstileWidget'
 export * from './components/SectionLabel'
 export * from './components/ElementRail'
 export * from './color'
