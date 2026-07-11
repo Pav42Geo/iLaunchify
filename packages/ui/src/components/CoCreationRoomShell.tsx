@@ -115,6 +115,11 @@ export interface CoCreationRoomShellProps {
   /** Brief's product domain (FOOD / BEVERAGE_FUNCTIONAL / SUPPLEMENT / COSMETIC
       / PET) — drives domain-specific recipe editor sections. */
   briefDomain?: string
+  /** Partner-side: create a partner-private catalog ingredient from the match
+      picker (banned-list gate + audit live in the server action). */
+  onCreateIngredient?: (input: IngredientCreateInput) => Promise<
+    { ok: true; ingredient: IngredientPick } | { ok: false; error: string }
+  >
 }
 
 /** One catalog candidate in the recipe-row match picker. */
@@ -125,6 +130,27 @@ export interface IngredientPick {
   source: string
   allergenFlags: string[]
 }
+
+/** Inputs for creating a partner-private ingredient from the room. */
+export interface IngredientCreateInput {
+  internalName: string
+  labelDeclarationName: string
+  allergenFlags: string[]
+  densityGPerML: number | null
+}
+
+/** FALCPA Big-9 for the create form's allergen multiselect. */
+const BIG9_ALLERGENS = [
+  'milk',
+  'eggs',
+  'fish',
+  'shellfish',
+  'tree_nuts',
+  'peanuts',
+  'wheat',
+  'soybeans',
+  'sesame',
+] as const
 
 /** Serialized label bundle (structural mirror of @ilaunchify/orders' RoomRecipeLabel). */
 export interface RoomRecipeLabelView {
@@ -521,6 +547,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               partnerName={props.partnerName}
               recipeLabels={props.recipeLabels ?? []}
               onSearchIngredients={props.onSearchIngredients}
+              onCreateIngredient={props.onCreateIngredient}
               briefDomain={props.briefDomain}
               onSubmitVersion={(payload) => run(() => props.onSubmitVersion(selected.id, payload))}
               onReview={(d, note) => run(() => props.onReview(selected.id, d, note))}
@@ -725,6 +752,7 @@ function ObjectDetail({
   partnerName,
   recipeLabels,
   onSearchIngredients,
+  onCreateIngredient,
   briefDomain,
   onSubmitVersion,
   onReview,
@@ -740,6 +768,9 @@ function ObjectDetail({
   partnerName: string
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
   onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
+  onCreateIngredient?: (input: IngredientCreateInput) => Promise<
+    { ok: true; ingredient: IngredientPick } | { ok: false; error: string }
+  >
   briefDomain?: string
   onSubmitVersion: (payload: Record<string, unknown>) => void
   onReview: (decision: 'APPROVE' | 'REQUEST_CHANGES', note?: string) => void
@@ -1313,6 +1344,7 @@ function ObjectDetail({
                             initialQuery={r.name}
                             pinned={!!r.ingredientId}
                             search={onSearchIngredients}
+                            create={onCreateIngredient}
                             onPick={(p) => {
                               setDraftRows((rows2) =>
                                 rows2.map((x, j) => (j === i ? { ...x, ingredientId: p.id } : x)),
@@ -1864,6 +1896,7 @@ function IngredientMatchPicker({
   initialQuery,
   pinned,
   search,
+  create,
   onPick,
   onClear,
   onClose,
@@ -1871,6 +1904,9 @@ function IngredientMatchPicker({
   initialQuery: string
   pinned: boolean
   search: (query: string) => Promise<IngredientPick[]>
+  create?: (input: IngredientCreateInput) => Promise<
+    { ok: true; ingredient: IngredientPick } | { ok: false; error: string }
+  >
   onPick: (pick: IngredientPick) => void
   onClear: () => void
   onClose: () => void
@@ -1878,6 +1914,35 @@ function IngredientMatchPicker({
   const [query, setQuery] = React.useState(initialQuery)
   const [results, setResults] = React.useState<IngredientPick[] | null>(null)
   const [loading, setLoading] = React.useState(false)
+  // Inline private-ingredient create form (banned-list gate lives server-side).
+  const [creating, setCreating] = React.useState(false)
+  const [createBusy, setCreateBusy] = React.useState(false)
+  const [createError, setCreateError] = React.useState<string | null>(null)
+  const [form, setForm] = React.useState({ internalName: '', declarationName: '', density: '' })
+  const [formAllergens, setFormAllergens] = React.useState<string[]>([])
+
+  function openCreate() {
+    setForm({ internalName: query.trim(), declarationName: '', density: '' })
+    setFormAllergens([])
+    setCreateError(null)
+    setCreating(true)
+  }
+
+  async function submitCreate() {
+    if (!create || !form.internalName.trim()) return
+    setCreateBusy(true)
+    setCreateError(null)
+    const density = Number(form.density)
+    const res = await create({
+      internalName: form.internalName.trim(),
+      labelDeclarationName: form.declarationName.trim() || form.internalName.trim(),
+      allergenFlags: formAllergens,
+      densityGPerML: form.density.trim() && Number.isFinite(density) && density > 0 ? density : null,
+    })
+    setCreateBusy(false)
+    if (res.ok) onPick(res.ingredient)
+    else setCreateError(res.error)
+  }
 
   // Debounced search — also fires once on mount with the row's name.
   React.useEffect(() => {
@@ -1920,13 +1985,92 @@ function IngredientMatchPicker({
           ✕
         </Button>
       </div>
+      {creating ? (
+        <div className="mt-s-2 rounded-lg border border-ink-200 bg-white p-s-3">
+          <div className="text-ui-caption font-bold">New private ingredient</div>
+          <div className="mt-s-2 flex flex-col gap-s-2">
+            <Input
+              aria-label="Internal name"
+              value={form.internalName}
+              placeholder="Internal name (recipe / cost / COA)"
+              onChange={(e) => setForm((f) => ({ ...f, internalName: e.target.value }))}
+            />
+            <Input
+              aria-label="Label declaration name"
+              value={form.declarationName}
+              placeholder="Label declaration name (defaults to internal name)"
+              onChange={(e) => setForm((f) => ({ ...f, declarationName: e.target.value }))}
+            />
+            <div className="flex flex-wrap gap-s-1">
+              {BIG9_ALLERGENS.map((a) => {
+                const on = formAllergens.includes(a)
+                return (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() =>
+                      setFormAllergens((xs) => (on ? xs.filter((x) => x !== a) : [...xs, a]))
+                    }
+                    className={cn(
+                      'rounded-pill px-s-2 py-s-1 text-ui-label tracking-normal transition',
+                      on ? 'bg-warning-50 text-warning-700' : 'bg-ink-100 text-ink-600 hover:text-ink-900',
+                    )}
+                  >
+                    {on ? '⚠ ' : ''}
+                    {a.replace('_', ' ')}
+                  </button>
+                )
+              })}
+            </div>
+            <Input
+              aria-label="Density grams per milliliter"
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.density}
+              placeholder="Density g/mL (optional — volume↔mass conversion)"
+              onChange={(e) => setForm((f) => ({ ...f, density: e.target.value }))}
+            />
+          </div>
+          {createError ? (
+            <p className="mt-s-2 text-ui-label normal-case tracking-normal text-danger-700">
+              {createError}
+            </p>
+          ) : null}
+          <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
+            Saved as your private, self-attested catalog row. Add nutrition data in your product
+            editor so the facts label computes real values for it.
+          </p>
+          <div className="mt-s-2 flex gap-s-2">
+            <span className="flex-1" />
+            <Button variant="ghost" size="sm" onClick={() => setCreating(false)}>
+              Back
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={createBusy || !form.internalName.trim()}
+              onClick={submitCreate}
+            >
+              {createBusy ? 'Creating…' : 'Create & match'}
+            </Button>
+          </div>
+        </div>
+      ) : (
       <div className="mt-s-1 max-h-44 overflow-y-auto">
         {loading && !results ? (
           <p className="px-s-2 py-s-1 text-ui-label normal-case tracking-normal text-ink-500">Searching…</p>
         ) : results && results.length === 0 ? (
-          <p className="px-s-2 py-s-1 text-ui-label normal-case tracking-normal text-ink-500">
-            No catalog match — add it as a private ingredient in your product editor, then match here.
-          </p>
+          <div className="px-s-2 py-s-1">
+            <p className="text-ui-label normal-case tracking-normal text-ink-500">
+              No catalog match.
+            </p>
+            {create ? (
+              <Button variant="outline" size="sm" className="mt-s-1" onClick={openCreate}>
+                ＋ Create private ingredient “{query.trim() || '…'}”
+              </Button>
+            ) : null}
+          </div>
         ) : (
           (results ?? []).map((p) => (
             <button
@@ -1952,7 +2096,17 @@ function IngredientMatchPicker({
             </button>
           ))
         )}
+        {create && results && results.length > 0 ? (
+          <button
+            type="button"
+            onClick={openCreate}
+            className="mt-s-1 w-full rounded-md px-s-2 py-s-1 text-left text-ui-label normal-case tracking-normal text-pink-700 transition hover:bg-white"
+          >
+            ＋ None of these — create a private ingredient
+          </button>
+        ) : null}
       </div>
+      )}
     </div>
   )
 }
