@@ -20,13 +20,31 @@ export const LOGISTICS_GATE_KEYS = [
   'channel_inbound:TIKTOK_FBT',
   'destination:HOLD_AT_MANUFACTURER',
   'destination:CHANNEL_INBOUND',
+  // Graph resolution / honey-problem gates (PS-7 §8.2.4 / §8.4). The publish +
+  // checkout validators read these; keeping them here keeps the admin Gates page
+  // and the enforcement in one vocabulary.
+  'graph:enforce_publish_gate',
+  'graph:publish_allow_copack_application',
+  'graph:checkout_allow_fc_relabel',
+  'graph:enforce_assembly_resolution',
 ] as const
 
 export type LogisticsGateKey = (typeof LOGISTICS_GATE_KEYS)[number]
 
-/** Everything defaults OFF (L1 lock). AMBIENT/PROTECT_HEAT need no gate. */
+/**
+ * Per-key ship defaults. Transport/capability gates ship OFF (L1 lock).
+ * The graph-resolution POLICY knobs ship ON (their recommended posture), so a
+ * flip of the enforce MASTER activates a sensible policy; only the master
+ * (`graph:enforce_publish_gate`) ships OFF, keeping the gate advisory until an
+ * admin turns it on. AMBIENT/PROTECT_HEAT need no gate.
+ */
+const GATE_ON_BY_DEFAULT: Partial<Record<LogisticsGateKey, boolean>> = {
+  'graph:publish_allow_copack_application': true,
+  'graph:checkout_allow_fc_relabel': true,
+  'graph:enforce_assembly_resolution': true,
+}
 const GATE_DEFAULTS: Record<LogisticsGateKey, boolean> = Object.fromEntries(
-  LOGISTICS_GATE_KEYS.map((k) => [k, false]),
+  LOGISTICS_GATE_KEYS.map((k) => [k, GATE_ON_BY_DEFAULT[k] ?? false]),
 ) as Record<LogisticsGateKey, boolean>
 
 /** Full gate map: DB rows merged over OFF defaults. Unknown DB keys ride along. */

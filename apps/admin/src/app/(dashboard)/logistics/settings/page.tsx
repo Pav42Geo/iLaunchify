@@ -84,6 +84,33 @@ const GATE_META: Record<string, { label: string; group: string; description: str
     description:
       'Checkout destination: ship directly into a connected sales-channel FC. Needs at least one enabled channel adapter above.',
   },
+  // PS-7 graph resolution (the "honey problem", §8.2.4 / §8.4). The publish +
+  // checkout validators consult these. The MASTER ships OFF (advisory); the
+  // three policy knobs ship ON.
+  'graph:enforce_publish_gate': {
+    label: 'Enforce publish gate (master)',
+    group: 'Graph resolution',
+    description:
+      'OFF = the graph-completeness check is advisory at publish. Flip ON to BLOCK publishing a decorated template that cannot resolve an application point (no self-apply manufacturer, no co-pack route).',
+  },
+  'graph:publish_allow_copack_application': {
+    label: 'Publish: co-pack node counts',
+    group: 'Graph resolution',
+    description:
+      "ON = a template's co-pack node (a co-packer PartnerService with appliesLabels) is a valid application point at publish. OFF = the bound manufacturer must self-apply (strictest).",
+  },
+  'graph:checkout_allow_fc_relabel': {
+    label: 'Checkout: FC relabel counts',
+    group: 'Graph resolution',
+    description:
+      'ON (§8.1a) = a verified FC RELABEL value-added service resolves the application point at checkout when the graph would otherwise be unresolved. OFF = block the order instead.',
+  },
+  'graph:enforce_assembly_resolution': {
+    label: 'Enforce assembly resolution',
+    group: 'Graph resolution',
+    description:
+      'ON = carton / multipack templates need an assembler (the manufacturer self-assembles or a co-packer performs assembly). OFF = skip the assembly-point check.',
+  },
 }
 
 export default async function LogisticsSettingsPage() {
