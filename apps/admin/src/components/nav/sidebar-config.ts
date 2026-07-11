@@ -282,6 +282,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy', capability: 'tickets:admin' },
         { kind: 'item', label: 'Partner Access', icon: Globe, href: '/settings/partner-access', capability: 'platform:admin' },
         { kind: 'item', label: 'Partner Agreements', icon: ScrollText, href: '/settings/agreements', capability: 'platform:admin' },
+        { kind: 'item', label: 'Legal', icon: Scale, href: '/settings/legal', capability: 'platform:admin' },
         { kind: 'item', label: 'Partner Nomination', icon: Route, href: '/settings/nomination', capability: 'platform:admin' },
         {
           kind: 'group',

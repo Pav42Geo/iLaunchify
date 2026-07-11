@@ -163,6 +163,11 @@ export const AUDIT_ENTITY_TYPES = [
   'CoCreationRoom', // private NDA'd collaboration room
   'BuildObject', // structured recipe/label/packaging/sample object + FSM
   'RoomMilestone', // escrow milestone (Discovery→Sample→Tooling→Production)
+  // Legal document management (docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md, 2026-07-11)
+  'LegalDocument', // legal document identity (Terms/Privacy/Agreement/Notice)
+  'LegalDocumentVersion', // immutable versioned rendering + e-sign evidence binding
+  'LegalDocumentFile', // uploaded authoritative file per version
+  'LegalAcceptance', // per-user consent ledger row (ESIGN/UETA)
 ] as const
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number]
 
