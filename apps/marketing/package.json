@@ -16,6 +16,7 @@
     "@ilaunchify/auth": "workspace:*",
     "@ilaunchify/academy": "workspace:*",
     "@ilaunchify/db": "workspace:*",
+    "@ilaunchify/legal": "workspace:*",
     "@ilaunchify/marketplace": "workspace:*",
     "@ilaunchify/notifications": "workspace:*",
     "@ilaunchify/orders": "workspace:*",

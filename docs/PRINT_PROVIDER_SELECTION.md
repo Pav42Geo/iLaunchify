@@ -344,6 +344,17 @@ cost itself stays a production line item — never blended into shipping.
   8.2 now is a prerequisite investment in the V2 moat, not just a bug fix.
 
 ### 8.5 Phase — PS-7 (with a scope guard)
+
+> **STATUS 2026-07-11 (kickoff audit + build, CW):** schema 8.1/8.1a, the pure resolver +
+> validator + tests, partner labeling settings, admin VAS verification, and checkout FC-finalize
+> offers + creator-billed label hop (PS-3c/3d) were ALREADY BUILT (commit 6908bd09 et al).
+> Landed today: pure `planShipmentHops` hop planner + 9 tests (`packages/orders/src/hop-planner.ts`
+> — LABELS / GOODS_TRANSFER / FINISHED_GOODS emission, HOLD ship-back, bearer attribution),
+> `OrderDispatch.shipToNodeId` (additive, **gates on db:push + db:generate**), and seed gate
+> `billing:platform_pays_interpartner_freight` (OFF = creator pays, per the DECIDED bearer).
+> Remaining = the [CODE-coordinated] wiring only: see `docs/HANDOFF-TO-CODE-ps7-per-hop-legs.md`
+> (createDispatches → validate + plan + ShipmentLeg emission, manifest label-leg addressing,
+> publish/checkout gates per the coverage-guard decision).
 - **[CW]** `labelApplication`/`appliesLabels` + `FcValueAddedService` model (8.1a) schema +
   backfill (rides the PS-1/PS-6 migration) + partner editor cards (FC VAS card admin-verified
   before ACTIVE)
@@ -354,8 +365,32 @@ cost itself stays a production line item — never blended into shipping.
 - **[CODE-coordinated]** dispatch-planner + manifest: `shipToNodeId`, per-hop legs, publish +
   checkout pre-flight gates (routing/manifest are shared-hot — single-writer handoff per repo rules)
 - **[CW]** checkout: one Shipping line + per-hop breakdown; UNRESOLVED fix-it flow copy
-- **[PAVEL]** policy sign-off: who eats the printer→applier freight (creator pays in total vs
-  platform margin) + the UNRESOLVED checkout fallback order
+- **[PAVEL — DECIDED 2026-07-11]** printer→applier freight bearer: **CREATOR pays by default**
+  — the hop is quoted at checkout inside the single Shipping line (per-hop breakdown per 8.3).
+  Bearer is **admin-tunable**: new setting `interPartnerFreightBearer = CREATOR (default) |
+  PLATFORM` (LogisticsSetting pattern, same family as first-leg margin bps; per-hop-type
+  granularity only if a real case demands it). Since each hop is already a separate ledger
+  item (8.3), flipping the bearer later is a billing-attribution change, not a routing change.
+- **[PAVEL — DECIDED 2026-07-11]** UNRESOLVED fallback: **eliminated as a creator-facing
+  checkout flow — no fix-it menu.** "Play smart not hard": the gate moves to PUBLISH and stays
+  there via a coverage guard. Generalizes §10 from printing to EVERY dependent service leg:
+  1. **Coverage state on the product**: `COVERED` | `COVERED_BY_OVERRIDE` | `COVERAGE_GAP`.
+     Publish gate reads this state; on GAP the product shows a capability warning ("Print
+     incompatibility — no matched print provider") and cannot go live.
+  2. **Admin service-assignment escape hatch**: admin pins a specific service he trusts onto
+     the gap → `COVERED_BY_OVERRIDE`, audited (pinned-picks / FC-override pattern).
+     Guardrail: override may relax COMMERCIAL/soft parameters only — NEVER physical hard
+     filters (decoration method equipment, temp class, hazmat). Those stay hard per the
+     locked temp/hazmat-are-filters-never-weights invariant.
+  3. **Coverage guard (event-driven)**: any partner capability change (deactivation, cert
+     lapse, claim revocation) re-validates affected products; on gap → "ordering paused",
+     auto-fire Capability RFQ (PS-8b), notify admin + manufacturer. Coverage loss is caught
+     at the event, not at checkout.
+  4. **Auto-relist**: admin can queue a gapped product to go live automatically on
+     `COVERAGE_RESTORED` (notification already exists in PS-8).
+  5. **Checkout pre-flight stays belt-and-suspenders** but its ONLY behavior is block
+     ("temporarily unavailable") + flip product to GAP + notify — the creator never sees
+     supply-chain repair options (orchestration thesis: hide the graph).
 PS-7's validator must land BEFORE PS-3 (manual printer pinning) goes live — pinning a printer
 into a graph with no application point would manufacture the honey problem on demand.
 

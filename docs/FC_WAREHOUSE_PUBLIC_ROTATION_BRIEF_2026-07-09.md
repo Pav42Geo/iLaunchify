@@ -1,6 +1,17 @@
 # FC / Warehouse Public Rotation — Decision Brief (2026-07-09)
 
-**Status: OPEN — needs Pavel's decision.** Companion to the LOCKED print-pool rule
+**Status: DECIDED + BUILT 2026-07-09 (Pavel: "Solid YES" — bar producers).** Implemented as
+**Option A** (zero-schema hard gate): `isPublicFcPoolEligible` + `PUBLIC_FC_PARTNER_FILTER`
+(`packages/orders/src/fc-pool.ts`) exclude any partner running `MANUFACTURING`/`COPACKING` from
+the public FC candidate queries in checkout (`fulfillment-actions.ts`, `cart-actions.ts` — 6
+sites). `HOLD_AT_MANUFACTURER` (own goods, resolved from `ctx.manufacturer`) is untouched. The
+Option-C opt-in flag remains the documented upgrade path if a producer should ever offer public
+3PL. Open questions #2 (also require `PUBLIC`?) and the participation-mode nuance are still open.
+The analysis below is retained as the rationale.
+
+---
+
+Companion to the LOCKED print-pool rule
 (`isPublicPrintPoolEligible`; SMART_ROTATION_ENGINE.md §2.2 step 0). That rule settled printing:
 the public pool is only for pure Print Providers. This brief asks the parallel question for
 **fulfillment / warehousing** — and argues it is *not* a clean copy-paste of the print rule.

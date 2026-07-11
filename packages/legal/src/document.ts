@@ -29,20 +29,25 @@ export interface PublishedLegalDocument {
   currentVersion: PublishedLegalVersion
 }
 
-/** Minimal structural slice of the Prisma client this module needs (DI seam). */
+/**
+ * Minimal structural slice of the Prisma client this module needs (DI seam).
+ * Returns are typed `PromiseLike` (not `Promise`) so the real Prisma client —
+ * whose `findUnique` returns a thenable `Prisma__…Client`, not a native Promise —
+ * is structurally assignable without a cast at the call site.
+ */
 export interface LegalPrismaLike {
   legalDocument: {
     findUnique(args: {
       where: { slug: string }
       include?: unknown
-    }): Promise<LegalDocumentRow | null>
+    }): PromiseLike<LegalDocumentRow | null>
   }
   legalDocumentVersion: {
     findMany(args: {
       where: Record<string, unknown>
       orderBy?: unknown
       take?: number
-    }): Promise<PublishedLegalVersion[]>
+    }): PromiseLike<PublishedLegalVersion[]>
   }
 }
 

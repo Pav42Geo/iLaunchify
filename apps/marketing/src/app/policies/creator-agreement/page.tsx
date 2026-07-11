@@ -1,5 +1,7 @@
 import { LegalDocument } from '@/components/LegalDocument'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: 'Creator Agreement — iLaunchify',
   description: 'iLaunchify Creator Agreement. Draft pending legal review.',

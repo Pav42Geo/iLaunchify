@@ -79,7 +79,9 @@ All knobs admin-gated, one row per serviceType, audited on every change (AuditLo
    (`routing.ts`), the RFQ broadcast (`print-coverage.ts`), public discovery
    (`marketing/print-providers.ts`), and capability-request claims + nav. Corollary: a service
    "going live" in Activation Setup means *usable in the partner's own cycle* — it does NOT
-   imply public-pool entry. (FC/warehouse rotation: same principle NOT yet applied — deferred.)
+   imply public-pool entry. (FC/warehouse: same rule now applied — `isPublicFcPoolEligible` /
+   `PUBLIC_FC_PARTNER_FILTER` in `fc-pool.ts` bar producers from the public FC candidate queries;
+   `HOLD_AT_MANUFACTURER` own-goods path untouched. See FC_WAREHOUSE_PUBLIC_ROTATION_BRIEF_2026-07-09.md.)
 1. **Hard filters first, always** — §7 capability + ops gates (ACTIVE, Stripe, blackout,
    offering). Rotation NEVER rescues a failed filter. Pinned picks (PS-3) and configuration-time
    bindings bypass rotation entirely — a manual pick is never rotated away.
