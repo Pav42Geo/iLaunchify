@@ -15,6 +15,9 @@
 import { prisma } from '@ilaunchify/db'
 import type { StorageBillingUnit } from '@ilaunchify/db'
 import { requirePartnerActor } from '@ilaunchify/auth'
+// Server-safe subpath — the pure money.ts, NOT the @ilaunchify/ui barrel (which
+// re-exports 'use client' components that must not be pulled into a server action).
+import { formatCents } from '@ilaunchify/ui/money'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
@@ -70,9 +73,6 @@ function isNonNegativeInt(v: number | null): boolean {
   return v === null || (Number.isInteger(v) && v >= 0)
 }
 
-function formatDollars(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
-}
 
 /**
  * Save the storage offering for one of the partner's own PRODUCING services.
@@ -127,7 +127,7 @@ export async function savePartnerStorageSettings(
       const unitLabel = input.storageBillingUnit === 'PALLET_MONTH' ? 'pallet' : 'cubic foot'
       return {
         ok: false,
-        error: `Storage rates must be between ${formatDollars(band.minCents)} and ${formatDollars(band.maxCents)} per ${unitLabel} per month (the admin-approved band). Contact iLaunchify ops if your pricing sits outside it.`,
+        error: `Storage rates must be between ${formatCents(band.minCents)} and ${formatCents(band.maxCents)} per ${unitLabel} per month (the admin-approved band). Contact iLaunchify ops if your pricing sits outside it.`,
       }
     }
   }

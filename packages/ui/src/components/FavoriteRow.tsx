@@ -3,6 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { cn } from '../lib/utils'
+import { formatCents } from '../lib/money'
 import { productGradient, type ProductGradient } from '../tokens/colors'
 
 /**
@@ -47,9 +48,6 @@ function stableGradient(seed: string): ProductGradient {
   let h = 0
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0
   return GRADIENT_KEYS[Math.abs(h) % GRADIENT_KEYS.length]!
-}
-function money(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
 }
 
 export interface FavoriteRowCert {
@@ -219,11 +217,11 @@ export function FavoriteRow({
 
         {typeof priceCents === 'number' ? (
           <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-[16px] font-semibold text-ink-900">{money(priceCents)}</span>
+            <span className="text-[16px] font-semibold text-ink-900">{formatCents(priceCents)}</span>
             <span className="text-[12px] text-ink-500">/ unit</span>
             {dropped && (
               <span className="inline-flex items-center gap-1 rounded-full bg-success-100 px-2 py-0.5 text-[11px] font-medium text-success-800">
-                ▼ dropped {dropPct}% · was {money(priceSnapshotCents!)} when saved
+                ▼ dropped {dropPct}% · was {formatCents(priceSnapshotCents!)} when saved
               </span>
             )}
           </div>
