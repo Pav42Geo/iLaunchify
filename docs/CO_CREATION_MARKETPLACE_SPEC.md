@@ -304,29 +304,32 @@ Emit events for: brief posted, interests per brief, time-to-first-interest, shor
   - **V1:** creator access bundled in **Builder + Agency** (Maker sees an upgrade CTA — gate in `packages/auth`); manufacturer pool access **free** for verified partners (NO pool subscription — supplier-pays-to-access rejected: MFG.com churn, gamed Alibaba Gold badges, conflicts with never-sell-the-badge); milestones carry no platform fee (`RoomMilestone.feeBps` snapshot = 0).
   - **V1.5 (post-liquidity):** apply the existing merit ladder (4.5/2.5/0, `resolveManufacturerMeritFeeBps`) to milestone **releases** — shadow-inert behind a new `applyMeritFeeToMilestones` admin toggle, same rollout pattern as the dispatch merit fee. Snapshot bps/cents at funding.
   - **Mechanics:** Stripe separate-charges-and-transfers, one charge per milestone funding, platform fee netted at transfer (not `application_fee_amount`); US hold window ≤ 2 years. **User-facing copy says "milestone payment protection", never "escrow"** (Stripe disclaims escrow; internal `FUNDED_ESCROW` enum unaffected). Anti-circumvention + float terms go in the D7 counsel bundle (price the exit, don't block it — Upwork pattern).
-- **D-CC2 — Interest limits:** max concurrent interests per partner per tier; anti-spam throttle.
-- **D-CC3 — Reversibility:** can a creator switch makers after selection but before the Sample milestone? (Prototype implies yes.)
+- **D-CC2 — Interest limits: DECIDED 2026-07-10 (admin-tunable, BUILT)** — `CoCreationSettings.maxOpenInterestsPerPartner` (default 10, 0 = unlimited) on concurrent SUBMITTED/SHORTLISTED interests, enforced in `expressInterest`; a 20/day rate limit backstops scripted spam. Managed at `/product-builder?view=settings`.
+- **D-CC3 — Reversibility: DECIDED 2026-07-10 (admin-choosable policy, BUILT)** — 7-policy ladder in `CoCreationSettings.makerSwitchPolicy` (DISABLED · WITHIN_GRACE_DAYS · UNTIL_NDA_SIGNED · **UNTIL_FIRST_SUBMISSION (default — unpaid maker labor starts at the first submitted version)** · UNTIL_TERMS_AGREED · UNTIL_RECIPE_APPROVED · UNTIL_FUNDED) + `maxMakerSwitches` (1). A funded milestone is a HARD stop under every policy. Pure engine `packages/orders/maker-switch.ts` (tested); switch archives the room CLOSED_CANCELLED with its decision log, old interest → PASSED, passed interests reopen → SHORTLISTED, brief → SHORTLISTING. Rooms are 1:N per brief since this decision (`CoCreationRoom.briefId` unique → index).
 - **D-CC4 — IP/NDA copy:** blocked on counsel (D7 cluster). Ship room with placeholder + gate go-live on legal.
 - **D-CC5 — `uuid` vs `cuid`: DECIDED 2026-07-10** — `uuid()` on all new co-creation models (built).
-- **D-CC6 — Merit in matching weight:** how heavily merit/rating ranks the pool + shortlist.
+- **D-CC6 — Merit in matching weight: DECIDED 2026-07-10 (admin-tunable, BUILT)** — merit is a WEIGHT, never a gate: default 25 of 100 (claims 40 / volume 20 / merit 25 / location 15), each admin-tunable in `CoCreationSettings.*WeightPct` (scorer renormalizes). Low-merit makers keep bidding; creators judge with full information (stars + review count on the interest card) — redemption comes from delivering, not from visibility throttling.
 - **D-CC7 — Category scope for launch: DECIDED 2026-07-10** — all 13 categories open from day one (Pavel overrode the one-category recommendation); no schema gate, keep an admin-tunable allowlist escape hatch if liquidity spreads too thin.
 
 ---
 
 ## 16. Build checklist
 
-**P0 — Concierge MVP (prove the loop, one niche/category):**
-- [ ] Schema: `ProductBrief`, `BriefInterest`, `CoCreationRoom`, `BuildObject(+Version/Comment)`, `RoomMilestone`, `RoomMessage`, `RoomEvent` + enums (`prisma-migrator`; `db:push` → `db:generate` → clear `.next`).
-- [ ] `brief-fsm.ts` + `room-object-fsm.ts` in `packages/orders` (+ tests) with audit writes.
-- [ ] Creator **Brief Builder** (`/products/new/brief`) — two doors, wizard, live preview, private-field split. Match prototype ①.
-- [ ] Public-projection function (staged reveal) + fit routing (`suggestNiches`).
-- [ ] Partner **Opportunity Pool** (`/opportunities`) + **Express Interest** (terms only). Match prototype ②.
-- [ ] Creator **Shortlist & Selection** (`/briefs/[id]/interests`) + select → NDA + room + milestone-1 escrow. Match ③.
-- [ ] **Collaboration Room** (both views) — objects, versioning, comments, approve/request-changes, decision log, messages. Reuse Add-Product form bodies. Match ④/⑤/⑥.
-- [ ] Notifications for the P0 events.
-- [ ] Admin: `/briefs` + `/rooms` (v2 pattern, read-only oversight).
+**P0 — Concierge MVP (prove the loop, one niche/category): ✅ COMPLETE 2026-07-10 (and beyond — see list below)**
+- [x] Schema: `ProductBrief`, `BriefInterest`, `CoCreationRoom`, `BuildObject(+Version/Comment)`, `RoomMilestone`, `RoomMessage`, `RoomEvent` + enums (`prisma-migrator`; `db:push` → `db:generate` → clear `.next`).
+- [x] `brief-fsm.ts` + `room-object-fsm.ts` in `packages/orders` (+ tests) with audit writes.
+- [x] Creator **Brief Builder** (`/products/new/brief`) — single wizard (door screen removed per Pavel), live preview, private-field split, real catalog **benchmark** button. Match prototype ①.
+- [x] Public-projection function (staged reveal) + fit routing.
+- [x] Partner **Opportunity Pool** (`/opportunities`) + **Express Interest** (terms only). Match prototype ② incl. fresh ring, honest ✓/△ claim marks, real response-window countdown, live "N new briefs" bar.
+- [x] Creator **Shortlist & Selection** (`/briefs/[id]/interests`) + select → NDA-pending room + Discovery milestone (funding Stripe-gated). Match ③.
+- [x] **Collaboration Room** (both views) — objects, versioning, comments, approve/request-changes, decision log, messages, full-screen, room switcher, live domain-aware facts labels (all 6 labeling types, print-grade SVG artifacts), ingredient match picker + in-room private-ingredient creation, supplement blends, milestone TERMS negotiation. Match ④/⑤/⑥.
+- [x] Notifications for the P0 events (+ milestone terms + matched-brief fan-out).
+- [x] Admin: **Product Builder** — briefs + rooms oversight + **Co-Creation Settings** tab (all knobs below).
+- [x] CLOSED_WON materialization → template-less Product + Recipe (§17 amended: no Order draft — ordering runs through normal checkout).
 
-**P1 — Self-serve + escrow depth:** milestone escrow (Discovery→Production) + release-on-approval; two-sided reviews into ranking; dispute surface; open 2nd/3rd category.
+**Built beyond P0 (2026-07-10):** admin Co-Creation Settings singleton (`/product-builder?view=settings`) — **module kick-off switch (OFF by default; flipping it on is the launch action)**, pool-access policy (mfrs all / co-packers recipe-door only / equal), pool exclusivity window + fit floor, response window (enforced + honest countdown), D-CC2/3/6 knobs, benchmark min sample, shortlist cap, promoted-interests knobs. Promoted interests V1 (token ledger + admin grants + labeled pinned slots; checkout Stripe-gated). Maker switching (D-CC3). OTC domain readiness (dormant until the Domain toggle).
+
+**P1 — Self-serve + escrow depth:** milestone escrow funding/release-on-approval (Stripe-gated; TERMS negotiation already built); two-sided reviews into ranking; dispute surface; promo-token checkout. (Categories already all open per D-CC7.)
 
 **P2 — Scale/moat:** AI brief-assist (V1.5), label compliance pre-check, self-design on dieline, sample logistics, then V2 pooling + multi-partner graph.
 
@@ -334,7 +337,7 @@ Emit events for: brief posted, interests per brief, time-to-first-interest, shor
 
 ## 17. Acceptance (P0 "done")
 
-A creator posts a brief (either door) → it surfaces to ≥1 matched verified partner → partner expresses interest (no formula leaked) → creator shortlists, compares, selects → NDA + room + escrowed Discovery milestone → maker submits a recipe object → creator approves/requests changes → decision log + audit rows exist for every transition → on approval the recipe materializes into `Recipe`/`RecipeIngredient` and an `Order` draft. Tenant-isolation tests pass (a non-member partner cannot read private formula).
+A creator posts a brief (either door) → it surfaces to ≥1 matched verified partner → partner expresses interest (no formula leaked) → creator shortlists, compares, selects → NDA-pending room + Discovery milestone (terms negotiable; funding Stripe-gated) → maker submits a recipe object → creator approves/requests changes → decision log + audit rows exist for every transition → on CLOSED_WON the recipe materializes into a template-less `Product` + `Recipe`/`RecipeIngredient`. **Amended 2026-07-10: no `Order` draft is fabricated** — an Order requires ship-to + totals the room doesn't have; ordering runs through the normal checkout (tier fee + merit withhold apply there). Tenant-isolation tests pass (a non-member partner cannot read private formula).
 
 ---
 
