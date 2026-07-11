@@ -50,6 +50,9 @@ importers:
       '@ilaunchify/imagegen':
         specifier: workspace:*
         version: link:../../packages/imagegen
+      '@ilaunchify/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
       '@ilaunchify/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
@@ -165,6 +168,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.9.0
         version: 3.10.0(react-hook-form@7.76.0(react@18.3.1))
+      '@ilaunchify/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@ilaunchify/ai-design':
         specifier: workspace:*
         version: link:../../packages/ai-design
@@ -186,6 +192,9 @@ importers:
       '@ilaunchify/imagegen':
         specifier: workspace:*
         version: link:../../packages/imagegen
+      '@ilaunchify/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
       '@ilaunchify/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
@@ -331,6 +340,9 @@ importers:
       '@ilaunchify/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ilaunchify/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
       '@ilaunchify/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
@@ -422,6 +434,9 @@ importers:
       '@ilaunchify/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ilaunchify/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
       '@ilaunchify/marketplace':
         specifier: workspace:*
         version: link:../../packages/marketplace
@@ -585,6 +600,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@22.19.19)(jsdom@20.0.3(canvas@2.11.2))(terser@5.48.0)
 
   packages/auth:
     dependencies:
@@ -597,6 +615,9 @@ importers:
       '@ilaunchify/db':
         specifier: workspace:*
         version: link:../db
+      '@ilaunchify/legal':
+        specifier: workspace:*
+        version: link:../legal
       next:
         specifier: ^15.0.0
         version: 15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -632,6 +653,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@22.19.19)(jsdom@20.0.3(canvas@2.11.2))(terser@5.48.0)
 
   packages/db:
     dependencies:
@@ -657,6 +681,15 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+
+  packages/legal:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@22.19.19)(jsdom@20.0.3(canvas@2.11.2))(terser@5.48.0)
 
   packages/logger:
     devDependencies:
@@ -695,6 +728,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.4
+        version: 2.1.9(@types/node@22.19.19)(jsdom@20.0.3(canvas@2.11.2))(terser@5.48.0)
 
   packages/nutrition:
     dependencies:
@@ -720,6 +756,9 @@ importers:
       '@ilaunchify/notifications':
         specifier: workspace:*
         version: link:../notifications
+      '@ilaunchify/nutrition':
+        specifier: workspace:*
+        version: link:../nutrition
       '@ilaunchify/risk':
         specifier: workspace:*
         version: link:../risk
