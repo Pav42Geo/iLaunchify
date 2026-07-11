@@ -27,6 +27,7 @@ export function RoomClient(props: {
   roomId: string
   rooms: RoomSwitcherEntry[]
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
+  briefDomain: string
   briefTitle: string
   briefNicheSlug: string
   creatorName: string
@@ -51,6 +52,7 @@ export function RoomClient(props: {
       fullScreen
       rooms={props.rooms}
       recipeLabels={props.recipeLabels}
+      briefDomain={props.briefDomain}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}
       creatorName={props.creatorName}

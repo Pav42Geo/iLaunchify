@@ -20,9 +20,13 @@ import {
   calculateLabel,
   toPanelData,
   toInciDeclaration,
+  toSupplementPanelData,
   buildIngredientStatement,
   formatFalcpaContains,
   type IngredientInput,
+  type DietaryIngredient,
+  type ProprietaryBlend,
+  type SupplementNutrition,
 } from '@ilaunchify/nutrition'
 import type { PanelData } from '@ilaunchify/types'
 import { parseAmountToGrams } from './recipe-materialize'
@@ -69,6 +73,61 @@ export interface RoomRecipeLabel {
   inciText: string | null
   /** PET: descending-weight ingredient order (GA values come from lab results). */
   petOrder: string[] | null
+  /** SUPPLEMENT: "Other ingredients:" line items (rendered below the box). */
+  otherIngredients: string[] | null
+}
+
+/**
+ * Structured supplement formulation carried on the recipe payload
+ * (SUPPLEMENT-domain rooms). EXACT mirror of toSupplementPanelData's inputs —
+ * the same shape the partner product builder saves, so the room and the
+ * builder can never disagree about what a formulation means.
+ */
+export interface RoomSupplementFormulation {
+  dietaryIngredients: DietaryIngredient[]
+  blends: ProprietaryBlend[]
+  servingForm: string
+  servingsPerContainer: number
+  nutrition?: SupplementNutrition
+}
+
+function payloadSupplement(payload: unknown): RoomSupplementFormulation | null {
+  const s =
+    payload && typeof payload === 'object'
+      ? (payload as { supplement?: Record<string, unknown> }).supplement
+      : null
+  if (!s || typeof s !== 'object') return null
+  const rawRows = Array.isArray(s.dietaryIngredients) ? s.dietaryIngredients : []
+  const dietaryIngredients: DietaryIngredient[] = (rawRows as Partial<DietaryIngredient>[])
+    .filter(
+      (d) =>
+        String(d?.name ?? '').trim() &&
+        typeof d?.amountPerServing === 'number' &&
+        Number.isFinite(d.amountPerServing) &&
+        d.amountPerServing > 0 &&
+        String(d?.unit ?? '').trim(),
+    )
+    .map((d, i) => ({
+      id: String(d!.id ?? `row-${i}`),
+      name: String(d!.name).trim(),
+      amountPerServing: d!.amountPerServing!,
+      unit: String(d!.unit).trim(),
+      percentDV: typeof d!.percentDV === 'number' ? d!.percentDV : null,
+      ...(d!.blendId ? { blendId: String(d!.blendId) } : {}),
+      ...(d!.isOtherIngredient ? { isOtherIngredient: true } : {}),
+      ...(typeof d!.sortWeight === 'number' ? { sortWeight: d!.sortWeight } : {}),
+    }))
+  if (dietaryIngredients.length === 0) return null
+  const spc = Number((s as { servingsPerContainer?: unknown }).servingsPerContainer)
+  return {
+    dietaryIngredients,
+    blends: Array.isArray(s.blends) ? (s.blends as ProprietaryBlend[]) : [],
+    servingForm: String(s.servingForm ?? '').trim() || '1 serving',
+    servingsPerContainer: Number.isFinite(spc) && spc > 0 ? spc : 1,
+    ...(s.nutrition && typeof s.nutrition === 'object'
+      ? { nutrition: s.nutrition as SupplementNutrition }
+      : {}),
+  }
 }
 
 interface PayloadRow {
@@ -140,7 +199,8 @@ export async function resolveRoomRecipeLabel(input: {
   payload: unknown
 }): Promise<RoomRecipeLabel | null> {
   const rows = payloadRows(input.payload)
-  if (rows.length === 0) return null
+  const supplement = input.domain === 'SUPPLEMENT' ? payloadSupplement(input.payload) : null
+  if (rows.length === 0 && !supplement) return null
   const serving = payloadServing(input.payload)
 
   const visibility = { OR: [{ ownerPartnerId: null }, { ownerPartnerId: input.partnerId }] }
@@ -235,6 +295,20 @@ export async function resolveRoomRecipeLabel(input: {
     })
   }
 
+  // SUPPLEMENT: panel from the structured formulation block via the canonical
+  // engine (21 CFR 101.36) — never derived from free-text gram rows, because
+  // %DV and per-serving mg/mcg amounts can't be guessed from a formula list.
+  let otherIngredients: string[] | null = null
+  if (input.domain === 'SUPPLEMENT' && supplement) {
+    const result = toSupplementPanelData(supplement.dietaryIngredients, supplement.blends, {
+      servingSize: supplement.servingForm,
+      servingsPerContainer: supplement.servingsPerContainer,
+      ...(supplement.nutrition ? { nutrition: supplement.nutrition } : {}),
+    })
+    panel = result.panel
+    otherIngredients = result.otherIngredients.length > 0 ? result.otherIngredients : null
+  }
+
   // COSMETIC: INCI from domainData.inci name when present, else declaration name.
   let inciText: string | null = null
   if (input.domain === 'COSMETIC' && matched.length > 0) {
@@ -269,6 +343,7 @@ export async function resolveRoomRecipeLabel(input: {
     containsIncomplete: !fullyResolved,
     inciText,
     petOrder,
+    otherIngredients,
   }
 }
 

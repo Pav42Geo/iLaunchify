@@ -23,6 +23,7 @@ import { productGradient, type ProductGradient } from '../tokens/colors'
 // truth for how regulated labels LOOK (21 CFR 101.9(d) / INCI / AAFCO). The
 // room previews the same artifacts the product builder and label download use.
 import { NutritionFactsSvg } from '../nutrition/NutritionFactsSvg'
+import { SupplementFactsSvg } from '../nutrition/SupplementFactsSvg'
 import { InciDeclarationSvg } from '../nutrition/InciDeclarationSvg'
 import { GuaranteedAnalysisSvg } from '../nutrition/GuaranteedAnalysisSvg'
 import { formatNetQuantity } from '../canvas/netQuantity'
@@ -110,6 +111,9 @@ export interface CoCreationRoomShellProps {
   /** Partner-side: catalog search for pinning ingredient matches in the
       recipe draft editor (visibility scoping lives in the server action). */
   onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
+  /** Brief's product domain (FOOD / BEVERAGE_FUNCTIONAL / SUPPLEMENT / COSMETIC
+      / PET) — drives domain-specific recipe editor sections. */
+  briefDomain?: string
 }
 
 /** One catalog candidate in the recipe-row match picker. */
@@ -152,6 +156,8 @@ export interface RoomRecipeLabelView {
   containsIncomplete: boolean
   inciText: string | null
   petOrder: string[] | null
+  /** SUPPLEMENT: "Other ingredients:" items rendered below the box. */
+  otherIngredients: string[] | null
 }
 
 export interface RoomSwitcherEntry {
@@ -497,6 +503,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               partnerName={props.partnerName}
               recipeLabels={props.recipeLabels ?? []}
               onSearchIngredients={props.onSearchIngredients}
+              briefDomain={props.briefDomain}
               onSubmitVersion={(payload) => run(() => props.onSubmitVersion(selected.id, payload))}
               onReview={(d, note) => run(() => props.onReview(selected.id, d, note))}
               onReopen={() => run(() => props.onReopen(selected.id))}
@@ -700,6 +707,7 @@ function ObjectDetail({
   partnerName,
   recipeLabels,
   onSearchIngredients,
+  briefDomain,
   onSubmitVersion,
   onReview,
   onReopen,
@@ -714,6 +722,7 @@ function ObjectDetail({
   partnerName: string
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
   onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
+  briefDomain?: string
   onSubmitVersion: (payload: Record<string, unknown>) => void
   onReview: (decision: 'APPROVE' | 'REQUEST_CHANGES', note?: string) => void
   onReopen: () => void
@@ -773,6 +782,46 @@ function ObjectDetail({
     })(),
   }))
 
+  // Supplement formulation draft (SUPPLEMENT-domain recipe only). Amounts are
+  // per-serving mg/mcg/g — the structured shape the Supplement Facts engine
+  // needs; it is NEVER derived from the free-text formula rows.
+  const isSupplement = briefDomain === 'SUPPLEMENT'
+  const latestSupp =
+    latest?.payload && typeof latest.payload === 'object'
+      ? ((latest.payload as { supplement?: Record<string, unknown> }).supplement ?? null)
+      : null
+  const [draftSupp, setDraftSupp] = React.useState<{
+    rows: { name: string; amount: string; unit: string; dv: string; isOther: boolean }[]
+    servingForm: string
+    perContainer: string
+  }>(() => {
+    const raw = Array.isArray(latestSupp?.dietaryIngredients)
+      ? (latestSupp!.dietaryIngredients as Partial<{
+          name: string
+          amountPerServing: number
+          unit: string
+          percentDV: number | null
+          isOtherIngredient: boolean
+        }>[])
+      : []
+    return {
+      rows: raw.length
+        ? raw.map((d) => ({
+            name: String(d.name ?? ''),
+            amount: typeof d.amountPerServing === 'number' ? String(d.amountPerServing) : '',
+            unit: String(d.unit ?? 'mg'),
+            dv: typeof d.percentDV === 'number' ? String(d.percentDV) : '',
+            isOther: !!d.isOtherIngredient,
+          }))
+        : [{ name: '', amount: '', unit: 'mg', dv: '', isOther: false }],
+      servingForm: String(latestSupp?.servingForm ?? ''),
+      perContainer:
+        typeof latestSupp?.servingsPerContainer === 'number'
+          ? String(latestSupp.servingsPerContainer)
+          : '',
+    }
+  })
+
   // Facts sidebar follows the VIEWED version (every version gets its own
   // computed label); compare mode diffs previous → latest side by side.
   const labelFor = React.useCallback(
@@ -799,8 +848,33 @@ function ObjectDetail({
 
   function submitDraft() {
     const nqValue = Number(draftServing.nqValue)
+    // Supplement block — mirrors toSupplementPanelData inputs; blends from the
+    // previous version carry forward untouched (no blend editor in-room yet).
+    const suppRows = draftSupp.rows.filter(
+      (r) => r.name.trim() && Number(r.amount) > 0 && r.unit.trim(),
+    )
+    const supplementBlock =
+      isSupplement && suppRows.length > 0
+        ? {
+            supplement: {
+              dietaryIngredients: suppRows.map((r, i) => ({
+                id: `row-${i}`,
+                name: r.name.trim(),
+                amountPerServing: Number(r.amount),
+                unit: r.unit.trim(),
+                percentDV: r.dv.trim() ? Number(r.dv) : null,
+                isOtherIngredient: r.isOther,
+                sortWeight: suppRows.length - i,
+              })),
+              blends: Array.isArray(latestSupp?.blends) ? latestSupp!.blends : [],
+              servingForm: draftSupp.servingForm.trim() || '1 serving',
+              servingsPerContainer: Number(draftSupp.perContainer) > 0 ? Number(draftSupp.perContainer) : 1,
+            },
+          }
+        : {}
     const payload = isRecipe
       ? {
+          ...supplementBlock,
           rows: draftRows.filter((r) => r.name.trim()),
           serving: {
             sizeG: draftServing.sizeG ? Number(draftServing.sizeG) : null,
@@ -1159,6 +1233,132 @@ function ObjectDetail({
                         </Button>
                       </div>
                     ))}
+                {isRecipe && isSupplement ? (
+                  <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
+                    <div className="mb-s-2 text-ui-label uppercase text-ink-500">
+                      Supplement Facts formulation — per-serving amounts drive the panel
+                    </div>
+                    {draftSupp.rows.map((r, i) => (
+                      <div key={i} className="mb-s-2 flex flex-wrap items-center gap-s-2">
+                        <Input
+                          value={r.name}
+                          placeholder="Dietary ingredient, e.g. Vitamin C (as ascorbic acid)"
+                          onChange={(e) =>
+                            setDraftSupp((s) => ({
+                              ...s,
+                              rows: s.rows.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)),
+                            }))
+                          }
+                          className="min-w-40 flex-[2]"
+                        />
+                        <Input
+                          aria-label="Amount per serving"
+                          type="number"
+                          min={0}
+                          value={r.amount}
+                          placeholder="Amt"
+                          onChange={(e) =>
+                            setDraftSupp((s) => ({
+                              ...s,
+                              rows: s.rows.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)),
+                            }))
+                          }
+                          className="w-20"
+                        />
+                        <select
+                          aria-label="Unit"
+                          value={r.unit}
+                          onChange={(e) =>
+                            setDraftSupp((s) => ({
+                              ...s,
+                              rows: s.rows.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)),
+                            }))
+                          }
+                          className="rounded-md border border-ink-300 bg-white px-s-2 py-s-1 text-ui-caption"
+                        >
+                          {['mg', 'mcg', 'g', 'IU', 'mcg DFE', 'mg NE', 'billion CFU', 'mL'].map((u) => (
+                            <option key={u} value={u}>
+                              {u}
+                            </option>
+                          ))}
+                        </select>
+                        <Input
+                          aria-label="Percent daily value (blank = no established DV)"
+                          type="number"
+                          min={0}
+                          value={r.dv}
+                          placeholder="%DV"
+                          title="Blank = Daily Value not established (†)"
+                          onChange={(e) =>
+                            setDraftSupp((s) => ({
+                              ...s,
+                              rows: s.rows.map((x, j) => (j === i ? { ...x, dv: e.target.value } : x)),
+                            }))
+                          }
+                          className="w-20"
+                        />
+                        <label className="flex items-center gap-s-1 text-ui-label normal-case tracking-normal text-ink-600">
+                          <input
+                            type="checkbox"
+                            checked={r.isOther}
+                            onChange={(e) =>
+                              setDraftSupp((s) => ({
+                                ...s,
+                                rows: s.rows.map((x, j) => (j === i ? { ...x, isOther: e.target.checked } : x)),
+                              }))
+                            }
+                          />
+                          other
+                        </label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Remove dietary ingredient"
+                          onClick={() =>
+                            setDraftSupp((s) => ({ ...s, rows: s.rows.filter((_, j) => j !== i) }))
+                          }
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="flex flex-wrap items-center gap-s-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setDraftSupp((s) => ({
+                            ...s,
+                            rows: [...s.rows, { name: '', amount: '', unit: 'mg', dv: '', isOther: false }],
+                          }))
+                        }
+                      >
+                        ＋ Add dietary ingredient
+                      </Button>
+                      <span className="flex-1" />
+                      <Input
+                        aria-label="Serving form"
+                        value={draftSupp.servingForm}
+                        placeholder="e.g. 2 capsules"
+                        onChange={(e) => setDraftSupp((s) => ({ ...s, servingForm: e.target.value }))}
+                        className="w-36"
+                      />
+                      <Input
+                        aria-label="Servings per container"
+                        type="number"
+                        min={1}
+                        value={draftSupp.perContainer}
+                        placeholder="Servings"
+                        onChange={(e) => setDraftSupp((s) => ({ ...s, perContainer: e.target.value }))}
+                        className="w-24"
+                      />
+                    </div>
+                    <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
+                      Blank %DV prints “†” (Daily Value not established). “Other” rows print in the
+                      Other-ingredients line below the box.
+                    </p>
+                  </div>
+                ) : null}
                 {isRecipe ? (
                   <div className="mb-s-2 mt-s-3 rounded-lg bg-ink-50 p-s-3">
                     <div className="mb-s-2 text-ui-label uppercase text-ink-500">
@@ -1460,6 +1660,21 @@ function RecipeFactsSidebar({
             Nutrition Facts panel.
           </p>
         )
+      ) : label.domain === 'SUPPLEMENT' ? (
+        label.panel ? (
+          <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+            <SupplementFactsSvg
+              data={label.panel}
+              otherIngredients={label.otherIngredients ?? []}
+              widthPx={null}
+            />
+          </div>
+        ) : (
+          <p className="rounded-lg bg-white px-s-3 py-s-3 text-ui-label normal-case tracking-normal text-ink-500">
+            Add the structured formulation (dietary ingredients with per-serving amounts) in the
+            next version to render the Supplement Facts panel.
+          </p>
+        )
       ) : label.domain === 'COSMETIC' && label.inciText ? (
         <div className="rounded-lg border border-ink-200 bg-white p-s-2">
           <InciDeclarationSvg
@@ -1569,7 +1784,8 @@ function diffLabels(prev: RoomRecipeLabelView, next: RoomRecipeLabelView): Label
   }
 
   // Mandatory statements — long text collapses to "updated".
-  const stmtOf = (l: RoomRecipeLabelView) => l.inciText ?? l.petOrder?.join(', ') ?? l.statement
+  const stmtOf = (l: RoomRecipeLabelView) =>
+    l.inciText ?? l.petOrder?.join(', ') ?? l.otherIngredients?.join(', ') ?? l.statement
   if (stmtOf(prev) !== stmtOf(next) && (stmtOf(prev) || stmtOf(next))) {
     items.push({
       name: 'Ingredient statement',
@@ -1641,6 +1857,14 @@ function RecipeFactsCompare({
             data={latest.panel}
             ingredientStatement={latest.statement ?? undefined}
             contains={latest.containsLine ?? undefined}
+            widthPx={null}
+          />
+        </div>
+      ) : latest.domain === 'SUPPLEMENT' && latest.panel ? (
+        <div className="rounded-lg border border-ink-200 bg-white p-s-2">
+          <SupplementFactsSvg
+            data={latest.panel}
+            otherIngredients={latest.otherIngredients ?? []}
             widthPx={null}
           />
         </div>

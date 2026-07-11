@@ -118,6 +118,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
         roomId={room.id}
         rooms={switcherRooms}
         recipeLabels={recipeLabels}
+        briefDomain={room.brief.category}
         briefTitle={room.brief.title}
         briefNicheSlug={room.brief.nicheSlug}
       creatorName={room.brief.creator.displayName}
