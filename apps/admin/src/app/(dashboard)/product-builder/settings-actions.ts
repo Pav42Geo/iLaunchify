@@ -42,6 +42,7 @@ export async function saveCoCreationSettings(
     set('poolExclusivityDays', 0, 90)
     set('exclusivityMinFit', 0, 100)
     set('maxOpenInterestsPerPartner', 0, 100)
+    set('interestWindowDays', 0, 90)
     set('claimsWeightPct', 0, 100)
     set('volumeWeightPct', 0, 100)
     set('meritWeightPct', 0, 100)

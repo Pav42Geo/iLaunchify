@@ -9,6 +9,7 @@ import { loadOpportunityPool, type PoolEntry } from './loader'
 import { ExpressInterestDialog } from './ExpressInterestDialog'
 import { WithdrawInterestButton } from './WithdrawInterestButton'
 import { PromoteInterestButton } from './PromoteInterestButton'
+import { PoolLiveBar } from './PoolLiveBar'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Opportunities — iLaunchify Partners' }
@@ -201,6 +202,9 @@ export default async function OpportunitiesPage({
       ) : null}
 
       {/* Lists */}
+      {/* Live feed bar — appears when new briefs land while the page is open */}
+      {tab !== 'mine' ? <PoolLiveBar /> : null}
+
       {tab === 'mine' && promo.enabled ? (
         <p className="text-ui-caption text-ink-500">
           ✨ Promo tokens: <b className="text-ink-900">{promo.tokenBalance}</b> · a token pins one
@@ -285,8 +289,19 @@ export default async function OpportunitiesPage({
           {list.map((e) => {
             const n = nicheBySlug.get(e.brief.nicheSlug)
             const highFit = e.fitScore >= 80
+            // Demo .mk.fresh — briefs younger than 24h get the pink highlight.
+            const fresh = e.brief.createdAt
+              ? Date.now() - new Date(e.brief.createdAt).getTime() < 24 * 3_600_000
+              : false
+            const msLeft = e.respondByMs === null ? null : e.respondByMs - Date.now()
+            const urgent = msLeft !== null && msLeft <= 48 * 3_600_000
             return (
-              <div key={e.brief.id} className="rounded-xl border border-ink-200 bg-white p-s-4 shadow-sm">
+              <div
+                key={e.brief.id}
+                className={`rounded-xl border bg-white p-s-4 shadow-sm ${
+                  fresh ? 'border-pink-500 ring-[3px] ring-pink-50' : 'border-ink-200'
+                }`}
+              >
                 <div className="flex items-start gap-s-3">
                   {/* Demo .lg2 — niche-gradient product tile */}
                   <span
@@ -329,19 +344,30 @@ export default async function OpportunitiesPage({
                         : '—'
                     }
                   />
-                  <Term label="Timeline" value={e.brief.timelineWeeks ? `${e.brief.timelineWeeks} wk` : '—'} />
+                  <Term label="Lead time" value={e.brief.timelineWeeks ? `${e.brief.timelineWeeks} wk` : '—'} />
                   <Term label="Category" value={e.categoryName ?? '—'} small />
                 </dl>
                 {e.brief.claims.length ? (
+                  // Demo .mclaim ✓/△ — marks come ONLY from this maker's own
+                  // declared claimFit (Express Interest); before that the chips
+                  // stay unmarked. We never assert capability we weren't told.
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {e.brief.claims.map((c) => (
-                      <span
-                        key={c}
-                        className="rounded-full bg-pink-50 px-2.5 py-1 text-[11px] font-semibold text-pink-700"
-                      >
-                        ✓ {c}
-                      </span>
-                    ))}
+                    {e.brief.claims.map((c) => {
+                      const can = e.mine ? (e.mine.claimFit[c] ?? false) : null
+                      return (
+                        <span
+                          key={c}
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            can === false
+                              ? 'bg-ink-100 text-ink-400'
+                              : 'bg-pink-50 text-pink-700'
+                          }`}
+                        >
+                          {can === null ? '' : can ? '✓ ' : '△ '}
+                          {c}
+                        </span>
+                      )
+                    })}
                   </div>
                 ) : null}
                 <div className="mt-4 flex items-center gap-3">
@@ -365,6 +391,17 @@ export default async function OpportunitiesPage({
                   ) : (
                     <span className="text-ui-caption text-ink-500">Be first to raise your hand</span>
                   )}
+                  {/* Demo .urgency — REAL countdown against the loader-enforced
+                      response window (Settings → Response window). */}
+                  {msLeft !== null && msLeft > 0 ? (
+                    <span
+                      className={`rounded-pill px-2.5 py-1 text-[11px] font-bold ${
+                        urgent ? 'bg-danger-50 text-danger-600' : 'bg-ink-100 text-ink-500'
+                      }`}
+                    >
+                      {urgent ? `⏳ closing in ${timeLeft(msLeft)}` : `⏱ ${timeLeft(msLeft)} to respond`}
+                    </span>
+                  ) : null}
                   <span className="flex-1" />
                   {e.mine && e.mine.status !== 'WITHDRAWN' ? (
                     <span
@@ -389,6 +426,14 @@ export default async function OpportunitiesPage({
       </div>
     </>
   )
+}
+
+/** Demo tl() — compact remaining-time: 45m / 7h / 3d. */
+function timeLeft(ms: number): string {
+  const mins = Math.max(1, Math.round(ms / 60_000))
+  if (mins < 60) return `${mins}m`
+  if (mins < 1440) return `${Math.round(mins / 60)}h`
+  return `${Math.round(mins / 1440)}d`
 }
 
 /** Demo .term chip — Pavel-tuned 2026-07-10: left-hugging flex row, slightly

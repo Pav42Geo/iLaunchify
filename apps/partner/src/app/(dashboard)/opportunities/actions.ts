@@ -110,6 +110,34 @@ export async function promoteInterest(interestId: string): Promise<ActionResult>
   return { ok: true }
 }
 
+/**
+ * Cheap poll target for the live pool bar (Facebook-feed pattern, Pavel
+ * 2026-07-10): count INTEREST_OPEN briefs in this maker's niches posted after
+ * `sinceIso`. Niche-level check only — the full fit/exclusivity filters run
+ * on the refresh this bar triggers, so the count is an upper bound.
+ */
+export async function countNewPoolBriefs(
+  sinceIso: string,
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const user = await requireUser()
+  const partner = await requireActivePartner(user.id)
+  if (!partner) return { ok: false, error: 'Not an active partner' }
+  const since = new Date(sinceIso)
+  if (Number.isNaN(since.getTime())) return { ok: false, error: 'Bad timestamp' }
+
+  const facts = await loadPartnerFitFacts(partner.id)
+  if (!facts.hasCapabilitySignal) return { ok: true, count: 0 }
+
+  const count = await prisma.productBrief.count({
+    where: {
+      status: 'INTEREST_OPEN',
+      nicheSlug: { in: [...facts.nicheSlugs] },
+      createdAt: { gt: since },
+    },
+  })
+  return { ok: true, count }
+}
+
 async function requireActivePartner(userId: string) {
   const access = await getPartnerAccess(userId)
   if (!access) return null

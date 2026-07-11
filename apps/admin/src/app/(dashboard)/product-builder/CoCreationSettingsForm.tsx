@@ -162,6 +162,12 @@ export function CoCreationSettingsForm({ initial }: { initial: CoCreationSetting
           <input className={NUM} type="number" min={0} max={100} value={v.exclusivityMinFit} onChange={num('exclusivityMinFit', 0)} />
         </Field>
         <Field
+          label="Response window (days)"
+          hint="Briefs stop surfacing to new makers after this many days — powers the “time to respond” countdown on pool cards. 0 disables."
+        >
+          <input className={NUM} type="number" min={0} max={90} value={v.interestWindowDays} onChange={num('interestWindowDays', 0)} />
+        </Field>
+        <Field
           label="Max open interests per maker"
           hint="Concurrent SUBMITTED/SHORTLISTED interests (anti-spam). 0 = unlimited; a 20/day rate limit always backstops."
         >

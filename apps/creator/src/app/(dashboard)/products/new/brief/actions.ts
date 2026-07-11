@@ -202,5 +202,36 @@ export async function postBrief(input: PostBriefInput): Promise<PostBriefResult>
     },
   })
 
+  // Live-feed fan-out (Pavel 2026-07-10): notify makers whose pool would
+  // ACTUALLY show this brief right now (same fit engine + exclusivity floor
+  // as the pool loader — no phantom pings). Failures never block the post.
+  try {
+    const { findMatchedPartners } = await import('@ilaunchify/marketplace')
+    const { dispatchNotification } = await import('@ilaunchify/notifications')
+    const matched = await findMatchedPartners({
+      nicheSlug: niche.slug,
+      categoryId: category.id,
+      claims: data.claims,
+      targetVolume: data.targetVolume,
+    })
+    await Promise.allSettled(
+      matched.map((m) =>
+        dispatchNotification({
+          userId: m.userId,
+          event: 'BRIEF_POSTED_MATCHED',
+          audience: 'partner',
+          data: {
+            briefId: brief.id,
+            briefTitle: brief.title,
+            fitScore: m.fitScore,
+            nicheName: niche.name,
+          },
+        }),
+      ),
+    )
+  } catch {
+    // fan-out is best-effort; the brief is live regardless
+  }
+
   return { ok: true, briefId: brief.id }
 }

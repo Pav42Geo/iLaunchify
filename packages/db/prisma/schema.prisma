@@ -4797,6 +4797,7 @@ enum NotificationEvent {
   PARTNER_APPLICATION_RECEIVED // public "Become a partner" application acknowledgement
   NOMINATION_SERVICE_MISMATCH // invited co-partner onboarded without the invited leg → notify inviter (D7)
   // Co-creation marketplace (CO_CREATION_MARKETPLACE_SPEC §12) — appended additively
+  BRIEF_POSTED_MATCHED // a new brief fits this maker's capabilities → notify partner (live-feed, 2026-07-10)
   BRIEF_INTEREST_RECEIVED // a manufacturer expressed interest on a creator's brief → notify creator
   BRIEF_INTEREST_SHORTLISTED // creator starred the maker's interest → notify partner
   BRIEF_INTEREST_SELECTED // creator picked this maker — room opening → notify partner
@@ -9784,6 +9785,9 @@ model CoCreationSettings {
   poolExclusivityDays        Int @default(15) // brief's first N days: only strong fits surface (0 = off)
   exclusivityMinFit          Int @default(60) // fit-score floor applied during the exclusivity window
   maxOpenInterestsPerPartner Int @default(10) // D-CC2 anti-spam cap on concurrent open interests (0 = unlimited)
+  // Response window (2026-07-10): briefs stop surfacing to NEW makers after N
+  // days — powers the honest "time to respond" countdown on pool cards. 0 = off.
+  interestWindowDays         Int @default(14)
   // Fit weights (D-CC6) — raw magnitudes, renormalized to 100 by the scorer.
   claimsWeightPct   Int @default(40)
   volumeWeightPct   Int @default(20)

@@ -11,6 +11,7 @@ export interface CoCreationSettingsValues {
   poolExclusivityDays: number
   exclusivityMinFit: number
   maxOpenInterestsPerPartner: number
+  interestWindowDays: number
   // Fit weights (D-CC6) — raw magnitudes, renormalized by the scorer.
   claimsWeightPct: number
   volumeWeightPct: number
@@ -42,6 +43,7 @@ export const COCREATION_SETTINGS_DEFAULTS: CoCreationSettingsValues = {
   poolExclusivityDays: 15,
   exclusivityMinFit: 60,
   maxOpenInterestsPerPartner: 10,
+  interestWindowDays: 14,
   claimsWeightPct: 40,
   volumeWeightPct: 20,
   meritWeightPct: 25,
@@ -74,6 +76,7 @@ export async function getCoCreationSettings(): Promise<CoCreationSettingsValues>
           poolExclusivityDays: true,
           exclusivityMinFit: true,
           maxOpenInterestsPerPartner: true,
+          interestWindowDays: true,
           claimsWeightPct: true,
           volumeWeightPct: true,
           meritWeightPct: true,

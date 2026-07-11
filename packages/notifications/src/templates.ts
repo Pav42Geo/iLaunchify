@@ -19,6 +19,7 @@ export interface TemplateData {
   PARTNER_INVITED: { companyName?: string; onboardingUrl?: string }
   PARTNER_APPLICATION_RECEIVED: { companyName?: string }
   NOMINATION_SERVICE_MISMATCH: { coPartnerName?: string; serviceLabel?: string }
+  BRIEF_POSTED_MATCHED: { briefId: string; briefTitle: string; fitScore?: number; nicheName?: string }
   BRIEF_INTEREST_RECEIVED: { briefId: string; briefTitle: string; partnerName?: string }
   BRIEF_INTEREST_SHORTLISTED: { briefTitle: string; creatorName?: string }
   BRIEF_INTEREST_SELECTED: { briefTitle: string; creatorName?: string; roomId?: string }
@@ -287,6 +288,14 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `You're invited to join iLaunchify${d.companyName ? `, ${d.companyName}` : ''}`,
         body: "We reviewed your application and would love to have you in our production network. Click below to start your onboarding — it takes about 15 minutes.",
         link: d.onboardingUrl ?? '/onboarding',
+      }
+    }
+    case 'BRIEF_POSTED_MATCHED': {
+      const d = data as TemplateData['BRIEF_POSTED_MATCHED']
+      return {
+        title: `New matched brief: “${d.briefTitle}”`,
+        body: `A creator just posted a ${d.nicheName ? `${d.nicheName} ` : ''}brief that fits your capabilities${typeof d.fitScore === 'number' ? ` (${d.fitScore}% fit)` : ''}. Strong fits get the first look — express interest while the window is open.`,
+        link: '/opportunities',
       }
     }
     case 'BRIEF_INTEREST_RECEIVED': {

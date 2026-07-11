@@ -24,8 +24,12 @@ export interface PoolEntry {
   fitScore: number
   /** Count of live interests from other makers (social proof on the card). */
   interestedCount: number
-  /** This partner's own interest on the brief, if any. */
-  mine: { id: string; status: string } | null
+  /** This partner's own interest on the brief, if any (claimFit powers the
+      honest ✓/△ claim marks — we never assert capability we weren't told). */
+  mine: { id: string; status: string; claimFit: Record<string, boolean> } | null
+  /** Epoch ms when the response window closes (settings.interestWindowDays);
+      null = no window. Powers the card countdown — REAL, loader-enforced. */
+  respondByMs: number | null
 }
 
 export interface MyInterestEntry {
@@ -134,7 +138,7 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
         include: {
           creator: { select: { displayName: true, handle: true } },
           categoryRef: { select: { id: true, name: true } },
-          interests: { select: { id: true, partnerId: true, status: true } },
+          interests: { select: { id: true, partnerId: true, status: true, claimFit: true } },
         },
         orderBy: { createdAt: 'desc' },
         take: 100,
@@ -169,6 +173,12 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
     ) {
       continue
     }
+
+    // Response window: past it, briefs stop surfacing to NEW makers — this is
+    // what makes the card's "time to respond" countdown honest.
+    const windowMs = settings.interestWindowDays * 24 * 3_600_000
+    const respondByMs = windowMs > 0 ? b.createdAt.getTime() + windowMs : null
+    if (respondByMs !== null && !mine && now > respondByMs) continue
     entries.push({
       brief: toPublicBriefProjection({
         ...b,
@@ -183,7 +193,14 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
       interestedCount: b.interests.filter((i) =>
         (LIVE_INTEREST_STATUSES as readonly string[]).includes(i.status),
       ).length,
-      mine: mine ? { id: mine.id, status: mine.status } : null,
+      mine: mine
+        ? {
+            id: mine.id,
+            status: mine.status,
+            claimFit: (mine.claimFit ?? {}) as Record<string, boolean>,
+          }
+        : null,
+      respondByMs,
     })
   }
 

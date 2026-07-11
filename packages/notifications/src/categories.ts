@@ -121,6 +121,7 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   NOMINATION_SERVICE_MISMATCH: 'account',
   PARTNER_APPLICATION_RECEIVED: 'account',
   // Co-creation marketplace (CO_CREATION_MARKETPLACE_SPEC §12)
+  BRIEF_POSTED_MATCHED: 'orders',
   BRIEF_INTEREST_RECEIVED: 'orders',
   BRIEF_INTEREST_SHORTLISTED: 'orders',
   BRIEF_INTEREST_SELECTED: 'orders',

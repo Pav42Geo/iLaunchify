@@ -70,6 +70,7 @@ export const EVENT_TOKEN_PALETTE: {
   PARTNER_INVITED: ['companyName', 'onboardingUrl'],
   NOMINATION_SERVICE_MISMATCH: ['coPartnerName', 'serviceLabel'],
   PARTNER_APPLICATION_RECEIVED: ['companyName'],
+  BRIEF_POSTED_MATCHED: ['briefId', 'briefTitle', 'fitScore', 'nicheName'],
   BRIEF_INTEREST_RECEIVED: ['briefId', 'briefTitle', 'partnerName'],
   BRIEF_INTEREST_SHORTLISTED: ['briefTitle', 'creatorName'],
   BRIEF_INTEREST_SELECTED: ['briefTitle', 'creatorName', 'roomId'],

@@ -34,7 +34,9 @@ export type { PhraseFactFlag } from './phraseFacts'
 export { toPublicBriefProjection } from './brief-projection'
 export type { BriefProjectionInput, PublicBriefProjection } from './brief-projection'
 export { scoreBriefFit, FIT_WEIGHTS } from './brief-fit'
-export type { BriefFitFacts, PartnerFitFacts, BriefFitResult } from './brief-fit'
+export type { BriefFitFacts, PartnerFitFacts, BriefFitResult, FitWeights } from './brief-fit'
+export { findMatchedPartners } from './brief-match-load'
+export type { MatchedPartner } from './brief-match-load'
 export {
   computeBriefBenchmark,
   BENCHMARK_MIN_SAMPLE,
