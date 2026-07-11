@@ -6,6 +6,7 @@
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2, Plus } from 'lucide-react'
+import { formatCentsOrDash } from '@ilaunchify/ui'
 import { saveOverride, deleteOverride, type OverrideRowFull, type OverrideInput } from '../actions'
 
 const NUM = 'w-full rounded-md border border-ink-300 bg-white px-2 py-1.5 text-[12.5px] text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
@@ -15,7 +16,6 @@ const SCOPES = [
   { value: 'REGION', label: 'Region' },
 ] as const
 const TIERS = ['maker', 'builder', 'agency']
-const usd = (c: number | null) => (c == null ? '—' : `$${(c / 100).toFixed(2)}`)
 const bps = (b: number | null) => (b == null ? '—' : `${(b / 100).toFixed(2)}%`)
 const scopeLabel = (s: string) => SCOPES.find((x) => x.value === s)?.label ?? s
 
@@ -75,7 +75,7 @@ export function OverridesManager({ initial }: { initial: OverrideRowFull[] }) {
                 <td className="px-4 py-3"><span className="inline-flex rounded-full border border-ink-200 bg-ink-50 px-2 py-[2px] text-[10.5px] font-semibold text-ink-700">{scopeLabel(o.scope)}</span></td>
                 <td className="px-4 py-3 font-mono text-[11.5px] text-ink-900">{o.scopeKey}</td>
                 <td className="px-4 py-3 tabular-nums">{bps(o.productionFeeBps)}</td>
-                <td className="px-4 py-3 tabular-nums text-ink-700">{usd(o.flatShippingBaseCents)} / {usd(o.flatShippingPerUnitCents)} / {usd(o.freeShippingThresholdCents)}</td>
+                <td className="px-4 py-3 tabular-nums text-ink-700">{formatCentsOrDash(o.flatShippingBaseCents)} / {formatCentsOrDash(o.flatShippingPerUnitCents)} / {formatCentsOrDash(o.freeShippingThresholdCents)}</td>
                 <td className="px-4 py-3 text-ink-600">{o.note ?? '—'}</td>
                 <td className="px-4 py-3 text-right">
                   <button type="button" onClick={() => remove(o)} disabled={pending} className="text-ink-400 hover:text-danger-600 disabled:opacity-40" aria-label="Delete override">

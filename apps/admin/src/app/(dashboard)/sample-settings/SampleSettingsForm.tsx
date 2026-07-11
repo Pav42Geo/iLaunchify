@@ -5,10 +5,10 @@
 
 import * as React from 'react'
 import { CreditCard, Truck, ShieldAlert } from 'lucide-react'
+import { formatCentsOrDash } from '@ilaunchify/ui'
 import { saveSampleSettings, type SampleSettingsValues } from './actions'
 
 const NUM = 'w-32 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400 disabled:bg-ink-50 disabled:text-ink-400'
-const usd = (c: number | null) => (c == null ? '—' : `$${(c / 100).toFixed(2)}`)
 
 export function SampleSettingsForm({ initial }: { initial: SampleSettingsValues }) {
   const [v, setV] = React.useState<SampleSettingsValues>(initial)
@@ -36,14 +36,14 @@ export function SampleSettingsForm({ initial }: { initial: SampleSettingsValues 
         <Field label="Credit expiry (days)" hint="How long a minted credit stays usable.">
           <input className={NUM} type="number" min={1} value={v.creditExpiryDays} disabled={!v.creditBackEnabled} onChange={(e) => set('creditExpiryDays', Math.max(1, parseInt(e.target.value, 10) || 1))} />
         </Field>
-        <Field label="Max credit per sample (¢)" hint={`Platform ceiling on one sample's credit · ${usd(v.creditMaxCapCents)} · blank = none`}>
+        <Field label="Max credit per sample (¢)" hint={`Platform ceiling on one sample's credit · ${formatCentsOrDash(v.creditMaxCapCents)} · blank = none`}>
           <input className={NUM} type="number" min={0} placeholder="none" value={v.creditMaxCapCents ?? ''} disabled={!v.creditBackEnabled} onChange={(e) => set('creditMaxCapCents', num(e))} />
         </Field>
       </Section>
 
       {/* Sample economics */}
       <Section icon={Truck} title="Sample economics" desc="What a sample order costs the creator.">
-        <Field label="Flat sample shipping (¢)" hint={usd(v.sampleFlatShippingCents)}>
+        <Field label="Flat sample shipping (¢)" hint={formatCentsOrDash(v.sampleFlatShippingCents)}>
           <input className={NUM} type="number" min={0} value={v.sampleFlatShippingCents} onChange={(e) => set('sampleFlatShippingCents', Math.max(0, parseInt(e.target.value, 10) || 0))} />
         </Field>
         <Field label="Sample platform fee (bps)" hint={`${(v.samplePlatformFeeBps / 100).toFixed(2)}% of the sample subtotal · 0 = no fee`}>

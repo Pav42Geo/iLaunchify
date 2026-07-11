@@ -40,7 +40,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
-import { NutritionFactsRenderer, CertStrip, ProductSpecGrid } from '@ilaunchify/ui'
+import { NutritionFactsRenderer, CertStrip, ProductSpecGrid, formatCents } from '@ilaunchify/ui'
 import { PanelDataSchema } from '@ilaunchify/types'
 import { marketingUrl } from '@/lib/marketing-url'
 import { LiveToggle } from '../../LiveToggle'
@@ -82,7 +82,6 @@ const TAG_GROUP_LABEL: Record<string, string> = {
 }
 
 const num = (d: unknown) => Number(d ?? 0)
-const money = (cents: number) => `$${(cents / 100).toFixed(2)}`
 
 export default async function ProductPreviewPage({
   params,
@@ -435,7 +434,7 @@ export default async function ProductPreviewPage({
                 ))
               )}
               {revenue30 > 0 && (
-                <KV label="Revenue · 30d" value={money(revenue30)} />
+                <KV label="Revenue · 30d" value={formatCents(revenue30)} />
               )}
             </div>
           </Section>
@@ -455,7 +454,7 @@ export default async function ProductPreviewPage({
                   {[
                     { label: 'Orders', value: distinctOrders.toLocaleString() },
                     { label: 'Total units', value: totalUnits.toLocaleString() },
-                    { label: 'Total revenue', value: money(totalRevenue) },
+                    { label: 'Total revenue', value: formatCents(totalRevenue) },
                   ].map((s) => (
                     <div key={s.label} className="rounded-xl bg-[var(--bg-hero)] px-3 py-2.5">
                       <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-ink-700">{s.label}</p>
@@ -487,8 +486,8 @@ export default async function ProductPreviewPage({
                           </span>
                         </td>
                         <td className="py-1.5 text-right tabular-nums text-ink-800">{b.qty.toLocaleString()}</td>
-                        <td className="py-1.5 text-right tabular-nums text-ink-600">{money(b.unit)}</td>
-                        <td className="py-1.5 text-right font-medium tabular-nums text-ink-900">{money(b.total)}</td>
+                        <td className="py-1.5 text-right tabular-nums text-ink-600">{formatCents(b.unit)}</td>
+                        <td className="py-1.5 text-right font-medium tabular-nums text-ink-900">{formatCents(b.total)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -547,8 +546,8 @@ export default async function ProductPreviewPage({
                   {tpl.pricingTiers.map((t, i) => (
                     <tr key={i} className="border-b border-ink-50 last:border-0">
                       <td className="py-1.5 tabular-nums text-ink-800">{t.minQty.toLocaleString()}{t.maxQty ? `–${t.maxQty.toLocaleString()}` : '+'}</td>
-                      <td className="py-1.5 tabular-nums text-ink-700">{money(t.perUnitCostCents)}</td>
-                      <td className="py-1.5 tabular-nums text-ink-500">{money(t.perUnitFloorCents)}</td>
+                      <td className="py-1.5 tabular-nums text-ink-700">{formatCents(t.perUnitCostCents)}</td>
+                      <td className="py-1.5 tabular-nums text-ink-500">{formatCents(t.perUnitFloorCents)}</td>
                       <td className="py-1.5 text-right tabular-nums text-ink-500">{t.leadTimeDays ? `${t.leadTimeDays}d` : '—'}</td>
                     </tr>
                   ))}
@@ -669,7 +668,7 @@ export default async function ProductPreviewPage({
                   <span key={f.id} className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[12px] text-ink-700">
                     <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-black/10" style={{ backgroundColor: f.swatchHex ?? '#ddd' }} />
                     {f.name}
-                    {f.priceDeltaCents !== 0 && <span className="text-[10.5px] text-ink-400">{f.priceDeltaCents > 0 ? '+' : ''}{money(f.priceDeltaCents)}</span>}
+                    {f.priceDeltaCents !== 0 && <span className="text-[10.5px] text-ink-400">{f.priceDeltaCents > 0 ? '+' : ''}{formatCents(f.priceDeltaCents)}</span>}
                   </span>
                 ))}
               </div>
@@ -711,7 +710,7 @@ export default async function ProductPreviewPage({
                           <span className="ml-1.5 text-[11px] font-normal text-ink-400">{p.packagingSystem.unitCount} unit{p.packagingSystem.unitCount === 1 ? '' : 's'}/pack</span>
                         </span>
                         <span className="flex-shrink-0 tabular-nums text-ink-500">
-                          {money(p.basePriceCents)} · MOQ {(p.moqOverride ?? p.packagingSystem.moq).toLocaleString()} · {p.leadTimeDays}d
+                          {formatCents(p.basePriceCents)} · MOQ {(p.moqOverride ?? p.packagingSystem.moq).toLocaleString()} · {p.leadTimeDays}d
                         </span>
                       </div>
 

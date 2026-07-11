@@ -6,11 +6,11 @@
 
 import * as React from 'react'
 import { DollarSign, Workflow, Truck, RotateCcw, Gauge } from 'lucide-react'
+import { formatCentsOrDash } from '@ilaunchify/ui'
 import { saveOrderSettings, type OrderSettingsValues } from './actions'
 
 const NUM = 'w-36 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
 const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`
-const usd = (c: number | null) => (c == null ? '—' : `$${(c / 100).toFixed(2)}`)
 
 function useSaver(section: string) {
   const [pending, start] = React.useTransition()
@@ -137,13 +137,13 @@ export function ShippingForm({ initial }: { initial: OrderSettingsValues }) {
   return (
     <div className="space-y-5">
       <Card icon={Truck} title="Flat shipping" desc="The V1 flat-rate shipping estimate applied at checkout.">
-        <Field label="Base shipping (¢)" hint={usd(flatShippingBaseCents)}>
+        <Field label="Base shipping (¢)" hint={formatCentsOrDash(flatShippingBaseCents)}>
           <input className={NUM} type="number" min={0} value={flatShippingBaseCents} onChange={(e) => { setBase(intOr(e, 0)); setStatus(null) }} />
         </Field>
-        <Field label="Per-unit shipping (¢)" hint={usd(flatShippingPerUnitCents)}>
+        <Field label="Per-unit shipping (¢)" hint={formatCentsOrDash(flatShippingPerUnitCents)}>
           <input className={NUM} type="number" min={0} value={flatShippingPerUnitCents} onChange={(e) => { setPer(intOr(e, 0)); setStatus(null) }} />
         </Field>
-        <Field label="Free shipping at/above (¢)" hint={`${usd(freeShippingThresholdCents)} · blank = never`}>
+        <Field label="Free shipping at/above (¢)" hint={`${formatCentsOrDash(freeShippingThresholdCents)} · blank = never`}>
           <input className={NUM} type="number" min={0} placeholder="never" value={freeShippingThresholdCents ?? ''} onChange={(e) => { setFree(e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0)); setStatus(null) }} />
         </Field>
       </Card>
