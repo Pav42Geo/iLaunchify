@@ -12,7 +12,7 @@
 import { redirect } from 'next/navigation'
 import { Receipt, Boxes, PackageSearch, Percent } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { cn } from '@ilaunchify/ui'
+import { cn, formatCentsOrDash } from '@ilaunchify/ui'
 import { prisma } from '@ilaunchify/db'
 import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { computeStorageAccrual, type StorageFeeSnapshot } from '@ilaunchify/shipping'
@@ -46,9 +46,6 @@ function parseSnapshot(json: unknown): StorageFeeSnapshot | null {
     : null
 }
 
-function usd(cents: number | null): string {
-  return cents == null ? '—' : `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-}
 
 export default async function BillingPage() {
   const user = await requireUser()
@@ -145,10 +142,10 @@ export default async function BillingPage() {
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Accrued net" value={usd(totalNet)} icon={Receipt} tone="pink" />
-          <Kpi label="Storage" value={usd(totalStorage)} icon={Boxes} tone="ink" />
-          <Kpi label="Pick & pack" value={usd(totalPickPack)} icon={PackageSearch} tone="sky" />
-          <Kpi label="Platform fee" value={usd(totalPlatform)} icon={Percent} tone="ink" />
+          <Kpi label="Accrued net" value={formatCentsOrDash(totalNet)} icon={Receipt} tone="pink" />
+          <Kpi label="Storage" value={formatCentsOrDash(totalStorage)} icon={Boxes} tone="ink" />
+          <Kpi label="Pick & pack" value={formatCentsOrDash(totalPickPack)} icon={PackageSearch} tone="sky" />
+          <Kpi label="Platform fee" value={formatCentsOrDash(totalPlatform)} icon={Percent} tone="ink" />
         </div>
       </div>
 
@@ -192,15 +189,15 @@ export default async function BillingPage() {
                       {r.graceEndsOn ? r.graceEndsOn.toLocaleDateString() : '—'}
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums text-ink-700">{r.monthsAccrued ?? '—'}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-ink-700">{usd(r.storageCents)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-ink-700">{formatCentsOrDash(r.storageCents)}</td>
                     <td className="px-3 py-3 text-right tabular-nums text-ink-700">
-                      {usd(r.pickPackCents)}
+                      {formatCentsOrDash(r.pickPackCents)}
                       {r.pickCount > 0 && (
                         <span className="block text-[10.5px] text-ink-400">{r.pickCount} pick{r.pickCount === 1 ? '' : 's'}</span>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-ink-500">{usd(r.platformFeeCents)}</td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{usd(r.partnerNetCents)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-ink-500">{formatCentsOrDash(r.platformFeeCents)}</td>
+                    <td className="px-3 py-3 text-right font-semibold tabular-nums text-ink-900">{formatCentsOrDash(r.partnerNetCents)}</td>
                     <td className="px-5 py-3">
                       <span className={cn(
                         'inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider',

@@ -41,7 +41,7 @@ import {
 import { prisma } from '@ilaunchify/db'
 import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { ResolveDisputeControls } from './ResolveDisputeControls'
-import { cn, ProductionManifestView, RolePacketView } from '@ilaunchify/ui'
+import { cn, ProductionManifestView, RolePacketView, formatCents } from '@ilaunchify/ui'
 import type { ProductionManifest } from '@ilaunchify/orders'
 import { computeStorageAccrual, type StorageFeeSnapshot } from '@ilaunchify/shipping'
 import { rankWarehousesForOrder, type FcRankingContext } from './logistics-data'
@@ -362,7 +362,7 @@ export default async function AdminOrderDetail({ params }: PageProps) {
           <Kpi
             icon={DollarSign}
             label="Total"
-            value={formatCurrency(order.totalCents)}
+            value={formatCents(order.totalCents)}
             tone="pink"
           />
           <Kpi
@@ -502,10 +502,10 @@ function ItemsCard({
                     {i.quantity.toLocaleString()}
                   </td>
                   <td className="px-3 py-2.5 text-right align-top tabular-nums text-ink-600">
-                    {formatCurrency(i.unitPriceCents)}
+                    {formatCents(i.unitPriceCents)}
                   </td>
                   <td className="px-3 py-2.5 text-right align-top tabular-nums font-semibold text-ink-900">
-                    {formatCurrency(i.totalCents)}
+                    {formatCents(i.totalCents)}
                   </td>
                 </tr>
               ))}
@@ -516,7 +516,7 @@ function ItemsCard({
                   Order total
                 </td>
                 <td className="px-3 py-2.5 text-right text-[13.5px] font-semibold tabular-nums text-ink-900">
-                  {formatCurrency(totalCents)}
+                  {formatCents(totalCents)}
                 </td>
               </tr>
             </tfoot>
@@ -615,7 +615,7 @@ function DispatchesCard({
                       </div>
                     )}
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px]">
-                      <DispatchRow label="Cost" value={formatCurrency(d.costCents)} />
+                      <DispatchRow label="Cost" value={formatCents(d.costCents)} />
                       <DispatchRow
                         label="Accept by"
                         value={new Date(d.acceptDeadlineAt).toLocaleString()}
@@ -721,11 +721,11 @@ function ChargeCard({
           <span className="font-medium text-ink-900">{charge.status}</span>
         </Row>
         <Row label="Amount">
-          <span className="tabular-nums">{formatCurrency(charge.amountCents)}</span>
+          <span className="tabular-nums">{formatCents(charge.amountCents)}</span>
         </Row>
         <Row label="Application fee">
           <span className="tabular-nums text-success-700">
-            {formatCurrency(charge.applicationFeeCents)}
+            {formatCents(charge.applicationFeeCents)}
           </span>
         </Row>
         {charge.statementDescriptor && (
@@ -777,7 +777,7 @@ function TransfersCard({
               </p>
             </div>
             <span className="shrink-0 font-mono text-[12.5px] font-semibold tabular-nums text-ink-900">
-              {formatCurrency(t.amountCents)}
+              {formatCents(t.amountCents)}
             </span>
           </li>
         ))}
@@ -809,7 +809,7 @@ function RefundsCard({
           >
             <p className="truncate font-mono text-[11px] text-ink-600">{r.stripeRefundId}</p>
             <span className="font-mono text-[12.5px] font-semibold tabular-nums text-danger-700">
-              −{formatCurrency(r.amountCents)}
+              −{formatCents(r.amountCents)}
             </span>
           </li>
         ))}
@@ -1231,19 +1231,19 @@ function StorageAgreementCard({
                           <span className="tabular-nums">{accrual.monthsAccrued}</span>
                         </Row>
                         <Row label="Storage">
-                          <span className="tabular-nums">{formatCurrency(accrual.storageCents)}</span>
+                          <span className="tabular-nums">{formatCents(accrual.storageCents)}</span>
                         </Row>
                         {accrual.pickPackCents > 0 && (
                           <Row label={`Pick/pack (${pickCount})`}>
-                            <span className="tabular-nums">{formatCurrency(accrual.pickPackCents)}</span>
+                            <span className="tabular-nums">{formatCents(accrual.pickPackCents)}</span>
                           </Row>
                         )}
                         <Row label="Total">
-                          <span className="font-semibold tabular-nums">{formatCurrency(accrual.totalCents)}</span>
+                          <span className="font-semibold tabular-nums">{formatCents(accrual.totalCents)}</span>
                         </Row>
                         <Row label="Platform fee">
                           <span className="tabular-nums text-success-700">
-                            {formatCurrency(accrual.platformFeeCents)}
+                            {formatCents(accrual.platformFeeCents)}
                           </span>
                         </Row>
                       </dl>
@@ -1599,12 +1599,3 @@ function Kpi({
 // Formatters
 // =============================================================================
 
-function formatCurrency(cents: number): string {
-  const dollars = cents / 100
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(dollars)
-}

@@ -56,7 +56,7 @@ import type {
   PartnerMarketStatus,
 } from '@ilaunchify/db'
 import { prisma } from '@ilaunchify/db'
-import { cn } from '@ilaunchify/ui'
+import { cn, formatCents } from '@ilaunchify/ui'
 import { AdminDetailHeader } from '@/components/AdminDetailHeader'
 import { listEntityHistory } from '@ilaunchify/audit'
 import { PartnerActions } from './PartnerActions'
@@ -562,7 +562,7 @@ export default async function PartnerDetail({ params }: PageProps) {
               <StatRow label="Total dispatches" value={totalOrders.toLocaleString()} />
               <StatRow
                 label="Revenue (shipped)"
-                value={formatCurrency(totalRevenueCents)}
+                value={formatCents(totalRevenueCents)}
               />
               <StatRow
                 label="Avg lead time"
@@ -1117,7 +1117,7 @@ function OrderActivityCard({
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right align-top tabular-nums text-ink-700">
-                      {formatCurrency(d.costCents)}
+                      {formatCents(d.costCents)}
                     </td>
                     <td className="px-3 py-2 text-right align-top tabular-nums text-ink-600">
                       {d.shippedAt
@@ -1317,14 +1317,6 @@ function Empty({ label }: { label: string }) {
 // Helpers
 // =============================================================================
 
-function formatCurrency(cents: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(cents / 100)
-}
 
 function formatRelativeDate(d: Date): string {
   const days = Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24))
