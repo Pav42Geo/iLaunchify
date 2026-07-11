@@ -23,6 +23,7 @@
 //   import preset from '@ilaunchify/ui/tailwind.preset'  in tailwind.config.ts
 
 export { cn } from './lib/utils'
+export { formatCents, formatCentsOrDash } from './lib/money'
 export * from './lib/certExpiry'
 export * from './lib/pack-composition'
 export * from './lib/lead'
