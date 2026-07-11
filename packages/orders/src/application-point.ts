@@ -137,3 +137,32 @@ export function validateGraphCompleteness(input: GraphCompletenessInput): GraphC
 
   return { complete: problems.length === 0, problems, applicationPoints }
 }
+
+// ---------------------------------------------------------------------------
+// Checkout-time application resolution (§8.4 belt + suspenders)
+// ---------------------------------------------------------------------------
+
+/**
+ * Does the ORDER's application point resolve at checkout? Composes the checkout
+ * labeling signal (`needsExternalApplication` — already factors in whether the
+ * manufacturer/co-packer self-apply, from resolveLabeling) with the CHOSEN
+ * ship-to FC's ACTIVE RELABEL capability and the admin gate
+ * `graph:checkout_allow_fc_relabel`. Pure. When it does NOT resolve, placeOrder
+ * blocks ("temporarily unavailable"), flips PS-8 coverage to GAP, and notifies
+ * admin + manufacturer — no creator-facing fix-it (2026-07-11 decision).
+ */
+export function resolveOrderApplication(input: {
+  /** From resolveLabeling: manufacturer (and any co-pack) cannot self-apply. */
+  needsExternalApplication: boolean
+  decorationMethod: string
+  /** The chosen ship-to FC's ACTIVE RELABEL methods; [] when the destination is
+   *  not an FC or the FC declared no relabel capability. */
+  shipToFcRelabelMethods: string[]
+  /** graph:checkout_allow_fc_relabel — when OFF, an FC can never resolve it. */
+  allowFcRelabel: boolean
+}): { resolved: boolean } {
+  if (!input.needsExternalApplication) return { resolved: true }
+  const fcCovers =
+    input.allowFcRelabel && input.shipToFcRelabelMethods.includes(input.decorationMethod)
+  return { resolved: fcCovers }
+}

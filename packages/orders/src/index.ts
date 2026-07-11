@@ -215,6 +215,7 @@ export type {
 export {
   resolveApplicationPoint,
   validateGraphCompleteness,
+  resolveOrderApplication,
   APPLIED_DECORATIONS,
 } from './application-point'
 export type {
