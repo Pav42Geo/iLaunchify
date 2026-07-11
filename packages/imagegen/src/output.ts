@@ -13,7 +13,7 @@
 // so nothing illegal can ever be exported. Never a network/DB/model call.
 // =============================================================================
 
-import { type CreatorBillingTier } from './metering'
+import { type CreatorBillingTier, normalizeBillingTier } from './metering'
 
 export type OutputFormat = 'PNG' | 'PDF' | 'SVG' | 'AI' | 'GLB'
 export type ColorProfile = 'RGB' | 'CMYK'
@@ -107,7 +107,7 @@ export const DEFAULT_OUTPUT_POLICIES: Record<CreatorBillingTier, OutputPolicy> =
 
 /** Effective output policy for a tier, with optional admin overrides merged in. */
 export function resolveOutputPolicy(tier: CreatorBillingTier, overrides?: Partial<OutputPolicy>): OutputPolicy {
-  const base = DEFAULT_OUTPUT_POLICIES[tier]
+  const base = DEFAULT_OUTPUT_POLICIES[normalizeBillingTier(tier)]
   const merged = overrides ? { ...base, ...overrides } : base
   return {
     ...merged,
@@ -118,7 +118,7 @@ export function resolveOutputPolicy(tier: CreatorBillingTier, overrides?: Partia
 
 /** Presets a tier may actually use (minTier ≤ tier). */
 export function presetsForTier(tier: CreatorBillingTier, presets: ReadonlyArray<OutputPreset>): OutputPreset[] {
-  return presets.filter((p) => TIER_RANK[p.minTier] <= TIER_RANK[tier])
+  return presets.filter((p) => TIER_RANK[normalizeBillingTier(p.minTier)] <= TIER_RANK[normalizeBillingTier(tier)])
 }
 
 export interface ClampResult {

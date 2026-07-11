@@ -26,6 +26,7 @@ import { Sparkles, Lock, CheckCircle2, AlertTriangle, Box, Layers, Plus, Link2, 
 import { planGeneration, planGenerationSet, Dieline3DViewer, shapeKindForCategory, assignSurfaceFaces, type FrameLayout, type SurfaceDims, type GenerationPlan, type GenerationSetPlan, type SetBrief, type BoxFace, type FaceTexture } from '@ilaunchify/ui'
 import { planFlavorSeries, type LabelingDomain, type MarketCode, type FlavorSpec, type FlavorSeriesPlan } from '@ilaunchify/ai-design'
 import { clampOutput, formatBytes, type OutputPolicy, type OutputSettings, type OutputFormat } from '@ilaunchify/imagegen'
+import type { TierKey } from '@ilaunchify/auth'
 
 export interface DielineTarget {
   id: string
@@ -39,7 +40,10 @@ export interface DielineTarget {
   surface: SurfaceDims
 }
 
-export type CreatorTier = 'maker' | 'builder' | 'agency' | 'admin'
+// maker/builder/agency come from the canonical @ilaunchify/auth TierKey (M2 — was a
+// hand-rolled shadow). 'admin' is an explicit SENTINEL for the System-Templates admin
+// preview (no billing tier: ungated, no usage meters) — see loader.ts, NOT a real tier.
+export type CreatorTier = TierKey | 'admin'
 
 /** Per-creator usage this period, for the meters. */
 export interface AiUsageSnapshot {

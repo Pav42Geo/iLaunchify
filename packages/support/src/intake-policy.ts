@@ -8,9 +8,15 @@
 // §Tier 1).
 
 import type { TicketPriority } from '@ilaunchify/db'
-import type { SupportSettingsValues } from '@ilaunchify/db'
+import type { SubscriptionTier, SupportSettingsValues } from '@ilaunchify/db'
 
-export type CreatorTier = 'MAKER' | 'BUILDER' | 'AGENCY'
+/** Creator subscription tier — the Prisma enum (DB-uppercase MAKER/BUILDER/AGENCY).
+ *  Was a hand-rolled 'MAKER'|'BUILDER'|'AGENCY' shadow; now anchored to the SSOT
+ *  in @ilaunchify/db so a schema change surfaces here as a type error (M2). This
+ *  side works in DB-uppercase space (support ticketing reads CreatorProfile.
+ *  subscriptionTier directly), so the Prisma enum — not the lowercase display
+ *  TierKey — is the correct canonical here. */
+export type CreatorTier = SubscriptionTier
 
 const PRIORITY_RANK: Record<TicketPriority, number> = {
   LOW: 0,

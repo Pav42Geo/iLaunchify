@@ -15,8 +15,18 @@
 // canonical per-tier numbers can be re-exported/overridden from @ilaunchify/plans.
 // =============================================================================
 
-/** Creator billing tiers (mirrors @ilaunchify/auth TierKey; local to stay dep-free). */
+/** Creator billing tiers — the canonical display-key set (mirrors @ilaunchify/auth
+ *  TierKey; kept local so this pure metering engine stays dependency-free). */
 export type CreatorBillingTier = 'maker' | 'builder' | 'agency'
+
+/** Coerce any tier-ish input (a raw DB 'MAKER', a stray 'admin', null) to a valid
+ *  billing key. Guards every tier-indexed lookup so a mis-cased or unknown value can
+ *  never spread `undefined` limits — the 2026-07-09 audit's latent billing bug (M2).
+ *  Unknown → 'maker' (the zero/safe tier). */
+export function normalizeBillingTier(tier: string | null | undefined): CreatorBillingTier {
+  const t = String(tier ?? '').toLowerCase()
+  return t === 'builder' || t === 'agency' ? t : 'maker'
+}
 
 export interface TierGenerationLimits {
   /** Draft 4-concept cycles allowed per billing period. */
@@ -52,7 +62,7 @@ export const DEFAULT_TIER_LIMITS: Record<CreatorBillingTier, TierGenerationLimit
 
 /** Concrete limits for a tier (never returns undefined), with optional overrides. */
 export function tierLimits(tier: CreatorBillingTier, overrides?: Partial<TierGenerationLimits>): TierGenerationLimits {
-  const base = DEFAULT_TIER_LIMITS[tier]
+  const base = DEFAULT_TIER_LIMITS[normalizeBillingTier(tier)]
   return overrides ? { ...base, ...overrides } : { ...base }
 }
 
