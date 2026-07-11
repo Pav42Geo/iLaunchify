@@ -24,6 +24,7 @@ export const AUDIT_ENTITY_TYPES = [
   'Lead',
   'SampleSettings', // Sample-policy admin settings (2026-06-11)
   'OrderSettings', // Order-policy admin settings (2026-06-11)
+  'CoCreationSettings', // Co-creation module policy admin settings (2026-07-10)
   'IngredientSourceConfig', // Ingredient data-source admin settings (2026-06-11)
   'DomainSetting', // Product-domain on/off admin settings (2026-06-14)
   'LogisticsSetting', // Logistics gate on/off admin settings (Phase L1, 2026-07-02)

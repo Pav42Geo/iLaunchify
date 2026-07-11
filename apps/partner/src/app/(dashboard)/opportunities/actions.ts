@@ -6,7 +6,7 @@
 // every mutation writes AuditLog; creator gets BRIEF_INTEREST_RECEIVED.
 
 import { revalidatePath } from 'next/cache'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser, getPartnerAccess, checkRateLimit } from '@ilaunchify/auth'
 import { assertInterestTransition } from '@ilaunchify/orders'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -15,10 +15,9 @@ import { scoreBriefFit } from '@ilaunchify/marketplace'
 import { z } from 'zod'
 import { loadPartnerFitFacts } from './loader'
 
-// D-CC2 (interest limits) is still an OPEN decision — these are conservative
-// placeholders, constants so flipping them to admin-tunable settings later is
-// a one-line change per call site.
-const MAX_ACTIVE_INTERESTS = 10
+// D-CC2 DECIDED 2026-07-10: the open-interest cap is admin-tunable via
+// CoCreationSettings.maxOpenInterestsPerPartner (0 = unlimited). The daily
+// rate limit stays a constant backstop against scripted spam.
 const RATE_LIMIT = { scope: 'brief-interest', limit: 20, windowSec: 86_400 }
 
 const ExpressInterestSchema = z.object({
@@ -64,13 +63,16 @@ export async function expressInterest(input: ExpressInterestInput): Promise<Acti
   const rl = await checkRateLimit({ ...RATE_LIMIT, id: partner.id })
   if (!rl.ok) return { ok: false, error: 'Too many interests today — try again tomorrow' }
 
-  const activeCount = await prisma.briefInterest.count({
-    where: { partnerId: partner.id, status: { in: ['SUBMITTED', 'SHORTLISTED'] } },
-  })
-  if (activeCount >= MAX_ACTIVE_INTERESTS) {
-    return {
-      ok: false,
-      error: `You have ${MAX_ACTIVE_INTERESTS} open interests — withdraw one or wait for creators to decide`,
+  const settings = await getCoCreationSettings()
+  if (settings.maxOpenInterestsPerPartner > 0) {
+    const activeCount = await prisma.briefInterest.count({
+      where: { partnerId: partner.id, status: { in: ['SUBMITTED', 'SHORTLISTED'] } },
+    })
+    if (activeCount >= settings.maxOpenInterestsPerPartner) {
+      return {
+        ok: false,
+        error: `You have ${settings.maxOpenInterestsPerPartner} open interests — withdraw one or wait for creators to decide`,
+      }
     }
   }
 
@@ -93,6 +95,14 @@ export async function expressInterest(input: ExpressInterestInput): Promise<Acti
       targetVolume: brief.targetVolume,
     },
     facts,
+    // Snapshot with the admin's live weights so BriefInterest.fitScore matches
+    // what the pool showed the maker.
+    {
+      claims: settings.claimsWeightPct,
+      volume: settings.volumeWeightPct,
+      merit: settings.meritWeightPct,
+      location: settings.locationWeightPct,
+    },
   )
   if (!fit.eligible) {
     return { ok: false, error: 'This brief doesn’t match your capabilities' }

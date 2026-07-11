@@ -53,16 +53,18 @@ function roundTo(n: number, step: number): number {
 
 export function computeBriefBenchmark(
   rows: BenchmarkRow[],
-  opts: { makerFormulates: boolean },
+  opts: { makerFormulates: boolean; minSample?: number },
 ): BriefBenchmark | null {
+  // Admin-tunable floor (CoCreationSettings.benchmarkMinSample); constant = default.
+  const minSample = opts.minSample ?? BENCHMARK_MIN_SAMPLE
   const usable = rows.filter(
     (r) => typeof r.unitCostCents === 'number' && r.unitCostCents > 0,
   )
-  if (usable.length < BENCHMARK_MIN_SAMPLE) return null
+  if (usable.length < minSample) return null
 
   // Prefer the niche-matched subset when it's a real sample on its own.
   const nicheRows = usable.filter((r) => r.nicheMatch)
-  const nicheScoped = nicheRows.length >= BENCHMARK_MIN_SAMPLE
+  const nicheScoped = nicheRows.length >= minSample
   const sample = nicheScoped ? nicheRows : usable
 
   const costs = sample.map((r) => r.unitCostCents as number)

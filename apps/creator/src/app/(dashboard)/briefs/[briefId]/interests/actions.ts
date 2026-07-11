@@ -13,7 +13,7 @@
 //   feeBps snapshot = 0, no platform take on milestones in V1)
 
 import { revalidatePath } from 'next/cache'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import {
   assertBriefTransition,
@@ -50,6 +50,22 @@ export async function toggleShortlist(briefId: string, interestId: string): Prom
   }
   assertInterestTransition(interest.status, to)
 
+  // Admin-tunable shortlist cap (CoCreationSettings.maxShortlistSize; 0 = off).
+  if (to === 'SHORTLISTED') {
+    const settings = await getCoCreationSettings()
+    if (settings.maxShortlistSize > 0) {
+      const shortlisted = await prisma.briefInterest.count({
+        where: { briefId, status: 'SHORTLISTED' },
+      })
+      if (shortlisted >= settings.maxShortlistSize) {
+        return {
+          ok: false,
+          error: `Shortlist is full (max ${settings.maxShortlistSize}) — unstar one to compare another`,
+        }
+      }
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.briefInterest.update({ where: { id: interest.id }, data: { status: to } })
     if (to === 'SHORTLISTED' && brief.status === 'INTEREST_OPEN') {
@@ -80,8 +96,8 @@ export async function toggleShortlist(briefId: string, interestId: string): Prom
   return { ok: true }
 }
 
-/** The seeded build objects every room starts with (prototype screen ④). */
-const SEED_OBJECT_KINDS = ['RECIPE', 'LABEL', 'PACKAGING', 'SAMPLE'] as const
+/** The seeded build objects every room starts with, in canonical rail order. */
+const SEED_OBJECT_KINDS = ['RECIPE', 'PACKAGING', 'LABEL', 'SAMPLE'] as const
 
 /**
  * Select one maker: open the room, pass everyone else. Reversible before the

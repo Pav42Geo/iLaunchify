@@ -189,6 +189,11 @@ export {
   type OrderSettingsContext,
 } from './order-settings'
 export {
+  getCoCreationSettings,
+  COCREATION_SETTINGS_DEFAULTS,
+  type CoCreationSettingsValues,
+} from './cocreation-settings'
+export {
   getPartnerAccessMode,
   isPartnerAccessPrivate,
   type PartnerAccessMode as PartnerAccessModeValue,

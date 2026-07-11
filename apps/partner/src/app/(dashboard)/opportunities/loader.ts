@@ -10,7 +10,7 @@
 // best PartnerService.ratingBayesian. A manufacturer with no published
 // templates has no capability signal → empty pool (page shows why).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import {
   scoreBriefFit,
   toPublicBriefProjection,
@@ -111,7 +111,18 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
   entries: PoolEntry[]
   myInterests: MyInterestEntry[]
 }> {
-  const facts = await loadPartnerFitFacts(partnerId)
+  const [facts, settings] = await Promise.all([
+    loadPartnerFitFacts(partnerId),
+    getCoCreationSettings(),
+  ])
+  const fitWeights = {
+    claims: settings.claimsWeightPct,
+    volume: settings.volumeWeightPct,
+    merit: settings.meritWeightPct,
+    location: settings.locationWeightPct,
+  }
+  const exclusivityMs = settings.poolExclusivityDays * 24 * 3_600_000
+  const now = Date.now()
 
   const briefs = facts.hasCapabilitySignal
     ? await prisma.productBrief.findMany({
@@ -136,10 +147,24 @@ export async function loadOpportunityPool(partnerId: string): Promise<{
         targetVolume: b.targetVolume,
       },
       facts,
+      fitWeights,
     )
     if (!fit.eligible) continue // hard filters gate visibility, never weighted
 
     const mine = b.interests.find((i) => i.partnerId === partnerId)
+
+    // Pool exclusivity window (admin-tunable, default 15 days): a brief's
+    // first N days surface only to STRONG fits (score ≥ floor) so best-match
+    // makers get first look. After the window every eligible maker sees it.
+    // Makers already engaged (own interest) keep visibility regardless.
+    if (
+      exclusivityMs > 0 &&
+      !mine &&
+      now - b.createdAt.getTime() < exclusivityMs &&
+      fit.score < settings.exclusivityMinFit
+    ) {
+      continue
+    }
     entries.push({
       brief: toPublicBriefProjection({
         ...b,

@@ -20,17 +20,19 @@
 // mutations anywhere on this surface.
 
 import Link from 'next/link'
-import { Lightbulb, DoorOpen } from 'lucide-react'
+import { Lightbulb, DoorOpen, SlidersHorizontal } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@ilaunchify/ui'
+import { getCoCreationSettings } from '@ilaunchify/db'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { BriefsListSection } from '../briefs/BriefsListSection'
 import { RoomsListSection } from '../rooms/RoomsListSection'
+import { CoCreationSettingsForm } from './CoCreationSettingsForm'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Product Builder — Admin' }
 
-type ProductBuilderView = 'briefs' | 'rooms'
+type ProductBuilderView = 'briefs' | 'rooms' | 'settings'
 
 interface PageProps {
   searchParams: Promise<{
@@ -46,7 +48,8 @@ interface PageProps {
 
 export default async function ProductBuilderPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const view: ProductBuilderView = sp.view === 'rooms' ? 'rooms' : 'briefs'
+  const view: ProductBuilderView =
+    sp.view === 'rooms' ? 'rooms' : sp.view === 'settings' ? 'settings' : 'briefs'
 
   return (
     <div className="space-y-6">
@@ -64,12 +67,14 @@ export default async function ProductBuilderPage({ searchParams }: PageProps) {
           basePath="/product-builder"
           extraParams={{ view: 'briefs' }}
         />
-      ) : (
+      ) : view === 'rooms' ? (
         <RoomsListSection
           sp={sp}
           basePath="/product-builder"
           extraParams={{ view: 'rooms' }}
         />
+      ) : (
+        <CoCreationSettingsForm initial={await getCoCreationSettings()} />
       )}
     </div>
   )
@@ -93,6 +98,12 @@ function ViewSwitcher({ view }: { view: ProductBuilderView }) {
         active={view === 'rooms'}
         icon={DoorOpen}
         label="Rooms"
+      />
+      <ViewTab
+        href="/product-builder?view=settings"
+        active={view === 'settings'}
+        icon={SlidersHorizontal}
+        label="Settings"
       />
     </div>
   )

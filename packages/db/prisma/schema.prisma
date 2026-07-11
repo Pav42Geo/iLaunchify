@@ -9745,6 +9745,39 @@ model RoomMilestone {
   @@index([roomId, status])
 }
 
+/// Admin-tunable Co-Creation module policy (singleton, id "default") —
+/// managed at /product-builder?view=settings. Decisions locked 2026-07-10:
+/// merit = weight never gate (25 default, tunable); promoted interests =
+/// labeled slots that NEVER touch fit/merit ranking (never-sell-the-badge).
+/// Additive — run `pnpm db:push` + `pnpm db:generate`.
+model CoCreationSettings {
+  id String @id @default("default")
+
+  // ---- Pool & matching ----
+  poolExclusivityDays        Int @default(15) // brief's first N days: only strong fits surface (0 = off)
+  exclusivityMinFit          Int @default(60) // fit-score floor applied during the exclusivity window
+  maxOpenInterestsPerPartner Int @default(10) // D-CC2 anti-spam cap on concurrent open interests (0 = unlimited)
+  // Fit weights (D-CC6) — raw magnitudes, renormalized to 100 by the scorer.
+  claimsWeightPct   Int @default(40)
+  volumeWeightPct   Int @default(20)
+  meritWeightPct    Int @default(25) // moderate + tunable; merit informs, never gates
+  locationWeightPct Int @default(15)
+
+  // ---- Creator side ----
+  benchmarkMinSample Int @default(3) // min comparable products before the benchmark fills numbers
+  maxShortlistSize   Int @default(5) // max concurrently shortlisted interests per brief
+
+  // ---- Promoted interests (StaffMeUp-inverted: labeled slots, rank untouched) ----
+  promotedInterestsEnabled    Boolean @default(false) // master switch; token checkout gated on payments go-live
+  promotedSlotsPerBrief       Int     @default(2)
+  promoTokenPriceCents        Int     @default(2500)
+  requireVerifiedForPromotion Boolean @default(true) // suspended/probation makers can never promote
+
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
 /// Append-only room chat message.
 model RoomMessage {
   id         String         @id @default(uuid())

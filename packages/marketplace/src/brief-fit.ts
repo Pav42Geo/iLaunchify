@@ -52,7 +52,11 @@ export interface BriefFitResult {
   parts: { claims: number; volume: number; merit: number; location: number }
 }
 
-/** Weighted-score component maxima (sum = 100). Tunable later via D-CC6. */
+/** Weighted-score component maxima. DEFAULTS — the live values are the admin's
+ *  CoCreationSettings (D-CC6 DECIDED 2026-07-10: merit stays moderate at 25 and
+ *  tunable; merit is a WEIGHT, never a gate — low-merit makers keep bidding and
+ *  creators judge with full information). Raw magnitudes; the scorer
+ *  renormalizes so any admin combination still lands on a 0–100 score. */
 export const FIT_WEIGHTS = {
   /** Claim coverage — the strongest capability signal we have at brief time. */
   claims: 40,
@@ -64,8 +68,30 @@ export const FIT_WEIGHTS = {
   location: 15,
 } as const
 
-/** Evaluate one brief against one partner's facts. */
-export function scoreBriefFit(brief: BriefFitFacts, partner: PartnerFitFacts): BriefFitResult {
+export interface FitWeights {
+  claims: number
+  volume: number
+  merit: number
+  location: number
+}
+
+/** Evaluate one brief against one partner's facts. `weights` defaults to
+ *  FIT_WEIGHTS; pass the admin's CoCreationSettings values to tune (raw
+ *  magnitudes — renormalized to a 0–100 score here). */
+export function scoreBriefFit(
+  brief: BriefFitFacts,
+  partner: PartnerFitFacts,
+  weights: FitWeights = FIT_WEIGHTS,
+): BriefFitResult {
+  // Renormalize so admin-tuned magnitudes always produce a 0–100 score.
+  const total = weights.claims + weights.volume + weights.merit + weights.location
+  const scale = total > 0 ? 100 / total : 0
+  const W = {
+    claims: weights.claims * scale,
+    volume: weights.volume * scale,
+    merit: weights.merit * scale,
+    location: weights.location * scale,
+  }
   const hardFails: string[] = []
 
   // HARD 1 — niche eligibility.
@@ -101,15 +127,15 @@ export function scoreBriefFit(brief: BriefFitFacts, partner: PartnerFitFacts): B
   const supported = new Set(partner.claimsSupported ?? [])
   const claimsPart =
     brief.claims.length === 0
-      ? FIT_WEIGHTS.claims
+      ? W.claims
       : partner.claimsSupported === undefined
-        ? FIT_WEIGHTS.claims / 2
+        ? W.claims / 2
         : (brief.claims.filter((c) => supported.has(c)).length / brief.claims.length) *
-          FIT_WEIGHTS.claims
+          W.claims
 
   // WEIGHTED 2 — volume fit. Unknowns ⇒ neutral half credit. Within capacity
   // ⇒ full; above capacity ⇒ scaled by capacity/target (never negative).
-  let volumePart = FIT_WEIGHTS.volume / 2
+  let volumePart = W.volume / 2
   if (
     typeof brief.targetVolume === 'number' &&
     brief.targetVolume > 0 &&
@@ -118,19 +144,19 @@ export function scoreBriefFit(brief: BriefFitFacts, partner: PartnerFitFacts): B
   ) {
     volumePart =
       brief.targetVolume <= partner.volumeCapacity
-        ? FIT_WEIGHTS.volume
-        : Math.max(0, (partner.volumeCapacity / brief.targetVolume) * FIT_WEIGHTS.volume)
+        ? W.volume
+        : Math.max(0, (partner.volumeCapacity / brief.targetVolume) * W.volume)
   }
 
   // WEIGHTED 3 — merit (0..5 → 0..max). Unrated ⇒ neutral half credit so new
   // partners aren't buried (mirrors the rotation engine's new-provider ramp).
   const meritPart =
     typeof partner.meritRating === 'number'
-      ? (Math.min(Math.max(partner.meritRating, 0), 5) / 5) * FIT_WEIGHTS.merit
-      : FIT_WEIGHTS.merit / 2
+      ? (Math.min(Math.max(partner.meritRating, 0), 5) / 5) * W.merit
+      : W.merit / 2
 
   // WEIGHTED 4 — location bias.
-  const locationPart = partner.sameRegion ? FIT_WEIGHTS.location : FIT_WEIGHTS.location / 2
+  const locationPart = partner.sameRegion ? W.location : W.location / 2
 
   const parts = {
     claims: round1(claimsPart),

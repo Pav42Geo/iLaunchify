@@ -1,0 +1,190 @@
+'use client'
+
+// Co-Creation Settings form (Pavel 2026-07-10) — the Product Builder's
+// ?view=settings tab. One form, four policy cards, one audited save.
+// Mirrors OrderSettingsForms' conventions (Card/Field/SaveBar, NUM input).
+
+import * as React from 'react'
+import { Radar, Scale, Sparkles, Wand2 } from 'lucide-react'
+import { saveCoCreationSettings, type CoCreationSettingsValues } from './settings-actions'
+
+const NUM =
+  'w-36 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400'
+
+function Card({
+  icon: Icon,
+  title,
+  desc,
+  children,
+}: {
+  icon: typeof Radar
+  title: string
+  desc: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-ink-200 bg-white p-5">
+      <div className="flex items-center gap-2">
+        <span className="grid h-7 w-7 place-items-center rounded-lg bg-pink-50 text-pink-700">
+          <Icon className="h-4 w-4" />
+        </span>
+        <h2 className="text-[15px] font-bold text-ink-900">{title}</h2>
+      </div>
+      <p className="mt-1 text-[12.5px] text-ink-500">{desc}</p>
+      <div className="mt-4 space-y-3">{children}</div>
+    </div>
+  )
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium text-ink-800">{label}</div>
+        {hint && <div className="text-[11.5px] text-ink-500">{hint}</div>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 flex-none rounded-full transition-colors ${checked ? 'bg-ink-900' : 'bg-ink-200'}`}
+    >
+      <span
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5.5 left-0' : 'left-0.5'}`}
+        style={{ transform: checked ? 'translateX(22px)' : 'translateX(0)' }}
+      />
+    </button>
+  )
+}
+
+const intOr = (e: React.ChangeEvent<HTMLInputElement>, min: number) =>
+  Math.max(min, parseInt(e.target.value, 10) || min)
+
+export function CoCreationSettingsForm({ initial }: { initial: CoCreationSettingsValues }) {
+  const [v, setV] = React.useState(initial)
+  const [pending, start] = React.useTransition()
+  const [status, setStatus] = React.useState<{ ok: boolean; msg: string } | null>(null)
+
+  const patch = (k: keyof CoCreationSettingsValues, val: number | boolean) => {
+    setV((s) => ({ ...s, [k]: val }))
+    setStatus(null)
+  }
+  const num =
+    (k: keyof CoCreationSettingsValues, min: number) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      patch(k, intOr(e, min))
+
+  const wSum = v.claimsWeightPct + v.volumeWeightPct + v.meritWeightPct + v.locationWeightPct
+  const norm = (n: number) => (wSum > 0 ? `${Math.round((n / wSum) * 100)}%` : '—')
+
+  const save = () =>
+    start(async () => {
+      const r = await saveCoCreationSettings(v)
+      setStatus(r.ok ? { ok: true, msg: 'Saved.' } : { ok: false, msg: r.error })
+    })
+
+  return (
+    <div className="space-y-5">
+      <Card
+        icon={Radar}
+        title="Pool & interests"
+        desc="Who sees a brief, when — and how many irons a maker can have in the fire (D-CC2)."
+      >
+        <Field
+          label="Pool exclusivity window (days)"
+          hint="A brief's first N days surface only to strong fits, so best-match makers get first look. 0 disables."
+        >
+          <input className={NUM} type="number" min={0} max={90} value={v.poolExclusivityDays} onChange={num('poolExclusivityDays', 0)} />
+        </Field>
+        <Field
+          label="Exclusivity fit floor (0–100)"
+          hint="Minimum fit score to see a brief during its exclusivity window. Makers already engaged always keep visibility."
+        >
+          <input className={NUM} type="number" min={0} max={100} value={v.exclusivityMinFit} onChange={num('exclusivityMinFit', 0)} />
+        </Field>
+        <Field
+          label="Max open interests per maker"
+          hint="Concurrent SUBMITTED/SHORTLISTED interests (anti-spam). 0 = unlimited; a 20/day rate limit always backstops."
+        >
+          <input className={NUM} type="number" min={0} max={100} value={v.maxOpenInterestsPerPartner} onChange={num('maxOpenInterestsPerPartner', 0)} />
+        </Field>
+      </Card>
+
+      <Card
+        icon={Scale}
+        title="Fit ranking weights"
+        desc="D-CC6 (decided 2026-07-10): merit informs ranking but never gates access — low-merit makers keep bidding and creators judge with full information. Raw magnitudes; the scorer renormalizes to 100."
+      >
+        <Field label="Claim coverage" hint={`Normalized: ${norm(v.claimsWeightPct)} of the fit score`}>
+          <input className={NUM} type="number" min={0} max={100} value={v.claimsWeightPct} onChange={num('claimsWeightPct', 0)} />
+        </Field>
+        <Field label="Volume fit" hint={`Normalized: ${norm(v.volumeWeightPct)}`}>
+          <input className={NUM} type="number" min={0} max={100} value={v.volumeWeightPct} onChange={num('volumeWeightPct', 0)} />
+        </Field>
+        <Field label="Merit / rating" hint={`Normalized: ${norm(v.meritWeightPct)} — earned standing, never purchased, never a gate`}>
+          <input className={NUM} type="number" min={0} max={100} value={v.meritWeightPct} onChange={num('meritWeightPct', 0)} />
+        </Field>
+        <Field label="Location bias" hint={`Normalized: ${norm(v.locationWeightPct)}`}>
+          <input className={NUM} type="number" min={0} max={100} value={v.locationWeightPct} onChange={num('locationWeightPct', 0)} />
+        </Field>
+      </Card>
+
+      <Card icon={Wand2} title="Creator side" desc="Brief Builder assist + shortlist behavior.">
+        <Field
+          label="Benchmark minimum sample"
+          hint="Comparable catalog products required before “Benchmark volume & budget” suggests numbers — below this it refuses (honesty gate)."
+        >
+          <input className={NUM} type="number" min={1} max={50} value={v.benchmarkMinSample} onChange={num('benchmarkMinSample', 1)} />
+        </Field>
+        <Field label="Max shortlist size" hint="Concurrently starred interests per brief. 0 = unlimited.">
+          <input className={NUM} type="number" min={0} max={20} value={v.maxShortlistSize} onChange={num('maxShortlistSize', 0)} />
+        </Field>
+      </Card>
+
+      <Card
+        icon={Sparkles}
+        title="Promoted interests"
+        desc="StaffMeUp-inverted (decided 2026-07-10): makers buy LABELED promoted slots pinned above the organic list — fit and merit ranking are never affected, and only brief-eligible makers can promote. Token checkout ships with the payments slice; until then this stays off."
+      >
+        <Field label="Enable promoted interests" hint="Master switch. Purchase mechanics are gated on payments verification.">
+          <Toggle checked={v.promotedInterestsEnabled} onChange={(x) => patch('promotedInterestsEnabled', x)} />
+        </Field>
+        <Field label="Promoted slots per brief" hint="Max “Promoted” cards pinned above the organic interest list.">
+          <input className={NUM} type="number" min={0} max={10} value={v.promotedSlotsPerBrief} onChange={num('promotedSlotsPerBrief', 0)} />
+        </Field>
+        <Field label="Promo token price (cents)" hint="Price of one promotion token (one interest, one brief).">
+          <input className={NUM} type="number" min={0} max={100000} value={v.promoTokenPriceCents} onChange={num('promoTokenPriceCents', 0)} />
+        </Field>
+        <Field
+          label="Require good standing to promote"
+          hint="Suspended / probation makers can never promote — promotion must not amplify a bad actor."
+        >
+          <Toggle checked={v.requireVerifiedForPromotion} onChange={(x) => patch('requireVerifiedForPromotion', x)} />
+        </Field>
+      </Card>
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={save}
+          disabled={pending}
+          className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:opacity-50"
+        >
+          {pending ? 'Saving…' : 'Save settings'}
+        </button>
+        {status && (
+          <span className={`text-[13px] ${status.ok ? 'text-success-700' : 'text-danger-600'}`}>
+            {status.msg}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}

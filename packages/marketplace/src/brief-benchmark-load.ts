@@ -3,7 +3,7 @@
 // pure computeBriefBenchmark. Server-side only (Prisma), same split as
 // suggestNiches / niche-rule-eval.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import {
   computeBriefBenchmark,
   type BenchmarkRow,
@@ -47,5 +47,9 @@ export async function loadBriefBenchmark(input: {
     }
   })
 
-  return computeBriefBenchmark(rows, { makerFormulates: input.makerFormulates })
+  const settings = await getCoCreationSettings()
+  return computeBriefBenchmark(rows, {
+    makerFormulates: input.makerFormulates,
+    minSample: settings.benchmarkMinSample,
+  })
 }
