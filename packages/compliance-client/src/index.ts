@@ -11,6 +11,7 @@
 // deploy should error loudly, not silently call an open service.
 
 import { ComplianceResultSchema, type ComplianceResult } from '@ilaunchify/types'
+import { buildComplianceAuthHeaders } from './auth-headers'
 
 export class ComplianceClient {
   constructor(
@@ -18,20 +19,13 @@ export class ComplianceClient {
     private token: string | undefined = process.env.COMPLIANCE_SERVICE_TOKEN,
   ) {}
 
-  /** Shared headers for /v1 calls. Throws in production when the token is absent. */
+  /** Shared headers for /v1 calls. Throws in production when the token is absent.
+   *  Logic lives in the pure, tested buildComplianceAuthHeaders (auth-headers.ts). */
   private authHeaders(): Record<string, string> {
-    if (!this.token) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error(
-          'COMPLIANCE_SERVICE_TOKEN is not set — refusing to call the compliance service unauthenticated in production.',
-        )
-      }
-      return { 'content-type': 'application/json' }
-    }
-    return {
-      'content-type': 'application/json',
-      authorization: `Bearer ${this.token}`,
-    }
+    return buildComplianceAuthHeaders({
+      token: this.token,
+      isProd: process.env.NODE_ENV === 'production',
+    })
   }
 
   async checkRecipe(params: {
