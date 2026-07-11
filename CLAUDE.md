@@ -39,7 +39,7 @@ CockroachDB Serverless via Prisma. Schema at `packages/db/prisma/schema.prisma`.
 **Critical conventions:**
 - Migrations are additive. Never `DROP TABLE` or `DROP COLUMN` without a Pavel decision.
 - Cockroach rejects `@db.Text` — use bare `String` (it's already unbounded) or `@db.String(N)` for caps. `prisma generate` fails with P1012 otherwise.
-- `id` is `String @id @default(uuid())` not `cuid()` and not autoincrement (no sequential hotspots).
+- `id` is `String @id @default(uuid())` not `cuid()` and not autoincrement (no sequential hotspots). **FREEZE decision 2026-07-11 (audit H3):** NEW models MUST use `uuid()` — enforced by `check:invariants` (`no new cuid() id`, model-name baseline). The 136 pre-existing `cuid()` models are **accepted as-is**; backfill the hot ones (`AuditLog`/`Order`/`Notification`) only if CockroachDB range/hotspot metrics actually warrant it (own migration project, Pavel-greenlit).
 - Every mutating action writes an `AuditLog` row via `packages/audit`. Every product/partner state change goes through an FSM helper, never inline `prisma.update`.
 - After running `prisma migrate dev`, the Prisma client can go stale in THREE layers (2026-06-05, cost a debugging session): process memory, `node_modules`, and the `.next` webpack cache (because `@ilaunchify/db` is in `transpilePackages`, the old client gets BUNDLED into `.next`). "Property X does not exist" at typecheck or `prisma.<model> is undefined` at runtime after a successful migrate = stale client. Full incantation: `pnpm db:generate` → `rm -rf apps/*/.next` → restart `next dev`.
 

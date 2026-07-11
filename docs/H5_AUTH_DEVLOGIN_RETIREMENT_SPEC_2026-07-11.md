@@ -65,7 +65,7 @@ The client's `DEV_REDIRECT` handling (and the `devUrl` field) is removed with it
 
 ### A4 — Entrance hardening (P0 launch, per the strategy doc — reference, don't rebuild here)
 
-Execute `AUTH_ENTRANCE_SECURITY_2026-07.md` §4 P0: **invite-only** creators + partners (`PartnerAccessMode` / a creator invite gate), **Cloudflare Turnstile** on the public form + `/login`, disposable-email blocking. And §4B **admin TOTP 2FA** (the spec is already written there). These are the actual launch-security posture; the A0–A3 work above just removes the bypass so the hardened entrance is the *only* door.
+Execute `AUTH_ENTRANCE_SECURITY_2026-07.md` §4 P0. **Correction (Pavel 2026-07-11): creators are NOT invite-only** — that was the strategy doc's *recommendation* (S3), not an adopted decision. Creator signup stays **open**, defended by **Cloudflare Turnstile** (public form + `/login`) + **disposable-email blocking** + passwordless/passkeys — not an invite gate. **Partners** keep their own access switch (`PartnerAccessMode`, private↔public, from `PARTNER_ONBOARDING_STRATEGY` §7). Plus §4B **admin TOTP 2FA** (already specced there). These are the launch-security posture; A0–A3 above just removes the bypass so the hardened entrance is the *only* door.
 
 ## 4 · Why this is buildable-not-built here
 
