@@ -3,9 +3,11 @@
 // stores/reads the hash. Reads fail safe (empty list) on error.
 
 import { prisma } from './index'
-import type { AdminRole } from '@prisma/client'
+import type { AdminRole, AdminInviteStatus as PrismaAdminInviteStatus } from '@prisma/client'
 
-export type AdminInviteStatus = 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED'
+// Anchored to the Prisma enum (SSOT) — was a hand-rolled union (L-tier shadow-union
+// cleanup, AUDIT_2026-07-09). Re-exported name unchanged so consumers are unaffected.
+export type AdminInviteStatus = PrismaAdminInviteStatus
 
 export type AdminInviteRow = {
   id: string

@@ -17,6 +17,7 @@
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
+import type { ProductStatus as PrismaProductStatus, ComplianceCheckOutcome } from '@ilaunchify/db'
 import { requireUser, getCreatorTier, hasTier } from '@ilaunchify/auth'
 import {
   Package,
@@ -68,14 +69,11 @@ const TAB_TONE: Record<TabKey, 'pink' | 'amber' | 'sky' | 'ink'> = {
 // Status palettes + tabs
 // -----------------------------------------------------------------------------
 
-type ProductStatus =
-  | 'DRAFT'
-  | 'IN_REVIEW'
-  | 'COMPLIANT'
-  | 'PUBLISHED'
-  | 'PAUSED'
-  | 'ARCHIVED'
-type ComplianceOutcome = 'PASSED' | 'PASSED_WITH_WARNINGS' | 'FAILED'
+// Anchored to the Prisma enums (SSOT) so these can't drift from the DB — was a
+// hand-rolled union (L-tier shadow-union cleanup, AUDIT_2026-07-09). ComplianceOutcome
+// aliases the Prisma ComplianceCheckOutcome.
+type ProductStatus = PrismaProductStatus
+type ComplianceOutcome = ComplianceCheckOutcome
 
 interface StatusPalette {
   label: string
