@@ -364,6 +364,26 @@ function checkNoStrayDevLogin() {
 }
 
 // =============================================================================
+// CHECK 10 — a server secret exposed with a NEXT_PUBLIC_ prefix  (ERROR)
+// H5 A4: TURNSTILE_SECRET_KEY (and any *_SECRET) verifies tokens server-side and must
+// NEVER be NEXT_PUBLIC_ — that prefix inlines the value into the client bundle, leaking
+// it to every visitor. Only the public NEXT_PUBLIC_TURNSTILE_SITE_KEY belongs in the
+// browser. Flags any NEXT_PUBLIC_…SECRET reference in app/package code. Baseline 0 → ERROR.
+// =============================================================================
+const PUBLIC_SECRET_RX = /NEXT_PUBLIC_[A-Z0-9_]*SECRET/
+function checkNoPublicSecret() {
+  const hits = []
+  for (const f of collect(CODE, ['.ts', '.tsx'])) {
+    read(f).split('\n').forEach((line, i) => {
+      if (PUBLIC_SECRET_RX.test(line)) {
+        hits.push(`${f.replace(/\\/g, '/')}:${i + 1}  NEXT_PUBLIC_*SECRET leaks a server secret into the client bundle — drop the NEXT_PUBLIC_ prefix`)
+      }
+    })
+  }
+  return { name: 'no server secret under NEXT_PUBLIC_ (leak guard, A4)', level: 'error', hits }
+}
+
+// =============================================================================
 const CHECKS = [
   checkNoDbText,
   checkCrossAppLink,
@@ -374,6 +394,7 @@ const CHECKS = [
   checkNoNewCuid,
   checkNoNewDecimalMoney,
   checkNoStrayDevLogin,
+  checkNoPublicSecret,
 ]
 
 let errorCount = 0
