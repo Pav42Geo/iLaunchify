@@ -329,6 +329,41 @@ function checkNoNewDecimalMoney() {
 }
 
 // =============================================================================
+// CHECK 9 — stray /api/dev/login reference  (ERROR)
+// H5 (H5_AUTH_DEVLOGIN_RETIREMENT_SPEC_2026-07-11): /api/dev/login forges a
+// session in one GET. It is now dead unless BOTH non-prod AND ENABLE_DEV_LOGIN
+// (A0), and every client affordance was removed (A1/A2). Any NEW reference to it
+// in app code is a security regression — a rehydrated bypass. The route file
+// itself is excluded; the 3 admin studio bridges legitimately hop through it (each
+// already gated behind ENABLE_DEV_LOGIN) and are allowlisted. Baseline is 0, so
+// this is a hard ERROR (fails CI without needing --strict).
+// =============================================================================
+const DEV_LOGIN_ALLOWLIST = new Set([
+  // Admin → creator-Studio session bridges. Reference /api/dev/login ONLY inside a
+  // `useDevLogin = NODE_ENV!=='production' && ENABLE_DEV_LOGIN==='true'` branch;
+  // otherwise they redirect straight to /studio on the real shared session (H5 A2).
+  'apps/admin/src/app/go/design-studio/route.ts',
+  'apps/admin/src/app/go/dieline-studio/route.ts',
+  'apps/admin/src/app/go/packaging-studio/route.ts',
+])
+function checkNoStrayDevLogin() {
+  const hits = []
+  const roots = APPS.map((a) => `${a}/src`)
+  for (const f of collect(roots, ['.ts', '.tsx'])) {
+    const rel = f.replace(/\\/g, '/')
+    if (rel.endsWith('api/dev/login/route.ts')) continue // the route's own home
+    if (DEV_LOGIN_ALLOWLIST.has(rel)) continue
+    read(f).split('\n').forEach((line, i) => {
+      const code = line.split('//')[0] // a mention in a comment isn't a live bypass
+      if (code.includes('/api/dev/login')) {
+        hits.push(`${rel}:${i + 1}  references /api/dev/login — the dev-login bypass is retired (H5); use signIn('resend')/real /login`)
+      }
+    })
+  }
+  return { name: 'no stray /api/dev/login reference (H5 bypass retired)', level: 'error', hits }
+}
+
+// =============================================================================
 const CHECKS = [
   checkNoDbText,
   checkCrossAppLink,
@@ -338,6 +373,7 @@ const CHECKS = [
   checkNoHardcodedFee,
   checkNoNewCuid,
   checkNoNewDecimalMoney,
+  checkNoStrayDevLogin,
 ]
 
 let errorCount = 0
