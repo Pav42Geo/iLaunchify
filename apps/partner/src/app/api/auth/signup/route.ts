@@ -87,13 +87,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Dev fallback — return the URL the client should redirect to.
-  // The /api/dev/login route directly creates a session.
-  const devUrl = `/api/dev/login?email=${encodeURIComponent(result.email)}&callbackUrl=${encodeURIComponent('/dashboard')}`
-  return NextResponse.json({
-    ok: true,
-    userId: result.userId,
-    nextStep: 'DEV_REDIRECT',
-    devUrl,
-  })
+  // No email provider configured — do NOT silently forge a session via the dev
+  // bypass. Surface the misconfig explicitly so it can't hide until prod. (H5 A1)
+  return NextResponse.json(
+    { ok: false, error: 'AUTH_NOT_CONFIGURED', message: 'Email sign-in is not configured.' },
+    { status: 503 },
+  )
 }

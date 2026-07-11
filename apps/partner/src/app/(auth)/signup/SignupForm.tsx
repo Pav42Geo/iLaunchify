@@ -12,8 +12,7 @@ interface SignupFormProps {
 
 type SignupResponse =
   | { ok: true; nextStep: 'CHECK_EMAIL'; warning?: string }
-  | { ok: true; nextStep: 'DEV_REDIRECT'; devUrl: string }
-  | { error: string; message: string }
+  | { ok: false; error: string; message: string }
 
 export function SignupForm({ prefillEmail, prefillCompany }: SignupFormProps) {
   const [name, setName] = useState('')
@@ -41,13 +40,6 @@ export function SignupForm({ prefillEmail, prefillCompany }: SignupFormProps) {
       if (!res.ok || 'error' in data) {
         const msg = 'message' in data ? data.message : 'Signup failed. Please try again.'
         toast.error(msg)
-        return
-      }
-
-      if (data.nextStep === 'DEV_REDIRECT') {
-        // Dev — go straight in (no email infrastructure)
-        toast.success('Account created. Redirecting…')
-        window.location.href = data.devUrl
         return
       }
 

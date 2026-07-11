@@ -84,9 +84,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Dev fallback
-  const devUrl = `/api/dev/login?email=${encodeURIComponent(result.email)}&callbackUrl=${encodeURIComponent(callbackUrl)}`
-  return NextResponse.json({ ok: true, userId: result.userId, nextStep: 'DEV_REDIRECT', devUrl })
+  // No email provider configured — do NOT silently forge a session via the dev
+  // bypass. Surface the misconfig explicitly so "auth works" can't mask "Resend
+  // isn't actually set up" until it fails in prod. (H5 A1)
+  return NextResponse.json(
+    { ok: false, error: 'AUTH_NOT_CONFIGURED', message: 'Email sign-in is not configured.' },
+    { status: 503 },
+  )
 }
 
 /** Whitelisted launch keys carried from the marketplace pick. */
