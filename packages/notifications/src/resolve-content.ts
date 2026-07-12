@@ -302,6 +302,13 @@ export function renderEmailShell(params: {
       `<a href="${escapeHtml(b.preferenceCenterUrl)}" style="color:${SHELL.inkFaint}">${escapeHtml(b.preferencesText)}</a>`,
     )
   }
+  // Legal footer links (Terms + Privacy) — resolved against the public marketing
+  // host so every transactional email carries them. Skipped if no host configured.
+  const legalBase = (process.env.NEXT_PUBLIC_MARKETING_URL ?? process.env.MARKETING_URL ?? '').replace(/\/$/, '')
+  if (legalBase) {
+    footerLinks.push(`<a href="${legalBase}/terms" style="color:${SHELL.inkFaint}">Terms</a>`)
+    footerLinks.push(`<a href="${legalBase}/privacy" style="color:${SHELL.inkFaint}">Privacy</a>`)
+  }
   if (footerLinks.length) footerBits.push(footerLinks.join(' &nbsp;·&nbsp; '))
 
   return `<!doctype html>

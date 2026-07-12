@@ -434,8 +434,17 @@ function ActionRail({
           className="underline hover:text-ink-700"
         >
           Terms
-        </a>{' '}
-        and{' '}
+        </a>
+        , our{' '}
+        <a
+          href={marketingUrl('/refund-dispute-policy')}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-ink-700"
+        >
+          Refund &amp; Dispute Policy
+        </a>
+        , and our{' '}
         <a
           href={marketingUrl('/privacy')}
           target="_blank"

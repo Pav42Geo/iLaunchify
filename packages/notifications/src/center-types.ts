@@ -91,7 +91,10 @@ export interface NotificationBrandingConfig {
 // ---------------------------------------------------------------------------
 
 export type TemplateCtaMode = 'AUTO' | 'CUSTOM' | 'NONE'
-export type TemplateStatus = 'DRAFT' | 'PUBLISHED'
+// Renamed from `TemplateStatus` (M5) — it collided by name with the Prisma
+// `TemplateStatus` enum (DRAFT|PUBLISHED|DEPRECATED) that backs DesignTemplate,
+// a different concept. This is the DRAFT/PUBLISHED state of a NotificationTemplateOverride.
+export type NotificationOverrideStatus = 'DRAFT' | 'PUBLISHED'
 
 export interface NotificationTemplateOverride {
   event: NotificationEvent
@@ -126,7 +129,7 @@ export interface NotificationTemplateOverride {
    */
   coalesceWindowMinutes: number | null
   /** Only PUBLISHED rows take effect; DRAFT rows are preview-only. */
-  status: TemplateStatus
+  status: NotificationOverrideStatus
   version: number
 }
 

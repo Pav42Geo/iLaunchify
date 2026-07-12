@@ -115,7 +115,7 @@ export type {
   NotificationTemplateOverride,
   NotificationTemplateVersionSnapshot,
   TemplateCtaMode,
-  TemplateStatus,
+  NotificationOverrideStatus,
   EmailDeliveryStatus,
   EmailDeliveryRecord,
 } from './center-types'
