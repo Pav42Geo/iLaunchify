@@ -371,6 +371,9 @@ function ShipToPicker({
   ]
 
   const selectedCard = cardOfShipTo(state.shipToType)
+  // AFE Level-1 — the smart default destination (bulk); drives the "Recommended"
+  // badge + pre-selection + the "why" line.
+  const recommendedType = (destinations?.recommendation?.type ?? null) as DestinationCardType | null
 
   // Server eligibility per card. While the payload loads (or on failure) the
   // two pre-L1b cards keep working and the new cards stay off — the server
@@ -430,12 +433,23 @@ function ShipToPicker({
     }
   }
 
+  // AFE Level-1 — pre-select the recommended destination once the payload loads,
+  // ONLY when the creator hasn't chosen yet (guarded, so it never overrides a real
+  // pick). The FC node inside WAREHOUSE_PARTNER is still auto-picked by the scorer.
+  useEffect(() => {
+    if (state.shipToType || !recommendedType) return
+    if (!optionFor(recommendedType).enabled) return
+    selectCard(recommendedType)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recommendedType, state.shipToType])
+
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-2">
         {cards.map((c) => {
           const { enabled, disabledReason } = optionFor(c.type)
           const selected = selectedCard === c.type
+          const isRecommended = recommendedType === c.type
           const Icon = c.icon
           return (
             <button
@@ -455,8 +469,13 @@ function ShipToPicker({
             >
               <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
               <div className="min-w-0">
-                <div className="text-[13px] font-semibold text-ink-900">
-                  {c.label}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-semibold text-ink-900">{c.label}</span>
+                  {isRecommended && enabled && (
+                    <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-1.5 py-[1px] text-[9px] font-bold uppercase tracking-wider text-pink-700">
+                      Recommended
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11.5px] leading-snug text-ink-500">
                   {c.hint}
@@ -471,6 +490,15 @@ function ShipToPicker({
           )
         })}
       </div>
+
+      {/* AFE Level-1 — why we suggested this destination (shown while the creator
+          is still on the recommended card). */}
+      {destinations?.recommendation?.reason && recommendedType && selectedCard === recommendedType && (
+        <p className="text-[11.5px] leading-snug text-ink-500">
+          <span className="font-semibold text-ink-700">Why this:</span>{' '}
+          {destinations.recommendation.reason}
+        </p>
+      )}
 
       {/* Expanded block for the selected destination card */}
       {selectedCard && (
