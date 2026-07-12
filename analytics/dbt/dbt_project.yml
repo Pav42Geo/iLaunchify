@@ -1,0 +1,35 @@
+name: 'ilaunchify'
+version: '0.1.0'
+config-version: 2
+
+# The profile to use — define BigQuery or Snowflake creds in ~/.dbt/profiles.yml
+# under this name once D2 (warehouse choice) is made. See README.
+profile: 'ilaunchify'
+
+model-paths: ['models']
+macro-paths: ['macros']
+seed-paths: ['seeds']
+test-paths: ['tests']
+
+target-path: 'target'
+clean-targets:
+  - 'target'
+  - 'dbt_packages'
+
+models:
+  ilaunchify:
+    staging:
+      # Staging = light renames/typecasts over raw ingested tables. Ephemeral so
+      # they don't materialize — they inline into the marts.
+      +materialized: ephemeral
+      +schema: staging
+    marts:
+      # Marts = the trusted metric tables BI + the app read.
+      +materialized: table
+      +schema: marts
+
+# Warehouse-agnostic vars the models reference (windows, targets). Override at run
+# time (`dbt build --vars '{otif_target_pct: 97}'`) or wire to AnalyticsSetting.
+vars:
+  trailing_days: 30
+  otif_lookback_days: 90

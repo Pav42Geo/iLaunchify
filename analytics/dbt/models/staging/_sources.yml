@@ -1,0 +1,37 @@
+version: 2
+
+# Raw sources = the ingested copies of the CockroachDB (Prisma) tables + Stripe +
+# PostHog. Table/column names below assume a 1:1 Prisma-model → raw-table load
+# (Fivetran/Airbyte default). Adjust `identifier` to match your connector's naming.
+# Freshness warns if ingestion stalls (a data-trust guardrail, strategy §6).
+
+sources:
+  - name: raw
+    description: Ingested operational data (CockroachDB + Stripe + PostHog).
+    # database/schema are set per-warehouse in profiles; leave logical here.
+    freshness:
+      warn_after: { count: 12, period: hour }
+      error_after: { count: 24, period: hour }
+    loaded_at_field: _synced_at
+    tables:
+      - name: orders
+        identifier: Order
+        description: One row per order. GMV backbone (total_cents + paid_at).
+      - name: charges
+        identifier: Charge
+        description: Stripe charges. application_fee_cents = platform take.
+      - name: refunds
+        identifier: Refund
+      - name: order_disputes
+        identifier: OrderDispute
+      - name: partner_clawbacks
+        identifier: PartnerClawback
+      - name: order_dispatches
+        identifier: OrderDispatch
+        description: Per-leg fulfillment with per-state timestamps + promised dates.
+      - name: creator_profiles
+        identifier: CreatorProfile
+      - name: analytics_events
+        identifier: AnalyticsEvent
+        description: Behavioral/state event store (P0 substrate) + PostHog mirror.
+        freshness: null # events can be bursty; don't alarm on quiet periods

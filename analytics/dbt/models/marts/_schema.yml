@@ -1,0 +1,50 @@
+version: 2
+
+# Data-trust guardrails (strategy §6): grain uniqueness + not-null on keys/metrics.
+# Run with `dbt test`. Add `accepted_range` (dbt_utils) once the package is added.
+
+models:
+  - name: fct_orders
+    description: One row per order with platform fee joined. GMV/take-rate base.
+    columns:
+      - name: order_id
+        description: Order grain key.
+        tests: [unique, not_null]
+      - name: total_cents
+        tests: [not_null]
+      - name: fee_cents
+        tests: [not_null]
+
+  - name: fct_dispatches
+    description: One row per dispatch with OTIF flags + cycle times.
+    columns:
+      - name: dispatch_id
+        tests: [unique, not_null]
+      - name: otif_eligible
+        tests: [not_null]
+
+  - name: metrics_marketplace_daily
+    description: Daily GMV, net take rate, AOV, paid orders. Mirrors loadMarketplace().
+    columns:
+      - name: day
+        tests: [unique, not_null]
+      - name: gmv_cents
+        tests: [not_null]
+
+  - name: metrics_fulfillment_daily
+    description: Daily OTIF, cycle times, reroute/QC rates. Mirrors loadFulfillment().
+    columns:
+      - name: day
+        tests: [unique, not_null]
+
+  - name: activation_funnel
+    description: Trailing-window signup→paid funnel. Mirrors loadActivationFunnel().
+    columns:
+      - name: event_name
+        tests: [unique, not_null]
+
+  - name: creator_cohort_retention
+    description: Event-based creator retention by signup-month cohort.
+    columns:
+      - name: cohort_month
+        tests: [not_null]
