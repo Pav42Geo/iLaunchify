@@ -10,7 +10,10 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ChevronDown, Check, ShieldCheck } from 'lucide-react'
 import type { TicketStatus, TicketPriority } from '@ilaunchify/db'
-import { TICKET_TRANSITIONS } from '@ilaunchify/support'
+// Import the FSM map from its pure source module, NOT the @ilaunchify/support
+// barrel — the barrel re-exports notify → @ilaunchify/notifications → feedback-token
+// (node:crypto), which Next 15 webpack can't bundle into this client component.
+import { TICKET_TRANSITIONS } from '@ilaunchify/support/ticket-fsm'
 import { cn } from '@ilaunchify/ui'
 import { transitionTicketAction, setPriorityAction, assignTicketAction } from './[ticketId]/actions'
 
