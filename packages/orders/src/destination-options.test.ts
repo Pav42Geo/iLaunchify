@@ -1,7 +1,42 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveDestinationOptions } from './destination-options'
-import type { DestinationContext } from './destination-options'
+import { resolveDestinationOptions, recommendDestination } from './destination-options'
+import type { DestinationContext, DestinationOption } from './destination-options'
+
+describe('recommendDestination — AFE Level-1 default (order-type gated)', () => {
+  const all: DestinationOption[] = [
+    { type: 'CREATOR_ADDRESS', enabled: true, disabledReason: null },
+    { type: 'WAREHOUSE_PARTNER', enabled: true, disabledReason: null },
+    { type: 'HOLD_AT_MANUFACTURER', enabled: true, disabledReason: null },
+    { type: 'CHANNEL_INBOUND', enabled: true, disabledReason: null },
+  ]
+
+  it('bulk: prefers the platform FC when enabled', () => {
+    expect(recommendDestination(all, { orderType: 'BULK' }).type).toBe('WAREHOUSE_PARTNER')
+  })
+  it('bulk: falls to channel-inbound when no FC eligible', () => {
+    const noFc = all.map((o) => (o.type === 'WAREHOUSE_PARTNER' ? { ...o, enabled: false } : o))
+    expect(recommendDestination(noFc, { orderType: 'BULK' }).type).toBe('CHANNEL_INBOUND')
+  })
+  it('bulk: CREATOR_ADDRESS is the always-available fallback', () => {
+    const onlySelf: DestinationOption[] = [
+      { type: 'CREATOR_ADDRESS', enabled: true, disabledReason: null },
+      { type: 'WAREHOUSE_PARTNER', enabled: false, disabledReason: 'x' },
+      { type: 'HOLD_AT_MANUFACTURER', enabled: false, disabledReason: 'x' },
+      { type: 'CHANNEL_INBOUND', enabled: false, disabledReason: 'x' },
+    ]
+    expect(recommendDestination(onlySelf, { orderType: 'BULK' }).type).toBe('CREATOR_ADDRESS')
+  })
+  it('sample: no fulfillment center (Level-0 gate)', () => {
+    expect(recommendDestination(all, { orderType: 'SAMPLE' }).type).toBeNull()
+  })
+  it('on-demand: no fulfillment center (Level-0 gate)', () => {
+    expect(recommendDestination(all, { orderType: 'ON_DEMAND' }).type).toBeNull()
+  })
+  it('no order type given → treated as bulk', () => {
+    expect(recommendDestination(all).type).toBe('WAREHOUSE_PARTNER')
+  })
+})
 
 const gatesOn = {
   'destination:HOLD_AT_MANUFACTURER': true,

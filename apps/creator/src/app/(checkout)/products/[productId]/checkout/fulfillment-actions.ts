@@ -29,11 +29,13 @@ import { prisma, getLogisticsSettings, isLogisticsEnabled, isStorageClassEnabled
 import { requireUser } from '@ilaunchify/auth'
 import {
   resolveDestinationOptions,
+  recommendDestination,
   scoreAndSelectFc,
   loadFcRotationPolicy,
   applyFulfillmentPreference,
   resolveFulfillmentPreference,
   PUBLIC_FC_PARTNER_FILTER,
+  type DestinationRecommendation,
   type DestinationOption,
   type FcCandidate,
   type FcScoreResult,
@@ -158,6 +160,9 @@ export interface DestinationOptionsPayload {
   holdOffer: HoldStorageOffer | null
   /** L3a — per-channel inbound evaluation (empty until a channel is CONNECTED). */
   channels: ChannelInboundOption[]
+  /** AFE Level-1 — the smart default destination type + "why" (bulk order). The
+   *  UI pre-selects `recommendation.type`; the FC node inside it is `suggestedFc`. */
+  recommendation: DestinationRecommendation
 }
 
 // -----------------------------------------------------------------------------
@@ -504,7 +509,14 @@ export async function listDestinationOptions(
         }
       : null
 
-  return { ok: true, data: { options, suggestedFc, holdOffer, channels: channelOptions } }
+  // AFE Level-1 — the smart default among the enabled types (this is the creator's
+  // BULK production checkout; sample/on-demand never reach here).
+  const recommendation = recommendDestination(options, { orderType: 'BULK' })
+
+  return {
+    ok: true,
+    data: { options, suggestedFc, holdOffer, channels: channelOptions, recommendation },
+  }
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000

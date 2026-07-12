@@ -189,12 +189,14 @@ split placement + demand forecasting is a documented V2, not now.
     resolve the pref and `applyFulfillmentPreference(weights, pref)` before `scoreAndSelectFc`;
     build the "why + See other options (top ~3 in band)" UI; a creator settings toggle + a
     per-product override control.
-- **P1.5 (Level-1 destination-type recommendation):** order-type gate (engage only for BULK; assert
-  sample/on-demand are excluded) + a smart *default among the enabled* destination types from
-  `destination-options.ts`, driven by the creator's intent (sell-on-channel → FC_NETWORK /
-  CHANNEL_INBOUND; hold → HOLD_AT_MANUFACTURER; self → CREATOR_DIRECT) + the "why" line. Confirm the
-  co-creation CLOSED_WON order materializes through this same fulfillment step (don't fork). Pure
-  recommender (`recommendDestinationType`) + tests; UI presents it as the pre-selected option.
+- **P1.5 (Level-1 destination-type recommendation) — CORE BUILT 2026-07-09:** pure
+  `recommendDestination(options, {orderType})` in `destination-options.ts` — order-type gate (BULK
+  only; SAMPLE/ON_DEMAND → `type:null`) + smart default among the enabled types (FC → channel-inbound
+  → hold → self) + "why" reason (+ tests, green). Wired into the checkout payload
+  (`DestinationOptionsPayload.recommendation`). **Co-creation verified:** CLOSED_WON materializes a
+  Product+Recipe and "ordering runs through normal checkout" (spec §17 amended, checklist ✅) — so AFE
+  applies with no fork; nothing co-creation-specific needed. **Remaining (UI):** checkout pre-selects
+  `recommendation.type` + shows the "why"; the per-product override control + "see other options".
 - **P2 (the adaptive part):** persist a lightweight `CreatorFulfillmentPreferenceSignal` (rolling
   from overrides) → the learned `creatorBehaviorPenalty`; admin weight ceilings + kill switch;
   award-log the behavior contribution for auditability (mirror PrintAwardLog / FcAwardLog).

@@ -378,13 +378,15 @@ export type {
   BuildManifestInput,
 } from './exportBundle'
 // Phase L1 — logistics destinations + V1 FC selection (docs/LOGISTICS_AND_FULFILLMENT.md)
-export { resolveDestinationOptions } from './destination-options'
+export { resolveDestinationOptions, recommendDestination } from './destination-options'
 export type {
   DestinationType,
   DestinationOption,
   DestinationContext,
   DestinationProductInput,
   ManufacturerStorageInput,
+  DestinationRecommendation,
+  FulfillmentOrderType,
 } from './destination-options'
 export {
   rankFulfillmentCenters,

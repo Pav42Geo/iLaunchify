@@ -95,3 +95,59 @@ export function resolveDestinationOptions(ctx: DestinationContext): DestinationO
 
   return options
 }
+
+// ---------------------------------------------------------------------------
+// AFE Level 1 — destination-TYPE recommendation (docs/FC_SELECTION_STRATEGY_BRIEF).
+// Picks the smart DEFAULT among the enabled types, order-type-gated. On-demand +
+// sample orders never stage to an FC (Level-0 gate) — they return no destination.
+// The FC NODE pick (which center) is a separate step: the fc-scorer.
+// ---------------------------------------------------------------------------
+
+export type FulfillmentOrderType = 'BULK' | 'SAMPLE' | 'ON_DEMAND'
+
+export interface DestinationRecommendation {
+  /** The recommended default type, or null when fulfillment doesn't apply. */
+  type: DestinationType | null
+  /** One-line "why" for the UI. */
+  reason: string
+}
+
+// Default priority for a BULK order that wants to sell online without shipping to
+// self: platform FC first (channel-agnostic, hides orchestration) → channel-inbound
+// (locks to one channel's network) → hold (delays stock reaching demand) → self
+// (always available fallback).
+const DESTINATION_DEFAULT_PRIORITY: DestinationType[] = [
+  'WAREHOUSE_PARTNER',
+  'CHANNEL_INBOUND',
+  'HOLD_AT_MANUFACTURER',
+  'CREATOR_ADDRESS',
+]
+
+const DESTINATION_REASON: Record<DestinationType, string> = {
+  WAREHOUSE_PARTNER:
+    "We'll auto-pick the best-matched fulfillment center so you can sell on your channels without shipping to yourself.",
+  CHANNEL_INBOUND: 'Send the run straight into your connected sales channel’s fulfillment network.',
+  HOLD_AT_MANUFACTURER: 'Keep the run stored at your manufacturer and release stock as you need it.',
+  CREATOR_ADDRESS: 'Ship the full run to your own address.',
+}
+
+export function recommendDestination(
+  options: DestinationOption[],
+  opts: { orderType?: FulfillmentOrderType } = {},
+): DestinationRecommendation {
+  // Level-0 gate: FC/storage fulfillment applies ONLY to bulk. Sample + on-demand
+  // never stage to a fulfillment center (samples ship to the creator; on-demand is
+  // produced + shipped per buyer order at the producer).
+  if (opts.orderType && opts.orderType !== 'BULK') {
+    return {
+      type: null,
+      reason:
+        opts.orderType === 'SAMPLE'
+          ? 'Samples ship to you for review — no fulfillment center.'
+          : 'On-demand orders are produced and shipped per buyer order — no fulfillment-center staging.',
+    }
+  }
+  const enabled = new Set(options.filter((o) => o.enabled).map((o) => o.type))
+  const pick = DESTINATION_DEFAULT_PRIORITY.find((t) => enabled.has(t)) ?? 'CREATOR_ADDRESS'
+  return { type: pick, reason: DESTINATION_REASON[pick] }
+}
