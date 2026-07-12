@@ -12,6 +12,7 @@
 // don't add rows back without a decision.
 
 import { AppHeaderUserMenu } from '@ilaunchify/ui'
+import { resetClient } from '@/lib/analytics/client'
 import {
   ShoppingBag,
   Plug,
@@ -127,7 +128,10 @@ export function TopbarRight({
             ],
           },
         ]}
-        onSignOut={() => signOut({ callbackUrl: '/login' })}
+        onSignOut={() => {
+          resetClient()
+          signOut({ callbackUrl: '/login' })
+        }}
       />
     </>
   )

@@ -3,6 +3,7 @@
 import { prisma, findBannedProductTerm } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { emitEventAs, ANALYTICS_EVENTS } from '@ilaunchify/analytics'
 import { z } from 'zod'
 
 const DraftSchema = z.object({
@@ -142,6 +143,24 @@ export async function createDraftFromTemplate(
 
     return created
   })
+
+  // Analytics — activation-funnel event (ANALYTICS_P0 §4). Fire-and-forget:
+  // never blocks the create. recipeEntryMode rides along as the "how did they
+  // build the recipe" quality signal. tenantId (CreatorProfile.id) left null to
+  // avoid an extra query; brandId is carried in properties for later joins.
+  void emitEventAs(
+    { id: user.id, role: 'CREATOR' },
+    {
+      name: ANALYTICS_EVENTS.PRODUCT_CREATED,
+      properties: {
+        productId: product.id,
+        templateId: template.id,
+        category: productCategory,
+        brandId: brand.id,
+        recipeEntryMode: template.recipeEntryMode ?? null,
+      },
+    },
+  )
 
   return { ok: true, productId: product.id }
 }

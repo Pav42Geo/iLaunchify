@@ -13,8 +13,14 @@
 //            Reuses TopbarRight + a sibling Cart IconButton so the right
 //            cluster is bit-for-bit consistent with the rest of the app.
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  captureClient,
+  identifyClient,
+  resetClient,
+  ANALYTICS_EVENTS,
+} from '@/lib/analytics/client'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -114,6 +120,10 @@ interface Props {
   // product's template, display name only. Null = auto-routed. Server-loaded;
   // placeOrder re-validates and the pinned-print gate fires if it went stale.
   pinnedPrintProvider: { companyName: string } | null
+  // Analytics P1 — the creator's user.id, passed so client behavioral events
+  // stitch to the SAME distinct id the server emitter uses (see
+  // docs/ANALYTICS_P1_POSTHOG_WIRING.md §4).
+  analyticsUserId: string
 }
 
 export function CheckoutWizard({
@@ -135,6 +145,7 @@ export function CheckoutWizard({
   labelIssues,
   pausedForCoverage,
   pinnedPrintProvider,
+  analyticsUserId,
 }: Props) {
   const router = useRouter()
   const isRestricted = restrictions.length > 0
@@ -169,6 +180,28 @@ export function CheckoutWizard({
   // failed routing validation. Never silently rerouted: the creator either
   // consciously accepts the auto-routed provider or bails to re-pick.
   const [pinnedPrintGate, setPinnedPrintGate] = useState<PinnedPrintGateInfo | null>(null)
+
+  // Analytics P1 — behavioral capture (checkout-stub events, ANALYTICS spec §4).
+  // Identify + checkout_started fire once on mount; checkout_step_viewed on every
+  // step change; checkout_offer_seen the first time the creator lands on Step 2.
+  const identifiedRef = useRef(false)
+  const offerSeenRef = useRef(false)
+  useEffect(() => {
+    if (identifiedRef.current) return
+    identifiedRef.current = true
+    identifyClient(analyticsUserId, { role: 'CREATOR' })
+    captureClient(ANALYTICS_EVENTS.CHECKOUT_STARTED, { productId })
+  }, [analyticsUserId, productId])
+  useEffect(() => {
+    captureClient(ANALYTICS_EVENTS.CHECKOUT_STEP_VIEWED, {
+      step: currentStep,
+      productId,
+    })
+    if (currentStep === 2 && !offerSeenRef.current) {
+      offerSeenRef.current = true
+      captureClient(ANALYTICS_EVENTS.CHECKOUT_OFFER_SEEN, { step: 2, productId })
+    }
+  }, [currentStep, productId])
 
   function placeOrder(
     capacityAck?: PlaceOrderOptions['capacityAck'],
@@ -719,7 +752,10 @@ function CheckoutHeaderRight({
           },
           { items: [{ label: 'Help & support', href: '/help', icon: HelpCircle }] },
         ]}
-        onSignOut={() => signOut({ callbackUrl: '/login' })}
+        onSignOut={() => {
+          resetClient()
+          signOut({ callbackUrl: '/login' })
+        }}
       />
     </>
   )
