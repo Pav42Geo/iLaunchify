@@ -1570,7 +1570,13 @@ async function resolveShipTo({
         warehouseId = selection.winner.ranked.candidate.partnerServiceId
         fcAward = {
           partnerServiceId: warehouseId,
-          scoreJson: buildScoredAwardPayload(selection),
+          // AFE P2c — record the engine's contribution (declared + learned tilt) on
+          // the award for observability.
+          scoreJson: buildScoredAwardPayload(selection, {
+            preference: fulfillmentPref,
+            learnedLean: learnedAdj.lean,
+            learnedAdjustmentPct: learnedAdj.adjustmentPct,
+          }),
         }
       }
       if (!warehouseId) {

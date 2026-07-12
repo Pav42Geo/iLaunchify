@@ -7,6 +7,8 @@
 
 import { rankFulfillmentCenters } from './fc-selector'
 import type { FcCandidate, FcRanked, FcSelectionInput } from './fc-selector'
+// Type-only (no runtime cycle) — the AFE award-contribution reuses the lean union.
+import type { FulfillmentLean } from './fulfillment-learning'
 
 export interface FcScoringWeights {
   costWeightPct: number // OrderSettings.fcCostWeightPct — cost proxy (V1: distance stands in until real freight quotes)
@@ -286,8 +288,20 @@ function weightedPick(
   return pool[pool.length - 1]!
 }
 
-/** FcAwardLog.scoreJson payload for scored selections (extends the V1 shape). */
-export function buildScoredAwardPayload(result: FcScoreResult) {
+/** AFE contribution recorded on the award for observability (P2c). */
+export interface AwardAfeContribution {
+  /** Effective declared preference (SPEED/COST/BALANCED) tilting the weights. */
+  preference: FulfillmentPreference
+  /** Learned lean applied on top (NONE unless admin-enabled + enough signal). */
+  learnedLean: FulfillmentLean
+  /** Magnitude of the learned tilt (% points, 0 = none). */
+  learnedAdjustmentPct: number
+}
+
+/** FcAwardLog.scoreJson payload for scored selections (extends the V1 shape). The
+ *  optional `afe` block records what the Adaptive Fulfillment Engine contributed
+ *  to this pick, so admin can see the declared + learned tilt per award. */
+export function buildScoredAwardPayload(result: FcScoreResult, afe?: AwardAfeContribution) {
   return {
     algorithm: result.algorithm,
     rotationApplied: result.rotationApplied,
@@ -300,5 +314,6 @@ export function buildScoredAwardPayload(result: FcScoreResult) {
       score: s.score,
       factors: s.factors,
     })),
+    ...(afe ? { afe } : {}),
   }
 }

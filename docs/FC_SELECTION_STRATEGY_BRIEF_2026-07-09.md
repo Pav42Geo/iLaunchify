@@ -212,9 +212,11 @@ split placement + demand forecasting is a documented V2, not now.
   learn→influence loop is now closed, shadow-inert until admin enables. **P2c admin control BUILT 2026-07-09:** the FC tab on Admin → Routing &
   Rotation now has a "Learned behavior (adaptive)" card — Enabled kill switch + Minimum-overrides
   floor + Max-adjustment ceiling, saved via admin-gated audited `saveFcLearningPolicy`
-  (`OrderSettings.fcLearning*`). Flipping Enabled activates the loop at checkout. **Remaining
-  (optional observability):** FcAwardLog behavior contribution (record the learned lean/pct on each
-  FC award so the admin can see learning working).
+  (`OrderSettings.fcLearning*`). Flipping Enabled activates the loop at checkout. **Award-log observability BUILT
+  2026-07-09:** `buildScoredAwardPayload` now takes an optional `afe` block (preference + learned
+  lean/pct), recorded on every FC auto-award (`FcAwardLog.scoreJson`) — admin can see the engine's
+  contribution per pick. **AFE is now complete through P2.** Only P3 (multi-FC inventory placement +
+  demand forecasting, a V2 subsystem) and a runtime smoke-test remain.
 - **P3 (V2):** true multi-FC inventory placement + demand forecasting (the ShipBob-IPP analogue).
 
 ## 6. Open questions for Pavel
