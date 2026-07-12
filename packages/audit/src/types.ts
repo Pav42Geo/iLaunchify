@@ -156,6 +156,9 @@ export const AUDIT_ENTITY_TYPES = [
   'PartnerAgreement', // versioned agreement text
   'PartnerAgreementSignature', // tamper-evident e-signature record (§4)
   'PartnerAccessSetting', // private↔public access mode toggle (§7)
+  // Public partner profile — Front Face (design/partner-profile-prototype-v2.html, 2026-07-12)
+  'PartnerProfileSetting', // admin visibility gate: minCreatorTier + kill switch
+  'PartnerPortfolioItem', // public profile portfolio tiles
   'PartnerNomination', // D7 nomination — directed-partner pin + consent (dark until counsel)
   'NominationSetting', // nomination feature gate (enabled=false until counsel blesses D7)
   // Co-creation marketplace P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md, 2026-07-10)

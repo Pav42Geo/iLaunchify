@@ -971,6 +971,19 @@ model Partner {
   // Documents at the company level
   websiteUrl              String?
   contactPhone            String?
+  // ---------------------------------------------------------------------------
+  // Public partner profile — "Front Face" (design/partner-profile-prototype-v2.html,
+  // Pavel 2026-07-12). Creator-facing profile for MANUFACTURING / COPACKING
+  // partners only, gated by PartnerProfileSetting.minCreatorTier (admin switch)
+  // AND the partner's own service disclosureLevel (both must allow — a partner
+  // who chose ANONYMOUS is never named). All fields additive + optional.
+  slug                    String?                       @unique // public handle; generated from companyName on first publish
+  logoUrl                 String?
+  coverImageUrl           String?
+  tagline                 String?                       @db.String(160)
+  about                   String? // public bio; ~600 chars enforced in the editor UI
+  bestForTags             String[]                      @default([]) // "Best for" chips; max 5 enforced in UI
+  profilePublishedAt      DateTime? // null = never published; gate for the public route
   addressLine1            String?
   addressLine2            String?
   city                    String?
@@ -1047,8 +1060,48 @@ model Partner {
   briefInterests                BriefInterest[]               @relation("PartnerBriefInterests")
   coCreationRooms               CoCreationRoom[]              @relation("PartnerCoCreationRooms")
   promoTokenLedger              PromoTokenLedger[]            @relation("PartnerPromoTokens")
+  // Public partner profile (Front Face) portfolio tiles
+  portfolioItems                PartnerPortfolioItem[]        @relation("PartnerPortfolioItems")
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
+}
+
+// =============================================================================
+// PUBLIC PARTNER PROFILE — "Front Face" (Pavel 2026-07-12)
+// design/partner-profile-prototype-v2.html. Creator-facing profiles for
+// MANUFACTURING / COPACKING partners, tier-gated via PartnerProfileSetting.
+// =============================================================================
+
+// Portfolio tile shown on the public profile ("Recent work") + managed in the
+// partner Settings → Portfolio panel. Image optional — the tile falls back to a
+// deterministic brand gradient.
+model PartnerPortfolioItem {
+  id          String   @id @default(uuid())
+  partnerId   String
+  partner     Partner  @relation("PartnerPortfolioItems", fields: [partnerId], references: [id], onDelete: Cascade)
+  title       String
+  meta        String? // short caption line, e.g. "Beverage · shrink-sleeve"
+  imageUrl    String? // public tile image; null → gradient fallback
+  published   Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([partnerId, published, sortOrder])
+}
+
+// Admin-tunable visibility gate for public partner profiles (singleton).
+// minCreatorTier = lowest creator subscription tier that can see partner names
+// + open profiles: 'maker' (everyone), 'builder' (Builder+Agency), 'agency'
+// (Agency only — default). `enabled=false` kills the surface entirely (names
+// stay anonymous badges, profile routes 404). Every write is audit-logged.
+model PartnerProfileSetting {
+  id             String   @id @default("singleton")
+  enabled        Boolean  @default(true)
+  minCreatorTier String   @default("agency") // TierKey: 'maker' | 'builder' | 'agency'
+  updatedById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // =============================================================================

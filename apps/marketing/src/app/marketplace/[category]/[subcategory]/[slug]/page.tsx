@@ -33,6 +33,7 @@ import { getMarketingSession } from '@/lib/session'
 import { getFavoritedTemplateIds } from '@/app/marketplace/favorites-actions'
 import { MarketplaceProductActions } from '@/components/MarketplaceProductActions'
 import { getCreatorTier } from '@ilaunchify/auth'
+import { getManufacturerIdentity, type ManufacturerIdentity } from '@/lib/partner-profile'
 import { getProductCertBadges } from '@/lib/product-cert-badges'
 import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getProductRestrictions } from '@/lib/product-restrictions'
@@ -163,6 +164,17 @@ export default async function ProductDetailPage({
   // fee. Tier comes from the signed-in creator's CreatorProfile (Maker for
   // signed-out). Shipping is excluded (estimated at checkout).
   const viewerTier = session?.user?.id ? await getCreatorTier(session.user.id) : 'maker'
+
+  // Named manufacturer line (Pavel 2026-07-12) — replaces the anonymous badge
+  // when EVERY gate passes: admin PartnerProfileSetting tier gate + the
+  // partner's own FULL disclosure + mfr/co-pack service + ACTIVE. Null keeps
+  // the anonymous earned-badge line (orchestration-thesis default).
+  const manufacturerIdentity = await getManufacturerIdentity(
+    template.slug,
+    viewerTier,
+    isAuthenticated,
+  )
+
   const pricingMatrix = await getCreatorPricingMatrix(
     template.slug,
     viewerTier,
@@ -371,6 +383,7 @@ export default async function ProductDetailPage({
                 certs={certs}
                 accordionRows={accordionRows}
                 liveRating={liveRating}
+                manufacturerIdentity={manufacturerIdentity}
                 hasReviews={reviews.length > 0}
                 starBuckets={
                   reviews.length > 0
@@ -491,31 +504,57 @@ function RatingRow({ ratingAvg, launches }: { ratingAvg?: number | null; launche
   )
 }
 
-/* Earned manufacturer standing — an ANONYMOUS trust tier under the rating
-   (docs/PARTNER_TIER_VS_MERIT.md perk model). Renders in both rating branches.
-   Badge only — never the partner's name/location/link (orchestration thesis).
-   Hidden for Verified / no-manufacturer. */
-function ManufacturerBadgeLine({ badge }: { badge?: 'TRUSTED' | 'PREMIER' | null }) {
-  if (!badge) return null
-  const isPremier = badge === 'PREMIER'
+/* Earned manufacturer standing under the rating (docs/PARTNER_TIER_VS_MERIT.md
+   perk model). Renders in both rating branches.
+
+   Default: ANONYMOUS badge only — never the partner's name/location/link
+   (orchestration thesis). NAMED variant (Pavel 2026-07-12): when `identity` is
+   resolved (admin PartnerProfileSetting tier gate + partner FULL disclosure +
+   mfr/co-pack service all passed), the line becomes
+   "Manufacturer: {name} [badge]" with the name linking to the public Front
+   Face profile when one is published. Hidden for Verified-anonymous /
+   no-manufacturer. */
+function ManufacturerBadgeLine({
+  badge,
+  identity,
+}: {
+  badge?: 'TRUSTED' | 'PREMIER' | null
+  identity?: ManufacturerIdentity | null
+}) {
+  const effectiveBadge = identity?.badge ?? badge
+  if (!identity && !effectiveBadge) return null
+  const isPremier = effectiveBadge === 'PREMIER'
   const tip = isPremier
     ? "Premier — iLaunchify's top manufacturer standing. Earned for sustained excellence across production quality, reliability, and order volume."
     : 'Trusted — an earned manufacturer standing on iLaunchify, for proven order volume and consistently high production quality.'
   return (
     <div className="mb-3 -mt-1 flex items-center gap-1.5 text-[12.5px] text-ink-500">
       <span>Manufacturer:</span>
-      <Tooltip content={tip}>
-        <span
-          className={
-            'inline-flex cursor-help items-center rounded-full border px-2 py-[1px] text-[10.5px] font-semibold uppercase tracking-wide ' +
-            (isPremier
-              ? 'border-pink-200 bg-pink-50 text-pink-800'
-              : 'border-info-200 bg-info-50 text-info-800')
-          }
-        >
-          {isPremier ? 'Premier' : 'Trusted'}
-        </span>
-      </Tooltip>
+      {identity &&
+        (identity.href ? (
+          <Link
+            href={identity.href}
+            className="font-semibold text-ink-900 underline decoration-pink-300 underline-offset-2 transition-colors hover:text-pink-700"
+          >
+            {identity.name}
+          </Link>
+        ) : (
+          <span className="font-semibold text-ink-900">{identity.name}</span>
+        ))}
+      {effectiveBadge && (
+        <Tooltip content={tip}>
+          <span
+            className={
+              'inline-flex cursor-help items-center rounded-full border px-2 py-[1px] text-[10.5px] font-semibold uppercase tracking-wide ' +
+              (isPremier
+                ? 'border-pink-200 bg-pink-50 text-pink-800'
+                : 'border-info-200 bg-info-50 text-info-800')
+            }
+          >
+            {isPremier ? 'Premier' : 'Trusted'}
+          </span>
+        </Tooltip>
+      )}
     </div>
   )
 }
@@ -532,6 +571,7 @@ function IdentityColumn({
   certs,
   accordionRows,
   liveRating,
+  manufacturerIdentity,
   hasReviews,
   starBuckets,
 }: {
@@ -548,6 +588,7 @@ function IdentityColumn({
   }>
   accordionRows: { id: string; title: string; body: React.ReactNode }[]
   liveRating: TemplateLiveRating | null
+  manufacturerIdentity?: ManufacturerIdentity | null
   hasReviews: boolean
   starBuckets?: { star: number; n: number }[]
 }) {
@@ -590,8 +631,10 @@ function IdentityColumn({
         <RatingRow ratingAvg={template.ratingAvg} launches={template.ratingCount ?? 0} />
       )}
 
-      {/* Anonymous earned-standing tier — shows under whichever rating element renders. */}
-      <ManufacturerBadgeLine badge={template.manufacturerBadge} />
+      {/* Manufacturer line — named + linked when the visibility gates pass
+          (admin tier switch + partner FULL disclosure); anonymous earned badge
+          otherwise. */}
+      <ManufacturerBadgeLine badge={template.manufacturerBadge} identity={manufacturerIdentity} />
 
       {/* Key-facts card — DIRECTLY under the title. Format · MOQ · Lead ·
           Process (the manufacturer's production method). Process reads real
