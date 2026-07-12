@@ -202,10 +202,13 @@ split placement + demand forecasting is a documented V2, not now.
   (shadow-inert, default OFF). Pure engine `fulfillment-learning.ts` — `classifyFcOverride`
   (distance axis), `learnedFulfillmentAdjustment` (bounded, admin-capped, confidence-scaled),
   `applyLearnedFulfillmentSignal` (tilt on top of the declared preference) + tests, green. **Gates
-  on db:push+generate.** **P2b PENDING:** at Pay, classify the override (picked FC vs suggested
-  distance) → upsert-increment the signal; feed `applyLearnedFulfillmentSignal(learnedFulfillmentAdjustment(signal, policy))`
-  into the scorer weights (both paths, after the preference tilt); admin toggle/ceiling on the
-  FC-weights surface; award-log the behavior contribution (FcAwardLog).
+  on db:push+generate.** **P2b-read BUILT 2026-07-09:** `loadLearnedFulfillmentAdjustment` (shared
+  `checkout/afe-learning.ts`, best-effort, shadow-inert unless `fcLearningEnabled`) feeds
+  `applyLearnedFulfillmentSignal(...)` on top of the preference tilt in BOTH checkout paths
+  (mirrored, shown==paid). **P2b-write PENDING:** at Pay, when the creator picks SPECIFIC_WAREHOUSE,
+  classify picked-vs-suggested FC distance (needs the scorer's suggestion in that branch) →
+  upsert-increment `CreatorFulfillmentSignal`; admin toggle/ceiling on the FC-weights surface;
+  FcAwardLog behavior contribution.
 - **P3 (V2):** true multi-FC inventory placement + demand forecasting (the ShipBob-IPP analogue).
 
 ## 6. Open questions for Pavel

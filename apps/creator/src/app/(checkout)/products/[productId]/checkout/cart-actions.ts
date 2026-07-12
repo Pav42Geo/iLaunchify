@@ -40,6 +40,7 @@ import {
   loadFcRotationPolicy,
   buildScoredAwardPayload,
   applyFulfillmentPreference,
+  applyLearnedFulfillmentSignal,
   resolveFulfillmentPreference,
   PUBLIC_FC_PARTNER_FILTER,
   type FcCandidate,
@@ -54,6 +55,7 @@ import {
   resolveOrderApplication,
   broadcastCapabilityRequestsForTemplate,
 } from '@ilaunchify/orders'
+import { loadLearnedFulfillmentAdjustment } from './afe-learning'
 import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
 import {
   createCheckoutSession,
@@ -1543,6 +1545,9 @@ async function resolveShipTo({
         prefProduct?.fulfillmentPreferenceOverride ?? null,
         prefProfile?.fulfillmentPreference ?? null,
       )
+      // AFE P2 — learned tilt on top of the declared preference (shadow-inert
+      // unless admin-enabled). MUST mirror fulfillment-actions so shown == paid.
+      const learnedAdj = await loadLearnedFulfillmentAdjustment(user.id)
       const selection = scoreAndSelectFc(
         candidates,
         {
@@ -1555,7 +1560,7 @@ async function resolveShipTo({
           originState: origin?.partner.state ?? null,
         },
         {
-          weights: applyFulfillmentPreference(weights, fulfillmentPref),
+          weights: applyLearnedFulfillmentSignal(applyFulfillmentPreference(weights, fulfillmentPref), learnedAdj),
           history: awardHistory.history,
           totalRecentAwards: awardHistory.totalRecentAwards,
           rotationPolicy: fcRotationPolicy,

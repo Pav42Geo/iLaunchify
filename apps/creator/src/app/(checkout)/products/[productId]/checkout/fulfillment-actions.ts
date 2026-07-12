@@ -27,12 +27,14 @@
 
 import { prisma, getLogisticsSettings, isLogisticsEnabled, isStorageClassEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { loadLearnedFulfillmentAdjustment } from './afe-learning'
 import {
   resolveDestinationOptions,
   recommendDestination,
   scoreAndSelectFc,
   loadFcRotationPolicy,
   applyFulfillmentPreference,
+  applyLearnedFulfillmentSignal,
   resolveFulfillmentPreference,
   PUBLIC_FC_PARTNER_FILTER,
   type DestinationRecommendation,
@@ -156,6 +158,8 @@ export interface DestinationOptionsPayload {
   options: DestinationOption[]
   /** V1 nearest-eligible FC pick; null when no node qualifies. */
   suggestedFc: SuggestedFcOption | null
+  /** AFE — top-3 next-best eligible FCs (ranked), for the informed override. */
+  fcAlternatives: SuggestedFcOption[]
   /** Fee card for the Keep-at-manufacturer card; null unless HOLD is enabled. */
   holdOffer: HoldStorageOffer | null
   /** L3a — per-channel inbound evaluation (empty until a channel is CONNECTED). */
@@ -376,6 +380,9 @@ export async function listDestinationOptions(
       product?.fulfillmentPreferenceOverride ?? null,
       creatorProfile?.fulfillmentPreference ?? null,
     )
+    // AFE P2 — the learned behavior tilt sits ON TOP of the declared preference
+    // (shadow-inert unless admin-enabled). MUST match cart-actions so shown==paid.
+    const learnedAdj = await loadLearnedFulfillmentAdjustment(user.id)
     selection = scoreAndSelectFc(
       candidates,
       {
@@ -388,7 +395,7 @@ export async function listDestinationOptions(
         originState: m?.partner.state ?? null,
       },
       {
-        weights: applyFulfillmentPreference(weights, fulfillmentPref),
+        weights: applyLearnedFulfillmentSignal(applyFulfillmentPreference(weights, fulfillmentPref), learnedAdj),
         history: awardHistory.history,
         totalRecentAwards: awardHistory.totalRecentAwards,
         rotationPolicy: fcRotationPolicy,
@@ -513,9 +520,26 @@ export async function listDestinationOptions(
   // BULK production checkout; sample/on-demand never reach here).
   const recommendation = recommendDestination(options, { orderType: 'BULK' })
 
+  // AFE — the top-3 next-best eligible FCs (informed override, locked Q4). Scored
+  // by the SAME scorer as the winner (`scored` mirrors input order, so sort by
+  // score) and excludes the winner; distance is the trade-off signal in the UI.
+  const winnerId = winner?.ranked.candidate.partnerServiceId ?? null
+  const fcAlternatives: SuggestedFcOption[] = selection.scored
+    .filter((s) => s.score !== null && s.ranked.eligible && s.ranked.candidate.partnerServiceId !== winnerId)
+    .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+    .slice(0, 3)
+    .map((s) => ({
+      partnerServiceId: s.ranked.candidate.partnerServiceId,
+      partnerName: s.ranked.candidate.partnerName,
+      city: s.ranked.candidate.city,
+      state: s.ranked.candidate.state,
+      distanceMiles: s.ranked.distanceMiles,
+      rationale: '',
+    }))
+
   return {
     ok: true,
-    data: { options, suggestedFc, holdOffer, channels: channelOptions, recommendation },
+    data: { options, suggestedFc, fcAlternatives, holdOffer, channels: channelOptions, recommendation },
   }
 }
 
