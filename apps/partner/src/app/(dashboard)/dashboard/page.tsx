@@ -38,7 +38,8 @@ import {
 } from 'lucide-react'
 import { ActiveWelcomeModal } from './ActiveWelcomeModal'
 import { homeEyebrow, heroQuickActions } from '@/lib/role-skins'
-import { getPartnerActivationStatus } from '@/lib/activation-status'
+import { redirect } from 'next/navigation'
+import { getPartnerActivationStatus, resolveActivationLimited } from '@/lib/activation-status'
 import { Rocket } from 'lucide-react'
 import { YourRatingCard, type ServiceRatingView, type RatingCommentView, type AspectNoteView } from './YourRatingCard'
 
@@ -115,6 +116,14 @@ export default async function ProviderDashboardHome() {
     },
   })
   if (!partner) return null
+
+  // Phased sidebar (Pavel 2026-07-12): while a partner is still in Activation
+  // Setup (approved but never fully live), /dashboard isn't their home — the
+  // Launch Console is. Uses the same sticky-flag resolver as the layout, so a
+  // fully-live partner who later adds a service KEEPS the dashboard (the
+  // nudge banner below covers that case) and pays zero extra queries.
+  if (await resolveActivationLimited(partner)) redirect('/activation')
+
   const serviceIds = partner.services.map((s) => s.id)
 
   // Activation nudge: once a partner is fully live they keep the full nav (the
