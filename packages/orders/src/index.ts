@@ -403,6 +403,8 @@ export {
   learnedFulfillmentAdjustment,
   applyLearnedFulfillmentSignal,
 } from './fulfillment-learning'
+export { normalizeDemandRegion, summarizeDemand } from './demand-signal'
+export type { DemandRow, DemandSummary } from './demand-signal'
 export type {
   FulfillmentLean,
   LearnedFulfillmentSignal,

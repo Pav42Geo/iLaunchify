@@ -807,6 +807,25 @@ model CreatorFulfillmentSignal {
   creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
 }
 
+// AFE P3.0 — demand-by-region signal (docs/FC_MULTI_PLACEMENT_P3_BRIEF_2026-07-09.md).
+// Rolling units sold per product × US-state region, accumulated best-effort as
+// channel (end-buyer) orders ingest. The no-regret substrate for future multi-FC
+// placement + demand forecasting; also feeds the AFE outbound-zone signal and a
+// creator "where your buyers are" view. One row per (product, region).
+model ProductDemandSignal {
+  id          String   @id @default(uuid())
+  productId   String
+  regionCode  String // US state 2-letter (buyer ship-to)
+  units       Int      @default(0)
+  orderCount  Int      @default(0)
+  lastOrderAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, regionCode])
+  @@index([productId])
+}
+
 // R14.b — three creator subscription tiers. Ordered low → high so we can
 // derive rank in TypeScript without a lookup map. New tiers must be
 // appended at the bottom to preserve rank ordering.
@@ -1995,6 +2014,7 @@ model Product {
   // Adaptive Fulfillment Engine (AFE) — optional per-product override of the
   // creator's account-wide fulfillmentPreference. Null = inherit the account default.
   fulfillmentPreferenceOverride FulfillmentPreference?
+  demandSignals                 ProductDemandSignal[] // AFE P3.0 demand-by-region
   // Inventory (V1: manufacturer-defined limit, no real-time per-order reserve)
   inventoryAvailable      Int?
   // Disclosure level override (defaults to PartnerService's, but creator can override)

@@ -16,6 +16,7 @@
 // is C2.2 — this module stops at READY. All new-model access is cast-guarded.
 
 import { prisma } from '@ilaunchify/db'
+import { normalizeDemandRegion } from '@ilaunchify/orders'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import {
@@ -36,6 +37,7 @@ type AnyDelegate = {
   findMany?: (a: unknown) => Promise<Array<Record<string, unknown>>>
   create?: (a: unknown) => Promise<Record<string, unknown>>
   update?: (a: unknown) => Promise<unknown>
+  upsert?: (a: unknown) => Promise<unknown>
   count?: (a?: unknown) => Promise<number>
 }
 const d = (name: string): AnyDelegate | null => ((prisma as unknown as Record<string, AnyDelegate | undefined>)[name] ?? null)
@@ -205,6 +207,32 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
           },
         },
       })
+
+      // AFE P3.0 — accumulate demand-by-region (best-effort, non-blocking). The
+      // end-buyer's ship-to state is the demand signal that feeds future multi-FC
+      // placement and the AFE outbound-zone weight. Non-US / unknown → skipped.
+      try {
+        const ship = ext.shipTo as { provinceCode?: string; state?: string } | null
+        const region = normalizeDemandRegion(ship?.provinceCode ?? ship?.state ?? null)
+        const demand = d('productDemandSignal')
+        if (region && demand?.upsert) {
+          const now = new Date()
+          for (const l of ext.lines) {
+            const productId = byExt.get(l.externalVariantId)?.productId
+            const qty = Number(l.quantity) || 0
+            if (!productId || qty <= 0) continue
+            await demand
+              .upsert({
+                where: { productId_regionCode: { productId: String(productId), regionCode: region } },
+                create: { productId: String(productId), regionCode: region, units: qty, orderCount: 1, lastOrderAt: now },
+                update: { units: { increment: qty }, orderCount: { increment: 1 }, lastOrderAt: now },
+              })
+              .catch(() => {})
+          }
+        }
+      } catch {
+        // Best-effort — a demand-signal failure must never affect order ingestion.
+      }
 
       summary.imported += 1
       if (status === 'READY') summary.ready += 1
