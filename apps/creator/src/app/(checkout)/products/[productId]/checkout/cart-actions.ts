@@ -39,6 +39,8 @@ import {
   scoreAndSelectFc,
   loadFcRotationPolicy,
   buildScoredAwardPayload,
+  applyFulfillmentPreference,
+  resolveFulfillmentPreference,
   PUBLIC_FC_PARTNER_FILTER,
   type FcCandidate,
   type FcScoringWeights,
@@ -1526,11 +1528,21 @@ async function resolveShipTo({
         facilityLng: w.facilityLng,
         blackedOut: w.blackoutDates.length > 0,
       }))
-      const [weights, awardHistory, fcRotationPolicy] = await Promise.all([
+      const [weights, awardHistory, fcRotationPolicy, prefProduct, prefProfile] = await Promise.all([
         readFcScoringWeights(),
         readFcAwardHistory(candidates.map((c) => c.partnerServiceId)),
         loadFcRotationPolicy(),
+        // AFE — per-product override + account-wide default (resolved below).
+        prisma.product.findUnique({ where: { id: productId }, select: { fulfillmentPreferenceOverride: true } }),
+        prisma.creatorProfile.findUnique({ where: { userId: user.id }, select: { fulfillmentPreference: true } }),
       ])
+      // AFE P1 — tilt admin weights toward the creator's fulfillment preference;
+      // re-ranks eligible FCs only, never overrides a hard filter. MUST mirror the
+      // display-side tilt in fulfillment-actions.ts so the shown pick == the paid pick.
+      const fulfillmentPref = resolveFulfillmentPreference(
+        prefProduct?.fulfillmentPreferenceOverride ?? null,
+        prefProfile?.fulfillmentPreference ?? null,
+      )
       const selection = scoreAndSelectFc(
         candidates,
         {
@@ -1543,7 +1555,7 @@ async function resolveShipTo({
           originState: origin?.partner.state ?? null,
         },
         {
-          weights,
+          weights: applyFulfillmentPreference(weights, fulfillmentPref),
           history: awardHistory.history,
           totalRecentAwards: awardHistory.totalRecentAwards,
           rotationPolicy: fcRotationPolicy,

@@ -23,6 +23,59 @@ picks one; (C) offer a default by matching product requirements, creator can cha
 reason. Plus: build a **smart decision mechanism that adapts to the creator's behavior** (Pavel's
 "delta engine" — not a literal delta computation, but a learning default).
 
+## 0. Order-type awareness — the Level-0 gate (added 2026-07-09, Pavel)
+
+Fulfillment/FC/storage is **not** offered for every order. There are three distinct fulfillment
+paradigms, and FC selection + storage apply to exactly ONE of them. AFE must gate on order type
+FIRST, before any node math:
+
+| Order type | Fulfillment paradigm | FC selection / storage? | AFE role |
+|---|---|---|---|
+| **Sample** | Pre-production units ship to the CREATOR to evaluate | **NO — never** offer FC/storage | Not engaged |
+| **On-demand** (`ChannelListingMode.ON_DEMAND`) | An end-buyer's channel order triggers a production order; the producer makes + ships **that** order at initiation, direct to the buyer | **NO** — no bulk-batch-to-FC; the producer is the fulfillment point | Not engaged |
+| **Bulk** (`ChannelListingMode.BULK`) | Creator produces a batch up front → it needs a home (`InventoryPool`) | **YES** — the 4 destination types | Engaged (Levels 1–2 below) |
+
+Current state (audited 2026-07-09): the flows are already structurally separate — **on-demand**
+routes through `channels/orders/ingest.ts` (production trigger, ships to end-buyer via `shipToJson`)
+and **never** touches `scoreAndSelectFc`; FC selection lives only in the creator **bulk** checkout
+(`cart-actions.ts` / `fulfillment-actions.ts`). **Samples** run through a separate `sample-actions.ts`
+(`createSampleOrder`) that touches FC/destination/storage **zero** times — so all three order types
+are already correctly separated at the flow level and AFE only engages for bulk. **Optional
+belt-and-suspenders:** add an explicit `isSample`/order-type assertion at the destination gate so a
+future refactor can't accidentally route a sample or on-demand order into FC/storage. Not a live bug
+today.
+
+### AFE decision levels (bulk only)
+- **Level 0 — order-type gate:** engage only for BULK; suppress FC/storage for sample + on-demand.
+- **Level 1 — destination-TYPE recommendation (mode/intent-aware):** "selling on Shopify/TikTok,
+  don't want it at my address" → recommend **FC_NETWORK** (or **CHANNEL_INBOUND**/FBA); "hold at the
+  manufacturer" → **HOLD_AT_MANUFACTURER**; "ship to me" → **CREATOR_DIRECT**. `destination-options.ts`
+  already computes which types are *enabled*; AFE adds the smart *default among the enabled* + the
+  "why".
+- **Level 2 — FC node selection (only when FC_NETWORK):** the `fc-scorer` + preference tilt (P1).
+
+So yes — AFE recognizes bulk-vs-on-demand-vs-sample and the creator's sell/hold/self intent, and
+suggests the right *functionality* (destination type) before it ever picks a node.
+
+### Co-creation orders — same flow, by design (added 2026-07-09)
+Co-creation does **not** get its own fulfillment path, and shouldn't. The spec is explicit
+(`CO_CREATION_MARKETPLACE_SPEC.md`): on `CLOSED_WON` the approved recipe "materializes into the
+existing `Recipe` + ... an `Order` via `packages/orders` — do not fork," and D-CC1 says that
+production order "pays the normal creator tier fee." So a finalized co-created product **is** a normal
+product; ordering it runs the **same** checkout + AFE (Levels 0–2). Order-type mapping falls straight
+out of the co-creation `MilestoneKind`:
+- **SAMPLE milestone** → a **sample** order → Level-0 excluded from FC/storage (ships to the creator).
+- **PRODUCTION milestone** → the **bulk** production order → full AFE (destination-type rec + node).
+- **DISCOVERY / TOOLING milestones** → non-physical (escrow only) → no fulfillment.
+- The **manufacturer is the selected co-creation partner** → owner-pinned; AFE only ever routes the
+  commodity/FC leg, never the pinned manufacturer, so nothing special is needed.
+
+**The one integration point to hold:** the co-creation "Confirm order → PO" materialization must run
+**through the same fulfillment/destination selection** (AFE), not a bypassed direct-`Order` create —
+otherwise a co-created bulk order would skip the "where does it ship / which FC" step. Verify (or
+route) the CLOSED_WON order creation through the shared checkout fulfillment step. No co-creation-
+specific AFE logic; just don't fork the order path.
+
 ## 1. What the major 3PLs actually do (researched 2026-07-09)
 
 Strong convergence — **the end merchant does NOT hand-pick a fulfillment center per order.** Two
@@ -136,6 +189,12 @@ split placement + demand forecasting is a documented V2, not now.
     resolve the pref and `applyFulfillmentPreference(weights, pref)` before `scoreAndSelectFc`;
     build the "why + See other options (top ~3 in band)" UI; a creator settings toggle + a
     per-product override control.
+- **P1.5 (Level-1 destination-type recommendation):** order-type gate (engage only for BULK; assert
+  sample/on-demand are excluded) + a smart *default among the enabled* destination types from
+  `destination-options.ts`, driven by the creator's intent (sell-on-channel → FC_NETWORK /
+  CHANNEL_INBOUND; hold → HOLD_AT_MANUFACTURER; self → CREATOR_DIRECT) + the "why" line. Confirm the
+  co-creation CLOSED_WON order materializes through this same fulfillment step (don't fork). Pure
+  recommender (`recommendDestinationType`) + tests; UI presents it as the pre-selected option.
 - **P2 (the adaptive part):** persist a lightweight `CreatorFulfillmentPreferenceSignal` (rolling
   from overrides) → the learned `creatorBehaviorPenalty`; admin weight ceilings + kill switch;
   award-log the behavior contribution for auditability (mirror PrintAwardLog / FcAwardLog).

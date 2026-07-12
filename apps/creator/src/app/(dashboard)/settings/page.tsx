@@ -11,6 +11,7 @@ import {
   Store,
   ShieldCheck,
   ReceiptText,
+  Truck,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -40,6 +41,7 @@ export default async function SettingsPage() {
         onboardingProgress: true,
         subscriptionTier: true,
         tierCancelAtPeriodEnd: true,
+        fulfillmentPreference: true,
       },
     }),
     getBillingProfile(user.id),
@@ -48,6 +50,9 @@ export default async function SettingsPage() {
   const tier = normalizeTier(profile?.subscriptionTier)
   const tierLabel = tier[0]!.toUpperCase() + tier.slice(1)
   const pendingCancel = profile?.tierCancelAtPeriodEnd ?? false
+
+  const FULFILLMENT_PREF_LABEL: Record<string, string> = { BALANCED: 'Balanced', SPEED: 'Speed', COST: 'Cost' }
+  const fulfillmentPrefLabel = FULFILLMENT_PREF_LABEL[profile?.fulfillmentPreference ?? 'BALANCED'] ?? 'Balanced'
 
   const progress = (profile?.onboardingProgress as Record<string, unknown> | null) ?? {}
   const marketIds = Array.isArray(progress.declaredTargetMarketIds)
@@ -177,6 +182,14 @@ export default async function SettingsPage() {
 
       {/* Preferences */}
       <Section title="Preferences">
+        <SettingCard
+          icon={<Truck className="h-[18px] w-[18px]" aria-hidden="true" />}
+          title="Fulfillment preference"
+          href="/settings/fulfillment"
+          cta="Set preference"
+          description="When bulk orders ship to a fulfillment center, we auto-pick the best-matched one. Choose whether to optimize for speed, cost, or a balance."
+          pill={{ label: fulfillmentPrefLabel, tone: 'brand' }}
+        />
         <SettingCard
           icon={<Bell className="h-[18px] w-[18px]" aria-hidden="true" />}
           title="Notifications"

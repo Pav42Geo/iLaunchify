@@ -31,6 +31,8 @@ import {
   resolveDestinationOptions,
   scoreAndSelectFc,
   loadFcRotationPolicy,
+  applyFulfillmentPreference,
+  resolveFulfillmentPreference,
   PUBLIC_FC_PARTNER_FILTER,
   type DestinationOption,
   type FcCandidate,
@@ -249,6 +251,8 @@ export async function listDestinationOptions(
   const product = await prisma.product.findUnique({
     where: { id: productId },
     select: {
+      // AFE — per-product override of the creator's account-wide fulfillment preference.
+      fulfillmentPreferenceOverride: true,
       productTemplate: {
         select: {
           storageClass: true,
@@ -291,7 +295,7 @@ export async function listDestinationOptions(
   // receive it and the manufacturer can't hold it, whatever their capabilities.
   // L3a: the CONNECTED connections are fetched in full (not counted) so each
   // one can be gate-evaluated per channel below.
-  const [gates, classEnabled, connectedChannels, warehouses] = await Promise.all([
+  const [gates, classEnabled, connectedChannels, creatorProfile, warehouses] = await Promise.all([
     getLogisticsSettings(),
     isStorageClassEnabled(storageClass),
     prisma.channelConnection.findMany({
@@ -302,6 +306,11 @@ export async function listDestinationOptions(
         channel: { select: { code: true, displayName: true } },
         productLinks: { where: { productId }, select: { fnsku: true } },
       },
+    }),
+    // AFE — account-wide fulfillment preference (per-product override resolved below).
+    prisma.creatorProfile.findUnique({
+      where: { userId: user.id },
+      select: { fulfillmentPreference: true },
     }),
     prisma.partnerService.findMany({
       where: { type: 'WAREHOUSE', status: 'ACTIVE', ...PUBLIC_FC_PARTNER_FILTER },
@@ -355,6 +364,13 @@ export async function listDestinationOptions(
       readFcAwardHistory(candidates.map((c) => c.partnerServiceId)),
       loadFcRotationPolicy(),
     ])
+    // AFE P1 — tilt the admin weights toward the creator's fulfillment preference
+    // (per-product override wins over the account default). Only re-ranks eligible
+    // FCs; never overrides a hard filter.
+    const fulfillmentPref = resolveFulfillmentPreference(
+      product?.fulfillmentPreferenceOverride ?? null,
+      creatorProfile?.fulfillmentPreference ?? null,
+    )
     selection = scoreAndSelectFc(
       candidates,
       {
@@ -367,7 +383,7 @@ export async function listDestinationOptions(
         originState: m?.partner.state ?? null,
       },
       {
-        weights,
+        weights: applyFulfillmentPreference(weights, fulfillmentPref),
         history: awardHistory.history,
         totalRecentAwards: awardHistory.totalRecentAwards,
         rotationPolicy: fcRotationPolicy,
