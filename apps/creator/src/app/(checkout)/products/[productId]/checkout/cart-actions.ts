@@ -55,7 +55,7 @@ import {
   resolveOrderApplication,
   broadcastCapabilityRequestsForTemplate,
 } from '@ilaunchify/orders'
-import { loadLearnedFulfillmentAdjustment } from './afe-learning'
+import { loadLearnedFulfillmentAdjustment, recordFcOverrideSignal } from './afe-learning'
 import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
 import {
   createCheckoutSession,
@@ -1591,6 +1591,19 @@ async function resolveShipTo({
       include: { partner: true },
     })
     if (!warehouse) return { ok: false, error: 'Warehouse partner unavailable.' }
+    // AFE P2b-write — the creator explicitly picked a specific center: record the
+    // override to feed the learned signal. Best-effort + fully guarded internally,
+    // so it can never affect the order.
+    if (f.shipToType === 'SPECIFIC_WAREHOUSE') {
+      await recordFcOverrideSignal({
+        userId: user.id,
+        pickedWarehouseId: warehouse.id,
+        manufacturerServiceId: template?.manufacturerServiceId ?? null,
+        storageClass: template?.storageClass ?? 'AMBIENT',
+        hazmatClass: template?.hazmatClass ?? 'NONE',
+        domain: template?.labelingType ?? 'FOOD',
+      })
+    }
     return {
       ok: true,
       data: {
