@@ -17,39 +17,7 @@ import {
   SelectValue,
 } from '@ilaunchify/ui'
 
-export type BriefBucket = 'open' | 'choosing' | 'room' | 'prod' | 'other'
-
-export interface BriefCardVM {
-  id: string
-  title: string
-  nicheName: string
-  emoji: string
-  /** Resolved CSS gradient (productGradient[nicheGradientKey(slug)]). */
-  gradient: string
-  bucket: BriefBucket
-  rawStatus: string
-  /** Server-computed relative time ("2 days ago") — stable across hydration. */
-  postedAgo: string
-  createdAtMs: number
-  vol: string | null
-  budget: string | null
-  lead: string | null
-  category: string | null
-  makerName: string | null
-  roomId: string | null
-  productId: string | null
-  interested: number
-  newInterests: number
-  /** Days left in the interest window (open/choosing only). */
-  poolDaysLeft: number | null
-  /** Pulsing attention chip text — null when nothing needs the creator. */
-  attention: string | null
-  /** Warning-colored meta line, e.g. "recipe v2 needs your review". */
-  roomLine: string | null
-  /** 0 Posted · 1 Interests · 2 Shortlist · 3 Room · 4 Production · 5 done. */
-  journey: number
-  fresh: boolean
-}
+import type { BriefCardVM } from './brief-card-vm'
 
 const JOURNEY = ['Posted', 'Interests', 'Shortlist', 'Room', 'Production'] as const
 

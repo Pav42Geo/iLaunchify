@@ -5,67 +5,17 @@ import { redirect } from 'next/navigation'
 import { nicheGradientKey } from '@ilaunchify/ui'
 import { productGradient } from '@ilaunchify/ui/tokens'
 import { PostBriefCta } from './PostBriefCta'
-import { BriefsListClient, type BriefBucket, type BriefCardVM } from './BriefsListClient'
+import { BriefsListClient } from './BriefsListClient'
+import { toBriefCardVM, type BriefCardVM } from './brief-card-vm'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Your briefs — iLaunchify' }
 
 // Creator briefs index — refactored 2026-07-12 to the approved prototype
 // (design/your-briefs-prototype.html): stats strip, stage filter tabs, sort,
-// and rich journey cards. This file resolves everything server-side into
-// serializable view models; BriefsListClient owns filter/sort/render.
-
-const BUCKET: Record<string, BriefBucket> = {
-  POSTED: 'open',
-  INTEREST_OPEN: 'open',
-  SHORTLISTING: 'choosing',
-  MATCHED: 'room',
-  IN_ROOM: 'room',
-  IN_PRODUCTION: 'prod',
-  COMPLETED: 'prod',
-  DRAFT: 'other',
-  CANCELLED: 'other',
-  EXPIRED: 'other',
-}
-
-// Posted(0) → Interests(1) → Shortlist(2) → Room(3) → Production(4) → done(5)
-const JOURNEY_STEP: Record<string, number> = {
-  DRAFT: 0,
-  POSTED: 1,
-  INTEREST_OPEN: 1,
-  SHORTLISTING: 2,
-  MATCHED: 3,
-  IN_ROOM: 3,
-  IN_PRODUCTION: 4,
-  COMPLETED: 5,
-  CANCELLED: 1,
-  EXPIRED: 1,
-}
-
-const DAY_MS = 86_400_000
-
-// Server-safe relative time (the @ilaunchify/ui relativeTime lives in a
-// 'use client' module and can't be called from a server component). Prototype
-// style: "6h ago" / "2d ago" / "6w ago".
-function postedAgo(date: Date, now: number): string {
-  const m = Math.max(0, Math.round((now - date.getTime()) / 60_000))
-  if (m < 60) return `${Math.max(1, m)}m ago`
-  const h = Math.round(m / 60)
-  if (h < 24) return `${h}h ago`
-  const d = Math.round(h / 24)
-  if (d < 7) return `${d}d ago`
-  const w = Math.round(d / 7)
-  if (w < 9) return `${w}w ago`
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function fmtBudget(low: unknown, high: unknown): string | null {
-  const lo = low == null ? null : Number(low)
-  const hi = high == null ? null : Number(high)
-  if (lo == null && hi == null) return null
-  if (lo != null && hi != null) return `$${lo.toFixed(2)}–${hi.toFixed(2)}`
-  return `$${(lo ?? hi)!.toFixed(2)}`
-}
+// and rich journey cards. All numbers are DB-resolved (interests, rooms,
+// review-pending BuildObjects) + admin-tunable CoCreationSettings; the pure
+// mapping lives in brief-card-vm.ts (unit-tested), BriefsListClient renders.
 
 export default async function BriefsIndexPage() {
   const user = await requireUser()
@@ -118,55 +68,39 @@ export default async function BriefsIndexPage() {
   const pricing = canPost ? undefined : await resolveCreatorTierPricing()
 
   const now = Date.now()
-  const windowMs = settings.interestWindowDays * DAY_MS
 
   const cards: BriefCardVM[] = briefs.map((b) => {
     const n = nicheBySlug.get(b.nicheSlug)
-    const bucket = BUCKET[b.status] ?? 'other'
     const room = b.rooms[0] ?? null
-    const review = room?.objects[0] ?? null
-    const reviewKind = review ? review.kind.toLowerCase().replace(/_/g, ' ') : null
-
-    const interested = b.interests.length
-    const newInterests = b.interests.filter((i) => now - i.createdAt.getTime() < 2 * DAY_MS).length
-
-    const inPool = b.status === 'POSTED' || b.status === 'INTEREST_OPEN' || b.status === 'SHORTLISTING'
-    const poolDaysLeft = inPool
-      ? Math.max(0, Math.ceil((b.createdAt.getTime() + windowMs - now) / DAY_MS))
-      : null
-
-    const attention =
-      bucket === 'choosing' && interested > 0
-        ? `${interested} interest${interested === 1 ? '' : 's'} — compare & pick`
-        : bucket === 'room' && review
-          ? `${reviewKind} v${review.currentVersion} — your review`
-          : null
-
-    return {
-      id: b.id,
-      title: b.title,
-      nicheName: n?.name ?? b.nicheSlug,
-      emoji: n?.iconEmoji ?? '🧪',
-      gradient: productGradient[nicheGradientKey(b.nicheSlug)],
-      bucket,
-      rawStatus: b.status,
-      postedAgo: postedAgo(b.createdAt, now),
-      createdAtMs: b.createdAt.getTime(),
-      vol: b.targetVolume ? b.targetVolume.toLocaleString('en-US') : null,
-      budget: fmtBudget(b.budgetLow, b.budgetHigh),
-      lead: b.timelineWeeks ? `${b.timelineWeeks} wk` : null,
-      category: b.categoryRef?.name ?? null,
-      makerName: bucket === 'room' || bucket === 'prod' ? (room?.partner.companyName ?? null) : null,
-      roomId: room?.id ?? null,
-      productId: room?.materializedProductId ?? null,
-      interested,
-      newInterests,
-      poolDaysLeft,
-      attention,
-      roomLine: bucket === 'room' && review ? `${reviewKind} v${review.currentVersion} needs your review` : null,
-      journey: JOURNEY_STEP[b.status] ?? 0,
-      fresh: bucket === 'open' && now - b.createdAt.getTime() < DAY_MS,
-    }
+    return toBriefCardVM(
+      {
+        id: b.id,
+        title: b.title,
+        status: b.status,
+        createdAt: b.createdAt,
+        targetVolume: b.targetVolume,
+        budgetLow: b.budgetLow,
+        budgetHigh: b.budgetHigh,
+        timelineWeeks: b.timelineWeeks,
+        categoryName: b.categoryRef?.name ?? null,
+        interestCreatedAts: b.interests.map((i) => i.createdAt),
+        room: room
+          ? {
+              id: room.id,
+              materializedProductId: room.materializedProductId,
+              partnerName: room.partner.companyName,
+              review: room.objects[0] ?? null,
+            }
+          : null,
+      },
+      {
+        now,
+        interestWindowDays: settings.interestWindowDays,
+        nicheName: n?.name ?? b.nicheSlug,
+        emoji: n?.iconEmoji ?? '🧪',
+        gradient: productGradient[nicheGradientKey(b.nicheSlug)],
+      },
+    )
   })
 
   return (
