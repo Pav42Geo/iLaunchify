@@ -148,6 +148,14 @@ const PRIMARY: SidebarRegion = {
       icon: LayoutDashboard,
       href: '/dashboard',
     },
+    // Insights — native analytics surface (P2, docs/ANALYTICS_STRATEGY.md §7).
+    // Marketplace / Fulfillment / Financial tabs, computed live from ops data.
+    {
+      kind: 'item',
+      label: 'Insights',
+      icon: LineChart,
+      href: '/insights',
+    },
     // Inbox = the ONE admin work queue. All approval/review queues live here, ordered by
     // theme (Partners → Catalog & product review → Orders & money → Support) so the pile
     // scans as groups. Category review moved in here from top-level (Pavel 2026-07-04).
@@ -275,6 +283,9 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Manufacturer standing', icon: Award, href: '/merit', capability: 'merit:admin' },
         { kind: 'item', label: 'Rating appeals', icon: Scale, href: '/merit/appeals', capability: 'reviews:write' },
         { kind: 'item', label: 'Product Domains', icon: Layers, href: '/settings/product-domains', capability: 'platform:admin' },
+        // Analytics config (docs/ANALYTICS_STRATEGY.md §6) — capture switch + thresholds.
+        // The viewing surface is top-level /insights; this is the knobs.
+        { kind: 'item', label: 'Analytics', icon: LineChart, href: '/settings/analytics', capability: 'platform:admin' },
         // Risk Center M2 — detector mode ladder + thresholds (also reachable
         // from the Risk Inbox header). Pavel 2026-07-05: mounted in Settings,
         // labeled "Risk Center".

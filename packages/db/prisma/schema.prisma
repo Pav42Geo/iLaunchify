@@ -4801,6 +4801,25 @@ enum CronRunStatus {
   FAILED
 }
 
+// Analytics admin config (Settings → Analytics). Singleton (id="default", same
+// convention as OrderSettings/SupportSettings — NOT uuid; one row, fixed id).
+// Holds the behavioral-capture master switch + the alert/target thresholds the
+// Insights surface reads. PostHog keys are env-backed (status shown read-only on
+// the page), never stored here. See docs/ANALYTICS_STRATEGY.md §6.
+model AnalyticsSetting {
+  id                       String   @id @default("default")
+  // Master switch for behavioral capture (client posthog-js + server forwarding).
+  // The env key still gates actual sends; this is the admin's intent flag.
+  behavioralCaptureEnabled Boolean  @default(true)
+  // Fulfillment targets / alert thresholds (percent, admin-tunable).
+  otifTargetPct            Int      @default(95) // OTIF goal; below → warning tone
+  refundRateAlertPct       Int      @default(5)
+  rerouteRateAlertPct      Int      @default(5)
+  qcFailAlertPct           Int      @default(3)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
 // ============================================================================
 // Phase B — Notifications
 // See docs/FOD_RECOVERY_PLAN.md §4 (B1).

@@ -24,6 +24,7 @@ export const AUDIT_ENTITY_TYPES = [
   'Lead',
   'SampleSettings', // Sample-policy admin settings (2026-06-11)
   'OrderSettings', // Order-policy admin settings (2026-06-11)
+  'AnalyticsSetting', // Analytics admin config — capture switch + thresholds (2026-07-09)
   'CoCreationSettings', // Co-creation module policy admin settings (2026-07-10)
   'PromoTokenLedger', // promoted-interest token grants/spends (2026-07-10)
   'CreatorRating', // maker→creator room rating (P1 two-sided reviews, 2026-07-10)

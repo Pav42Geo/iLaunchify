@@ -110,6 +110,11 @@ export {
   type SupportPriority,
 } from './support-settings'
 export { getCannedReplies, type CannedReplyRow } from './canned-replies'
+export {
+  getAnalyticsSettings,
+  ANALYTICS_SETTINGS_DEFAULTS,
+  type AnalyticsSettingsValues,
+} from './analytics-settings'
 // Default-brand provisioning — brand is optional for creators, but Product.brandId
 // is required, so the launch flow lazily ensures a default brand (Pavel 2026-06-22).
 export { getOrCreateDefaultBrand, type EnsureBrandResult } from './default-brand'
