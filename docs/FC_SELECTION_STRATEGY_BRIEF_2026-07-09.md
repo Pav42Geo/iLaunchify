@@ -1,5 +1,22 @@
 # Fulfillment-Center Selection Strategy — Research + Recommendation (2026-07-09)
 
+**DECISIONS LOCKED 2026-07-09 (Pavel).** Build name = **Adaptive Fulfillment Engine (AFE)**
+(creator-facing: "Smart Fulfillment"; the learned per-creator signal = **Fulfillment Preference
+Profile**).
+1. **Model:** auto-default + constrained *informed* override + learned behavior weight. NOT a
+   per-order free node picker.
+2. **Preference scope:** account-wide default (`CreatorProfile.fulfillmentPreference`) with a
+   per-product override (`Product`/`ProductTemplate` optional field).
+3. **Name:** not fixed by Pavel → chose "Adaptive Fulfillment Engine" as most descriptive.
+4. **Override latitude (best-practice pick):** reveal only the **top ~3 eligible alternatives
+   within a cost/ETA band**, each labeled with the trade-off (⏱/💲) — not the full list. Majors
+   show none; a bounded, trade-off-labeled set is the right informed-override middle.
+
+Build phases in §5. Starting P1.
+
+---
+
+
 **Question (Pavel):** how should we pick / rotate the FC for an order? Three candidate models
 he named: (A) algorithm tracks eligibility + location + price and picks; (B) offer all FCs, creator
 picks one; (C) offer a default by matching product requirements, creator can change for price/other
@@ -111,6 +128,14 @@ split placement + demand forecasting is a documented V2, not now.
   → `w_behavior`/weight tweak in `fc-scorer`; the "why + See other options" transparency UI on the
   fulfillment step; confirm the scorer already emits the ranked alternatives (it does). No schema
   beyond one enum column.
+  - **P1a BUILT 2026-07-09 (deterministic core):** `enum FulfillmentPreference {BALANCED SPEED
+    COST}` + `CreatorProfile.fulfillmentPreference` + `Product.fulfillmentPreferenceOverride`
+    (additive schema); pure `resolveFulfillmentPreference` + `applyFulfillmentPreference` in
+    `fc-scorer.ts` (+ tests, green). Gates on `db:push` + `db:generate`.
+  - **P1b PENDING (after db:generate):** wire `fulfillment-actions.ts` / `cart-actions.ts` to
+    resolve the pref and `applyFulfillmentPreference(weights, pref)` before `scoreAndSelectFc`;
+    build the "why + See other options (top ~3 in band)" UI; a creator settings toggle + a
+    per-product override control.
 - **P2 (the adaptive part):** persist a lightweight `CreatorFulfillmentPreferenceSignal` (rolling
   from overrides) → the learned `creatorBehaviorPenalty`; admin weight ceilings + kill switch;
   award-log the behavior contribution for auditability (mirror PrintAwardLog / FcAwardLog).

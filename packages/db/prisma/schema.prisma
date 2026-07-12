@@ -734,6 +734,10 @@ model CreatorProfile {
   // Pet-food products may only route to ship-to states in this list (2-letter codes).
   // Empty = no states registered yet; the routing gate surfaces "register in state X".
   petFoodRegisteredStates  String[]
+  // Adaptive Fulfillment Engine (AFE) — account-wide default fulfillment priority
+  // (SPEED/COST/BALANCED). Tilts FC-scorer weights; a Product may override it.
+  // docs/FC_SELECTION_STRATEGY_BRIEF_2026-07-09.md.
+  fulfillmentPreference    FulfillmentPreference @default(BALANCED)
   // V1: 5-step onboarding stepper progress per docs/CREATOR_ONBOARDING.md.
   // Shape: { welcomeSeen, currentStep, completedSteps[], declaredTargetMarketIds[],
   //         step1CompletedAt, step2CompletedAt, ... } — mirrors the Partner pattern.
@@ -1973,6 +1977,9 @@ model Product {
   // Featured + ordering
   featured                Boolean          @default(false)
   displayOrder            Int              @default(0)
+  // Adaptive Fulfillment Engine (AFE) — optional per-product override of the
+  // creator's account-wide fulfillmentPreference. Null = inherit the account default.
+  fulfillmentPreferenceOverride FulfillmentPreference?
   // Inventory (V1: manufacturer-defined limit, no real-time per-order reserve)
   inventoryAvailable      Int?
   // Disclosure level override (defaults to PartnerService's, but creator can override)
@@ -3331,6 +3338,14 @@ model OrderDispatch {
   trackingCarrier          String?
   trackingNumber           String?
   deliveredAt              DateTime?
+  // Analytics/Merit P0 (docs/ANALYTICS_P0_SUBSTRATE_SPEC.md §1.3). The dates this
+  // leg was PROMISED, snapshotted at routing (or revised on approved delay-accept).
+  // On-time = (readyAt <= promisedShipBy) / (deliveredAt <= promisedDeliverBy).
+  // Feeds OTIF + cycle-time analytics AND unblocks merit-signals.onTimeRate (today
+  // null — no promised date existed). Additive + nullable; legacy rows stay null and
+  // are excluded from on-time math (WHERE promisedShipBy IS NOT NULL).
+  promisedShipBy           DateTime?
+  promisedDeliverBy        DateTime?
   // Costs (for transfer reference)
   costCents                Int
   // Manufacturer merit-fee snapshot (docs/FEE_MODEL_RECONCILIATION_SPEC_2026-07-09).
@@ -4706,6 +4721,84 @@ model AuditLog {
   @@index([entityType, entityId, at]) // history for a single entity
   @@index([actorId, at]) // what did this user do
   @@index([at]) // time-range queries
+}
+
+// ============================================================================
+// Analytics P0 — canonical behavioral/state event store + reliability ledger.
+// See docs/ANALYTICS_P0_SUBSTRATE_SPEC.md. Written ONLY via @ilaunchify/analytics
+// (emitEvent / recordCronRun) — never prisma.*.create() directly. NEW models →
+// @default(uuid()) per FREEZE 2026-07-11 (enforced by check:invariants).
+// ============================================================================
+
+// Raw append-only event store. Append-only: no updates, no deletes (retention is
+// a warehouse/cron concern, not app code). High-volume by design → deliberately
+// few, well-chosen indexes.
+model AnalyticsEvent {
+  id         String             @id @default(uuid())
+  // Curated name from the ANALYTICS_EVENTS registry
+  // (packages/analytics/src/events.ts). Stored as String (not enum) so adding a
+  // name is a code+PR change, not a migration — same convention as AuditLog.action.
+  name       String
+  // SERVER events are the source of truth for anything financial/state (survive
+  // ad-blockers); CLIENT events (P1+) are behavioral.
+  source     AnalyticsSource    @default(SERVER)
+  // Actor. Null = anonymous/pre-auth (marketing funnel). Soft FK (no relation) so
+  // high-volume inserts never take a FK lock.
+  actorId    String?
+  role       AnalyticsActorRole @default(SYSTEM)
+  // Tenant stamp — no-regret for multi-tenant. Creator-side = CreatorProfile.id;
+  // partner-side = Partner.id; else null. Soft FK.
+  tenantId   String?
+  // Optional business anchors for joins (all soft FKs).
+  orderId    String?
+  // Client session id for funnel stitching (set by the P1 SDK; null for server).
+  sessionId  String?
+  // Typed event payload — see the registry's per-event property contracts.
+  properties Json?
+  // Event time (when it happened), distinct from any ingest time.
+  occurredAt DateTime           @default(now())
+
+  @@index([name, occurredAt]) // "how many X in period"
+  @@index([actorId, occurredAt]) // per-user funnel
+  @@index([orderId]) // order-linked event timeline
+  @@index([occurredAt]) // time-range scans / warehouse incremental pull
+}
+
+enum AnalyticsSource {
+  SERVER
+  CLIENT
+}
+
+enum AnalyticsActorRole {
+  CREATOR
+  PARTNER
+  ADMIN
+  SYSTEM
+  ANON
+}
+
+// Cron execution ledger. Replaces the audit-prefix inference in the admin
+// dashboard's "System Health". One row per run. Written via @ilaunchify/analytics
+// recordCronRun() (start) + finishCronRun() (end). Webhook health reuses the
+// existing ProcessedWebhookEvent model — no second webhook table.
+model CronRun {
+  id         String        @id @default(uuid())
+  name       String // e.g. "sla-sweep", "merit-recompute", "storage-accrual"
+  status     CronRunStatus @default(RUNNING)
+  startedAt  DateTime      @default(now())
+  finishedAt DateTime?
+  durationMs Int?
+  error      String? // failure message (bare String — no @db.Text on Cockroach)
+  payload    Json? // counts processed, dedupe stats, etc.
+
+  @@index([name, startedAt])
+  @@index([status, startedAt]) // "any failed crons in last 24h"
+}
+
+enum CronRunStatus {
+  RUNNING
+  OK
+  FAILED
 }
 
 // ============================================================================
@@ -7153,6 +7246,16 @@ enum StorageClass {
   PROTECT_HEAT
   CHILLED
   FROZEN
+}
+
+// Adaptive Fulfillment Engine (AFE) — the creator's declared fulfillment priority.
+// Tilts the FC scorer's weights (cost vs distance/SLA) toward the creator's intent.
+// Account-wide default on CreatorProfile; optional per-product override on Product.
+// docs/FC_SELECTION_STRATEGY_BRIEF_2026-07-09.md.
+enum FulfillmentPreference {
+  BALANCED
+  SPEED
+  COST
 }
 
 enum SpecSheetStatus {

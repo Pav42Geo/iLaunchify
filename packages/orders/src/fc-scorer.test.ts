@@ -4,6 +4,49 @@ import type { FcCandidate, FcSelectionInput } from './fc-selector'
 import { scoreAndSelectFc } from './fc-scorer'
 import type { FcScoringContext, FcScoringWeights } from './fc-scorer'
 import { isPublicFcPoolEligible } from './fc-pool'
+import { applyFulfillmentPreference, resolveFulfillmentPreference } from './fc-scorer'
+
+describe('Adaptive Fulfillment Engine — preference resolution + weight tilt', () => {
+  const base: FcScoringWeights = {
+    costWeightPct: 40,
+    distanceWeightPct: 30,
+    slaWeightPct: 10,
+    capacityWeightPct: 10,
+    rotationWeightPct: 10,
+    storageMatchWeightPct: 20,
+    rotationBandPct: 5,
+  }
+
+  it('resolve: product override wins over account default', () => {
+    expect(resolveFulfillmentPreference('SPEED', 'COST')).toBe('SPEED')
+  })
+  it('resolve: falls back to account default, then BALANCED', () => {
+    expect(resolveFulfillmentPreference(null, 'COST')).toBe('COST')
+    expect(resolveFulfillmentPreference(null, null)).toBe('BALANCED')
+  })
+  it('BALANCED leaves weights untouched (identity)', () => {
+    expect(applyFulfillmentPreference(base, 'BALANCED')).toEqual(base)
+  })
+  it('COST raises cost weight, lowers distance/SLA', () => {
+    const w = applyFulfillmentPreference(base, 'COST')
+    expect(w.costWeightPct).toBeGreaterThan(base.costWeightPct)
+    expect(w.distanceWeightPct).toBeLessThan(base.distanceWeightPct)
+    expect(w.slaWeightPct).toBeLessThan(base.slaWeightPct)
+  })
+  it('SPEED raises distance/SLA, lowers cost', () => {
+    const w = applyFulfillmentPreference(base, 'SPEED')
+    expect(w.distanceWeightPct).toBeGreaterThan(base.distanceWeightPct)
+    expect(w.slaWeightPct).toBeGreaterThan(base.slaWeightPct)
+    expect(w.costWeightPct).toBeLessThan(base.costWeightPct)
+  })
+  it('never touches hard-filter-adjacent weights (capacity, rotation, storage-match)', () => {
+    const w = applyFulfillmentPreference(base, 'COST')
+    expect(w.capacityWeightPct).toBe(base.capacityWeightPct)
+    expect(w.rotationWeightPct).toBe(base.rotationWeightPct)
+    expect(w.storageMatchWeightPct).toBe(base.storageMatchWeightPct)
+    expect(w.rotationBandPct).toBe(base.rotationBandPct)
+  })
+})
 
 describe('isPublicFcPoolEligible — public FC pool barred to producers (main-role rule)', () => {
   it('pure fulfillment center → eligible', () => {

@@ -393,8 +393,8 @@ export {
   haversineMiles,
 } from './fc-selector'
 export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'
-export { scoreAndSelectFc, buildScoredAwardPayload } from './fc-scorer'
-export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry, FcRotationPolicy } from './fc-scorer'
+export { scoreAndSelectFc, buildScoredAwardPayload, applyFulfillmentPreference, resolveFulfillmentPreference } from './fc-scorer'
+export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry, FcRotationPolicy, FulfillmentPreference } from './fc-scorer'
 export { isPublicFcPoolEligible, PUBLIC_FC_PARTNER_FILTER } from './fc-pool'
 
 // Manufacturer Merit Engine — pure scoring core (docs/MANUFACTURER_MERIT_ENGINE.md, MM-1/MM-2).

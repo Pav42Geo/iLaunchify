@@ -18,6 +18,46 @@ export interface FcScoringWeights {
   rotationBandPct: number // indifference band, % of best score
 }
 
+// ---------------------------------------------------------------------------
+// Adaptive Fulfillment Engine (AFE) P1 — creator-preference weight tilt.
+// docs/FC_SELECTION_STRATEGY_BRIEF_2026-07-09.md. Pure; the scorer renormalizes
+// over available factors, so these are RELATIVE nudges, never hard overrides.
+// ---------------------------------------------------------------------------
+
+/** Mirrors the Prisma `FulfillmentPreference` enum as a string union so the pure
+ *  scorer needs no runtime dependency on the generated client. */
+export type FulfillmentPreference = 'BALANCED' | 'SPEED' | 'COST'
+
+/** Effective preference for an order: per-product override wins, else the
+ *  creator's account default, else BALANCED. */
+export function resolveFulfillmentPreference(
+  productOverride: FulfillmentPreference | null | undefined,
+  accountDefault: FulfillmentPreference | null | undefined,
+): FulfillmentPreference {
+  return productOverride ?? accountDefault ?? 'BALANCED'
+}
+
+/** Tilt the admin base weights toward the creator's declared priority. Only the
+ *  cost vs distance/SLA balance moves; hard eligibility, capacity, rotation, and
+ *  storage-match are untouched, so a preference can never strand an order or beat
+ *  a hard filter — it only re-ranks otherwise-eligible FCs. */
+export function applyFulfillmentPreference(
+  base: FcScoringWeights,
+  pref: FulfillmentPreference,
+): FcScoringWeights {
+  if (pref === 'BALANCED') return base
+  const tilt =
+    pref === 'COST'
+      ? { cost: 1.5, distance: 0.7, sla: 0.7 }
+      : { cost: 0.7, distance: 1.5, sla: 1.5 } // SPEED
+  return {
+    ...base,
+    costWeightPct: base.costWeightPct * tilt.cost,
+    distanceWeightPct: base.distanceWeightPct * tilt.distance,
+    slaWeightPct: base.slaWeightPct * tilt.sla,
+  }
+}
+
 export interface FcAwardHistoryEntry {
   awardCount: number
   lastAwardedAt: Date | null
