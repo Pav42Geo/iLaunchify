@@ -34,14 +34,15 @@ export function Brand({
     return (
       <span className={cn('inline-flex items-center gap-[7px]', className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageSrc} alt={label} className="h-[26px] w-auto shrink-0 object-contain" />
+        {/* 25px lockup height everywhere (Pavel 2026-07-12; was 26px). */}
+        <img src={imageSrc} alt={label} className="h-[25px] w-auto shrink-0 object-contain" />
         {sublabel ? <span className={cn(SUBLABEL_CLASS, sublabelClassName)}>{sublabel}</span> : null}
       </span>
     )
   }
   return (
     <span className={cn('inline-flex items-center gap-[7px]', className)}>
-      <LayersGlyph className={cn('h-[26px] w-[26px]', markClassName)} />
+      <LayersGlyph className={cn('h-[25px] w-[25px]', markClassName)} />
       <span className={cn('font-display text-[length:var(--header-wordmark-fs)] font-extrabold tracking-[-0.04em] text-[var(--header-fg)]', wordmarkClassName)}>
         {label}
       </span>
