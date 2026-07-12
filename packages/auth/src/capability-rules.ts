@@ -31,6 +31,7 @@ export type Capability =
   | 'logistics:admin' // logistics gates: temp/hazmat/carrier eligibility toggles
   | 'compliance:read'
   | 'compliance:admin'
+  | 'legal:publish' // publish legal document versions (Terms/Privacy/…) — admins only; ops may draft under platform:admin
   | 'users:admin'
   | 'security:admin'
   | 'platform:admin'
@@ -58,7 +59,7 @@ export const ALL_CAPABILITIES: Capability[] = [
   'reviews:write', 'catalog:write', 'assets:write', 'academy:write',
   'billing:read', 'billing:write', 'tiers:write', 'merit:admin',
   'routing:admin', 'risk:admin', 'logistics:admin',
-  'compliance:read', 'compliance:admin',
+  'compliance:read', 'compliance:admin', 'legal:publish',
   'users:admin', 'security:admin', 'platform:admin', 'audit:read',
 ]
 

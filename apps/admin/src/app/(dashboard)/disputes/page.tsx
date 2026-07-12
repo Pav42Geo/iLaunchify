@@ -9,6 +9,7 @@
 import Link from 'next/link'
 import { requireRole } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
+import type { OrderDisputeStatus, OrderDisputeCategory } from '@ilaunchify/db'
 import { cn } from '@ilaunchify/ui'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { ArrowRight, Scale } from 'lucide-react'
@@ -16,8 +17,11 @@ import { ArrowRight, Scale } from 'lucide-react'
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Disputes — Admin' }
 
-type DisputeStatus = 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'REJECTED'
-type DisputeCategory = 'DAMAGED' | 'NOT_AS_DESCRIBED' | 'NOT_DELIVERED' | 'QUALITY' | 'OTHER'
+// Anchored to the Prisma enums (SSOT) — this page reads prisma.orderDispute, so
+// these are ORDER-dispute values, NOT the Stripe `DisputeStatus` enum they used to
+// shadow by name. Aliases so a hand-rolled union can't drift from the DB (M5).
+type DisputeStatus = OrderDisputeStatus
+type DisputeCategory = OrderDisputeCategory
 
 interface DisputeRow {
   id: string

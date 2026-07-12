@@ -202,7 +202,9 @@ export async function publishVersion(input: {
   effectiveAt: string | null
   attestMatchesFile: boolean
 }): Promise<Result> {
-  const admin = await requireCapability('platform:admin')
+  // Publishing is admins-only (§9-3): a dedicated capability, distinct from the
+  // platform:admin used for drafting/editing. SUPER_ADMIN holds it by default.
+  const admin = await requireCapability('legal:publish')
 
   if (!input.attestMatchesFile) {
     return { ok: false, error: 'Confirm the published text matches the authoritative source before publishing.' }

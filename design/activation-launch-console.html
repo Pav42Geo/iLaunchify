@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Activation — Launch Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&family=Fraunces:ital,wght@1,400;1,500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;--pink-400:#FF5285;
+  --pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;--pink-800:#9E0E40;--pink-900:#6E0A2D;
+  --neon-300:#D4FF7A;--neon-400:#C2FF4D;--neon-500:#B5FF3D;--neon-600:#9EE61F;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+  --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-500:#B45309;--warning-600:#984309;--warning-700:#7C360A;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-500:#1F5BA8;--info-700:#163E72;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;--font-display:'Bricolage Grotesque','Inter',sans-serif;--font-serif:'Fraunces',Georgia,serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);--shadow-lg:0 12px 28px rgba(24,24,26,.12);--shadow-xl:0 24px 48px rgba(24,24,26,.16);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.serif-em{font-family:var(--font-serif);font-style:italic;font-weight:500}
+.shell{max-width:1240px;margin:0 auto;padding:22px 20px 90px}
+
+/* proto bar */
+.proto-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:16px}
+.proto-brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:16px}
+.proto-brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center}
+.proto-brand .sq svg{width:13px;height:13px;color:#fff}
+.proto-brand small{font-family:var(--font-sans);font-weight:500;color:var(--ink-500);font-size:12px}
+.state-seg{display:flex;gap:4px;background:var(--ink-100);border-radius:var(--r-pill);padding:4px;margin-left:auto}
+.state-seg button{border-radius:var(--r-pill);padding:8px 15px;font-weight:600;font-size:12.5px;color:var(--ink-600)}
+.state-seg button.active{background:var(--ink-900);color:#fff}
+.proto-note{font-size:12px;color:var(--ink-500);padding:0 4px;margin-bottom:16px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;border-radius:var(--r-pill);padding:0 20px;height:44px;transition:all .18s var(--ease-out);white-space:nowrap}
+.btn svg{width:16px;height:16px}
+.btn.sm{height:36px;font-size:13px;padding:0 15px}.btn.sm svg{width:14px;height:14px}
+.btn-neon{background:var(--neon-500);color:var(--ink-900)}.btn-neon:hover{background:var(--neon-400);transform:translateY(-1px)}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{background:#000}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn-out:hover{background:var(--ink-50)}
+.btn-onwhite{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.18)}.btn-onwhite:hover{background:rgba(255,255,255,.2)}
+
+.frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff}
+
+/* ===== LAUNCH HERO (dark) ===== */
+.hero{position:relative;background:var(--ink-900);color:#fff;padding:30px 34px 26px;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(130% 120% at 88% -20%,rgba(181,255,61,.18),transparent 55%),radial-gradient(120% 130% at 5% 120%,rgba(255,46,99,.28),transparent 58%);pointer-events:none}
+.hero .grid-o{position:absolute;inset:0;opacity:.35;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:30px 30px;-webkit-mask-image:radial-gradient(circle at 70% 0,#000,transparent 75%);mask-image:radial-gradient(circle at 70% 0,#000,transparent 75%)}
+.hero-top{position:relative;z-index:2;display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap}
+.hero-lead{flex:1;min-width:280px}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--neon-500);background:rgba(181,255,61,.10);border:1px solid rgba(181,255,61,.28);padding:5px 11px;border-radius:var(--r-pill)}
+.eyebrow svg{width:13px;height:13px}
+.hero h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.08;letter-spacing:-.02em;margin:12px 0 6px}
+.hero h1 .serif-em{color:var(--neon-500)}
+.hero p{color:var(--ink-300);font-size:14.5px;max-width:520px}
+.hero-meter{width:250px;flex:none;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:var(--r-xl);padding:18px}
+.hero-meter .ring-wrap{display:flex;align-items:center;gap:14px}
+.hero-ring{width:64px;height:64px;border-radius:50%;flex:none;background:conic-gradient(var(--neon-500) calc(var(--p)*1%),rgba(255,255,255,.12) 0);display:grid;place-items:center;position:relative}
+.hero-ring::before{content:"";position:absolute;width:48px;height:48px;border-radius:50%;background:var(--ink-900)}
+.hero-ring b{position:relative;font-family:var(--font-display);font-weight:800;font-size:16px}
+.hero-meter .mt{font-size:12px;color:var(--ink-400)}
+.hero-meter .mv{font-family:var(--font-display);font-weight:700;font-size:16px}
+.hero-meter .eta{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:var(--ink-400);display:flex;align-items:center;gap:7px}
+.hero-meter .eta svg{width:14px;height:14px;color:var(--neon-500)}
+
+/* launchpads */
+.pads{position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
+.pad{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:var(--r-lg);padding:14px;cursor:pointer;transition:all .2s var(--ease-out);position:relative;overflow:hidden}
+.pad:hover{background:rgba(255,255,255,.09);transform:translateY(-2px)}
+.pad.sel{border-color:var(--pink-400);box-shadow:0 0 0 1px var(--pink-400)}
+.pad.live{border-color:rgba(181,255,61,.4)}
+.pad.live::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 60% at 50% 120%,rgba(181,255,61,.18),transparent 70%);pointer-events:none}
+.pad .ph{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.pad .pic{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:none;background:rgba(255,255,255,.08)}
+.pad .pic svg{width:17px;height:17px}
+.pad .pn{font-weight:700;font-size:13px}
+.pad .pmeta{font-size:11px;color:var(--ink-400)}
+.pad .track{height:6px;border-radius:var(--r-pill);background:rgba(255,255,255,.12);overflow:hidden;margin:4px 0 8px}
+.pad .fill{height:100%;border-radius:var(--r-pill);background:var(--pink-500);transition:width .6s var(--ease-out)}
+.pad.live .fill{background:var(--neon-500)}
+.pad .status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700}
+.pad .status.livet{color:var(--neon-500)}
+.pad .status.livet svg{width:12px;height:12px}
+.pad .status.prog{color:var(--ink-300)}
+
+/* ===== BODY ===== */
+.body{background:var(--ink-50);padding:24px 34px 40px;display:grid;grid-template-columns:1fr 310px;gap:22px;align-items:start}
+.focus{background:linear-gradient(120deg,#fff,var(--pink-50));border:1px solid var(--pink-100);border-radius:var(--r-xl);padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.focus .fi{width:42px;height:42px;border-radius:12px;background:var(--pink-500);color:#fff;display:grid;place-items:center;flex:none}
+.focus .fi svg{width:21px;height:21px}
+.focus .ft{flex:1}
+.focus .ft .l{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--pink-700)}
+.focus .ft .t{font-weight:700;font-size:15px;margin-top:1px}
+.focus .ft .s{font-size:12.5px;color:var(--ink-500)}
+
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm)}
+.track-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--ink-100)}
+.track-head .th-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none}
+.track-head .th-ic svg{width:19px;height:19px}
+.track-head h3{font-family:var(--font-display);font-weight:700;font-size:17px}
+.track-head .th-sub{font-size:12px;color:var(--ink-500)}
+.track-head .th-status{margin-left:auto}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 11px;border-radius:var(--r-pill)}
+.pill svg{width:12px;height:12px}
+.pill.live{color:var(--success-700);background:var(--success-50);border:1px solid var(--success-100)}
+.pill.prog{color:var(--warning-700);background:var(--warning-50);border:1px solid var(--warning-100)}
+.pill.info{color:var(--info-700);background:var(--info-50);border:1px solid var(--info-100)}
+.pill.muted{color:var(--ink-600);background:var(--ink-100);border:1px solid var(--ink-200)}
+
+.step{border-bottom:1px solid var(--ink-100)}
+.step:last-child{border-bottom:none}
+.steplist{display:none}
+.steplist.show{display:block}
+.shared-head{display:flex;align-items:center;gap:10px;padding:12px 18px;background:var(--ink-50);border-top:1px solid var(--ink-200);border-bottom:1px solid var(--ink-100)}
+.shared-head .shic{width:28px;height:28px;border-radius:8px;background:var(--ink-200);color:var(--ink-600);display:grid;place-items:center;flex:none}
+.shared-head .shic svg{width:15px;height:15px}
+.shared-head .sht{font-weight:700;font-size:13px}
+.shared-head .shs{font-size:11px;color:var(--ink-500)}
+.shared-head .shp{margin-left:auto}
+.step-row{display:flex;align-items:center;gap:13px;padding:14px 18px;cursor:pointer;transition:background .15s}
+.step-row:hover{background:var(--ink-50)}
+.step-num{width:26px;height:26px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--ink-100);color:var(--ink-500);border:1.5px solid var(--ink-200)}
+.step.done .step-num{background:var(--success-500);color:#fff;border-color:var(--success-500)}
+.step.done .step-num svg{width:14px;height:14px}
+.step.auto .step-num{background:var(--info-50);color:var(--info-500);border-color:var(--info-100)}
+.step-tx{flex:1}
+.step-tx .st{font-weight:600;font-size:14px}
+.step-tx .ss{font-size:12px;color:var(--ink-500)}
+.routes{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.route-tag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:var(--ink-600);background:var(--ink-50);border:1px solid var(--ink-200);padding:2px 8px;border-radius:var(--r-pill)}
+.route-tag svg{width:10px;height:10px;color:var(--pink-500)}
+.step-right{display:flex;align-items:center;gap:10px;flex:none}
+.chev{width:18px;height:18px;color:var(--ink-400);transition:transform .2s}
+.step.open .chev{transform:rotate(90deg)}
+.badge-auto{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:var(--info-700);background:var(--info-50);border:1px solid var(--info-100);padding:3px 8px;border-radius:var(--r-pill)}
+.badge-auto svg{width:11px;height:11px}
+
+/* inline drawer */
+.drawer{max-height:0;overflow:hidden;transition:max-height .35s var(--ease-out);background:var(--ink-50);border-top:1px solid transparent}
+.step.open .drawer{max-height:640px;border-top-color:var(--ink-100)}
+.drawer-in{padding:18px}
+.lands{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--info-100);border-radius:var(--r-lg);padding:11px 13px;margin-bottom:14px}
+.lands .li{width:30px;height:30px;border-radius:8px;background:var(--info-50);color:var(--info-500);display:grid;place-items:center;flex:none}
+.lands .li svg{width:16px;height:16px}
+.lands .ltx{font-size:12.5px;color:var(--ink-600)}
+.lands .ltx b{color:var(--ink-900)}
+.flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px}
+.flow .fnode{font-size:10.5px;font-weight:600;background:var(--info-50);color:var(--info-700);border:1px solid var(--info-100);padding:2px 8px;border-radius:var(--r-pill)}
+.flow .farr{color:var(--info-500)}
+.mini-table{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-lg);overflow:hidden}
+.mini-table th{text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-400);padding:8px 10px;background:var(--ink-50);border-bottom:1px solid var(--ink-200)}
+.mini-table td{padding:7px 10px;border-bottom:1px solid var(--ink-100)}
+.mini-table tr:last-child td{border-bottom:none}
+.mini-table input,.mini-table select{width:100%;border:1px solid var(--ink-200);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:inherit}
+.mini-check{width:16px;height:16px;border:1.5px solid var(--ink-300);border-radius:4px;display:inline-grid;place-items:center;cursor:pointer}
+.mini-check.on{background:var(--pink-500);border-color:var(--pink-500)}
+.mini-check.on svg{width:11px;height:11px;color:#fff}
+.add-row{display:flex;gap:8px;margin-top:10px;align-items:center}
+.add-row input,.add-row select{border:1px solid var(--ink-300);border-radius:var(--r-md);padding:8px 10px;font-size:13px;font-family:inherit}
+.drawer-actions{display:flex;align-items:center;gap:10px;margin-top:14px}
+.drawer-actions .note{font-size:11.5px;color:var(--ink-500)}
+.drawer-actions .sp{margin-left:auto;display:flex;gap:8px}
+
+/* right rail */
+.rail .card+.card{margin-top:16px}
+.rail .cp{padding:18px}
+.side-h{font-family:var(--font-display);font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.side-h svg{width:16px;height:16px;color:var(--pink-600)}
+.unlock{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--ink-100);font-size:12.5px}
+.unlock:last-child{border-bottom:none}
+.unlock .uc{width:20px;height:20px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--success-50);color:var(--success-600)}
+.unlock .uc svg{width:12px;height:12px}
+.unlock.pending .uc{background:var(--ink-100);color:var(--ink-400)}
+.unlock .ut b{display:block;font-weight:600}
+.unlock .ut span{color:var(--ink-500);font-size:11.5px}
+.helpbox{background:var(--ink-900);color:#fff;border-radius:var(--r-xl);padding:18px}
+.helpbox .hh{font-family:var(--font-display);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.helpbox .hh svg{width:16px;height:16px;color:var(--neon-500)}
+.helpbox p{color:var(--ink-300);font-size:12.5px;margin:8px 0 12px}
+
+/* celebration */
+.celebrate{position:fixed;inset:0;background:rgba(24,24,26,.72);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.celebrate.show{display:flex;animation:fade .3s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.celebrate-card{background:var(--ink-900);border:1px solid rgba(181,255,61,.3);border-radius:var(--r-2xl);padding:34px;max-width:440px;text-align:center;color:#fff;position:relative;overflow:hidden}
+.celebrate-card::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 80% at 50% -10%,rgba(181,255,61,.22),transparent 60%);pointer-events:none}
+.celebrate-card .rocket{width:76px;height:76px;border-radius:20px;background:var(--neon-500);color:var(--ink-900);display:grid;place-items:center;margin:0 auto 16px;position:relative;z-index:2;animation:pop .5s var(--ease-out)}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.celebrate-card .rocket svg{width:38px;height:38px}
+.celebrate-card h2{font-family:var(--font-display);font-weight:800;font-size:24px;position:relative;z-index:2}
+.celebrate-card h2 .serif-em{color:var(--neon-500)}
+.celebrate-card p{color:var(--ink-300);font-size:13.5px;margin:8px 0 20px;position:relative;z-index:2}
+.celebrate-card .cbtns{display:flex;gap:10px;justify-content:center;position:relative;z-index:2}
+.confetti{position:absolute;width:8px;height:8px;top:-10px;border-radius:2px;animation:drop 1.6s linear forwards}
+@keyframes drop{to{transform:translateY(420px) rotate(360deg);opacity:0}}
+.foot-note{text-align:center;color:var(--ink-400);font-size:12px;margin-top:26px;line-height:1.7}
+
+@media(max-width:1000px){.body{grid-template-columns:1fr}.pads{grid-template-columns:1fr 1fr}.hero-top{flex-direction:column}.hero-meter{width:100%}}
+@media(max-width:600px){.pads{grid-template-columns:1fr}.hero h1{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="proto-bar">
+    <div class="proto-brand"><span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L4.5 13H11l-1 9 9-13H12.5z"/></svg></span>iLaunchify <small>/activation · Launch Console</small></div>
+    <div class="state-seg">
+      <button class="active" onclick="setState('setup')">Setting up</button>
+      <button onclick="setState('golive')">Just went live ✨</button>
+    </div>
+  </div>
+  <div class="proto-note">Redesign concept for <b>/activation</b>. Per-service launchpads (independent go-live), inline step capture, and self-routing "where this lands" tags. Click a launchpad to switch tracks · click any step to open its inline form · finish Print to see the go-live moment (or use the toggle above).</div>
+
+  <div class="frame">
+    <!-- LAUNCH HERO -->
+    <div class="hero">
+      <div class="grid-o"></div>
+      <div class="hero-top">
+        <div class="hero-lead">
+          <span class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5L3 21l4.5-1.5M14 4s4 1 6 3 3 6 3 6l-8 8-6-2-2-6z"/><circle cx="15" cy="9" r="1.5"/></svg>Approved · Activation Setup</span>
+          <h1>You're approved. Now let's get you <span class="serif-em">routing orders.</span></h1>
+          <p>Each service goes live on its own the moment its setup is done — you don't have to finish everything at once. Everything you enter here <b style="color:#fff">flows straight to the systems that route work to you.</b></p>
+        </div>
+        <div class="hero-meter">
+          <div class="ring-wrap">
+            <div class="hero-ring" style="--p:64" id="heroRing"><b id="heroPct">64%</b></div>
+            <div><div class="mt">Services live</div><div class="mv" id="liveCount">2 of 4</div><div class="mt" style="margin-top:6px">Steps done</div><div class="mv" id="stepCount">9 of 14</div></div>
+          </div>
+          <div class="eta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span id="etaTxt">~8 min to finish Print &amp; Co-packing</span></div>
+        </div>
+      </div>
+
+      <!-- launchpads -->
+      <div class="pads">
+        <div class="pad live" data-svc="mfr" onclick="selectSvc('mfr')">
+          <div class="ph"><span class="pic" style="color:var(--pink-400)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></span><div><div class="pn">Manufacturing</div><div class="pmeta">3 / 3 steps</div></div></div>
+          <div class="track"><div class="fill" style="width:100%"></div></div>
+          <div class="status livet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Live · routing orders</div>
+        </div>
+        <div class="pad live" data-svc="fc" onclick="selectSvc('fc')">
+          <div class="ph"><span class="pic" style="color:var(--neon-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><div><div class="pn">Fulfillment</div><div class="pmeta">3 / 3 steps</div></div></div>
+          <div class="track"><div class="fill" style="width:100%"></div></div>
+          <div class="status livet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Live · in FC network</div>
+        </div>
+        <div class="pad sel" data-svc="print" onclick="selectSvc('print')">
+          <div class="ph"><span class="pic" style="color:var(--warning-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 14h12v8H6z"/></svg></span><div><div class="pn">Print production</div><div class="pmeta"><span id="printCount">2 / 4</span> steps</div></div></div>
+          <div class="track"><div class="fill" id="printFill" style="width:50%"></div></div>
+          <div class="status prog" id="printStatus">2 steps left to launch</div>
+        </div>
+        <div class="pad" data-svc="copack" onclick="selectSvc('copack')">
+          <div class="ph"><span class="pic" style="color:var(--info-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><div><div class="pn">Co-packing</div><div class="pmeta">1 / 3 steps</div></div></div>
+          <div class="track"><div class="fill" style="width:33%"></div></div>
+          <div class="status prog">2 steps left to launch</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="body">
+      <div class="main">
+        <div class="focus">
+          <span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+          <div class="ft"><div class="l">Next best step</div><div class="t" id="focusTitle">Print specs — methods, color &amp; finishes</div><div class="s" id="focusSub">2 minutes · unlocks your print-eligibility filter</div></div>
+          <button class="btn btn-pink sm" onclick="openFocus()">Continue →</button>
+        </div>
+
+        <!-- Print track (default selected) -->
+        <div class="card" id="trackCard">
+          <div class="track-head">
+            <span class="th-ic" style="background:var(--warning-50);color:var(--warning-500)" id="thIc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 14h12v8H6z"/></svg></span>
+            <div><h3 id="thName">Print production</h3><div class="th-sub" id="thSub">Materials, specs, die-lines &amp; run sizes — then you're cleared to print for creators.</div></div>
+            <span class="th-status"><span class="pill prog" id="thPill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>2 of 4 · not live yet</span></span>
+          </div>
+
+          <div id="stepList">
+            <div class="steplist show" data-track="print">
+            <!-- step 1 · auto-detected done -->
+            <div class="step done auto">
+              <div class="step-row" onclick="toggleStep(this)">
+                <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                <div class="step-tx"><div class="st">Materials &amp; substrates</div><div class="ss">The stocks you print on — one row at a time.</div>
+                  <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Marketplace substrate filter</span><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Matching engine</span></div>
+                </div>
+                <div class="step-right"><span class="badge-auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M8 12l3 3 5-6"/></svg>Auto-detected</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+              </div>
+              <div class="drawer"><div class="drawer-in">
+                <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M2 12h20"/></svg></span><div class="ltx"><b>Where this lands:</b> each substrate row you add here powers real routing.<div class="flow"><span class="fnode">Substrate row</span><span class="farr">→</span><span class="fnode">PartnerServiceSubstrate</span><span class="farr">→</span><span class="fnode">Marketplace facet</span><span class="farr">→</span><span class="fnode">Match engine</span></div></div></div>
+                <table class="mini-table"><thead><tr><th>Substrate</th><th>Family</th><th>Food-contact</th><th>Domains</th></tr></thead><tbody>
+                  <tr><td>Coated paper 80#</td><td>PAPER_COATED</td><td><span class="mini-check on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td><td>Food · Supplement</td></tr>
+                  <tr><td>Clear BOPP film</td><td>FILM_BOPP</td><td><span class="mini-check on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></td><td>Beverage</td></tr>
+                  <tr><td>Kraft (recycled)</td><td>KRAFT_RECYCLED</td><td><span class="mini-check"></span></td><td>Pet</td></tr>
+                </tbody></table>
+                <div class="add-row"><input placeholder="Substrate name" style="flex:1"/><select><option>PAPER_COATED</option><option>FILM_BOPP</option><option>KRAFT_RECYCLED</option><option>FILM_METALLIC</option></select><button class="btn btn-out sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add</button></div>
+                <div class="drawer-actions"><span class="note">✓ We already found 3 substrates from your catalog.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+              </div></div>
+            </div>
+
+            <!-- step 2 · done -->
+            <div class="step done">
+              <div class="step-row" onclick="toggleStep(this)">
+                <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                <div class="step-tx"><div class="st">Die-lines</div><div class="ss">Templates you can produce — upload or pick from the library.</div>
+                  <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Design Studio</span><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Dispatch docs</span></div>
+                </div>
+                <div class="step-right"><span class="pill live" style="font-size:10.5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>4 added</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+              </div>
+              <div class="drawer"><div class="drawer-in">
+                <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> approved die-lines appear in the creator's Design Studio and print on dispatch docs.</div></div>
+                <div class="routes" style="gap:8px"><span class="route-tag" style="font-size:12px;padding:6px 12px">Bottle wrap · 12oz</span><span class="route-tag" style="font-size:12px;padding:6px 12px">Pouch front · stand-up</span><span class="route-tag" style="font-size:12px;padding:6px 12px">Box panel · carton</span><span class="route-tag" style="font-size:12px;padding:6px 12px">Sticker · round</span></div>
+                <div class="drawer-actions"><span class="note"></span><div class="sp"><button class="btn btn-out sm">Upload die-line</button><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+              </div></div>
+            </div>
+
+            <!-- step 3 · pending (the focus) -->
+            <div class="step" id="stepSpecs">
+              <div class="step-row" onclick="toggleStep(this)">
+                <span class="step-num">3</span>
+                <div class="step-tx"><div class="st">Print specs</div><div class="ss">Methods, color (CMYK / Pantone / white ink / ICC), finishes &amp; max print area.</div>
+                  <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Print-eligibility filter</span></div>
+                </div>
+                <div class="step-right"><button class="btn btn-pink sm" onclick="event.stopPropagation();toggleStep(this.closest('.step-row'))">Set up</button><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+              </div>
+              <div class="drawer"><div class="drawer-in">
+                <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> your print specs drive the print-eligibility filter, so creators only route jobs you can actually run.<div class="flow"><span class="fnode">Print specs</span><span class="farr">→</span><span class="fnode">print-eligibility.ts</span><span class="farr">→</span><span class="fnode">Routing gate</span></div></div></div>
+                <table class="mini-table"><tbody>
+                  <tr><td style="width:150px;font-weight:600">Print process</td><td><div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Digital ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Flexo ✓</span><span class="route-tag">Offset</span><span class="route-tag">Screen</span></div></td></tr>
+                  <tr><td style="font-weight:600">Color</td><td><div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">CMYK ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Pantone ✓</span><span class="route-tag">White ink</span><span class="route-tag">ICC profile</span></div></td></tr>
+                  <tr><td style="font-weight:600">Finishes</td><td><div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Matte laminate ✓</span><span class="route-tag">Spot UV</span><span class="route-tag">Foil stamp</span></div></td></tr>
+                  <tr><td style="font-weight:600">Max print area</td><td><input value="14 in × 20 in" style="max-width:180px"/></td></tr>
+                </tbody></table>
+                <div class="drawer-actions"><span class="note">Autosaves as you toggle.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Later</button><button class="btn btn-dark sm" onclick="completeStep('stepSpecs',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Save &amp; mark done</button></div></div>
+              </div></div>
+            </div>
+
+            <!-- step 4 · pending -->
+            <div class="step" id="stepRuns">
+              <div class="step-row" onclick="toggleStep(this)">
+                <span class="step-num">4</span>
+                <div class="step-tx"><div class="st">Run sizes &amp; lead times</div><div class="ss">MOQ, production + sample lead time, cutoffs &amp; blackout dates.</div>
+                  <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Checkout ETA</span><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Capacity gate</span></div>
+                </div>
+                <div class="step-right"><button class="btn btn-out sm" onclick="event.stopPropagation();toggleStep(this.closest('.step-row'))">Set up</button><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+              </div>
+              <div class="drawer"><div class="drawer-in">
+                <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> these feed the checkout ETA a creator sees and the capacity gate that protects your line.</div></div>
+                <table class="mini-table"><tbody>
+                  <tr><td style="width:160px;font-weight:600">MOQ (min / max)</td><td><input value="250 / 25,000" style="max-width:180px"/></td></tr>
+                  <tr><td style="font-weight:600">Production lead time</td><td><input value="7–10 business days" style="max-width:180px"/></td></tr>
+                  <tr><td style="font-weight:600">Sample lead time</td><td><input value="3 business days" style="max-width:180px"/></td></tr>
+                  <tr><td style="font-weight:600">Daily cutoff</td><td><input value="2:00 PM PT" style="max-width:180px"/></td></tr>
+                  <tr><td style="font-weight:600">Blackout dates</td><td><span class="route-tag">Dec 22 – Jan 2</span> <span class="route-tag">+ Add</span></td></tr>
+                </tbody></table>
+                <div class="drawer-actions"><span class="note">Last step — completing this launches Print.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Later</button><button class="btn btn-dark sm" onclick="completeStep('stepRuns',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Save &amp; mark done</button></div></div>
+              </div></div>
+            </div>
+            </div><!-- /steplist print -->
+
+            <!-- ================= MANUFACTURING (LIVE) ================= -->
+            <div class="steplist" data-track="mfr">
+              <div class="step done auto">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Product types &amp; formats</div><div class="ss">What you make and the formats you run.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Matching engine</span></div>
+                  </div>
+                  <div class="step-right"><span class="badge-auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M8 12l3 3 5-6"/></svg>Auto-detected</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M2 12h20"/></svg></span><div class="ltx"><b>Where this lands:</b> your categories become marketplace facets and matching inputs.<div class="flow"><span class="fnode">capabilities.categories[]</span><span class="farr">→</span><span class="fnode">Marketplace facet</span><span class="farr">→</span><span class="fnode">Match engine</span></div></div></div>
+                  <div style="margin-bottom:10px;font-size:11px;font-weight:600;color:var(--ink-500)">Product categories you make</div>
+                  <div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Food ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Beverage — functional ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Supplement ✓</span><span class="route-tag">Cosmetic</span><span class="route-tag">Pet</span></div>
+                  <div style="margin:12px 0 6px;font-size:11px;font-weight:600;color:var(--ink-500)">Formats you run</div>
+                  <div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Can ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Bottle ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Capsule ✓</span><span class="route-tag">Powder tub</span><span class="route-tag">Sachet</span></div>
+                  <div class="drawer-actions"><span class="note">✓ Found from your service capabilities.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+              <div class="step done">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Formulation &amp; specs</div><div class="ss">What you can develop, plus whether you offer samples.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Product builder</span><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Owner-pin eligibility</span></div>
+                  </div>
+                  <div class="step-right"><span class="pill live" style="font-size:10.5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Done</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> sample capability + spec depth make you eligible to be owner-pinned on a creator's product.</div></div>
+                  <table class="mini-table"><tbody>
+                    <tr><td style="width:190px;font-weight:600">Formulation capability</td><td><div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Custom formulation ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Reformulation ✓</span><span class="route-tag">Stability testing</span></div></td></tr>
+                    <tr><td style="font-weight:600">Sample capable</td><td><span class="toggle on" onclick="this.classList.toggle('on')"></span></td></tr>
+                  </tbody></table>
+                  <div class="drawer-actions"><span class="note"></span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+              <div class="step done auto">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">MOQ &amp; lead times</div><div class="ss">Minimums, production windows &amp; blackout dates.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Checkout ETA</span><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Capacity gate</span></div>
+                  </div>
+                  <div class="step-right"><span class="badge-auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M8 12l3 3 5-6"/></svg>Auto-detected</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> the ETA a creator sees at checkout and the capacity gate that protects your line.</div></div>
+                  <table class="mini-table"><tbody>
+                    <tr><td style="width:190px;font-weight:600">MOQ (min / max)</td><td><input value="500 / 80,000" style="max-width:180px"/></td></tr>
+                    <tr><td style="font-weight:600">Lead — reorder</td><td><input value="12 days" style="max-width:180px"/></td></tr>
+                    <tr><td style="font-weight:600">Lead — first run</td><td><input value="28 days" style="max-width:180px"/></td></tr>
+                  </tbody></table>
+                  <div class="drawer-actions"><span class="note">✓ Found from your product defaults.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+            </div><!-- /steplist mfr -->
+
+            <!-- ================= FULFILLMENT (LIVE) ================= -->
+            <div class="steplist" data-track="fc">
+              <div class="step done auto">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Storage classes</div><div class="ss">Conditions you can hold inventory in.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>FC selector</span></div>
+                  </div>
+                  <div class="step-right"><span class="badge-auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M8 12l3 3 5-6"/></svg>Auto-detected</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M2 12h20"/></svg></span><div class="ltx"><b>Where this lands:</b> storage classes + hazmat are <b>hard filters</b> in the FC selector — a job never routes to a warehouse that can't hold it.<div class="flow"><span class="fnode">storageClasses[]</span><span class="farr">→</span><span class="fnode">FC selector filter</span></div></div></div>
+                  <div style="margin-bottom:6px;font-size:11px;font-weight:600;color:var(--ink-500)">Storage classes (StorageClass)</div>
+                  <div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">AMBIENT ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">CHILLED ✓</span><span class="route-tag">FROZEN</span><span class="route-tag">PROTECT_HEAT</span></div>
+                  <div style="margin:12px 0 6px;font-size:11px;font-weight:600;color:var(--ink-500)">Hazmat accepted</div>
+                  <div class="routes"><span class="route-tag">Aerosol</span><span class="route-tag">Flammable</span><span class="route-tag" style="background:var(--ink-100)">None declared</span></div>
+                  <div class="drawer-actions"><span class="note">✓ Found from your fulfillment service.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+              <div class="step done auto">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Capacity &amp; geo</div><div class="ss">Weekly throughput and where you ship from.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>FC scorer</span></div>
+                  </div>
+                  <div class="step-right"><span class="badge-auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M8 12l3 3 5-6"/></svg>Auto-detected</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> capacity + location are weighted inputs to the FC scorer that picks the nearest able warehouse.</div></div>
+                  <table class="mini-table"><tbody>
+                    <tr><td style="width:190px;font-weight:600">Weekly pallet capacity</td><td><input value="1,200 pallets" style="max-width:180px"/></td></tr>
+                    <tr><td style="font-weight:600">Ships from</td><td><input value="Portland, OR &amp; Reno, NV" style="max-width:220px"/></td></tr>
+                    <tr><td style="font-weight:600">Max dwell days</td><td><input value="120" style="max-width:120px"/></td></tr>
+                  </tbody></table>
+                  <div class="drawer-actions"><span class="note">✓ Found from your fulfillment service.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+              <div class="step done">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Value-added services</div><div class="ss">Extras you offer, plus your pick &amp; pack fees.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Manifest</span><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Creator quote</span></div>
+                  </div>
+                  <div class="step-right"><span class="pill live" style="font-size:10.5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Done</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> VAS + fees appear on the dispatch manifest and the creator's fulfillment quote.</div></div>
+                  <table class="mini-table"><tbody>
+                    <tr><td style="width:190px;font-weight:600">Services offered</td><td><div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Kitting ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Returns ✓</span><span class="route-tag">Bundling</span></div></td></tr>
+                    <tr><td style="font-weight:600">Pick fee ¢ / Pack fee ¢</td><td><input value="65 / 40" style="max-width:140px"/></td></tr>
+                  </tbody></table>
+                  <div class="drawer-actions"><span class="note"></span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+            </div><!-- /steplist fc -->
+
+            <!-- ================= CO-PACKING (1 / 3) ================= -->
+            <div class="steplist" data-track="copack">
+              <div class="step done">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Packaging formats</div><div class="ss">The container types you can fill.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Matching engine</span></div>
+                  </div>
+                  <div class="step-right"><span class="pill live" style="font-size:10.5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Done</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M2 12h20"/></svg></span><div class="ltx"><b>Where this lands:</b> the container formats you fill are a matching-engine facet.<div class="flow"><span class="fnode">ContainerCategory[]</span><span class="farr">→</span><span class="fnode">Match engine</span></div></div></div>
+                  <div style="margin-bottom:6px;font-size:11px;font-weight:600;color:var(--ink-500)">Container formats you fill</div>
+                  <div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">BOTTLE ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">CAN ✓</span><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">POUCH ✓</span><span class="route-tag">JAR</span><span class="route-tag">SACHET</span><span class="route-tag">STICK_PACK</span><span class="route-tag">CARTON</span></div>
+                  <div class="drawer-actions"><span class="note"></span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+              <div class="step" id="copackFill">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num">2</span>
+                  <div class="step-tx"><div class="st">Fill types</div><div class="ss">How the product goes into the pack.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Routing</span></div>
+                  </div>
+                  <div class="step-right"><button class="btn btn-pink sm" onclick="event.stopPropagation();toggleStep(this.closest('.step-row'))">Set up</button><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> fill types narrow which products route to your co-packing line.</div></div>
+                  <div style="margin-bottom:6px;font-size:11px;font-weight:600;color:var(--ink-500)">Fill types you run</div>
+                  <div class="routes"><span class="route-tag" style="background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)">Liquid ✓</span><span class="route-tag">Powder</span><span class="route-tag">Capsule</span><span class="route-tag">Cream / gel</span><span class="route-tag">Gummy</span></div>
+                  <div class="drawer-actions"><span class="note">Autosaves as you toggle.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Later</button><button class="btn btn-dark sm" onclick="markRowDone(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Save &amp; mark done</button></div></div>
+                </div></div>
+              </div>
+              <div class="step" id="copackSupply">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num">3</span>
+                  <div class="step-tx"><div class="st">Do you supply packaging?</div><div class="ss">Whether you provide the container or print-only.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Routing (packaging leg)</span></div>
+                  </div>
+                  <div class="step-right"><button class="btn btn-out sm" onclick="event.stopPropagation();toggleStep(this.closest('.step-row'))">Set up</button><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> this decides whether routing adds a <b>separate packaging leg</b> or you handle it in-house.<div class="flow"><span class="fnode">suppliesContainer</span><span class="farr">→</span><span class="fnode">Routing graph</span></div></div></div>
+                  <div style="margin-bottom:8px;font-size:11px;font-weight:600;color:var(--ink-500)">For the formats above, do you…</div>
+                  <div class="seg-radio" style="border:1px solid var(--ink-300);border-radius:var(--r-md);overflow:hidden;display:inline-flex"><button style="padding:9px 16px;font-size:13px;font-weight:600" class="active">We supply the container</button><button style="padding:9px 16px;font-size:13px;font-weight:600">Print-only (creator supplies)</button></div>
+                  <div class="drawer-actions"><span class="note">Last step — completing this launches Co-packing.</span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Later</button><button class="btn btn-dark sm" onclick="markRowDone(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Save &amp; mark done</button></div></div>
+                </div></div>
+              </div>
+            </div><!-- /steplist copack -->
+
+            <!-- ================= SHARED TAIL (once, all services) ================= -->
+            <div class="shared-tail">
+              <div class="shared-head">
+                <span class="shic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M8 12l3 3 5-6"/></svg></span>
+                <div><div class="sht">Shared setup — applies to every service</div><div class="shs">Completed once · gates routing across all your tracks</div></div>
+                <span class="shp"><span class="pill live"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>3 of 3 complete</span></span>
+              </div>
+              <div class="step done auto">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Certifications</div><div class="ss">Per-domain certs with expiry — the routing cert gate.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Routing cert gate</span></div>
+                  </div>
+                  <div class="step-right"><span class="badge-auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M8 12l3 3 5-6"/></svg>Auto-detected</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M2 12h20"/></svg></span><div class="ltx"><b>Where this lands:</b> each cert gates its domain's routing — an expired cert auto-suspends that domain.<div class="flow"><span class="fnode">PartnerCertificateInstance</span><span class="farr">→</span><span class="fnode">CertificateType match</span><span class="farr">→</span><span class="fnode">Domain routing gate</span></div></div></div>
+                  <table class="mini-table"><thead><tr><th>Domain</th><th>Certificate</th><th>Status</th><th>Expiry</th></tr></thead><tbody>
+                    <tr><td>Food / Bev</td><td>FDA Registered</td><td><span class="pill live" style="font-size:10px">VERIFIED</span></td><td>Aug 2027</td></tr>
+                    <tr><td>Supplement</td><td>cGMP · 21 CFR 111</td><td><span class="pill live" style="font-size:10px">VERIFIED</span></td><td>Mar 2027</td></tr>
+                    <tr><td>All</td><td>General liability</td><td><span class="pill prog" style="font-size:10px">EXPIRING</span></td><td>22 days</td></tr>
+                  </tbody></table>
+                  <div class="drawer-actions"><span class="note">✓ Detected from your certificate records.</span><div class="sp"><button class="btn btn-out sm">Open certifications →</button><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+              <div class="step done">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Pricing &amp; payout</div><div class="ss">Confirm your price tiers and payout terms.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Billing</span><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Creator quote</span></div>
+                  </div>
+                  <div class="step-right"><span class="pill live" style="font-size:10.5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Confirmed</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> confirmed terms feed billing and the price a creator sees on a quote.</div></div>
+                  <table class="mini-table"><tbody>
+                    <tr><td style="width:190px;font-weight:600">Payout method</td><td>Stripe Connect · verified</td></tr>
+                    <tr><td style="font-weight:600">Payout timing</td><td>7 days</td></tr>
+                    <tr><td style="font-weight:600">Production fee</td><td>0% · Premier</td></tr>
+                  </tbody></table>
+                  <div class="drawer-actions"><span class="note"></span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+              <div class="step done">
+                <div class="step-row" onclick="toggleStep(this)">
+                  <span class="step-num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+                  <div class="step-tx"><div class="st">Review &amp; go live</div><div class="ss">Completeness check that flips routing eligibility on.</div>
+                    <div class="routes"><span class="route-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Rotation eligibility</span></div>
+                  </div>
+                  <div class="step-right"><span class="pill live" style="font-size:10.5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Done</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+                </div>
+                <div class="drawer"><div class="drawer-in">
+                  <div class="lands"><span class="li"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg></span><div class="ltx"><b>Where this lands:</b> once your own track + this shared setup are complete, that service flips to LIVE and enters rotation.</div></div>
+                  <div style="font-size:12.5px;color:var(--ink-600)">Manufacturing &amp; Fulfillment are live. Finish Print and Co-packing to reach <b>OPERATIONALLY_CONFIGURED</b> across the board.</div>
+                  <div class="drawer-actions"><span class="note"></span><div class="sp"><button class="btn btn-out sm" onclick="closeStep(this)">Done</button></div></div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="foot-note" style="text-align:left;margin-top:14px">Each service card = one track (own steps) + the shared tail once. A service goes <b>LIVE</b> when its own steps <i>and</i> the shared tail are complete — that's why Manufacturing &amp; Fulfillment are already routing while Print &amp; Co-packing finish.</div>
+      </div>
+
+      <!-- RIGHT RAIL -->
+      <aside class="rail">
+        <div class="card cp">
+          <div class="side-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg>What launching Print unlocks</div>
+          <div class="unlock pending"><span class="uc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><div class="ut"><b>Appear in print rotation</b><span>Creators can route label jobs to you</span></div></div>
+          <div class="unlock pending"><span class="uc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><div class="ut"><b>Show in marketplace facets</b><span>Filtered by your substrates &amp; specs</span></div></div>
+          <div class="unlock pending"><span class="uc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><div class="ut"><b>Die-lines in Design Studio</b><span>Creators design onto your templates</span></div></div>
+        </div>
+        <div class="card cp">
+          <div class="side-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Already earning</div>
+          <div class="unlock"><span class="uc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><div class="ut"><b>Manufacturing — live</b><span>Owner-pin eligible · taking orders</span></div></div>
+          <div class="unlock"><span class="uc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><div class="ut"><b>Fulfillment — live</b><span>In the FC selector network</span></div></div>
+        </div>
+        <div class="helpbox">
+          <div class="hh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>Stuck on a step?</div>
+          <p>Your onboarding manager can pre-fill any track with you on a 15-min call. Your data still routes automatically — no admin re-keying.</p>
+          <button class="btn btn-neon sm" style="width:100%">Book a setup call</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="foot-note">Launch Console = the redesigned <b>/activation</b>. Approval ≠ activation: the admin approves the company, the partner configures the operation.<br>Step keys map 1:1 to <code>activation-tracks.ts</code> (print.materials · print.dielines · print.specs · print.runs); go-live is the per-service D8 hybrid gate; completing all tracks auto-advances the partner to <code>OPERATIONALLY_CONFIGURED</code>.</div>
+</div>
+
+<!-- celebration overlay -->
+<div class="celebrate" id="celebrate">
+  <div class="celebrate-card">
+    <div class="rocket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5L3 21l4.5-1.5M14 4s4 1 6 3 3 6 3 6l-8 8-6-2-2-6z"/><circle cx="15" cy="9" r="1.5"/></svg></div>
+    <h2>Print is <span class="serif-em">live.</span></h2>
+    <p>Creators can now route label &amp; packaging jobs to you. You're operational on <b style="color:#fff">3 of 4 services</b> — just Co-packing left.</p>
+    <div class="cbtns"><button class="btn btn-out sm" onclick="closeCelebrate()">Keep setting up</button><button class="btn btn-neon sm" onclick="closeCelebrate()">See my print orders →</button></div>
+  </div>
+</div>
+
+<script>
+const SVC={
+  mfr:{name:'Manufacturing',sub:'Product types, specs & MOQ — the owner-pin track.',ic:'<path d="M3 21h18M6 21V8l6-4 6 4v13"/>',bg:'var(--pink-50)',fg:'var(--pink-500)'},
+  fc:{name:'Fulfillment',sub:'Storage classes, capacity & value-added services.',ic:'<path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/>',bg:'var(--success-50)',fg:'var(--success-600)'},
+  print:{name:'Print production',sub:'Materials, specs, die-lines & run sizes — then you\'re cleared to print for creators.',ic:'<path d="M6 9V2h12v7M6 14h12v8H6z"/>',bg:'var(--warning-50)',fg:'var(--warning-500)'},
+  copack:{name:'Co-packing',sub:'Packaging formats, fill types & supply model.',ic:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>',bg:'var(--info-50)',fg:'var(--info-500)'},
+};
+let printDone=2;
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+const CLOCK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+function selectSvc(k){
+  document.querySelectorAll('.pad').forEach(p=>p.classList.toggle('sel',p.dataset.svc===k));
+  const s=SVC[k];
+  document.getElementById('thName').textContent=s.name;
+  document.getElementById('thSub').textContent=s.sub;
+  const ic=document.getElementById('thIc');ic.style.background=s.bg;ic.style.color=s.fg;ic.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+s.ic+'</svg>';
+  document.querySelectorAll('.steplist').forEach(l=>l.classList.toggle('show',l.dataset.track===k));
+  document.querySelectorAll('.step').forEach(st=>st.classList.remove('open'));
+  const pill=document.getElementById('thPill');
+  if(k==='mfr'||k==='fc'){pill.className='pill live';pill.innerHTML=CHECK+'Live · routing orders';}
+  else if(k==='print'){updatePrint();}
+  else if(k==='copack'){pill.className='pill prog';pill.innerHTML=CLOCK+'1 of 3 · not live yet';}
+  document.getElementById('trackCard').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function markRowDone(btn){
+  const step=btn.closest('.step');
+  step.classList.add('done');step.classList.remove('open');
+  step.querySelector('.step-num').innerHTML=CHECK;
+  step.querySelector('.step-right').innerHTML='<span class="pill live" style="font-size:10.5px">'+CHECK+'Done</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>';
+}
+function toggleStep(row){
+  const step=row.closest('.step');
+  const wasOpen=step.classList.contains('open');
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('open'));
+  if(!wasOpen)step.classList.add('open');
+}
+function closeStep(btn){btn.closest('.step').classList.remove('open');}
+function openFocus(){const s=document.getElementById('stepSpecs');document.querySelectorAll('.step').forEach(x=>x.classList.remove('open'));s.classList.add('open');s.scrollIntoView({behavior:'smooth',block:'center'});}
+function completeStep(id,btn){
+  const step=document.getElementById(id);
+  step.classList.add('done');step.classList.remove('open');
+  step.querySelector('.step-num').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
+  const right=step.querySelector('.step-right');right.innerHTML='<span class="pill live" style="font-size:10.5px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Done</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>';
+  printDone++;
+  updatePrint();
+  if(printDone>=4)goLive();
+}
+function updatePrint(){
+  const pct=Math.round(printDone/4*100);
+  document.getElementById('printFill').style.width=pct+'%';
+  document.getElementById('printCount').textContent=printDone+' / 4';
+  const left=4-printDone;
+  document.getElementById('printStatus').textContent=left>0?left+' step'+(left>1?'s':'')+' left to launch':'Cleared for launch';
+  const pill=document.getElementById('thPill');
+  if(left>0){pill.className='pill prog';pill.innerHTML=CLOCK+printDone+' of 4 · not live yet';}
+  else{pill.className='pill live';pill.innerHTML=CHECK+'Live · routing orders';}
+}
+function goLive(){
+  document.querySelector('.pad[data-svc="print"]').classList.add('live');
+  document.querySelector('.pad[data-svc="print"] .status').className='status livet';
+  document.querySelector('.pad[data-svc="print"] .status').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Live · routing orders';
+  document.querySelectorAll('.rail .unlock.pending').forEach(u=>u.classList.remove('pending'));
+  document.getElementById('heroRing').style.setProperty('--p',86);
+  document.getElementById('heroPct').textContent='86%';
+  document.getElementById('liveCount').textContent='3 of 4';
+  document.getElementById('stepCount').textContent='12 of 14';
+  document.getElementById('etaTxt').textContent='~4 min to finish Co-packing';
+  showCelebrate();
+}
+function showCelebrate(){const c=document.getElementById('celebrate');c.classList.add('show');spawnConfetti();}
+function closeCelebrate(){document.getElementById('celebrate').classList.remove('show');}
+function spawnConfetti(){const card=document.querySelector('.celebrate-card');const cols=['#FF2E63','#B5FF3D','#FFB3CC','#C2FF4D','#fff'];for(let i=0;i<28;i++){const c=document.createElement('span');c.className='confetti';c.style.left=(Math.random()*100)+'%';c.style.background=cols[i%cols.length];c.style.animationDelay=(Math.random()*.5)+'s';card.appendChild(c);setTimeout(()=>c.remove(),2200);}}
+function setState(s){
+  document.querySelectorAll('.state-seg button').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  if(s==='golive'){selectSvc('print');printDone=3;/*pretend specs done*/document.getElementById('stepSpecs').classList.add('done');document.getElementById('stepSpecs').querySelector('.step-num').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';updatePrint();completeStep('stepRuns',null);}
+  else{location.reload();}
+}
+</script>
+</body>
+</html>

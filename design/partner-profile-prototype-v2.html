@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Partner Profile + Add Product — Prototype v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&family=Fraunces:ital,wght@1,400;1,500;1,600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;--pink-400:#FF5285;
+  --pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;--pink-800:#9E0E40;--pink-900:#6E0A2D;
+  --neon-300:#D4FF7A;--neon-400:#C2FF4D;--neon-500:#B5FF3D;--neon-600:#9EE61F;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+  --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-500:#B45309;--warning-600:#984309;--warning-700:#7C360A;
+  --danger-50:#FBE8E7;--danger-100:#F6C9C7;--danger-500:#C2362F;--danger-700:#87211E;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-500:#1F5BA8;--info-700:#163E72;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;
+  --font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --font-serif:'Fraunces',Georgia,serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);
+  --shadow-lg:0 12px 28px rgba(24,24,26,.12);--shadow-xl:0 24px 48px rgba(24,24,26,.16);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.serif-em{font-family:var(--font-serif);font-style:italic;font-weight:500}
+.disp{font-family:var(--font-display);letter-spacing:-.01em}
+
+.proto-shell{max-width:1300px;margin:0 auto;padding:22px 20px 90px}
+.proto-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:16px;position:sticky;top:12px;z-index:80}
+.proto-brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:16px}
+.proto-brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center}
+.proto-brand .sq svg{width:13px;height:13px;color:#fff}
+.proto-brand small{font-family:var(--font-sans);font-weight:500;color:var(--ink-500);font-size:12px}
+.proto-seg{display:flex;gap:4px;background:var(--ink-100);border-radius:var(--r-pill);padding:4px;margin-left:auto}
+.proto-seg button{border-radius:var(--r-pill);padding:9px 16px;font-weight:600;font-size:13px;color:var(--ink-600);transition:all .2s var(--ease-out);white-space:nowrap;display:flex;align-items:center;gap:7px}
+.proto-seg button svg{width:15px;height:15px}
+.proto-seg button.active{background:var(--ink-900);color:#fff}
+.proto-seg button.active svg{color:var(--neon-500)}
+.proto-note{font-size:12px;color:var(--ink-500);padding:0 4px;margin-bottom:16px}
+.screen{display:none;animation:fade .35s var(--ease-out)}
+.screen.show{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* shared bits */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;border-radius:var(--r-pill);padding:0 20px;height:44px;transition:all .18s var(--ease-out);white-space:nowrap}
+.btn svg{width:16px;height:16px}
+.btn.sm{height:36px;font-size:13px;padding:0 15px}
+.btn.sm svg{width:14px;height:14px}
+.btn-neon{background:var(--neon-500);color:var(--ink-900)}
+.btn-neon:hover{background:var(--neon-400);transform:translateY(-1px)}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{background:#000}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn-out:hover{background:var(--ink-50)}
+.btn-onwhite{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.btn-onwhite:hover{background:rgba(255,255,255,.18)}
+.btn-icon-dark{width:44px;padding:0;background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.btn-icon-dark:hover{background:rgba(255,255,255,.18)}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm)}
+.card.pad{padding:22px}.card+.card{margin-top:18px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:500;background:var(--ink-50);border:1px solid var(--ink-200);color:var(--ink-700)}
+.chip.pink{background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.tier-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r-pill);font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;background:var(--neon-500);color:var(--ink-900)}
+.tier-badge svg{width:13px;height:13px}
+.tier-badge.sm{padding:3px 9px;font-size:10px}.tier-badge.sm svg{width:11px;height:11px}
+.st-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--r-pill)}
+.st-pill svg{width:12px;height:12px}
+.st-pill.ok{color:var(--success-700);background:var(--success-50);border:1px solid var(--success-100)}
+.st-pill.warn{color:var(--warning-700);background:var(--warning-50);border:1px solid var(--warning-100)}
+.st-pill.info{color:var(--info-700);background:var(--info-50);border:1px solid var(--info-100)}
+.st-pill.danger{color:var(--danger-700);background:var(--danger-50);border:1px solid var(--danger-100)}
+.st-pill.muted{color:var(--ink-600);background:var(--ink-100);border:1px solid var(--ink-200)}
+.toggle{width:40px;height:23px;border-radius:var(--r-pill);background:var(--ink-300);position:relative;transition:all .2s;flex:none;display:inline-block}
+.toggle.on{background:var(--pink-500)}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:all .2s var(--ease-out)}
+.toggle.on::after{left:19px}
+.foot-note{text-align:center;color:var(--ink-400);font-size:12px;margin-top:26px;line-height:1.7}
+
+/* ===================== FRONT FACE ===================== */
+.pf-frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff}
+.pf-hero{position:relative;background:var(--ink-900);color:#fff;overflow:hidden}
+.pf-hero .cover{height:180px;position:relative;background:radial-gradient(120% 160% at 82% -10%,rgba(181,255,61,.20),transparent 55%),radial-gradient(110% 150% at 12% 120%,rgba(255,46,99,.30),transparent 60%),linear-gradient(120deg,#1d1d20,#232327 60%,#18181A)}
+.pf-hero .cover::after{content:"";position:absolute;inset:0;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:28px 28px;-webkit-mask-image:linear-gradient(180deg,#000,transparent);mask-image:linear-gradient(180deg,#000,transparent)}
+.pf-hero-inner{position:relative;z-index:2;padding:0 34px 30px;margin-top:-58px;display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap}
+.pf-logo{width:130px;height:130px;border-radius:26px;flex:none;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;box-shadow:0 14px 34px rgba(0,0,0,.4);border:4px solid var(--ink-900);position:relative}
+.pf-logo .mono{font-family:var(--font-display);font-weight:800;font-size:46px;color:#fff}
+.pf-logo .vbadge{position:absolute;right:-6px;bottom:-6px;width:34px;height:34px;border-radius:50%;background:var(--neon-500);border:3px solid var(--ink-900);display:grid;place-items:center}
+.pf-logo .vbadge svg{width:16px;height:16px;color:var(--ink-900)}
+.pf-headwrap{flex:1;min-width:260px;padding-bottom:4px}
+.pf-eyebrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.pf-type{font-size:12px;color:var(--ink-300);font-weight:500}
+.pf-name{font-family:var(--font-display);font-weight:800;font-size:38px;line-height:1.02;letter-spacing:-.02em}
+.pf-tag{margin-top:8px;color:var(--ink-300);font-size:15px;max-width:600px}
+.pf-tag .serif-em{color:var(--neon-500)}
+.pf-meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;color:var(--ink-400);font-size:13px}
+.pf-meta span{display:inline-flex;align-items:center;gap:6px}
+.pf-meta svg{width:14px;height:14px;color:var(--ink-400)}
+.pf-cta{display:flex;gap:10px;flex-wrap:wrap;align-self:flex-end;padding-bottom:4px}
+.pf-stats{position:relative;z-index:2;display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.08)}
+.pf-stat{background:var(--ink-900);padding:15px 26px}
+.pf-stat .v{font-family:var(--font-display);font-weight:700;font-size:22px;color:#fff;display:flex;align-items:center;gap:7px}
+.pf-stat .v .up{color:var(--neon-500);font-size:12px;font-weight:600}
+.pf-stat .v .star{color:var(--pink-400)}
+.pf-stat .l{font-size:11.5px;color:var(--ink-400);margin-top:2px}
+.pf-tabs{position:sticky;top:66px;z-index:20;background:#fff;border-bottom:1px solid var(--ink-200);padding:0 34px;display:flex;gap:4px;overflow-x:auto}
+.pf-tabs button{padding:16px 4px;margin-right:22px;font-weight:600;font-size:14px;color:var(--ink-500);border-bottom:2.5px solid transparent;transition:all .18s;white-space:nowrap}
+.pf-tabs button:hover{color:var(--ink-900)}
+.pf-tabs button.active{color:var(--pink-700);border-color:var(--pink-500)}
+.pf-body{background:var(--ink-50);padding:26px 34px 40px;display:grid;grid-template-columns:1fr 320px;gap:22px;align-items:start}
+.pf-sec.hide{display:none}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px}
+.sec-h h3{font-family:var(--font-display);font-weight:700;font-size:18px}
+.sec-h .link{color:var(--pink-700);font-weight:600;font-size:13px}
+.prose{color:var(--ink-600);font-size:14.5px;line-height:1.65}
+.prose strong{color:var(--ink-900)}
+.pill-ok{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--success-700);background:var(--success-50);border:1px solid var(--success-100);padding:2px 8px;border-radius:var(--r-pill)}
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cap{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:16px;transition:all .18s var(--ease-out)}
+.cap:hover{border-color:var(--pink-300);box-shadow:var(--shadow-md)}
+.cap .top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cap .ic{width:38px;height:38px;border-radius:10px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.cap .ic svg{width:19px;height:19px}
+.cap h4{font-weight:700;font-size:14px}
+.cap .sub{font-size:12px;color:var(--ink-500)}
+.cert-wall{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.cert{display:flex;gap:11px;align-items:center;border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px 13px}
+.cert .seal{width:40px;height:40px;border-radius:10px;background:var(--success-50);color:var(--success-600);display:grid;place-items:center;flex:none}
+.cert .seal svg{width:20px;height:20px}
+.cert .nm{font-weight:600;font-size:13px}
+.cert .mt{font-size:11px;color:var(--ink-500)}
+.port-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.port{border:1px solid var(--ink-200);border-radius:var(--r-lg);overflow:hidden;transition:all .2s var(--ease-out);cursor:pointer}
+.port:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--ink-300)}
+.port .img{height:120px;display:grid;place-items:center}
+.port .img .bottle{font-family:var(--font-display);font-weight:800;font-size:15px;color:#fff;text-align:center;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,.16)}
+.port .cap2{padding:10px 12px}
+.port .cap2 .t{font-weight:600;font-size:13px}
+.port .cap2 .m{font-size:11px;color:var(--ink-500)}
+/* standing pillars */
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pillar{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px}
+.pillar .pn{font-weight:700;font-size:13px;display:flex;justify-content:space-between}
+.pillar .pn .w{font-size:11px;color:var(--ink-400);font-weight:600}
+.pillar .track{height:7px;border-radius:var(--r-pill);background:var(--ink-100);overflow:hidden;margin:9px 0 6px}
+.pillar .fill{height:100%;background:var(--pink-500);border-radius:var(--r-pill)}
+.pillar .ps{font-size:11px;color:var(--ink-500)}
+.pillar .sc{font-family:var(--font-display);font-weight:700;font-size:20px}
+.fee-ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.fee-step{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px;text-align:center}
+.fee-step.cur{border-color:var(--pink-500);background:var(--pink-50)}
+.fee-step .ft{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-500)}
+.fee-step.cur .ft{color:var(--pink-700)}
+.fee-step .fv{font-family:var(--font-display);font-weight:800;font-size:22px;margin-top:3px}
+.rev-summary{display:flex;gap:26px;align-items:center;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--ink-200);margin-bottom:16px}
+.rev-big{font-family:var(--font-display);font-weight:800;font-size:52px;line-height:1}
+.rev-stars{color:var(--pink-500);font-size:18px;letter-spacing:2px}
+.rev-count{font-size:12px;color:var(--ink-500);margin-top:4px}
+.rev-bars{flex:1;min-width:220px}
+.rev-row{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-500);margin:3px 0}
+.rev-row .track{flex:1;height:7px;border-radius:var(--r-pill);background:var(--ink-100);overflow:hidden}
+.rev-row .fill{height:100%;background:var(--pink-500);border-radius:var(--r-pill)}
+.review{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--ink-100)}
+.review:last-child{border-bottom:none;padding-bottom:0}
+.avatar{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;color:#fff;font-size:14px}
+.review .rname{font-weight:600;font-size:13px}
+.review .rmeta{font-size:11px;color:var(--ink-500)}
+.review .rtext{font-size:13.5px;color:var(--ink-600);margin-top:5px}
+.verified-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--info-700);background:var(--info-50);padding:1px 7px;border-radius:var(--r-pill)}
+.verified-tag svg{width:10px;height:10px}
+.pf-side .card+.card{margin-top:16px}
+.fact{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--ink-100);font-size:13px}
+.fact:last-child{border-bottom:none}.fact .k{color:var(--ink-500)}.fact .v{font-weight:600;text-align:right}
+.side-h{font-family:var(--font-display);font-weight:700;font-size:15px;margin-bottom:8px}
+.resp{display:flex;align-items:center;gap:10px;background:var(--success-50);border:1px solid var(--success-100);border-radius:var(--r-lg);padding:12px 14px}
+.resp .dot{width:9px;height:9px;border-radius:50%;background:var(--success-500);box-shadow:0 0 0 4px var(--success-100)}
+.resp .t{font-weight:600;font-size:13px;color:var(--success-700)}
+.resp .s{font-size:11px;color:var(--success-600)}
+.map{height:120px;border-radius:var(--r-lg);margin-top:12px;position:relative;overflow:hidden;background:radial-gradient(circle at 60% 45%,rgba(255,46,99,.16),transparent 40%),linear-gradient(120deg,var(--ink-100),var(--ink-50));border:1px solid var(--ink-200)}
+.map .pin{position:absolute;left:58%;top:42%;width:16px;height:16px;border-radius:50% 50% 50% 0;background:var(--pink-500);transform:rotate(-45deg);box-shadow:0 4px 10px rgba(255,46,99,.4)}
+
+/* ===================== SETTINGS ===================== */
+.st-frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff}
+.st-topband{background:#fff;border-bottom:1px solid var(--ink-200);padding:20px 26px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.st-mini-logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;font-family:var(--font-display);font-weight:800;color:#fff;font-size:20px;flex:none}
+.st-topband .who .nm{font-family:var(--font-display);font-weight:700;font-size:18px;display:flex;align-items:center;gap:8px}
+.st-topband .who .sub{font-size:12.5px;color:var(--ink-500)}
+.st-top-actions{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.complete{display:flex;align-items:center;gap:12px}
+.ring{width:44px;height:44px;border-radius:50%;flex:none;background:conic-gradient(var(--pink-500) calc(var(--p)*1%),var(--ink-100) 0);display:grid;place-items:center;position:relative}
+.ring::before{content:"";position:absolute;width:32px;height:32px;border-radius:50%;background:#fff}
+.ring b{position:relative;font-size:12px;font-weight:700}
+.complete .ct{font-size:12px}.complete .ct b{font-size:13px}.complete .ct span{color:var(--ink-500)}
+.st-cols{display:grid;grid-template-columns:240px 1fr;min-height:620px}
+.st-rail{border-right:1px solid var(--ink-200);background:var(--ink-50);padding:16px 12px}
+.rail-group{margin-bottom:16px}
+.rail-group .gl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-400);padding:0 10px 6px}
+.rail-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:var(--r-md);font-size:13px;font-weight:500;color:var(--ink-700);transition:all .15s;text-align:left}
+.rail-item svg{width:16px;height:16px;color:var(--ink-500);flex:none}
+.rail-item:hover{background:var(--ink-100)}
+.rail-item.active{background:var(--pink-50);color:var(--pink-700);font-weight:600}
+.rail-item.active svg{color:var(--pink-700)}
+.rail-item .badge-n{margin-left:auto;font-size:10px;font-weight:700;background:var(--pink-500);color:#fff;border-radius:var(--r-pill);padding:1px 6px}
+.rail-item .warnn{margin-left:auto;font-size:10px;font-weight:700;background:var(--warning-500);color:#fff;border-radius:var(--r-pill);padding:1px 6px}
+.st-main{padding:24px 28px 40px;background:#fff}
+.st-panel{display:none;animation:fade .3s var(--ease-out)}
+.st-panel.show{display:block}
+.panel-h{margin-bottom:20px}
+.panel-h h2{font-family:var(--font-display);font-weight:700;font-size:22px}
+.panel-h p{color:var(--ink-500);font-size:13.5px;margin-top:3px}
+.ed-cover{height:130px;border-radius:var(--r-lg);position:relative;overflow:hidden;background:radial-gradient(120% 150% at 80% -10%,rgba(181,255,61,.16),transparent 55%),radial-gradient(100% 140% at 10% 120%,rgba(255,46,99,.28),transparent 60%),linear-gradient(120deg,#1d1d20,#232327)}
+.ed-cover .grid-o{position:absolute;inset:0;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:24px 24px}
+.ed-cover .edit-c{position:absolute;right:12px;bottom:12px}
+.ed-avatar-row{display:flex;align-items:flex-end;gap:16px;margin:-46px 0 22px 12px;position:relative;z-index:2}
+.ed-avatar{width:96px;height:96px;border-radius:22px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;font-family:var(--font-display);font-weight:800;color:#fff;font-size:34px;border:4px solid #fff;box-shadow:var(--shadow-md);position:relative}
+.ed-avatar .cam{position:absolute;right:-4px;bottom:-4px;width:30px;height:30px;border-radius:50%;background:#fff;border:1px solid var(--ink-200);display:grid;place-items:center;box-shadow:var(--shadow-sm)}
+.ed-avatar .cam svg{width:15px;height:15px;color:var(--ink-700)}
+.ed-avatar-row .meta{padding-bottom:6px}
+.ed-avatar-row .meta .t{font-weight:600;font-size:14px}
+.ed-avatar-row .meta .s{font-size:12px;color:var(--ink-500)}
+.fieldset{border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:20px;margin-bottom:18px}
+.fieldset>.fh{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.fieldset>.fh .ic{width:30px;height:30px;border-radius:8px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.fieldset>.fh .ic svg{width:16px;height:16px}
+.fieldset>.fh h4{font-family:var(--font-display);font-weight:700;font-size:15px}
+.fieldset>.fh .hint{margin-left:auto;font-size:11px;color:var(--ink-400)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.frow.one{grid-template-columns:1fr}.frow.three{grid-template-columns:1.4fr .8fr .8fr}.frow.four{grid-template-columns:repeat(4,1fr)}
+.field{margin-bottom:14px}.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-700);margin-bottom:6px}
+.field label .req{color:var(--pink-600)}
+.field input,.field textarea,.field select{width:100%;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:10px 12px;font-size:13.5px;font-family:inherit;color:var(--ink-900);background:#fff;transition:all .15s}
+.field textarea{resize:vertical;min-height:78px}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.15)}
+.field .help{font-size:11px;color:var(--ink-500);margin-top:5px}
+.charcount{float:right;font-size:11px;color:var(--ink-400)}
+.docslot{display:flex;align-items:center;gap:12px;border:1px dashed var(--ink-300);border-radius:var(--r-lg);padding:13px 14px;margin-bottom:10px}
+.docslot .fic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;flex:none}
+.docslot .fic svg{width:18px;height:18px}
+.docslot.done .fic{background:var(--success-50);color:var(--success-600)}
+.docslot.pending .fic{background:var(--warning-50);color:var(--warning-500)}
+.docslot .dn{font-weight:600;font-size:13px}.docslot .dm{font-size:11px;color:var(--ink-500)}
+.docslot .act{margin-left:auto}
+.savebar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--ink-200);margin:20px -28px -40px;padding:14px 28px;display:flex;align-items:center;gap:12px}
+.savebar .saved{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--success-700)}
+.savebar .saved svg{width:15px;height:15px}
+.savebar .sp{margin-left:auto;display:flex;gap:10px}
+.lrow{display:flex;align-items:center;gap:14px;padding:15px 16px;border:1px solid var(--ink-200);border-radius:var(--r-lg);margin-bottom:10px;transition:all .15s var(--ease-out)}
+.lrow:hover{border-color:var(--ink-300);box-shadow:var(--shadow-sm)}
+.lrow .lic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--ink-50);color:var(--ink-600)}
+.lrow .lic svg{width:19px;height:19px}
+.lrow .ltx .t{font-weight:600;font-size:14px}
+.lrow .ltx .s{font-size:12px;color:var(--ink-500)}
+.lrow .rt{margin-left:auto;display:flex;align-items:center;gap:12px}
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.kpi{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px 16px}
+.kpi .v{font-family:var(--font-display);font-weight:700;font-size:22px}
+.kpi .l{font-size:11.5px;color:var(--ink-500);margin-top:2px}
+.kpi .v .up{font-size:12px;color:var(--success-600);font-weight:600}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.info-banner{display:flex;gap:11px;align-items:flex-start;background:var(--info-50);border:1px solid var(--info-100);border-radius:var(--r-lg);padding:13px 15px;margin-bottom:18px;font-size:13px;color:var(--info-700)}
+.info-banner svg{width:17px;height:17px;flex:none;margin-top:1px}
+.seg-radio{display:flex;border:1px solid var(--ink-300);border-radius:var(--r-md);overflow:hidden;width:fit-content}
+.seg-radio button{padding:9px 18px;font-size:13px;font-weight:600;color:var(--ink-600)}
+.seg-radio button.active{background:var(--ink-900);color:#fff}
+.perf-row{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--ink-100)}
+.perf-row:last-child{border-bottom:none}
+.perf-row .pl{width:190px;font-size:13px;font-weight:600;flex:none}
+.perf-row .pl small{display:block;font-weight:400;color:var(--ink-500);font-size:11px}
+.perf-row .track{flex:1;height:9px;border-radius:var(--r-pill);background:var(--ink-100);overflow:hidden}
+.perf-row .fill{height:100%;border-radius:var(--r-pill);background:var(--success-500)}
+.perf-row .fill.warn{background:var(--warning-500)}
+.perf-row .pv{width:96px;text-align:right;font-weight:700;font-size:13px}
+.perf-row .pv small{color:var(--ink-400);font-weight:500;font-size:11px}
+
+/* ===================== ADD PRODUCT BUILDER ===================== */
+.gb-frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff;border:1px solid var(--ink-200)}
+.gb-top{position:sticky;top:66px;z-index:30;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--ink-200);display:flex;align-items:center;gap:14px;padding:12px 22px}
+.gb-top .menu{width:36px;height:36px;border-radius:var(--r-md);border:1px solid var(--ink-200);display:grid;place-items:center;color:var(--ink-600)}
+.gb-top .menu svg{width:18px;height:18px}
+.gb-title{font-family:var(--font-display);font-weight:700;font-size:16px}
+.gb-title small{display:block;font-family:var(--font-sans);font-weight:500;font-size:11px;color:var(--ink-500)}
+.gb-saved{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--success-700);margin-left:6px}
+.gb-saved svg{width:14px;height:14px}
+.gb-top .sp{margin-left:auto;display:flex;gap:10px}
+.gb-steps{display:flex;align-items:center;justify-content:center;gap:6px;padding:16px 22px;background:var(--ink-50);border-bottom:1px solid var(--ink-200);flex-wrap:wrap}
+.bead{display:flex;align-items:center;gap:9px;padding:7px 12px;border-radius:var(--r-pill);cursor:pointer;transition:all .18s}
+.bead .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--ink-200);color:var(--ink-600);flex:none}
+.bead .bt{font-size:12.5px;font-weight:600;color:var(--ink-500);white-space:nowrap}
+.bead .bt small{display:block;font-weight:400;font-size:10.5px;color:var(--ink-400)}
+.bead:hover{background:var(--ink-100)}
+.bead.active{background:#fff;box-shadow:var(--shadow-sm);border:1px solid var(--pink-200)}
+.bead.active .n{background:var(--pink-500);color:#fff}
+.bead.active .bt{color:var(--pink-700)}
+.bead.done .n{background:var(--success-500);color:#fff}
+.bead.done .bt{color:var(--ink-700)}
+.bead-sep{width:14px;height:1.5px;background:var(--ink-200);flex:none}
+.gb-body{padding:24px 26px 30px;background:#fff;min-height:400px}
+.gb-step{display:none;animation:fade .3s var(--ease-out)}
+.gb-step.show{display:block}
+.gb-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.gb-cols.wide-left{grid-template-columns:1.35fr 1fr}
+.section-title{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.section-title .ic{width:28px;height:28px;border-radius:8px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.section-title .ic svg{width:15px;height:15px}
+.section-title h4{font-family:var(--font-display);font-weight:700;font-size:15px}
+.section-title .tag{margin-left:auto}
+.gb-card{border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:18px;margin-bottom:16px}
+.domain-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
+.domcard{border:1.5px solid var(--ink-200);border-radius:var(--r-lg);padding:14px 10px;text-align:center;cursor:pointer;transition:all .18s var(--ease-out)}
+.domcard:hover{border-color:var(--pink-300)}
+.domcard.on{border-color:var(--pink-500);background:var(--pink-50)}
+.domcard .di{width:38px;height:38px;border-radius:10px;background:var(--ink-100);color:var(--ink-600);display:grid;place-items:center;margin:0 auto 8px}
+.domcard.on .di{background:var(--pink-500);color:#fff}
+.domcard .di svg{width:19px;height:19px}
+.domcard .dl{font-weight:700;font-size:12.5px}
+.domcard .ds{font-size:10.5px;color:var(--ink-500);margin-top:2px}
+.gbtable{width:100%;border-collapse:collapse;font-size:12.5px}
+.gbtable th{text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-400);padding:6px 8px;border-bottom:1px solid var(--ink-200)}
+.gbtable td{padding:7px 8px;border-bottom:1px solid var(--ink-100);vertical-align:middle}
+.gbtable input{width:100%;border:1px solid var(--ink-200);border-radius:6px;padding:6px 8px;font-size:12.5px;font-family:inherit}
+.gbtable .ti{width:64px}
+.mini-input{border:1px solid var(--ink-300);border-radius:var(--r-md);padding:8px 10px;font-size:13px;font-family:inherit;width:100%}
+.mode-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mode-tile{border:1.5px solid var(--ink-200);border-radius:var(--r-lg);padding:16px;cursor:pointer;transition:all .18s}
+.mode-tile:hover{border-color:var(--pink-300)}
+.mode-tile.on{border-color:var(--pink-500);background:var(--pink-50)}
+.mode-tile .mi{width:34px;height:34px;border-radius:9px;background:var(--ink-100);color:var(--ink-600);display:grid;place-items:center;margin-bottom:9px}
+.mode-tile.on .mi{background:var(--pink-500);color:#fff}
+.mode-tile .mi svg{width:17px;height:17px}
+.mode-tile .mt{font-weight:700;font-size:13px}
+.mode-tile .mrec{font-size:10px;font-weight:700;color:var(--pink-700);text-transform:uppercase}
+.mode-tile .md{font-size:11.5px;color:var(--ink-500);margin-top:3px}
+.flavor-tabs{display:flex;gap:6px;border-bottom:1px solid var(--ink-200);margin-bottom:16px;flex-wrap:wrap}
+.flavor-tabs button{padding:9px 14px;font-size:12.5px;font-weight:600;color:var(--ink-500);border-bottom:2px solid transparent;display:flex;align-items:center;gap:6px}
+.flavor-tabs button .sw{width:11px;height:11px;border-radius:3px}
+.flavor-tabs button.on{color:var(--pink-700);border-color:var(--pink-500)}
+.subtabs{display:flex;gap:4px;background:var(--ink-100);border-radius:var(--r-pill);padding:4px;margin-bottom:14px;width:fit-content;flex-wrap:wrap}
+.subtabs button{padding:6px 12px;font-size:11.5px;font-weight:600;color:var(--ink-600);border-radius:var(--r-pill)}
+.subtabs button.on{background:#fff;color:var(--pink-700);box-shadow:var(--shadow-sm)}
+.ing-cat{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-400);margin:12px 0 4px;padding-left:2px}
+/* nutrition facts label */
+.nf{border:2px solid #000;padding:6px 8px;font-family:'Helvetica Neue',Arial,sans-serif;color:#000;background:#fff;max-width:260px;font-size:11px;line-height:1.15}
+.nf .h{font-family:var(--font-display);font-weight:800;font-size:26px;letter-spacing:-.5px;border-bottom:1px solid #000;padding-bottom:1px}
+.nf .serv{display:flex;justify-content:space-between;font-size:11px;padding:1px 0}
+.nf .thick{border-top:8px solid #000;margin-top:2px}
+.nf .amt{font-size:9px;font-weight:700;padding-top:2px}
+.nf .cal{display:flex;justify-content:space-between;align-items:flex-end;border-top:4px solid #000;border-bottom:1px solid #000;padding:1px 0}
+.nf .cal b{font-size:11px}.nf .cal .cn{font-family:var(--font-display);font-weight:800;font-size:22px}
+.nf .dv{text-align:right;font-size:9px;font-weight:700;padding:1px 0;border-bottom:1px solid #000}
+.nf .r{display:flex;justify-content:space-between;border-bottom:1px solid #000;padding:1px 0}
+.nf .r.ind{padding-left:12px}.nf .r b{font-weight:700}
+.nf .r.sub{padding-left:12px;font-weight:400}
+.nf .foot{font-size:8.5px;padding-top:3px;line-height:1.25}
+.studio{border:1px solid var(--ink-200);border-radius:var(--r-lg);overflow:hidden}
+.studio-top{background:var(--ink-900);color:#fff;padding:9px 14px;display:flex;align-items:center;gap:12px;font-size:12px}
+.studio-top .st-tools{display:flex;gap:4px;margin-left:auto}
+.studio-top .st-tools button{color:var(--ink-300);padding:4px 9px;border-radius:6px;font-size:11.5px;font-weight:600}
+.studio-top .st-tools button.on{background:rgba(255,255,255,.12);color:var(--neon-500)}
+.studio-canvas{height:280px;background:radial-gradient(circle at 50% 40%,var(--ink-100),var(--ink-50));display:grid;place-items:center;position:relative}
+.pkg3d{width:110px;height:150px;border-radius:10px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));box-shadow:0 22px 44px rgba(255,46,99,.3);transform:perspective(500px) rotateY(-18deg) rotateX(4deg);position:relative;display:grid;place-items:center;color:#fff}
+.pkg3d .lbl{font-family:var(--font-display);font-weight:800;font-size:15px;text-align:center}
+.studio-cam{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:5px;background:rgba(24,24,26,.8);padding:5px;border-radius:var(--r-pill)}
+.studio-cam button{color:var(--ink-300);font-size:10.5px;padding:4px 9px;border-radius:var(--r-pill)}
+.studio-cam button.on{background:var(--neon-500);color:var(--ink-900);font-weight:700}
+.frame-palette{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.frame-grp{border:1px solid var(--ink-200);border-radius:var(--r-md);padding:8px 10px}
+.frame-grp .fg{font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--pink-700);margin-bottom:5px}
+.frame-grp .fi{font-size:11px;color:var(--ink-600);padding:2px 0}
+.pricing-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.pricing-table th{background:var(--ink-50);text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--ink-500);padding:8px 10px;border-bottom:1px solid var(--ink-200)}
+.pricing-table th.calc{color:var(--pink-700)}
+.pricing-table td{padding:8px 10px;border-bottom:1px solid var(--ink-100)}
+.pricing-table td.calc{font-weight:700;color:var(--pink-700);background:var(--pink-50)}
+.pricing-table input{width:76px;border:1px solid var(--ink-200);border-radius:6px;padding:6px 8px;font-size:12.5px}
+.passport-hero{background:linear-gradient(120deg,var(--ink-900),#232327);color:#fff;border-radius:var(--r-lg);padding:20px;display:flex;gap:18px;align-items:center;margin-bottom:16px}
+.passport-hero .pimg{width:80px;height:80px;border-radius:14px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:24px;flex:none}
+.passport-hero h3{font-family:var(--font-display);font-weight:800;font-size:22px}
+.passport-hero .pm{color:var(--ink-300);font-size:12.5px;margin-top:3px}
+.review-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rev-card{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:15px}
+.rev-card h5{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-400);margin-bottom:9px}
+.rev-kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--ink-100);font-size:12.5px}
+.rev-kv:last-child{border-bottom:none}.rev-kv .k{color:var(--ink-500)}.rev-kv .v{font-weight:600}
+.gb-nav{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--ink-200);padding:14px 26px;display:flex;align-items:center;gap:12px;margin:0 -26px -30px}
+.gb-nav .step-note{font-size:12px;color:var(--ink-500)}
+.gb-nav .sp{margin-left:auto;display:flex;gap:10px}
+
+@media(max-width:1080px){
+  .pf-body{grid-template-columns:1fr}.pf-stats{grid-template-columns:1fr 1fr 1fr}
+  .cert-wall,.port-grid{grid-template-columns:1fr 1fr}.pillars{grid-template-columns:1fr 1fr}
+  .st-cols{grid-template-columns:1fr}.st-rail{border-right:none;border-bottom:1px solid var(--ink-200);display:flex;gap:8px;overflow-x:auto}
+  .rail-group{margin-bottom:0;flex:none}.gb-cols,.gb-cols.wide-left{grid-template-columns:1fr}
+  .domain-grid{grid-template-columns:1fr 1fr 1fr}
+}
+@media(max-width:680px){
+  .frow,.frow.three,.frow.four,.cap-grid,.two-col,.kpi-strip,.review-grid,.mode-tiles{grid-template-columns:1fr}
+  .pf-name{font-size:30px}.pf-stats{grid-template-columns:1fr 1fr}.domain-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="proto-shell">
+  <div class="proto-bar">
+    <div class="proto-brand">
+      <span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L4.5 13H11l-1 9 9-13H12.5z"/></svg></span>
+      iLaunchify <small>Partner v2</small>
+    </div>
+    <div class="proto-seg">
+      <button id="tab-public" onclick="showScreen('public')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Front face</button>
+      <button id="tab-settings" onclick="showScreen('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Profile &amp; settings</button>
+      <button id="tab-product" class="active" onclick="showScreen('product')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add product</button>
+    </div>
+  </div>
+  <div class="proto-note">Prototype v2 · grounded in the real iLaunchify data model (merit tiers, disclosure levels, service-capability enums, cert statuses) and the real <b>6-step guided product builder</b>. Toggle views above — every tab, step bead and rail item is live.</div>
+
+  <!-- ============ SCREEN: ADD PRODUCT ============ -->
+  <div id="screen-product" class="screen show">
+    <div class="gb-frame">
+      <!-- topbar -->
+      <div class="gb-top">
+        <div class="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg></div>
+        <div class="gb-title">Sparkling Yuzu Soda<small>Beverage · Nutrition Facts · Draft</small></div>
+        <span class="gb-saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>All changes saved</span>
+        <div class="sp"><button class="btn btn-out sm">Save &amp; exit</button><button class="btn btn-dark sm" id="gb-next" onclick="gbNext()">Next: Variants &amp; packs →</button></div>
+      </div>
+      <!-- steps -->
+      <div class="gb-steps">
+        <div class="bead active" data-step="0" onclick="gbGo(0)"><span class="n">1</span><span class="bt">Basics<small>Identity · media · type</small></span></div>
+        <span class="bead-sep"></span>
+        <div class="bead" data-step="1" onclick="gbGo(1)"><span class="n">2</span><span class="bt">Variants &amp; packs<small>Net wt · MOQ · facility</small></span></div>
+        <span class="bead-sep"></span>
+        <div class="bead" data-step="2" onclick="gbGo(2)"><span class="n">3</span><span class="bt">Recipe<small>Ingredients · allergens</small></span></div>
+        <span class="bead-sep"></span>
+        <div class="bead" data-step="3" onclick="gbGo(3)"><span class="n">4</span><span class="bt">Packaging studio<small>3D · die-lines · frames</small></span></div>
+        <span class="bead-sep"></span>
+        <div class="bead" data-step="4" onclick="gbGo(4)"><span class="n">5</span><span class="bt">Cost &amp; pricing<small>Volume tiers</small></span></div>
+        <span class="bead-sep"></span>
+        <div class="bead" data-step="5" onclick="gbGo(5)"><span class="n">6</span><span class="bt">Review<small>Verify &amp; submit</small></span></div>
+      </div>
+
+      <div class="gb-body">
+
+        <!-- STEP 1 · BASICS -->
+        <div class="gb-step show" id="gstep-0">
+          <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 8.6L12 2 3.4 8.6v10.8L12 22l8.6-2.6z"/></svg></span><h4>Product domain</h4><span class="tag st-pill muted">Drives label artifact &amp; rule pack</span></div>
+          <div class="domain-grid">
+            <div class="domcard on"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v7c0 1 1 2 2 2h0c1 0 2-1 2-2V2M5 11v11M18 2c-2 0-3 2-3 5s1 5 3 5v9"/></svg></div><div class="dl">Food / Beverage</div><div class="ds">Nutrition Facts</div></div>
+            <div class="domcard"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 20.5a5 5 0 01-7-7l6-6a5 5 0 017 7zM8.5 8.5l7 7"/></svg></div><div class="dl">Supplement</div><div class="ds">Supplement Facts</div></div>
+            <div class="domcard"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 3.9 4.3.6-3.1 3 .7 4.3L12 15.8 8.3 17.8l.7-4.3-3.1-3 4.3-.6z"/></svg></div><div class="dl">Cosmetic</div><div class="ds">INCI declaration</div></div>
+            <div class="domcard"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 00-5 5c0 2 2 4 5 4s5-1 5-4a5 5 0 00-5-5z"/></svg></div><div class="dl">Pet</div><div class="ds">Guaranteed Analysis</div></div>
+            <div class="domcard"><div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></svg></div><div class="dl">OTC drug</div><div class="ds">Drug Facts</div></div>
+          </div>
+
+          <div class="gb-cols">
+            <div>
+              <div class="gb-card">
+                <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4L12 22l-8.6-8.6a5 5 0 010-7 5 5 0 017 0l1.6 1.6 1.6-1.6a5 5 0 017 0 5 5 0 010 7z"/></svg></span><h4>Product identity</h4></div>
+                <div class="field"><label>Product name <span class="req">*</span></label><input value="Sparkling Yuzu Soda"/></div>
+                <div class="frow">
+                  <div class="field"><label>Base SKU <span class="req">*</span></label><input value="SODA-YUZU"/><div class="help">Auto-suggested from name</div></div>
+                  <div class="field"><label>Country of origin</label><select><option>United States</option><option>Canada</option></select></div>
+                </div>
+                <div class="frow">
+                  <div class="field"><label>Category <span class="req">*</span></label><select><option>Beverage — Functional</option><option>Food</option></select></div>
+                  <div class="field"><label>Subcategory</label><select><option>Sparkling / carbonated</option><option>Juice</option></select></div>
+                </div>
+              </div>
+              <div class="gb-card">
+                <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2v14h20zM8 21h8M12 17v4"/></svg></span><h4>Marketplace filters</h4></div>
+                <div class="field"><label>Niches <span class="help" style="display:inline">(1 primary + up to 2 secondary)</span></label><div class="chips"><span class="chip pink">Functional beverage ★</span><span class="chip pink">Wellness ✕</span><span class="chip">+ Add</span></div></div>
+                <div class="frow">
+                  <div class="field"><label>Format</label><select><option>Can (12 oz)</option><option>Bottle</option></select></div>
+                  <div class="field"><label>Manufacturing process</label><select><option>Cold-fill · carbonation</option></select></div>
+                </div>
+                <div class="field"><label>Allergen-free claims <span class="help" style="display:inline">· edits go to admin review</span></label><div class="chips"><span class="chip">Gluten-free</span><span class="chip">Dairy-free</span><span class="chip">Nut-free</span></div></div>
+                <div class="field"><label>Diet · Audience · Trend</label><div class="chips"><span class="chip pink">Vegan</span><span class="chip pink">Adults</span><span class="chip pink">Low-sugar</span></div></div>
+              </div>
+              <div class="gb-card">
+                <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span><h4>Descriptions</h4></div>
+                <div class="field"><label>Short description <span class="charcount">58 / 140</span></label><input value="Crisp Japanese yuzu with a functional adaptogen kick."/></div>
+                <div class="field"><label>Detailed description <span class="charcount">210 / 800</span></label><textarea>A lightly sparkling functional soda built around real yuzu juice and L-theanine. Cold-filled, 40 calories, cane-sugar sweetened, no artificial anything.</textarea></div>
+              </div>
+            </div>
+            <div>
+              <div class="gb-card">
+                <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></span><h4>Media</h4><span class="tag help" style="font-size:11px">First image = hero</span></div>
+                <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:8px">
+                  <div style="grid-row:span 2;height:150px;border-radius:var(--r-lg);background:linear-gradient(150deg,var(--pink-400),var(--pink-700));display:grid;place-items:center;color:#fff;font-family:var(--font-display);font-weight:800">YUZU</div>
+                  <div style="height:71px;border-radius:var(--r-md);border:1px dashed var(--ink-300);display:grid;place-items:center;color:var(--ink-400)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M12 5v14M5 12h14"/></svg></div>
+                  <div style="height:71px;border-radius:var(--r-md);border:1px dashed var(--ink-300);display:grid;place-items:center;color:var(--ink-400)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M23 7l-7 5 7 5zM1 5h15v14H1z"/></svg></div>
+                </div>
+                <div class="help" style="margin-top:8px">Hero 16:10 · up to 6 gallery + 1 video</div>
+              </div>
+              <div class="gb-card">
+                <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><h4>Certificates</h4></div>
+                <div class="lrow" style="padding:11px 13px;margin-bottom:8px"><span class="lic" style="width:32px;height:32px;background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div class="ltx"><div class="t" style="font-size:13px">USDA Organic</div><div class="s">Facility cert · verified</div></div><div class="rt"><span class="st-pill ok">Attached</span></div></div>
+                <button class="btn btn-out sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add certificates</button>
+              </div>
+              <div class="gb-card">
+                <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h7"/></svg></span><h4>Your references</h4><span class="tag help" style="font-size:11px">Private · searchable</span></div>
+                <div class="frow"><div class="field" style="margin:0"><label>ERP ID</label><input value="NW-8842"/></div><div class="field" style="margin:0"><label>Legacy SKU</label><input value="YZ-CAN-12"/></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2 · VARIANTS & PACKS -->
+        <div class="gb-step" id="gstep-1">
+          <div class="gb-card">
+            <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8"/></svg></span><h4>Product type</h4><span class="tag st-pill warn">🔒 Locks once recipe authored</span></div>
+            <div class="subtabs" style="margin-bottom:12px"><button class="on">Single flavor</button><button>Multiple flavors</button><button>Curated &amp; custom</button><button>Recurring</button></div>
+            <div class="frow four" style="gap:10px">
+              <div class="domcard on" style="padding:12px 8px"><div class="dl">Single unit</div><div class="ds">One recipe · one pack</div></div>
+              <div class="domcard" style="padding:12px 8px"><div class="dl">Multi-unit same</div><div class="ds">Case of identical</div></div>
+              <div class="domcard" style="padding:12px 8px"><div class="dl">Multi-flavor mixed</div><div class="ds">Variety pack</div></div>
+              <div class="domcard" style="padding:12px 8px"><div class="dl">Pick-N</div><div class="ds">Customer chooses</div></div>
+            </div>
+          </div>
+
+          <div class="gb-card">
+            <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1"/></svg></span><h4>Production &amp; availability</h4></div>
+            <div class="frow four">
+              <div class="field"><label>Fulfillment mode</label><select><option>Bulk production</option><option>Make-to-order (on-demand)</option><option>Both</option></select></div>
+              <div class="field"><label>MOQ (units)</label><input value="500"/></div>
+              <div class="field"><label>Order increment</label><input value="100"/></div>
+              <div class="field"><label>Monthly capacity</label><input value="80,000"/></div>
+            </div>
+            <div class="frow four">
+              <div class="field"><label>Lead — reorder (days)</label><input value="12"/></div>
+              <div class="field"><label>Lead — first run (days)</label><input value="28"/></div>
+              <div class="field"><label>Shelf life (days)</label><input value="365"/></div>
+              <div class="field"><label>Storage class</label><select><option>Ambient</option><option>Chilled</option><option>Frozen</option></select></div>
+            </div>
+            <div class="frow four">
+              <div class="field"><label>Net content</label><input value="12"/></div>
+              <div class="field"><label>Unit</label><select><option>fl oz</option><option>mL</option><option>g</option><option>count</option></select></div>
+              <div class="field"><label>Manufactured by</label><select><option>Portland, OR (default)</option><option>Reno, NV</option></select></div>
+              <div class="field"><label>Lot / batch tracking</label><div style="padding-top:6px"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            </div>
+          </div>
+
+          <div class="two-col">
+            <div class="gb-card" style="margin:0">
+              <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h4.5a2 2 0 010 4H9m0 0h5"/></svg></span><h4>Fees</h4></div>
+              <table class="gbtable"><thead><tr><th>Fee label</th><th>Basis</th><th>Amount ¢</th></tr></thead><tbody>
+                <tr><td>Setup / plate</td><td>Per SKU · one-time</td><td><input class="ti" value="8500"/></td></tr>
+                <tr><td>Changeover</td><td>Per order</td><td><input class="ti" value="1200"/></td></tr>
+              </tbody></table>
+              <button class="btn btn-out sm" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add fee</button>
+            </div>
+            <div class="gb-card" style="margin:0">
+              <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6l1 4H8zM8 7h8l1 13H7z"/></svg></span><h4>Samples</h4><div class="tag"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+              <div class="field" style="margin-bottom:10px"><label>Unbranded sample · price/unit ¢</label><input value="450"/></div>
+              <div class="frow"><div class="field" style="margin:0"><label>Sample MOQ</label><input value="6"/></div><div class="field" style="margin:0"><label>Max / creator</label><input value="24"/></div></div>
+              <div class="chip pink" style="margin-top:10px">Credit sample cost toward first order ✓</div>
+            </div>
+          </div>
+
+          <div class="gb-card">
+            <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 3.9 4.3.6-3.1 3 .7 4.3L12 15.8 8.3 17.8l.7-4.3-3.1-3 4.3-.6z"/></svg></span><h4>Flavors <span class="help" style="display:inline;font-weight:400">· each becomes a recipe preset in Step 3</span></h4></div>
+            <table class="gbtable"><thead><tr><th>#</th><th>Flavor</th><th>SKU</th><th>Statement of identity</th><th>Price/unit $</th><th>Lead Δ</th></tr></thead><tbody>
+              <tr><td>1</td><td><input value="Yuzu"/></td><td><input value="SODA-YUZU"/></td><td><input value="Sparkling yuzu soda"/></td><td><input class="ti" value="1.10"/></td><td><input class="ti" value="0"/></td></tr>
+              <tr><td>2</td><td><input value="Yuzu-Ginger"/></td><td><input value="SODA-YZGR"/></td><td><input value="Sparkling yuzu ginger soda"/></td><td><input class="ti" value="1.10"/></td><td><input class="ti" value="2"/></td></tr>
+            </tbody></table>
+            <button class="btn btn-out sm" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add flavor</button>
+          </div>
+
+          <div class="two-col">
+            <div class="gb-card" style="margin:0">
+              <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></span><h4>Creator option axes</h4></div>
+              <div class="chips" style="margin-bottom:8px"><span class="chip">+ Sweetener</span><span class="chip">+ Strength</span><span class="chip">+ Caffeine</span></div>
+              <div class="lrow" style="padding:10px 12px;margin:0"><div class="ltx"><div class="t" style="font-size:13px">Caffeine</div><div class="s">None (default) · 80mg · 160mg · changes Facts</div></div><div class="rt"><span class="st-pill muted">3 values</span></div></div>
+            </div>
+            <div class="gb-card" style="margin:0">
+              <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zM5 5l14 14"/></svg></span><h4>Approval triggers</h4></div>
+              <table class="gbtable"><tbody>
+                <tr><td>Label copy change</td><td style="text-align:right"><span class="st-pill info">Legal</span></td></tr>
+                <tr><td>Recipe change</td><td style="text-align:right"><span class="st-pill info">Manufacturer QA</span></td></tr>
+                <tr><td>Price change</td><td style="text-align:right"><span class="st-pill info">Brand Ops</span></td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3 · RECIPE -->
+        <div class="gb-step" id="gstep-2">
+          <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M8 12h8M12 8v8"/></svg></span><h4>How do you want to enter your recipe?</h4><span class="tag st-pill muted">Domain: Beverage · Nutrition Facts</span></div>
+          <div class="mode-tiles" style="margin-bottom:18px">
+            <div class="mode-tile on"><div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M9 15h6M9 11h6"/></svg></div><div class="mrec">Recommended</div><div class="mt">I already have my data</div><div class="md">Type your existing panel values directly.</div></div>
+            <div class="mode-tile"><div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></div><div class="mt">Build from ingredients</div><div class="md">Search USDA / your library, we compute the panel.</div></div>
+            <div class="mode-tile"><div class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg></div><div class="mt">Parse with AI <span class="st-pill muted" style="font-size:9px">Trusted+</span></div><div class="md">Paste an ingredient statement, we extract it.</div></div>
+          </div>
+
+          <div class="flavor-tabs">
+            <button class="on"><span class="sw" style="background:var(--ink-400)"></span>BASE</button>
+            <button><span class="sw" style="background:var(--pink-500)"></span>Yuzu</button>
+            <button><span class="sw" style="background:var(--warning-500)"></span>Yuzu-Ginger</button>
+          </div>
+
+          <div class="gb-cols wide-left">
+            <div>
+              <div class="subtabs"><button class="on">Build recipe</button><button>Ingredients</button><button>Allergens</button><button>Cost</button><button>Label</button></div>
+              <div class="gb-card" style="padding:14px">
+                <div class="ing-cat">Base ingredients</div>
+                <table class="gbtable"><thead><tr><th></th><th>Ingredient</th><th>Qty</th><th>Unit</th><th>Waste %</th><th>$/kg</th></tr></thead><tbody>
+                  <tr><td><span class="toggle on" style="transform:scale(.8)"></span></td><td>Carbonated water</td><td><input class="ti" value="320"/></td><td>g</td><td><input class="ti" value="0"/></td><td><input class="ti" value="0.08"/></td></tr>
+                  <tr><td><span class="toggle on" style="transform:scale(.8)"></span></td><td>Yuzu juice concentrate</td><td><input class="ti" value="18"/></td><td>g</td><td><input class="ti" value="2"/></td><td><input class="ti" value="14.20"/></td></tr>
+                  <tr><td><span class="toggle on" style="transform:scale(.8)"></span></td><td>Cane sugar</td><td><input class="ti" value="9"/></td><td>g</td><td><input class="ti" value="0"/></td><td><input class="ti" value="1.10"/></td></tr>
+                  <tr><td><span class="toggle on" style="transform:scale(.8)"></span></td><td>Citric acid</td><td><input class="ti" value="1.2"/></td><td>g</td><td><input class="ti" value="0"/></td><td><input class="ti" value="2.40"/></td></tr>
+                </tbody></table>
+                <div class="ing-cat">Optional / functional</div>
+                <table class="gbtable"><tbody>
+                  <tr><td><span class="toggle" style="transform:scale(.8)"></span></td><td style="color:var(--ink-500)">L-theanine (adds to label)</td><td><input class="ti" value="0.1"/></td><td>g</td><td></td><td><input class="ti" value="180"/></td></tr>
+                </tbody></table>
+                <button class="btn btn-out sm" style="margin-top:10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4-4"/></svg>Search ingredients · USDA / Library / Private</button>
+              </div>
+              <div class="gb-card" style="padding:14px">
+                <div class="section-title" style="margin-bottom:10px"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></span><h4 style="font-size:14px">Serving &amp; cost</h4></div>
+                <div class="frow"><div class="field" style="margin:0"><label>Serving size</label><input value="1 can (355 mL)"/></div><div class="field" style="margin:0"><label>Servings / container</label><input value="1"/></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:13px"><span style="color:var(--ink-500)">Cost / serving</span><b>$0.34</b></div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:13px"><span style="color:var(--ink-500)">Suggested retail (4×)</span><b style="color:var(--pink-700)">$1.36</b></div>
+              </div>
+            </div>
+            <div>
+              <div style="position:sticky;top:130px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span class="st-pill ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Live · FDA engine</span><span class="chip" style="font-size:11px">Preview</span></div>
+                <div class="nf">
+                  <div class="h">Nutrition Facts</div>
+                  <div class="serv">1 serving per container</div>
+                  <div class="serv" style="font-weight:700">Serving size <span>1 can (355mL)</span></div>
+                  <div class="thick"></div>
+                  <div class="amt">Amount per serving</div>
+                  <div class="cal"><b>Calories</b><span class="cn">40</span></div>
+                  <div class="dv">% Daily Value*</div>
+                  <div class="r"><span><b>Total Fat</b> 0g</span><b>0%</b></div>
+                  <div class="r"><span><b>Sodium</b> 15mg</span><b>1%</b></div>
+                  <div class="r"><span><b>Total Carbohydrate</b> 10g</span><b>4%</b></div>
+                  <div class="r sub"><span>Total Sugars 9g</span><span></span></div>
+                  <div class="r ind"><span>Incl. 9g Added Sugars</span><b>18%</b></div>
+                  <div class="r"><span><b>Protein</b> 0g</span><span></span></div>
+                  <div class="foot">* The % Daily Value tells you how much a nutrient in a serving contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.</div>
+                </div>
+                <div style="margin-top:10px;font-size:11.5px;color:var(--ink-500)"><b>Contains:</b> none of the Big-9 allergens</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4 · PACKAGING STUDIO -->
+        <div class="gb-step" id="gstep-3">
+          <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8"/></svg></span><h4>Packaging studio</h4><span class="tag st-pill muted">3D preview ⇄ die-line editor</span></div>
+          <div class="gb-cols wide-left">
+            <div>
+              <div class="studio">
+                <div class="studio-top"><b>12 oz slim can</b> · aluminum
+                  <div class="st-tools"><button class="on">Library</button><button>Frames</button><button>Guides</button><button>Layers</button><button>Finishes</button></div>
+                </div>
+                <div class="studio-canvas">
+                  <div class="pkg3d"><div class="lbl">YUZU<br>SODA</div></div>
+                  <div class="studio-cam"><button class="on">Front</button><button>Front R</button><button>Front L</button><button>Top</button></div>
+                </div>
+              </div>
+              <div class="gb-card" style="margin-top:16px">
+                <div class="section-title" style="margin-bottom:10px"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h6l2-3h4l-2 3h6v13H4z"/></svg></span><h4 style="font-size:14px">Per-flavor die-lines</h4></div>
+                <div class="lrow" style="padding:10px 12px;margin-bottom:8px"><span class="sw" style="width:12px;height:12px;border-radius:3px;background:var(--pink-500)"></span><div class="ltx"><div class="t" style="font-size:13px">Yuzu</div></div><div class="rt"><select class="mini-input" style="width:auto;padding:6px 10px"><option>Shared template die-line</option><option>Custom</option></select></div></div>
+                <div class="lrow" style="padding:10px 12px;margin:0"><span class="sw" style="width:12px;height:12px;border-radius:3px;background:var(--warning-500)"></span><div class="ltx"><div class="t" style="font-size:13px">Yuzu-Ginger</div></div><div class="rt"><select class="mini-input" style="width:auto;padding:6px 10px"><option>Shared template die-line</option><option>Custom</option></select></div></div>
+              </div>
+            </div>
+            <div>
+              <div class="section-title" style="margin-bottom:8px"><h4 style="font-size:14px">Label frames</h4><span class="tag help" style="font-size:11px">Drag onto die-line</span></div>
+              <div class="frame-palette">
+                <div class="frame-grp"><div class="fg">Identity</div><div class="fi">Statement of identity</div><div class="fi">Net quantity</div><div class="fi">Manufacturer</div><div class="fi">Barcode / GTIN</div></div>
+                <div class="frame-grp"><div class="fg">Recipe</div><div class="fi">Nutrition Facts</div><div class="fi">Ingredients</div><div class="fi">Allergens</div></div>
+                <div class="frame-grp"><div class="fg">Material</div><div class="fi">Recycling mark</div><div class="fi">Disposal</div></div>
+                <div class="frame-grp"><div class="fg">Product</div><div class="fi">Certifications</div><div class="fi">Mandatory phrases</div></div>
+              </div>
+              <div class="gb-card" style="margin-top:14px;background:var(--info-50);border-color:var(--info-100)">
+                <div style="display:flex;gap:9px;font-size:12.5px;color:var(--info-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex:none;margin-top:1px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Mandatory phrases auto-lock from the label engine with their CFR citation and can't be removed.</span></div>
+              </div>
+              <button class="btn btn-pink sm" style="margin-top:14px;width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Confirm die-line</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5 · COST & PRICING -->
+        <div class="gb-step" id="gstep-4">
+          <div class="section-title"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h4.5a2 2 0 010 4H9m0 0h5"/></svg></span><h4>Volume price tiers</h4></div>
+          <div class="subtabs" style="margin-bottom:14px"><button class="on">Bulk production</button><button>On-demand</button></div>
+          <div class="gb-card" style="padding:0;overflow:hidden">
+            <table class="pricing-table"><thead><tr>
+              <th>Min qty</th><th>Max qty</th><th>Your cost $</th><th>Floor $</th><th>Lead</th>
+              <th class="calc">Maker (+18%)</th><th class="calc">Builder (+12%)</th><th class="calc">Agency (+8%)</th>
+            </tr></thead><tbody>
+              <tr><td><input value="500"/></td><td><input value="2,499"/></td><td><input value="1.10"/></td><td><input value="0.96"/></td><td><input value="12d"/></td><td class="calc">$1.30</td><td class="calc">$1.23</td><td class="calc">$1.19</td></tr>
+              <tr><td><input value="2,500"/></td><td><input value="9,999"/></td><td><input value="0.98"/></td><td><input value="0.90"/></td><td><input value="12d"/></td><td class="calc">$1.16</td><td class="calc">$1.10</td><td class="calc">$1.06</td></tr>
+              <tr><td><input value="10,000"/></td><td><input value="∞"/></td><td><input value="0.86"/></td><td><input value="0.82"/></td><td><input value="10d"/></td><td class="calc">$1.01</td><td class="calc">$0.96</td><td class="calc">$0.93</td></tr>
+            </tbody></table>
+          </div>
+          <button class="btn btn-out sm" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add band</button>
+          <div class="gb-card" style="margin-top:16px;background:var(--pink-50);border-color:var(--pink-100)">
+            <div style="display:flex;gap:9px;font-size:12.5px;color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex:none;margin-top:1px"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg><span>Creator all-in prices update live from each tier's platform fee. As <b>Premier</b> you pay <b>0% production fee</b>, so more of the retail spread stays with you.</span></div>
+          </div>
+        </div>
+
+        <!-- STEP 6 · REVIEW -->
+        <div class="gb-step" id="gstep-5">
+          <div class="passport-hero">
+            <div class="pimg">YZ</div>
+            <div style="flex:1">
+              <h3>Sparkling Yuzu Soda</h3>
+              <div class="pm">Beverage · Functional › Sparkling · Nutrition Facts · 2 flavors</div>
+              <div class="chips" style="margin-top:10px"><span class="chip pink" style="background:rgba(255,46,99,.2);color:#fff;border-color:transparent">Functional beverage</span><span class="chip" style="background:rgba(255,255,255,.12);color:#fff;border-color:transparent">USDA Organic</span><span class="chip" style="background:rgba(181,255,61,.9);color:#18181A;border-color:transparent">Ready to submit</span></div>
+            </div>
+          </div>
+          <div class="review-grid">
+            <div class="rev-card"><h5>Identity</h5>
+              <div class="rev-kv"><span class="k">Base SKU</span><span class="v">SODA-YUZU</span></div>
+              <div class="rev-kv"><span class="k">GTIN</span><span class="v">0 860005 331028</span></div>
+              <div class="rev-kv"><span class="k">Category</span><span class="v">Beverage — Functional</span></div>
+              <div class="rev-kv"><span class="k">Country of origin</span><span class="v">United States</span></div>
+            </div>
+            <div class="rev-card"><h5>Variants &amp; flavors</h5>
+              <div class="rev-kv"><span class="k">Yuzu · SODA-YUZU</span><span class="v"><span class="st-pill ok" style="font-size:10px">Complete</span></span></div>
+              <div class="rev-kv"><span class="k">Yuzu-Ginger · SODA-YZGR</span><span class="v"><span class="st-pill warn" style="font-size:10px">Recipe pending</span></span></div>
+              <div class="rev-kv"><span class="k">MOQ range</span><span class="v">500 – ∞</span></div>
+              <div class="rev-kv"><span class="k">Net content</span><span class="v">12 fl oz</span></div>
+            </div>
+            <div class="rev-card"><h5>Compliance &amp; certs</h5>
+              <div class="rev-kv"><span class="k">Label regime</span><span class="v">FDA Nutrition Facts</span></div>
+              <div class="rev-kv"><span class="k">Allergens</span><span class="v">None (Big-9)</span></div>
+              <div class="rev-kv"><span class="k">Certificates</span><span class="v">USDA Organic ✓</span></div>
+              <div class="rev-kv"><span class="k">Die-line</span><span class="v">Confirmed ✓</span></div>
+            </div>
+            <div class="rev-card"><h5>Pricing</h5>
+              <div class="rev-kv"><span class="k">Bulk floor</span><span class="v">$0.82 @ 10k+</span></div>
+              <div class="rev-kv"><span class="k">Creator (Builder)</span><span class="v">$0.96 – $1.23</span></div>
+              <div class="rev-kv"><span class="k">Your production fee</span><span class="v" style="color:var(--pink-700)">0% · Premier</span></div>
+            </div>
+          </div>
+          <div class="gb-card" style="margin-top:16px">
+            <div class="section-title" style="margin-bottom:10px"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span><h4 style="font-size:14px">Notes to reviewer</h4></div>
+            <div class="field" style="margin:0"><textarea placeholder="Anything the admin reviewer should know…">Yuzu-Ginger recipe finalizes after we confirm the ginger supplier COA — expect it within 48h.</textarea></div>
+          </div>
+        </div>
+
+        <!-- nav -->
+        <div class="gb-nav">
+          <span class="step-note" id="gb-stepnote">Step 1 of 6 · autosaves as you type</span>
+          <div class="sp">
+            <button class="btn btn-out sm" id="gb-back" onclick="gbPrev()" style="display:none">← Back</button>
+            <button class="btn btn-dark sm" id="gb-forward" onclick="gbNext()">Next: Variants &amp; packs →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot-note">Add Product = the real 6-step guided builder (Basics → Variants &amp; packs → Recipe → Packaging studio → Cost &amp; pricing → Review).<br>Domain drives the label artifact; flavors become recipe presets; the Nutrition Facts panel renders live from the FDA engine; creator prices compute per tier.</div>
+  </div>
+
+  <!-- ============ SCREEN: FRONT FACE ============ -->
+  <div id="screen-public" class="screen">
+    <div class="pf-frame">
+      <div class="pf-hero">
+        <div class="cover"></div>
+        <div class="pf-hero-inner">
+          <div class="pf-logo"><span class="mono">N</span><span class="vbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></div>
+          <div class="pf-headwrap">
+            <div class="pf-eyebrow">
+              <span class="tier-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier · 0% fee</span>
+              <span class="pf-type">Manufacturing · Co-packing · Print · Fulfillment</span>
+            </div>
+            <h1 class="pf-name">Northwind Nutrition Co.</h1>
+            <p class="pf-tag">Functional beverages &amp; supplements, <span class="serif-em">made right</span> — formulation to fulfillment under one roof.</p>
+            <div class="pf-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Portland, OR · disclosure: full "Manufactured by"</span>
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>On iLaunchify since 2023</span>
+            </div>
+          </div>
+          <div class="pf-cta">
+            <button class="btn btn-neon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Request a quote</button>
+            <button class="btn btn-onwhite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Message</button>
+            <button class="btn btn-icon-dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg></button>
+          </div>
+        </div>
+        <div class="pf-stats">
+          <div class="pf-stat"><div class="v">98.6%<span class="up">▲</span></div><div class="l">OTIF delivery</div></div>
+          <div class="pf-stat"><div class="v">2,480</div><div class="l">Orders fulfilled</div></div>
+          <div class="pf-stat"><div class="v"><span class="star">★</span> 4.9</div><div class="l">312 verified reviews</div></div>
+          <div class="pf-stat"><div class="v">&lt; 2h</div><div class="l">Avg. response</div></div>
+          <div class="pf-stat"><div class="v">96</div><div class="l">Merit score</div></div>
+        </div>
+      </div>
+      <div class="pf-tabs">
+        <button class="active" onclick="pfTab('overview',this)">Overview</button>
+        <button onclick="pfTab('capabilities',this)">Capabilities</button>
+        <button onclick="pfTab('standing',this)">Merit &amp; standing</button>
+        <button onclick="pfTab('certs',this)">Certifications</button>
+        <button onclick="pfTab('portfolio',this)">Portfolio</button>
+        <button onclick="pfTab('reviews',this)">Reviews</button>
+      </div>
+      <div class="pf-body">
+        <div class="pf-main">
+          <div class="pf-sec" data-sec="overview"><div class="card pad"><div class="sec-h"><h3>About Northwind</h3></div><p class="prose">Northwind Nutrition is a <strong>full-stack CPG production partner</strong> — functional beverages, powders, and encapsulated supplements. Two FDA-registered, GMP-certified facilities (Portland &amp; Reno) with in-house formulation, filling, labeling, and a climate-controlled fulfillment center, so a creator's SKU never leaves our ecosystem between recipe and doorstep. We favor <strong>small MOQs and fast reorders</strong> for early-stage brands scaling to national retail.</p></div></div>
+
+          <div class="pf-sec" data-sec="overview capabilities"><div class="card pad"><div class="sec-h"><h3>Capabilities</h3><a class="link">Full sheet →</a></div><div class="cap-grid">
+            <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></span><div><h4>Manufacturing</h4><div class="sub">MOQ 500 · lead 12–28d</div></div></div><div class="chips"><span class="chip pink">Beverage</span><span class="chip pink">Supplement</span><span class="chip">Cold-fill</span><span class="chip">Hot-fill</span><span class="chip">Encapsulation</span></div></div>
+            <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><div><h4>Co-packing</h4><div class="sub">Cans · bottles · pouches</div></div></div><div class="chips"><span class="chip">Shrink-sleeve</span><span class="chip">Variety packs</span><span class="chip">Kitting</span><span class="chip">Cartoning</span></div></div>
+            <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg></span><div><h4>Print production</h4><div class="sub">Digital · flexo</div></div></div><div class="chips"><span class="chip">PS label</span><span class="chip">Shrink sleeve</span><span class="chip">Spot UV / foil</span><span class="chip">FSC stock</span></div></div>
+            <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><div><h4>Fulfillment</h4><div class="sub">1,200 pallet positions</div></div></div><div class="chips"><span class="chip pink">Ambient</span><span class="chip pink">Chilled</span><span class="chip">Shopify</span><span class="chip">TikTok Shop</span></div></div>
+          </div></div></div>
+
+          <div class="pf-sec hide" data-sec="standing"><div class="card pad"><div class="sec-h"><h3>Merit standing</h3><span class="pill-ok">Premier · earned, not purchased</span></div>
+            <div class="fee-ladder"><div class="fee-step"><div class="ft">Verified</div><div class="fv">4.5%</div></div><div class="fee-step"><div class="ft">Trusted</div><div class="fv">2.5%</div></div><div class="fee-step cur"><div class="ft">Premier</div><div class="fv">0%</div></div></div>
+            <div class="pillars" style="margin-top:16px">
+              <div class="pillar"><div class="pn">Craft <span class="w">40%</span></div><div class="track"><div class="fill" style="width:97%"></div></div><div class="sc">97</div><div class="ps">Quality ratings &amp; low defect rate</div></div>
+              <div class="pillar"><div class="pn">Reliability <span class="w">30%</span></div><div class="track"><div class="fill" style="width:96%"></div></div><div class="sc">96</div><div class="ps">On-time, few strikes</div></div>
+              <div class="pillar"><div class="pn">Contribution <span class="w">20%</span></div><div class="track"><div class="fill" style="width:91%"></div></div><div class="sc">91</div><div class="ps">Platform participation</div></div>
+              <div class="pillar"><div class="pn">Standing <span class="w">10%</span></div><div class="track"><div class="fill" style="width:99%"></div></div><div class="sc">99</div><div class="ps">History &amp; tenure</div></div>
+            </div>
+          </div></div>
+
+          <div class="pf-sec hide" data-sec="certs"><div class="card pad"><div class="sec-h"><h3>Certifications &amp; compliance</h3><span class="pill-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified by iLaunchify</span></div><div class="cert-wall">
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">FDA Registered</div><div class="mt">Facility · exp 2027</div></div></div>
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">cGMP · 21 CFR 111</div><div class="mt">Verified</div></div></div>
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">USDA Organic</div><div class="mt">Handler cert</div></div></div>
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">SQF Level 2</div><div class="mt">Food safety</div></div></div>
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">Kosher (OU)</div><div class="mt">Verified</div></div></div>
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">Non-GMO</div><div class="mt">Project verified</div></div></div>
+          </div></div></div>
+
+          <div class="pf-sec hide" data-sec="portfolio"><div class="card pad"><div class="sec-h"><h3>Recent work</h3><a class="link">See all 40 →</a></div><div class="port-grid">
+            <div class="port"><div class="img" style="background:linear-gradient(150deg,#FF2E63,#9E0E40)"><span class="bottle">GLOW</span></div><div class="cap2"><div class="t">Collagen elixir</div><div class="m">Beverage · shrink-sleeve</div></div></div>
+            <div class="port"><div class="img" style="background:linear-gradient(150deg,#232327,#474954)"><span class="bottle">FORGE</span></div><div class="cap2"><div class="t">Pre-workout tub</div><div class="m">Powder · label</div></div></div>
+            <div class="port"><div class="img" style="background:linear-gradient(150deg,#B5FF3D,#9EE61F)"><span class="bottle" style="color:#18181A">VITAL</span></div><div class="cap2"><div class="t">Greens sachets</div><div class="m">Variety · kitting</div></div></div>
+            <div class="port"><div class="img" style="background:linear-gradient(150deg,#1F5BA8,#163E72)"><span class="bottle">CALM</span></div><div class="cap2"><div class="t">Sleep gummies</div><div class="m">Supplement · carton</div></div></div>
+            <div class="port"><div class="img" style="background:linear-gradient(150deg,#FF7FA8,#C71350)"><span class="bottle">AURA</span></div><div class="cap2"><div class="t">Electrolyte cans</div><div class="m">Beverage · full run</div></div></div>
+            <div class="port"><div class="img" style="background:linear-gradient(150deg,#474954,#18181A)"><span class="bottle">ROOT</span></div><div class="cap2"><div class="t">Adaptogen drops</div><div class="m">Tincture · label</div></div></div>
+          </div></div></div>
+
+          <div class="pf-sec hide" data-sec="reviews"><div class="card pad"><div class="sec-h"><h3>Creator reviews</h3><span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified orders only</span></div>
+            <div class="rev-summary"><div><div class="rev-big">4.9</div><div class="rev-stars">★★★★★</div><div class="rev-count">312 reviews</div></div><div class="rev-bars">
+              <div class="rev-row"><span>5</span><div class="track"><div class="fill" style="width:88%"></div></div><span>88%</span></div>
+              <div class="rev-row"><span>4</span><div class="track"><div class="fill" style="width:9%"></div></div><span>9%</span></div>
+              <div class="rev-row"><span>3</span><div class="track"><div class="fill" style="width:2%"></div></div><span>2%</span></div>
+              <div class="rev-row"><span>2</span><div class="track"><div class="fill" style="width:1%"></div></div><span>1%</span></div>
+              <div class="rev-row"><span>1</span><div class="track"><div class="fill" style="width:0"></div></div><span>0%</span></div>
+            </div></div>
+            <div class="review"><div class="avatar" style="background:#FF2E63">MK</div><div><div class="rname">Maya K. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">GLOW Wellness · 3 orders · ★★★★★</div><div class="rtext">"Caught a label compliance issue before it hit print. On-time every run."</div></div></div>
+            <div class="review"><div class="avatar" style="background:#1F5BA8">DT</div><div><div class="rname">Devon T. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">Forge Labs · 7 orders · ★★★★★</div><div class="rtext">"Small MOQ let us test three flavors without gambling the runway."</div></div></div>
+          </div></div>
+        </div>
+        <aside class="pf-side">
+          <div class="card pad"><div class="resp"><span class="dot"></span><div><div class="t">Actively taking new briefs</div><div class="s">Replies within 2 hours</div></div></div><div class="map"><span class="pin"></span></div></div>
+          <div class="card pad"><div class="side-h">Quick facts</div>
+            <div class="fact"><span class="k">Minimum order</span><span class="v">500 units</span></div>
+            <div class="fact"><span class="k">Lead time</span><span class="v">12–28 days</span></div>
+            <div class="fact"><span class="k">Reorder time</span><span class="v">10–14 days</span></div>
+            <div class="fact"><span class="k">Facilities</span><span class="v">Portland · Reno</span></div>
+            <div class="fact"><span class="k">Markets</span><span class="v">US · Canada</span></div>
+          </div>
+          <div class="card pad"><div class="side-h">Best for</div><div class="chips"><span class="chip pink">Functional beverage</span><span class="chip pink">Supplements</span><span class="chip">Wellness</span><span class="chip">Sports nutrition</span><span class="chip">First launch</span></div></div>
+        </aside>
+      </div>
+    </div>
+    <div class="foot-note">Front face = the public manufacturer profile creators see. Dark hero (neon accents) → light body (pink-700 accents).<br>Now shows real merit standing (4 pillars + fee ladder), disclosure level, and capability enums from the data model.</div>
+  </div>
+
+  <!-- ============ SCREEN: SETTINGS ============ -->
+  <div id="screen-settings" class="screen">
+    <div class="st-frame">
+      <div class="st-topband">
+        <div class="st-mini-logo">N</div>
+        <div class="who"><div class="nm">Northwind Nutrition Co. <span class="tier-badge sm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier</span></div><div class="sub">Northwind Nutrition LLC · Payouts active · Open market · Reliability: Healthy</div></div>
+        <div class="st-top-actions">
+          <div class="complete"><div class="ring" style="--p:82"><b>82%</b></div><div class="ct"><b>Profile 82% complete</b><br><span>Publish 2 portfolio items to finish</span></div></div>
+          <button class="btn btn-out sm" onclick="showScreen('public')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View public profile</button>
+        </div>
+      </div>
+      <div class="st-cols">
+        <nav class="st-rail">
+          <div class="rail-group"><div class="gl">Public profile</div>
+            <button class="rail-item active" onclick="stNav('company',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>Company profile</button>
+            <button class="rail-item" onclick="stNav('capabilities',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>Capabilities &amp; services</button>
+            <button class="rail-item" onclick="stNav('certs',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg>Certifications <span class="warnn">1</span></button>
+            <button class="rail-item" onclick="stNav('portfolio',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>Portfolio</button>
+          </div>
+          <div class="rail-group"><div class="gl">Standing</div>
+            <button class="rail-item" onclick="stNav('merit',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Merit &amp; fee tier</button>
+            <button class="rail-item" onclick="stNav('performance',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg>Performance</button>
+          </div>
+          <div class="rail-group"><div class="gl">Operations</div>
+            <button class="rail-item" onclick="stNav('fulfillment',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg>Fulfillment &amp; shipping</button>
+            <button class="rail-item" onclick="stNav('market',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>Market participation</button>
+            <button class="rail-item" onclick="stNav('defaults',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Product defaults</button>
+          </div>
+          <div class="rail-group"><div class="gl">Account</div>
+            <button class="rail-item" onclick="stNav('team',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Team &amp; roles <span class="badge-n">4</span></button>
+            <button class="rail-item" onclick="stNav('payments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Payments &amp; plans</button>
+            <button class="rail-item" onclick="stNav('prefs',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg>Preferences</button>
+          </div>
+        </nav>
+        <div class="st-main">
+
+          <section class="st-panel show" id="p-company">
+            <div class="panel-h"><h2>Company profile</h2><p>Your official manufacturer identity — powers your public front face and marketplace discovery.</p></div>
+            <div class="ed-cover"><div class="grid-o"></div><div class="edit-c"><button class="btn btn-onwhite sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Edit cover</button></div></div>
+            <div class="ed-avatar-row"><div class="ed-avatar">N<span class="cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span></div><div class="meta"><div class="t">Company logo</div><div class="s">PNG or SVG · square · min 400×400</div></div></div>
+
+            <div class="fieldset"><div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg></span><h4>Legal identity</h4><span class="hint">companyName · legalName</span></div>
+              <div class="frow"><div class="field"><label>Doing-business-as (DBA) <span class="req">*</span></label><input value="Northwind Nutrition Co."/><div class="help">Public display name.</div></div><div class="field"><label>Legal entity name <span class="req">*</span></label><input value="Northwind Nutrition LLC"/><div class="help">Exactly as on incorporation docs · private.</div></div></div>
+              <div class="frow"><div class="field"><label>Website</label><input value="https://northwind.co"/></div><div class="field"><label>Primary phone</label><input value="+1 (503) 555-0142"/></div></div>
+            </div>
+
+            <div class="fieldset"><div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg></span><h4>Public bio &amp; positioning</h4></div>
+              <div class="field"><label>Tagline <span class="charcount">64 / 90</span></label><input value="Functional beverages & supplements, made right."/></div>
+              <div class="field"><label>About <span class="charcount">312 / 600</span></label><textarea>Full-stack CPG production partner specializing in functional beverages, powders, and encapsulated supplements. Two FDA-registered, GMP-certified facilities with in-house formulation, filling, labeling, and a climate-controlled fulfillment center.</textarea><div class="help">Wrap your differentiator in <em>italics</em> — it renders in Fraunces on your profile.</div></div>
+              <div class="field"><label>Best-for tags (max 5)</label><div class="chips" style="margin-top:4px"><span class="chip pink">Functional beverage ✕</span><span class="chip pink">Supplements ✕</span><span class="chip pink">Wellness ✕</span><span class="chip pink">Sports nutrition ✕</span><span class="chip pink">First launch ✕</span></div></div>
+            </div>
+
+            <div class="fieldset"><div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span><h4>Facilities &amp; label disclosure</h4><span class="hint">disclosureLevel</span></div>
+              <div class="field"><label>How your name appears on labels</label><div class="seg-radio"><button>Anonymous</button><button>City + State</button><button class="active">Full "Manufactured by"</button></div><div class="help">Full = "Manufactured by Northwind Nutrition, Portland, OR".</div></div>
+              <div class="frow one"><div class="field"><label>Primary facility · street address</label><input value="1420 NW Industrial Way, Portland, OR 97209"/></div></div>
+              <div class="lrow" style="margin-bottom:0"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><div class="ltx"><div class="t">Reno, NV — second facility</div><div class="s">790 Sparks Blvd · default: no</div></div><div class="rt"><span class="st-pill muted">Secondary</span><button class="btn btn-out sm">Edit</button></div></div>
+            </div>
+
+            <div class="fieldset"><div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span><h4>Verification documents</h4><span class="hint">Private · admin-reviewed</span></div>
+              <div class="docslot done"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></span><div><div class="dn">Certificate of incorporation</div><div class="dm">CERT_OF_INCORPORATION · verified 12 Jan</div></div><div class="act"><button class="btn btn-out sm">Replace</button></div></div>
+              <div class="docslot done"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></span><div><div class="dn">Business license</div><div class="dm">BUSINESS_LICENSE · verified 12 Jan</div></div><div class="act"><button class="btn btn-out sm">Replace</button></div></div>
+              <div class="docslot pending"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><div><div class="dn">General liability insurance</div><div class="dm">Coverage $2,000,000 · renewal in 22 days</div></div><div class="act"><button class="btn btn-pink sm">Upload renewal</button></div></div>
+            </div>
+
+            <div class="savebar"><span class="saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>All changes saved · autosaves</span><div class="sp"><button class="btn btn-out sm">Preview public profile</button><button class="btn btn-dark sm">Publish changes</button></div></div>
+          </section>
+
+          <section class="st-panel" id="p-capabilities">
+            <div class="panel-h"><h2>Capabilities &amp; services</h2><p>One PartnerService per capability, each with its own status, disclosure and capability profile.</p></div>
+            <div class="lrow"><span class="lic" style="background:var(--pink-50);color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></span><div class="ltx"><div class="t">Manufacturing</div><div class="s">Beverage · Supplement · cold-fill · encapsulation · MOQ 500 · lead 12–28d</div></div><div class="rt"><span class="st-pill ok">Active</span><button class="btn btn-out sm">Edit</button></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--pink-50);color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><div class="ltx"><div class="t">Co-packing</div><div class="s">CAN · BOTTLE · POUCH · variety packs · kitting</div></div><div class="rt"><span class="st-pill ok">Active</span><button class="btn btn-out sm">Edit</button></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--pink-50);color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 14h12v8H6z"/></svg></span><div class="ltx"><div class="t">Print production</div><div class="s">FILM_BOPP · PS label · shrink sleeve · spot UV · appliesLabels: yes</div></div><div class="rt"><span class="st-pill warn">Draft</span><button class="btn btn-out sm">Edit</button></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--pink-50);color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><div class="ltx"><div class="t">Fulfillment Center</div><div class="s">AMBIENT · CHILLED · 1,200 pallets · pick $0.65 / pack $0.40 · on-demand: on</div></div><div class="rt"><span class="st-pill ok">Active</span><button class="btn btn-out sm">Edit</button></div></div>
+            <div style="margin-top:8px"><button class="btn btn-pink sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add a service</button></div>
+          </section>
+
+          <section class="st-panel" id="p-certs">
+            <div class="panel-h"><h2>Certifications</h2><p>PartnerCertificateInstance records — gate marketplace eligibility &amp; unlock profile badges.</p></div>
+            <div class="info-banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>General Liability insurance renews in 22 days — upload the new certificate to keep Premier standing.</div>
+            <div class="kpi-strip"><div class="kpi"><div class="v">5</div><div class="l">Verified</div></div><div class="kpi"><div class="v" style="color:var(--warning-600)">1</div><div class="l">Needs attention</div></div><div class="kpi"><div class="v">0</div><div class="l">Pending review</div></div><div class="kpi"><div class="v">96</div><div class="l">Compliance score</div></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div class="ltx"><div class="t">FDA Registered facility</div><div class="s">Cert #FDA-88213 · exp Aug 2027</div></div><div class="rt"><span class="st-pill ok">VERIFIED</span></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div class="ltx"><div class="t">cGMP · 21 CFR 111</div><div class="s">NSF · exp Mar 2027</div></div><div class="rt"><span class="st-pill ok">VERIFIED</span></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--warning-50);color:var(--warning-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></span><div class="ltx"><div class="t">General Liability insurance</div><div class="s">Renewal due · action needed</div></div><div class="rt"><span class="st-pill warn">EXPIRING</span><button class="btn btn-pink sm">Upload</button></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div class="ltx"><div class="t">USDA Organic handler</div><div class="s">exp Jan 2027</div></div><div class="rt"><span class="st-pill ok">VERIFIED</span></div></div>
+            <div style="margin-top:8px"><button class="btn btn-out sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Request a certification type</button></div>
+          </section>
+
+          <section class="st-panel" id="p-portfolio">
+            <div class="panel-h"><h2>Portfolio</h2><p>Showcase past runs on your public profile. Add 2 more to reach 100%.</p></div>
+            <div class="port-grid">
+              <div class="port"><div class="img" style="background:linear-gradient(150deg,#FF2E63,#9E0E40)"><span class="bottle">GLOW</span></div><div class="cap2"><div class="t">Collagen elixir</div><div class="m">Published</div></div></div>
+              <div class="port"><div class="img" style="background:linear-gradient(150deg,#232327,#474954)"><span class="bottle">FORGE</span></div><div class="cap2"><div class="t">Pre-workout tub</div><div class="m">Published</div></div></div>
+              <div class="port"><div class="img" style="background:linear-gradient(150deg,#B5FF3D,#9EE61F)"><span class="bottle" style="color:#18181A">VITAL</span></div><div class="cap2"><div class="t">Greens sachets</div><div class="m">Published</div></div></div>
+              <div class="port" style="border-style:dashed;display:grid;place-items:center;min-height:170px;cursor:pointer"><div style="text-align:center;color:var(--ink-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;color:var(--pink-500)"><path d="M12 5v14M5 12h14"/></svg><div style="font-weight:600;font-size:13px;margin-top:6px">Add work</div></div></div>
+            </div>
+          </section>
+
+          <section class="st-panel" id="p-merit">
+            <div class="panel-h"><h2>Merit &amp; fee tier</h2><p>Your badge is <b>earned</b>, not bought — the Merit Engine sets your tier and production fee.</p></div>
+            <div class="fee-ladder"><div class="fee-step"><div class="ft">Verified</div><div class="fv">4.5%</div></div><div class="fee-step"><div class="ft">Trusted</div><div class="fv">2.5%</div></div><div class="fee-step cur"><div class="ft">Premier · you</div><div class="fv">0%</div></div></div>
+            <div class="info-banner" style="margin-top:16px;background:var(--success-50);border-color:var(--success-100);color:var(--success-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Merit score <b>96 / 100</b> · qualifies for Premier (threshold 82) · 2,480 orders · 34 months active · defect rate 1.2 / 100.</div>
+            <div class="pillars">
+              <div class="pillar"><div class="pn">Craft <span class="w">40%</span></div><div class="track"><div class="fill" style="width:97%"></div></div><div class="sc">97</div><div class="ps">Product quality — ratings &amp; low defect / reprint rate</div></div>
+              <div class="pillar"><div class="pn">Reliability <span class="w">30%</span></div><div class="track"><div class="fill" style="width:96%"></div></div><div class="sc">96</div><div class="ps">Accepting &amp; delivering on time, few strikes</div></div>
+              <div class="pillar"><div class="pn">Contribution <span class="w">20%</span></div><div class="track"><div class="fill" style="width:91%"></div></div><div class="sc">91</div><div class="ps">Platform participation</div></div>
+              <div class="pillar"><div class="pn">Standing <span class="w">10%</span></div><div class="track"><div class="fill" style="width:99%"></div></div><div class="sc">99</div><div class="ps">History &amp; tenure</div></div>
+            </div>
+          </section>
+
+          <section class="st-panel" id="p-performance">
+            <div class="panel-h"><h2>Performance</h2><p>Reliability health from nightly risk features. Band: <span class="st-pill ok">Healthy</span></p></div>
+            <div class="card pad">
+              <div class="perf-row"><div class="pl">On-time in-full<small>OTIF · target ≥95%</small></div><div class="track"><div class="fill" style="width:98%"></div></div><div class="pv">98.6% <small>·30%</small></div></div>
+              <div class="perf-row"><div class="pl">Order accept rate<small>weight 15%</small></div><div class="track"><div class="fill" style="width:99%"></div></div><div class="pv">99.1% <small>·15%</small></div></div>
+              <div class="perf-row"><div class="pl">Quality<small>weight 20%</small></div><div class="track"><div class="fill" style="width:97%"></div></div><div class="pv">97.0% <small>·20%</small></div></div>
+              <div class="perf-row"><div class="pl">Receiving accuracy<small>weight 10%</small></div><div class="track"><div class="fill" style="width:95%"></div></div><div class="pv">95.4% <small>·10%</small></div></div>
+              <div class="perf-row"><div class="pl">Capacity accuracy<small>weight 10%</small></div><div class="track"><div class="fill warn" style="width:88%"></div></div><div class="pv">88.0% <small>·10%</small></div></div>
+              <div class="perf-row"><div class="pl">Lead-time consistency<small>weight 10%</small></div><div class="track"><div class="fill" style="width:93%"></div></div><div class="pv">93.2% <small>·10%</small></div></div>
+            </div>
+            <div class="kpi-strip" style="margin-top:16px"><div class="kpi"><div class="v">2,480</div><div class="l">Delivered</div></div><div class="kpi"><div class="v" style="color:var(--success-600)">0</div><div class="l">Active strikes</div></div><div class="kpi"><div class="v">Healthy</div><div class="l">Risk band</div></div><div class="kpi"><div class="v">1.2</div><div class="l">Defects / 100</div></div></div>
+          </section>
+
+          <section class="st-panel" id="p-fulfillment">
+            <div class="panel-h"><h2>Fulfillment &amp; shipping</h2><p>Storage, carriers, and receiving — consolidated.</p></div>
+            <div class="two-col">
+              <div class="fieldset" style="margin:0"><div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><h4>Storage</h4></div>
+                <div class="field"><label>Storage classes (StorageClass)</label><div class="chips" style="margin-top:4px"><span class="chip pink">AMBIENT</span><span class="chip pink">CHILLED</span><span class="chip">FROZEN</span></div></div>
+                <div class="frow"><div class="field" style="margin:0"><label>Billing unit</label><select><option>PALLET_MONTH</option><option>CUFT_MONTH</option></select></div><div class="field" style="margin:0"><label>Weekly capacity</label><input value="1,200 pallets"/></div></div>
+              </div>
+              <div class="fieldset" style="margin:0"><div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7"/></svg></span><h4>Fees &amp; carriers</h4></div>
+                <div class="frow"><div class="field" style="margin:0"><label>Pick fee ¢</label><input value="65"/></div><div class="field" style="margin:0"><label>Pack fee ¢</label><input value="40"/></div></div>
+                <div class="field"><label>Carriers</label><div class="chips" style="margin-top:4px"><span class="chip">UPS</span><span class="chip">FedEx</span><span class="chip pink">EasyPost rate-shop</span></div></div>
+              </div>
+            </div>
+            <div class="lrow" style="margin-top:16px"><div class="ltx"><div class="t">Accepting new inbound</div><div class="s">Toggle off to pause receiving without leaving the market.</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+          </section>
+
+          <section class="st-panel" id="p-market">
+            <div class="panel-h"><h2>Market participation</h2><p>PartnerParticipationMode — how creators discover and reach you.</p></div>
+            <div class="fieldset"><div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></span><h4>Visibility mode</h4></div>
+              <div class="seg-radio"><button class="active">PUBLIC (open market)</button><button>INVITED_ONLY</button></div>
+              <div class="help" style="margin-top:10px;font-size:12px;color:var(--ink-500)">Public lists you so any creator can request a quote. Invited-only hides your profile except to creators you're introduced to.</div>
+            </div>
+            <div class="lrow"><div class="ltx"><div class="t">Show on marketplace</div><div class="s">Appear in browse &amp; smart matching</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Accept on-demand enablement</div><div class="s">Creators go live without a manual quote</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Target markets</div><div class="s">Regulatory jurisdictions served</div></div><div class="rt"><span class="chip">US</span><span class="chip">Canada</span></div></div>
+          </section>
+
+          <section class="st-panel" id="p-defaults">
+            <div class="panel-h"><h2>Product defaults</h2><p>PartnerProductDefaults — pre-fill every new product you build.</p></div>
+            <div class="fieldset"><div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span><h4>Run &amp; storage defaults</h4></div>
+              <div class="frow four"><div class="field"><label>MOQ min</label><input value="500"/></div><div class="field"><label>MOQ max</label><input value="50,000"/></div><div class="field"><label>Order increment</label><input value="100"/></div><div class="field"><label>Monthly capacity</label><input value="80,000"/></div></div>
+              <div class="frow four"><div class="field"><label>Lead — repeat</label><input value="12d"/></div><div class="field"><label>Lead — first run</label><input value="28d"/></div><div class="field"><label>Storage temp min °F</label><input value="55"/></div><div class="field"><label>Storage temp max °F</label><input value="75"/></div></div>
+              <div class="lrow" style="margin:0"><div class="ltx"><div class="t">Apply to new products</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            </div>
+          </section>
+
+          <section class="st-panel" id="p-team">
+            <div class="panel-h"><h2>Team &amp; roles</h2><p>PartnerMembership + service-scoped roles (PARTNER_PREPRESS / PARTNER_PRODUCTION).</p></div>
+            <div class="lrow"><div class="avatar" style="background:#FF2E63">PG</div><div class="ltx"><div class="t">Pavel Georgiev <span class="st-pill muted" style="margin-left:4px">You</span></div><div class="s">georgiev.pavel@gmail.com</div></div><div class="rt"><span class="st-pill info">Org admin</span></div></div>
+            <div class="lrow"><div class="avatar" style="background:#1F5BA8">JM</div><div class="ltx"><div class="t">Jordan Meyer</div><div class="s">jordan@northwind.co</div></div><div class="rt"><span class="st-pill muted">PARTNER_PRODUCTION · Manufacturing</span><button class="btn btn-out sm">Manage</button></div></div>
+            <div class="lrow"><div class="avatar" style="background:#9EE61F;color:#18181A">LR</div><div class="ltx"><div class="t">Lena Ruiz</div><div class="s">lena@northwind.co</div></div><div class="rt"><span class="st-pill muted">PARTNER_PREPRESS · Print</span><button class="btn btn-out sm">Manage</button></div></div>
+            <div class="lrow"><div class="avatar" style="background:#474954">TW</div><div class="ltx"><div class="t">Theo Wu</div><div class="s">theo@northwind.co</div></div><div class="rt"><span class="st-pill muted">PARTNER_PRODUCTION · Fulfillment</span><button class="btn btn-out sm">Manage</button></div></div>
+            <div style="margin-top:8px"><button class="btn btn-pink sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Invite teammate</button></div>
+          </section>
+
+          <section class="st-panel" id="p-payments">
+            <div class="panel-h"><h2>Payments &amp; plans</h2><p>PartnerCommercialTerms — payouts, billing, tax.</p></div>
+            <div class="kpi-strip" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><div class="v">$48.2k</div><div class="l">Paid out this month</div></div><div class="kpi"><div class="v">0%</div><div class="l">Production fee · Premier</div></div><div class="kpi"><div class="v">7d</div><div class="l">Payout timing</div></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span><div class="ltx"><div class="t">Payouts · Stripe Connect</div><div class="s">STRIPE_CONNECT · acct_1Nx…4Kd · verified</div></div><div class="rt"><span class="st-pill ok">Active</span><button class="btn btn-out sm">Manage</button></div></div>
+            <div class="lrow"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg></span><div class="ltx"><div class="t">Billing &amp; storage invoices</div><div class="s">InvoiceCycle: PER_ORDER · next est. $1,240</div></div><div class="rt"><button class="btn btn-out sm">View</button></div></div>
+            <div class="lrow"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M9 15h6"/></svg></span><div class="ltx"><div class="t">Tax documents</div><div class="s">W-9 on file · 1099s available</div></div><div class="rt"><button class="btn btn-out sm">Open</button></div></div>
+          </section>
+
+          <section class="st-panel" id="p-prefs">
+            <div class="panel-h"><h2>Preferences</h2><p>Notifications, comm channel &amp; feedback.</p></div>
+            <div class="lrow"><div class="ltx"><div class="t">New brief &amp; quote requests</div><div class="s">Email + in-app</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Order status &amp; dispatch alerts</div><div class="s">Email + in-app</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Certification &amp; renewal reminders</div><div class="s">60/30/7-day notices</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Preferred comm channel</div><div class="s">CommChannel</div></div><div class="rt"><div class="seg-radio"><button>Email</button><button class="active">In-app</button><button>Phone</button></div></div></div>
+            <div class="lrow" style="margin-top:8px"><div class="ltx"><div class="t">Share feedback</div><div class="s">Tell us what to build next</div></div><div class="rt"><button class="btn btn-out sm">Give feedback</button></div></div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+    <div class="foot-note">Settings hub = 15 scattered pages → 10 grouped destinations (Public profile · Standing · Operations · Account), no functionality dropped.<br>Real field names shown (companyName/legalName, disclosureLevel, PartnerCommercialTerms, cert statuses, merit pillars).</div>
+  </div>
+
+</div>
+
+<script>
+const NEXT_LABELS=["Next: Variants & packs →","Next: Recipe →","Next: Packaging studio →","Next: Cost & pricing →","Next: Review →","Submit for review →"];
+let gbStep=0;
+function showScreen(w){
+  ['public','settings','product'].forEach(s=>{
+    document.getElementById('screen-'+s).classList.toggle('show', s===w);
+    document.getElementById('tab-'+s).classList.toggle('active', s===w);
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function pfTab(sec,btn){
+  document.querySelectorAll('.pf-tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.pf-sec').forEach(el=>{
+    const list=(el.getAttribute('data-sec')||'').split(' ');
+    el.classList.toggle('hide', !list.includes(sec));
+  });
+  document.querySelector('.pf-body').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function stNav(panel,btn){
+  document.querySelectorAll('.st-rail .rail-item').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.st-panel').forEach(p=>p.classList.remove('show'));
+  document.getElementById('p-'+panel).classList.add('show');
+  document.querySelector('.st-main').scrollTo({top:0});
+}
+function gbGo(n){
+  gbStep=n;
+  document.querySelectorAll('.gb-step').forEach((s,i)=>s.classList.toggle('show',i===n));
+  document.querySelectorAll('.bead').forEach((b,i)=>{
+    b.classList.toggle('active',i===n);
+    b.classList.toggle('done',i<n);
+  });
+  document.getElementById('gb-stepnote').textContent='Step '+(n+1)+' of 6 · autosaves as you type';
+  document.getElementById('gb-back').style.display=n===0?'none':'inline-flex';
+  const fwd=document.getElementById('gb-forward');
+  fwd.textContent=NEXT_LABELS[n];
+  document.getElementById('gb-next').textContent=NEXT_LABELS[n];
+  fwd.classList.toggle('btn-pink',n===5);fwd.classList.toggle('btn-dark',n!==5);
+  document.querySelector('.gb-body').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function gbNext(){if(gbStep<5)gbGo(gbStep+1);}
+function gbPrev(){if(gbStep>0)gbGo(gbStep-1);}
+document.querySelectorAll('.seg-radio').forEach(g=>g.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{g.querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');})));
+document.querySelectorAll('.subtabs, .flavor-tabs, .mode-tiles, .studio .st-tools, .studio-cam').forEach(g=>g.querySelectorAll('button, .mode-tile').forEach(b=>b.addEventListener('click',()=>{g.querySelectorAll('button, .mode-tile').forEach(x=>x.classList.remove('on'));b.classList.add('on');})));
+document.querySelectorAll('.domcard').forEach(d=>d.addEventListener('click',function(){const grid=this.closest('.domain-grid, .frow');if(grid){grid.querySelectorAll('.domcard').forEach(x=>x.classList.remove('on'));this.classList.add('on');}}));
+</script>
+</body>
+</html>

@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Manufacturer Profile — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&family=Fraunces:ital,wght@1,400;1,500;1,600&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   iLaunchify design tokens (from packages/ui/src/theme.css)
+   ============================================================ */
+:root{
+  --pink-50:#FFE9F0; --pink-100:#FFD0E0; --pink-200:#FFB3CC; --pink-300:#FF7FA8;
+  --pink-400:#FF5285; --pink-500:#FF2E63; --pink-600:#E91E5A; --pink-700:#C71350;
+  --pink-800:#9E0E40; --pink-900:#6E0A2D;
+  --neon-300:#D4FF7A; --neon-400:#C2FF4D; --neon-500:#B5FF3D; --neon-600:#9EE61F;
+  --ink-50:#F8F8F9; --ink-100:#EEEFF1; --ink-200:#E0E1E5; --ink-300:#CBCCD3;
+  --ink-400:#9A9CA6; --ink-500:#6B6D78; --ink-600:#474954; --ink-700:#33343C;
+  --ink-800:#232327; --ink-900:#18181A;
+  --success-50:#E7F4EC; --success-100:#C9E7D5; --success-500:#1E7C4A; --success-600:#176A3E; --success-700:#135733;
+  --warning-50:#FFF4E2; --warning-100:#FCE3BE; --warning-500:#B45309; --warning-700:#7C360A;
+  --danger-50:#FBE8E7; --danger-500:#C2362F; --danger-700:#87211E;
+  --info-50:#E8F1FB; --info-100:#C7DDF4; --info-500:#1F5BA8; --info-700:#163E72;
+
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;
+  --font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --font-serif:'Fraunces',Georgia,serif;
+
+  --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-2xl:20px; --r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);
+  --shadow-md:0 4px 10px rgba(24,24,26,.08);
+  --shadow-lg:0 12px 28px rgba(24,24,26,.12);
+  --shadow-xl:0 24px 48px rgba(24,24,26,.16);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-sans); color:var(--ink-900);
+  background:var(--ink-100); font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.serif-em{font-family:var(--font-serif);font-style:italic;font-weight:500}
+.disp{font-family:var(--font-display);letter-spacing:-.01em}
+
+/* ---------- Prototype chrome ---------- */
+.proto-shell{max-width:1280px;margin:0 auto;padding:22px 20px 80px}
+.proto-bar{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);
+  padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:20px;position:sticky;top:14px;z-index:60
+}
+.proto-brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:16px}
+.proto-brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center}
+.proto-brand .sq svg{width:13px;height:13px;color:#fff}
+.proto-brand small{font-family:var(--font-sans);font-weight:500;color:var(--ink-500);font-size:12px}
+.proto-seg{display:flex;gap:4px;background:var(--ink-100);border-radius:var(--r-pill);padding:4px;margin-left:auto}
+.proto-seg button{
+  border-radius:var(--r-pill);padding:9px 18px;font-weight:600;font-size:13px;color:var(--ink-600);
+  transition:all .2s var(--ease-out);white-space:nowrap
+}
+.proto-seg button .k{font-size:11px;color:var(--ink-400);margin-left:7px;font-weight:500}
+.proto-seg button.active{background:var(--ink-900);color:#fff}
+.proto-seg button.active .k{color:var(--neon-500)}
+.proto-note{font-size:12px;color:var(--ink-500);padding:2px 4px;width:100%;margin:-8px 0 14px}
+
+.screen{display:none;animation:fade .35s var(--ease-out)}
+.screen.show{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ============================================================
+   PUBLIC FRONT FACE
+   ============================================================ */
+.pf-frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff}
+
+/* --- dark hero --- */
+.pf-hero{position:relative;background:var(--ink-900);color:#fff;padding:0;overflow:hidden}
+.pf-hero .cover{
+  height:180px;position:relative;
+  background:
+    radial-gradient(120% 160% at 82% -10%, rgba(181,255,61,.20), transparent 55%),
+    radial-gradient(110% 150% at 12% 120%, rgba(255,46,99,.30), transparent 60%),
+    linear-gradient(120deg,#1d1d20,#232327 60%,#18181A);
+}
+.pf-hero .cover::after{
+  content:"";position:absolute;inset:0;opacity:.5;
+  background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:28px 28px;-webkit-mask-image:linear-gradient(180deg,#000,transparent);mask-image:linear-gradient(180deg,#000,transparent)
+}
+.pf-cover-edit{position:absolute;top:16px;right:18px;z-index:3;display:flex;gap:8px}
+.pf-hero-inner{position:relative;z-index:2;padding:0 34px 30px;margin-top:-58px;display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap}
+.pf-logo{
+  width:130px;height:130px;border-radius:26px;flex:none;
+  background:linear-gradient(135deg,var(--pink-500),var(--pink-700));
+  display:grid;place-items:center;box-shadow:0 14px 34px rgba(0,0,0,.4);border:4px solid var(--ink-900);position:relative
+}
+.pf-logo .mono{font-family:var(--font-display);font-weight:800;font-size:46px;color:#fff}
+.pf-logo .vbadge{
+  position:absolute;right:-6px;bottom:-6px;width:34px;height:34px;border-radius:50%;
+  background:var(--neon-500);border:3px solid var(--ink-900);display:grid;place-items:center
+}
+.pf-logo .vbadge svg{width:16px;height:16px;color:var(--ink-900)}
+.pf-headwrap{flex:1;min-width:260px;padding-bottom:4px}
+.pf-eyebrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.tier-badge{
+  display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r-pill);
+  font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+  background:var(--neon-500);color:var(--ink-900)
+}
+.tier-badge svg{width:13px;height:13px}
+.pf-type{font-size:12px;color:var(--ink-300);font-weight:500}
+.pf-name{font-family:var(--font-display);font-weight:800;font-size:38px;line-height:1.02;letter-spacing:-.02em}
+.pf-tag{margin-top:8px;color:var(--ink-300);font-size:15px;max-width:560px}
+.pf-tag .serif-em{color:var(--neon-500)}
+.pf-meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;color:var(--ink-400);font-size:13px}
+.pf-meta span{display:inline-flex;align-items:center;gap:6px}
+.pf-meta svg{width:14px;height:14px;color:var(--ink-400)}
+.pf-cta{display:flex;gap:10px;flex-wrap:wrap;align-self:flex-end;padding-bottom:4px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;
+  border-radius:var(--r-pill);padding:0 20px;height:44px;transition:all .18s var(--ease-out);white-space:nowrap
+}
+.btn svg{width:16px;height:16px}
+.btn-neon{background:var(--neon-500);color:var(--ink-900)}
+.btn-neon:hover{background:var(--neon-400);transform:translateY(-1px)}
+.btn-onwhite{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}
+.btn-onwhite:hover{background:rgba(255,255,255,.18)}
+.btn-icon-dark{width:44px;padding:0;background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}
+.btn-icon-dark:hover{background:rgba(255,255,255,.18)}
+
+/* stat strip */
+.pf-stats{
+  position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.08)
+}
+.pf-stat{background:var(--ink-900);padding:16px 34px}
+.pf-stat .v{font-family:var(--font-display);font-weight:700;font-size:24px;color:#fff;display:flex;align-items:center;gap:7px}
+.pf-stat .v .up{color:var(--neon-500);font-size:13px;font-weight:600}
+.pf-stat .v .star{color:var(--pink-400)}
+.pf-stat .l{font-size:12px;color:var(--ink-400);margin-top:2px}
+
+/* sticky tabs */
+.pf-tabs{position:sticky;top:70px;z-index:20;background:#fff;border-bottom:1px solid var(--ink-200);padding:0 34px;display:flex;gap:4px;overflow-x:auto}
+.pf-tabs button{
+  padding:16px 4px;margin-right:22px;font-weight:600;font-size:14px;color:var(--ink-500);
+  border-bottom:2.5px solid transparent;transition:all .18s;white-space:nowrap
+}
+.pf-tabs button:hover{color:var(--ink-900)}
+.pf-tabs button.active{color:var(--pink-700);border-color:var(--pink-500)}
+
+/* light body */
+.pf-body{background:var(--ink-50);padding:26px 34px 40px;display:grid;grid-template-columns:1fr 316px;gap:22px;align-items:start}
+.pf-sec{display:block}
+.pf-sec.hide{display:none}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm)}
+.card.pad{padding:22px}
+.card + .card{margin-top:18px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sec-h h3{font-family:var(--font-display);font-weight:700;font-size:18px}
+.sec-h .link{color:var(--pink-700);font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:4px}
+.prose{color:var(--ink-600);font-size:14.5px;line-height:1.65}
+.prose strong{color:var(--ink-900)}
+
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cap{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:16px;transition:all .18s var(--ease-out)}
+.cap:hover{border-color:var(--pink-300);box-shadow:var(--shadow-md)}
+.cap .top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cap .ic{width:38px;height:38px;border-radius:10px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.cap .ic svg{width:19px;height:19px}
+.cap h4{font-weight:700;font-size:14px}
+.cap .sub{font-size:12px;color:var(--ink-500)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:500;background:var(--ink-50);border:1px solid var(--ink-200);color:var(--ink-700)}
+.chip.pink{background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)}
+
+/* certifications wall */
+.cert-wall{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.cert{display:flex;gap:11px;align-items:center;border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px 13px}
+.cert .seal{width:40px;height:40px;border-radius:10px;background:var(--success-50);color:var(--success-600);display:grid;place-items:center;flex:none}
+.cert .seal svg{width:20px;height:20px}
+.cert .nm{font-weight:600;font-size:13px}
+.cert .mt{font-size:11px;color:var(--ink-500)}
+.pill-ok{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--success-700);background:var(--success-50);border:1px solid var(--success-100);padding:2px 8px;border-radius:var(--r-pill)}
+
+/* portfolio */
+.port-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.port{border:1px solid var(--ink-200);border-radius:var(--r-lg);overflow:hidden;transition:all .2s var(--ease-out);cursor:pointer}
+.port:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--ink-300)}
+.port .img{height:120px;display:grid;place-items:center;position:relative}
+.port .img .bottle{font-family:var(--font-display);font-weight:800;font-size:15px;color:#fff;text-align:center;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,.16)}
+.port .cap2{padding:10px 12px}
+.port .cap2 .t{font-weight:600;font-size:13px}
+.port .cap2 .m{font-size:11px;color:var(--ink-500)}
+
+/* reviews */
+.rev-summary{display:flex;gap:26px;align-items:center;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--ink-200);margin-bottom:16px}
+.rev-big{font-family:var(--font-display);font-weight:800;font-size:52px;line-height:1}
+.rev-stars{color:var(--pink-500);font-size:18px;letter-spacing:2px}
+.rev-count{font-size:12px;color:var(--ink-500);margin-top:4px}
+.rev-bars{flex:1;min-width:220px}
+.rev-row{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-500);margin:3px 0}
+.rev-row .track{flex:1;height:7px;border-radius:var(--r-pill);background:var(--ink-100);overflow:hidden}
+.rev-row .fill{height:100%;background:var(--pink-500);border-radius:var(--r-pill)}
+.review{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--ink-100)}
+.review:last-child{border-bottom:none;padding-bottom:0}
+.avatar{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;color:#fff;font-size:14px}
+.review .rname{font-weight:600;font-size:13px}
+.review .rmeta{font-size:11px;color:var(--ink-500)}
+.review .rtext{font-size:13.5px;color:var(--ink-600);margin-top:5px}
+.verified-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--info-700);background:var(--info-50);padding:1px 7px;border-radius:var(--r-pill)}
+
+/* sidebar */
+.pf-side .card + .card{margin-top:16px}
+.fact{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--ink-100);font-size:13px}
+.fact:last-child{border-bottom:none}
+.fact .k{color:var(--ink-500)}
+.fact .v{font-weight:600;text-align:right}
+.side-h{font-family:var(--font-display);font-weight:700;font-size:15px;margin-bottom:8px}
+.resp{display:flex;align-items:center;gap:10px;background:var(--success-50);border:1px solid var(--success-100);border-radius:var(--r-lg);padding:12px 14px}
+.resp .dot{width:9px;height:9px;border-radius:50%;background:var(--success-500);box-shadow:0 0 0 4px var(--success-100)}
+.resp .t{font-weight:600;font-size:13px;color:var(--success-700)}
+.resp .s{font-size:11px;color:var(--success-600)}
+.map{height:120px;border-radius:var(--r-lg);margin-top:12px;position:relative;overflow:hidden;background:
+  radial-gradient(circle at 60% 45%,rgba(255,46,99,.16),transparent 40%),
+  linear-gradient(120deg,var(--ink-100),var(--ink-50));border:1px solid var(--ink-200)}
+.map .pin{position:absolute;left:58%;top:42%;width:16px;height:16px;border-radius:50% 50% 50% 0;background:var(--pink-500);transform:rotate(-45deg);box-shadow:0 4px 10px rgba(255,46,99,.4)}
+
+/* ============================================================
+   SETTINGS HUB
+   ============================================================ */
+.st-frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff}
+.st-topband{background:#fff;border-bottom:1px solid var(--ink-200);padding:20px 26px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.st-mini-logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;font-family:var(--font-display);font-weight:800;color:#fff;font-size:20px;flex:none}
+.st-topband .who .nm{font-family:var(--font-display);font-weight:700;font-size:18px;display:flex;align-items:center;gap:8px}
+.st-topband .who .sub{font-size:12.5px;color:var(--ink-500)}
+.tier-badge.sm{padding:3px 9px;font-size:10px}
+.st-top-actions{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.complete{display:flex;align-items:center;gap:12px}
+.ring{--p:82;width:44px;height:44px;border-radius:50%;flex:none;
+  background:conic-gradient(var(--pink-500) calc(var(--p)*1%),var(--ink-100) 0);display:grid;place-items:center}
+.ring::before{content:"";position:absolute;width:32px;height:32px;border-radius:50%;background:#fff}
+.ring b{position:relative;font-size:12px;font-weight:700}
+.complete .ct{font-size:12px}
+.complete .ct b{font-size:13px}
+.complete .ct span{color:var(--ink-500)}
+.btn-dark{background:var(--ink-900);color:#fff;height:40px}
+.btn-dark:hover{background:#000}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300);height:40px}
+.btn-out:hover{background:var(--ink-50)}
+.btn-pink{background:var(--pink-500);color:#fff;height:40px}
+.btn-pink:hover{background:var(--pink-600)}
+.btn.sm{height:36px;font-size:13px;padding:0 15px}
+
+.st-cols{display:grid;grid-template-columns:236px 1fr;min-height:560px}
+.st-rail{border-right:1px solid var(--ink-200);background:var(--ink-50);padding:16px 12px}
+.rail-group{margin-bottom:16px}
+.rail-group .gl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-400);padding:0 10px 6px}
+.rail-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:var(--r-md);font-size:13px;font-weight:500;color:var(--ink-700);transition:all .15s;text-align:left}
+.rail-item svg{width:16px;height:16px;color:var(--ink-500);flex:none}
+.rail-item:hover{background:var(--ink-100)}
+.rail-item.active{background:var(--pink-50);color:var(--pink-700);font-weight:600}
+.rail-item.active svg{color:var(--pink-700)}
+.rail-item .badge-n{margin-left:auto;font-size:10px;font-weight:700;background:var(--pink-500);color:#fff;border-radius:var(--r-pill);padding:1px 6px}
+.rail-item .warnn{margin-left:auto;font-size:10px;font-weight:700;background:var(--warning-500);color:#fff;border-radius:var(--r-pill);padding:1px 6px}
+
+.st-main{padding:24px 28px 40px;background:#fff}
+.st-panel{display:none;animation:fade .3s var(--ease-out)}
+.st-panel.show{display:block}
+.panel-h{margin-bottom:20px}
+.panel-h h2{font-family:var(--font-display);font-weight:700;font-size:22px}
+.panel-h p{color:var(--ink-500);font-size:13.5px;margin-top:3px}
+
+/* editor cover + avatar */
+.ed-cover{height:130px;border-radius:var(--r-lg);position:relative;overflow:hidden;
+  background:radial-gradient(120% 150% at 80% -10%,rgba(181,255,61,.16),transparent 55%),
+  radial-gradient(100% 140% at 10% 120%,rgba(255,46,99,.28),transparent 60%),
+  linear-gradient(120deg,#1d1d20,#232327);}
+.ed-cover .grid-o{position:absolute;inset:0;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:24px 24px}
+.ed-cover .edit-c{position:absolute;right:12px;bottom:12px}
+.ed-avatar-row{display:flex;align-items:flex-end;gap:16px;margin:-46px 0 22px 12px;position:relative;z-index:2}
+.ed-avatar{width:96px;height:96px;border-radius:22px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;font-family:var(--font-display);font-weight:800;color:#fff;font-size:34px;border:4px solid #fff;box-shadow:var(--shadow-md);position:relative}
+.ed-avatar .cam{position:absolute;right:-4px;bottom:-4px;width:30px;height:30px;border-radius:50%;background:#fff;border:1px solid var(--ink-200);display:grid;place-items:center;box-shadow:var(--shadow-sm)}
+.ed-avatar .cam svg{width:15px;height:15px;color:var(--ink-700)}
+.ed-avatar-row .meta{padding-bottom:6px}
+.ed-avatar-row .meta .t{font-weight:600;font-size:14px}
+.ed-avatar-row .meta .s{font-size:12px;color:var(--ink-500)}
+
+/* form */
+.fieldset{border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:20px;margin-bottom:18px}
+.fieldset > .fh{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.fieldset > .fh .ic{width:30px;height:30px;border-radius:8px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.fieldset > .fh .ic svg{width:16px;height:16px}
+.fieldset > .fh h4{font-family:var(--font-display);font-weight:700;font-size:15px}
+.fieldset > .fh .hint{margin-left:auto;font-size:11px;color:var(--ink-400)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.frow.one{grid-template-columns:1fr}
+.frow.three{grid-template-columns:1.4fr .8fr .8fr}
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--ink-700);margin-bottom:6px}
+.field label .req{color:var(--pink-600)}
+.field input,.field textarea,.field select{
+  width:100%;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:10px 12px;font-size:13.5px;
+  font-family:inherit;color:var(--ink-900);background:#fff;transition:all .15s
+}
+.field textarea{resize:vertical;min-height:78px}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.15)}
+.field .help{font-size:11px;color:var(--ink-500);margin-top:5px}
+.charcount{float:right;font-size:11px;color:var(--ink-400)}
+
+/* doc slots */
+.docslot{display:flex;align-items:center;gap:12px;border:1px dashed var(--ink-300);border-radius:var(--r-lg);padding:13px 14px;margin-bottom:10px}
+.docslot .fic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;flex:none}
+.docslot .fic svg{width:18px;height:18px}
+.docslot.done .fic{background:var(--success-50);color:var(--success-600)}
+.docslot.pending .fic{background:var(--warning-50);color:var(--warning-500)}
+.docslot .dn{font-weight:600;font-size:13px}
+.docslot .dm{font-size:11px;color:var(--ink-500)}
+.docslot .act{margin-left:auto}
+
+/* save bar */
+.savebar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--ink-200);margin:20px -28px -40px;padding:14px 28px;display:flex;align-items:center;gap:12px}
+.savebar .saved{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--success-700)}
+.savebar .saved svg{width:15px;height:15px}
+.savebar .sp{margin-left:auto;display:flex;gap:10px}
+
+/* generic list rows for other panels */
+.lrow{display:flex;align-items:center;gap:14px;padding:15px 16px;border:1px solid var(--ink-200);border-radius:var(--r-lg);margin-bottom:10px;transition:all .15s var(--ease-out)}
+.lrow:hover{border-color:var(--ink-300);box-shadow:var(--shadow-sm)}
+.lrow .lic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--ink-50);color:var(--ink-600)}
+.lrow .lic svg{width:19px;height:19px}
+.lrow .ltx .t{font-weight:600;font-size:14px}
+.lrow .ltx .s{font-size:12px;color:var(--ink-500)}
+.lrow .rt{margin-left:auto;display:flex;align-items:center;gap:12px}
+.st-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:var(--r-pill)}
+.st-pill.ok{color:var(--success-700);background:var(--success-50);border:1px solid var(--success-100)}
+.st-pill.warn{color:var(--warning-700);background:var(--warning-50);border:1px solid var(--warning-100)}
+.st-pill.info{color:var(--info-700);background:var(--info-50);border:1px solid var(--info-100)}
+.st-pill.muted{color:var(--ink-600);background:var(--ink-100);border:1px solid var(--ink-200)}
+.toggle{width:40px;height:23px;border-radius:var(--r-pill);background:var(--ink-300);position:relative;transition:all .2s;flex:none}
+.toggle.on{background:var(--pink-500)}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:all .2s var(--ease-out)}
+.toggle.on::after{left:19px}
+.kpi-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.kpi{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px 16px}
+.kpi .v{font-family:var(--font-display);font-weight:700;font-size:22px}
+.kpi .l{font-size:11.5px;color:var(--ink-500);margin-top:2px}
+.kpi .v .up{font-size:12px;color:var(--success-600);font-weight:600}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.info-banner{display:flex;gap:11px;align-items:flex-start;background:var(--info-50);border:1px solid var(--info-100);border-radius:var(--r-lg);padding:13px 15px;margin-bottom:18px;font-size:13px;color:var(--info-700)}
+.info-banner svg{width:17px;height:17px;flex:none;margin-top:1px}
+.seg-radio{display:flex;gap:0;border:1px solid var(--ink-300);border-radius:var(--r-md);overflow:hidden;width:fit-content}
+.seg-radio button{padding:9px 18px;font-size:13px;font-weight:600;color:var(--ink-600)}
+.seg-radio button.active{background:var(--ink-900);color:#fff}
+
+.foot-note{text-align:center;color:var(--ink-400);font-size:12px;margin-top:26px;line-height:1.7}
+
+@media(max-width:1080px){
+  .pf-body{grid-template-columns:1fr}
+  .pf-stats{grid-template-columns:1fr 1fr}
+  .cert-wall,.port-grid{grid-template-columns:1fr 1fr}
+  .st-cols{grid-template-columns:1fr}
+  .st-rail{border-right:none;border-bottom:1px solid var(--ink-200);display:flex;gap:8px;overflow-x:auto}
+  .rail-group{margin-bottom:0;flex:none}
+}
+@media(max-width:680px){
+  .frow,.frow.three,.cap-grid,.two-col,.kpi-strip{grid-template-columns:1fr}
+  .cert-wall,.port-grid{grid-template-columns:1fr}
+  .pf-name{font-size:30px}
+}
+</style>
+</head>
+<body>
+<div class="proto-shell">
+
+  <!-- prototype chrome -->
+  <div class="proto-bar">
+    <div class="proto-brand">
+      <span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L4.5 13H11l-1 9 9-13H12.5z"/></svg></span>
+      iLaunchify <small>Partner Profile</small>
+    </div>
+    <div class="proto-seg">
+      <button id="tab-public" class="active" onclick="showScreen('public')">Public front face <span class="k">what creators see</span></button>
+      <button id="tab-settings" onclick="showScreen('settings')">Profile &amp; settings <span class="k">what the partner edits</span></button>
+    </div>
+  </div>
+  <div class="proto-note">Clickable prototype · iLaunchify design system (pink #FF2E63 · neon #B5FF3D on dark · Inter / Bricolage Grotesque / Fraunces). Toggle the two views above; every tab and rail item is live.</div>
+
+  <!-- ============================================================
+       SCREEN 1 · PUBLIC FRONT FACE
+       ============================================================ -->
+  <div id="screen-public" class="screen show">
+    <div class="pf-frame">
+      <!-- dark hero -->
+      <div class="pf-hero">
+        <div class="cover">
+          <div class="pf-cover-edit"></div>
+        </div>
+        <div class="pf-hero-inner">
+          <div class="pf-logo">
+            <span class="mono">N</span>
+            <span class="vbadge" title="Verified partner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+          </div>
+          <div class="pf-headwrap">
+            <div class="pf-eyebrow">
+              <span class="tier-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier partner</span>
+              <span class="pf-type">Manufacturing · Co-packing · Fulfillment</span>
+            </div>
+            <h1 class="pf-name">Northwind Nutrition Co.</h1>
+            <p class="pf-tag">Small-batch functional beverages &amp; supplements, <span class="serif-em">made right</span> — from formulation to fulfillment under one roof.</p>
+            <div class="pf-meta">
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Portland, OR · ships nationwide</span>
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Est. 2016</span>
+              <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M2 12h20"/><path d="M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg>ilaunchify.com/m/northwind</span>
+            </div>
+          </div>
+          <div class="pf-cta">
+            <button class="btn btn-neon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg>Request a quote</button>
+            <button class="btn btn-onwhite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Message</button>
+            <button class="btn btn-icon-dark" title="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z"/></svg></button>
+          </div>
+        </div>
+        <!-- stat strip -->
+        <div class="pf-stats">
+          <div class="pf-stat"><div class="v">98.6%<span class="up">▲</span></div><div class="l">On-time dispatch</div></div>
+          <div class="pf-stat"><div class="v">2,480</div><div class="l">Orders fulfilled</div></div>
+          <div class="pf-stat"><div class="v"><span class="star">★</span> 4.9</div><div class="l">312 verified reviews</div></div>
+          <div class="pf-stat"><div class="v">&lt; 2h</div><div class="l">Avg. response time</div></div>
+        </div>
+      </div>
+
+      <!-- sticky tabs -->
+      <div class="pf-tabs">
+        <button class="active" onclick="pfTab('overview',this)">Overview</button>
+        <button onclick="pfTab('capabilities',this)">Capabilities</button>
+        <button onclick="pfTab('certs',this)">Certifications</button>
+        <button onclick="pfTab('portfolio',this)">Portfolio</button>
+        <button onclick="pfTab('reviews',this)">Reviews</button>
+      </div>
+
+      <!-- light body -->
+      <div class="pf-body">
+        <div class="pf-main">
+
+          <div class="pf-sec" data-sec="overview capabilities certs portfolio reviews" id="ov-about">
+            <div class="card pad">
+              <div class="sec-h"><h3>About Northwind</h3></div>
+              <p class="prose">Northwind Nutrition is a <strong>full-stack CPG production partner</strong> specializing in functional beverages, powders, and encapsulated supplements. We run two FDA-registered, GMP-certified facilities in the Pacific Northwest with in-house formulation, blending, filling, labeling, and a climate-controlled fulfillment center — so a creator's SKU never leaves our ecosystem between recipe and doorstep. We favor <strong>small MOQs and fast reorders</strong>, making us a fit for early-stage brands scaling from first launch to national retail.</p>
+            </div>
+          </div>
+
+          <div class="pf-sec" data-sec="overview capabilities" id="ov-cap">
+            <div class="card pad">
+              <div class="sec-h"><h3>Capabilities</h3><a class="link">Full capability sheet →</a></div>
+              <div class="cap-grid">
+                <div class="cap">
+                  <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13M10 21v-6h4v6"/></svg></span><div><h4>Manufacturing</h4><div class="sub">Formulate · blend · fill</div></div></div>
+                  <div class="chips"><span class="chip pink">Beverage</span><span class="chip pink">Supplement</span><span class="chip pink">Powder / RTM</span><span class="chip">Hot &amp; cold fill</span><span class="chip">Encapsulation</span></div>
+                </div>
+                <div class="cap">
+                  <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><div><h4>Co-packing</h4><div class="sub">Bottles · pouches · cans</div></div></div>
+                  <div class="chips"><span class="chip">Shrink-sleeve</span><span class="chip">Variety packs</span><span class="chip">Kitting</span><span class="chip">Cartoning</span></div>
+                </div>
+                <div class="cap">
+                  <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg></span><div><h4>Print production</h4><div class="sub">Labels &amp; cartons</div></div></div>
+                  <div class="chips"><span class="chip">Digital label</span><span class="chip">Die-cut</span><span class="chip">Foil / spot UV</span><span class="chip">FSC stock</span></div>
+                </div>
+                <div class="cap">
+                  <div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg></span><div><h4>Fulfillment</h4><div class="sub">Store · pick · ship</div></div></div>
+                  <div class="chips"><span class="chip">Ambient</span><span class="chip">Cold chain</span><span class="chip">Shopify sync</span><span class="chip">TikTok Shop</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pf-sec" data-sec="overview certs" id="ov-certs">
+            <div class="card pad">
+              <div class="sec-h"><h3>Certifications &amp; compliance</h3><span class="pill-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>All verified by iLaunchify</span></div>
+              <div class="cert-wall">
+                <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">FDA Registered</div><div class="mt">Facility · exp. 2027</div></div></div>
+                <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">cGMP</div><div class="mt">21 CFR 111 · verified</div></div></div>
+                <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">Organic (USDA)</div><div class="mt">Handler cert</div></div></div>
+                <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">SQF Level 2</div><div class="mt">Food safety</div></div></div>
+                <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">Kosher</div><div class="mt">OU certified</div></div></div>
+                <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">Non-GMO</div><div class="mt">Project verified</div></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pf-sec" data-sec="overview portfolio" id="ov-port">
+            <div class="card pad">
+              <div class="sec-h"><h3>Recent work</h3><a class="link">See all 40 →</a></div>
+              <div class="port-grid">
+                <div class="port"><div class="img" style="background:linear-gradient(150deg,#FF2E63,#9E0E40)"><span class="bottle">GLOW<br>Collagen</span></div><div class="cap2"><div class="t">Collagen elixir</div><div class="m">Beverage · shrink-sleeve</div></div></div>
+                <div class="port"><div class="img" style="background:linear-gradient(150deg,#232327,#474954)"><span class="bottle">FORGE<br>Pre-workout</span></div><div class="cap2"><div class="t">Pre-workout tub</div><div class="m">Powder · label</div></div></div>
+                <div class="port"><div class="img" style="background:linear-gradient(150deg,#B5FF3D,#9EE61F)"><span class="bottle" style="color:#18181A">VITAL<br>Greens</span></div><div class="cap2"><div class="t">Greens sachets</div><div class="m">Variety pack · kitting</div></div></div>
+                <div class="port"><div class="img" style="background:linear-gradient(150deg,#1F5BA8,#163E72)"><span class="bottle">CALM<br>Magnesium</span></div><div class="cap2"><div class="t">Sleep gummies</div><div class="m">Supplement · carton</div></div></div>
+                <div class="port"><div class="img" style="background:linear-gradient(150deg,#FF7FA8,#C71350)"><span class="bottle">AURA<br>Electrolytes</span></div><div class="cap2"><div class="t">Electrolyte cans</div><div class="m">Beverage · full run</div></div></div>
+                <div class="port"><div class="img" style="background:linear-gradient(150deg,#474954,#18181A)"><span class="bottle">ROOT<br>Adaptogens</span></div><div class="cap2"><div class="t">Adaptogen drops</div><div class="m">Tincture · label</div></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pf-sec" data-sec="overview reviews" id="ov-rev">
+            <div class="card pad">
+              <div class="sec-h"><h3>Creator reviews</h3><span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:11px;height:11px"><path d="M20 6L9 17l-5-5"/></svg>Verified orders only</span></div>
+              <div class="rev-summary">
+                <div>
+                  <div class="rev-big">4.9</div>
+                  <div class="rev-stars">★★★★★</div>
+                  <div class="rev-count">312 reviews</div>
+                </div>
+                <div class="rev-bars">
+                  <div class="rev-row"><span>5</span><div class="track"><div class="fill" style="width:88%"></div></div><span>88%</span></div>
+                  <div class="rev-row"><span>4</span><div class="track"><div class="fill" style="width:9%"></div></div><span>9%</span></div>
+                  <div class="rev-row"><span>3</span><div class="track"><div class="fill" style="width:2%"></div></div><span>2%</span></div>
+                  <div class="rev-row"><span>2</span><div class="track"><div class="fill" style="width:1%"></div></div><span>1%</span></div>
+                  <div class="rev-row"><span>1</span><div class="track"><div class="fill" style="width:0%"></div></div><span>0%</span></div>
+                </div>
+              </div>
+              <div class="review">
+                <div class="avatar" style="background:#FF2E63">MK</div>
+                <div><div class="rname">Maya K. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:10px;height:10px"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">GLOW Wellness · 3 orders · ★★★★★</div><div class="rtext">"They caught a label compliance issue before it ever hit print. On-time every single run and the reorder flow is effortless."</div></div>
+              </div>
+              <div class="review">
+                <div class="avatar" style="background:#1F5BA8">DT</div>
+                <div><div class="rname">Devon T. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:10px;height:10px"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">Forge Labs · 7 orders · ★★★★★</div><div class="rtext">"Small MOQ let us test three flavors without gambling the runway. Fulfillment sync to Shopify just worked."</div></div>
+              </div>
+              <div class="review">
+                <div class="avatar" style="background:#9EE61F;color:#18181A">SR</div>
+                <div><div class="rname">Sam R. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:10px;height:10px"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">Vital Co. · 2 orders · ★★★★☆</div><div class="rtext">"Great quality and communication. Lead time on the variety pack ran a few days long but they flagged it early."</div></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- sidebar -->
+        <aside class="pf-side">
+          <div class="card pad">
+            <div class="resp">
+              <span class="dot"></span>
+              <div><div class="t">Actively taking new briefs</div><div class="s">Typically replies within 2 hours</div></div>
+            </div>
+            <div class="map"><span class="pin"></span></div>
+          </div>
+          <div class="card pad">
+            <div class="side-h">Quick facts</div>
+            <div class="fact"><span class="k">Minimum order</span><span class="v">500 units</span></div>
+            <div class="fact"><span class="k">Lead time</span><span class="v">3–5 weeks</span></div>
+            <div class="fact"><span class="k">Reorder time</span><span class="v">10–14 days</span></div>
+            <div class="fact"><span class="k">Facilities</span><span class="v">2 · Portland &amp; Reno</span></div>
+            <div class="fact"><span class="k">Markets</span><span class="v">US · Canada</span></div>
+          </div>
+          <div class="card pad">
+            <div class="side-h">Best for</div>
+            <div class="chips">
+              <span class="chip pink">Functional beverage</span><span class="chip pink">Supplements</span><span class="chip">Wellness</span><span class="chip">Sports nutrition</span><span class="chip">First launch</span>
+            </div>
+          </div>
+          <div class="card pad">
+            <div class="side-h">Merit standing</div>
+            <div class="fact"><span class="k">Tier</span><span class="v" style="color:var(--pink-700)">Premier · 0% fee</span></div>
+            <div class="fact"><span class="k">Quality score</span><span class="v">96 / 100</span></div>
+            <div class="fact"><span class="k">On iLaunchify</span><span class="v">Since 2023</span></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+    <div class="foot-note">Front face = the public manufacturer profile a creator sees when browsing the marketplace or evaluating a production partner.<br>Dark hero (neon accents) → light body (pink-700 accents), per the locked design system.</div>
+  </div>
+
+  <!-- ============================================================
+       SCREEN 2 · PROFILE & SETTINGS HUB
+       ============================================================ -->
+  <div id="screen-settings" class="screen">
+    <div class="st-frame">
+      <!-- top band -->
+      <div class="st-topband">
+        <div class="st-mini-logo">N</div>
+        <div class="who">
+          <div class="nm">Northwind Nutrition Co. <span class="tier-badge sm"><svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier</span></div>
+          <div class="sub">georgiev.pavel@gmail.com · Payouts active · Open market</div>
+        </div>
+        <div class="st-top-actions">
+          <div class="complete">
+            <div class="ring" style="--p:82"><b>82%</b></div>
+            <div class="ct"><b>Profile 82% complete</b><br><span>Add 2 portfolio items to reach 100%</span></div>
+          </div>
+          <button class="btn btn-out sm" onclick="showScreen('public')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>View public profile</button>
+        </div>
+      </div>
+
+      <div class="st-cols">
+        <!-- grouped left rail -->
+        <nav class="st-rail">
+          <div class="rail-group">
+            <div class="gl">Public profile</div>
+            <button class="rail-item active" onclick="stNav('company',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M9 17h1M14 9h1M14 13h1M14 17h1"/></svg>Company profile</button>
+            <button class="rail-item" onclick="stNav('capabilities',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>Capabilities &amp; services</button>
+            <button class="rail-item" onclick="stNav('certs',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>Certifications <span class="warnn">1</span></button>
+            <button class="rail-item" onclick="stNav('portfolio',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>Portfolio</button>
+          </div>
+          <div class="rail-group">
+            <div class="gl">Operations</div>
+            <button class="rail-item" onclick="stNav('fulfillment',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/><path d="M3.3 7L12 12l8.7-5"/></svg>Fulfillment &amp; shipping</button>
+            <button class="rail-item" onclick="stNav('market',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg>Market participation</button>
+            <button class="rail-item" onclick="stNav('defaults',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Product defaults</button>
+          </div>
+          <div class="rail-group">
+            <div class="gl">Account</div>
+            <button class="rail-item" onclick="stNav('team',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13A4 4 0 0116 11"/></svg>Team &amp; roles <span class="badge-n">4</span></button>
+            <button class="rail-item" onclick="stNav('payments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Payments &amp; plans</button>
+            <button class="rail-item" onclick="stNav('prefs',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg>Preferences</button>
+          </div>
+        </nav>
+
+        <!-- main -->
+        <div class="st-main">
+
+          <!-- COMPANY PROFILE (default) -->
+          <section class="st-panel show" id="p-company">
+            <div class="panel-h"><h2>Company profile</h2><p>This is your official manufacturer identity — it powers your public front face and how creators find you.</p></div>
+
+            <div class="ed-cover">
+              <div class="grid-o"></div>
+              <div class="edit-c"><button class="btn btn-onwhite sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Edit cover</button></div>
+            </div>
+            <div class="ed-avatar-row">
+              <div class="ed-avatar">N<span class="cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span></div>
+              <div class="meta"><div class="t">Company logo</div><div class="s">PNG or SVG · square · min 400×400</div></div>
+            </div>
+
+            <div class="fieldset">
+              <div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg></span><h4>Legal identity</h4><span class="hint">Private unless noted</span></div>
+              <div class="frow">
+                <div class="field"><label>Display name (public) <span class="req">*</span></label><input value="Northwind Nutrition Co." /><div class="help">Shown on your public profile &amp; in the marketplace.</div></div>
+                <div class="field"><label>Legal entity name <span class="req">*</span></label><input value="Northwind Nutrition LLC" /><div class="help">Kept private — used on contracts &amp; payouts.</div></div>
+              </div>
+              <div class="frow">
+                <div class="field"><label>Website</label><input value="https://northwind.co" /></div>
+                <div class="field"><label>Contact phone</label><input value="+1 (503) 555-0142" /></div>
+              </div>
+            </div>
+
+            <div class="fieldset">
+              <div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg></span><h4>Public bio &amp; positioning</h4></div>
+              <div class="field"><label>Tagline <span class="charcount">72 / 90</span></label><input value="Small-batch functional beverages & supplements, made right." /></div>
+              <div class="field"><label>About <span class="charcount">318 / 600</span></label><textarea>Northwind Nutrition is a full-stack CPG production partner specializing in functional beverages, powders, and encapsulated supplements. Two FDA-registered, GMP-certified facilities with in-house formulation, filling, labeling, and a climate-controlled fulfillment center.</textarea><div class="help">Use <em>italic emphasis</em> to highlight your differentiator — it renders in Fraunces on your profile.</div></div>
+              <div class="field"><label>Best for (up to 5 tags)</label>
+                <div class="chips" style="margin-top:4px"><span class="chip pink">Functional beverage ✕</span><span class="chip pink">Supplements ✕</span><span class="chip pink">Wellness ✕</span><span class="chip pink">Sports nutrition ✕</span><span class="chip pink">First launch ✕</span><span class="chip">+ Add</span></div>
+              </div>
+            </div>
+
+            <div class="fieldset">
+              <div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span><h4>Primary facility address</h4><span class="hint">City &amp; region shown publicly</span></div>
+              <div class="frow one"><div class="field"><label>Address line 1</label><input value="1420 NW Industrial Way" /></div></div>
+              <div class="frow three">
+                <div class="field"><label>City</label><input value="Portland" /></div>
+                <div class="field"><label>State</label><input value="OR" /></div>
+                <div class="field"><label>ZIP</label><input value="97209" /></div>
+              </div>
+              <div class="field" style="margin-top:4px"><span class="st-pill info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg>+ Add second facility (Reno, NV)</span></div>
+            </div>
+
+            <div class="fieldset">
+              <div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span><h4>Verification documents</h4><span class="hint">Private · admin-reviewed</span></div>
+              <div class="docslot done"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></span><div><div class="dn">Certificate of incorporation</div><div class="dm">incorp-2016.pdf · verified 12 Jan</div></div><div class="act"><button class="btn btn-out sm">Replace</button></div></div>
+              <div class="docslot done"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></span><div><div class="dn">Business license</div><div class="dm">or-license.pdf · verified 12 Jan</div></div><div class="act"><button class="btn btn-out sm">Replace</button></div></div>
+              <div class="docslot pending"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><div><div class="dn">General liability insurance</div><div class="dm">Coverage: $2,000,000 · renewal due in 22 days</div></div><div class="act"><button class="btn btn-pink sm">Upload renewal</button></div></div>
+            </div>
+
+            <div class="savebar">
+              <span class="saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>All changes saved · autosaves as you type</span>
+              <div class="sp"><button class="btn btn-out sm">Preview public profile</button><button class="btn btn-dark sm">Publish changes</button></div>
+            </div>
+          </section>
+
+          <!-- CAPABILITIES -->
+          <section class="st-panel" id="p-capabilities">
+            <div class="panel-h"><h2>Capabilities &amp; services</h2><p>Each service is a card with its own capability profile, status, and disclosure level. This drives how creators match to you.</p></div>
+            <div class="lrow"><span class="lic" style="background:var(--pink-50);color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></span><div class="ltx"><div class="t">Manufacturing</div><div class="s">Beverage · Supplement · Powder · Hot &amp; cold fill · Encapsulation</div></div><div class="rt"><span class="st-pill ok">Active</span><button class="btn btn-out sm">Edit</button></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--pink-50);color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><div class="ltx"><div class="t">Co-packing</div><div class="s">Shrink-sleeve · Variety packs · Kitting · Cartoning</div></div><div class="rt"><span class="st-pill ok">Active</span><button class="btn btn-out sm">Edit</button></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--pink-50);color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg></span><div class="ltx"><div class="t">Print production</div><div class="s">Digital label · Die-cut · Foil / spot UV · FSC stock</div></div><div class="rt"><span class="st-pill warn">Draft</span><button class="btn btn-out sm">Edit</button></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--pink-50);color:var(--pink-700)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><div class="ltx"><div class="t">Fulfillment Center</div><div class="s">Ambient · Cold chain · Shopify sync · TikTok Shop</div></div><div class="rt"><span class="st-pill ok">Active</span><button class="btn btn-out sm">Edit</button></div></div>
+            <div style="margin-top:8px"><button class="btn btn-pink sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M12 5v14M5 12h14"/></svg>Add a service</button></div>
+          </section>
+
+          <!-- CERTIFICATIONS -->
+          <section class="st-panel" id="p-certs">
+            <div class="panel-h"><h2>Certifications</h2><p>Certifications gate marketplace eligibility and unlock capability tags on your public profile.</p></div>
+            <div class="info-banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Your General Liability insurance renews in 22 days. Upload the new certificate to keep your Premier standing.</div>
+            <div class="kpi-strip">
+              <div class="kpi"><div class="v">5</div><div class="l">Verified</div></div>
+              <div class="kpi"><div class="v" style="color:var(--warning-600)">1</div><div class="l">Needs attention</div></div>
+              <div class="kpi"><div class="v">0</div><div class="l">Pending review</div></div>
+              <div class="kpi"><div class="v">96</div><div class="l">Compliance score</div></div>
+            </div>
+            <div class="lrow"><span class="lic" style="background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div class="ltx"><div class="t">FDA Registered facility</div><div class="s">Expires Aug 2027</div></div><div class="rt"><span class="st-pill ok">Verified</span></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div class="ltx"><div class="t">cGMP · 21 CFR 111</div><div class="s">Expires Mar 2027</div></div><div class="rt"><span class="st-pill ok">Verified</span></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--warning-50);color:var(--warning-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></span><div class="ltx"><div class="t">General Liability insurance</div><div class="s">Renewal due · action needed</div></div><div class="rt"><span class="st-pill warn">Renew</span><button class="btn btn-pink sm">Upload</button></div></div>
+            <div class="lrow"><span class="lic" style="background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div class="ltx"><div class="t">USDA Organic handler</div><div class="s">Expires Jan 2027</div></div><div class="rt"><span class="st-pill ok">Verified</span></div></div>
+            <div style="margin-top:8px"><button class="btn btn-out sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M12 5v14M5 12h14"/></svg>Request a certification</button></div>
+          </section>
+
+          <!-- PORTFOLIO -->
+          <section class="st-panel" id="p-portfolio">
+            <div class="panel-h"><h2>Portfolio</h2><p>Showcase past runs on your public profile. Add 2 more to reach 100% profile completeness.</p></div>
+            <div class="port-grid">
+              <div class="port"><div class="img" style="background:linear-gradient(150deg,#FF2E63,#9E0E40)"><span class="bottle">GLOW</span></div><div class="cap2"><div class="t">Collagen elixir</div><div class="m">Published</div></div></div>
+              <div class="port"><div class="img" style="background:linear-gradient(150deg,#232327,#474954)"><span class="bottle">FORGE</span></div><div class="cap2"><div class="t">Pre-workout tub</div><div class="m">Published</div></div></div>
+              <div class="port"><div class="img" style="background:linear-gradient(150deg,#B5FF3D,#9EE61F)"><span class="bottle" style="color:#18181A">VITAL</span></div><div class="cap2"><div class="t">Greens sachets</div><div class="m">Published</div></div></div>
+              <div class="port" style="border-style:dashed;display:grid;place-items:center;min-height:170px;cursor:pointer"><div style="text-align:center;color:var(--ink-500)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;color:var(--pink-500)"><path d="M12 5v14M5 12h14"/></svg><div style="font-weight:600;font-size:13px;margin-top:6px">Add work</div></div></div>
+            </div>
+          </section>
+
+          <!-- FULFILLMENT -->
+          <section class="st-panel" id="p-fulfillment">
+            <div class="panel-h"><h2>Fulfillment &amp; shipping</h2><p>Storage, carrier, and receiving settings — consolidated from Storage, Shipping &amp; Receiving.</p></div>
+            <div class="two-col">
+              <div class="fieldset" style="margin:0">
+                <div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><h4>Storage</h4></div>
+                <div class="field"><label>Storage classes offered</label><div class="chips" style="margin-top:4px"><span class="chip pink">Ambient</span><span class="chip pink">Cold chain</span><span class="chip">Frozen</span></div></div>
+                <div class="field"><label>Available capacity</label><input value="1,200 pallet positions" /></div>
+              </div>
+              <div class="fieldset" style="margin:0">
+                <div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7M5.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM18.5 21a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg></span><h4>Carriers</h4></div>
+                <div class="field"><label>Preferred carriers</label><div class="chips" style="margin-top:4px"><span class="chip">UPS</span><span class="chip">FedEx</span><span class="chip">USPS</span><span class="chip pink">EasyPost rate-shop</span></div></div>
+                <div class="field"><label>Cutoff time</label><input value="2:00 PM PT" /></div>
+              </div>
+            </div>
+            <div class="lrow" style="margin-top:16px"><div class="ltx"><div class="t">Accepting new inbound</div><div class="s">Toggle off to pause receiving without leaving the market.</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+          </section>
+
+          <!-- MARKET -->
+          <section class="st-panel" id="p-market">
+            <div class="panel-h"><h2>Market participation</h2><p>Control how creators discover and reach you.</p></div>
+            <div class="fieldset">
+              <div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></span><h4>Visibility mode</h4></div>
+              <div class="seg-radio"><button class="active">Open market</button><button>Invited only</button></div>
+              <div class="help" style="margin-top:10px;font-size:12px;color:var(--ink-500)">Open market lists you publicly so any creator can request a quote. Invited-only hides your profile except to creators you're introduced to.</div>
+            </div>
+            <div class="lrow"><div class="ltx"><div class="t">Show on marketplace</div><div class="s">Appear in browse &amp; smart matching</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Accept on-demand enablement</div><div class="s">Let creators go live without a manual quote</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Target markets</div><div class="s">Regulatory jurisdictions you serve</div></div><div class="rt"><span class="chip">US</span><span class="chip">Canada</span></div></div>
+          </section>
+
+          <!-- PRODUCT DEFAULTS -->
+          <section class="st-panel" id="p-defaults">
+            <div class="panel-h"><h2>Product defaults</h2><p>Defaults pre-fill every new product you build, so your catalog stays consistent.</p></div>
+            <div class="fieldset">
+              <div class="fh"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg></span><h4>Run &amp; pricing defaults</h4></div>
+              <div class="frow">
+                <div class="field"><label>Default MOQ</label><input value="500 units" /></div>
+                <div class="field"><label>Default lead time</label><input value="3–5 weeks" /></div>
+              </div>
+              <div class="frow">
+                <div class="field"><label>Reorder lead time</label><input value="10–14 days" /></div>
+                <div class="field"><label>Default currency</label><input value="USD ($)" /></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- TEAM -->
+          <section class="st-panel" id="p-team">
+            <div class="panel-h"><h2>Team &amp; roles</h2><p>Invite teammates with scoped roles across your services.</p></div>
+            <div class="lrow"><div class="avatar" style="background:#FF2E63">PG</div><div class="ltx"><div class="t">Pavel Georgiev <span class="st-pill muted" style="margin-left:4px">You</span></div><div class="s">georgiev.pavel@gmail.com</div></div><div class="rt"><span class="st-pill info">Org admin</span></div></div>
+            <div class="lrow"><div class="avatar" style="background:#1F5BA8">JM</div><div class="ltx"><div class="t">Jordan Meyer</div><div class="s">jordan@northwind.co</div></div><div class="rt"><span class="st-pill muted">Production · Manufacturing</span><button class="btn btn-out sm">Manage</button></div></div>
+            <div class="lrow"><div class="avatar" style="background:#9EE61F;color:#18181A">LR</div><div class="ltx"><div class="t">Lena Ruiz</div><div class="s">lena@northwind.co</div></div><div class="rt"><span class="st-pill muted">Prepress · Print</span><button class="btn btn-out sm">Manage</button></div></div>
+            <div class="lrow"><div class="avatar" style="background:#474954">TW</div><div class="ltx"><div class="t">Theo Wu</div><div class="s">theo@northwind.co</div></div><div class="rt"><span class="st-pill muted">Fulfillment</span><button class="btn btn-out sm">Manage</button></div></div>
+            <div style="margin-top:8px"><button class="btn btn-pink sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M12 5v14M5 12h14"/></svg>Invite teammate</button></div>
+          </section>
+
+          <!-- PAYMENTS -->
+          <section class="st-panel" id="p-payments">
+            <div class="panel-h"><h2>Payments &amp; plans</h2><p>Payouts, billing, and tax documents — grouped in one place.</p></div>
+            <div class="kpi-strip" style="grid-template-columns:repeat(3,1fr)">
+              <div class="kpi"><div class="v">$48.2k</div><div class="l">Paid out this month</div></div>
+              <div class="kpi"><div class="v">0%</div><div class="l">Production fee · Premier</div></div>
+              <div class="kpi"><div class="v">Active</div><div class="l">Stripe Connect</div></div>
+            </div>
+            <div class="lrow"><span class="lic" style="background:var(--success-50);color:var(--success-600)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span><div class="ltx"><div class="t">Payouts · Stripe Connect</div><div class="s">acct_1Nx…4Kd · verified</div></div><div class="rt"><span class="st-pill ok">Active</span><button class="btn btn-out sm">Manage</button></div></div>
+            <div class="lrow"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span><div class="ltx"><div class="t">Billing &amp; storage invoices</div><div class="s">Next invoice · Aug 1 · $1,240 est.</div></div><div class="rt"><button class="btn btn-out sm">View</button></div></div>
+            <div class="lrow"><span class="lic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M9 15h6M9 11h6"/></svg></span><div class="ltx"><div class="t">Tax documents</div><div class="s">W-9 on file · 1099s available</div></div><div class="rt"><button class="btn btn-out sm">Open</button></div></div>
+          </section>
+
+          <!-- PREFERENCES -->
+          <section class="st-panel" id="p-prefs">
+            <div class="panel-h"><h2>Preferences</h2><p>Notifications, labeling defaults, and feedback.</p></div>
+            <div class="lrow"><div class="ltx"><div class="t">New brief &amp; quote requests</div><div class="s">Email + in-app</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Order status &amp; dispatch alerts</div><div class="s">Email + in-app</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Certification &amp; renewal reminders</div><div class="s">Email</div></div><div class="rt"><span class="toggle on" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow"><div class="ltx"><div class="t">Product &amp; marketing tips</div><div class="s">Monthly digest</div></div><div class="rt"><span class="toggle" onclick="this.classList.toggle('on')"></span></div></div>
+            <div class="lrow" style="margin-top:8px"><div class="ltx"><div class="t">Share feedback</div><div class="s">Tell us what to build next</div></div><div class="rt"><button class="btn btn-out sm">Give feedback</button></div></div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+    <div class="foot-note">Settings hub = the reorganized editor. 15 scattered pages → 10 grouped destinations under Public profile · Operations · Account.<br>Same functionality, one coherent home. The Company profile tab feeds the public front face directly.</div>
+  </div>
+
+</div>
+
+<script>
+function showScreen(which){
+  document.getElementById('screen-public').classList.toggle('show', which==='public');
+  document.getElementById('screen-settings').classList.toggle('show', which==='settings');
+  document.getElementById('tab-public').classList.toggle('active', which==='public');
+  document.getElementById('tab-settings').classList.toggle('active', which==='settings');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function pfTab(sec, btn){
+  document.querySelectorAll('.pf-tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.pf-sec').forEach(el=>{
+    const list=(el.getAttribute('data-sec')||'').split(' ');
+    el.classList.toggle('hide', !list.includes(sec));
+  });
+  document.querySelector('.pf-body').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function stNav(panel, btn){
+  document.querySelectorAll('.st-rail .rail-item').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.st-panel').forEach(p=>p.classList.remove('show'));
+  document.getElementById('p-'+panel).classList.add('show');
+  document.querySelector('.st-main').scrollTo({top:0});
+}
+// segmented radios
+document.querySelectorAll('.seg-radio').forEach(g=>{
+  g.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    g.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+  }));
+});
+</script>
+</body>
+</html>

@@ -31,7 +31,30 @@ I can convert, or convert the EPS (vector) yourself.
 - USDA BioPreferred / Certified Biobased — label graphic behind eAuthentication
   login for certified companies (only the brand-guide PDF is public).
 
-## Everything else in the platform's 89-cert catalog
+## ADDED 2026-07-05 — three more free official seals (fetch via fetch-2026-07-05-seals.sh)
+
+### Real Organic Project  (slug: real-organic-project)
+- Source: https://realorganicproject.org/get-certified/usethelabel/
+- Files: 4 official PNGs (color+border, color no-border, white-band, BW). No public
+  vector master — a logo zip exists at store.realorganicproject.org/shop/p/logos.
+- Usage: add-on to USDA Organic; only ROP-certified farms/products may display it.
+
+### MOSA Certified Organic + MOSA Non-GMO  (slug: mosa-organic)
+- Source: https://mosaorganic.org/logos-usage
+- Files: 8 PNG+EPS pairs (CertOrg + NonGMO, each in CMYK / BW / REVERSED / REVFRAME).
+- Usage: MOSA-certified ops only; ALL labels pre-approved by MOSA; logo not larger
+  than USDA seal; Non-GMO logo may never appear without the CertOrg logo to its left,
+  same size + color scheme. Copyrighted — no other use without written permission.
+
+### WSDA Organic + WSDA Transitional  (slug: wsda-organic)
+- Source: https://agr.wa.gov/departments/organic/resources/organic-labels
+  (files served from cms.agr.wa.gov)
+- Files: 4 PNG+EPS pairs (Organic Color/BW, Transitional-2018 Color/BW).
+- Usage: WSDA-certified operations; all labels pre-approved by WSDA (WAC 16-157);
+  WSDA logo may not exceed the USDA seal in size; transitional logo only for
+  certified-transitional ops (never both).
+
+## Everything else in the platform's 179-cert catalog
 Private trademarks (Non-GMO Project, NSF, Kosher OU/OK/Star-K, Halal IFANCA,
 Fair Trade, Rainforest Alliance, …). Artwork must be obtained from each issuing
 body under a trademark license — see each cert's issuingBodyUrl in

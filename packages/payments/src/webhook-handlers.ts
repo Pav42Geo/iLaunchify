@@ -22,7 +22,6 @@
 //       the /settings/plan UI reflects pending cancellations
 
 import { prisma, getSampleSettings, getOrderSettings } from '@ilaunchify/db'
-import type { NotificationEvent } from '@ilaunchify/db'
 import { createDispatches, mintSampleCredit, createOrderWithNumber } from '@ilaunchify/orders'
 import { setCreatorTierWithAudit } from '@ilaunchify/auth'
 import { dispatchNotification } from '@ilaunchify/notifications'
@@ -437,7 +436,7 @@ async function onTierInvoiceFailed(invoice: Stripe.Invoice) {
 
   await dispatchNotification({
     userId: profile.userId,
-    event: 'CREATOR_PAYMENT_FAILED' as unknown as NotificationEvent,
+    event: 'CREATOR_PAYMENT_FAILED',
     data: { graceUntil: graceUntil.toISOString() },
     audience: 'creator',
   }).catch(() => {})
