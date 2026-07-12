@@ -209,9 +209,12 @@ split placement + demand forecasting is a documented V2, not now.
   self-contained + best-effort, cannot affect the order) — on a SPECIFIC_WAREHOUSE pick at Pay it
   rebuilds the NEUTRAL algorithmic suggestion (no tilt, no rotation), `classifyFcOverride`
   (picked-vs-suggested distance) → upsert-increments `CreatorFulfillmentSignal`. The full
-  learn→influence loop is now closed, shadow-inert until admin enables. **P2c PENDING (to turn it
-  on + observe):** admin toggle/ceiling on the FC-weights surface (`OrderSettings.fcLearning*`) +
-  FcAwardLog behavior contribution for auditability.
+  learn→influence loop is now closed, shadow-inert until admin enables. **P2c admin control BUILT 2026-07-09:** the FC tab on Admin → Routing &
+  Rotation now has a "Learned behavior (adaptive)" card — Enabled kill switch + Minimum-overrides
+  floor + Max-adjustment ceiling, saved via admin-gated audited `saveFcLearningPolicy`
+  (`OrderSettings.fcLearning*`). Flipping Enabled activates the loop at checkout. **Remaining
+  (optional observability):** FcAwardLog behavior contribution (record the learned lean/pct on each
+  FC award so the admin can see learning working).
 - **P3 (V2):** true multi-FC inventory placement + demand forecasting (the ShipBob-IPP analogue).
 
 ## 6. Open questions for Pavel

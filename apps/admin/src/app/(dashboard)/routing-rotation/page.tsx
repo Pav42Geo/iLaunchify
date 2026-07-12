@@ -95,6 +95,9 @@ export default async function RoutingRotationPage() {
           fcRotationWeightPct: true,
           fcStorageMatchWeightPct: true,
           fcRotationBandPct: true,
+          fcLearningEnabled: true,
+          fcLearningMinEvents: true,
+          fcLearningMaxAdjustmentPct: true,
         },
       })
       .catch(() => null),
@@ -223,6 +226,11 @@ export default async function RoutingRotationPage() {
           rotation: settings?.fcRotationWeightPct ?? 10,
           storageMatch: settings?.fcStorageMatchWeightPct ?? 10,
           bandPct: settings?.fcRotationBandPct ?? 5,
+        }}
+        fcLearning={{
+          enabled: settings?.fcLearningEnabled ?? false,
+          minEvents: settings?.fcLearningMinEvents ?? 5,
+          maxAdjustmentPct: settings?.fcLearningMaxAdjustmentPct ?? 15,
         }}
         mfrWeights={{
           capabilityWeightPct: orderSettings.capabilityWeightPct,

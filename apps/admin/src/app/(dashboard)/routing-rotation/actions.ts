@@ -412,6 +412,40 @@ export async function saveFcWeights(input: FcWeightsInput): Promise<Result<null>
   return { ok: true, data: null }
 }
 
+export interface FcLearningInput {
+  fcLearningEnabled: boolean
+  fcLearningMinEvents: number
+  fcLearningMaxAdjustmentPct: number
+}
+
+/** AFE P2 — the learned behavior policy (kill switch + confidence floor + ceiling)
+ *  consumed live by checkout (loadLearnedFulfillmentAdjustment). Default OFF;
+ *  flipping fcLearningEnabled here is what activates learning. Admin-gated + audited. */
+export async function saveFcLearningPolicy(input: FcLearningInput): Promise<Result<null>> {
+  const gate = await requireCapability('routing:admin')
+  const clamp = (n: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, Math.floor(Number(n) || 0)))
+  const data = {
+    fcLearningEnabled: Boolean(input.fcLearningEnabled),
+    fcLearningMinEvents: clamp(input.fcLearningMinEvents, 1, 1000),
+    fcLearningMaxAdjustmentPct: clamp(input.fcLearningMaxAdjustmentPct, 0, 100),
+    updatedById: gate.id,
+  }
+  await prisma.orderSettings.upsert({
+    where: { id: 'default' },
+    update: data,
+    create: { id: 'default', ...data },
+  })
+  await logAuditAs(gate, {
+    entityType: 'OrderSettings',
+    entityId: 'default',
+    action: 'FC_LEARNING_POLICY_SAVED',
+    payload: data,
+  })
+  revalidatePath('/routing-rotation')
+  return { ok: true, data: null }
+}
+
 export interface DispatchLifecycleInput {
   acceptWindowHours: number
   maxReroutes: number

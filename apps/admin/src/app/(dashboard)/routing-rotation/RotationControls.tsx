@@ -14,6 +14,7 @@ import {
   saveManufacturerWeights,
   saveDispatchLifecycle,
   saveFcWeights,
+  saveFcLearningPolicy,
   setExcludeFromAutoRotation,
   type PolicyContext,
   type PrintPreviewResult,
@@ -70,6 +71,7 @@ export function RotationControls({
   fcProviders,
   products,
   fcWeights,
+  fcLearning,
   mfrWeights,
   lifecycle,
   manufacturerPreview,
@@ -88,6 +90,7 @@ export function RotationControls({
     storageMatch: number
     bandPct: number
   }
+  fcLearning: { enabled: boolean; minEvents: number; maxAdjustmentPct: number }
   mfrWeights: ManufacturerWeights
   lifecycle: DispatchLifecycle
   manufacturerPreview: ReactNode
@@ -135,6 +138,7 @@ export function RotationControls({
           <FcPolicyEditor initial={fcPolicy} />
           <FcPreviewPanel products={products} />
           <FcWeightsEditor initial={fcWeights} />
+          <FcLearningEditor initial={fcLearning} />
           <FcAwardsTable providers={fcProviders} />
         </div>
       )}
@@ -945,6 +949,97 @@ function FcPolicyEditor({ initial }: { initial: RotationPolicyView }) {
 // ---------------------------------------------------------------------------
 // FC scorer weights — now editable in the center (was a dead pointer)
 // ---------------------------------------------------------------------------
+
+function FcLearningEditor({
+  initial,
+}: {
+  initial: { enabled: boolean; minEvents: number; maxAdjustmentPct: number }
+}) {
+  const [s, setS] = useState(initial)
+  const [isSaving, startSaving] = useTransition()
+  const inputCls =
+    'w-24 rounded-lg border border-ink-200 px-2.5 py-1.5 text-[13px] text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500'
+  function save() {
+    startSaving(async () => {
+      const res = await saveFcLearningPolicy({
+        fcLearningEnabled: s.enabled,
+        fcLearningMinEvents: s.minEvents,
+        fcLearningMaxAdjustmentPct: s.maxAdjustmentPct,
+      })
+      if (!res.ok) return void toast.error(res.error)
+      toast.success('Learned-behavior policy saved — live at checkout.')
+    })
+  }
+  return (
+    <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="font-display text-[15px] font-semibold text-ink-900">
+            Learned behavior (adaptive)
+          </h2>
+          <p className="mt-1 max-w-2xl text-[12.5px] text-ink-600">
+            Learns each creator&rsquo;s revealed fulfillment lean from their FC overrides and nudges
+            their default — bounded by the ceiling below, applied on top of their declared
+            preference. Off by default; flipping this on activates learning at checkout.
+          </p>
+        </div>
+        <label className="flex flex-shrink-0 items-center gap-2 text-[13px] font-medium text-ink-800">
+          <input
+            type="checkbox"
+            checked={s.enabled}
+            onChange={(e) => setS((p) => ({ ...p, enabled: e.target.checked }))}
+            className="h-4 w-4 accent-pink-600"
+          />
+          {s.enabled ? 'Enabled' : 'Disabled'}
+        </label>
+      </div>
+      <div className="mt-4 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[13px] font-medium text-ink-800">Minimum overrides</div>
+            <div className="text-[11.5px] text-ink-500">Classified overrides before any effect</div>
+          </div>
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            value={s.minEvents}
+            onChange={(e) =>
+              setS((p) => ({ ...p, minEvents: Math.max(1, Math.min(1000, parseInt(e.target.value, 10) || 1)) }))
+            }
+            className={inputCls}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[13px] font-medium text-ink-800">Max adjustment</div>
+            <div className="text-[11.5px] text-ink-500">Hard ceiling on the learned tilt (% points)</div>
+          </div>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={s.maxAdjustmentPct}
+            onChange={(e) =>
+              setS((p) => ({ ...p, maxAdjustmentPct: Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0)) }))
+            }
+            className={inputCls}
+          />
+        </div>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          onClick={save}
+          disabled={isSaving}
+          className="rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+        >
+          {isSaving ? 'Saving…' : 'Save learned-behavior policy'}
+        </button>
+      </div>
+    </section>
+  )
+}
 
 function FcWeightsEditor({
   initial,
