@@ -10,11 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Rocket,
-  Boxes,
-  Package,
-  ShieldCheck,
-  Wrench,
-  Settings,
   Lightbulb,
 } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
@@ -44,34 +39,19 @@ const CO_CREATION_NAV: PartnerNavItem[] = [
 ]
 
 // Limited "in-profile" nav shown post-approval while the partner is still
-// finishing Activation Setup (not yet live on every service). Setup essentials
-// only — operational surfaces (orders, inventory, performance, billing) appear
-// once every service goes live. Pavel 2026-07-09.
-// Role-aware so an activating co-packer/printer isn't shown "Products" (a
-// producer-only concept whose empty state is manufacturer-framed) — mirrors
-// roleNavFor's rule that Products is producing-only and Packaging shows for
-// anyone who offers packaging/decoration/print. Empty serviceTypes (legacy
-// rows) falls back to the full union so nothing a partner relied on disappears.
-function limitedActivationNav(serviceTypes: readonly string[]): PartnerNavItem[] {
-  const effective: readonly string[] =
-    serviceTypes.length > 0
-      ? serviceTypes
-      : ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']
-  const has = (t: string) => effective.includes(t)
-  const producing = has('MANUFACTURING')
-  const offersPackaging = producing || has('COPACKING') || has('LABEL_PRINTING')
-
-  const nav: PartnerNavItem[] = [{ href: '/activation', label: 'Activation Setup', icon: Rocket }]
-  if (producing) nav.push({ href: '/products', label: 'Products', icon: Boxes })
-  if (offersPackaging) nav.push({ href: '/packaging/offerings', label: 'Packaging', icon: Package })
-  nav.push(
-    { href: '/certifications', label: 'Certifications', icon: ShieldCheck },
-    { href: '/services', label: 'Services', icon: Wrench },
-    { href: '/settings', label: 'Settings', icon: Settings },
-    { href: '/help', label: 'Support', icon: LifeBuoy },
-  )
-  return nav
-}
+// finishing Activation Setup (not yet live on every service).
+// SLIMMED (Pavel 2026-07-12, phased sidebar): exactly TWO destinations —
+//   1. Onboarding — the approved application, rendered READ-ONLY
+//      (my-application suppresses its Edit buttons for approved partners);
+//   2. Activation Setup — the Launch Console.
+// Every other surface (products, packaging, certifications, services,
+// settings…) stays reachable via the Launch Console's own deep links but is
+// hidden from the nav until EVERY service is live — then the full role-skinned
+// menu (incl. the new profile settings hub) is revealed.
+const LIMITED_ACTIVATION_NAV: PartnerNavItem[] = [
+  { href: '/my-application', label: 'Onboarding', icon: FileCheck2 },
+  { href: '/activation', label: 'Activation Setup', icon: Rocket },
+]
 
 interface PartnerSidebarProps {
   status: PartnerStatus
@@ -127,7 +107,7 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
     : restricted
       ? RESTRICTED_NAV
       : activationLimited
-        ? limitedActivationNav(serviceTypes ?? [])
+        ? LIMITED_ACTIVATION_NAV
         : roleNavFor(serviceTypes ?? [], { isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled })
   const badge = statusBadge(status)
 

@@ -20,6 +20,7 @@ import type {
   VerificationSectionType,
 } from '@ilaunchify/db'
 import { getPartnerRoleWord } from '@/lib/partner-role'
+import { resolveActivationLimited } from '@/lib/activation-status'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'My Application — Partner' }
@@ -77,10 +78,18 @@ export default async function MyApplicationPage() {
     },
   })
 
-  // Once approved, the application is closed for the partner — the record is
-  // retained in the admin console only. Send active partners to their dashboard.
-  if (partner && (partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED')) {
-    redirect('/dashboard')
+  // Approved partners (Pavel 2026-07-12, phased sidebar):
+  //   • still in Activation Setup → the application stays visible as the
+  //     READ-ONLY "Onboarding card" in the limited nav (no Edit buttons);
+  //   • fully live → the application is closed; the record lives in the admin
+  //     console only. Send them to their dashboard (pre-existing rule).
+  const approved =
+    partner && (partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED')
+  let readOnly = false
+  if (approved && partner) {
+    const stillActivating = await resolveActivationLimited(partner)
+    if (!stillActivating) redirect('/dashboard')
+    readOnly = true
   }
 
   if (!partner) {
@@ -116,6 +125,19 @@ export default async function MyApplicationPage() {
           <span className="font-medium text-ink-900">{partner.status}</span>
         </p>
       </div>
+
+      {readOnly && (
+        <Card className="border-success-200 bg-success-50">
+          <CardHeader>
+            <CardTitle className="text-base">Approved — read-only record</CardTitle>
+            <CardDescription className="text-success-800">
+              Your application passed review; this is the record you were approved on. Company
+              details are now managed in Settings → Company profile, and each service goes live
+              through Activation Setup.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
 
       {partner.status === 'IN_PROGRESS' && (
         <Card className="border-warning-200 bg-warning-50">
@@ -205,7 +227,8 @@ export default async function MyApplicationPage() {
             const status = section?.status ?? 'PENDING'
             const files = filesBySection.get(type) ?? []
             const showEdit =
-              partner.status === 'IN_PROGRESS' || status === 'NEEDS_CHANGES' || status === 'PENDING'
+              !readOnly &&
+              (partner.status === 'IN_PROGRESS' || status === 'NEEDS_CHANGES' || status === 'PENDING')
 
             return (
               <Card key={type}>
