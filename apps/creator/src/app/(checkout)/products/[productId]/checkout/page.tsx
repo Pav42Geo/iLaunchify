@@ -196,6 +196,7 @@ export default async function CheckoutPage({ params }: PageProps) {
       restrictions={restrictions}
       labelIssues={labelIssues}
       pausedForCoverage={pausedForCoverage}
+      analyticsUserId={user.id}
     />
   )
 }

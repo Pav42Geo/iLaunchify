@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { QueryProvider } from '@/components/providers/QueryProvider'
+import { PostHogProvider } from '@/components/providers/PostHogProvider'
 import { Toaster } from '@/components/providers/Toaster'
 
 export const metadata: Metadata = {
@@ -28,8 +29,10 @@ export default function RootLayout({
       </head>
       <body className="bg-white text-ink-900 antialiased">
         <QueryProvider>
-          {children}
-          <Toaster />
+          <PostHogProvider>
+            {children}
+            <Toaster />
+          </PostHogProvider>
         </QueryProvider>
       </body>
     </html>
