@@ -788,8 +788,23 @@ model CreatorProfile {
   favoriteCollections      FavoriteCollection[]
   // Co-creation P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md §6)
   productBriefs            ProductBrief[]
+  fulfillmentSignal        CreatorFulfillmentSignal? // AFE P2 learned behavior signal
   createdAt                DateTime         @default(now())
   updatedAt                DateTime         @updatedAt
+}
+
+// AFE P2 — rolling per-creator FC-override signal (docs/FC_SELECTION_STRATEGY_BRIEF_2026-07-09.md).
+// Incremented at Pay when the creator picks a specific FC other than the suggestion:
+// FARTHER pick → cost/coverage lean, NEARER → speed lean. The pure engine
+// (fulfillment-learning.ts) turns these counts into a bounded, admin-capped weight
+// tilt. One row per creator.
+model CreatorFulfillmentSignal {
+  id               String         @id @default(uuid())
+  creatorProfileId String         @unique
+  fartherCount     Int            @default(0)
+  nearerCount      Int            @default(0)
+  updatedAt        DateTime       @updatedAt
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
 }
 
 // R14.b — three creator subscription tiers. Ordered low → high so we can
@@ -3099,6 +3114,11 @@ model OrderSettings {
   fcRotationWeightPct     Int @default(10) // fairness pressure (recent award share)
   fcStorageMatchWeightPct Int @default(10) // prefer exact storage-class match
   fcRotationBandPct       Int @default(5) // round-robin inside this % of best score
+  // AFE P2 — learned behavior layer (docs/FC_SELECTION_STRATEGY_BRIEF_2026-07-09.md).
+  // Shadow-inert until admin flips fcLearningEnabled. Bounded + admin-capped.
+  fcLearningEnabled          Boolean @default(false) // kill switch
+  fcLearningMinEvents        Int     @default(5) // classified overrides before any effect
+  fcLearningMaxAdjustmentPct Int     @default(15) // hard ceiling on the learned tilt
   // Carrier selection
   parcelToLtlCartonCutover Int     @default(8) // ~6–10 cartons: palletizing beats parcel
   autoInsureThresholdCents Int? // auto-attach shippers-interest insurance at/above; null = off (L4: off until verified)

@@ -398,6 +398,17 @@ export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'
 export { scoreAndSelectFc, buildScoredAwardPayload, applyFulfillmentPreference, resolveFulfillmentPreference } from './fc-scorer'
 export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry, FcRotationPolicy, FulfillmentPreference } from './fc-scorer'
 export { isPublicFcPoolEligible, PUBLIC_FC_PARTNER_FILTER } from './fc-pool'
+export {
+  classifyFcOverride,
+  learnedFulfillmentAdjustment,
+  applyLearnedFulfillmentSignal,
+} from './fulfillment-learning'
+export type {
+  FulfillmentLean,
+  LearnedFulfillmentSignal,
+  FulfillmentLearningPolicy,
+  LearnedAdjustment,
+} from './fulfillment-learning'
 
 // Manufacturer Merit Engine — pure scoring core (docs/MANUFACTURER_MERIT_ENGINE.md, MM-1/MM-2).
 export {

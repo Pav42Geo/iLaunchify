@@ -197,9 +197,15 @@ split placement + demand forecasting is a documented V2, not now.
   Product+Recipe and "ordering runs through normal checkout" (spec §17 amended, checklist ✅) — so AFE
   applies with no fork; nothing co-creation-specific needed. **Remaining (UI):** checkout pre-selects
   `recommendation.type` + shows the "why"; the per-product override control + "see other options".
-- **P2 (the adaptive part):** persist a lightweight `CreatorFulfillmentPreferenceSignal` (rolling
-  from overrides) → the learned `creatorBehaviorPenalty`; admin weight ceilings + kill switch;
-  award-log the behavior contribution for auditability (mirror PrintAwardLog / FcAwardLog).
+- **P2 (the adaptive part) — P2a CORE BUILT 2026-07-09:** schema `CreatorFulfillmentSignal`
+  (rolling farther/nearer override counts) + `OrderSettings.fcLearning{Enabled,MinEvents,MaxAdjustmentPct}`
+  (shadow-inert, default OFF). Pure engine `fulfillment-learning.ts` — `classifyFcOverride`
+  (distance axis), `learnedFulfillmentAdjustment` (bounded, admin-capped, confidence-scaled),
+  `applyLearnedFulfillmentSignal` (tilt on top of the declared preference) + tests, green. **Gates
+  on db:push+generate.** **P2b PENDING:** at Pay, classify the override (picked FC vs suggested
+  distance) → upsert-increment the signal; feed `applyLearnedFulfillmentSignal(learnedFulfillmentAdjustment(signal, policy))`
+  into the scorer weights (both paths, after the preference tilt); admin toggle/ceiling on the
+  FC-weights surface; award-log the behavior contribution (FcAwardLog).
 - **P3 (V2):** true multi-FC inventory placement + demand forecasting (the ShipBob-IPP analogue).
 
 ## 6. Open questions for Pavel
