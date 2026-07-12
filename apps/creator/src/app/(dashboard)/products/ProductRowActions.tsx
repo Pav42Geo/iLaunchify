@@ -3,7 +3,7 @@
 // Per-card 3-dot menu for the creator /products list.
 // Platform-standard RowActionsMenu primitive (@ilaunchify/ui).
 
-import { Palette, Eye, ShoppingCart, Copy, Download, LifeBuoy } from 'lucide-react'
+import { Palette, Eye, ShoppingCart, Copy, Download, LifeBuoy, Truck } from 'lucide-react'
 import {
   RowActionsMenu,
   RowActionItem,
@@ -58,6 +58,9 @@ export function ProductRowActions({ id, name, hasDraft, canDownloadLabels }: Pro
           </>
         )}
         <RowActionSeparator />
+        <RowActionItem href={`/products/${id}/fulfillment`} icon={Truck}>
+          Fulfillment preference
+        </RowActionItem>
         <RowActionItem href={`/help/new?productId=${id}`} icon={LifeBuoy}>
           Get product support
         </RowActionItem>
