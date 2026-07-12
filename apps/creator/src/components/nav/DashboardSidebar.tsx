@@ -64,6 +64,11 @@ const STORAGE_KEY = 'ilf-creator-sidebar-collapsed'
 // default (Pavel 2026-07-11) without touching the creator's global preference.
 // Still fully togglable — once the user expands it, the choice persists here.
 const CC_STORAGE_KEY = 'ilf-creator-cocreation-sidebar-collapsed'
+// First Collaboration Room visit ever → fold the sidebar regardless of the
+// persisted co-creation preference (Pavel 2026-07-12): the room is the most
+// immersive surface, so the first impression is full-width. One-shot — after
+// that the normal CC fold preference applies, and the user can re-expand.
+const ROOM_SEEN_KEY = 'ilf-creator-room-visited'
 
 export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }) {
   const pathname = usePathname()
@@ -94,6 +99,24 @@ export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }
     }
   }, [])
 
+  // One-shot room fold: entering ANY /rooms/* path for the first time on this
+  // device collapses the co-creation sidebar even if the creator had expanded
+  // it earlier (e.g. on /briefs). Keyed on pathname changes because the
+  // sidebar component survives client-side navigations. Doesn't write the CC
+  // preference key — only an explicit toggle does that.
+  const inRoom = !!pathname?.startsWith('/rooms')
+  useEffect(() => {
+    if (!inRoom) return
+    try {
+      if (window.localStorage.getItem(ROOM_SEEN_KEY) !== '1') {
+        window.localStorage.setItem(ROOM_SEEN_KEY, '1')
+        setCcCollapsed(true)
+      }
+    } catch {
+      /* localStorage unavailable — CC default (collapsed) already applies */
+    }
+  }, [inRoom])
+
   // Effective fold state for the CURRENT surface (co-creation vs everywhere else).
   const collapsedNow = coCreation ? ccCollapsed : collapsed
 
@@ -117,7 +140,7 @@ export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }
         'relative hidden shrink-0 border-r border-ink-200 p-3 transition-[width] duration-200 ease-out lg:block',
         // Co-creation mode: sidebar background matches the content area (light gray).
         coCreation ? 'bg-ink-50' : 'bg-white',
-        collapsedNow ? 'w-[68px]' : 'w-56',
+        collapsedNow ? 'w-[76px]' : 'w-56',
       )}
     >
       {/* Fold toggle — circular button straddling the right border (Printful-style) */}
@@ -144,14 +167,24 @@ export function DashboardSidebar({ showBriefs = true }: { showBriefs?: boolean }
             !external &&
             (pathname === href || (href !== '/dashboard' && pathname.startsWith(href)))
           const className = cn(
-            'flex items-center rounded-md text-sm transition-colors',
-            collapsedNow ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
+            'flex rounded-md transition-colors',
+            // Folded rail keeps the labels — stacked under the icons at 10px
+            // (Pavel 2026-07-12), YouTube-rail style.
+            collapsedNow
+              ? 'flex-col items-center gap-1 px-1 py-2 text-center'
+              : 'items-center gap-3 px-3 py-2 text-sm',
             active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
           )
           const inner = (
             <>
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {!collapsedNow && <span>{label}</span>}
+              {collapsedNow ? (
+                <span className="max-w-full truncate text-[10px] font-medium leading-tight">
+                  {label}
+                </span>
+              ) : (
+                <span>{label}</span>
+              )}
             </>
           )
           if (external) {
