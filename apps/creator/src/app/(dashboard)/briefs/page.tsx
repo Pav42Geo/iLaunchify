@@ -2,7 +2,7 @@ import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { requireUser, getEffectiveCreatorTier, hasTier } from '@ilaunchify/auth'
 import { resolveCreatorTierPricing } from '@ilaunchify/plans'
 import { redirect } from 'next/navigation'
-import { nicheGradientKey, relativeTime } from '@ilaunchify/ui'
+import { nicheGradientKey } from '@ilaunchify/ui'
 import { productGradient } from '@ilaunchify/ui/tokens'
 import { PostBriefCta } from './PostBriefCta'
 import { BriefsListClient, type BriefBucket, type BriefCardVM } from './BriefsListClient'
@@ -43,6 +43,21 @@ const JOURNEY_STEP: Record<string, number> = {
 }
 
 const DAY_MS = 86_400_000
+
+// Server-safe relative time (the @ilaunchify/ui relativeTime lives in a
+// 'use client' module and can't be called from a server component). Prototype
+// style: "6h ago" / "2d ago" / "6w ago".
+function postedAgo(date: Date, now: number): string {
+  const m = Math.max(0, Math.round((now - date.getTime()) / 60_000))
+  if (m < 60) return `${Math.max(1, m)}m ago`
+  const h = Math.round(m / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.round(h / 24)
+  if (d < 7) return `${d}d ago`
+  const w = Math.round(d / 7)
+  if (w < 9) return `${w}w ago`
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 function fmtBudget(low: unknown, high: unknown): string | null {
   const lo = low == null ? null : Number(low)
@@ -135,7 +150,7 @@ export default async function BriefsIndexPage() {
       gradient: productGradient[nicheGradientKey(b.nicheSlug)],
       bucket,
       rawStatus: b.status,
-      postedAgo: relativeTime(b.createdAt),
+      postedAgo: postedAgo(b.createdAt, now),
       createdAtMs: b.createdAt.getTime(),
       vol: b.targetVolume ? b.targetVolume.toLocaleString('en-US') : null,
       budget: fmtBudget(b.budgetLow, b.budgetHigh),
