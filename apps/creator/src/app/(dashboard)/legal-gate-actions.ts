@@ -5,7 +5,8 @@
 // (same pattern as the partner e-sign action) and records the acceptances.
 
 import { headers } from 'next/headers'
-import { requireUser, recordLegalAcceptances } from '@ilaunchify/auth'
+import { requireUser } from '@ilaunchify/auth'
+import { recordLegalAcceptances } from '@ilaunchify/auth/server'
 import { revalidatePath } from 'next/cache'
 
 export async function acceptLegalVersions(

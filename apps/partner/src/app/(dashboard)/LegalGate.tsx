@@ -6,7 +6,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { OutstandingLegalDoc } from '@ilaunchify/auth'
+import type { OutstandingLegalDoc } from '@ilaunchify/auth/server'
 import { acceptLegalVersions } from './legal-gate-actions'
 
 export function LegalGate({ docs }: { docs: OutstandingLegalDoc[] }) {

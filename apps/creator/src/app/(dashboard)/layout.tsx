@@ -10,7 +10,8 @@
 // onboardingProgress.checklistOpenedAt server-side on mount so subsequent
 // visits leave the drawer closed (creator can re-open from the sidebar).
 
-import { requireRole, getOutstandingLegalDocs } from '@ilaunchify/auth'
+import { requireRole } from '@ilaunchify/auth'
+import { getOutstandingLegalDocs } from '@ilaunchify/auth/server'
 import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { LegalGate } from './LegalGate'
 import { DashboardSidebar } from '@/components/nav/DashboardSidebar'

@@ -22,13 +22,12 @@ export {
 } from './capabilities'
 export { createUserWithRole } from './signup'
 export type { SignupInput, SignupResult, SignupError } from './signup'
-// Legal re-acceptance gate (docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md §5.2).
-export {
-  getOutstandingLegalDocs,
-  recordLegalAcceptances,
-  LEGAL_CONSENT_TEXT_VERSION,
-  type OutstandingLegalDoc,
-} from './legal-gate'
+// Legal re-acceptance gate (docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md §5.2)
+// is SERVER-ONLY — it pulls @ilaunchify/legal → node:crypto, which Next 15 webpack
+// can't bundle for the client. It's exported from '@ilaunchify/auth/server' instead,
+// so this barrel stays client-safe (client components import tier helpers from here).
+// getOutstandingLegalDocs / recordLegalAcceptances / LEGAL_CONSENT_TEXT_VERSION /
+// OutstandingLegalDoc → import from '@ilaunchify/auth/server'.
 // Admin-team invite — pure acceptance decision (docs/ADMIN_RBAC.md).
 export { evaluateInviteAcceptance } from './admin-invite'
 export type {

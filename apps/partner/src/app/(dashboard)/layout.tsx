@@ -13,7 +13,8 @@
 // problem when admin flips the partner. Welcome detection uses a JSON flag
 // in Partner.onboardingProgress so we don't show it twice.
 
-import { requireUser, getOutstandingLegalDocs } from '@ilaunchify/auth'
+import { requireUser } from '@ilaunchify/auth'
+import { getOutstandingLegalDocs } from '@ilaunchify/auth/server'
 import { prisma, isNominationEnabled } from '@ilaunchify/db'
 import { LegalGate } from './LegalGate'
 import { getActingPartner } from '@/lib/partner-context'

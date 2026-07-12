@@ -25,6 +25,7 @@
       "@ilaunchify/ui/*": ["./packages/ui/src/*"],
       "@ilaunchify/types": ["./packages/types/src"],
       "@ilaunchify/auth": ["./packages/auth/src"],
+      "@ilaunchify/auth/*": ["./packages/auth/src/*"],
       "@ilaunchify/audit": ["./packages/audit/src"],
       "@ilaunchify/notifications": ["./packages/notifications/src"],
       "@ilaunchify/orders": ["./packages/orders/src"],
