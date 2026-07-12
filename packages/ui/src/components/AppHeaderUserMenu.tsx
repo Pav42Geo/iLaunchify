@@ -541,16 +541,26 @@ function ShortcutTile({
   const inner = (
     <>
       {typeof shortcut.badge === 'number' && shortcut.badge > 0 && (
-        <span className="absolute right-1.5 top-1.5 rounded-full bg-pink-500 px-1.5 py-px text-[10px] font-bold text-white">
+        <span className="absolute -right-1 -top-1 rounded-full bg-pink-500 px-1.5 py-px text-[10px] font-bold text-white ring-2 ring-white">
           {shortcut.badge > 99 ? '99+' : shortcut.badge}
         </span>
       )}
-      <shortcut.icon strokeWidth={1.75} className="h-[18px] w-[18px] text-ink-700" />
-      <span className="w-full text-center text-[11px] font-semibold leading-tight text-ink-700">{shortcut.label}</span>
+      {/* Pink accent chip (pink-700 on light surfaces — LOCKED design system).
+          Rotating config labels can be long → single line, truncated, fixed
+          tile height so the 2×3 grid stays even (matches the prototype). */}
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-50">
+        <shortcut.icon strokeWidth={1.75} className="h-[18px] w-[18px] text-pink-700" />
+      </span>
+      <span
+        title={shortcut.label}
+        className="w-full truncate px-0.5 text-center text-[11px] font-semibold leading-tight text-ink-700"
+      >
+        {shortcut.label}
+      </span>
     </>
   )
   const cls =
-    'relative flex flex-col items-center gap-1.5 rounded-lg border border-ink-200 px-1 pb-2.5 pt-3 transition-colors hover:bg-ink-50'
+    'relative flex h-[74px] flex-col items-center justify-center gap-1.5 rounded-lg border border-ink-200 px-1 transition-colors hover:border-pink-200 hover:bg-pink-50/40'
   if (shortcut.external) {
     return (
       <a href={shortcut.href} className={cls} onClick={onNavigate}>
