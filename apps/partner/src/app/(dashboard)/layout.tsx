@@ -22,6 +22,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { PartnerSidebar } from '@/components/nav/PartnerSidebar'
 import { PartnerTopbar } from '@/components/nav/PartnerTopbar'
+import { ActivationJourneyTopbar } from '@/components/nav/ActivationJourneyTopbar'
 import { resolveActivationLimited } from '@/lib/activation-status'
 
 // Statuses where the partner is mid-onboarding (form not yet submitted).
@@ -152,14 +153,27 @@ export default async function PartnerDashboardLayout({ children }: { children: R
 
   return (
     <div className="flex h-screen flex-col">
-      {/* showMyApplication: the menu row only exists pre-activation (Pavel 2026-07-06). */}
-      <PartnerTopbar
-        user={user}
-        companyName={partner.companyName}
-        tier={partner.tier}
-        showMyApplication={restricted}
-        poolEligible={poolEligible}
-      />
+      {/* Activation phase wears the ONBOARDING journey header (dark band,
+          stepper with "Activation Setup" active/white) so approval → go-live
+          reads as one funnel (Pavel 2026-07-12). Fully-live partners get the
+          standard white topbar.
+          showMyApplication: the menu row only exists pre-activation (2026-07-06). */}
+      {activationLimited ? (
+        <ActivationJourneyTopbar
+          user={user}
+          companyName={partner.companyName}
+          tier={partner.tier}
+          serviceTypes={serviceTypes}
+        />
+      ) : (
+        <PartnerTopbar
+          user={user}
+          companyName={partner.companyName}
+          tier={partner.tier}
+          showMyApplication={restricted}
+          poolEligible={poolEligible}
+        />
+      )}
       <div className="flex min-h-0 flex-1">
         {/* The /products/new builder hides the sidebar + neutralizes this
             padding via a body.gb-active class (mount-scoped, so it reverts on
