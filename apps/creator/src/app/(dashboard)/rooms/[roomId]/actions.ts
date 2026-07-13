@@ -15,13 +15,17 @@ import {
   assertInterestTransition,
   declineMilestoneTerms,
   evaluateMakerSwitch,
+  labelProofPayloadSchema,
+  LABEL_PROOF_KIND,
   reopenObject,
   reviewObject,
   submitObjectVersion,
   type RoomCtx,
 } from '@ilaunchify/orders'
+import { labelProofKey, uploadFile } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchNotification } from '@ilaunchify/notifications'
+import { createHash } from 'node:crypto'
 import { z } from 'zod'
 
 export type RoomActionResult = { ok: boolean; error?: string }
@@ -166,6 +170,94 @@ export async function creatorSubmitVersion(
   const parsed = PayloadSchema.safeParse(payload)
   if (!parsed.success) return { ok: false, error: 'Invalid payload' }
   const res = await submitObjectVersion(ctx, objectId, parsed.data)
+  revalidatePath(`/rooms/${roomId}`)
+  return res
+}
+
+// Creator self-design on the maker's dieline (CO_CREATION §7 — Design Studio
+// bridge). The creator composes a normalized label-proof SVG in the Studio (the
+// maker's immutable dieline substrate + brand layer + deterministic regulated
+// panels); this action uploads it as a NEW artifact and lands it as a LABEL
+// BuildObjectVersion via the same submit engine the maker uses. Distinct from
+// creatorSubmitVersion (recipe/label-math): this path carries an artifact ref,
+// not structured rows, so the LABEL viewer renders payload.svgKey.
+const LabelProofInputSchema = z
+  .object({
+    // The composed SVG document (mm units). Capped generously — a proof is
+    // vector, not a raster; a few hundred KB is already large.
+    svg: z.string().min(32).max(4_000_000),
+    dielineId: z.string().min(1).max(64),
+    widthMm: z.number().positive().max(10_000),
+    heightMm: z.number().positive().max(10_000),
+    designId: z.string().max(64).optional(),
+    designVersion: z.number().int().positive().max(1_000_000).optional(),
+    regulatedFrames: z.array(z.string().max(60)).max(40).optional(),
+    note: z.string().trim().max(2000).optional(),
+  })
+  .strict()
+
+export async function creatorSubmitLabelProof(
+  roomId: string,
+  objectId: string,
+  input: unknown,
+): Promise<RoomActionResult> {
+  const ctx = await creatorRoomCtx(roomId)
+  if (!ctx) return guardFail()
+
+  const parsed = LabelProofInputSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'Invalid label proof' }
+  const data = parsed.data
+
+  // Gate 1 — the target must be THIS room's LABEL object, and packaging must be
+  // APPROVED first (the approved PACKAGING object is what pins the maker's
+  // dieline; decision 2026-07-13). Load both in one query.
+  const [label, packaging, room] = await Promise.all([
+    prisma.buildObject.findFirst({ where: { id: objectId, roomId, kind: 'LABEL' }, select: { id: true } }),
+    prisma.buildObject.findFirst({ where: { roomId, kind: 'PACKAGING' }, select: { status: true } }),
+    prisma.coCreationRoom.findUnique({ where: { id: roomId }, select: { partnerId: true } }),
+  ])
+  if (!label) return { ok: false, error: 'That is not this room’s label object' }
+  if (!room) return guardFail()
+  if (packaging?.status !== 'APPROVED') {
+    return { ok: false, error: 'Approve the packaging first — that pins the die-line you design on.' }
+  }
+
+  // Gate 2 — provenance: the die-line must belong to THIS room's maker. Blocks a
+  // creator from referencing an arbitrary partner's die-line as the substrate.
+  const dieline = await prisma.packagingDieline.findFirst({
+    where: { id: data.dielineId, partnerService: { partnerId: room.partnerId } },
+    select: { id: true },
+  })
+  if (!dieline) return { ok: false, error: 'That die-line is not from this maker' }
+
+  // Upload the composed SVG as a new, room+object-scoped artifact (the partner's
+  // original file stays immutable — this is a separate key).
+  const svgKey = labelProofKey({ roomId, objectId })
+  const bytes = Buffer.from(data.svg, 'utf8')
+  const sha256 = createHash('sha256').update(bytes).digest('hex')
+  try {
+    await uploadFile({ key: svgKey, body: bytes, contentType: 'image/svg+xml', cacheControl: 'private, max-age=0' })
+  } catch {
+    return { ok: false, error: 'Could not save the design — please try again' }
+  }
+
+  // Build + revalidate the shared payload contract, then land it through the
+  // same FSM/audit/notification engine the maker's submissions use.
+  const payload = labelProofPayloadSchema.safeParse({
+    proofKind: LABEL_PROOF_KIND,
+    svgKey,
+    dielineId: data.dielineId,
+    widthMm: data.widthMm,
+    heightMm: data.heightMm,
+    designId: data.designId,
+    designVersion: data.designVersion,
+    sha256,
+    regulatedFrames: data.regulatedFrames ?? [],
+    note: data.note,
+  })
+  if (!payload.success) return { ok: false, error: 'Invalid label proof' }
+
+  const res = await submitObjectVersion(ctx, objectId, payload.data)
   revalidatePath(`/rooms/${roomId}`)
   return res
 }
