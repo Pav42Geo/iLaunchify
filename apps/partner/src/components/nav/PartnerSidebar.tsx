@@ -163,8 +163,10 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
       data-partner-sidebar
       className={cn(
         'relative hidden shrink-0 border-r border-ink-200 p-3 transition-[width] duration-200 ease-out lg:block',
-        // Co-creation mode: sidebar background matches the content area (light gray).
-        coCreation ? 'bg-ink-50' : 'bg-white',
+        // Light-gray band in co-creation AND during the activation phase
+        // (Pavel 2026-07-12 — matches the co-creation treatment); white
+        // otherwise.
+        coCreation || activationLimited ? 'bg-ink-50' : 'bg-white',
         collapsedNow ? 'w-[68px]' : 'w-56',
       )}
     >
@@ -188,8 +190,29 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
           </div>
         )
       ) : collapsedNow ? (
-        <div className="mb-4 mt-1 flex justify-center" title={`Partner portal · ${badge.label}`}>
-          <span className={cn('inline-block h-2.5 w-2.5 rounded-full', badge.dotClassName)} />
+        <div
+          className="mb-4 mt-1 flex justify-center"
+          title={`Partner Portal · ${activationLimited ? 'Onboarded' : badge.label}`}
+        >
+          <span
+            className={cn(
+              'inline-block h-2.5 w-2.5 rounded-full',
+              activationLimited ? 'bg-info-500' : badge.dotClassName,
+            )}
+          />
+        </div>
+      ) : activationLimited ? (
+        // Activation phase only (Pavel 2026-07-12): dynamic portal card —
+        // bigger display title + "Onboarded" phase pill (approved, not yet
+        // live) — replaces the hardcoded "Partner portal · Active" caption.
+        <div className="mb-5 rounded-xl border border-ink-200 bg-white px-3 py-2.5 shadow-sm">
+          <div className="font-display text-[15px] font-bold tracking-tight text-ink-900">
+            Partner Portal
+          </div>
+          <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-info-50 px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-info-700 ring-1 ring-info-200">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-info-500" />
+            Onboarded
+          </span>
         </div>
       ) : (
         <div className="mb-6 px-2">
