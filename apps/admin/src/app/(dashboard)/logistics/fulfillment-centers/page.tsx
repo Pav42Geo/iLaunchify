@@ -96,7 +96,15 @@ export default async function FulfillmentCentersPage({ searchParams }: PageProps
       <AdminPageHeader
         eyebrow="Logistics · Network"
         title="Fulfillment centers"
-        description="WAREHOUSE partner services that hold creator inventory after production — capabilities, capacity and coverage across the network. Onboard a new FC as a partner with a Warehouse service."
+        description="WAREHOUSE partner services that hold creator inventory after production — capabilities, capacity and coverage across the network. Joining is a separately contracted program (never partner self-serve)."
+        actions={
+          <Link
+            href="/logistics/fulfillment-centers/contract"
+            className="inline-flex items-center rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Contract new FC
+          </Link>
+        }
       />
 
       <FcKpiStrip kpis={data.kpis} />
