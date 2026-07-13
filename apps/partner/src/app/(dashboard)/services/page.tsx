@@ -10,10 +10,11 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Factory, Package, Printer, Warehouse } from 'lucide-react'
+import { Factory, Package, Plus, Printer, Warehouse } from 'lucide-react'
 import { PanelCard, PanelHeader, LRow, StPill, type PillTone } from '@/components/panel-kit'
 import { ServiceProfileForm } from '../../(onboarding)/onboarding/service/ServiceProfileForm'
 import { getPartnerRoleWord } from '@/lib/partner-role'
+import { addService, type AddableServiceType } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Services — Partners' }
@@ -119,7 +120,10 @@ export default async function ServicesPage() {
   })
   if (!partner) return null
 
-  const canEdit = partner.status === 'ACTIVE'
+  const canEdit = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
+  const missingTypes = (
+    ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE'] as AddableServiceType[]
+  ).filter((t) => !partner.services.some((s) => (s.type as string) === t))
 
   return (
     <div className="space-y-6">
@@ -184,15 +188,82 @@ export default async function ServicesPage() {
                     successMessage="Service profile updated"
                   />
                 ) : (
-                  <pre className="whitespace-pre-wrap rounded-xl border border-ink-100 bg-ink-50 p-3 font-mono text-[11.5px] text-ink-700">
-                    {JSON.stringify(s.capabilities, null, 2)}
-                  </pre>
+                  <CapabilityReadout capabilities={s.capabilities} />
                 )}
               </div>
             </details>
           )
         })}
+
+        {partner.services.length === 0 && (
+          <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-[13px] text-ink-500">
+            No services yet — add the first one below.
+          </p>
+        )}
+
+        {/* Add a service (prototype #p-capabilities) — only types not yet
+            offered; the new service starts as DRAFT and goes live through its
+            Activation Setup track. */}
+        {canEdit && missingTypes.length > 0 && (
+          <div className="mt-4 border-t border-ink-100 pt-4">
+            <div className="mb-2 text-[12px] font-semibold text-ink-700">Add a service</div>
+            <div className="flex flex-wrap gap-2">
+              {missingTypes.map((t) => (
+                <form key={t} action={addService.bind(null, t)}>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-pink-500 px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {SERVICE_LABEL[t]}
+                  </button>
+                </form>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-ink-500">
+              New services start as Draft — fill in the capability profile here, then complete the
+              service&rsquo;s Activation Setup track to go live for routing.
+            </p>
+          </div>
+        )}
       </PanelCard>
+    </div>
+  )
+}
+
+/** Read-only capability display (pre-approval) — humanized rows, never raw JSON. */
+function CapabilityReadout({ capabilities }: { capabilities: unknown }) {
+  const caps = (capabilities ?? {}) as Record<string, unknown>
+  const entries = Object.entries(caps).filter(([k, v]) => {
+    if (k === 'type') return false
+    if (v == null || v === '') return false
+    if (Array.isArray(v)) return v.length > 0
+    return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+  })
+  if (entries.length === 0) {
+    return <p className="text-[13px] text-ink-500">No capability details submitted yet.</p>
+  }
+  return (
+    <div className="grid gap-x-6 sm:grid-cols-2">
+      {entries.map(([k, v]) => (
+        <div
+          key={k}
+          className="flex justify-between gap-3 border-b border-ink-100 py-2 text-[13px] last:border-b-0"
+        >
+          <span className="text-ink-500">{humanize(k.replace(/([A-Z])/g, ' $1'))}</span>
+          <span className="text-right font-semibold text-ink-900">
+            {Array.isArray(v)
+              ? (v as unknown[]).filter((x) => typeof x === 'string').map((x) => humanize(x as string)).join(', ')
+              : typeof v === 'boolean'
+                ? v
+                  ? 'Yes'
+                  : 'No'
+                : typeof v === 'number'
+                  ? v.toLocaleString()
+                  : humanize(String(v))}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
