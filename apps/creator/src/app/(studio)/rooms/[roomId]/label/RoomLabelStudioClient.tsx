@@ -285,7 +285,7 @@ export function RoomLabelStudioClient({
         </div>
       </header>
 
-      {submitError && <div className="border-b border-red-200 bg-red-50 px-5 py-2 text-sm text-red-700">{submitError}</div>}
+      {submitError && <div className="border-b border-danger-200 bg-danger-50 px-5 py-2 text-sm text-danger-700">{submitError}</div>}
 
       <div className="flex min-h-0 flex-1">
         {/* Tool rail — only when I actually hold the edit turn. */}

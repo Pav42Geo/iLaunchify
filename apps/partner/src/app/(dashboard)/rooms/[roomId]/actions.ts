@@ -2,8 +2,9 @@
 
 // Collaboration Room server actions — PARTNER (maker) side. Membership guard:
 // the acting user's partner org must be the room's selected partner. Makers
-// submit versions, comment, and message — they never approve/review their own
-// work (creator-only), so no review action is exposed here.
+// submit versions, comment, and message. Review: D-S3 inversion (LOCKED
+// 2026-07-13) — the maker reviews CREATOR-submitted versions (self-designed
+// labels: they confirm it prints); the service refuses same-side review.
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
@@ -12,6 +13,7 @@ import {
   addObjectComment,
   addRoomMessage,
   proposeMilestoneTerms,
+  reviewObject,
   submitObjectVersion,
   type RoomCtx,
 } from '@ilaunchify/orders'
@@ -150,6 +152,25 @@ async function partnerRoomCtx(roomId: string): Promise<RoomCtx | null> {
 
 function guardFail(): RoomActionResult {
   return { ok: false, error: 'Room not found or not active' }
+}
+
+/**
+ * D-S3 review inversion: the maker reviews a CREATOR-submitted version (e.g.
+ * a self-designed label proof — the maker confirms printability). The service
+ * itself refuses same-side review, so this can never approve the maker's own
+ * work regardless of UI state.
+ */
+export async function partnerReviewObject(
+  roomId: string,
+  objectId: string,
+  decision: 'APPROVE' | 'REQUEST_CHANGES',
+  note?: string,
+): Promise<RoomActionResult> {
+  const ctx = await partnerRoomCtx(roomId)
+  if (!ctx) return guardFail()
+  const res = await reviewObject(ctx, objectId, decision, note)
+  revalidatePath(`/rooms/${roomId}`)
+  return res
 }
 
 export async function partnerSubmitVersion(

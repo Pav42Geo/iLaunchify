@@ -1169,7 +1169,13 @@ function ObjectDetail({
 
   const canSubmit =
     (mode === 'partner' || isLabel) && (object.status === 'DRAFT' || object.status === 'CHANGES_REQUESTED')
-  const canReview = mode === 'creator' && object.status === 'IN_REVIEW'
+  // D-S3 review inversion (LOCKED 2026-07-13): whoever did NOT submit the
+  // current version reviews it. Maker submissions → creator reviews (the
+  // original flow); a creator's self-designed LABEL → the MAKER reviews
+  // (printability). Falls back to creator-reviews when no version exists.
+  const latestSubmittedByPartner = latest?.submittedByPartner ?? true
+  const reviewerMode: 'creator' | 'partner' = latestSubmittedByPartner ? 'creator' : 'partner'
+  const canReview = mode === reviewerMode && object.status === 'IN_REVIEW'
   const canReopen = object.status === 'APPROVED' || object.status === 'LOCKED'
 
   function threadFor(anchor: string) {

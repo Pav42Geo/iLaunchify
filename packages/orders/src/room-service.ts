@@ -121,6 +121,27 @@ export async function reviewObject(
   const object = await loadObject(ctx.roomId, objectId)
   if (!object) return { ok: false, error: 'Object not found' }
 
+  // D-S3 review inversion (LOCKED 2026-07-13) — single choke point for BOTH
+  // apps: whoever did NOT submit the current version reviews it. Blocks a
+  // creator approving their own self-designed label AND a maker approving
+  // their own submission, whatever the calling app allows in its UI.
+  const latestVersion = await prisma.buildObjectVersion.findFirst({
+    where: { objectId: object.id, version: object.currentVersion },
+    select: { submittedByPartner: true },
+  })
+  if (latestVersion) {
+    const submitterSide = latestVersion.submittedByPartner ? 'PARTNER' : 'CREATOR'
+    if (ctx.actingAs === submitterSide) {
+      return {
+        ok: false,
+        error:
+          submitterSide === 'CREATOR'
+            ? 'The maker reviews self-designed submissions — they confirm it prints.'
+            : 'The creator reviews maker submissions.',
+      }
+    }
+  }
+
   const to = decision === 'APPROVE' ? 'APPROVED' : 'CHANGES_REQUESTED'
   assertBuildObjectTransition(object.status, to)
 

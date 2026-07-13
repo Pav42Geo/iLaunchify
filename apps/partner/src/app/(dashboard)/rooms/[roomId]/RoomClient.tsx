@@ -22,6 +22,7 @@ import {
   partnerProposeMilestoneTerms,
   partnerRateCreator,
   partnerSubmitVersion,
+  partnerReviewObject,
 } from './actions'
 import { roomSearchIngredients, roomCreateIngredient } from './ingredient-search-action'
 
@@ -88,7 +89,10 @@ export function RoomClient(props: {
       onSubmitVersion={(objectId, payload) =>
         refresh(partnerSubmitVersion(props.roomId, objectId, payload))
       }
-      onReview={async () => ({ ok: false, error: 'Only the creator reviews objects' })}
+      onReview={(objectId, decision, note) =>
+        // D-S3 inversion — real path; the service refuses same-side review.
+        refresh(partnerReviewObject(props.roomId, objectId, decision, note))
+      }
       onReopen={async () => ({ ok: false, error: 'Only the creator re-opens objects' })}
       onComment={(objectId, body, anchor) =>
         refresh(partnerComment(props.roomId, objectId, body, anchor))
