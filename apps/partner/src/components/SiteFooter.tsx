@@ -212,28 +212,32 @@ function ContactForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-[12.5px] text-ink-500">Send us a note and we&apos;ll reply by email.</p>
-      <Input label="Your name" value={name} onChange={setName} placeholder="Jane Doe" />
-      <Input label="Email" value={email} onChange={setEmail} placeholder="you@company.com" type="email" />
+    <div className="space-y-4 text-left">
+      <p className="text-[13.5px] leading-relaxed text-ink-500">
+        Send us a note and we&apos;ll reply by email.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input label="Your name" value={name} onChange={setName} placeholder="Jane Doe" />
+        <Input label="Email" value={email} onChange={setEmail} placeholder="you@company.com" type="email" />
+      </div>
       <Input label="Subject" value={subject} onChange={setSubject} placeholder="How can we help?" />
-      <label className="block">
-        <span className="text-[12px] font-semibold text-ink-700">Message</span>
+      <label className="block text-left">
+        <span className="mb-1.5 block text-[14px] font-semibold text-ink-900">Message</span>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          rows={4}
-          className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+          rows={5}
+          className="w-full resize-y rounded-xl border border-ink-200 bg-ink-50/50 px-3.5 py-2.5 text-[14px] text-ink-900 transition placeholder:text-ink-300 focus:border-pink-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-100"
         />
       </label>
       <TurnstileWidget onToken={setTurnstileToken} />
-      {error && <p className="text-[12px] text-danger-600">{error}</p>}
-      <div className="flex justify-end pt-1">
+      {error && <p className="text-[12.5px] text-danger-600">{error}</p>}
+      <div className="flex items-center justify-end gap-3 border-t border-ink-100 pt-4">
         <button
           type="button"
           onClick={send}
           disabled={!canSend}
-          className="rounded-full bg-pink-600 px-5 py-2.5 text-[13px] font-bold text-white hover:opacity-90 disabled:opacity-40"
+          className="rounded-full bg-pink-600 px-6 py-3 text-[13.5px] font-bold text-white shadow-sm transition hover:-translate-y-px hover:bg-pink-500 disabled:translate-y-0 disabled:opacity-40"
         >
           {pending ? 'Sending…' : 'Send message'}
         </button>
@@ -256,14 +260,14 @@ function Input({
   type?: string
 }) {
   return (
-    <label className="block">
-      <span className="text-[12px] font-semibold text-ink-700">{label}</span>
+    <label className="block text-left">
+      <span className="mb-1.5 block text-[14px] font-semibold text-ink-900">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+        className="w-full rounded-xl border border-ink-200 bg-ink-50/50 px-3.5 py-2.5 text-[14px] text-ink-900 transition placeholder:text-ink-300 focus:border-pink-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-100"
       />
     </label>
   )
