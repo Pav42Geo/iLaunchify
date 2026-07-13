@@ -44,7 +44,19 @@ export default async function CompanyProfileSettingsPage() {
         where: { type: { in: ['MANUFACTURING', 'COPACKING'] } },
         select: { disclosureLevel: true },
       },
-      facilities: { select: { name: true, city: true, region: true, isDefault: true } },
+      facilities: {
+        orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          addressLine1: true,
+          addressLine2: true,
+          city: true,
+          region: true,
+          postalCode: true,
+          isDefault: true,
+        },
+      },
       verificationSections: {
         where: { type: { in: ['BUSINESS', 'DOCUMENTS'] } },
         select: { type: true, status: true, verifiedAt: true },
@@ -140,12 +152,7 @@ export default async function CompanyProfileSettingsPage() {
           disclosure,
           published: Boolean(partner.profilePublishedAt),
           previewHref,
-          facilities: partner.facilities.map((f) => ({
-            name: f.name,
-            city: f.city,
-            region: f.region,
-            isDefault: f.isDefault,
-          })),
+          facilities: partner.facilities,
         }}
       />
     </div>

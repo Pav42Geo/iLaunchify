@@ -16,12 +16,12 @@ import {
   Building2,
   Camera,
   Check,
+  Download,
   Eye,
   FileText,
   Loader2,
   MapPin,
   Megaphone,
-  Warehouse,
   X,
 } from 'lucide-react'
 import {
@@ -32,7 +32,9 @@ import {
   type DisclosureLevelKey,
 } from './actions'
 import { uploadPartnerProfileImage, removePartnerProfileImage } from './media-actions'
-import { replaceVerificationDocument } from './docs-actions'
+import { replaceVerificationDocument, getVerificationDocUrl } from './docs-actions'
+import { FacilitiesManager, type FacilityVM } from './FacilitiesManager'
+import { US_STATES } from '@/lib/us-states'
 
 export interface DocSlotVM {
   kind: 'CERT_OF_INCORPORATION' | 'BUSINESS_LICENSE' | 'INSURANCE'
@@ -66,7 +68,7 @@ export interface CompanyProfileInitial {
   disclosure: string
   published: boolean
   previewHref: string | null
-  facilities: { name: string; city: string; region: string; isDefault: boolean }[]
+  facilities: FacilityVM[]
 }
 
 type SaveState = 'saved' | 'saving' | 'dirty'
@@ -84,13 +86,22 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
   const uploadImage = (kind: 'logo' | 'cover', file: File | undefined) => {
     if (!file) return
     setMediaError(null)
+    if (file.size > 6 * 1024 * 1024) {
+      setMediaError('Image too large (max 6 MB).')
+      return
+    }
     setSaveState('saving')
     const fd = new FormData()
     fd.set('file', file)
     startTransition(async () => {
-      const res = await uploadPartnerProfileImage(kind, fd)
-      if (res.ok) setF((p) => ({ ...p, [kind === 'logo' ? 'logoUrl' : 'coverImageUrl']: res.url }))
-      else setMediaError(res.error)
+      try {
+        const res = await uploadPartnerProfileImage(kind, fd)
+        if (res.ok) setF((p) => ({ ...p, [kind === 'logo' ? 'logoUrl' : 'coverImageUrl']: res.url }))
+        else setMediaError(res.error)
+      } catch (err) {
+        // Network / body-limit failures reject the action promise — surface them.
+        setMediaError(`Upload failed: ${(err as Error).message || 'network error'}`)
+      }
       setSaveState('saved')
     })
   }
@@ -99,9 +110,13 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
     setMediaError(null)
     setSaveState('saving')
     startTransition(async () => {
-      const res = await removePartnerProfileImage(kind)
-      if (res.ok) setF((p) => ({ ...p, [kind === 'logo' ? 'logoUrl' : 'coverImageUrl']: null }))
-      else setMediaError(res.error)
+      try {
+        const res = await removePartnerProfileImage(kind)
+        if (res.ok) setF((p) => ({ ...p, [kind === 'logo' ? 'logoUrl' : 'coverImageUrl']: null }))
+        else setMediaError(res.error)
+      } catch (err) {
+        setMediaError(`Remove failed: ${(err as Error).message || 'network error'}`)
+      }
       setSaveState('saved')
     })
   }
@@ -239,6 +254,11 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             }}
           />
         </div>
+        {mediaError && (
+          <div className="absolute bottom-3 left-3 rounded-lg bg-ink-900/80 px-3 py-1.5 text-[12px] font-semibold text-white">
+            {mediaError}
+          </div>
+        )}
       </div>
 
       {/* avatar row */}
@@ -451,13 +471,21 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
               placeholder="City"
               className={inputCls}
             />
-            <input
+            <select
               value={f.state}
-              onChange={(e) => setAddr('state', e.target.value)}
+              onChange={(e) => {
+                setAddr('state', e.target.value)
+              }}
               onBlur={flushAddress}
-              placeholder="State"
               className={inputCls}
-            />
+            >
+              <option value="">State…</option>
+              {US_STATES.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
             <input
               value={f.postalCode}
               onChange={(e) => setAddr('postalCode', e.target.value)}
@@ -473,27 +501,10 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             </span>
           )}
         </Field>
-        {f.facilities
-          .filter((fac) => !fac.isDefault)
-          .map((fac) => (
-            <div
-              key={fac.name}
-              className="flex items-center gap-3.5 rounded-xl border border-ink-200 px-4 py-[15px]"
-            >
-              <span className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-ink-50 text-ink-600">
-                <Warehouse className="h-[19px] w-[19px]" />
-              </span>
-              <div>
-                <div className="text-[14px] font-semibold text-ink-900">
-                  {fac.city}, {fac.region} — {fac.name}
-                </div>
-                <div className="text-[12px] text-ink-500">Additional facility</div>
-              </div>
-              <span className="ml-auto inline-flex items-center rounded-full border border-ink-200 bg-ink-100 px-2.5 py-[3px] text-[11px] font-semibold text-ink-600">
-                Secondary
-              </span>
-            </div>
-          ))}
+        <div className="mt-1">
+          <div className="mb-2 text-[12px] font-semibold text-ink-700">Facilities</div>
+          <FacilitiesManager facilities={f.facilities} />
+        </div>
       </Fieldset>
 
       {/* Verification documents — per-document slots (prototype docslots).
@@ -620,8 +631,25 @@ function DocSlot({ slot }: { slot: DocSlotVM }) {
     fd.set('file', file)
     if (needsExpiry && expiry) fd.set('expiresAt', expiry)
     startTransition(async () => {
-      const res = await replaceVerificationDocument(slot.kind, fd)
-      if (!res.ok) setError(res.error)
+      try {
+        const res = await replaceVerificationDocument(slot.kind, fd)
+        if (!res.ok) setError(res.error)
+      } catch (err) {
+        setError(`Upload failed: ${(err as Error).message || 'network error'}`)
+      }
+    })
+  }
+
+  const download = () => {
+    setError(null)
+    startTransition(async () => {
+      try {
+        const res = await getVerificationDocUrl(slot.kind)
+        if (res.ok) window.open(res.url, '_blank', 'noopener')
+        else setError(res.error)
+      } catch (err) {
+        setError(`Download failed: ${(err as Error).message || 'network error'}`)
+      }
     })
   }
 
@@ -640,9 +668,25 @@ function DocSlot({ slot }: { slot: DocSlotVM }) {
       <div className="min-w-0">
         <div className="text-[13px] font-semibold text-ink-900">{slot.label}</div>
         <div className="truncate text-[11px] text-ink-500">{meta}</div>
+        {expiringSoon && (
+          <div className="text-[11px] font-semibold text-warning-700">
+            Already have the renewed certificate? Set its expiry date and upload it now.
+          </div>
+        )}
         {error && <div className="text-[11px] font-semibold text-danger-500">{error}</div>}
       </div>
       <div className="ml-auto flex flex-none flex-wrap items-center gap-2">
+        {!missing && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={download}
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-40"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download
+          </button>
+        )}
         {needsExpiry && (
           <input
             type="date"

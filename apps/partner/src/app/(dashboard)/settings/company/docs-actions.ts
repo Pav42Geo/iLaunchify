@@ -12,6 +12,7 @@ import { prisma } from '@ilaunchify/db'
 import type { PartnerFileKind } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import { revalidatePath } from 'next/cache'
 import { uploadPartnerDocument } from '@/app/(onboarding)/onboarding/documents/actions'
 
@@ -59,4 +60,40 @@ export async function replaceVerificationDocument(
   revalidatePath('/settings/company')
   revalidatePath('/my-application')
   return { ok: true }
+}
+
+export type DocUrlResult = { ok: true; url: string; filename: string } | { ok: false; error: string }
+
+/**
+ * Short-lived signed download URL for the partner's OWN latest document of a
+ * kind (private R2 object — never a public URL). Ownership-fenced + audited.
+ */
+export async function getVerificationDocUrl(kind: PartnerFileKind): Promise<DocUrlResult> {
+  if (!REPLACEABLE_KINDS.includes(kind)) return { ok: false, error: 'Invalid document kind.' }
+  const user = await requireUser()
+  const partner = await prisma.partner.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  })
+  if (!partner) return { ok: false, error: 'No partner account.' }
+
+  const file = await prisma.partnerFile.findFirst({
+    where: { partnerId: partner.id, kind, sectionType: 'DOCUMENTS' },
+    orderBy: { uploadedAt: 'desc' },
+    select: { id: true, r2Key: true, originalFilename: true },
+  })
+  if (!file) return { ok: false, error: 'No document on file yet.' }
+
+  try {
+    const url = await getSignedReadUrl(file.r2Key, { expiresInSeconds: 300 }) // 5-minute link
+    await logAuditAs(user, {
+      entityType: 'PartnerFile',
+      entityId: file.id,
+      action: 'FILE_DOWNLOAD_URL_ISSUED',
+      payload: { kind, filename: file.originalFilename },
+    })
+    return { ok: true, url, filename: file.originalFilename }
+  } catch (err) {
+    return { ok: false, error: `Could not sign the download: ${(err as Error).message}` }
+  }
 }
