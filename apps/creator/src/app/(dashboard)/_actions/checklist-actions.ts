@@ -147,6 +147,38 @@ export async function maybeStampFirstProductSelected() {
 }
 
 // -----------------------------------------------------------------------------
+// First Collaboration Room visit (Pavel 2026-07-12) — the sidebar force-folds
+// the first time a creator ever opens a room, tracked per ACCOUNT so the
+// one-shot survives devices/browsers. Idempotent: only the first call writes.
+// -----------------------------------------------------------------------------
+
+export async function maybeStampRoomFirstVisit() {
+  const user = await requireUser()
+  if (user.role !== 'CREATOR') return { ok: false as const }
+
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true, onboardingProgress: true },
+  })
+  if (!profile) return { ok: false as const }
+
+  const progress = (profile.onboardingProgress as Record<string, unknown> | null) ?? {}
+  if (progress.roomFirstVisitAt) return { ok: true as const }
+
+  await prisma.creatorProfile.update({
+    where: { id: profile.id },
+    data: {
+      onboardingProgress: {
+        ...progress,
+        roomFirstVisitAt: new Date().toISOString(),
+      },
+    },
+  })
+
+  return { ok: true as const }
+}
+
+// -----------------------------------------------------------------------------
 // Stamp drawer-dismissed so we don't auto-open on every dashboard load.
 // The drawer auto-opens once, then respects the dismiss until creator
 // re-opens it manually from the sidebar nav item.

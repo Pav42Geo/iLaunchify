@@ -77,12 +77,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
     ccEnabled ||
     (await prisma.productBrief.count({ where: { creator: { userId: user.id } } })) > 0
 
+  // First Collaboration Room visit (Pavel 2026-07-12): tracked per ACCOUNT on
+  // onboardingProgress.roomFirstVisitAt (same JSON as the checklist stamps).
+  // The sidebar force-folds on the first /rooms/* visit, then stamps via
+  // maybeStampRoomFirstVisit. Non-creators (admin) never force-fold.
+  const roomSeen =
+    user.role !== 'CREATOR' || !state || typeof progress.roomFirstVisitAt === 'string'
+
   return (
     <LaunchChecklistProvider initialSnapshot={snapshot} meta={{ shouldAutoOpen }}>
       <div className="flex h-screen flex-col">
         <DashboardTopbar user={user} />
         <div className="flex min-h-0 flex-1">
-          <DashboardSidebar showBriefs={showBriefs} />
+          <DashboardSidebar showBriefs={showBriefs} roomSeen={roomSeen} />
           {/* overflow-x-clip lets a landing page's hero break full-bleed
               (margin-left: calc(50% - 50vw); width: 100vw) and get clipped to
               the content area instead of spilling under the sidebar.
