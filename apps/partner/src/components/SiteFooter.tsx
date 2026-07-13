@@ -10,6 +10,7 @@
 // — no backend; upgrade to stored tickets when there's a public sink.
 
 import { useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import { TurnstileWidget } from '@ilaunchify/ui'
 import { TERMS_OF_USE, PRIVACY_POLICY, type LegalPara } from '@/lib/legal-docs'
 import { submitContactMessage } from '@/lib/contact-actions'
@@ -86,11 +87,15 @@ export function ContactTeamLink({
       >
         {children}
       </button>
-      {open && (
-        <Modal title="Contact us" onClose={() => setOpen(false)}>
-          <ContactForm onDone={() => setOpen(false)} />
-        </Modal>
-      )}
+      {/* Portal to <body>: the trigger can sit inside a <p>, and a fixed
+          overlay containing headings is invalid there (hydration error). */}
+      {open &&
+        createPortal(
+          <Modal title="Contact us" onClose={() => setOpen(false)}>
+            <ContactForm onDone={() => setOpen(false)} />
+          </Modal>,
+          document.body,
+        )}
     </>
   )
 }
