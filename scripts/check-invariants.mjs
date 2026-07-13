@@ -384,6 +384,75 @@ function checkNoPublicSecret() {
 }
 
 // =============================================================================
+// CHECK — FC candidate queries must filter type: 'WAREHOUSE'  (ERROR)
+// "Fulfillment Center" is NOT a partner type — it's a partner running a
+// WAREHOUSE PartnerService, and ONLY those enter the FC network. A
+// manufacturer/co-packer facility touches FC selection solely as the freight
+// ORIGIN (fc-selector originLat/Lng), never as a candidate. Any file that
+// builds FcCandidate pools and queries partnerService without the WAREHOUSE
+// filter would enroll production sites as fulfillment nodes — a go-live-
+// breaking conflation (Pavel 2026-07-12). Memory:
+// ilaunchify-fc-vs-manufacturer-facility.
+// =============================================================================
+function checkFcCandidateWarehouseFilter() {
+  const hits = []
+  const roots = ['apps/creator/src', 'apps/admin/src', 'apps/partner/src', 'apps/marketing/src']
+  for (const f of collect(roots, ['.ts', '.tsx'])) {
+    const src = read(f)
+    if (!/FcCandidate/.test(src)) continue // only files that feed the FC selector
+    const rx = /\.partnerService\.(findMany|findFirst)\s*\(/g
+    let m
+    while ((m = rx.exec(src)) !== null) {
+      const windowText = src.slice(m.index, m.index + 600)
+      // OK when the query is deliberate about its role:
+      //   • ANY explicit `type:` filter (WAREHOUSE pool, or another service
+      //     type on purpose — e.g. the LABEL_PRINTING rotation pool), or
+      //   • pinned by exact id (`where: { id: … }` — e.g. the manufacturer's
+      //     own service for HOLD_AT_MANUFACTURER). The danger is an UNTYPED,
+      //     UNPINNED pool query in FC-candidate territory.
+      if (/type:\s*['"]/.test(windowText)) continue
+      if (/where:\s*\{\s*id[:\s]/.test(windowText)) continue
+      const line = src.slice(0, m.index).split('\n').length
+      hits.push(
+        `${f}:${line}  untyped, unpinned partnerService.${m[1]} in an FcCandidate-feeding file — FC pools must filter type: 'WAREHOUSE' (mfr facilities are the ORIGIN, never candidates)`,
+      )
+    }
+  }
+  return { name: "FC candidates filter type: 'WAREHOUSE' (FC ≠ mfr facility)", level: 'error', hits }
+}
+
+// =============================================================================
+// CHECK 11 — node:crypto packages must set "sideEffects": false  (ERROR)
+// A package that imports node:crypto (feedback-token, legal/hash, etc.) will, if
+// a client component imports that package's barrel (even transitively via another
+// package), drag node:crypto into the client bundle — Next 15 webpack can't build
+// the `node:` scheme and the whole build fails. Marking the package
+// "sideEffects": false lets webpack tree-shake the unused server chain out of the
+// client bundle. Baseline burned down 2026-07-09 (analytics barrel-hygiene sweep).
+// =============================================================================
+const CRYPTO_RX = /from ['"]node:crypto['"]|from ['"]crypto['"]|require\(['"]crypto['"]\)/
+function checkCryptoPkgSideEffects() {
+  const hits = []
+  const pkgsDir = 'packages'
+  if (!existsSync(pkgsDir)) return { name: 'node:crypto packages set sideEffects:false', level: 'error', hits }
+  for (const pkg of readdirSync(pkgsDir)) {
+    const src = join(pkgsDir, pkg, 'src')
+    const pj = join(pkgsDir, pkg, 'package.json')
+    if (!existsSync(src) || !existsSync(pj)) continue
+    const files = []
+    walk(src, files, ['.ts', '.tsx'])
+    const usesCrypto = files.some((f) => !f.endsWith('.test.ts') && CRYPTO_RX.test(read(f)))
+    if (!usesCrypto) continue
+    let side
+    try { side = JSON.parse(read(pj)).sideEffects } catch { side = undefined }
+    if (side !== false) {
+      hits.push(`packages/${pkg}/package.json  imports node:crypto but lacks "sideEffects": false — a client barrel-import will pull node:crypto into the bundle (Next 15 can't build the node: scheme). Add "sideEffects": false.`)
+    }
+  }
+  return { name: 'node:crypto packages set sideEffects:false (client-bundle guard)', level: 'error', hits }
+}
+
+// =============================================================================
 const CHECKS = [
   checkNoDbText,
   checkCrossAppLink,
@@ -395,6 +464,8 @@ const CHECKS = [
   checkNoNewDecimalMoney,
   checkNoStrayDevLogin,
   checkNoPublicSecret,
+  checkFcCandidateWarehouseFilter,
+  checkCryptoPkgSideEffects,
 ]
 
 let errorCount = 0
