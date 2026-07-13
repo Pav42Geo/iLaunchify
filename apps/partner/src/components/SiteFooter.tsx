@@ -191,9 +191,15 @@ function ContactForm({ onDone }: { onDone: () => void }) {
   function send() {
     setError(null)
     startTransition(async () => {
-      const res = await submitContactMessage({ name, email, subject, message, turnstileToken: turnstileToken ?? undefined })
-      if (res.ok) setSent(true)
-      else setError('Please fill in your name, email, and message — and complete the verification.')
+      // Defensive: if the action rejects or returns nothing (e.g. stale dev
+      // bundle, network drop), show an inline error — never crash the route.
+      try {
+        const res = await submitContactMessage({ name, email, subject, message, turnstileToken: turnstileToken ?? undefined })
+        if (res?.ok) setSent(true)
+        else setError('Please fill in your name, email, and message — and complete the verification.')
+      } catch {
+        setError('Something went wrong sending your message. Please try again.')
+      }
     })
   }
 
