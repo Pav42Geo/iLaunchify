@@ -57,6 +57,7 @@ export * from './primitives/tabs'
 export * from './primitives/row-actions-menu'
 
 // Object-view components
+export * from './components/FormField'
 export * from './components/InfoTip'
 export * from './components/TurnstileWidget'
 export * from './components/SectionLabel'
@@ -78,6 +79,8 @@ export * from './components/PackagingStudioShell'
 // Co-creation Collaboration Room (presentational, mode prop — creator + partner render it)
 export * from './components/CoCreationRoomShell'
 export * from './components/CoCreationStepper'
+// Rooms & Messages hub (2026-07-13) — three-pane shell, light rail variant
+export * from './components/MessagesShell'
 export * from './lib/co-creation'
 export * from './lib/room-compliance'
 export * from './lib/sample-shipment'

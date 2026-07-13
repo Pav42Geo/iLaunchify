@@ -11,7 +11,7 @@
 // verification queue, not here — partners can save partial data).
 
 import { useMemo, useState, useTransition } from 'react'
-import { Input, Label } from '@ilaunchify/ui'
+import { Input, FormField, FieldRow } from '@ilaunchify/ui'
 import type { ServiceType } from '@ilaunchify/db'
 import {
   ContainerCategory,
@@ -570,7 +570,7 @@ function WarehouseForm({
             onBlur={commit}
           />
         </Field>
-      </div>
+      </FieldRow>
     </div>
   )
 }
@@ -609,15 +609,15 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="grid gap-y-1.5 sm:row-span-2 sm:[grid-template-rows:subgrid]">
-      <Label htmlFor={id} className="text-sm font-medium text-ink-900">
-        {label}
-      </Label>
-      <div className="space-y-1.5">
-        {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
-        {children}
-      </div>
-    </div>
+    <FormField
+      htmlFor={id}
+      label={label}
+      hint={hint}
+      hintPlacement="above"
+      labelClassName="text-sm font-medium text-ink-900"
+    >
+      {children}
+    </FormField>
   )
 }
 
