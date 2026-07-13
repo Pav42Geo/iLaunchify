@@ -541,8 +541,15 @@ export function MessagesShell(props: MessagesShellProps) {
       )}
       style={fullScreen ? { minHeight: 480 } : { height: 'calc(100vh - 180px)', minHeight: 480 }}
     >
-      {/* ── rail (LIGHT variant — bg-hero white, hairline dividers) ── */}
-      <div className="flex w-72 flex-none flex-col overflow-y-auto border-r border-ink-200 bg-[var(--bg-hero)]">
+      {/* ── rail (LIGHT variant — bg-hero white, hairline dividers) ──
+          Mobile is single-pane: rail fills the screen until a thread is
+          selected, then the thread pane takes over (← back returns here). */}
+      <div
+        className={cn(
+          'flex-none flex-col overflow-y-auto border-r border-ink-200 bg-[var(--bg-hero)]',
+          props.selected ? 'hidden md:flex md:w-72' : 'flex w-full md:w-72',
+        )}
+      >
         <div className="flex items-center px-s-4 pb-s-1 pt-s-4 text-ui-label text-ink-500">
           Product rooms
         </div>
@@ -609,11 +616,18 @@ export function MessagesShell(props: MessagesShellProps) {
         </p>
       </div>
 
-      {/* ── center: thread ── */}
-      <div className="flex min-w-0 flex-1 flex-col bg-white">
+      {/* ── center: thread (mobile: only when a thread is selected) ── */}
+      <div className={cn('min-w-0 flex-1 flex-col bg-white', props.selected ? 'flex' : 'hidden md:flex')}>
         {props.selected ? (
           <>
             <div className="flex flex-wrap items-center gap-s-3 border-b border-ink-200 px-s-4 py-s-3">
+              <Link
+                href="/messages"
+                aria-label="Back to all conversations"
+                className="flex h-8 w-8 items-center justify-center rounded-pill text-ui-subhead text-ink-600 transition-colors hover:bg-ink-100 md:hidden"
+              >
+                ←
+              </Link>
               {props.headerIcon ? (
                 <span
                   aria-hidden
