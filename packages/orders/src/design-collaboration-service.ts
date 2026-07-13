@@ -44,6 +44,54 @@ export async function resolveDesignerSeatCap(tier: string): Promise<number | nul
   return tier in ladder ? (ladder[tier] ?? 0) : designerSeatCap(tier)
 }
 
+/**
+ * Tier-downgrade sweep (Pavel 2026-07-13: downgrades REVOKE live seats).
+ * Revokes the creator's designer seats above the NEW tier's cap — newest
+ * first, so the longest-running engagements survive. Called from the tier
+ * write SSOT (setCreatorTierWithAudit) on every downgrade; safe to call on
+ * upgrades too (no-op when under the cap).
+ */
+export async function enforceDesignerSeatCapForCreator(
+  creatorUserId: string,
+  newTier: string,
+): Promise<{ revoked: number }> {
+  const cap = await resolveDesignerSeatCap(newTier)
+  if (cap === null) return { revoked: 0 } // unlimited
+
+  const rooms = await prisma.coCreationRoom.findMany({
+    where: { brief: { creator: { userId: creatorUserId } } },
+    select: { id: true },
+  })
+  if (rooms.length === 0) return { revoked: 0 }
+
+  const live = await prisma.designCollaborator.findMany({
+    where: {
+      roomId: { in: rooms.map((r) => r.id) },
+      status: { in: ['INVITED', 'ACTIVE'] },
+    },
+    orderBy: { createdAt: 'asc' }, // oldest engagements survive
+    select: { id: true, invitedEmail: true, roomId: true },
+  })
+  if (live.length <= cap) return { revoked: 0 }
+
+  const toRevoke = live.slice(cap)
+  await prisma.designCollaborator.updateMany({
+    where: { id: { in: toRevoke.map((s) => s.id) } },
+    data: { status: 'REVOKED', revokedAt: new Date(), revokedReason: 'TIER_DOWNGRADE' },
+  })
+  await logAuditAs({ id: creatorUserId, role: 'CREATOR' }, {
+    entityType: 'DesignCollaborator',
+    entityId: toRevoke[0]?.id ?? 'bulk',
+    action: 'DESIGNER_SEATS_TIER_DOWNGRADE_REVOKED',
+    payload: {
+      newTier,
+      cap,
+      revoked: toRevoke.map((s) => ({ seatId: s.id, roomId: s.roomId, email: s.invitedEmail })),
+    },
+  })
+  return { revoked: toRevoke.length }
+}
+
 /** Live per-tier ACTIVE-brief cap (0 = unlimited). */
 export async function resolveActiveBriefCap(tier: string): Promise<number> {
   const s = await getCoCreationSettings()

@@ -84,6 +84,21 @@ export async function setCreatorTierWithAudit(
     },
   })
 
+  // Downgrade sweep (Pavel 2026-07-13): a tier drop REVOKES designer seats
+  // above the new cap — newest seats first, oldest engagements survive.
+  // Dynamic import keeps this barrel client-safe (orders is server-heavy) and
+  // best-effort: a sweep failure must not fail the (already-written) tier
+  // change — the invite gate still blocks over-cap usage.
+  const TIER_RANK: Record<SubscriptionTier, number> = { MAKER: 0, BUILDER: 1, AGENCY: 2 }
+  if (TIER_RANK[input.newTier] < TIER_RANK[existing.subscriptionTier]) {
+    try {
+      const { enforceDesignerSeatCapForCreator } = await import('@ilaunchify/orders')
+      await enforceDesignerSeatCapForCreator(existing.userId, input.newTier.toLowerCase())
+    } catch {
+      /* best-effort — invite gate remains the hard stop */
+    }
+  }
+
   await logAudit({
     entityType: 'CreatorProfile',
     entityId: existing.id,

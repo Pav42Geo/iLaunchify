@@ -140,3 +140,26 @@ are DesignCollaborator, the guest role, and the edit lock.
 - https://www.canva.com/help/roles-and-permissions/
 - https://www.canva.com/learn/approval-process-workflow/
 - https://www.canva.com/solutions/brand-management-tools/
+
+## Downgrade policy (Pavel, 2026-07-13)
+
+**Principle: doors close for NEW work; existing commitments run to completion**
+(same "never strand in-flight work" rule as the module kick-off toggle — a room
+is a commercial engagement with a maker who has committed labor; a plan change
+must never break it).
+
+On Builder/Agency → lower tier:
+- **New briefs:** blocked (D-CC1 tier gate — already enforced in postBrief).
+- **In-flight briefs/rooms:** fully functional to completion — shortlist,
+  select, room chat, submissions, reviews, milestones, CLOSED_WON
+  materialization. No tier gate exists anywhere on the room path, on purpose.
+- **DIY label design:** stays available on every tier (it's the creator's own
+  labor on their own engagement).
+- **Designer seats:** REVOKED above the new tier's cap, newest seats first so
+  the longest-running engagements survive (`enforceDesignerSeatCapForCreator`,
+  wired into `setCreatorTierWithAudit` — fires on admin demotes, Stripe
+  cancellations, and dunning downgrades alike; audit action
+  `DESIGNER_SEATS_TIER_DOWNGRADE_REVOKED`). Best-effort with the invite gate
+  as the hard stop.
+- **Sidebar/briefs index:** stays visible while the creator has briefs in
+  flight (existing `showBriefs` rule) — access recedes only when the work ends.
