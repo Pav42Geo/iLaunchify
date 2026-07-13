@@ -490,6 +490,8 @@ export {
 export type {
   MessagingSide,
   ChatMessageView,
+  ChatHistoryOpts,
+  DirectMessageView,
   RoomThreadSummary,
   ConversationSummary,
   ThreadMemberView,

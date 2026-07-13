@@ -21,8 +21,18 @@
 //   pnpm --filter @ilaunchify/db seed:cocreation-demo
 
 import { PrismaClient, type Prisma } from '@prisma/client'
+// Direct file import (NOT the @ilaunchify/ui barrel) — dielineSvgFromSpec is a
+// pure, React-free module; same pattern as backfill-dieline-normalized-svg.ts.
+import { dielineSvgFromSpec, type DielineSpecInput } from '../../ui/src/canvas/dielineSvg'
+import { uploadFile, dielineNormalizedKey } from '@ilaunchify/storage'
 
 const prisma = new PrismaClient()
+
+function num(v: unknown): number | null {
+  if (v == null) return null
+  const n = typeof v === 'object' && 'toNumber' in (v as object) ? (v as { toNumber(): number }).toNumber() : Number(v)
+  return Number.isFinite(n) ? n : null
+}
 
 const CREATOR_EMAIL = 'georgiev.pavel@gmail.com'
 const MAKER_EMAIL = 'sample-manufacturer@ilaunchify.dev'
@@ -444,6 +454,110 @@ async function main() {
     createdHoursAgo: 96,
   })
 
+  // ── DIY label Studio prerequisites (A8/C6/C7/C9/A10 runtime drive) ────────
+  // resolveRoomLabelStudio gates on: room ACTIVE + PACKAGING APPROVED (seeded
+  // above) + a maker die-line carrying a curated normalizedSvg (D-S2) + the
+  // owner-creator having a brand. Seed both so the Fabric editor is drivable
+  // end-to-end at /rooms/<id>/label without hand-setup.
+
+  // 1) Owner brand — create-if-missing. Legal identity filled so the label's
+  //    responsible-party line (21 CFR 101.5) isn't blocked in the Studio.
+  let brand = await prisma.brand.findFirst({
+    where: { creatorProfileId: creator.id },
+    select: { id: true, name: true },
+  })
+  if (!brand) {
+    brand = await prisma.brand.create({
+      data: {
+        creatorProfileId: creator.id,
+        name: 'Demo Brand Co.',
+        handle: `demo-brand-${creator.id.slice(0, 8)}`,
+        legalName: 'Demo Brand Co. LLC',
+        legalAddressLine1: '100 Demo Way',
+        legalCity: 'Austin',
+        legalState: 'TX',
+        legalPostalCode: '78701',
+        legalCountry: 'US',
+      },
+      select: { id: true, name: true },
+    })
+    console.log(`   + created brand "${brand.name}" (clears the Studio NO_BRAND gate)`)
+  }
+
+  // 2) Maker die-line with a curated normalizedSvg. Prefer an existing ready
+  //    one; else normalize an existing dims-complete one; else create a demo
+  //    sleeve die-line and normalize it — the SAME geometry + upload path as
+  //    backfill-dieline-normalized-svg.ts (A12), so the Curator can later
+  //    overwrite the key cleanly.
+  let dielineReady = await prisma.packagingDieline.findFirst({
+    where: {
+      partnerService: { partnerId: partner.id },
+      status: { in: ['ADMIN_VERIFIED', 'ACTIVE'] },
+      normalizedSvgKey: { not: null },
+      widthMm: { gt: 0 },
+      heightMm: { gt: 0 },
+    },
+    select: { id: true },
+  })
+  if (!dielineReady) {
+    let candidate = await prisma.packagingDieline.findFirst({
+      where: {
+        partnerService: { partnerId: partner.id },
+        status: { in: ['ADMIN_VERIFIED', 'ACTIVE'] },
+        widthMm: { gt: 0 },
+        heightMm: { gt: 0 },
+      },
+      select: { id: true, widthMm: true, heightMm: true, bleedMm: true, trimBox: true, safeAreaBox: true, foldLines: true, surfaces: true },
+    })
+    if (!candidate) {
+      const packagingType = await prisma.packagingType.findFirst({
+        where: { status: 'ACTIVE' },
+        orderBy: { displayName: 'asc' },
+        select: { id: true, displayName: true },
+      })
+      if (!packagingType) throw new Error('No active PackagingType rows — run the packaging-type seed first')
+      candidate = await prisma.packagingDieline.create({
+        data: {
+          partnerServiceId: serviceId,
+          packagingTypeId: packagingType.id,
+          decorationMethod: 'SHRINK_SLEEVE',
+          widthMm: 158, // 12oz slim-can sleeve wrap
+          heightMm: 110,
+          bleedMm: 3,
+          status: 'ACTIVE',
+          partnerConfirmedAt: new Date(),
+        },
+        select: { id: true, widthMm: true, heightMm: true, bleedMm: true, trimBox: true, safeAreaBox: true, foldLines: true, surfaces: true },
+      })
+      console.log(`   + created demo die-line on "${packagingType.displayName}" (158×110mm sleeve)`)
+    }
+    // Normalize + upload the substrate (D-S2). Needs R2_* env — warn honestly
+    // if missing; the Studio then gates with DIELINE_NOT_READY instead of lying.
+    try {
+      const spec: DielineSpecInput = {
+        widthMm: num(candidate.widthMm) ?? 0,
+        heightMm: num(candidate.heightMm) ?? 0,
+        bleedMm: num(candidate.bleedMm) ?? 3,
+        trimBox: (candidate.trimBox as DielineSpecInput['trimBox']) ?? null,
+        safeAreaBox: (candidate.safeAreaBox as DielineSpecInput['safeAreaBox']) ?? null,
+        foldLines: (candidate.foldLines as DielineSpecInput['foldLines']) ?? null,
+        surfaces: (candidate.surfaces as DielineSpecInput['surfaces']) ?? null,
+      }
+      const svg = dielineSvgFromSpec(spec)
+      const key = dielineNormalizedKey({ dielineId: candidate.id })
+      await uploadFile({ key, body: Buffer.from(svg, 'utf8'), contentType: 'image/svg+xml' })
+      await prisma.packagingDieline.update({ where: { id: candidate.id }, data: { normalizedSvgKey: key } })
+      dielineReady = { id: candidate.id }
+      console.log(`   + normalized die-line ${candidate.id} → ${key}`)
+    } catch (e) {
+      console.warn(
+        `   ⚠️  Could not upload the normalized die-line SVG (R2 env missing?) — the Studio will gate with DIELINE_NOT_READY.\n` +
+          `      Set R2_* in .env.local and re-run this seed, or run: pnpm --filter @ilaunchify/db backfill:dieline-svg -- --apply\n` +
+          `      (${e instanceof Error ? e.message : String(e)})`,
+      )
+    }
+  }
+
   console.log(`
 ✅ Seeded 4 demo briefs (2 pool + 2 rooms) — all titled "${DEMO_PREFIX}…"
 
@@ -453,9 +567,11 @@ Play the scenarios:
   S3 Review recipe v2 (creator)    → :3000/rooms/${s3.room.id}
      … same room as maker          → :3002/rooms/${s3.room.id}
   S4 Confirm & create product      → :3000/rooms/${s4.room.id}
+  DIY label Studio (Fabric editor) → :3000/rooms/${s4.room.id}/label${dielineReady ? '' : '   ⚠️ die-line not normalized — see warning above'}
+     … also drivable on S3         → :3000/rooms/${s3.room.id}/label
   Admin oversight                  → :3003/product-builder
 
-Notes: capability-derived niches [${nicheSlugs.join(', ')}] · MOQ floor ${moqFloor} · re-run this seed anytime to reset all Demo rows.`)
+Notes: capability-derived niches [${nicheSlugs.join(', ')}] · MOQ floor ${moqFloor} · brand + normalized die-line seeded for the Studio · re-run this seed anytime to reset all Demo rows.`)
 }
 
 main()

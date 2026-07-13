@@ -78,6 +78,7 @@ export default async function MessagesPage({
   }
 
   let messages: ShellChatMessage[] = []
+  let hasEarlier = false
   let members: ShellMember[] = []
   let attachableObjects: ShellObjectRef[] = []
   let systemEvents: { id: string; kind: string; data: Record<string, unknown>; createdAt: string }[] = []
@@ -86,7 +87,7 @@ export default async function MessagesPage({
   let headerSubtitle = ''
 
   if (selectedRoom) {
-    const [msgs, mems, objects, events, cursor] = await Promise.all([
+    const [history, mems, objects, events, cursor] = await Promise.all([
       listRoomChatMessages(selectedRoom.id),
       getRoomMembers(selectedRoom.id),
       prisma.buildObject.findMany({
@@ -105,8 +106,9 @@ export default async function MessagesPage({
       }),
     ])
     messages = await Promise.all(
-      msgs.map(async (m) => ({ ...m, attachment: await signAttachment(m.attachment) })),
+      history.messages.map(async (m) => ({ ...m, attachment: await signAttachment(m.attachment) })),
     )
+    hasEarlier = history.hasEarlier
     members = mems.map((m) => ({ ...m }))
     systemEvents = events.map((e) => ({
       id: e.id,
@@ -125,8 +127,9 @@ export default async function MessagesPage({
     headerSubtitle = `with ${selectedRoom.counterpartName} · ${mems.length} members`
   } else if (selectedDm) {
     const raw = await listDirectMessages(selectedDm.id)
+    hasEarlier = raw.hasEarlier
     messages = await Promise.all(
-      raw.map(async (m) => ({
+      raw.messages.map(async (m) => ({
         id: m.id,
         authorUserId: m.authorUserId,
         authorName: m.authorUserId === user.id ? 'You' : selectedDm.otherName,
@@ -173,6 +176,7 @@ export default async function MessagesPage({
         attachableObjects={attachableObjects}
         systemEvents={systemEvents}
         lastReadAt={lastReadAt}
+        hasEarlier={hasEarlier}
         onlineMap={onlineMap}
       />
     </div>

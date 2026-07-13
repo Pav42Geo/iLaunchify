@@ -13,6 +13,7 @@ import {
 } from '@ilaunchify/ui'
 import {
   heartbeatAction,
+  loadEarlierMessagesAction,
   markDmReadAction,
   markRoomReadAction,
   sendDmAction,
@@ -36,6 +37,7 @@ export function MessagesClient(props: {
   attachableObjects?: ShellObjectRef[]
   systemEvents?: { id: string; kind: string; data: Record<string, unknown>; createdAt: string }[]
   lastReadAt?: string | null
+  hasEarlier?: boolean
   onlineMap?: Record<string, boolean>
 }) {
   const sel = props.selected
@@ -57,9 +59,11 @@ export function MessagesClient(props: {
       attachableObjects={props.attachableObjects}
       systemEvents={props.systemEvents}
       lastReadAt={props.lastReadAt}
+      hasEarlier={props.hasEarlier}
       fullScreen
       onlineMap={props.onlineMap}
       onHeartbeat={sel ? async (typing) => heartbeatAction(sel, typing) : undefined}
+      onLoadEarlier={sel ? async (beforeId) => loadEarlierMessagesAction(sel, beforeId) : undefined}
       onUploadAttachment={sel ? async (fd) => uploadChatAttachmentAction(sel, fd) : undefined}
       onSendMessage={async (body, objectRef, attachment) => {
         if (!sel) return { ok: false, error: 'No thread selected' }

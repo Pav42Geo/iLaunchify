@@ -109,6 +109,15 @@ export interface MessagesShellProps {
   systemEvents?: RoomShellEvent[]
   /** Read-cursor at page load — anchors the pink "NEW" divider. */
   lastReadAt?: string | null
+  /** Server says older messages exist beyond the initial window. */
+  hasEarlier?: boolean
+  /**
+   * Fetch the page BEFORE the given message id (history pagination). Returns
+   * older messages ascending + whether more remain. Absent = no control shown.
+   */
+  onLoadEarlier?: (
+    beforeId: string,
+  ) => Promise<{ ok: boolean; messages?: ShellChatMessage[]; hasEarlier?: boolean; error?: string }>
   /** Partner mode: where "Invite a teammate" points (existing team settings). */
   inviteHref?: string
   /** Room threads: build objects the composer's ⧉ button can anchor to. */
@@ -276,6 +285,75 @@ export function MessagesShell(props: MessagesShellProps) {
 
   const selectedKey = props.selected ? `${props.selected.kind}:${props.selected.id}` : null
 
+  // ── History cache (pagination, 2026-07-13) ────────────────────────────────
+  // The server always sends the NEWEST window; on refresh the window's oldest
+  // edge slides, so messages the user already saw would vanish mid-scroll.
+  // Cache everything seen for THIS selection (by id — refreshes also re-sign
+  // attachment URLs), plus any "load earlier" pages, and render the union.
+  const [msgCache, setMsgCache] = React.useState<Map<string, ShellChatMessage>>(new Map())
+  const [earlierHasMore, setEarlierHasMore] = React.useState<boolean | null>(null)
+  const [loadingEarlier, setLoadingEarlier] = React.useState(false)
+  const prevScrollHeightRef = React.useRef<number | null>(null)
+  React.useEffect(() => {
+    setMsgCache(new Map())
+    setEarlierHasMore(null)
+    setLoadingEarlier(false)
+  }, [selectedKey])
+  React.useEffect(() => {
+    setMsgCache((prev) => {
+      const next = new Map(prev)
+      for (const m of props.messages) next.set(m.id, m)
+      return next
+    })
+  }, [props.messages])
+
+  const allMessages = React.useMemo(() => {
+    const merged = [...msgCache.values()]
+    for (const m of props.messages) if (!msgCache.has(m.id)) merged.push(m)
+    return merged.sort((a, b) => {
+      const d = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      return d !== 0 ? d : a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+    })
+  }, [msgCache, props.messages])
+
+  const showLoadEarlier = !!props.onLoadEarlier && (earlierHasMore ?? props.hasEarlier ?? false)
+
+  async function loadEarlier() {
+    const onLoadEarlier = props.onLoadEarlier
+    const oldest = allMessages[0]
+    if (!onLoadEarlier || !oldest || loadingEarlier) return
+    setLoadingEarlier(true)
+    try {
+      const res = await onLoadEarlier(oldest.id)
+      if (res.ok && res.messages) {
+        // Anchor the viewport: remember the pre-prepend scroll height so the
+        // layout effect can keep the user's current message in place.
+        prevScrollHeightRef.current = scrollRef.current?.scrollHeight ?? null
+        const older = res.messages
+        setMsgCache((prev) => {
+          const next = new Map(prev)
+          for (const m of older) next.set(m.id, m)
+          return next
+        })
+        setEarlierHasMore(res.hasEarlier ?? false)
+      } else if (!res.ok) {
+        setError(res.error ?? 'Could not load earlier messages')
+      }
+    } finally {
+      setLoadingEarlier(false)
+    }
+  }
+
+  // After a prepend, restore the visual position (new content pushed the old
+  // scrollTop context down by exactly the height delta).
+  React.useLayoutEffect(() => {
+    const el = scrollRef.current
+    const prev = prevScrollHeightRef.current
+    if (!el || prev == null) return
+    prevScrollHeightRef.current = null
+    el.scrollTop += el.scrollHeight - prev
+  }, [allMessages.length])
+
   // Mark the open thread read once per selection, then refresh the badges.
   React.useEffect(() => {
     if (!selectedKey || !props.onMarkRead || markedRef.current === selectedKey) return
@@ -292,11 +370,14 @@ export function MessagesShell(props: MessagesShellProps) {
     return () => clearInterval(t)
   }, [refreshMs, router])
 
-  // Pin the scroll to the newest message.
+  // Pin the scroll to the newest message — keyed on the newest id so prepends
+  // ("load earlier") never yank the viewport to the bottom, while a full
+  // sliding window (length unchanged) still pins on arrival.
+  const newestMsgId = props.messages[props.messages.length - 1]?.id ?? null
   React.useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [props.messages.length, selectedKey])
+  }, [newestMsgId, selectedKey])
 
   // Switching threads drops any half-composed attachment + presence snapshot.
   React.useEffect(() => {
@@ -418,7 +499,7 @@ export function MessagesShell(props: MessagesShellProps) {
     | { t: 'msg'; at: string; msg: ShellChatMessage }
     | { t: 'sys'; at: string; ev: RoomShellEvent }
   const timeline: TimelineItem[] = [
-    ...props.messages.map((m): TimelineItem => ({ t: 'msg', at: m.createdAt, msg: m })),
+    ...allMessages.map((m): TimelineItem => ({ t: 'msg', at: m.createdAt, msg: m })),
     ...(props.systemEvents ?? []).map((e): TimelineItem => ({ t: 'sys', at: e.createdAt, ev: e })),
   ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
 
@@ -433,7 +514,7 @@ export function MessagesShell(props: MessagesShellProps) {
   }
   const newCutoff = newAnchorRef.current?.cutoff ?? Number.POSITIVE_INFINITY
   const firstUnreadId =
-    props.messages.find((m) => {
+    allMessages.find((m) => {
       const mine = m.authorUserId ? m.authorUserId === props.meUserId : m.authorRole === props.mySide
       return !mine && new Date(m.createdAt).getTime() > newCutoff
     })?.id ?? null
@@ -583,6 +664,18 @@ export function MessagesShell(props: MessagesShellProps) {
             </div>
 
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-s-5 py-s-4">
+              {showLoadEarlier ? (
+                <div className="flex justify-center pb-s-2">
+                  <button
+                    type="button"
+                    onClick={() => void loadEarlier()}
+                    disabled={loadingEarlier}
+                    className="rounded-pill border border-ink-200 bg-white px-s-4 py-s-1 text-ui-caption font-semibold text-ink-600 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60"
+                  >
+                    {loadingEarlier ? 'Loading…' : '↑ Load earlier messages'}
+                  </button>
+                </div>
+              ) : null}
               {grouped.length === 0 ? (
                 <p className="py-s-6 text-center text-ui-caption text-ink-400">
                   No messages yet — say hello. {isRoom ? 'The whole room sees this thread.' : ''}

@@ -210,43 +210,83 @@ export async function listConversations(userId: string): Promise<ConversationSum
 // Thread loaders
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function listRoomChatMessages(roomId: string, take = 200): Promise<ChatMessageView[]> {
+/**
+ * Cursor-paginated history window. Always anchored at the NEWEST end (the old
+ * `orderBy asc + take` variant silently returned the OLDEST N and dropped new
+ * messages in long threads). `beforeId` walks backward for "load earlier";
+ * `hasEarlier` tells the shell whether to keep offering it. Tie-safe via the
+ * id tiebreaker on identical createdAt.
+ */
+export interface ChatHistoryOpts {
+  limit?: number
+  /** Message id to page BEFORE (exclusive) — the oldest already-loaded one. */
+  beforeId?: string
+}
+
+export async function listRoomChatMessages(
+  roomId: string,
+  opts: ChatHistoryOpts = {},
+): Promise<{ messages: ChatMessageView[]; hasEarlier: boolean }> {
+  const limit = Math.min(Math.max(opts.limit ?? 80, 1), 200)
   const rows = await prisma.roomMessage.findMany({
     where: { roomId },
-    orderBy: { createdAt: 'asc' },
-    take,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
+    ...(opts.beforeId ? { cursor: { id: opts.beforeId }, skip: 1 } : {}),
   })
-  return rows.map((m) => ({
-    id: m.id,
-    authorRole: m.authorRole,
-    authorUserId: m.authorUserId,
-    authorName: m.authorName,
-    authorRoleLabel: m.authorRoleLabel,
-    body: m.body,
-    objectRef: toObjectRef(m.objectRef),
-    attachment: chatAttachmentFromPayload(m.attachment),
-    createdAt: m.createdAt.toISOString(),
-  }))
+  const hasEarlier = rows.length > limit
+  return {
+    hasEarlier,
+    messages: rows
+      .slice(0, limit)
+      .reverse()
+      .map((m) => ({
+        id: m.id,
+        authorRole: m.authorRole,
+        authorUserId: m.authorUserId,
+        authorName: m.authorName,
+        authorRoleLabel: m.authorRoleLabel,
+        body: m.body,
+        objectRef: toObjectRef(m.objectRef),
+        attachment: chatAttachmentFromPayload(m.attachment),
+        createdAt: m.createdAt.toISOString(),
+      })),
+  }
+}
+
+export interface DirectMessageView {
+  id: string
+  authorUserId: string
+  body: string
+  attachment: ChatAttachment | null
+  createdAt: string
 }
 
 export async function listDirectMessages(
   conversationId: string,
-  take = 200,
-): Promise<
-  { id: string; authorUserId: string; body: string; attachment: ChatAttachment | null; createdAt: string }[]
-> {
+  opts: ChatHistoryOpts = {},
+): Promise<{ messages: DirectMessageView[]; hasEarlier: boolean }> {
+  const limit = Math.min(Math.max(opts.limit ?? 80, 1), 200)
   const rows = await prisma.directMessage.findMany({
     where: { conversationId },
-    orderBy: { createdAt: 'asc' },
-    take,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: limit + 1,
+    ...(opts.beforeId ? { cursor: { id: opts.beforeId }, skip: 1 } : {}),
   })
-  return rows.map((m) => ({
-    id: m.id,
-    authorUserId: m.authorUserId,
-    body: m.body,
-    attachment: chatAttachmentFromPayload(m.attachment),
-    createdAt: m.createdAt.toISOString(),
-  }))
+  const hasEarlier = rows.length > limit
+  return {
+    hasEarlier,
+    messages: rows
+      .slice(0, limit)
+      .reverse()
+      .map((m) => ({
+        id: m.id,
+        authorUserId: m.authorUserId,
+        body: m.body,
+        attachment: chatAttachmentFromPayload(m.attachment),
+        createdAt: m.createdAt.toISOString(),
+      })),
+  }
 }
 
 /**

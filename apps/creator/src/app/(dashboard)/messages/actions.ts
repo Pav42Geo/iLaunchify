@@ -10,6 +10,8 @@ import {
   getOrCreateDmConversation,
   getThreadPresence,
   isConversationParticipant,
+  listDirectMessages,
+  listRoomChatMessages,
   markConversationRead,
   markRoomRead,
   recordHeartbeat,
@@ -18,7 +20,8 @@ import {
   type ChatAttachment,
   type ThreadPresenceView,
 } from '@ilaunchify/orders'
-import { uploadFile, roomChatAttachmentKey, dmChatAttachmentKey } from '@ilaunchify/storage'
+import { uploadFile, roomChatAttachmentKey, dmChatAttachmentKey, getSignedReadUrl } from '@ilaunchify/storage'
+import type { ShellChatMessage } from '@ilaunchify/ui'
 import { z } from 'zod'
 
 export type MessagesActionResult = { ok: boolean; error?: string; warning?: string }
@@ -241,6 +244,68 @@ export async function heartbeatAction(
     select: { userId: true },
   })
   return getThreadPresence(participants.map((p) => p.userId), threadKey)
+}
+
+/** Fail-soft signed URL for a chat attachment (same semantics as the page). */
+async function signAttachment(a: ChatAttachment | null): Promise<ShellChatMessage['attachment']> {
+  if (!a) return null
+  try {
+    const url = await getSignedReadUrl(a.key)
+    return { name: a.name, url, mimeType: a.mimeType, size: a.size }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * History pagination — the page BEFORE `beforeId` (membership-guarded).
+ * Returns shell-shaped messages ascending, attachments pre-signed.
+ */
+export async function loadEarlierMessagesAction(
+  thread: { kind: 'room' | 'dm'; id: string },
+  beforeId: string,
+): Promise<{ ok: boolean; messages?: ShellChatMessage[]; hasEarlier?: boolean; error?: string }> {
+  const user = await requireUser()
+  const cursor = z.string().min(1).max(64).safeParse(beforeId)
+  if (!cursor.success) return { ok: false, error: 'Invalid cursor' }
+
+  if (thread.kind === 'room') {
+    if (!(await ownedRoom(thread.id, user.id))) return { ok: false, error: 'Room not found' }
+    const { messages, hasEarlier } = await listRoomChatMessages(thread.id, { beforeId: cursor.data })
+    return {
+      ok: true,
+      hasEarlier,
+      messages: await Promise.all(
+        messages.map(async (m) => ({ ...m, attachment: await signAttachment(m.attachment) })),
+      ),
+    }
+  }
+
+  if (!(await isConversationParticipant(thread.id, user.id)))
+    return { ok: false, error: 'Conversation not found' }
+  const parts = await prisma.conversationParticipant.findMany({
+    where: { conversationId: thread.id },
+    select: { userId: true, displayName: true, roleLabel: true, side: true },
+  })
+  const other = parts.find((p) => p.userId !== user.id)
+  const { messages, hasEarlier } = await listDirectMessages(thread.id, { beforeId: cursor.data })
+  return {
+    ok: true,
+    hasEarlier,
+    messages: await Promise.all(
+      messages.map(async (m) => ({
+        id: m.id,
+        authorUserId: m.authorUserId,
+        authorName: m.authorUserId === user.id ? 'You' : (other?.displayName ?? 'Collaborator'),
+        authorRoleLabel: m.authorUserId === user.id ? null : (other?.roleLabel ?? null),
+        authorRole: m.authorUserId === user.id ? 'CREATOR' : other?.side === 'PARTNER' ? 'PARTNER' : 'CREATOR',
+        body: m.body,
+        objectRef: null,
+        attachment: await signAttachment(m.attachment),
+        createdAt: m.createdAt,
+      })),
+    ),
+  }
 }
 
 /** Upload a composer file to thread-scoped R2 storage (membership-guarded). */
