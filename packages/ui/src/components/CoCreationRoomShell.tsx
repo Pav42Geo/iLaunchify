@@ -377,7 +377,9 @@ function timeAgo(iso: string): string {
   return `${Math.round(mins / 1440)}d ago`
 }
 
-function eventText(e: RoomShellEvent): string {
+// Exported: MessagesShell interleaves the same decision-log copy as system
+// chips in the chat stream (Rooms & Messages, 2026-07-13) — one vocabulary.
+export function eventText(e: RoomShellEvent): string {
   const by = typeof e.data.by === 'string' ? e.data.by : 'Someone'
   const kind =
     typeof e.data.objectKind === 'string' ? (OBJECT_META[e.data.objectKind]?.name ?? e.data.objectKind) : ''

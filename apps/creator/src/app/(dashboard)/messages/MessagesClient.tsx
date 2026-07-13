@@ -8,6 +8,7 @@ import {
   type ShellConversation,
   type ShellMember,
   type ShellRoomThread,
+  type ShellObjectRef,
   type ProductGradient,
 } from '@ilaunchify/ui'
 import {
@@ -30,6 +31,9 @@ export function MessagesClient(props: {
   headerIcon?: string
   headerGradientKey?: ProductGradient
   roomHref?: string
+  attachableObjects?: ShellObjectRef[]
+  systemEvents?: { id: string; kind: string; data: Record<string, unknown>; createdAt: string }[]
+  lastReadAt?: string | null
 }) {
   const sel = props.selected
   return (
@@ -47,9 +51,15 @@ export function MessagesClient(props: {
       headerIcon={props.headerIcon}
       headerGradientKey={props.headerGradientKey}
       roomHref={props.roomHref}
-      onSendMessage={async (body) => {
+      attachableObjects={props.attachableObjects}
+      systemEvents={props.systemEvents}
+      lastReadAt={props.lastReadAt}
+      fullScreen
+      onSendMessage={async (body, objectRef) => {
         if (!sel) return { ok: false, error: 'No thread selected' }
-        return sel.kind === 'room' ? sendRoomMessageAction(sel.id, body) : sendDmAction(sel.id, body)
+        return sel.kind === 'room'
+          ? sendRoomMessageAction(sel.id, body, objectRef ? { objectId: objectRef.objectId } : undefined)
+          : sendDmAction(sel.id, body)
       }}
       onStartDm={
         sel?.kind === 'room' ? async (otherUserId) => startDmAction(sel.id, otherUserId) : undefined

@@ -11,7 +11,13 @@ import { usePathname } from 'next/navigation'
  *  rooms). Exported so the sidebar + header icon nav share one definition. */
 export function isCoCreationPath(pathname: string | null): boolean {
   if (!pathname) return false
-  return pathname.startsWith('/opportunities') || pathname.startsWith('/rooms')
+  return (
+    pathname.startsWith('/opportunities') ||
+    pathname.startsWith('/rooms') ||
+    // Messages hub lives INSIDE the studio (Pavel 2026-07-13): the sidebar
+    // stays reduced to the tool nav — you leave via the Account menu only.
+    pathname.startsWith('/messages')
+  )
 }
 
 export function CoCreationSublabel() {

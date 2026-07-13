@@ -20,6 +20,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { cn } from '../lib/utils'
 import { productGradient, type ProductGradient } from '../tokens/colors'
+import { eventText, type RoomShellEvent } from './CoCreationRoomShell'
 
 // ── data contracts (mirror @ilaunchify/orders messaging views) ──────────────
 
@@ -63,6 +64,13 @@ export interface ShellMember {
 
 export type ShellResult = { ok: boolean; error?: string }
 
+export interface ShellObjectRef {
+  kind: string
+  objectId: string
+  title: string
+  subtitle?: string
+}
+
 export interface MessagesShellProps {
   mode: 'creator' | 'partner'
   meUserId: string
@@ -81,14 +89,25 @@ export interface MessagesShellProps {
   headerGradientKey?: ProductGradient
   /** Deep link to the full collaboration room (room threads). */
   roomHref?: string
+  /** Room decision-log events, interleaved as system chips in the stream. */
+  systemEvents?: RoomShellEvent[]
+  /** Read-cursor at page load — anchors the pink "NEW" divider. */
+  lastReadAt?: string | null
   /** Partner mode: where "Invite a teammate" points (existing team settings). */
   inviteHref?: string
-  onSendMessage: (body: string) => Promise<ShellResult>
+  /** Room threads: build objects the composer's ⧉ button can anchor to. */
+  attachableObjects?: ShellObjectRef[]
+  onSendMessage: (body: string, objectRef?: ShellObjectRef) => Promise<ShellResult>
   /** Members panel "Message" → find-or-create the 1:1 thread, returns its id. */
   onStartDm?: (otherUserId: string) => Promise<{ ok: boolean; conversationId?: string; error?: string }>
   onMarkRead?: () => Promise<void>
   /** Poll interval for live updates (ms); 0 disables. */
   refreshMs?: number
+  /**
+   * Studio mode (Pavel 2026-07-13): the hub fills the viewport below the
+   * topbar as a workspace — no rounded frame — matching the rooms pages.
+   */
+  fullScreen?: boolean
 }
 
 // ── small pieces ─────────────────────────────────────────────────────────────
@@ -178,8 +197,26 @@ export function MessagesShell(props: MessagesShellProps) {
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [mentionQuery, setMentionQuery] = React.useState<string | null>(null)
+  const [pendingAttach, setPendingAttach] = React.useState<ShellObjectRef | null>(null)
+  const [attachOpen, setAttachOpen] = React.useState(false)
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const markedRef = React.useRef<string | null>(null)
+  const rootRef = React.useRef<HTMLDivElement>(null)
+
+  // Studio mode: pin the workspace to the viewport bottom (same mechanic as
+  // CoCreationRoomShell fullScreen — measure the top edge, fill the rest).
+  const fullScreen = props.fullScreen ?? false
+  React.useEffect(() => {
+    if (!fullScreen) return
+    const el = rootRef.current
+    if (!el) return
+    const update = () => {
+      el.style.height = `${window.innerHeight - el.getBoundingClientRect().top}px`
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [fullScreen])
 
   const selectedKey = props.selected ? `${props.selected.kind}:${props.selected.id}` : null
 
@@ -205,14 +242,22 @@ export function MessagesShell(props: MessagesShellProps) {
     if (el) el.scrollTop = el.scrollHeight
   }, [props.messages.length, selectedKey])
 
+  // Switching threads drops any half-composed attachment.
+  React.useEffect(() => {
+    setPendingAttach(null)
+    setAttachOpen(false)
+  }, [selectedKey])
+
   async function send() {
     const body = draft.trim()
     if (!body || busy) return
     setBusy(true)
     setError(null)
-    const res = await props.onSendMessage(body)
+    const res = await props.onSendMessage(body, pendingAttach ?? undefined)
     if (res.ok) {
       setDraft('')
+      setPendingAttach(null)
+      setAttachOpen(false)
       router.refresh()
     } else {
       setError(res.error ?? 'Message failed to send')
@@ -250,19 +295,54 @@ export function MessagesShell(props: MessagesShellProps) {
   const creatorMembers = props.members.filter((m) => m.side === 'CREATOR')
   const partnerMembers = props.members.filter((m) => m.side === 'PARTNER')
 
-  // Group consecutive messages under day dividers.
-  const grouped: { day: string; items: ShellChatMessage[] }[] = []
-  for (const m of props.messages) {
-    const day = dayLabel(m.createdAt)
+  // Merge chat messages + decision-log events into ONE timeline (prototype:
+  // "funded Milestone 1" sits between messages), sorted by time.
+  type TimelineItem =
+    | { t: 'msg'; at: string; msg: ShellChatMessage }
+    | { t: 'sys'; at: string; ev: RoomShellEvent }
+  const timeline: TimelineItem[] = [
+    ...props.messages.map((m): TimelineItem => ({ t: 'msg', at: m.createdAt, msg: m })),
+    ...(props.systemEvents ?? []).map((e): TimelineItem => ({ t: 'sys', at: e.createdAt, ev: e })),
+  ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+
+  // Pink "NEW" divider — anchored to the read cursor AS OF FIRST RENDER of
+  // this selection, so marking-read + refresh doesn't erase it mid-session.
+  const newAnchorRef = React.useRef<{ key: string; cutoff: number } | null>(null)
+  if (selectedKey && newAnchorRef.current?.key !== selectedKey) {
+    newAnchorRef.current = {
+      key: selectedKey,
+      cutoff: props.lastReadAt ? new Date(props.lastReadAt).getTime() : Number.POSITIVE_INFINITY,
+    }
+  }
+  const newCutoff = newAnchorRef.current?.cutoff ?? Number.POSITIVE_INFINITY
+  const firstUnreadId =
+    props.messages.find((m) => {
+      const mine = m.authorUserId ? m.authorUserId === props.meUserId : m.authorRole === props.mySide
+      return !mine && new Date(m.createdAt).getTime() > newCutoff
+    })?.id ?? null
+
+  // Group the merged timeline under day dividers.
+  const grouped: { day: string; items: TimelineItem[] }[] = []
+  for (const item of timeline) {
+    const day = dayLabel(item.at)
     const last = grouped[grouped.length - 1]
-    if (last && last.day === day) last.items.push(m)
-    else grouped.push({ day, items: [m] })
+    if (last && last.day === day) last.items.push(item)
+    else grouped.push({ day, items: [item] })
   }
 
   const isRoom = props.selected?.kind === 'room'
 
   return (
-    <div className="flex overflow-hidden rounded-xl border border-ink-200 bg-white shadow-sm" style={{ height: 'calc(100vh - 180px)', minHeight: 480 }}>
+    <div
+      ref={rootRef}
+      className={cn(
+        'flex overflow-hidden bg-white',
+        fullScreen
+          ? 'border-t border-ink-200'
+          : 'rounded-xl border border-ink-200 shadow-sm',
+      )}
+      style={fullScreen ? { minHeight: 480 } : { height: 'calc(100vh - 180px)', minHeight: 480 }}
+    >
       {/* ── rail (LIGHT variant — bg-hero white, hairline dividers) ── */}
       <div className="flex w-72 flex-none flex-col overflow-y-auto border-r border-ink-200 bg-[var(--bg-hero)]">
         <div className="flex items-center px-s-4 pb-s-1 pt-s-4 text-ui-label text-ink-500">
@@ -355,6 +435,14 @@ export function MessagesShell(props: MessagesShellProps) {
                 </p>
               </div>
               <span className="flex-1" />
+              {props.roomHref && isRoom ? (
+                <Link
+                  href={props.roomHref}
+                  className="rounded-pill border border-ink-300 bg-white px-s-4 py-s-2 text-ui-caption font-semibold text-ink-700 transition-colors hover:bg-ink-50"
+                >
+                  Build objects
+                </Link>
+              ) : null}
               {props.roomHref ? (
                 <Link
                   href={props.roomHref}
@@ -378,12 +466,30 @@ export function MessagesShell(props: MessagesShellProps) {
                       {g.day}
                     </span>
                   </div>
-                  {g.items.map((m) => {
+                  {g.items.map((item) => {
+                    if (item.t === 'sys') {
+                      return (
+                        <div key={`sys-${item.ev.id}`} className="my-s-2 flex justify-center">
+                          <span className="max-w-[85%] rounded-pill border border-ink-100 bg-ink-50 px-s-3 py-s-1 text-center text-ui-label normal-case tracking-normal text-ink-500">
+                            {eventText(item.ev)}
+                          </span>
+                        </div>
+                      )
+                    }
+                    const m = item.msg
                     const mine = m.authorUserId
                       ? m.authorUserId === props.meUserId
                       : m.authorRole === props.mySide
                     return (
-                      <div key={m.id} className={cn('flex py-s-1', mine ? 'justify-end' : 'justify-start')}>
+                      <React.Fragment key={m.id}>
+                      {m.id === firstUnreadId ? (
+                        <div className="my-s-2 flex items-center gap-s-2" aria-label="New messages">
+                          <span aria-hidden className="h-px flex-1 bg-pink-300" />
+                          <span className="text-ui-label font-bold tracking-wide text-pink-600">NEW</span>
+                          <span aria-hidden className="h-px flex-1 bg-pink-300" />
+                        </div>
+                      ) : null}
+                      <div className={cn('flex py-s-1', mine ? 'justify-end' : 'justify-start')}>
                         <div className={cn('max-w-[78%]', mine ? 'text-right' : 'text-left')}>
                           <div className={cn('flex items-baseline gap-s-2', mine ? 'justify-end' : '')}>
                             <span className="text-ui-caption font-bold text-ink-900">
@@ -431,6 +537,7 @@ export function MessagesShell(props: MessagesShellProps) {
                           ) : null}
                         </div>
                       </div>
+                      </React.Fragment>
                     )
                   })}
                 </React.Fragment>
@@ -466,7 +573,68 @@ export function MessagesShell(props: MessagesShellProps) {
                   ))}
                 </div>
               ) : null}
+              {/* ⧉ object picker popover */}
+              {attachOpen && (props.attachableObjects?.length ?? 0) > 0 ? (
+                <div className="absolute bottom-full right-s-5 z-10 mb-s-1 w-80 overflow-hidden rounded-lg border border-ink-200 bg-white shadow-lg">
+                  <p className="border-b border-ink-100 px-s-3 py-s-2 text-ui-label text-ink-500">
+                    Anchor this message to a build object
+                  </p>
+                  {props.attachableObjects!.map((o) => (
+                    <button
+                      key={o.objectId}
+                      type="button"
+                      onClick={() => {
+                        setPendingAttach(o)
+                        setAttachOpen(false)
+                      }}
+                      className="flex w-full items-center gap-s-2 px-s-3 py-s-2 text-left hover:bg-pink-50"
+                    >
+                      <span className="flex h-7 w-7 flex-none items-center justify-center rounded-md bg-ink-900 text-ui-label tracking-normal text-white">
+                        ⧉
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-ui-caption font-semibold text-ink-900">{o.title}</span>
+                        {o.subtitle ? (
+                          <span className="block truncate text-ui-label normal-case tracking-normal text-ink-500">
+                            {o.subtitle}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {/* pending attachment chip */}
+              {pendingAttach ? (
+                <div className="mb-s-1 inline-flex items-center gap-s-2 rounded-pill border border-pink-100 bg-pink-50 px-s-3 py-s-1 text-ui-label tracking-normal text-pink-700">
+                  ⧉ {pendingAttach.title}
+                  <button
+                    type="button"
+                    onClick={() => setPendingAttach(null)}
+                    aria-label="Remove attached object"
+                    className="text-pink-700 hover:text-pink-800"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
               <div className="flex items-end gap-s-2 rounded-xl border border-ink-200 bg-ink-50 px-s-3 py-s-2 transition-colors focus-within:border-pink-500 focus-within:bg-white">
+                {isRoom && (props.attachableObjects?.length ?? 0) > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setAttachOpen((v) => !v)}
+                    title="Reference a build object"
+                    aria-label="Reference a build object"
+                    className={cn(
+                      'flex h-8 w-8 flex-none items-center justify-center rounded-pill transition-colors',
+                      attachOpen || pendingAttach
+                        ? 'bg-ink-900 text-white'
+                        : 'text-ink-500 hover:bg-ink-100 hover:text-ink-900',
+                    )}
+                  >
+                    ⧉
+                  </button>
+                ) : null}
                 <textarea
                   value={draft}
                   onChange={(e) => onDraftChange(e.target.value)}

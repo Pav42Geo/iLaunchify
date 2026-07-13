@@ -20,6 +20,35 @@ export type MessagesActionResult = { ok: boolean; error?: string }
 
 const BodySchema = z.string().trim().min(1).max(4000)
 
+// ⧉ object anchor — only the id is trusted from the client; title/subtitle are
+// re-derived server-side from the room's own object so a message can never
+// carry a spoofed card.
+const ObjectRefSchema = z.object({ objectId: z.string().min(1).max(64) })
+
+const KIND_LABEL: Record<string, string> = {
+  RECIPE: 'Recipe',
+  PACKAGING: 'Packaging',
+  LABEL: 'Label',
+  SAMPLE: 'Sample',
+  SPEC_SHEET: 'Spec sheet',
+}
+
+/** Resolve a client-picked object id into a trusted objectRef (or null). */
+async function trustedObjectRef(roomId: string, objectId: string) {
+  const obj = await prisma.buildObject.findFirst({
+    where: { id: objectId, roomId },
+    select: { id: true, kind: true, status: true, currentVersion: true },
+  })
+  if (!obj) return null
+  const label = KIND_LABEL[obj.kind as string] ?? obj.kind
+  return {
+    kind: obj.kind as string,
+    objectId: obj.id,
+    title: `${label} v${obj.currentVersion}`,
+    subtitle: (obj.status as string).replace(/_/g, ' ').toLowerCase(),
+  }
+}
+
 /** Room this creator owns (via brief) or null. */
 async function ownedRoom(roomId: string, userId: string) {
   return prisma.coCreationRoom.findFirst({
@@ -34,6 +63,7 @@ async function ownedRoom(roomId: string, userId: string) {
 export async function sendRoomMessageAction(
   roomId: string,
   rawBody: string,
+  rawObjectRef?: { objectId: string },
 ): Promise<MessagesActionResult> {
   const user = await requireUser()
   const parsed = BodySchema.safeParse(rawBody)
@@ -41,6 +71,14 @@ export async function sendRoomMessageAction(
 
   const room = await ownedRoom(roomId, user.id)
   if (!room) return { ok: false, error: 'Room not found' }
+
+  let objectRef: Awaited<ReturnType<typeof trustedObjectRef>> = null
+  if (rawObjectRef) {
+    const refParsed = ObjectRefSchema.safeParse(rawObjectRef)
+    if (!refParsed.success) return { ok: false, error: 'Invalid object reference' }
+    objectRef = await trustedObjectRef(roomId, refParsed.data.objectId)
+    if (!objectRef) return { ok: false, error: 'That object is not in this room' }
+  }
 
   const members = await getRoomMembers(roomId)
   const res = await sendRoomChatMessage({
@@ -52,6 +90,7 @@ export async function sendRoomMessageAction(
       side: 'CREATOR',
     },
     body: parsed.data,
+    ...(objectRef ? { objectRef } : {}),
     notifyUserIds: members.filter((m) => m.side === 'PARTNER').map((m) => m.userId),
     roomTitle: room.brief.title,
   })

@@ -18,7 +18,10 @@ export function isCoCreationPath(pathname: string | null): boolean {
   return (
     pathname.startsWith('/products/new/brief') ||
     pathname.startsWith('/briefs') ||
-    pathname.startsWith('/rooms')
+    pathname.startsWith('/rooms') ||
+    // Messages hub lives INSIDE the studio (Pavel 2026-07-13): the sidebar
+    // stays reduced to the tool nav — you leave via the Account menu only.
+    pathname.startsWith('/messages')
   )
 }
 
