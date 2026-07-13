@@ -33,6 +33,9 @@ import {
   decideDesignReviewAction,
   setAutoApproveAction,
 } from './design-team-actions'
+// 1:1 floating chats (Pavel 2026-07-13): Members tab starts a DM via the SAME
+// action the hub uses; the shell docks the conversation as a mini window.
+import { startDmAction } from '../../messages/actions'
 
 export function RoomClient(props: {
   roomId: string
@@ -76,6 +79,8 @@ export function RoomClient(props: {
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
   messages: RoomShellMessage[]
+  /** Room members (viewer excluded) — Members tab + 1:1 floating chats. */
+  chatMembers?: { userId: string; name: string; roleLabel: string; side: 'CREATOR' | 'PARTNER' }[]
 }) {
   const router = useRouter()
   const refresh = <T extends { ok: boolean }>(p: Promise<T>) =>
@@ -124,6 +129,8 @@ export function RoomClient(props: {
         refresh(creatorComment(props.roomId, objectId, body, anchor))
       }
       onMessage={(body) => refresh(creatorMessage(props.roomId, body))}
+      chatMembers={props.chatMembers}
+      onStartDm={(otherUserId) => startDmAction(props.roomId, otherUserId)}
       onAgreeMilestoneTerms={(milestoneId) =>
         refresh(creatorAgreeMilestoneTerms(props.roomId, milestoneId))
       }

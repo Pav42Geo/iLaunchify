@@ -4,6 +4,8 @@ import { notFound, redirect } from 'next/navigation'
 import {
   resolveRoomRecipeLabel,
   isLabelProofPayload,
+  getRoomMembers,
+  listRoomChatMessages,
   CREATOR_RATING_DIMENSIONS,
 } from '@ilaunchify/orders'
 import { getSignedReadUrl } from '@ilaunchify/storage'
@@ -144,6 +146,37 @@ export default async function PartnerRoomPage({
         }
       : undefined
 
+  // Members tab + 1:1 floating chats — viewer excluded (you don't DM yourself).
+  const chatMembers = (await getRoomMembers(room.id).catch(() => []))
+    .filter((m) => m.userId !== user.id)
+    .map((m) => ({ userId: m.userId, name: m.name, roleLabel: m.roleLabel, side: m.side }))
+
+  // Rail Messages tab = MIRROR of the fullscreen hub (Pavel 2026-07-13): the
+  // SAME loader (newest window, author snapshots, signed attachments), so the
+  // rail and /messages can never look like two different conversations.
+  const railHistory = await listRoomChatMessages(room.id, { limit: 80 })
+  const railMessages = await Promise.all(
+    railHistory.messages.map(async (m) => ({
+      id: m.id,
+      authorRole: m.authorRole,
+      body: m.body,
+      createdAt: m.createdAt,
+      authorUserId: m.authorUserId,
+      authorName: m.authorUserId === user.id ? 'You' : m.authorName,
+      authorRoleLabel: m.authorRoleLabel,
+      objectRef: m.objectRef ? { kind: m.objectRef.kind, objectId: m.objectRef.objectId, title: m.objectRef.title } : null,
+      attachment: await (async () => {
+        if (!m.attachment) return null
+        try {
+          const url = await getSignedReadUrl(m.attachment.key)
+          return { name: m.attachment.name, url }
+        } catch {
+          return null
+        }
+      })(),
+    })),
+  )
+
   return (
     <>
       {/* Maker journey stepper — mb-0: the room's white top bar sits flush. */}
@@ -163,6 +196,7 @@ export default async function PartnerRoomPage({
       rooms={switcherRooms}
       recipeLabels={recipeLabels}
       rating={ratingProp}
+      chatMembers={chatMembers}
       briefDomain={room.brief.category}
       briefTitle={room.brief.title}
       briefNicheSlug={room.brief.nicheSlug}
@@ -202,12 +236,7 @@ export default async function PartnerRoomPage({
         data: (e.data ?? {}) as Record<string, unknown>,
         createdAt: e.createdAt.toISOString(),
       }))}
-      messages={room.messages.map((m) => ({
-        id: m.id,
-        authorRole: m.authorRole,
-        body: m.body,
-        createdAt: m.createdAt.toISOString(),
-      }))}
+      messages={railMessages}
       />
       </div>
     </>

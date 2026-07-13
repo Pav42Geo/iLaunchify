@@ -16,6 +16,7 @@ import Link from 'next/link'
 import type { PanelData } from '@ilaunchify/types'
 import { Button } from '../primitives/button'
 import { Input } from '../primitives/input'
+import { dockThread } from './MessagesDock'
 import { Textarea } from '../primitives/textarea'
 import { Checkbox } from '../primitives/checkbox'
 import {
@@ -98,6 +99,14 @@ export interface RoomShellMessage {
   authorRole: string
   body: string
   createdAt: string
+  // Rich fields (Pavel 2026-07-13): the rail MIRRORS the fullscreen hub — one
+  // thread, one presentation. Pages populate these via listRoomChatMessages
+  // (the hub's loader); legacy rows without them fall back to role names.
+  authorUserId?: string | null
+  authorName?: string | null
+  authorRoleLabel?: string | null
+  attachment?: { name: string; url: string } | null
+  objectRef?: { kind: string; objectId: string; title: string } | null
 }
 
 type Result = { ok: boolean; error?: string }
@@ -163,6 +172,14 @@ export interface CoCreationRoomShellProps {
   onReopen: (objectId: string) => Promise<Result>
   onComment: (objectId: string, body: string, anchor?: string) => Promise<Result>
   onMessage: (body: string) => Promise<Result>
+  /**
+   * Room members for the Messages rail's 1:1 launcher (Pavel 2026-07-13) —
+   * the viewer excluded by the page. Picking one starts (or finds) the DM and
+   * docks it as a FLOATING mini-chat window, so the private conversation runs
+   * beside the open room. Absent = no launcher.
+   */
+  chatMembers?: { userId: string; name: string; roleLabel: string; side: 'CREATOR' | 'PARTNER' }[]
+  onStartDm?: (otherUserId: string) => Promise<{ ok: boolean; conversationId?: string; error?: string }>
   /** Creator-only: recipe approved + room active → offer "confirm & create product". */
   canCloseWon?: boolean
   onCloseWon?: () => Promise<Result>
@@ -495,7 +512,9 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
       ? props.initialObjectId
       : (objects[0]?.id ?? ''),
   )
-  const [rightTab, setRightTab] = React.useState<'activity' | 'messages'>('activity')
+  // Messages is the DEFAULT tab (Pavel 2026-07-13) — the conversation is the
+  // room's pulse; the hub's ⊟ collapse (?chat=1) therefore lands straight in it.
+  const [rightTab, setRightTab] = React.useState<'activity' | 'messages' | 'members'>('messages')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   /** Milestone row whose terms panel is expanded. */
@@ -754,8 +773,12 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
           <div className="flex border-b border-ink-100">
             {(
               [
-                ['activity', 'Activity log'],
+                // Tab order locked (Pavel 2026-07-13): Messages · Members · Activity log
                 ['messages', 'Messages'],
+                ...(props.chatMembers && props.chatMembers.length > 0
+                  ? ([['members', 'Members']] as const)
+                  : []),
+                ['activity', 'Activity log'],
               ] as const
             ).map(([t, label]) => (
               <button
@@ -792,6 +815,8 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
                 ))
               )}
             </div>
+          ) : rightTab === 'members' ? (
+            <MembersRail chatMembers={props.chatMembers ?? []} onStartDm={props.onStartDm} />
           ) : (
             <MessagesRail
               messages={props.messages}
@@ -3866,6 +3891,89 @@ function ObjectThread({
   )
 }
 
+/**
+ * Members tab (Pavel 2026-07-13) — everyone in the room with their specialist
+ * label, grouped by side. "Message" starts (or finds) the 1:1 DM and docks it
+ * as a FLOATING mini-chat window, so the private conversation runs beside the
+ * open room.
+ */
+function MembersRail({
+  chatMembers,
+  onStartDm,
+}: {
+  chatMembers: { userId: string; name: string; roleLabel: string; side: 'CREATOR' | 'PARTNER' }[]
+  onStartDm?: (otherUserId: string) => Promise<{ ok: boolean; conversationId?: string; error?: string }>
+}) {
+  const [dmBusy, setDmBusy] = React.useState<string | null>(null)
+  const [dmError, setDmError] = React.useState<string | null>(null)
+
+  async function startFloatingDm(m: { userId: string; name: string }) {
+    if (!onStartDm || dmBusy) return
+    setDmBusy(m.userId)
+    setDmError(null)
+    const res = await onStartDm(m.userId)
+    setDmBusy(null)
+    if (res.ok && res.conversationId) {
+      dockThread({ kind: 'dm', id: res.conversationId, title: m.name })
+    } else {
+      setDmError(res.error ?? 'Could not start the chat')
+    }
+  }
+
+  const groups: ['CREATOR' | 'PARTNER', string][] = [
+    ['CREATOR', 'Creator side'],
+    ['PARTNER', 'Maker team'],
+  ]
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto p-s-4">
+      {dmError ? (
+        <p className="mb-s-2 text-ui-label normal-case tracking-normal text-danger-600">{dmError}</p>
+      ) : null}
+      {groups.map(([side, label]) => {
+        const rows = chatMembers.filter((m) => m.side === side)
+        if (rows.length === 0) return null
+        return (
+          <div key={side} className="mb-s-4">
+            <div className="mb-s-2 text-ui-label uppercase text-ink-500">{label}</div>
+            {rows.map((m) => (
+              <div key={m.userId} className="mb-s-2 flex items-center gap-s-2">
+                <span
+                  className={cn(
+                    'flex h-7 w-7 flex-none items-center justify-center rounded-pill text-[10px] font-bold',
+                    side === 'CREATOR' ? 'bg-pink-100 text-pink-800' : 'bg-info-50 text-info-700',
+                  )}
+                >
+                  {m.name.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-ui-caption font-semibold text-ink-900">{m.name}</span>
+                  <span className="block truncate text-ui-label normal-case tracking-normal text-ink-500">
+                    {m.roleLabel}
+                  </span>
+                </span>
+                {onStartDm ? (
+                  <button
+                    type="button"
+                    disabled={dmBusy !== null}
+                    onClick={() => void startFloatingDm(m)}
+                    className="rounded-pill border border-ink-200 bg-white px-s-3 py-s-1 text-ui-label font-semibold normal-case tracking-normal text-ink-600 transition-colors hover:bg-ink-50 disabled:opacity-50"
+                  >
+                    {dmBusy === m.userId ? '…' : 'Message'}
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )
+      })}
+      <p className="text-ui-label normal-case tracking-normal text-ink-400">
+        Private chats open as floating windows — the room stays put.
+      </p>
+    </div>
+  )
+}
+
 function MessagesRail({
   messages,
   mode,
@@ -3897,20 +4005,59 @@ function MessagesRail({
           </p>
         ) : (
           messages.map((m) => {
-            const mine = m.authorRole === meRole
+            // Per-USER mine detection (mirrors the hub): the page maps the
+            // viewer's own rows to authorName 'You'; a teammate on the same
+            // side is NOT "mine". Legacy rows without names fall back to role.
+            const mine = m.authorName === 'You' || (m.authorName == null && m.authorRole === meRole)
             return (
               <div key={m.id} className={cn('mb-s-3 flex gap-s-2', mine && 'flex-row-reverse')}>
                 <AuthorAvatar role={m.authorRole} />
-                <div
-                  className={cn(
-                    'max-w-[80%] rounded-lg px-s-3 py-s-2 text-ui-caption',
-                    mine ? 'bg-pink-50' : 'bg-ink-100',
-                  )}
-                >
-                  <div className="text-ui-label normal-case tracking-normal text-ink-500">
-                    {m.authorRole === 'CREATOR' ? creatorName : partnerName}
+                <div className={cn('max-w-[80%]', mine ? 'text-right' : 'text-left')}>
+                  {/* Mirror of the fullscreen hub: member name + specialist
+                      role badge on every message — one thread, one look. */}
+                  <div className={cn('flex items-baseline gap-s-1', mine && 'justify-end')}>
+                    <span className="truncate text-ui-label font-bold normal-case tracking-normal text-ink-900">
+                      {mine ? 'You' : (m.authorName ?? (m.authorRole === 'CREATOR' ? creatorName : partnerName))}
+                    </span>
+                    {!mine && m.authorRoleLabel ? (
+                      <span
+                        className={cn(
+                          'rounded-pill px-s-1 text-[9px] font-bold',
+                          m.authorRole === 'CREATOR' ? 'bg-pink-50 text-pink-700' : 'bg-info-50 text-info-700',
+                        )}
+                      >
+                        {m.authorRoleLabel}
+                      </span>
+                    ) : null}
                   </div>
-                  {m.body}
+                  {m.body ? (
+                    <div
+                      className={cn(
+                        'mt-0.5 whitespace-pre-wrap break-words rounded-lg px-s-3 py-s-2 text-ui-caption',
+                        mine ? 'bg-pink-50' : 'bg-ink-100',
+                      )}
+                    >
+                      {m.body}
+                    </div>
+                  ) : null}
+                  {m.attachment ? (
+                    <a
+                      href={m.attachment.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-0.5 inline-block max-w-full truncate rounded-lg border border-ink-200 bg-white px-s-2 py-s-1 text-ui-label normal-case tracking-normal text-info-700 hover:bg-ink-50"
+                    >
+                      📎 {m.attachment.name}
+                    </a>
+                  ) : null}
+                  {m.objectRef ? (
+                    <a
+                      href={`?object=${m.objectRef.objectId}`}
+                      className="mt-0.5 inline-block max-w-full truncate rounded-lg border border-pink-200 bg-pink-50 px-s-2 py-s-1 text-ui-label font-semibold normal-case tracking-normal text-pink-700 hover:bg-pink-100"
+                    >
+                      ⧉ {m.objectRef.title}
+                    </a>
+                  ) : null}
                 </div>
               </div>
             )
