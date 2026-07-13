@@ -42,6 +42,24 @@ export function designAlternateCap(tier: string): number | null {
     : DESIGN_ALTERNATE_CAPS.maker
 }
 
+// -----------------------------------------------------------------------------
+// Shared Design Workspace D-W2 (LOCKED 2026-07-13): concurrent invited-designer
+// seats per creator tier — same ladder philosophy as alternates. null = unlimited.
+// -----------------------------------------------------------------------------
+
+export const DESIGNER_SEAT_CAPS: Record<'maker' | 'builder' | 'agency', number | null> = {
+  maker: 1,
+  builder: 2,
+  agency: 5,
+}
+
+/** Max concurrent designer seats (INVITED + ACTIVE) for a creator tier. */
+export function designerSeatCap(tier: string): number | null {
+  return tier in DESIGNER_SEAT_CAPS
+    ? DESIGNER_SEAT_CAPS[tier as keyof typeof DESIGNER_SEAT_CAPS]
+    : DESIGNER_SEAT_CAPS.maker
+}
+
 export type CreatorPlanCode =
   (typeof CREATOR_PLAN_CODES)[keyof typeof CREATOR_PLAN_CODES]
 export type PartnerPlanCode =

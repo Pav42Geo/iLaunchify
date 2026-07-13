@@ -73,3 +73,14 @@ On the LABEL object card: a **"Design the label"** button visible when PACKAGING
 ## Known adjacent issue (not this feature)
 
 `packages/orders/src/messaging.ts` (Cowork's, lines ~373 & ~511) fails `tsc`: `ChatAttachment` lacks an index signature → not assignable to Prisma's `InputJsonValue` when writing `RoomMessage.attachment`/`DirectMessage.attachment`. One-line fix (`attachment as Prisma.InputJsonValue` or add `[k:string]:unknown`). Left to Cowork — it's their file. Blocks a clean `@ilaunchify/orders` / creator-app typecheck until fixed.
+
+## DECISIONS LOCKED (Pavel, 2026-07-13 — recorded by Cowork)
+
+- **D-S1 — Window mode:** Studio opens in a NEW TAB (route `/rooms/[roomId]/label`, full-screen; the room stays alive behind it).
+- **D-S2 — Substrate:** the PACKAGING-pinned die-line's `normalizedSvg`, always. DIY honestly blocked ("the maker's die-line is being prepared") when no curated normalized artifact exists.
+- **D-S3 — Review inversion:** whoever did NOT submit the current LABEL version reviews it — a self-designed proof is approved by the MAKER (printability), a maker-submitted label by the creator.
+- **D-S4 — Serial candidates:** the room sees ONE proof at a time; exploration lives in Studio Alternates (tier caps Maker 2 / Builder 5 / Agency ∞). Side-by-side candidate review = additive V1.5.
+- **D-S5 — Scope:** V1 = label-on-dieline only. Structural packaging design stays the maker's domain.
+- **D-S6 — Maker design service:** a future DESIGN milestone kind priced via the existing terms flow; NOT built now.
+
+Status updates same day: Cowork's LABEL viewer + "Design the label" affordance BUILT (proof renders from `payload.svgKey` with pins overlaid, both apps; affordance gated on PACKAGING APPROVED, creator mode, links `/rooms/[roomId]/label`). The messaging.ts `InputJsonValue` blocker below is FIXED. Shared-workspace layer (invited designer): docs/SHARED_DESIGN_WORKSPACE_SPEC.md — D-W1…D-W6 locked, W0 substrate built (`DesignCollaborator`, `Design.roomId` soft FK, `UserRole.DESIGNER`, seat caps, pure access + edit-lock engine). Slice 3 note for Code: `Design.roomId` exists; relaxing `Design.productId` to optional remains YOUR call in the room adapter.

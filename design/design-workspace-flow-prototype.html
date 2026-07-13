@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iLaunchify — DIY Design + Shared Workspace: flow & decisions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-300:#FF7FA8;--pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;
+    --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;--ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-900:#18181A;
+    --success-50:#E7F4EC;--success-500:#1E7C4A;--success-700:#135733;
+    --warning-50:#FFF4E2;--warning-500:#B45309;
+    --info-50:#E8F1FB;--info-500:#1F5BA8;
+    --danger-50:#FBE8E7;--danger-600:#A62A26;
+    --sans:'Inter',system-ui,sans-serif;--display:'Bricolage Grotesque',sans-serif;--serif:'Fraunces',Georgia,serif;
+    --r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+    --el-card:0 1px 2px rgba(24,24,26,.05);--el-lg:0 12px 28px rgba(24,24,26,.12);
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--ink-50);color:var(--ink-900);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .app{max-width:1160px;margin:18px auto;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--el-lg)}
+  .hdr{display:flex;align-items:center;gap:12px;padding:12px 22px;border-bottom:1px solid var(--ink-200)}
+  .mark{width:28px;height:28px;border-radius:8px;background:var(--pink-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:var(--display)}
+  .word{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em}.word .lo{color:var(--pink-500)}
+  .sub{font-size:12px;color:var(--ink-500);border-left:1px solid var(--ink-200);padding-left:12px}
+  .body{padding:24px 26px 30px}
+  h1{font-family:var(--display);font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
+  h2{font-family:var(--display);font-size:16px;margin:26px 0 10px}
+  .muted{color:var(--ink-500)} em{font-family:var(--serif);font-style:italic;color:var(--pink-700)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-500);margin:8px 0 0}
+  .dotk{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+
+  /* swimlanes */
+  .lanes{display:grid;grid-template-columns:110px 1fr;gap:0;border:1px solid var(--ink-200);border-radius:var(--r-xl);overflow:hidden;margin-top:14px}
+  .lane{display:contents}
+  .lname{background:var(--ink-50);border-bottom:1px solid var(--ink-200);padding:14px 12px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-500);display:flex;align-items:center}
+  .lrow{border-bottom:1px solid var(--ink-200);padding:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff}
+  .lane:last-child .lname,.lane:last-child .lrow{border-bottom:none}
+  .node{position:relative;border:1.5px solid var(--ink-300);border-radius:var(--r-lg);background:#fff;padding:9px 13px;font-size:12px;font-weight:600;box-shadow:var(--el-card);max-width:200px}
+  .node .t{font-weight:800;font-size:12.5px}
+  .node .s{display:block;font-weight:500;font-size:10.5px;color:var(--ink-500);margin-top:1px}
+  .node.pink{border-color:var(--pink-500);background:var(--pink-50)}
+  .node.ok{border-color:var(--success-500);background:var(--success-50)}
+  .node.dim{border-style:dashed;color:var(--ink-500)}
+  .arr{color:var(--ink-400);font-size:16px;font-weight:800}
+  .arr.loop{color:var(--warning-500)}
+  .dchip{display:inline-flex;align-items:center;gap:4px;border-radius:var(--r-pill);padding:2px 8px;font-size:10px;font-weight:800;cursor:pointer;border:1px solid transparent;transition:.12s}
+  .dchip.s{background:var(--info-50);color:var(--info-500)}
+  .dchip.w{background:var(--warning-50);color:var(--warning-500)}
+  .dchip:hover{border-color:currentColor}
+  .dchip.active{outline:2px solid var(--pink-500);outline-offset:1px}
+
+  /* decision cards */
+  .dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;margin-top:10px}
+  .dcard{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:11px 14px;background:#fff;box-shadow:var(--el-card)}
+  .dcard.hl{border-color:var(--pink-500);box-shadow:0 0 0 3px var(--pink-50)}
+  .dcard .id{font-size:10px;font-weight:800;letter-spacing:.06em}
+  .dcard .id.s{color:var(--info-500)} .dcard .id.w{color:var(--warning-500)}
+  .dcard .lk{float:right;font-size:9.5px;font-weight:800;background:var(--success-50);color:var(--success-700);border-radius:var(--r-pill);padding:2px 8px}
+  .dcard .n{font-weight:800;font-size:13px;margin-top:2px}
+  .dcard .d{font-size:11.5px;color:var(--ink-600);margin-top:3px}
+
+  /* checklist */
+  .phase{margin-top:14px;border:1px solid var(--ink-200);border-radius:var(--r-xl);overflow:hidden}
+  .phead{display:flex;align-items:center;gap:10px;background:var(--ink-50);padding:10px 16px;border-bottom:1px solid var(--ink-200)}
+  .phead .t{font-family:var(--display);font-weight:800;font-size:13.5px;flex:1}
+  .pbar{height:6px;width:130px;background:var(--ink-200);border-radius:var(--r-pill);overflow:hidden}
+  .pbar i{display:block;height:100%;background:var(--success-500);border-radius:var(--r-pill);transition:width .25s}
+  .pct{font-size:11px;font-weight:800;color:var(--ink-500);width:64px;text-align:right}
+  .item{display:flex;align-items:flex-start;gap:10px;padding:9px 16px;border-bottom:1px solid var(--ink-100);font-size:12.5px;background:#fff}
+  .item:last-child{border-bottom:none}
+  .item input{margin-top:2px;accent-color:var(--pink-500);width:15px;height:15px;cursor:pointer}
+  .item.done label{color:var(--ink-400);text-decoration:line-through}
+  .item label{flex:1;cursor:pointer}
+  .own{font-size:9.5px;font-weight:800;border-radius:var(--r-pill);padding:2px 8px;white-space:nowrap;margin-top:1px}
+  .own.code{background:var(--info-50);color:var(--info-500)}
+  .own.cowork{background:var(--pink-50);color:var(--pink-700)}
+  .own.pavel{background:var(--warning-50);color:var(--warning-500)}
+  .own.counsel{background:var(--danger-50);color:var(--danger-600)}
+  .gate{font-size:9.5px;font-weight:800;background:var(--ink-100);color:var(--ink-600);border-radius:var(--r-pill);padding:2px 8px;margin-top:1px;white-space:nowrap}
+  .note{max-width:1160px;margin:8px auto 26px;font-size:11.5px;color:var(--ink-400);text-align:center}
+  .reset{font-size:11px;font-weight:700;color:var(--ink-500);background:none;border:1px solid var(--ink-300);border-radius:var(--r-pill);padding:5px 12px;cursor:pointer}
+  .reset:hover{background:var(--ink-50)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <div class="mark">iL</div><div class="word">i<span class="lo">Launchify</span></div>
+    <div class="sub" style="font-family:var(--display)">DIY Design + Shared Workspace — flow &amp; decisions</div>
+    <span style="flex:1"></span>
+    <button class="reset" onclick="resetChecks()">Reset check-offs</button>
+  </div>
+  <div class="body">
+    <h1>From approved packaging to an approved label</h1>
+    <p class="muted" style="margin:0">All 12 decisions <b style="color:var(--success-700)">LOCKED 2026-07-13</b>. Click a <b>D-chip</b> in the flow to highlight its decision card. Checkboxes below persist in your browser — mark as we go.</p>
+    <div class="legend">
+      <span><span class="dotk" style="background:var(--info-500)"></span>D-S = DIY flow decision</span>
+      <span><span class="dotk" style="background:var(--warning-500)"></span>D-W = shared-workspace decision</span>
+      <span><span class="dotk" style="background:var(--success-500)"></span>green node = already built</span>
+      <span><span class="dotk" style="background:var(--ink-400);border:1px dashed var(--ink-400)"></span>dashed = future phase</span>
+    </div>
+
+    <h2>The flow</h2>
+    <div class="lanes">
+      <div class="lane">
+        <div class="lname">Room<br>(Co-Creation)</div>
+        <div class="lrow">
+          <div class="node ok"><span class="t">📦 PACKAGING approved</span><span class="s">pins the maker's die-line</span><span class="dchip s" data-d="ds2">D-S2</span></div>
+          <span class="arr">→</span>
+          <div class="node"><span class="t">Three design doors</span><span class="s">maker's service <span class="dchip s" data-d="ds6">D-S6</span> · DIY · invite a designer <span class="dchip w" data-d="dw2">D-W2</span></span></div>
+          <span class="arr">→</span>
+          <div class="node ok"><span class="t">🎨 "Design the label"</span><span class="s">creator-only, new tab <span class="dchip s" data-d="ds1">D-S1</span></span></div>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lname">Studio<br>(full editor)</div>
+        <div class="lrow">
+          <div class="node"><span class="t">Room-context Studio</span><span class="s">substrate locked · regulated locked · brand layer editable · label only <span class="dchip s" data-d="ds5">D-S5</span></span></div>
+          <span class="arr">→</span>
+          <div class="node"><span class="t">Alternates (private)</span><span class="s">tier-capped exploration <span class="dchip s" data-d="ds4">D-S4</span></span></div>
+          <span class="arr">→</span>
+          <div class="node dim"><span class="t">＋ Invited designer</span><span class="s">NDA gate <span class="dchip w" data-d="dw6">D-W6</span> · minimal account <span class="dchip w" data-d="dw1">D-W1</span> · turn-based lock <span class="dchip w" data-d="dw4">D-W4</span> · auto-revoke <span class="dchip w" data-d="dw5">D-W5</span></span></div>
+          <span class="arr loop">⇄</span>
+          <div class="node dim"><span class="t">Internal approval</span><span class="s">designer "ready" → creator approves · only creator submits to room <span class="dchip w" data-d="dw3">D-W3</span></span></div>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lname">Proof<br>(back in room)</div>
+        <div class="lrow">
+          <div class="node"><span class="t">Compose + submit proof</span><span class="s">dieline + brand + regulated (painted last) · compliance pre-check gates</span></div>
+          <span class="arr">→</span>
+          <div class="node ok"><span class="t">Pin board shows REAL proof</span><span class="s">mm-sized, pins overlay ✓ built</span></div>
+          <span class="arr">→</span>
+          <div class="node pink"><span class="t">🔁 MAKER reviews</span><span class="s">non-submitter reviews <span class="dchip s" data-d="ds3">D-S3</span> · changes → re-design loop · approve → label locked</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h2>The 12 locked decisions</h2>
+    <div class="dgrid" id="dgrid"></div>
+
+    <h2>Build checklist <span class="muted" style="font-family:var(--sans);font-size:12px;font-weight:500">— mirrors docs/BUILD_CHECKLIST_DESIGN_WORKSPACE_2026-07.md; ticks persist locally</span></h2>
+    <div id="phases"></div>
+  </div>
+</div>
+<p class="note">Prototype — design/design-workspace-flow-prototype.html · decision source: CO_CREATION_SELF_DESIGN_ON_DIELINE_SPEC.md + SHARED_DESIGN_WORKSPACE_SPEC.md</p>
+
+<script>
+const DECISIONS=[
+ {id:'ds1',k:'s',n:'D-S1 · Window mode',d:'Studio opens in a NEW TAB (/rooms/[roomId]/label, full-screen). The room stays alive behind it.'},
+ {id:'ds2',k:'s',n:'D-S2 · Substrate',d:'Always the PACKAGING-pinned die-line’s normalizedSvg. No curated artifact → DIY honestly blocked.'},
+ {id:'ds3',k:'s',n:'D-S3 · Review inversion',d:'Whoever did NOT submit the LABEL version reviews it — the maker approves self-designed proofs (printability).'},
+ {id:'ds4',k:'s',n:'D-S4 · Serial candidates',d:'Room sees ONE proof at a time; exploration = Studio Alternates (Maker 2 / Builder 5 / Agency ∞).'},
+ {id:'ds5',k:'s',n:'D-S5 · Scope',d:'V1 = label-on-dieline only. Structural packaging design stays the maker’s domain.'},
+ {id:'ds6',k:'s',n:'D-S6 · Maker design service',d:'Future DESIGN milestone kind, priced via the existing terms flow. Not built now.'},
+ {id:'dw1',k:'w',n:'D-W1 · Guest identity',d:'Real minimal account, UserRole DESIGNER — surface = invited Studios + notifications only.'},
+ {id:'dw2',k:'w',n:'D-W2 · Invites + seats',d:'Creator-only invites; concurrent seats by tier: Maker 1 / Builder 2 / Agency 5.'},
+ {id:'dw3',k:'w',n:'D-W3 · Submit rights',d:'Designer marks "ready for review"; ONLY the creator submits the proof to the room.'},
+ {id:'dw4',k:'w',n:'D-W4 · Concurrency',d:'Turn-based edit lock V1 (soft lock + 2-min takeover). True co-editing = W3, bought engine, only if demanded.'},
+ {id:'dw5',k:'w',n:'D-W5 · Access lifetime',d:'Auto-revoke at LABEL approval or room close; creator revokes anytime; invites die at 14 days.'},
+ {id:'dw6',k:'w',n:'D-W6 · NDA gate',d:'HARD gate — the Studio never renders the die-line before the designer NDA (Legal CMS) is accepted.'},
+];
+const PHASES=[
+ {t:'Phase A — DIY design loop',items:[
+  ['A1','Contract: labelProofPayloadSchema + guard','code',true],
+  ['A2','Pure composer composeLabelProofSvg','code',true],
+  ['A3','Storage key labelProofKey (partnerFile immutable)','code',true],
+  ['A4','Guarded creatorSubmitLabelProof (both provenance gates)','code',true],
+  ['A5','LABEL viewer: real proof, mm-sized, pins overlaid','cowork',true],
+  ['A6','“Design the label” affordance (PACKAGING approved)','cowork',true],
+  ['A7','messaging.ts InputJsonValue tsc fix','cowork',true],
+  ['A8','Studio room-context editor route (slice 3)','code',false],
+  ['A9','Review inversion D-S3 (non-submitter reviews)','cowork',false],
+  ['A10','Compliance pre-check gates proof submit','code',false],
+  ['A11','Regulated layer composed from approved RECIPE','code',false],
+  ['A12','normalizedSvgKey backfill for verified die-lines','code',false],
+ ]},
+ {t:'Phase B — Workspace W0 substrate',items:[
+  ['B1','Schema: DesignCollaborator + Design.roomId + DESIGNER role','cowork',true],
+  ['B2','designerSeatCap tier ladder (@ilaunchify/plans)','cowork',true],
+  ['B3','Pure access engine + edit lock + tests','cowork',true],
+  ['B4','Audit entity type DesignCollaborator','cowork',true],
+  ['B5','db:push + db:generate for W0 models','pavel',false],
+ ]},
+ {t:'Phase C — Workspace W1 (invited designer)',items:[
+  ['C1','Designer NDA doc (Legal CMS) — HARD GATE for C4+','counsel',false],
+  ['C2','Invite flow: email token → minimal DESIGNER account','cowork',false],
+  ['C3','Room-side seat management card (invite/revoke/auto-revoke)','cowork',false],
+  ['C4','NDA acceptance gate wired before any Studio render','cowork',false],
+  ['C5','DESIGNER role routing + scope wall (Studio + notifications only)','cowork',false],
+  ['C6','Edit lock persisted + Studio presence line + takeover','code',false],
+  ['C7','Internal approval loop + notifications','cowork',false],
+  ['C8','Contact-leak policy on Studio comments','cowork',false],
+  ['C9','Version attribution (who saved each version)','code',false],
+ ]},
+ {t:'Phase D — W2 polish (post-W1)',items:[
+  ['D1','Live viewport-follow on canvas','code',false],
+  ['D2','Studio comment pins + @mentions','code',false],
+  ['D3','Faster canvas presence polling','code',false],
+ ]},
+];
+const OWN={code:'Code',cowork:'Cowork',pavel:'Pavel',counsel:'Counsel'};
+const KEY='ilf-design-workspace-checklist-v1';
+let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')}catch{}
+
+// decision cards
+document.getElementById('dgrid').innerHTML=DECISIONS.map(d=>`
+  <div class="dcard" id="card-${d.id}">
+    <span class="lk">LOCKED</span><span class="id ${d.k}">${d.n.split(' · ')[0]}</span>
+    <div class="n">${d.n.split(' · ')[1]}</div><div class="d">${d.d}</div>
+  </div>`).join('');
+document.querySelectorAll('.dchip').forEach(c=>c.addEventListener('click',e=>{
+  e.stopPropagation();
+  const id=c.dataset.d;
+  document.querySelectorAll('.dcard').forEach(x=>x.classList.remove('hl'));
+  document.querySelectorAll('.dchip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');
+  const card=document.getElementById('card-'+id);
+  card.classList.add('hl');card.scrollIntoView({behavior:'smooth',block:'center'});
+}));
+
+// checklist
+function render(){
+  document.getElementById('phases').innerHTML=PHASES.map((p,pi)=>{
+    const rows=p.items.map(([id,label,own,builtDefault])=>{
+      const checked=saved[id]!==undefined?saved[id]:builtDefault;
+      return `<div class="item ${checked?'done':''}">
+        <input type="checkbox" id="cb-${id}" ${checked?'checked':''} onchange="tick('${id}',this.checked)">
+        <label for="cb-${id}"><b>${id}</b> · ${label}</label>
+        <span class="own ${own}">${OWN[own]}</span>
+        ${id==='C1'?'<span class="gate">⛔ gates C4+</span>':''}
+        ${id==='B5'?'<span class="gate">⛔ gates Phase C</span>':''}
+      </div>`;
+    }).join('');
+    const done=p.items.filter(([id,,,d])=>saved[id]!==undefined?saved[id]:d).length;
+    const pct=Math.round(100*done/p.items.length);
+    return `<div class="phase">
+      <div class="phead"><span class="t">${p.t}</span>
+        <span class="pbar"><i style="width:${pct}%"></i></span><span class="pct">${done}/${p.items.length} · ${pct}%</span>
+      </div>${rows}</div>`;
+  }).join('');
+}
+function tick(id,v){saved[id]=v;try{localStorage.setItem(KEY,JSON.stringify(saved))}catch{};render()}
+function resetChecks(){saved={};try{localStorage.removeItem(KEY)}catch{};render()}
+render();
+</script>
+</body>
+</html>

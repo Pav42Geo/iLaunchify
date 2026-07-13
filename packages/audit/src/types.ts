@@ -170,6 +170,8 @@ export const AUDIT_ENTITY_TYPES = [
   // Rooms & Messages hub (2026-07-13) — anti-circumvention contact-leak flags
   'RoomMessage', // room chat message (flagged for admin review)
   'DirectMessage', // 1:1 direct message (flagged for admin review)
+  // Shared Design Workspace W0 (2026-07-13) — invited-designer seats
+  'DesignCollaborator', // designer seat grant/accept/revoke (NDA-gated)
   // Legal document management (docs/LEGAL_DOCUMENT_MANAGEMENT_SPEC_2026-07-11.md, 2026-07-11)
   'LegalDocument', // legal document identity (Terms/Privacy/Agreement/Notice)
   'LegalDocumentVersion', // immutable versioned rendering + e-sign evidence binding

@@ -500,6 +500,22 @@ export type {
   ChatAttachment,
   PresenceRow,
 } from './messaging'
+// Shared Design Workspace W0 (D-W1…D-W6 LOCKED 2026-07-13) — pure access engine
+export {
+  evaluateCollaboratorAccess,
+  canGrantDesignerSeat,
+  resolveEditLock,
+  EDIT_LOCK_STALE_MS,
+  EDIT_TAKEOVER_GRACE_MS,
+} from './design-collaboration'
+export type {
+  CollaboratorRole,
+  CollaboratorStatus,
+  CollaboratorRow,
+  CollaboratorAccess,
+  EditLockState,
+  EditLockVerdict,
+} from './design-collaboration'
 // Anti-circumvention contact-leak detector (pure) — chat policy enforcement
 export {
   detectContactLeaks,

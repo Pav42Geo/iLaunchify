@@ -32,6 +32,11 @@ enum UserRole {
   ADMIN
   CREATOR
   PARTNER
+  // Shared Design Workspace D-W1 (LOCKED 2026-07-13): invited packaging
+  // designer — a real, minimal account whose entire surface is the Studio(s)
+  // they're invited to + notifications. No creator dashboard, no marketplace.
+  // Created only via a DesignCollaborator invite (W1); inert until then.
+  DESIGNER
 }
 
 // Admin sub-role (RBAC) — only meaningful when UserRole = ADMIN; null elsewhere.
@@ -2306,6 +2311,12 @@ model Design {
   // Soft self-reference: the Design.id this was forked FROM (lineage display only;
   // null for originals). No FK — same soft-FK convention as flavorPresetId.
   forkedFromId        String?
+  // Room context (self-design-on-dieline + Shared Design Workspace W0,
+  // 2026-07-13): a Design can belong to a co-creation room's LABEL work
+  // instead of a product. Soft FK (same convention as flavorPresetId).
+  // NOTE for slice 3 (Code): relaxing `productId` to optional for room-scoped
+  // designs is YOUR call in the room adapter — deliberately not touched here.
+  roomId              String?
   // Surface slot (§3.2 answer, confirmed Pavel 2026-07-05): keying today was
   // positional/unkeyed; null = the product's single default surface (matches all
   // existing rows). Populated when multi-surface products (wrap / box) arrive.
@@ -10236,6 +10247,57 @@ model DirectMessage {
   createdAt      DateTime     @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED DESIGN WORKSPACE — W0 substrate (docs/SHARED_DESIGN_WORKSPACE_SPEC.md,
+// D-W1…D-W6 LOCKED 2026-07-13). Invited packaging designer, scoped to ONE
+// design + room, behind an NDA gate. No user-visible behavior until W1.
+// ═══════════════════════════════════════════════════════════════════════════
+
+enum DesignCollaboratorRole {
+  VIEW
+  COMMENT
+  EDIT
+}
+
+enum DesignCollaboratorStatus {
+  INVITED // token sent, not yet accepted (dies at tokenExpiresAt — D-W5 14d)
+  ACTIVE // accepted + NDA signed; access live
+  REVOKED // creator revoked, or auto-revoked at LABEL approval / room close
+  EXPIRED // invite token lapsed unaccepted
+}
+
+/// One designer seat on one design in one room (D-W2: creator-only invites,
+/// tier-capped seats — designerSeatCap in @ilaunchify/plans). The scope wall:
+/// this row grants the Studio in room context ONLY — never the recipe,
+/// milestones, room chat, or the maker's identity.
+model DesignCollaborator {
+  id              String                   @id @default(uuid())
+  /// Soft FK to the room-scoped Design (Code's slice 3 creates it); null until
+  /// the design exists — the invite may precede the first canvas save.
+  designId        String?
+  roomId          String
+  invitedByUserId String // must be the room's creator (D-W2), guarded in the action
+  invitedEmail    String
+  /// Set at accept: the designer's minimal DESIGNER-role User (D-W1).
+  userId          String?
+  role            DesignCollaboratorRole   @default(EDIT)
+  status          DesignCollaboratorStatus @default(INVITED)
+  token           String                   @unique
+  tokenExpiresAt  DateTime // D-W5: unaccepted invites die at 14 days
+  /// D-W6 HARD gate — the Studio never renders the die-line until this is set
+  /// (designer NDA via Legal CMS; counsel copy rides D-CC4).
+  ndaAcceptedAt   DateTime?
+  revokedAt       DateTime?
+  revokedByUserId String?
+  revokedReason   String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([roomId, status])
+  @@index([userId, status])
+  @@index([invitedEmail, status])
 }
 
 /// Presence heartbeat — one row per user, upserted while Messages is open
