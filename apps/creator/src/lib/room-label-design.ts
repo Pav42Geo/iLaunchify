@@ -51,6 +51,14 @@ export interface RoomLabelStudioContext {
   designId: string
   latestVersion: number
   designJson: unknown | null
+  /** C9 attribution — recent saves, newest first, with who saved each. */
+  versions: RoomLabelVersion[]
+}
+
+export interface RoomLabelVersion {
+  version: number
+  savedByName: string
+  savedAt: string
 }
 
 export type RoomLabelStudioResult =
@@ -140,18 +148,35 @@ export async function resolveRoomLabelStudio(
   if (widthMm <= 0 || heightMm <= 0) return { ok: false, reason: 'DIELINE_NOT_READY' }
 
   // One Design row per room (roomId scoped, owner-creator's brand, no product).
-  let design = await prisma.design.findFirst({
-    where: { roomId },
-    select: { id: true, versions: { orderBy: { version: 'desc' }, take: 1, select: { version: true, designJson: true } } },
-  })
-  if (!design) {
-    const created = await prisma.design.create({
+  let designRow = await prisma.design.findFirst({ where: { roomId }, select: { id: true } })
+  if (!designRow) {
+    designRow = await prisma.design.create({
       data: { roomId, brandId: brand.id, labelSource: 'STUDIO_BUILT', status: 'DRAFT' },
       select: { id: true },
     })
-    design = { id: created.id, versions: [] }
   }
-  const latest = design.versions[0]
+  // Latest working JSON (heavy) separately from the attribution list (light).
+  const latest = await prisma.designVersion.findFirst({
+    where: { designId: designRow.id },
+    orderBy: { version: 'desc' },
+    select: { version: true, designJson: true },
+  })
+  const versionRows = await prisma.designVersion.findMany({
+    where: { designId: designRow.id },
+    orderBy: { version: 'desc' },
+    take: 20,
+    select: { version: true, savedByUserId: true, createdAt: true },
+  })
+  const saverIds = [...new Set(versionRows.flatMap((v) => (v.savedByUserId ? [v.savedByUserId] : [])))]
+  const savers = saverIds.length
+    ? await prisma.user.findMany({ where: { id: { in: saverIds } }, select: { id: true, name: true } })
+    : []
+  const saverName = new Map(savers.map((u) => [u.id, u.name]))
+  const versions: RoomLabelVersion[] = versionRows.map((v) => ({
+    version: v.version,
+    savedByName: (v.savedByUserId && saverName.get(v.savedByUserId)) || 'Someone',
+    savedAt: v.createdAt.toISOString(),
+  }))
 
   return {
     ok: true,
@@ -173,9 +198,10 @@ export async function resolveRoomLabelStudio(
       widthMm: widthMm + 2 * bleedMm,
       heightMm: heightMm + 2 * bleedMm,
       bleedMm,
-      designId: design.id,
+      designId: designRow.id,
       latestVersion: latest?.version ?? 0,
       designJson: latest?.designJson ?? null,
+      versions,
     },
   }
 }

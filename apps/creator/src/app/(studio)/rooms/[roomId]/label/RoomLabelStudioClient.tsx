@@ -258,6 +258,25 @@ export function RoomLabelStudioClient({
             <canvas ref={canvasElRef} />
           </div>
         </main>
+
+        {/* Version attribution (C9) */}
+        <aside className="hidden w-56 shrink-0 overflow-y-auto border-l border-ink-200 bg-white p-4 lg:block">
+          <div className="text-xs font-semibold uppercase tracking-wide text-ink-400">Versions</div>
+          {ctx.versions.length === 0 ? (
+            <p className="mt-3 text-xs text-ink-400">No saves yet.</p>
+          ) : (
+            <ol className="mt-3 space-y-2">
+              {ctx.versions.map((v) => (
+                <li key={v.version} className="rounded-lg border border-ink-100 px-3 py-2">
+                  <div className="text-xs font-medium text-ink-800">v{v.version}</div>
+                  <div className="text-[11px] text-ink-500">
+                    {v.savedByName} · {new Date(v.savedAt).toLocaleString()}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </aside>
       </div>
     </div>
   )
