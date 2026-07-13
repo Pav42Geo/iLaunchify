@@ -10037,6 +10037,10 @@ model CoCreationRoom {
   partnerId   String // the selected maker
   status      RoomStatus      @default(ACTIVE)
   ndaSignedAt DateTime? // mutual NDA + IP terms (§9 — counsel-gated copy)
+  /// C7 auto-approve (Pavel 2026-07-13): the CREATOR's own per-room choice —
+  /// their designer's "ready for review" marks approve automatically. Strictly
+  /// creator⇄designer; deliberately NOT an admin control.
+  designReviewAutoApprove Boolean @default(false)
   // CLOSED_WON materialization back-link: the Product created from the
   // approved RECIPE object (§6 "reuse, don't duplicate"). One room → at most
   // one product; the BuildObjectVersion payload stays the immutable source.

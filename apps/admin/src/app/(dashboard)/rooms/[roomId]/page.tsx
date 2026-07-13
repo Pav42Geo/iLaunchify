@@ -27,6 +27,7 @@ import {
   Building2,
   FileSignature,
   Lightbulb,
+  Palette,
 } from 'lucide-react'
 import type {
   BuildObjectKind,
@@ -120,6 +121,23 @@ export default async function RoomDetailPage({ params }: PageProps) {
 
   if (!room) notFound()
 
+  // Shared Design Workspace oversight (read-only, same posture as the rest of
+  // this page): invited-designer seats + internal review requests. Note bodies
+  // stay private (workspace content) — status/actor/timestamps only.
+  const [designerSeats, designReviews] = await Promise.all([
+    prisma.designCollaborator.findMany({
+      where: { roomId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    }),
+    prisma.designReviewRequest.findMany({
+      where: { roomId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, status: true, createdAt: true, decidedAt: true },
+    }),
+  ])
+
   const tone = ROOM_STATUS_PILL[room.status]
   const milestonesReleased = room.milestones.filter((m) => m.status === 'RELEASED').length
 
@@ -200,6 +218,7 @@ export default async function RoomDetailPage({ params }: PageProps) {
         </div>
         <div className="space-y-6">
           <MetaCard room={room} />
+          <DesignWorkspaceCard seats={designerSeats} reviews={designReviews} roomId={room.id} />
           <MessagesCard count={room._count.messages} />
         </div>
       </div>
@@ -464,6 +483,125 @@ function MetaCard({
           </Link>
         </Row>
       </dl>
+    </Card>
+  )
+}
+
+const SEAT_STATUS_PILL: Record<string, { bg: string; text: string; border: string; dot: string; label: string }> = {
+  INVITED: { bg: 'bg-warning-100', text: 'text-warning-800', border: 'border-warning-200', dot: 'bg-warning-500', label: 'Invited' },
+  ACTIVE: { bg: 'bg-success-100', text: 'text-success-800', border: 'border-success-200', dot: 'bg-success-500', label: 'Active' },
+  REVOKED: { bg: 'bg-ink-100', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400', label: 'Revoked' },
+  EXPIRED: { bg: 'bg-ink-100', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400', label: 'Expired' },
+}
+
+const REVIEW_STATUS_PILL: Record<string, { bg: string; text: string; border: string; dot: string; label: string }> = {
+  PENDING: { bg: 'bg-warning-100', text: 'text-warning-800', border: 'border-warning-200', dot: 'bg-warning-500', label: 'Pending' },
+  APPROVED: { bg: 'bg-success-100', text: 'text-success-800', border: 'border-success-200', dot: 'bg-success-500', label: 'Approved' },
+  CHANGES_REQUESTED: { bg: 'bg-danger-100', text: 'text-danger-700', border: 'border-danger-200', dot: 'bg-danger-500', label: 'Changes' },
+  WITHDRAWN: { bg: 'bg-ink-100', text: 'text-ink-700', border: 'border-ink-200', dot: 'bg-ink-400', label: 'Withdrawn' },
+}
+
+/**
+ * Shared Design Workspace oversight — READ-ONLY (page doctrine): seats are
+ * managed by the creator; reviews are decided in the workspace. Note bodies
+ * stay private; the audit link is the investigation path.
+ */
+function DesignWorkspaceCard({
+  seats,
+  reviews,
+  roomId,
+}: {
+  seats: Array<{ id: string; invitedEmail: string; role: string; status: string; ndaAcceptedAt: Date | null; createdAt: Date }>
+  reviews: Array<{ id: string; status: string; createdAt: Date; decidedAt: Date | null }>
+  roomId: string
+}) {
+  return (
+    <Card
+      icon={Palette}
+      title="Design workspace"
+      subtitle={
+        seats.length === 0 && reviews.length === 0
+          ? 'No invited designers'
+          : `${seats.filter((s) => s.status === 'ACTIVE' || s.status === 'INVITED').length} live seat(s) · ${reviews.length} review request(s)`
+      }
+    >
+      {seats.length === 0 ? (
+        <Empty label="The creator hasn't invited a designer to this room." />
+      ) : (
+        <ul className="divide-y divide-ink-100">
+          {seats.map((s) => {
+            const pill = SEAT_STATUS_PILL[s.status] ?? SEAT_STATUS_PILL.EXPIRED!
+            return (
+              <li key={s.id} className="flex items-center gap-3 px-1.5 py-2.5">
+                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink-900">
+                  {s.invitedEmail}
+                </span>
+                <span className="text-[10.5px] text-ink-500">
+                  {s.ndaAcceptedAt ? 'NDA ✓' : 'NDA pending'}
+                </span>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10.5px] font-medium',
+                    pill.bg,
+                    pill.text,
+                    pill.border,
+                  )}
+                >
+                  <span className={cn('h-1.5 w-1.5 rounded-full', pill.dot)} />
+                  {pill.label}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {reviews.length > 0 ? (
+        <div className="mt-3 border-t border-ink-100 pt-3">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-ink-700">
+            Internal reviews
+          </p>
+          <ul className="divide-y divide-ink-100">
+            {reviews.map((r) => {
+              const pill = REVIEW_STATUS_PILL[r.status] ?? REVIEW_STATUS_PILL.WITHDRAWN!
+              return (
+                <li key={r.id} className="flex items-center gap-3 px-1.5 py-2">
+                  <span className="min-w-0 flex-1 text-[11.5px] text-ink-600" title={r.createdAt.toLocaleString()}>
+                    requested {formatRelative(r.createdAt)}
+                    {r.decidedAt ? ` · decided ${formatRelative(r.decidedAt)}` : ''}
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10.5px] font-medium',
+                      pill.bg,
+                      pill.text,
+                      pill.border,
+                    )}
+                  >
+                    <span className={cn('h-1.5 w-1.5 rounded-full', pill.dot)} />
+                    {pill.label}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
+      <p className="mt-3 text-[11px] leading-relaxed text-ink-500">
+        Seats are managed by the creator; access auto-revokes at label approval or room close.{' '}
+        <Link
+          href={`/audit?entityType=DesignCollaborator`}
+          className="font-semibold text-pink-700 hover:text-pink-800"
+        >
+          Audit trail
+        </Link>
+        {' · '}
+        <Link
+          href={`/audit?entityType=CoCreationRoom&entityId=${roomId}`}
+          className="font-semibold text-pink-700 hover:text-pink-800"
+        >
+          Room audit
+        </Link>
+      </p>
     </Card>
   )
 }

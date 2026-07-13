@@ -14,6 +14,7 @@ import {
   listRoomDesignerSeats,
   decideDesignReview,
   requestDesignReview,
+  setDesignReviewAutoApprove,
   getCollaboratorAccessForUser,
   type DesignerSeatView,
 } from '@ilaunchify/orders'
@@ -104,6 +105,23 @@ export async function decideDesignReviewAction(
     decision,
     briefTitle: room.brief.title,
     note,
+  })
+  if (res.ok) revalidatePath(`/rooms/${roomId}`)
+  return res
+}
+
+/**
+ * Creator's per-room auto-approve toggle (Pavel 2026-07-13): strictly a
+ * creator⇄designer setting — deliberately no admin path.
+ */
+export async function setAutoApproveAction(roomId: string, enabled: boolean): Promise<Result> {
+  const user = await requireUser()
+  const room = await ownedRoom(roomId, user.id)
+  if (!room) return { ok: false, error: 'Room not found' }
+  const res = await setDesignReviewAutoApprove({
+    actor: { id: user.id, role: 'CREATOR' },
+    roomId,
+    enabled,
   })
   if (res.ok) revalidatePath(`/rooms/${roomId}`)
   return res

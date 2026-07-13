@@ -217,6 +217,7 @@ export default async function RoomPage({
         designLabelHref={designLabelHref}
         designerSeats={designerSeats}
         designReview={designReview}
+        designReviewAutoApprove={room.designReviewAutoApprove}
         briefDomain={room.brief.category}
         briefTitle={room.brief.title}
         briefNicheSlug={room.brief.nicheSlug}

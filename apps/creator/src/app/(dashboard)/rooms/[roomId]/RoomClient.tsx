@@ -31,6 +31,7 @@ import {
   inviteDesignerAction,
   revokeDesignerAction,
   decideDesignReviewAction,
+  setAutoApproveAction,
 } from './design-team-actions'
 
 export function RoomClient(props: {
@@ -54,6 +55,8 @@ export function RoomClient(props: {
   }[]
   /** C7 — pending internal design review awaiting the creator's decision. */
   designReview?: { id: string; requestedByName: string | null; note: string | null; createdAt: string } | null
+  /** Creator's per-room auto-approve for designer submissions. */
+  designReviewAutoApprove?: boolean
   briefDomain: string
   briefTitle: string
   briefNicheSlug: string
@@ -94,6 +97,8 @@ export function RoomClient(props: {
       onDecideDesignReview={(requestId, decision, note) =>
         refresh(decideDesignReviewAction(props.roomId, requestId, decision, note))
       }
+      designReviewAutoApprove={props.designReviewAutoApprove}
+      onToggleAutoApprove={(enabled) => refresh(setAutoApproveAction(props.roomId, enabled))}
       briefDomain={props.briefDomain}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}

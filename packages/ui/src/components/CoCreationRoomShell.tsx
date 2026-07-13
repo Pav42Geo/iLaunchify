@@ -149,6 +149,9 @@ export interface CoCreationRoomShellProps {
     decision: 'APPROVED' | 'CHANGES_REQUESTED',
     note?: string,
   ) => Promise<Result>
+  /** Creator's per-room auto-approve for designer submissions (creator⇄designer only). */
+  designReviewAutoApprove?: boolean
+  onToggleAutoApprove?: (enabled: boolean) => Promise<Result>
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
   messages: RoomShellMessage[]
@@ -723,6 +726,12 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
                   ? (id, d, note) => void run(() => props.onDecideDesignReview!(id, d, note))
                   : undefined
               }
+              designReviewAutoApprove={props.designReviewAutoApprove}
+              onToggleAutoApprove={
+                props.onToggleAutoApprove
+                  ? (enabled) => void run(() => props.onToggleAutoApprove!(enabled))
+                  : undefined
+              }
               onSearchIngredients={props.onSearchIngredients}
               onCreateIngredient={props.onCreateIngredient}
               briefDomain={props.briefDomain}
@@ -935,6 +944,8 @@ function ObjectDetail({
   onRevokeDesigner,
   designReview,
   onDecideDesignReview,
+  designReviewAutoApprove,
+  onToggleAutoApprove,
   onSearchIngredients,
   onCreateIngredient,
   briefDomain,
@@ -965,6 +976,8 @@ function ObjectDetail({
   onRevokeDesigner?: (seatId: string) => void
   designReview?: { id: string; requestedByName: string | null; note: string | null; createdAt: string } | null
   onDecideDesignReview?: (requestId: string, decision: 'APPROVED' | 'CHANGES_REQUESTED', note?: string) => void
+  designReviewAutoApprove?: boolean
+  onToggleAutoApprove?: (enabled: boolean) => void
   onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
   onCreateIngredient?: (input: IngredientCreateInput) => Promise<
     { ok: true; ingredient: IngredientPick } | { ok: false; error: string }
@@ -1400,6 +1413,8 @@ function ObjectDetail({
                 onRevoke={onRevokeDesigner!}
                 review={designReview ?? null}
                 onDecide={onDecideDesignReview}
+                autoApprove={designReviewAutoApprove ?? false}
+                onToggleAutoApprove={onToggleAutoApprove}
               />
             ) : null}
           </>
@@ -3444,6 +3459,8 @@ function DesignTeamCard({
   onRevoke,
   review,
   onDecide,
+  autoApprove,
+  onToggleAutoApprove,
 }: {
   seats: { id: string; email: string; name: string | null; role: string; status: string; ndaAccepted: boolean }[]
   busy: boolean
@@ -3452,6 +3469,9 @@ function DesignTeamCard({
   /** C7 — pending internal review awaiting the creator's call. */
   review: { id: string; requestedByName: string | null; note: string | null; createdAt: string } | null
   onDecide?: (requestId: string, decision: 'APPROVED' | 'CHANGES_REQUESTED', note?: string) => void
+  /** Creator's per-room auto-approve (creator⇄designer setting, no admin path). */
+  autoApprove: boolean
+  onToggleAutoApprove?: (enabled: boolean) => void
 }) {
   const [email, setEmail] = React.useState('')
   const [decisionNote, setDecisionNote] = React.useState('')
@@ -3510,6 +3530,24 @@ function DesignTeamCard({
             maker from the Studio (they confirm it prints).
           </p>
         </div>
+      ) : null}
+
+      {/* Auto-approve — the creator's OWN choice for this workspace (no admin path). */}
+      {onToggleAutoApprove ? (
+        <label className="mt-s-2 flex items-start gap-s-2 rounded-lg border border-ink-100 bg-ink-50 px-s-3 py-s-2 text-ui-label normal-case tracking-normal text-ink-600">
+          <input
+            type="checkbox"
+            checked={autoApprove}
+            disabled={busy}
+            onChange={(e) => onToggleAutoApprove(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-pink-500"
+          />
+          <span>
+            <b className="text-ink-800">Auto-approve my designer’s submissions</b> — “ready for
+            review” marks approve instantly (you still get the ping, and you still submit the
+            final proof to the maker yourself).
+          </span>
+        </label>
       ) : null}
 
       {live.length === 0 ? (

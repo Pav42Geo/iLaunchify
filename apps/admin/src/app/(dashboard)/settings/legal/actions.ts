@@ -137,7 +137,7 @@ export async function createDraftVersion(input: { documentId: string }): Promise
 /** Update document-level settings (audience, acceptance requirement, cadence, active). */
 export async function updateDocumentSettings(input: {
   documentId: string
-  audience: 'PUBLIC' | 'CREATOR' | 'PARTNER' | 'ALL'
+  audience: 'PUBLIC' | 'CREATOR' | 'PARTNER' | 'DESIGNER' | 'ALL'
   requiresAcceptance: boolean
   reconsentIntervalDays: number | null
   isActive: boolean
@@ -303,7 +303,9 @@ export async function publishVersion(input: {
  * fallback), and the re-acceptance gate catches acceptance-required docs in-app.
  */
 async function notifyLegalAudience(input: {
-  audience: 'PUBLIC' | 'CREATOR' | 'PARTNER' | 'ALL'
+  // DESIGNER added 2026-07-13 (Shared Design Workspace D-W6 — the designer NDA
+  // publishes to audience=DESIGNER).
+  audience: 'PUBLIC' | 'CREATOR' | 'PARTNER' | 'DESIGNER' | 'ALL'
   slug: string
   title: string
   version: string
@@ -311,12 +313,14 @@ async function notifyLegalAudience(input: {
   summary: string | null
 }): Promise<void> {
   // PUBLIC + ALL notices reach every creator + partner; role-scoped docs their role.
-  const roleIn: Array<'CREATOR' | 'PARTNER'> =
+  const roleIn: Array<'CREATOR' | 'PARTNER' | 'DESIGNER'> =
     input.audience === 'CREATOR'
       ? ['CREATOR']
       : input.audience === 'PARTNER'
         ? ['PARTNER']
-        : ['CREATOR', 'PARTNER']
+        : input.audience === 'DESIGNER'
+          ? ['DESIGNER']
+          : ['CREATOR', 'PARTNER']
 
   const users = await prisma.user.findMany({ where: { role: { in: roleIn } }, select: { id: true } })
   if (users.length === 0) return

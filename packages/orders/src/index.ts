@@ -530,6 +530,7 @@ export {
   getOpenDesignReview,
   requestDesignReview,
   decideDesignReview,
+  setDesignReviewAutoApprove,
 } from './design-collaboration-service'
 export type {
   DesignerSeatView,

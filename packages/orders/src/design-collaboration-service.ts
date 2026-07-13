@@ -331,23 +331,39 @@ export async function requestDesignReview(input: {
   })
   if (open) return { ok: false, error: 'A review is already pending — withdraw it to re-request.' }
 
+  // Auto-approve (Pavel 2026-07-13): the CREATOR's own per-room choice —
+  // strictly creator⇄designer, never an admin knob. When on, the request
+  // lands already APPROVED; the creator still gets the FYI ping.
+  const room = await prisma.coCreationRoom.findUnique({
+    where: { id: input.roomId },
+    select: { designReviewAutoApprove: true },
+  })
+  const autoApprove = !!room?.designReviewAutoApprove
+
   const req = await prisma.designReviewRequest.create({
     data: {
       designId: input.designId,
       roomId: input.roomId,
       requestedByUserId: input.actor.id,
       note: input.note?.trim().slice(0, 500) || null,
+      ...(autoApprove
+        ? {
+            status: 'APPROVED' as const,
+            decisionNote: 'Auto-approved — enabled by the creator for this workspace',
+            decidedAt: new Date(),
+          }
+        : {}),
     },
     select: { id: true },
   })
   await logAuditAs(input.actor, {
     entityType: 'DesignReviewRequest',
     entityId: req.id,
-    action: 'DESIGN_REVIEW_REQUESTED',
+    action: autoApprove ? 'DESIGN_REVIEW_AUTO_APPROVED' : 'DESIGN_REVIEW_REQUESTED',
     payload: { roomId: input.roomId, designId: input.designId },
   })
-  // The creator decides — skip the self-ping when the creator requested it
-  // themselves (solo DIY: they just submit the proof directly).
+  // The creator hears about it either way — as a decision to make (manual) or
+  // an FYI (auto). Skip the self-ping when the creator requested it themselves.
   if (input.actor.id !== input.creatorUserId) {
     await dispatchNotification({
       userId: input.creatorUserId,
@@ -360,7 +376,40 @@ export async function requestDesignReview(input: {
         ...(input.note ? { note: input.note } : {}),
       },
     }).catch(() => undefined)
+    // Auto path: tell the designer immediately that it's approved.
+    if (autoApprove) {
+      await dispatchNotification({
+        userId: input.actor.id,
+        event: 'DESIGN_REVIEW_DECISION',
+        audience: 'creator',
+        data: {
+          roomId: input.roomId,
+          briefTitle: input.briefTitle,
+          decision: 'APPROVED',
+          byName: 'Auto-approval',
+        },
+      }).catch(() => undefined)
+    }
   }
+  return { ok: true }
+}
+
+/** Creator's per-room auto-approve toggle (creator⇄designer setting — no admin path). */
+export async function setDesignReviewAutoApprove(input: {
+  actor: Actor
+  roomId: string
+  enabled: boolean
+}): Promise<SeatResult> {
+  await prisma.coCreationRoom.update({
+    where: { id: input.roomId },
+    data: { designReviewAutoApprove: input.enabled },
+  })
+  await logAuditAs(input.actor, {
+    entityType: 'CoCreationRoom',
+    entityId: input.roomId,
+    action: 'DESIGN_REVIEW_AUTO_APPROVE_SET',
+    toValue: String(input.enabled),
+  })
   return { ok: true }
 }
 
