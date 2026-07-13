@@ -39,7 +39,7 @@ Owners: **[Code]** Studio/die-line zone · **[Cowork]** room/messaging/UI-shell 
 - [x] C4 · NDA acceptance gate wired (accept page renders `designer-nda` from Legal CMS; no doc published = honest hold, access dead by construction; Studio-side check = `getCollaboratorAccessForUser`) — **[Cowork]** · **[Code]** Studio check rides A8's guard
 - [ ] C5 · Designer's app surface: DESIGNER role routing (invited Studios + notifications ONLY; scope wall enforced) — **[Cowork]** guards + **[Code]** Studio context
 - [x] C6 · Edit lock persisted + Studio presence line ("Maria is editing — you're viewing", takeover flow) — **[Code]** (engine ready in @ilaunchify/orders)
-- [ ] C7 · Internal approval loop: designer "Ready for review" → creator approve/request changes (notifications DESIGN_REVIEW_REQUESTED / DESIGN_REVIEW_DECISION) — **[Cowork]** service+notify · **[Code]** Studio affordances
+- [x] C7 · Internal approval loop: `DesignReviewRequest` + request/decide services + both notifications; creator decides from the room's Design team card; `requestDesignReviewAction` exported for Code's Studio "Ready for review" button — **[Cowork]** done · **[Code]** Studio affordance pending
 - [ ] C8 · Contact-leak policy applied to Studio comments — **[Cowork]**
 - [x] C9 · Version attribution surfaced (who saved each DesignVersion) — **[Code]**
 

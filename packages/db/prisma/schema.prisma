@@ -5108,6 +5108,9 @@ enum NotificationEvent {
   // unread message in a thread — further messages ride the unread badge.
   ROOM_MESSAGE_RECEIVED // new chat message in a collaboration room
   DIRECT_MESSAGE_RECEIVED // new 1:1 direct message
+  // Shared Design Workspace C7 (2026-07-13) — internal designer⇄creator loop
+  DESIGN_REVIEW_REQUESTED // designer marked the design "ready" → notify creator
+  DESIGN_REVIEW_DECISION // creator approved / requested changes → notify designer
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -10329,6 +10332,35 @@ model DesignCollaborator {
   @@index([roomId, status])
   @@index([userId, status])
   @@index([invitedEmail, status])
+}
+
+enum DesignReviewStatus {
+  PENDING // designer marked "ready for review"; creator hasn't decided
+  APPROVED // creator approved internally (they may now submit the proof to the room)
+  CHANGES_REQUESTED // creator sent it back with a note
+  WITHDRAWN // requester pulled it (e.g. kept editing)
+}
+
+/// Internal design review (Shared Design Workspace C7 — Canva-shaped, D-W3):
+/// the DESIGNER marks a design "ready", the CREATOR decides. This is stage 1
+/// of the two-stage chain; stage 2 (creator → maker room proof) stays on the
+/// LABEL BuildObject. Append-friendly: one PENDING per design at a time,
+/// history preserved for the audit trail.
+model DesignReviewRequest {
+  id                String             @id @default(uuid())
+  designId          String // soft FK (Design — same convention as Design.roomId)
+  roomId            String
+  requestedByUserId String
+  status            DesignReviewStatus @default(PENDING)
+  note              String? // requester's note ("v3 — bolder wordmark")
+  decisionNote      String? // creator's note on approve/changes
+  decidedByUserId   String?
+  decidedAt         DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([designId, status])
+  @@index([roomId, status])
 }
 
 /// Presence heartbeat — one row per user, upserted while Messages is open

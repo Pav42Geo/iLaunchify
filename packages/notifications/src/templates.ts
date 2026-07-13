@@ -33,6 +33,15 @@ export interface TemplateData {
   // Rooms & Messages hub (2026-07-13) — first-unread-only dispatch (anti-spam)
   ROOM_MESSAGE_RECEIVED: { roomId: string; roomTitle: string; byName?: string; roleLabel?: string; preview?: string }
   DIRECT_MESSAGE_RECEIVED: { conversationId: string; byName?: string; roleLabel?: string; preview?: string }
+  // Shared Design Workspace C7 — internal designer⇄creator review loop
+  DESIGN_REVIEW_REQUESTED: { roomId: string; briefTitle: string; byName?: string; note?: string }
+  DESIGN_REVIEW_DECISION: {
+    roomId: string
+    briefTitle: string
+    decision: string // 'APPROVED' | 'CHANGES_REQUESTED'
+    byName?: string
+    note?: string
+  }
   LEGAL_DOCUMENT_UPDATED: {
     title: string
     version: string
@@ -416,6 +425,27 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `New message from ${d.byName ?? 'a collaborator'}`,
         body: `${d.roleLabel ? `${d.roleLabel} — ` : ''}“${d.preview ?? 'New direct message'}”`,
         link: `/messages?dm=${d.conversationId}`,
+      }
+    }
+    case 'DESIGN_REVIEW_REQUESTED': {
+      const d = data as TemplateData['DESIGN_REVIEW_REQUESTED']
+      return {
+        title: `${d.byName ?? 'Your designer'} marked the label design ready for review`,
+        body: `“${d.briefTitle}”${d.note ? ` — “${d.note}”` : ''}. Approve it internally, then send the proof to your maker.`,
+        link: `/rooms/${d.roomId}/label`,
+      }
+    }
+    case 'DESIGN_REVIEW_DECISION': {
+      const d = data as TemplateData['DESIGN_REVIEW_DECISION']
+      const approved = d.decision === 'APPROVED'
+      return {
+        title: approved
+          ? `${d.byName ?? 'The creator'} approved your label design ✓`
+          : `${d.byName ?? 'The creator'} requested changes on the label design`,
+        body: approved
+          ? `“${d.briefTitle}” — the creator will submit the proof to the maker next.`
+          : `“${d.briefTitle}”${d.note ? ` — “${d.note}”` : ''}. Open the workspace to revise.`,
+        link: `/rooms/${d.roomId}/label`,
       }
     }
     case 'LEGAL_DOCUMENT_UPDATED': {

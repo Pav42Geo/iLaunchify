@@ -12,6 +12,9 @@ import {
   inviteDesigner,
   revokeDesignerSeat,
   listRoomDesignerSeats,
+  decideDesignReview,
+  requestDesignReview,
+  getCollaboratorAccessForUser,
   type DesignerSeatView,
 } from '@ilaunchify/orders'
 import { z } from 'zod'
@@ -77,4 +80,68 @@ export async function loadDesignerSeats(roomId: string): Promise<DesignerSeatVie
   const room = await ownedRoom(roomId, user.id)
   if (!room) return []
   return listRoomDesignerSeats(roomId)
+}
+
+/**
+ * C7 — creator decides the internal design review (from the room card or the
+ * Studio). Canva rule downstream: further edits raise a NEW request.
+ */
+export async function decideDesignReviewAction(
+  roomId: string,
+  requestId: string,
+  decision: 'APPROVED' | 'CHANGES_REQUESTED',
+  note?: string,
+): Promise<Result> {
+  const user = await requireUser()
+  const room = await ownedRoom(roomId, user.id)
+  if (!room) return { ok: false, error: 'Room not found' }
+
+  const res = await decideDesignReview({
+    actor: { id: user.id, role: 'CREATOR' },
+    actorName: room.brief.creator.displayName,
+    roomId,
+    requestId,
+    decision,
+    briefTitle: room.brief.title,
+    note,
+  })
+  if (res.ok) revalidatePath(`/rooms/${roomId}`)
+  return res
+}
+
+/**
+ * C7 — mark the room's design ready for internal review. Callable by the
+ * creator OR an invited designer with edit access (Code's Studio button
+ * imports this); the workspace-access engine is the guard.
+ */
+export async function requestDesignReviewAction(
+  roomId: string,
+  designId: string,
+  note?: string,
+): Promise<Result> {
+  const user = await requireUser()
+
+  const access = await getCollaboratorAccessForUser(roomId, user.id)
+  if (!access.canEdit) return { ok: false, error: 'No edit access to this workspace' }
+
+  const room = await prisma.coCreationRoom.findUnique({
+    where: { id: roomId },
+    select: {
+      status: true,
+      brief: { select: { title: true, creator: { select: { userId: true } } } },
+    },
+  })
+  if (!room || room.status !== 'ACTIVE') return { ok: false, error: 'Room not found' }
+
+  const res = await requestDesignReview({
+    actor: { id: user.id, role: access.isOwner ? 'CREATOR' : 'DESIGNER' },
+    actorName: user.name ?? user.email ?? 'A collaborator',
+    roomId,
+    designId,
+    creatorUserId: room.brief.creator.userId,
+    briefTitle: room.brief.title,
+    note,
+  })
+  if (res.ok) revalidatePath(`/rooms/${roomId}`)
+  return res
 }

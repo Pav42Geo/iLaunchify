@@ -27,7 +27,11 @@ import {
   creatorSubmitVersion,
   creatorSwitchMaker,
 } from './actions'
-import { inviteDesignerAction, revokeDesignerAction } from './design-team-actions'
+import {
+  inviteDesignerAction,
+  revokeDesignerAction,
+  decideDesignReviewAction,
+} from './design-team-actions'
 
 export function RoomClient(props: {
   roomId: string
@@ -48,6 +52,8 @@ export function RoomClient(props: {
     status: string
     ndaAccepted: boolean
   }[]
+  /** C7 — pending internal design review awaiting the creator's decision. */
+  designReview?: { id: string; requestedByName: string | null; note: string | null; createdAt: string } | null
   briefDomain: string
   briefTitle: string
   briefNicheSlug: string
@@ -84,6 +90,10 @@ export function RoomClient(props: {
       designerSeats={props.designerSeats}
       onInviteDesigner={(email) => refresh(inviteDesignerAction(props.roomId, email))}
       onRevokeDesigner={(seatId) => refresh(revokeDesignerAction(props.roomId, seatId))}
+      designReview={props.designReview}
+      onDecideDesignReview={(requestId, decision, note) =>
+        refresh(decideDesignReviewAction(props.roomId, requestId, decision, note))
+      }
       briefDomain={props.briefDomain}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}

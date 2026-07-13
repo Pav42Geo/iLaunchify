@@ -14,6 +14,7 @@ import { randomBytes } from 'crypto'
 import { prisma } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import {
+  dispatchNotification,
   sendTransactionalEmail,
   renderEmailHtml,
   renderEmailText,
@@ -268,6 +269,146 @@ export async function markSeatNdaAccepted(seatId: string, userId: string): Promi
       where: { id: seat.id },
       data: { ndaAcceptedAt: new Date() },
     })
+  }
+  return { ok: true }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// C7 — internal design review loop (Canva-shaped, D-W3): the designer marks
+// the design "ready", the CREATOR decides. Stage 1 of the two-stage chain;
+// stage 2 (creator → maker proof) stays on the LABEL BuildObject.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DesignReviewView {
+  id: string
+  designId: string
+  status: string
+  note: string | null
+  decisionNote: string | null
+  requestedByName: string | null
+  createdAt: string
+}
+
+/** Latest open (PENDING) review request in a room, for the room card + Studio. */
+export async function getOpenDesignReview(roomId: string): Promise<DesignReviewView | null> {
+  const row = await prisma.designReviewRequest.findFirst({
+    where: { roomId, status: 'PENDING' },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!row) return null
+  const requester = await prisma.user.findUnique({
+    where: { id: row.requestedByUserId },
+    select: { name: true, email: true },
+  })
+  return {
+    id: row.id,
+    designId: row.designId,
+    status: row.status,
+    note: row.note,
+    decisionNote: row.decisionNote,
+    requestedByName: requester?.name ?? requester?.email ?? null,
+    createdAt: row.createdAt.toISOString(),
+  }
+}
+
+/**
+ * Designer (or the creator themselves) marks a design ready for internal
+ * review. Guard: the calling action verified workspace access (canEdit).
+ * One PENDING request per room at a time.
+ */
+export async function requestDesignReview(input: {
+  actor: Actor
+  actorName: string
+  roomId: string
+  designId: string
+  creatorUserId: string
+  briefTitle: string
+  note?: string
+}): Promise<SeatResult> {
+  const open = await prisma.designReviewRequest.findFirst({
+    where: { roomId: input.roomId, status: 'PENDING' },
+    select: { id: true },
+  })
+  if (open) return { ok: false, error: 'A review is already pending — withdraw it to re-request.' }
+
+  const req = await prisma.designReviewRequest.create({
+    data: {
+      designId: input.designId,
+      roomId: input.roomId,
+      requestedByUserId: input.actor.id,
+      note: input.note?.trim().slice(0, 500) || null,
+    },
+    select: { id: true },
+  })
+  await logAuditAs(input.actor, {
+    entityType: 'DesignReviewRequest',
+    entityId: req.id,
+    action: 'DESIGN_REVIEW_REQUESTED',
+    payload: { roomId: input.roomId, designId: input.designId },
+  })
+  // The creator decides — skip the self-ping when the creator requested it
+  // themselves (solo DIY: they just submit the proof directly).
+  if (input.actor.id !== input.creatorUserId) {
+    await dispatchNotification({
+      userId: input.creatorUserId,
+      event: 'DESIGN_REVIEW_REQUESTED',
+      audience: 'creator',
+      data: {
+        roomId: input.roomId,
+        briefTitle: input.briefTitle,
+        byName: input.actorName,
+        ...(input.note ? { note: input.note } : {}),
+      },
+    }).catch(() => undefined)
+  }
+  return { ok: true }
+}
+
+/** Creator decides the internal review (Canva rule: an edit after approval
+ *  simply raises a NEW request — approvals never linger). */
+export async function decideDesignReview(input: {
+  actor: Actor
+  actorName: string
+  roomId: string
+  requestId: string
+  decision: 'APPROVED' | 'CHANGES_REQUESTED'
+  briefTitle: string
+  note?: string
+}): Promise<SeatResult> {
+  const req = await prisma.designReviewRequest.findFirst({
+    where: { id: input.requestId, roomId: input.roomId, status: 'PENDING' },
+    select: { id: true, requestedByUserId: true },
+  })
+  if (!req) return { ok: false, error: 'No pending review found.' }
+
+  await prisma.designReviewRequest.update({
+    where: { id: req.id },
+    data: {
+      status: input.decision,
+      decisionNote: input.note?.trim().slice(0, 500) || null,
+      decidedByUserId: input.actor.id,
+      decidedAt: new Date(),
+    },
+  })
+  await logAuditAs(input.actor, {
+    entityType: 'DesignReviewRequest',
+    entityId: req.id,
+    action: `DESIGN_REVIEW_${input.decision}`,
+    payload: { roomId: input.roomId, note: input.note ?? null },
+  })
+  if (req.requestedByUserId !== input.actor.id) {
+    await dispatchNotification({
+      userId: req.requestedByUserId,
+      event: 'DESIGN_REVIEW_DECISION',
+      audience: 'creator',
+      data: {
+        roomId: input.roomId,
+        briefTitle: input.briefTitle,
+        decision: input.decision,
+        byName: input.actorName,
+        ...(input.note ? { note: input.note } : {}),
+      },
+    }).catch(() => undefined)
   }
   return { ok: true }
 }

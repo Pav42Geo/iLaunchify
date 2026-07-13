@@ -142,6 +142,13 @@ export interface CoCreationRoomShellProps {
   }[]
   onInviteDesigner?: (email: string) => Promise<Result>
   onRevokeDesigner?: (seatId: string) => Promise<Result>
+  /** C7 — pending internal design review awaiting the creator's decision. */
+  designReview?: { id: string; requestedByName: string | null; note: string | null; createdAt: string } | null
+  onDecideDesignReview?: (
+    requestId: string,
+    decision: 'APPROVED' | 'CHANGES_REQUESTED',
+    note?: string,
+  ) => Promise<Result>
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
   messages: RoomShellMessage[]
@@ -710,6 +717,12 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
                   ? (seatId) => void run(() => props.onRevokeDesigner!(seatId))
                   : undefined
               }
+              designReview={props.designReview ?? null}
+              onDecideDesignReview={
+                props.onDecideDesignReview
+                  ? (id, d, note) => void run(() => props.onDecideDesignReview!(id, d, note))
+                  : undefined
+              }
               onSearchIngredients={props.onSearchIngredients}
               onCreateIngredient={props.onCreateIngredient}
               briefDomain={props.briefDomain}
@@ -920,6 +933,8 @@ function ObjectDetail({
   designerSeats,
   onInviteDesigner,
   onRevokeDesigner,
+  designReview,
+  onDecideDesignReview,
   onSearchIngredients,
   onCreateIngredient,
   briefDomain,
@@ -948,6 +963,8 @@ function ObjectDetail({
   }[]
   onInviteDesigner?: (email: string) => void
   onRevokeDesigner?: (seatId: string) => void
+  designReview?: { id: string; requestedByName: string | null; note: string | null; createdAt: string } | null
+  onDecideDesignReview?: (requestId: string, decision: 'APPROVED' | 'CHANGES_REQUESTED', note?: string) => void
   onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
   onCreateIngredient?: (input: IngredientCreateInput) => Promise<
     { ok: true; ingredient: IngredientPick } | { ok: false; error: string }
@@ -1379,8 +1396,10 @@ function ObjectDetail({
               <DesignTeamCard
                 seats={designerSeats}
                 busy={busy}
-                onInvite={onInviteDesigner}
-                onRevoke={onRevokeDesigner}
+                onInvite={onInviteDesigner!}
+                onRevoke={onRevokeDesigner!}
+                review={designReview ?? null}
+                onDecide={onDecideDesignReview}
               />
             ) : null}
           </>
@@ -3423,13 +3442,19 @@ function DesignTeamCard({
   busy,
   onInvite,
   onRevoke,
+  review,
+  onDecide,
 }: {
   seats: { id: string; email: string; name: string | null; role: string; status: string; ndaAccepted: boolean }[]
   busy: boolean
   onInvite: (email: string) => void
   onRevoke: (seatId: string) => void
+  /** C7 — pending internal review awaiting the creator's call. */
+  review: { id: string; requestedByName: string | null; note: string | null; createdAt: string } | null
+  onDecide?: (requestId: string, decision: 'APPROVED' | 'CHANGES_REQUESTED', note?: string) => void
 }) {
   const [email, setEmail] = React.useState('')
+  const [decisionNote, setDecisionNote] = React.useState('')
   const live = seats.filter((s) => s.status === 'INVITED' || s.status === 'ACTIVE')
   const past = seats.filter((s) => s.status === 'REVOKED' || s.status === 'EXPIRED')
 
@@ -3441,6 +3466,51 @@ function DesignTeamCard({
           Invite a trusted designer — scoped to THIS label only, behind a designer agreement.
         </p>
       </div>
+
+      {/* C7 — pending internal review: designer marked "ready", creator decides. */}
+      {review && onDecide ? (
+        <div className="mt-s-2 rounded-lg border border-warning-200 bg-warning-50 p-s-3">
+          <p className="text-ui-caption font-bold text-warning-700">
+            🎨 {review.requestedByName ?? 'Your designer'} marked the design ready for your review
+          </p>
+          {review.note ? (
+            <p className="mt-s-1 text-ui-caption text-ink-700">“{review.note}”</p>
+          ) : null}
+          <div className="mt-s-2 flex flex-wrap items-center gap-s-2">
+            <Input
+              value={decisionNote}
+              onChange={(e) => setDecisionNote(e.target.value)}
+              placeholder="Optional note back to the designer…"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                onDecide(review.id, 'CHANGES_REQUESTED', decisionNote.trim() || undefined)
+                setDecisionNote('')
+              }}
+            >
+              Request changes
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                onDecide(review.id, 'APPROVED', decisionNote.trim() || undefined)
+                setDecisionNote('')
+              }}
+            >
+              ✓ Approve design
+            </Button>
+          </div>
+          <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+            Approving here is your internal sign-off — you still submit the composed proof to the
+            maker from the Studio (they confirm it prints).
+          </p>
+        </div>
+      ) : null}
 
       {live.length === 0 ? (
         <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-400">

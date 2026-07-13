@@ -526,8 +526,16 @@ export {
   listRoomDesignerSeats,
   getCollaboratorAccessForUser,
   DESIGNER_INVITE_TTL_DAYS,
+  // C7 — internal designer⇄creator review loop
+  getOpenDesignReview,
+  requestDesignReview,
+  decideDesignReview,
 } from './design-collaboration-service'
-export type { DesignerSeatView, SeatResult } from './design-collaboration-service'
+export type {
+  DesignerSeatView,
+  SeatResult,
+  DesignReviewView,
+} from './design-collaboration-service'
 // Anti-circumvention contact-leak detector (pure) — chat policy enforcement
 export {
   detectContactLeaks,

@@ -83,6 +83,8 @@ export const EVENT_TOKEN_PALETTE: {
   MILESTONE_TERMS_DECLINED: ['roomId', 'milestoneKind', 'byName', 'note'],
   ROOM_MESSAGE_RECEIVED: ['roomId', 'roomTitle', 'byName', 'roleLabel', 'preview'],
   DIRECT_MESSAGE_RECEIVED: ['conversationId', 'byName', 'roleLabel', 'preview'],
+  DESIGN_REVIEW_REQUESTED: ['roomId', 'briefTitle', 'byName', 'note'],
+  DESIGN_REVIEW_DECISION: ['roomId', 'briefTitle', 'decision', 'byName', 'note'],
   LEGAL_DOCUMENT_UPDATED: ['title', 'version', 'effectiveAt', 'summary', 'href'],
   PACKAGING_APPROVED: ['name', 'category'],
   PACKAGING_REJECTED: ['name', 'notes'],
