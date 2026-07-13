@@ -111,8 +111,10 @@ export default async function ServicesPage() {
   if (!partner) return null
 
   const canEdit = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
+  // WAREHOUSE is NOT self-serve — the FC network is admin-contracted
+  // (Pavel 2026-07-13). Producers offer "storage at your facility" instead.
   const missingTypes = (
-    ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE'] as AddableServiceType[]
+    ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING'] as AddableServiceType[]
   ).filter((t) => !partner.services.some((s) => (s.type as string) === t))
 
   // Real substrate / die-line counts for the print card.
@@ -311,7 +313,13 @@ export default async function ServicesPage() {
             </div>
             <p className="mt-2 text-[11px] text-ink-500">
               New services start as Draft — fill in the capability profile here, then complete the
-              service&rsquo;s Activation Setup track to go live for routing.
+              service&rsquo;s Activation Setup track to go live for routing. Interested in joining
+              the Fulfillment Center network as a 3PL? That&rsquo;s a separately contracted
+              program —{' '}
+              <a href="/help" className="font-semibold underline underline-offset-2">
+                talk to us
+              </a>
+              .
             </p>
           </div>
         )}

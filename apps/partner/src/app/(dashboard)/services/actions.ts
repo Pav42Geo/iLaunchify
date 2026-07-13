@@ -17,7 +17,13 @@ import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
-const SERVICE_TYPES = ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE'] as const
+// WAREHOUSE deliberately excluded (Pavel 2026-07-13): the FC network is a
+// CURATED, admin-contracted partner category (receiving SLAs, multi-client
+// liability, network membership — managed in admin Logistics → Fulfillment
+// Centers). A producer's own storage is the typed "storage at your facility"
+// offering instead; a partner who genuinely wants to run a 3PL gets the
+// WAREHOUSE service added by admin under a separate contract.
+const SERVICE_TYPES = ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING'] as const
 export type AddableServiceType = (typeof SERVICE_TYPES)[number]
 
 // Void return so it can bind directly as a <form action>.
