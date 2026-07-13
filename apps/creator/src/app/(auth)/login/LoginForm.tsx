@@ -78,6 +78,27 @@ export function LoginForm({
     }
   }
 
+  // Dev-only credentials sign-in (email, no password). The parent enables
+  // providers.credentials when neither Google nor Resend is configured; without
+  // this branch the form rendered nothing usable (subtitle promised a field).
+  async function handleCredentials(e: React.FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      if (!(await passTurnstile())) return
+      const res = await signIn('credentials', { email, callbackUrl, redirect: false })
+      if (res?.error) {
+        toast.error('Sign-in failed — enter a seeded user email.')
+        return
+      }
+      window.location.href = res?.url ?? callbackUrl
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <TurnstileWidget onToken={setTurnstileToken} />
@@ -125,6 +146,30 @@ export function LoginForm({
             disabled={busy || !email || (TURNSTILE_ON && !turnstileToken)}
           >
             {busy ? 'Sending…' : 'Send magic link'}
+          </Button>
+        </form>
+      )}
+
+      {providers.credentials && (
+        <form onSubmit={handleCredentials} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              required
+              value={email}
+              placeholder="you@example.com"
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={busy}
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={busy || !email || (TURNSTILE_ON && !turnstileToken)}
+          >
+            {busy ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
       )}
