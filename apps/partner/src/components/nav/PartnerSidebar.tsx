@@ -202,10 +202,11 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
           />
         </div>
       ) : activationLimited ? (
-        // Activation phase only (Pavel 2026-07-12): dynamic portal card —
+        // Activation phase only (Pavel 2026-07-12): dynamic portal block —
         // bigger display title + "Onboarded" phase pill (approved, not yet
-        // live) — replaces the hardcoded "Partner portal · Active" caption.
-        <div className="mb-5 rounded-xl border border-ink-200 bg-white px-3 py-2.5 shadow-sm">
+        // live), flat on the gray band (no card chrome) — replaces the
+        // hardcoded "Partner portal · Active" caption.
+        <div className="mb-5 px-2 pt-1">
           <div className="font-display text-[15px] font-bold tracking-tight text-ink-900">
             Partner Portal
           </div>
