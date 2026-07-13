@@ -98,7 +98,7 @@ export function YourCompanySection({
       {/* Legal entity */}
       <section className="space-y-4">
         <h3 className="text-base font-semibold text-ink-900">Legal entity</h3>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <Field id="companyName" label="Doing-business-as (DBA)" required>
             <Input
               id="companyName"
@@ -117,7 +117,7 @@ export function YourCompanySection({
           </Field>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <Field id="websiteUrl" label="Website">
             <Input
               id="websiteUrl"
@@ -164,7 +164,7 @@ export function YourCompanySection({
           />
         </Field>
 
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-4 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <Field id="city" label="City" required>
             <Input
               id="city"
@@ -271,7 +271,7 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="grid gap-y-1.5 sm:row-span-2 sm:[grid-template-rows:subgrid]">
       <div className="flex items-baseline gap-1">
         <Label htmlFor={id} className="text-sm font-medium text-ink-900">
           {label}
@@ -282,8 +282,10 @@ function Field({
           )}
         </Label>
       </div>
-      {children}
-      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
+      <div className="space-y-1.5">
+        {children}
+        {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
+      </div>
     </div>
   )
 }

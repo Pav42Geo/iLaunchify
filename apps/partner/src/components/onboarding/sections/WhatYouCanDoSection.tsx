@@ -249,7 +249,7 @@ function ManufacturingForm({
           onToggle={(v) => toggleArr('processes', v)}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
         <Field id="mfg-moqmin" label="Minimum order (units)">
           <Input
             id="mfg-moqmin"
@@ -271,7 +271,7 @@ function ManufacturingForm({
           />
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
         <Field id="mfg-lt-min" label="Lead time (days, min)">
           <Input
             id="mfg-lt-min"
@@ -415,7 +415,7 @@ function CopackingForm({
           onToggle={(v) => toggleField('packagingFormats', v)}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
         <Field id="cop-moq" label="Typical MOQ (units)">
           <Input
             id="cop-moq"
@@ -495,7 +495,7 @@ function LabelPrintingForm({
           onToggle={(v) => toggleField('dieCuts', v)}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
         <Field id="lp-lt-min" label="Lead time (days, min)">
           <Input
             id="lp-lt-min"
@@ -549,7 +549,7 @@ function WarehouseForm({
           onToggle={toggleStorage}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
         <Field id="wh-pallets" label="Pallet capacity">
           <Input
             id="wh-pallets"
@@ -609,12 +609,14 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="grid gap-y-1.5 sm:row-span-2 sm:[grid-template-rows:subgrid]">
       <Label htmlFor={id} className="text-sm font-medium text-ink-900">
         {label}
       </Label>
-      {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
-      {children}
+      <div className="space-y-1.5">
+        {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
+        {children}
+      </div>
     </div>
   )
 }

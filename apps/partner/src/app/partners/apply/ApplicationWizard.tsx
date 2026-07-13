@@ -296,7 +296,7 @@ export function ApplicationWizard({
         <FieldBox label="Company name" error={formState.errors.companyName?.message} star>
           <Input placeholder="Northwind Co." {...register('companyName')} />
         </FieldBox>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <FieldBox label="Legal name (if different)">
             <Input placeholder="Northwind Co. LLC" {...register('legalName')} />
           </FieldBox>
@@ -306,7 +306,7 @@ export function ApplicationWizard({
         </div>
         {/* Location — carries forward to onboarding; drives proximity matching +
             region diversity. State list is your real Region data. */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <FieldBox label="Country">
             <ApplySelect
               {...register('country', {
@@ -335,7 +335,7 @@ export function ApplicationWizard({
             <Input placeholder="Columbus" {...register('city')} />
           </FieldBox>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <FieldBox label="Production facilities" star>
             <ApplySelect {...register('facilityCount')}>
               <option value="">Select…</option>
@@ -433,7 +433,7 @@ export function ApplicationWizard({
           Who should we <Em>reach out to?</Em>
         </H>
         <Sub>And a couple lines of context so we can judge fit.</Sub>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <FieldBox label="Your name" error={formState.errors.contactName?.message} star>
             <Input placeholder="Jane Doe" {...register('contactName')} />
           </FieldBox>
@@ -441,7 +441,7 @@ export function ApplicationWizard({
             <Input type="email" placeholder="you@company.com" {...register('email')} />
           </FieldBox>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <FieldBox label="Phone (optional)">
             <Input {...register('phone')} />
           </FieldBox>
@@ -529,7 +529,7 @@ export function ApplicationWizard({
             ))}
           </Chips>
         </FieldBox>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <FieldBox label="Smallest batch you'll run">
             <Input placeholder="e.g. 500 units" value={str(k, 'batchMin')} onChange={(e) => setDetail(k, 'batchMin', e.target.value)} />
           </FieldBox>
@@ -590,7 +590,7 @@ export function ApplicationWizard({
             ))}
           </Chips>
         </FieldBox>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <FieldBox label="Smallest run you'll take">
             <Input placeholder="e.g. 1,000 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
           </FieldBox>
@@ -658,7 +658,7 @@ export function ApplicationWizard({
             onToggle={(v) => toggleDetail(k, 'vas', v)}
           />
         </FieldBox>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
           <FieldBox label="Rough capacity">
             <Input placeholder="e.g. 500 pallets" value={str(k, 'capacity')} onChange={(e) => setDetail(k, 'capacity', e.target.value)} />
           </FieldBox>
@@ -817,8 +817,13 @@ function FieldBox({
   star?: boolean
   children: React.ReactNode
 }) {
+  // `grid gap-y-1.5` + subgrid: when this box sits in a row-defining grid (see the
+  // sm:grid-cols-* rows below), its label + control align to the SAME two rows as
+  // its neighbours — so inputs line up even when one label wraps to two lines and
+  // another is one. Standalone (no grid parent), subgrid falls back to a plain
+  // grid and it renders exactly like the old space-y-1.5 stack.
   return (
-    <div className="mb-4 space-y-1.5">
+    <div className="mb-4 grid gap-y-1.5 sm:row-span-2 sm:[grid-template-rows:subgrid]">
       <div className="flex items-baseline gap-1">
         <Label>{label}</Label>
         {star && (
@@ -827,8 +832,10 @@ function FieldBox({
           </span>
         )}
       </div>
-      {children}
-      {error && <p className="text-[12px] text-danger-600">{error}</p>}
+      <div className="space-y-1.5">
+        {children}
+        {error && <p className="text-[12px] text-danger-600">{error}</p>}
+      </div>
     </div>
   )
 }
