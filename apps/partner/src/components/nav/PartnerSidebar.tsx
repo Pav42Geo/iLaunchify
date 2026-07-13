@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Rocket,
   Lightbulb,
+  MessageCircle,
 } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
 import { roleNavFor, type PartnerNavItem } from '@/lib/role-skins'
@@ -36,6 +37,7 @@ const RESTRICTED_NAV: PartnerNavItem[] = [
 // in the header icon cluster.
 const CO_CREATION_NAV: PartnerNavItem[] = [
   { href: '/opportunities', label: 'Opportunity pool', icon: Lightbulb },
+  { href: '/messages', label: 'Messages', icon: MessageCircle },
 ]
 
 // Limited "in-profile" nav shown post-approval while the partner is still

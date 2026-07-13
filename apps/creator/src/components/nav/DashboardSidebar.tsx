@@ -16,6 +16,7 @@ import {
   LifeBuoy,
   Lightbulb,
   FilePlus2,
+  MessageCircle,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -39,6 +40,8 @@ const NAV: Array<{
   { href: '/products',                     label: 'Products',    icon: Package },
   // Co-creation briefs (CO_CREATION_MARKETPLACE_SPEC §10 — Co-Creation Studio)
   { href: '/briefs',                       label: 'Briefs',      icon: Lightbulb },
+  // Rooms & Messages hub (2026-07-13) — room chat + 1:1 DMs
+  { href: '/messages',                     label: 'Messages',    icon: MessageCircle },
   { href: '/orders',                       label: 'Orders',      icon: ShoppingBag },
   { href: '/inventory',                    label: 'Inventory',   icon: Boxes },
   { href: '/channels',                     label: 'Channels',    icon: Plug },
@@ -59,6 +62,7 @@ const CO_CREATION_NAV: Array<{
   // "Post a brief" leads — the tool's primary action comes first (Pavel 2026-07-12).
   { href: '/products/new/brief', label: 'Post a brief', icon: FilePlus2 },
   { href: '/briefs',            label: 'Your briefs', icon: Lightbulb },
+  { href: '/messages',          label: 'Messages',    icon: MessageCircle },
 ]
 
 const STORAGE_KEY = 'ilf-creator-sidebar-collapsed'

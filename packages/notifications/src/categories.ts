@@ -140,6 +140,9 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   MILESTONE_TERMS_PROPOSED: 'orders',
   MILESTONE_TERMS_AGREED: 'orders',
   MILESTONE_TERMS_DECLINED: 'orders',
+  // Rooms & Messages hub — chat pings ride the proofs category (room work).
+  ROOM_MESSAGE_RECEIVED: 'proofs',
+  DIRECT_MESSAGE_RECEIVED: 'proofs',
   // Legal & policy updates (L4) — mandatory notice on material publish.
   LEGAL_DOCUMENT_UPDATED: 'legal',
   PARTNER_APPLIED: 'account',

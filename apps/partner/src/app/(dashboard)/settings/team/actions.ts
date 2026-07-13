@@ -180,6 +180,47 @@ export async function removePartnerTeammate({
   return { ok: true }
 }
 
+/**
+ * Set a teammate's specialist title ("Food Scientist", "QA & Regulatory").
+ * Rooms & Messages (2026-07-13): this label becomes the role badge that
+ * travels with every room message, so creators know who they're talking with.
+ */
+export async function setTeammateTitle({
+  membershipId,
+  title,
+}: {
+  membershipId: string
+  title: string
+}): Promise<Result> {
+  const user = await requireUser()
+  const access = await requirePartnerAdminAccess(user.id)
+  if (!access) return { ok: false, error: 'Only organization admins can edit titles.' }
+
+  const membership = await prisma.partnerMembership.findFirst({
+    where: { id: membershipId, partnerId: access.partnerId, removedAt: null },
+    select: { id: true, title: true },
+  })
+  if (!membership) return { ok: false, error: 'Membership not found.' }
+
+  const clean = title.trim().slice(0, 60) || null
+  await prisma.partnerMembership.update({
+    where: { id: membership.id },
+    data: { title: clean },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'Partner',
+    entityId: access.partnerId,
+    action: 'PARTNER_TEAMMATE_TITLE_SET',
+    fromValue: membership.title,
+    toValue: clean,
+    payload: { membershipId: membership.id },
+  })
+
+  revalidatePath('/settings/team')
+  return { ok: true }
+}
+
 export async function acceptPartnerInvite({ token }: { token: string }): Promise<Result> {
   const user = await requireUser()
 

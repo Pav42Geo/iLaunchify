@@ -30,6 +30,9 @@ export interface TemplateData {
   MILESTONE_TERMS_PROPOSED: { roomId: string; milestoneKind: string; amount: string; byName?: string; note?: string }
   MILESTONE_TERMS_AGREED: { roomId: string; milestoneKind: string; amount?: string; byName?: string }
   MILESTONE_TERMS_DECLINED: { roomId: string; milestoneKind: string; byName?: string; note?: string }
+  // Rooms & Messages hub (2026-07-13) — first-unread-only dispatch (anti-spam)
+  ROOM_MESSAGE_RECEIVED: { roomId: string; roomTitle: string; byName?: string; roleLabel?: string; preview?: string }
+  DIRECT_MESSAGE_RECEIVED: { conversationId: string; byName?: string; roleLabel?: string; preview?: string }
   LEGAL_DOCUMENT_UPDATED: {
     title: string
     version: string
@@ -397,6 +400,22 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `${mk[0]?.toUpperCase()}${mk.slice(1)} terms declined`,
         body: `${d.byName ?? 'The creator'} declined the proposal${d.note ? `: “${d.note}”` : ''}. Adjust the amount or scope and re-propose in the room.`,
         link: `/rooms/${d.roomId}`,
+      }
+    }
+    case 'ROOM_MESSAGE_RECEIVED': {
+      const d = data as TemplateData['ROOM_MESSAGE_RECEIVED']
+      return {
+        title: `New message in ${d.roomTitle}`,
+        body: `${d.byName ?? 'A room member'}${d.roleLabel ? ` (${d.roleLabel})` : ''}: “${d.preview ?? 'New message'}”`,
+        link: `/messages?room=${d.roomId}`,
+      }
+    }
+    case 'DIRECT_MESSAGE_RECEIVED': {
+      const d = data as TemplateData['DIRECT_MESSAGE_RECEIVED']
+      return {
+        title: `New message from ${d.byName ?? 'a collaborator'}`,
+        body: `${d.roleLabel ? `${d.roleLabel} — ` : ''}“${d.preview ?? 'New direct message'}”`,
+        link: `/messages?dm=${d.conversationId}`,
       }
     }
     case 'LEGAL_DOCUMENT_UPDATED': {

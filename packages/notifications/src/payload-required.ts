@@ -41,6 +41,8 @@ export const REQUIRED_PAYLOAD_KEYS: {
   MILESTONE_TERMS_PROPOSED: ['roomId', 'milestoneKind', 'amount'],
   MILESTONE_TERMS_AGREED: ['roomId', 'milestoneKind'],
   MILESTONE_TERMS_DECLINED: ['roomId', 'milestoneKind'],
+  ROOM_MESSAGE_RECEIVED: ['roomId', 'roomTitle'],
+  DIRECT_MESSAGE_RECEIVED: ['conversationId'],
   LEGAL_DOCUMENT_UPDATED: ['title', 'href'],
   PACKAGING_APPROVED: ['name'],
   PACKAGING_REJECTED: ['name'],

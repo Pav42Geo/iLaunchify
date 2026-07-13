@@ -456,6 +456,34 @@ export {
   CO_CREATION_RATING_DIMENSIONS,
   CREATOR_RATING_DIMENSIONS,
 } from './room-rating'
+// Rooms & Messages hub (2026-07-13) — rooms rail + role-badged room chat +
+// 1:1 DMs with read cursors. Design contract: design/room-messages-prototype.html.
+export {
+  memberRoleLabel,
+  messagePreview,
+  countUnread,
+  listMessagingRooms,
+  listConversations,
+  listRoomChatMessages,
+  listDirectMessages,
+  getRoomMembers,
+  sendRoomChatMessage,
+  markRoomRead,
+  getOrCreateDmConversation,
+  sendDirectMessage,
+  markConversationRead,
+  isConversationParticipant,
+} from './messaging'
+export type {
+  MessagingSide,
+  ChatMessageView,
+  RoomThreadSummary,
+  ConversationSummary,
+  ThreadMemberView,
+  SendRoomMessageInput,
+  MessagingResult,
+  DmParty,
+} from './messaging'
 // MM-5 — badge → production-fee resolution (shadow-safe, reversible).
 // MM-7 — fee-grace / promo layer (global grace + manual grants).
 export { resolveManufacturerFeeBps, feeBpsToPct, resolveActivePromo, addMonths, addDays, addDuration } from './merit-fee'

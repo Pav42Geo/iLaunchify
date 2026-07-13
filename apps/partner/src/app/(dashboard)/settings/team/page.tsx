@@ -27,6 +27,7 @@ export default async function TeamSettingsPage() {
         select: {
           id: true,
           isAdmin: true,
+          title: true,
           acceptedAt: true,
           lastActiveAt: true,
           user: { select: { id: true, name: true, email: true } },
@@ -56,6 +57,7 @@ export default async function TeamSettingsPage() {
     membershipId: m.id,
     name: m.user.name,
     email: m.user.email ?? '',
+    title: m.title,
     isAdmin: m.isAdmin,
     isFounder: m.user.id === partner.userId,
     isSelf: m.user.id === user.id,

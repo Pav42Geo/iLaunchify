@@ -421,14 +421,25 @@ export async function declineMilestoneTerms(
   return { ok: true }
 }
 
-/** Send a room message (chat rail). Plain content — no audit, no event. */
+/**
+ * Send a room message (chat rail). Plain content — no audit, no event.
+ * Since 2026-07-13 (Rooms & Messages hub) the author identity snapshot is
+ * written too, so the in-room Discussion and /messages share one thread with
+ * the specialist role badge on every message.
+ */
 export async function addRoomMessage(ctx: RoomCtx, body: string): Promise<RoomResult> {
   const trimmed = body.trim()
   if (!trimmed) return { ok: false, error: 'Empty message' }
   if (trimmed.length > 4000) return { ok: false, error: 'Message too long' }
 
   await prisma.roomMessage.create({
-    data: { roomId: ctx.roomId, authorRole: ctx.actingAs, body: trimmed },
+    data: {
+      roomId: ctx.roomId,
+      authorRole: ctx.actingAs,
+      authorUserId: ctx.actor.id,
+      authorName: ctx.actorName,
+      body: trimmed,
+    },
   })
   return { ok: true }
 }

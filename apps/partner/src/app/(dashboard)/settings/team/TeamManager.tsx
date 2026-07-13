@@ -19,6 +19,7 @@ import {
   invitePartnerTeammate,
   revokePartnerInvite,
   removePartnerTeammate,
+  setTeammateTitle,
   type ServiceGrantInput,
 } from './actions'
 
@@ -26,6 +27,8 @@ export interface TeamMemberView {
   membershipId: string
   name: string | null
   email: string
+  /** Specialist title ("Food Scientist") — the role badge on room messages. */
+  title: string | null
   isAdmin: boolean
   isFounder: boolean
   isSelf: boolean
@@ -163,6 +166,26 @@ export function TeamManager({
                 <div className="text-[12px] text-ink-500">
                   {m.email} · joined {new Date(m.acceptedAt).toLocaleDateString()}
                 </div>
+                {/* Specialist title — the role badge creators see on every room
+                    message (Rooms & Messages, 2026-07-13). */}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    const next = window.prompt(
+                      'Specialist title shown next to their messages in collaboration rooms (e.g. "Food Scientist", "QA & Regulatory"). Leave empty to clear.',
+                      m.title ?? '',
+                    )
+                    if (next === null) return
+                    void run(
+                      () => setTeammateTitle({ membershipId: m.membershipId, title: next }),
+                      'Title updated',
+                    )
+                  }}
+                  className="mt-0.5 text-[12px] font-semibold text-pink-700 hover:underline"
+                >
+                  {m.title ? `${m.title} · edit` : '＋ Add specialist title'}
+                </button>
               </div>
               <div className="ml-auto flex flex-none flex-wrap items-center justify-end gap-2">
                 {m.isFounder ? (

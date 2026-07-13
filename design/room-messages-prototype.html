@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iLaunchify — Rooms & Messages (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-300:#FF7FA8;--pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;
+    --neon-500:#B5FF3D;
+    --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+    --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+    --success-50:#E7F4EC;--success-500:#1E7C4A;--success-700:#135733;
+    --warning-50:#FFF4E2;--warning-500:#B45309;
+    --info-50:#E8F1FB;--info-500:#1F5BA8;
+    --g-lime:radial-gradient(120% 130% at 50% 0%,#E8FFB8,#B8FF66 65%,#9EE61F);
+    --g-pink:radial-gradient(120% 130% at 50% 0%,#FFE0EC,#FFB3CC 60%,#FF7FA8);
+    --g-purple:radial-gradient(120% 130% at 50% 0%,#EEE6FF,#C9B6FF 60%,#A48CFF);
+    --g-yellow:radial-gradient(120% 130% at 50% 0%,#FFF6C2,#FFE074 60%,#F5C842);
+    --g-cyan:radial-gradient(120% 130% at 50% 0%,#D1F2FF,#8DE0FF 60%,#5BC5F0);
+    --g-mint:radial-gradient(120% 130% at 50% 0%,#D6F5E4,#9CE6BB 60%,#6BD198);
+    --sans:'Inter',-apple-system,system-ui,sans-serif;
+    --display:'Bricolage Grotesque','Inter',sans-serif;
+    --serif:'Fraunces',Georgia,serif;
+    --r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+    --el-card:0 1px 2px rgba(24,24,26,.05);
+    --el-pop:0 16px 40px -16px rgba(24,24,26,.30);
+    --el-lg:0 12px 28px rgba(24,24,26,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--ink-50);color:var(--ink-900);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  textarea{font-family:inherit}
+  .muted{color:var(--ink-500)}.small{font-size:12px}.tiny{font-size:11px}.b{font-weight:700}
+  .disp{font-family:var(--display);letter-spacing:-.02em}
+  em{font-family:var(--serif);font-style:italic;font-weight:500;color:var(--pink-700)}
+
+  .app{max-width:1360px;height:calc(100vh - 36px);margin:18px auto;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--el-lg);display:flex;flex-direction:column}
+
+  /* ---- top chrome ---- */
+  .hdr{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--ink-200);flex:none}
+  .mark{width:28px;height:28px;border-radius:8px;background:var(--pink-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;font-family:var(--display)}
+  .word{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .word .lo{color:var(--pink-500)}
+  .sublabel{font-size:12px;color:var(--ink-500);border-left:1px solid var(--ink-200);padding-left:12px}
+  .hdr .spacer{flex:1}
+  .rav{width:26px;height:26px;border-radius:50%;background:var(--pink-500)}
+
+  .cols{display:flex;flex:1;min-height:0}
+
+  /* ================= LEFT RAIL — rooms + DMs (dark surface) ================= */
+  .rail{width:272px;flex:none;background:var(--ink-900);color:#fff;display:flex;flex-direction:column;overflow-y:auto}
+  .rail::-webkit-scrollbar{width:0}
+  .rail .sect{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-400);padding:16px 16px 8px;display:flex;align-items:center}
+  .rail .sect .spacer{flex:1}
+  .rail .sect button{color:var(--neon-500);font-size:14px;font-weight:800;line-height:1}
+  .ritem{display:flex;gap:10px;align-items:center;padding:9px 12px;margin:1px 8px;border-radius:var(--r-lg);transition:.12s;width:calc(100% - 16px);text-align:left}
+  .ritem:hover{background:var(--ink-800)}
+  .ritem.on{background:var(--ink-700)}
+  .rtile{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex:none;position:relative}
+  .rav2{width:34px;height:34px;border-radius:50%;flex:none;position:relative;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--ink-900)}
+  .dot{position:absolute;right:-2px;bottom:-2px;width:10px;height:10px;border-radius:50%;border:2.5px solid var(--ink-900)}
+  .dot.on{background:var(--neon-500)}.dot.off{background:var(--ink-500)}
+  .rtx{flex:1;min-width:0}
+  .rtx .n{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rtx .s{font-size:11px;color:var(--ink-400);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .unread{background:var(--pink-500);color:#fff;font-size:10px;font-weight:800;border-radius:var(--r-pill);padding:2px 7px;flex:none}
+  .rtx .s .who{color:var(--ink-300);font-weight:600}
+  .railfoot{margin-top:auto;padding:12px 16px;border-top:1px solid var(--ink-800);font-size:10.5px;color:var(--ink-500)}
+  .railfoot .neon{color:var(--neon-500);font-weight:700}
+
+  /* ================= CENTER — chat ================= */
+  .mid{flex:1;min-width:0;display:flex;flex-direction:column;background:#fff}
+  .chead{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--ink-200);flex:none}
+  .chead .tile{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .chead h2{font-family:var(--display);font-size:16.5px;margin:0;letter-spacing:-.01em}
+  .chead .sub{font-size:11.5px;color:var(--ink-500)}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:var(--r-pill)}
+  .p-room{background:var(--pink-50);color:var(--pink-700)}
+  .chead .spacer{flex:1}
+  .hbtn{font-size:12px;font-weight:700;border:1px solid var(--ink-300);border-radius:var(--r-pill);padding:7px 14px;color:var(--ink-700)}
+  .hbtn:hover{background:var(--ink-50)}
+  .hbtn.dark{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+
+  .msgs{flex:1;overflow-y:auto;padding:18px 24px;display:flex;flex-direction:column;gap:2px}
+  .day{align-self:center;font-size:10.5px;font-weight:700;color:var(--ink-500);background:var(--ink-100);border-radius:var(--r-pill);padding:3px 12px;margin:10px 0}
+  .newdiv{display:flex;align-items:center;gap:10px;margin:10px 0}
+  .newdiv .ln{flex:1;height:1px;background:var(--pink-300)}
+  .newdiv .t{font-size:10px;font-weight:800;color:var(--pink-600);letter-spacing:.08em}
+
+  .m{display:flex;gap:10px;padding:5px 0;max-width:78%}
+  .m .av{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--ink-900);margin-top:2px}
+  .m .body{min-width:0}
+  .mline{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+  .mname{font-size:12.5px;font-weight:800}
+  .rolebadge{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:var(--r-pill)}
+  .rb-sci{background:var(--info-50);color:var(--info-500)}
+  .rb-qa{background:var(--success-50);color:var(--success-700)}
+  .rb-am{background:var(--warning-50);color:var(--warning-500)}
+  .rb-owner{background:var(--pink-50);color:var(--pink-700)}
+  .mtime{font-size:10px;color:var(--ink-400)}
+  .bub{background:var(--ink-50);border:1px solid var(--ink-100);border-radius:4px 14px 14px 14px;padding:8px 12px;font-size:13.5px;line-height:1.5;margin-top:3px;color:var(--ink-800)}
+  .m.me{align-self:flex-end;flex-direction:row-reverse}
+  .m.me .bub{background:var(--pink-50);border-color:var(--pink-100);border-radius:14px 4px 14px 14px}
+  .m.me .mline{justify-content:flex-end}
+  .mention{color:var(--pink-700);font-weight:700;background:var(--pink-50);border-radius:4px;padding:0 3px}
+
+  /* system events + object-anchored cards */
+  .sys{align-self:center;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-500);background:var(--ink-50);border:1px solid var(--ink-100);border-radius:var(--r-pill);padding:5px 14px;margin:8px 0}
+  .sys .k{font-weight:700;color:var(--ink-700)}
+  .objcard{margin-top:8px;border:1px solid var(--ink-200);border-radius:var(--r-lg);background:#fff;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:var(--el-card)}
+  .objcard .ic{width:34px;height:34px;border-radius:9px;background:var(--ink-900);color:var(--neon-500);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+  .objcard .t{font-size:12.5px;font-weight:800}
+  .objcard .s{font-size:11px;color:var(--ink-500)}
+  .objcard .go{margin-left:auto;font-size:11.5px;font-weight:800;color:var(--pink-600);white-space:nowrap}
+  .objcard .go:hover{text-decoration:underline}
+
+  .typing{font-size:11px;color:var(--ink-500);padding:2px 0 0 42px;height:16px}
+  .typing .d3{display:inline-block;animation:blink 1.2s infinite}
+  @keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+  /* composer */
+  .composer{flex:none;padding:12px 20px 16px;border-top:1px solid var(--ink-200);position:relative}
+  .cwrap{display:flex;align-items:flex-end;gap:8px;background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:8px 10px;transition:.12s}
+  .cwrap:focus-within{border-color:var(--pink-500);box-shadow:0 0 0 3px var(--pink-50);background:#fff}
+  .cbtn{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--ink-500);flex:none}
+  .cbtn:hover{background:var(--ink-100);color:var(--ink-900)}
+  .cwrap textarea{flex:1;border:none;background:none;resize:none;font-size:13.5px;line-height:1.5;padding:5px 2px;outline:none;max-height:120px;color:var(--ink-900)}
+  .send{width:34px;height:34px;border-radius:50%;background:var(--pink-500);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none;transition:.12s}
+  .send:hover{background:var(--pink-600);transform:translateY(-1px)}
+  .chint{font-size:10px;color:var(--ink-400);margin-top:6px;padding-left:4px}
+  /* @mention popover */
+  .mpop{position:absolute;bottom:74px;left:60px;width:290px;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-lg);box-shadow:var(--el-pop);overflow:hidden;display:none}
+  .mpop.open{display:block}
+  .mpop .row{display:flex;gap:9px;align-items:center;padding:8px 12px;width:100%;text-align:left}
+  .mpop .row:hover{background:var(--pink-50)}
+  .mpop .av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:var(--ink-900);flex:none}
+  .mpop .n{font-size:12.5px;font-weight:700}
+  .mpop .r{font-size:10.5px;color:var(--ink-500)}
+
+  /* ================= RIGHT — members panel ================= */
+  .side{width:296px;flex:none;border-left:1px solid var(--ink-200);background:#fff;overflow-y:auto;display:flex;flex-direction:column}
+  .side .shead{padding:16px 18px 8px}
+  .side .shead .t{font-family:var(--display);font-size:14.5px;font-weight:800}
+  .side .shead .s{font-size:11px;color:var(--ink-500)}
+  .grp{padding:8px 12px}
+  .grp .gl{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-500);padding:6px 6px 4px;display:flex;align-items:center;gap:7px}
+  .grp .gl .co{font-weight:700;text-transform:none;letter-spacing:0;color:var(--ink-400)}
+  .mem{display:flex;gap:10px;align-items:center;padding:7px 6px;border-radius:var(--r-lg);width:100%;text-align:left}
+  .mem:hover{background:var(--ink-50)}
+  .mem .av{width:34px;height:34px;border-radius:50%;flex:none;position:relative;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:var(--ink-900)}
+  .mem .dot{border-color:#fff}
+  .mem .tx{flex:1;min-width:0}
+  .mem .n{font-size:12.5px;font-weight:700;display:flex;gap:6px;align-items:center}
+  .mem .msgb{opacity:0;font-size:10.5px;font-weight:800;color:var(--pink-600);border:1px solid var(--pink-100);background:var(--pink-50);border-radius:var(--r-pill);padding:3px 9px;transition:.12s;flex:none}
+  .mem:hover .msgb{opacity:1}
+  .invite{margin:6px 6px 2px;border:1.5px dashed var(--ink-300);border-radius:var(--r-lg);padding:9px;width:calc(100% - 12px);font-size:11.5px;font-weight:700;color:var(--ink-500);text-align:center}
+  .invite:hover{border-color:var(--pink-500);color:var(--pink-700);background:var(--pink-50)}
+  .sidenote{margin:auto 14px 14px;background:var(--ink-50);border:1px solid var(--ink-100);border-radius:var(--r-lg);padding:10px 12px;font-size:10.5px;color:var(--ink-500);line-height:1.5}
+  .sidenote .b{color:var(--ink-700)}
+
+  .note{max-width:1360px;margin:8px auto 24px;font-size:11.5px;color:var(--ink-400);text-align:center}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="hdr">
+    <div class="mark">iL</div>
+    <div class="word">i<span class="lo">Launchify</span></div>
+    <div class="sublabel disp">Messages</div>
+    <div class="spacer"></div>
+    <span class="small muted">Pavel G.</span>
+    <div class="rav"></div>
+  </div>
+
+  <div class="cols">
+    <!-- ============ LEFT RAIL ============ -->
+    <div class="rail" id="rail"></div>
+
+    <!-- ============ CENTER CHAT ============ -->
+    <div class="mid">
+      <div class="chead" id="chead"></div>
+      <div class="msgs" id="msgs"></div>
+      <div class="typing" id="typing"></div>
+      <div class="composer">
+        <div class="mpop" id="mpop"></div>
+        <div class="cwrap">
+          <button class="cbtn" title="Attach">＋</button>
+          <textarea id="input" rows="1" placeholder="Message the room… type @ to mention"></textarea>
+          <button class="cbtn" title="Reference a build object">⧉</button>
+          <button class="cbtn" title="Emoji">☺</button>
+          <button class="send" id="send" title="Send">➤</button>
+        </div>
+        <div class="chint">⧉ attaches a build object (recipe version, milestone, sample) so the message stays anchored to the work · every message is part of the room record</div>
+      </div>
+    </div>
+
+    <!-- ============ RIGHT MEMBERS ============ -->
+    <div class="side" id="side"></div>
+  </div>
+</div>
+
+<p class="note">Prototype — design/room-messages-prototype.html · rooms rail (GroupMe) + role badges (Twitch) + team-grouped members (Discord) + object-anchored chat (Linear/Figma) · data illustrative</p>
+
+<script>
+// ---------------- data ----------------
+const AV=['--g-purple','--g-pink','--g-lime','--g-cyan','--g-yellow','--g-mint'];
+const PEOPLE={
+  pavel:{n:'Pavel G.',init:'PG',g:'--g-pink',side:'creator',role:'Owner',rb:'rb-owner',on:true},
+  maria:{n:'Maria K.',init:'MK',g:'--g-purple',side:'partner',role:'Food Scientist',rb:'rb-sci',on:true},
+  denis:{n:'Denis R.',init:'DR',g:'--g-cyan',side:'partner',role:'QA & Regulatory',rb:'rb-qa',on:false},
+  lena:{n:'Lena T.',init:'LT',g:'--g-yellow',side:'partner',role:'Account Manager',rb:'rb-am',on:true},
+  simona:{n:'Simona',init:'S',g:'--g-mint',side:'creator',role:'Brand & Design',rb:'rb-owner',on:true},
+};
+const ROOMS=[
+  {id:'r1',kind:'room',name:'Adaptogen Gummy Duo',emoji:'🍬',g:'--g-purple',partner:'VitaForm Labs',
+   snippet:{who:'Maria K.',text:'Recipe v2 is up — swapped the pectin ratio'},unread:3,
+   members:['pavel','simona','maria','denis','lena'],typing:'Maria K.'},
+  {id:'r2',kind:'room',name:'Calm-night Herbal Tea',emoji:'🍵',g:'--g-mint',partner:'Golden Leaf Co-Pack',
+   snippet:{who:'You',text:'Approved the outer carton die-line ✓'},unread:0,
+   members:['pavel','maria','lena']},
+  {id:'r3',kind:'room',name:'Passion-fruit Protein Water',emoji:'🥤',g:'--g-cyan',partner:'AquaCraft Bottling',
+   snippet:{who:'Lena T.',text:'Sample batch ships Thursday'},unread:1,
+   members:['pavel','lena','denis']},
+];
+const DMS=[
+  {id:'d1',kind:'dm',who:'maria',snippet:{who:'',text:'I can jump on a call about the citric level'},unread:1},
+  {id:'d2',kind:'dm',who:'lena',snippet:{who:'You',text:'Thanks — see you at the sample review'},unread:0},
+  {id:'d3',kind:'dm',who:'simona',snippet:{who:'',text:'New label draft in the room 👀'},unread:0},
+];
+const THREADS={
+  r1:[
+    {day:'Friday'},
+    {from:'lena',time:'2:14 PM',text:'Welcome to the room! I’ll coordinate on our side — Maria owns the formulation, Denis covers QA & compliance docs.'},
+    {from:'pavel',time:'2:20 PM',text:'Great to meet the team. Goal: two SKUs (Focus / Calm), vegan pectin base, launch volume 10k.'},
+    {sys:{who:'You',what:'funded Milestone 1 — Recipe development',escrow:true}},
+    {day:'Yesterday'},
+    {from:'maria',time:'10:05 AM',text:'First pass done. Heads-up: at 12% juice concentrate the gummies get tacky in warm shipping. I’d drop to 9% and lift the natural flavour instead.'},
+    {from:'pavel',time:'10:32 AM',text:'Fine by me if taste holds. <span class="mention">@Denis R.</span> any label impact from the flavour lift?'},
+    {from:'denis',time:'11:04 AM',text:'None — still "natural flavours" on the declaration. FALCPA unchanged. I’ll re-run the compliance pre-check once v2 is in.'},
+    {newdiv:true},
+    {sys:{who:'Maria K.',what:'submitted Recipe v2 for your review'}},
+    {from:'maria',time:'9:17 AM',text:'Recipe v2 is up — swapped the pectin ratio and dropped concentrate to 9%. Facts label updated automatically.',
+     obj:{ic:'⚗',t:'Recipe v2 — Adaptogen Gummy (Focus)',s:'Nutrition Facts ready · awaiting your approval',go:'Review in room →'}},
+  ],
+  r2:[
+    {day:'Tuesday'},
+    {from:'maria',time:'3:40 PM',text:'Blend approved on our side. Steeping profile documented in the spec object.'},
+    {from:'pavel',time:'4:02 PM',text:'Approved the outer carton die-line ✓ — ready for sample run.'},
+    {sys:{who:'Golden Leaf Co-Pack',what:'moved the room to Sample stage'}},
+  ],
+  r3:[
+    {day:'Today'},
+    {sys:{who:'AquaCraft Bottling',what:'booked the sample line'}},
+    {from:'lena',time:'8:50 AM',text:'Sample batch ships Thursday via UPS — tracking will land in the room’s sample card.',
+     obj:{ic:'📦',t:'Sample shipment #S-118',s:'UPS · ships Thu · 12 units',go:'Track →'}},
+  ],
+  d1:[
+    {day:'Today'},
+    {from:'maria',time:'9:41 AM',text:'I can jump on a call about the citric level if easier — 15 min?'},
+  ],
+  d2:[
+    {day:'Yesterday'},
+    {from:'lena',time:'5:12 PM',text:'Booked the sample review for Friday 10am.'},
+    {from:'pavel',time:'5:15 PM',text:'Thanks — see you at the sample review'},
+  ],
+  d3:[
+    {day:'Today'},
+    {from:'simona',time:'8:02 AM',text:'New label draft in the room 👀 — check the Calm variant type-lock.'},
+  ],
+};
+let current='r1';
+
+// ---------------- render: rail ----------------
+function avEl(p,size){const per=PEOPLE[p];
+  return `<span class="rav2" style="background:var(${per.g});width:${size}px;height:${size}px">${per.init}<span class="dot ${per.on?'on':'off'}"></span></span>`;}
+function renderRail(){
+  const r=document.getElementById('rail');
+  let h=`<div class="sect">Product rooms <span class="spacer"></span><button title="New brief">＋</button></div>`;
+  h+=ROOMS.map(x=>`
+    <button class="ritem ${current===x.id?'on':''}" data-id="${x.id}">
+      <span class="rtile" style="background:var(${x.g})">${x.emoji}</span>
+      <span class="rtx"><span class="n">${x.name}</span>
+      <span class="s"><span class="who">${x.snippet.who?x.snippet.who+':':''}</span> ${x.snippet.text}</span></span>
+      ${x.unread?`<span class="unread">${x.unread}</span>`:''}
+    </button>`).join('');
+  h+=`<div class="sect">Direct messages <span class="spacer"></span><button title="New message">＋</button></div>`;
+  h+=DMS.map(x=>{const p=PEOPLE[x.who];return `
+    <button class="ritem ${current===x.id?'on':''}" data-id="${x.id}">
+      ${avEl(x.who,34)}
+      <span class="rtx"><span class="n">${p.n}</span>
+      <span class="s"><span class="who">${x.snippet.who?x.snippet.who+':':''}</span> ${x.snippet.text}</span></span>
+      ${x.unread?`<span class="unread">${x.unread}</span>`:''}
+    </button>`}).join('');
+  h+=`<div class="railfoot">Rooms are created when a maker is <span class="neon">selected</span> — chat lives with the work, not beside it.</div>`;
+  r.innerHTML=h;
+  r.querySelectorAll('.ritem').forEach(b=>b.addEventListener('click',()=>{current=b.dataset.id;
+    const item=[...ROOMS,...DMS].find(z=>z.id===current);if(item)item.unread=0;renderAll();}));
+}
+
+// ---------------- render: header ----------------
+function renderHead(){
+  const c=document.getElementById('chead');
+  const room=ROOMS.find(x=>x.id===current);
+  if(room){
+    c.innerHTML=`<span class="tile" style="background:var(${room.g})">${room.emoji}</span>
+      <div><h2>${room.name}</h2><div class="sub">with <b>${room.partner}</b> · ${room.members.length} members</div></div>
+      <span class="pill p-room">🚪 In collaboration room</span><span class="spacer"></span>
+      <button class="hbtn">Build objects</button><button class="hbtn dark">Open room →</button>`;
+  }else{
+    const dm=DMS.find(x=>x.id===current);const p=PEOPLE[dm.who];
+    c.innerHTML=`${avEl(dm.who,38)}
+      <div><h2>${p.n}</h2><div class="sub">${p.role} · ${p.on?'online now':'away'}</div></div>
+      <span class="spacer"></span><button class="hbtn">View shared rooms</button>`;
+  }
+}
+
+// ---------------- render: messages ----------------
+function msgEl(m){
+  if(m.day)return `<div class="day">${m.day}</div>`;
+  if(m.newdiv)return `<div class="newdiv"><span class="ln"></span><span class="t">NEW</span><span class="ln"></span></div>`;
+  if(m.sys)return `<div class="sys"><span class="k">${m.sys.who}</span> ${m.sys.what}${m.sys.escrow?' · <b style="color:var(--success-700)">escrow funded</b>':''}</div>`;
+  const p=PEOPLE[m.from];const me=m.from==='pavel';
+  return `<div class="m ${me?'me':''}">
+    <span class="av" style="background:var(${p.g})">${p.init}</span>
+    <div class="body">
+      <div class="mline"><span class="mname">${me?'You':p.n}</span>
+        <span class="rolebadge ${p.rb}">${p.role}</span><span class="mtime">${m.time}</span></div>
+      <div class="bub">${m.text}</div>
+      ${m.obj?`<div class="objcard"><span class="ic">${m.obj.ic}</span>
+        <span><div class="t">${m.obj.t}</div><div class="s">${m.obj.s}</div></span>
+        <button class="go">${m.obj.go}</button></div>`:''}
+    </div></div>`;
+}
+function renderMsgs(){
+  const el=document.getElementById('msgs');
+  el.innerHTML=(THREADS[current]||[]).map(msgEl).join('');
+  el.scrollTop=el.scrollHeight;
+  const room=ROOMS.find(x=>x.id===current);
+  document.getElementById('typing').innerHTML=room&&room.typing
+    ?`${room.typing} is typing<span class="d3">…</span>`:'';
+}
+
+// ---------------- render: members ----------------
+function renderSide(){
+  const s=document.getElementById('side');
+  const room=ROOMS.find(x=>x.id===current);
+  if(!room){
+    const dm=DMS.find(x=>x.id===current);const p=PEOPLE[dm.who];
+    s.innerHTML=`<div class="shead"><div class="t disp">About</div></div>
+      <div class="grp"><div class="mem">${avEl(dm.who,34)}
+        <span class="tx"><span class="n">${p.n}</span><span class="rolebadge ${p.rb}">${p.role}</span></span></div></div>
+      <div class="sidenote"><span class="b">Direct messages</span> are 1:1 and private. Product decisions still belong in the room — its log is the record.</div>`;
+    return;
+  }
+  const creators=room.members.filter(m=>PEOPLE[m].side==='creator');
+  const partners=room.members.filter(m=>PEOPLE[m].side==='partner');
+  const row=m=>{const p=PEOPLE[m];return `<button class="mem">
+      ${avEl(m,34)}
+      <span class="tx"><span class="n">${p.n} <span class="rolebadge ${p.rb}">${p.role}</span></span></span>
+      <span class="msgb">Message</span></button>`;};
+  s.innerHTML=`<div class="shead"><div class="t disp">Members</div><div class="s">${room.members.length} in this room</div></div>
+    <div class="grp"><div class="gl">Your team <span class="co">· ${creators.length}</span></div>${creators.map(row).join('')}
+      <button class="invite">＋ Invite a teammate</button></div>
+    <div class="grp"><div class="gl">${room.partner} <span class="co">· ${partners.length}</span></div>${partners.map(row).join('')}</div>
+    <div class="sidenote"><span class="b">Roles come from the partner’s own team setup</span> — when ${room.partner} adds a member to this room, their specialist role travels with them, so you always know who you’re talking to.</div>`;
+}
+
+// ---------------- composer ----------------
+const input=document.getElementById('input');
+const mpop=document.getElementById('mpop');
+function sendMsg(){
+  const t=input.value.trim();if(!t)return;
+  const arr=THREADS[current]||(THREADS[current]=[]);
+  arr.push({from:'pavel',time:'now',text:t.replace(/@(\w[\w .]*)/g,'<span class="mention">@$1</span>')});
+  input.value='';mpop.classList.remove('open');renderMsgs();
+}
+document.getElementById('send').addEventListener('click',sendMsg);
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+input.addEventListener('input',()=>{
+  const room=ROOMS.find(x=>x.id===current);
+  const m=input.value.match(/@(\w*)$/);
+  if(m&&room){
+    const q=m[1].toLowerCase();
+    const hits=room.members.filter(k=>k!=='pavel'&&PEOPLE[k].n.toLowerCase().includes(q));
+    if(hits.length){mpop.innerHTML=hits.map(k=>{const p=PEOPLE[k];
+      return `<button class="row" data-k="${k}"><span class="av" style="background:var(${p.g})">${p.init}</span>
+        <span><div class="n">${p.n}</div><div class="r">${p.role} · ${p.side==='creator'?'your team':'partner team'}</div></span></button>`;}).join('');
+      mpop.classList.add('open');
+      mpop.querySelectorAll('.row').forEach(r=>r.addEventListener('click',()=>{
+        input.value=input.value.replace(/@\w*$/,'@'+PEOPLE[r.dataset.k].n+' ');
+        mpop.classList.remove('open');input.focus();}));
+      return;}
+  }
+  mpop.classList.remove('open');
+});
+
+function renderAll(){renderRail();renderHead();renderMsgs();renderSide();}
+renderAll();
+</script>
+</body>
+</html>

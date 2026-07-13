@@ -35,6 +35,7 @@ import {
   Handshake,
   Rocket,
   Lightbulb,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -88,6 +89,9 @@ const NAV_COPARTNERS: PartnerNavItem = { href: '/co-partners', label: 'Co-partne
 // creator briefs + Express Interest. Manufacturing-only, commercial (terms/
 // pricing) → org-admin.
 const NAV_OPPORTUNITIES: PartnerNavItem = { href: '/opportunities', label: 'Opportunities', icon: Lightbulb }
+// Rooms & Messages hub (2026-07-13) — room chat + 1:1 DMs. Operational: every
+// team member in a collaboration room chats there, not just org admins.
+const NAV_MESSAGES: PartnerNavItem = { href: '/messages', label: 'Messages', icon: MessageCircle }
 const NAV_ACTIVATION: PartnerNavItem = { href: '/activation', label: 'Activation Setup', icon: Rocket }
 
 /**
@@ -131,6 +135,9 @@ export function roleNavFor(
   // their services; commercial + catalog surfaces (products, packaging,
   // pricing, payments, billing) are org-admin only.
   const nav: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS, NAV_PERFORMANCE]
+  // Messages: co-creation participants (producers + co-packers). Rooms outlive
+  // the module kick-off toggle — never strand an in-flight conversation.
+  if (producing || has('COPACKING')) nav.push(NAV_MESSAGES)
   if (fulfillment) nav.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
   if (isOrgAdmin) {
     // Post-approval setup surface — the union of every service's activation track.

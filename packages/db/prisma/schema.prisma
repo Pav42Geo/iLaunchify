@@ -1134,6 +1134,11 @@ model PartnerMembership {
   partnerId         String
   userId            String
   isAdmin           Boolean  @default(false) // org-wide PARTNER_ADMIN
+  /// Free-text specialist title ("Food Scientist", "QA & Regulatory") — shown
+  /// as the role badge next to every room message + in the members panel, so
+  /// creators know WHO they're talking with (Rooms & Messages, 2026-07-13).
+  /// Falls back to service-role-derived labels when unset.
+  title             String?
   invitedByUserId   String? // null only for the founder
   invitedAt         DateTime?
   acceptedAt        DateTime @default(now())
@@ -5057,6 +5062,10 @@ enum NotificationEvent {
   MILESTONE_TERMS_DECLINED // creator declined — maker can re-propose → notify partner
   // Legal (L4) — a legal document was published with a MATERIAL change.
   LEGAL_DOCUMENT_UPDATED // notify the doc's audience that terms changed
+  // Rooms & Messages hub (2026-07-13). Anti-spam: dispatched only on the FIRST
+  // unread message in a thread — further messages ride the unread badge.
+  ROOM_MESSAGE_RECEIVED // new chat message in a collaboration room
+  DIRECT_MESSAGE_RECEIVED // new 1:1 direct message
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP
@@ -9994,6 +10003,7 @@ model CoCreationRoom {
   objects     BuildObject[]
   milestones  RoomMilestone[]
   messages    RoomMessage[]
+  readCursors RoomReadCursor[]
   events      RoomEvent[] // decision/activity log — dispute evidence trail
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -10136,16 +10146,82 @@ model CoCreationSettings {
   createdAt   DateTime @default(now())
 }
 
-/// Append-only room chat message.
+/// Append-only room chat message. Extended 2026-07-13 (Rooms & Messages hub):
+/// author identity travels with every message (Twitch-style role badge — the
+/// creator always knows WHICH specialist is talking), and a message may carry
+/// an object anchor (recipe version / milestone / sample card) so chat stays
+/// wired to the work. Snapshots by design — messages are immutable record.
 model RoomMessage {
-  id         String         @id @default(uuid())
-  roomId     String
-  authorRole String // 'CREATOR' | 'PARTNER'
-  body       String
-  room       CoCreationRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  createdAt  DateTime       @default(now())
+  id              String         @id @default(uuid())
+  roomId          String
+  authorRole      String // 'CREATOR' | 'PARTNER' — side of the table
+  authorUserId    String? // null on legacy rows written before 2026-07-13
+  authorName      String? // display-name snapshot at send time
+  authorRoleLabel String? // specialist label snapshot ("Food Scientist", "QA & Regulatory")
+  body            String
+  objectRef       Json? // { kind, objectId, title, subtitle } — anchored build-object card
+  room            CoCreationRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
 
   @@index([roomId, createdAt])
+}
+
+/// Per-user read cursor for a room's chat — powers the rail unread badges.
+/// One row per (room, user), upserted on view.
+model RoomReadCursor {
+  id         String         @id @default(uuid())
+  roomId     String
+  userId     String
+  lastReadAt DateTime       @default(now())
+  room       CoCreationRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
+/// 1:1 (schema-ready for group) direct-message thread between platform users —
+/// the "Direct messages" section of the Messages hub. Product DECISIONS still
+/// belong in the room (its log is the dispute record); DMs are side-channel.
+model Conversation {
+  id           String                    @id @default(uuid())
+  /// Optional room context the DM was started from (member panel "Message").
+  originRoomId String?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  participants ConversationParticipant[]
+  messages     DirectMessage[]
+
+  @@index([originRoomId])
+}
+
+/// Membership + read cursor in one row. roleLabel/displayName are snapshots
+/// taken at join so the thread header stays meaningful even if a member later
+/// leaves the partner org.
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  userId         String
+  displayName    String
+  roleLabel      String? // "Food Scientist · VitaForm Labs" | "Creator"
+  side           String // 'CREATOR' | 'PARTNER'
+  lastReadAt     DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+/// Append-only DM body.
+model DirectMessage {
+  id             String       @id @default(uuid())
+  conversationId String
+  authorUserId   String
+  body           String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
 /// Append-only decision/activity log row — the dispute evidence trail (§9).
