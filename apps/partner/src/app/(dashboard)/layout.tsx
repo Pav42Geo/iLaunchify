@@ -163,7 +163,6 @@ export default async function PartnerDashboardLayout({ children }: { children: R
           user={user}
           companyName={partner.companyName}
           tier={partner.tier}
-          serviceTypes={serviceTypes}
         />
       ) : (
         <PartnerTopbar
