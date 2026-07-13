@@ -59,6 +59,7 @@ export * from './primitives/row-actions-menu'
 // Object-view components
 export * from './components/FormField'
 export * from './components/InfoTip'
+export * from './components/GoogleAnalytics'
 export * from './components/TurnstileWidget'
 export * from './components/SectionLabel'
 export * from './components/ElementRail'

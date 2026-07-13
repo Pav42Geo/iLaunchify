@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { GoogleAnalytics } from '@ilaunchify/ui'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { PostHogProvider } from '@/components/providers/PostHogProvider'
 import { Toaster } from '@/components/providers/Toaster'
@@ -28,6 +29,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="/theme-overrides" />
       </head>
       <body className="bg-white text-ink-900 antialiased">
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
         <QueryProvider>
           <PostHogProvider>
             {children}

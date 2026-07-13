@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { GoogleAnalytics } from '@ilaunchify/ui'
 import './globals.css'
 import { CookieBanner } from '@/components/CookieBanner'
 
@@ -20,6 +21,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="/theme-overrides" />
       </head>
       <body>
+        {/* Google Analytics — consent-gated via CookieBanner (Consent Mode v2). */}
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} requireConsent />
         {children}
         <CookieBanner />
       </body>

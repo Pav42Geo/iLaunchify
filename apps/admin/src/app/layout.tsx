@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { GoogleAnalytics } from '@ilaunchify/ui'
 import { cookies } from 'next/headers'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { Toaster } from '@/components/providers/Toaster'
@@ -20,6 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="stylesheet" href="/theme-overrides" />
       </head>
       <body className="bg-ink-50 text-ink-900 antialiased">
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
         {previewScope ? (
           <div className="fixed bottom-3 left-1/2 z-[100] -translate-x-1/2 rounded-pill border border-pink-200 bg-pink-50 px-3 py-1 text-[length:var(--fs-xs)] font-semibold text-pink-700 shadow-lg">
             Theme preview — {previewScope} draft, not published
