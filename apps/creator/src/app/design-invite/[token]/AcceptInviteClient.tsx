@@ -60,7 +60,8 @@ export function AcceptInviteClient(props: {
             🎨 Open the design workspace →
           </a>
           <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-400">
-            Your access covers this one design workspace — nothing else on the platform.
+            Your access covers this one design workspace — nothing else on the platform.{' '}
+            <a href="/designer" className="text-pink-700 underline">All your workspaces</a>
           </p>
         </>
       ) : props.nda ? (
