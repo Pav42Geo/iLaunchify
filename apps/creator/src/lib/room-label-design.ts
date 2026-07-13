@@ -14,9 +14,9 @@
 // relaxed 2026-07-13). brandId = the room owner-creator's brand.
 
 import { prisma } from '@ilaunchify/db'
-import { getCollaboratorAccessForUser } from '@ilaunchify/orders'
+import { getCollaboratorAccessForUser, getOpenDesignReview, resolveRoomRecipeLabel } from '@ilaunchify/orders'
 import { getSignedReadUrl } from '@ilaunchify/storage'
-import { extractSvgInner } from '@ilaunchify/ui'
+import { extractSvgInner, checkRoomLabelReadiness, type RoomComplianceReport } from '@ilaunchify/ui'
 
 export type RoomLabelBlock =
   | 'NO_ACCESS' // no live seat / not the owner
@@ -53,6 +53,10 @@ export interface RoomLabelStudioContext {
   designJson: unknown | null
   /** C9 attribution — recent saves, newest first, with who saved each. */
   versions: RoomLabelVersion[]
+  /** C7 — a PENDING internal design-review request already exists for this room. */
+  openReviewPending: boolean
+  /** A10 — compliance readiness gate for the proof submit (blocking = why not). */
+  submitReadiness: { outcome: RoomComplianceReport['outcome']; blocking: string[] }
 }
 
 export interface RoomLabelVersion {
@@ -178,6 +182,9 @@ export async function resolveRoomLabelStudio(
     savedAt: v.createdAt.toISOString(),
   }))
 
+  const openReviewPending = !!(await getOpenDesignReview(roomId))
+  const readiness = await resolveRoomLabelReadiness(roomId)
+
   return {
     ok: true,
     ctx: {
@@ -202,8 +209,50 @@ export async function resolveRoomLabelStudio(
       latestVersion: latest?.version ?? 0,
       designJson: latest?.designJson ?? null,
       versions,
+      openReviewPending,
+      submitReadiness: {
+        outcome: readiness.outcome,
+        blocking: readiness.items.filter((i) => i.severity === 'BLOCKING').map((i) => i.message),
+      },
     },
   }
+}
+
+/**
+ * A10 — label compliance readiness for the room's proof submit. Resolves the
+ * room's RECIPE label (same inputs as the room page) and runs the pure
+ * checkRoomLabelReadiness pass. NOT_READY (with a reason) when there is no
+ * submitted recipe / the facts can't be computed yet. Used by BOTH the Studio
+ * resolver (to disable the submit button) and creatorSubmitLabelProof (the
+ * authoritative gate) so they never disagree.
+ */
+export async function resolveRoomLabelReadiness(roomId: string): Promise<RoomComplianceReport> {
+  const room = await prisma.coCreationRoom.findUnique({
+    where: { id: roomId },
+    select: {
+      partnerId: true,
+      brief: { select: { category: true } },
+      objects: {
+        where: { kind: 'RECIPE' },
+        select: { versions: { orderBy: { version: 'desc' }, take: 1, select: { payload: true } } },
+      },
+    },
+  })
+  const payload = room?.objects[0]?.versions[0]?.payload
+  if (!room || payload == null) {
+    return {
+      outcome: 'NOT_READY',
+      items: [{ id: 'no-recipe', severity: 'BLOCKING', message: 'The recipe isn’t submitted yet — the label’s Facts panel can’t be generated.' }],
+    }
+  }
+  const label = await resolveRoomRecipeLabel({ partnerId: room.partnerId, domain: room.brief.category, payload })
+  if (!label) {
+    return {
+      outcome: 'NOT_READY',
+      items: [{ id: 'no-label', severity: 'BLOCKING', message: 'The label facts can’t be computed from the current recipe yet.' }],
+    }
+  }
+  return checkRoomLabelReadiness(label)
 }
 
 /** Human copy for a block reason (shown on the Studio gate screen). */

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as fabric from 'fabric'
 import { addText, composeLabelProofSvg, extractSvgInner, CANVAS_PROPERTIES_TO_INCLUDE } from '@ilaunchify/ui'
 import { creatorSubmitLabelProof } from '@/app/(dashboard)/rooms/[roomId]/actions'
+import { requestDesignReviewAction } from '@/app/(dashboard)/rooms/[roomId]/design-team-actions'
 import type { RoomLabelStudioContext } from '@/lib/room-label-design'
 import { saveRoomLabelDesign, pokeEditLock, releaseEditLock, type EditLockView } from './actions'
 
@@ -46,8 +47,11 @@ export function RoomLabelStudioClient({
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [lock, setLock] = useState<EditLockView | null>(null)
+  const [reviewPending, setReviewPending] = useState(ctx.openReviewPending)
+  const [requestingReview, setRequestingReview] = useState(false)
 
   const hasEditAccess = ctx.access.canEdit
+  const notReady = ctx.submitReadiness.outcome === 'NOT_READY'
   const canEditNow = hasEditAccess && !!lock?.iHold
   const canEditNowRef = useRef(false)
   canEditNowRef.current = canEditNow
@@ -180,6 +184,16 @@ export function RoomLabelStudioClient({
     }
   }, [hasEditAccess, ctx.roomId])
 
+  // C7 — mark this design ready for internal review (designer or owner; the
+  // service skips a self-ping for the owner). One PENDING request per room.
+  const requestReview = async () => {
+    if (requestingReview || reviewPending) return
+    setRequestingReview(true)
+    const r = await requestDesignReviewAction(ctx.roomId, ctx.designId)
+    if (r.ok) setReviewPending(true)
+    setRequestingReview(false)
+  }
+
   const requestControl = async () => setLock(await pokeEditLock(ctx.roomId))
   const giveControl = async () => {
     await releaseEditLock(ctx.roomId)
@@ -269,6 +283,17 @@ export function RoomLabelStudioClient({
               {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Save failed' : ''}
             </span>
           )}
+          {hasEditAccess && (
+            <button
+              type="button"
+              onClick={requestReview}
+              disabled={reviewPending || requestingReview}
+              title="Ask the room to review this design"
+              className="rounded-full border border-ink-200 px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50 disabled:opacity-60"
+            >
+              {reviewPending ? 'Review requested' : requestingReview ? 'Requesting…' : 'Ready for review'}
+            </button>
+          )}
           <a href={`/rooms/${ctx.roomId}`} className="rounded-full border border-ink-200 px-4 py-2 text-sm text-ink-700 hover:bg-ink-50">
             Back to room
           </a>
@@ -276,7 +301,8 @@ export function RoomLabelStudioClient({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting || !ready}
+              disabled={submitting || !ready || notReady}
+              title={notReady ? ctx.submitReadiness.blocking[0] ?? 'Recipe Facts are incomplete' : undefined}
               className="rounded-full bg-pink-600 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 disabled:opacity-50"
             >
               {submitting ? 'Sending…' : 'Send to room for approval'}
@@ -286,6 +312,12 @@ export function RoomLabelStudioClient({
       </header>
 
       {submitError && <div className="border-b border-danger-200 bg-danger-50 px-5 py-2 text-sm text-danger-700">{submitError}</div>}
+
+      {ctx.access.isOwner && notReady && (
+        <div className="border-b border-warning-200 bg-warning-50 px-5 py-2 text-sm text-warning-800">
+          Can’t send a proof yet — {ctx.submitReadiness.blocking[0] ?? 'the recipe Facts are incomplete'}. Finish the recipe in the room first.
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         {/* Tool rail — only when I actually hold the edit turn. */}

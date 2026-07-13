@@ -12,6 +12,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { getCollaboratorAccessForUser, resolveEditLock } from '@ilaunchify/orders'
+import { logAuditAs } from '@ilaunchify/audit'
 
 export type SaveResult = { ok: true; version: number } | { ok: false; error: string }
 
@@ -112,6 +113,14 @@ export async function pokeEditLock(roomId: string): Promise<EditLockView> {
         create: { designId: ctx.designId, holderUserId: user.id, heartbeatAt: new Date() },
         update: { holderUserId: user.id, heartbeatAt: new Date(), requestedByUserId: null, requestedAt: null },
       })
+      // Audit the TURN change (who took edit control) — not the 20s heartbeats,
+      // which are deliberately unaudited (too chatty; ALREADY_HELD path).
+      await logAuditAs(user, {
+        entityType: 'Design',
+        entityId: ctx.designId,
+        action: 'DESIGN_EDIT_LOCK_ACQUIRED',
+        payload: { roomId, tookOverFrom: lock && lock.holderUserId !== user.id ? lock.holderUserId : null },
+      })
       return { iHold: true, state: 'EDITING', holderName: ctx.userName, pendingRequesterName: null }
     }
     case 'ALREADY_HELD': {
@@ -147,5 +156,15 @@ export async function releaseEditLock(roomId: string): Promise<void> {
   const design = await prisma.design.findFirst({ where: { roomId }, select: { id: true } })
   if (!design) return
   // Only the current holder may release.
-  await prisma.designEditLock.deleteMany({ where: { designId: design.id, holderUserId: user.id } })
+  const { count } = await prisma.designEditLock.deleteMany({
+    where: { designId: design.id, holderUserId: user.id },
+  })
+  if (count > 0) {
+    await logAuditAs(user, {
+      entityType: 'Design',
+      entityId: design.id,
+      action: 'DESIGN_EDIT_LOCK_RELEASED',
+      payload: { roomId },
+    })
+  }
 }
