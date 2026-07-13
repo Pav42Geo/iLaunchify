@@ -28,7 +28,6 @@ import { saveCompanyProfile, saveFacilityAddress, setProfilePublished } from './
 import { uploadPartnerProfileImage, removePartnerProfileImage } from './media-actions'
 import { replaceVerificationDocument, getVerificationDocUrl } from './docs-actions'
 import { FacilitiesManager, type FacilityVM } from './FacilitiesManager'
-import { COUNTRIES } from '@/lib/us-states'
 import { RegionSelect } from './RegionSelect'
 
 export interface DocSlotVM {
@@ -57,6 +56,8 @@ export interface CompanyProfileInitial {
   state: string
   postalCode: string
   country: string
+  /** ACTIVE platform markets (admin-managed) — the only offerable countries. */
+  countries: { code: string; name: string }[]
   approved: boolean
   businessReviewPending: boolean
   docSlots: DocSlotVM[]
@@ -462,18 +463,28 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             className={inputCls}
           />
           <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            <select
-              value={f.country}
-              onChange={(e) => setAddr('country', e.target.value)}
-              onBlur={flushAddress}
-              className={inputCls}
-            >
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            {f.countries.length === 1 ? (
+              // Single active platform market → fixed country, exactly like
+              // the onboarding form.
+              <input
+                value={f.countries[0]?.name ?? f.country}
+                disabled
+                className={cn(inputCls, 'bg-ink-50 text-ink-500')}
+              />
+            ) : (
+              <select
+                value={f.country}
+                onChange={(e) => setAddr('country', e.target.value)}
+                onBlur={flushAddress}
+                className={inputCls}
+              >
+                {f.countries.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <input
               value={f.city}
               onChange={(e) => setAddr('city', e.target.value)}
@@ -504,7 +515,7 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
         </Field>
         <div className="mt-1">
           <div className="mb-2 text-[12px] font-semibold text-ink-700">Facilities</div>
-          <FacilitiesManager facilities={f.facilities} />
+          <FacilitiesManager facilities={f.facilities} countries={f.countries} />
         </div>
       </Fieldset>
 

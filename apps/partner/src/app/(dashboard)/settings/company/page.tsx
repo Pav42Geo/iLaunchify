@@ -7,7 +7,7 @@
 // status; the client card handles autosave editing, disclosure, logo/cover
 // image upload (media-actions.ts → R2 public rail), and publish/preview.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getActiveMarketCountries } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { CompanyProfileClient } from './CompanyProfileClient'
@@ -76,6 +76,11 @@ export default async function CompanyProfileSettingsPage() {
     },
   })
   if (!partner) return null
+
+  // Country options come from PLATFORM MARKETS (admin-managed): only ACTIVE
+  // markets are offered — V1 is US-only, so the field renders fixed exactly
+  // like the onboarding form; activating CA in admin adds Canada here.
+  const countries = await getActiveMarketCountries()
 
   // Verification-document slots (prototype docslots) — latest file per
   // canonical kind + the DOCUMENTS section's review status. Real data only.
@@ -147,6 +152,7 @@ export default async function CompanyProfileSettingsPage() {
           state: partner.state ?? '',
           postalCode: partner.postalCode ?? '',
           country: partner.country || 'US',
+          countries,
           approved: partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED',
           businessReviewPending:
             businessSection != null && businessSection.status !== 'VERIFIED',

@@ -9,7 +9,6 @@
 import { useState, useTransition } from 'react'
 import { cn } from '@ilaunchify/ui'
 import { Check, Loader2, MapPin, Pencil, Plus, Star, Trash2, Warehouse, X } from 'lucide-react'
-import { COUNTRIES } from '@/lib/us-states'
 import { RegionSelect } from './RegionSelect'
 import { deleteFacility, saveFacility, setPrimaryFacility } from './facilities-actions'
 
@@ -50,7 +49,14 @@ const emptyDraft: Draft = {
   country: 'US',
 }
 
-export function FacilitiesManager({ facilities }: { facilities: FacilityVM[] }) {
+export function FacilitiesManager({
+  facilities,
+  countries,
+}: {
+  facilities: FacilityVM[]
+  /** ACTIVE platform markets — the only offerable countries (admin-managed). */
+  countries: { code: string; name: string }[]
+}) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -92,6 +98,7 @@ export function FacilitiesManager({ facilities }: { facilities: FacilityVM[] }) 
             key={fac.id}
             draft={draft}
             set={set}
+            countries={countries}
             pending={pending}
             onSave={submit}
             onCancel={() => setDraft(null)}
@@ -173,6 +180,7 @@ export function FacilitiesManager({ facilities }: { facilities: FacilityVM[] }) 
         <FacilityEditor
           draft={draft}
           set={set}
+          countries={countries}
           pending={pending}
           onSave={submit}
           onCancel={() => setDraft(null)}
@@ -202,12 +210,14 @@ export function FacilitiesManager({ facilities }: { facilities: FacilityVM[] }) 
 function FacilityEditor({
   draft,
   set,
+  countries,
   pending,
   onSave,
   onCancel,
 }: {
   draft: Draft
   set: <K extends keyof Draft>(k: K, v: Draft[K]) => void
+  countries: { code: string; name: string }[]
   pending: boolean
   onSave: () => void
   onCancel: () => void
@@ -239,20 +249,28 @@ function FacilityEditor({
         />
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <select
-          value={draft.country}
-          onChange={(e) => {
-            set('country', e.target.value)
-            set('region', '')
-          }}
-          className={inputCls}
-        >
-          {COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        {countries.length === 1 ? (
+          <input
+            value={countries[0]?.name ?? draft.country}
+            disabled
+            className={cn(inputCls, 'bg-ink-50 text-ink-500')}
+          />
+        ) : (
+          <select
+            value={draft.country}
+            onChange={(e) => {
+              set('country', e.target.value)
+              set('region', '')
+            }}
+            className={inputCls}
+          >
+            {countries.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        )}
         <input
           value={draft.city}
           onChange={(e) => set('city', e.target.value)}

@@ -11,7 +11,7 @@
 // Every write goes through the acting partner's own row (ownership guard) and
 // writes an AuditLog row (SECURITY_ARCHITECTURE.md / CLAUDE.md conventions).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getActiveMarketCountries } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -127,9 +127,14 @@ export async function saveFacilityAddress(input: FacilityAddressInput): Promise<
   set('city', 80)
   set('state', 40)
   set('postalCode', 20)
-  // Country is NOT nullable on Partner — only write a non-empty value.
-  if (typeof input.country === 'string' && input.country.trim())
-    data.country = input.country.trim().slice(0, 2).toUpperCase()
+  // Country is NOT nullable on Partner — only write a non-empty value, and
+  // only one the PLATFORM MARKETS management actually offers (server-side
+  // mirror of the client's market-driven select).
+  if (typeof input.country === 'string' && input.country.trim()) {
+    const code = input.country.trim().slice(0, 2).toUpperCase()
+    const offered = await getActiveMarketCountries()
+    if (offered.some((c) => c.code === code)) data.country = code
+  }
   if (Object.keys(data).length === 0) return
 
   const changed = Object.entries(data).some(

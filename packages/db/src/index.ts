@@ -365,3 +365,6 @@ export {
   type ProfileServiceVM,
   type ProfileReviewVM,
 } from './partner-profile'
+
+// Platform-market-driven address country options (Pavel 2026-07-12).
+export { getActiveMarketCountries, type AddressCountry } from './market-countries'

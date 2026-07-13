@@ -7,7 +7,7 @@
 // the FACILITY verification section back to PENDING (operations re-review) —
 // services keep routing while the change is verified (forward-only, D8 spirit).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getActiveMarketCountries } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -56,7 +56,13 @@ export async function saveFacility(input: FacilityInput): Promise<FacilityResult
   if (!name || !addressLine1 || !city || !region || !postalCode)
     return { ok: false, error: 'Name, street, city, state and ZIP are all required.' }
   const addressLine2 = input.addressLine2?.trim().slice(0, 160) || null
-  const country = (input.country?.trim().slice(0, 2).toUpperCase() || 'US') as string
+  // Country must be one the PLATFORM MARKETS management offers (server-side
+  // mirror of the market-driven select); anything else falls back to the
+  // first active market.
+  const offered = await getActiveMarketCountries()
+  const requested = input.country?.trim().slice(0, 2).toUpperCase()
+  const country =
+    (requested && offered.some((c) => c.code === requested) ? requested : offered[0]?.code) ?? 'US'
 
   const approved = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
   const data = { name, addressLine1, addressLine2, city, region, postalCode, country }
