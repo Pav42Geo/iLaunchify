@@ -11,6 +11,7 @@ import { prisma, getActiveMarketCountries } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
+import { geocodeUsAddress } from '@/lib/geocode'
 
 export type FacilityResult = { ok: true } | { ok: false; error: string }
 
@@ -76,6 +77,55 @@ async function syncPartnerAddressFromPrimary(partnerId: string) {
   })
 }
 
+/**
+ * Facility Model Phase 3 geo wiring (Pavel 2026-07-12): geocode the saved
+ * facility (US Census, fail-soft) onto PartnerFacility.lat/lng, then mirror
+ * onto PartnerService.facilityLat/Lng FACILITY-AWARE — the coords mean
+ * different things per service role and must come from the RIGHT site:
+ *   • WAREHOUSE service   → the FC node's own location (candidate side of
+ *     the FC selector — only WAREHOUSE services are ever in the FC network);
+ *   • MANUFACTURING/etc.  → the freight ORIGIN (fc-selector originLat/Lng —
+ *     "nearest FC to the manufacturer") + print-rotation location bias.
+ * Rule: a service explicitly scoped to THIS facility (service.facilityId)
+ * always follows it; unscoped services follow the PRIMARY facility. Never
+ * blanket-stamp the primary onto a service tied to another site.
+ * Best-effort: a failed geocode never blocks the save; previous coordinates
+ * are kept (stale beats none for routing).
+ */
+async function geocodeFacility(partnerId: string, facilityId: string) {
+  const fac = await prisma.partnerFacility.findFirst({
+    where: { id: facilityId, partnerId },
+    select: {
+      id: true,
+      isDefault: true,
+      addressLine1: true,
+      city: true,
+      region: true,
+      postalCode: true,
+      country: true,
+    },
+  })
+  if (!fac) return
+  const geo = await geocodeUsAddress(fac)
+  if (!geo) return
+  await prisma.partnerFacility.update({
+    where: { id: fac.id },
+    data: { lat: geo.lat, lng: geo.lng },
+  })
+  // Services pinned to THIS facility follow its coordinates.
+  await prisma.partnerService.updateMany({
+    where: { partnerId, facilityId: fac.id },
+    data: { facilityLat: geo.lat, facilityLng: geo.lng },
+  })
+  // Services with no facility scoping follow the PRIMARY facility.
+  if (fac.isDefault) {
+    await prisma.partnerService.updateMany({
+      where: { partnerId, facilityId: null },
+      data: { facilityLat: geo.lat, facilityLng: geo.lng },
+    })
+  }
+}
+
 export async function saveFacility(input: FacilityInput): Promise<FacilityResult> {
   const { user, partner } = await requirePartner()
   if (!partner) return { ok: false, error: 'No partner account.' }
@@ -117,6 +167,7 @@ export async function saveFacility(input: FacilityInput): Promise<FacilityResult
 
   if (input.isDefault) await makeDefault(partner.id, facilityId)
   await syncPartnerAddressFromPrimary(partner.id)
+  await geocodeFacility(partner.id, facilityId)
   await flagFacilityReview(partner.id, approved)
   await logAuditAs(user, {
     entityType: 'Partner',
@@ -149,6 +200,7 @@ export async function setPrimaryFacility(facilityId: string): Promise<FacilityRe
   if (!fac) return { ok: false, error: 'Facility not found.' }
   await makeDefault(partner.id, facilityId)
   await syncPartnerAddressFromPrimary(partner.id)
+  await geocodeFacility(partner.id, facilityId)
   await logAuditAs(user, {
     entityType: 'Partner',
     entityId: partner.id,

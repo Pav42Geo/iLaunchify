@@ -19,3 +19,6 @@ export * from './action-input'
 // Marketplace filter option constants (§7) — shared by the marketing sidebar
 // and the admin product editor so filter slugs never drift.
 export * from './marketplace-filters'
+
+// Shared address region data (US states / CA provinces)
+export * from './address'

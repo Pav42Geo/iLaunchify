@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Palette,
   Package,
+  Scale,
   ShoppingBag,
   Type,
   Wand2,
@@ -70,6 +71,8 @@ export default async function BrandHomePage({ params }: { params: Promise<{ bran
       handle: true,
       tagline: true,
       isActive: true,
+      legalName: true,
+      legalCity: true,
       colorPrimary: true,
       colorSecondary: true,
       colorAccent: true,
@@ -189,6 +192,36 @@ export default async function BrandHomePage({ params }: { params: Promise<{ bran
           <span className="inline-flex items-center gap-1.5 text-[12px] text-ink-500">
             <Type className="h-3.5 w-3.5" aria-hidden="true" /> {fontCount} font{fontCount === 1 ? '' : 's'}
           </span>
+          <ArrowRight className="h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+        </div>
+      </Link>
+
+      {/* Legal identity for labels (21 CFR 101.5, Pavel 2026-07-12) */}
+      <Link
+        href={`/brands/${brand.id}/legal`}
+        className="group flex items-center justify-between rounded-2xl border border-ink-200 bg-white p-4 transition-colors hover:border-ink-300 hover:bg-ink-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+      >
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-pink-50 text-pink-700">
+            <Scale className="h-[18px] w-[18px]" aria-hidden="true" />
+          </span>
+          <div>
+            <p className="text-[13.5px] font-semibold text-ink-900">Legal identity for labels</p>
+            <p className="text-[12px] text-ink-500">
+              The &ldquo;Manufactured for / Distributed by&rdquo; firm &amp; address on every label
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          {brand.legalCity ? (
+            <span className="hidden text-[12px] text-ink-500 sm:inline">
+              {(brand.legalName?.trim() || brand.name) + ` · ${brand.legalCity}`}
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full border border-warning-200 bg-warning-50 px-2.5 py-[3px] text-[11px] font-semibold text-warning-700">
+              Address needed
+            </span>
+          )}
           <ArrowRight className="h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
         </div>
       </Link>
