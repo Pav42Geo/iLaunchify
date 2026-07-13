@@ -1,20 +1,32 @@
-// Partner services page — the "Capabilities & services" panel of
-// design/partner-profile-prototype-v2.html (Pavel 2026-07-12).
+// Partner services — per-service accordion editors, the real port of
+// design/partner-services-prototype-tokens.html (Pavel 2026-07-13).
 //
-// Each service renders as an LRow (pink icon chip · label · one-line real
-// capability summary · status StPill + Edit/View affordance). The row is a
-// <details>/<summary> toggle so the existing edit surface is fully preserved:
-// ACTIVE partners expand into the editable ServiceProfileForm; other statuses
-// expand into the read-only JSON view (changes go through onboarding).
-// Data wiring + edit gating unchanged.
+// Each service opens a PURPOSE-BUILT editor (no generic shared form):
+//   MANUFACTURING → domains / formulation+samples / runs+capacity (capabilities
+//     JSON, merged — unknown keys always survive), PLUS a separate
+//     "Storage at your facility" card for the TYPED offersStorage columns
+//     (HOLD_AT_MANUFACTURER destination — explicitly NOT an FC).
+//   COPACKING     → containers / fills / supply model / lines+runs.
+//   LABEL_PRINTING→ specs + appliesLabels; substrates & die-lines link to
+//     their real stores in Packaging (counts shown from the DB).
+//   WAREHOUSE     → the 3PL/FC service — summary card linking to its dedicated
+//     editors (Settings → Storage / Fulfillment / Shipping); never edited here.
+// Pre-approval partners get the read-only humanized readout. Real data only —
+// empty fields render empty (no invented defaults).
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { Factory, Package, Plus, Printer, Warehouse } from 'lucide-react'
+import { ExternalLink, Factory, Package, Plus, Printer, Warehouse } from 'lucide-react'
 import { PanelCard, PanelHeader, LRow, StPill, type PillTone } from '@/components/panel-kit'
-import { ServiceProfileForm } from '../../(onboarding)/onboarding/service/ServiceProfileForm'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { addService, type AddableServiceType } from './actions'
+import {
+  ManufacturingEditor,
+  CopackEditor,
+  PrintEditor,
+  StorageEditor,
+  type StorageTypedVM,
+} from './ServiceEditors'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Services — Partners' }
@@ -22,8 +34,8 @@ export const metadata = { title: 'Services — Partners' }
 const SERVICE_LABEL: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Packaging printing',
-  WAREHOUSE: 'Warehouse / 3PL',
+  LABEL_PRINTING: 'Print production',
+  WAREHOUSE: 'Fulfillment Center (3PL)',
 }
 
 const SERVICE_STATUS: Record<string, { tone: PillTone; label: string }> = {
@@ -53,15 +65,8 @@ function humanize(v: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-/**
- * One-line real capability summary from the service's capabilities JSON +
- * typed storageClasses column — only values that actually exist, ' · ' joined
- * (both the ServiceProfileForm shape and the onboarding v2 shape are handled).
- */
-function capabilitySummary(s: {
-  capabilities: unknown
-  storageClasses: string[]
-}): string | null {
+/** One-line REAL summary per service — only values that exist, ' · ' joined. */
+function capabilitySummary(s: { capabilities: unknown; storageClasses: string[] }): string | null {
   const caps = (s.capabilities ?? {}) as Record<string, unknown>
   const strArr = (k: string): string[] =>
     Array.isArray(caps[k]) ? (caps[k] as unknown[]).filter((x): x is string => typeof x === 'string') : []
@@ -69,46 +74,31 @@ function capabilitySummary(s: {
     typeof caps[k] === 'number' && Number.isFinite(caps[k]) ? (caps[k] as number) : null
 
   const parts: string[] = []
-
-  // Category-ish lists (first 3 across the known shapes)
-  const cats = [
-    ...strArr('categories'),
-    ...strArr('productTypes'),
-    ...strArr('packagingFormats'),
-    ...strArr('substrates'),
-    ...strArr('storageType'),
-  ]
+  const cats = [...strArr('categories'), ...strArr('containerFormats'), ...strArr('processes')]
   parts.push(...cats.slice(0, 3).map(humanize))
-
-  // Fill types (e.g. cold-fill)
   parts.push(...strArr('fillTypes').slice(0, 2).map(humanize))
-
-  // Typed warehouse storage classes column
-  if (s.storageClasses.length > 0 && cats.length === 0) {
-    parts.push(...s.storageClasses.slice(0, 3).map(humanize))
-  }
-
-  // MOQ
-  const moqMin = int('moqMin') ?? int('moqUnitsTypical')
+  const moqMin = int('moqMin')
   if (moqMin !== null) parts.push(`MOQ ${moqMin.toLocaleString()}`)
-
-  // Capacity
-  const palletCapacity = int('palletCapacity')
-  if (palletCapacity !== null) parts.push(`${palletCapacity.toLocaleString()} pallets`)
-
-  // Lead time
-  const leadMin = int('leadTimeDaysMin') ?? int('leadTimeStockDays')
-  const leadMax = int('leadTimeDaysMax') ?? int('leadTimeCustomDays')
+  const leadStock = int('leadTimeStockDays')
+  const leadCustom = int('leadTimeCustomDays')
   const leadFlat = int('leadTimeDays')
-  if (leadMin !== null && leadMax !== null && leadMax !== leadMin) {
-    parts.push(`lead ${leadMin}–${leadMax}d`)
-  } else if (leadMin !== null) {
-    parts.push(`lead ${leadMin}d`)
-  } else if (leadFlat !== null) {
-    parts.push(`lead ${leadFlat}d`)
-  }
-
+  if (leadStock !== null && leadCustom !== null) parts.push(`lead ${leadStock}–${leadCustom}d`)
+  else if (leadFlat !== null) parts.push(`lead ${leadFlat}d`)
   return parts.length > 0 ? parts.join(' · ') : null
+}
+
+/** Real storage summary from the TYPED columns. */
+function storageSummary(s: StorageTypedVM): string {
+  if (!s.offersStorage) return 'Not offered — creators can’t hold stock at your facility'
+  const parts: string[] = []
+  if (s.storageClasses.length) parts.push(s.storageClasses.map(humanize).join(' + '))
+  if (s.maxDwellDays != null) parts.push(`${s.maxDwellDays}-day max dwell`)
+  if (s.storageRateCents != null && s.storageBillingUnit)
+    parts.push(
+      `$${(s.storageRateCents / 100).toFixed(2)}/${s.storageBillingUnit === 'PALLET_MONTH' ? 'pallet-mo' : 'cu ft-mo'}`,
+    )
+  if (s.onDemandEnabled) parts.push('ships on demand')
+  return parts.length ? parts.join(' · ') : 'Enabled — set classes, dwell & billing'
 }
 
 export default async function ServicesPage() {
@@ -125,6 +115,34 @@ export default async function ServicesPage() {
     ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE'] as AddableServiceType[]
   ).filter((t) => !partner.services.some((s) => (s.type as string) === t))
 
+  // Real substrate / die-line counts for the print card.
+  const printSvc = partner.services.find((s) => (s.type as string) === 'LABEL_PRINTING')
+  const [substrateCount, dielineCount] = printSvc
+    ? await Promise.all([
+        prisma.partnerServiceSubstrate.count({ where: { partnerServiceId: printSvc.id } }).catch(() => 0),
+        prisma.packagingDieline.count({ where: { partnerServiceId: printSvc.id } }).catch(() => 0),
+      ])
+    : [0, 0]
+
+  // "Storage at your facility" attaches to the producing service (mfr first,
+  // else co-packer) — the typed offersStorage columns. NEVER the WAREHOUSE row.
+  const producingSvc =
+    partner.services.find((s) => (s.type as string) === 'MANUFACTURING') ??
+    partner.services.find((s) => (s.type as string) === 'COPACKING')
+  const storageVM: StorageTypedVM | null = producingSvc
+    ? {
+        offersStorage: producingSvc.offersStorage,
+        storageClasses: producingSvc.storageClasses ?? [],
+        maxDwellDays: producingSvc.maxDwellDays,
+        storageBillingUnit: (producingSvc.storageBillingUnit as string | null) ?? null,
+        storageRateCents: producingSvc.storageRateCents,
+        storageFreeGraceDays: producingSvc.storageFreeGraceDays,
+        storageMinMonthlyCents: producingSvc.storageMinMonthlyCents,
+        canShipParcel: producingSvc.canShipParcel,
+        onDemandEnabled: producingSvc.onDemandEnabled,
+      }
+    : null
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
@@ -135,9 +153,9 @@ export default async function ServicesPage() {
           Your services
         </h1>
         <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          {canEdit
-            ? 'Edit your capability profile in place. Changes save immediately.'
-            : 'Capability profile is read-only while your application is under review. Visit My Application to make changes.'}
+          One card per service, each with its own editor. Everything here routes itself — matching,
+          checkout ETA, capacity gates, print eligibility, and the hold-at-manufacturer destination
+          all read these profiles directly.
         </p>
       </div>
 
@@ -147,25 +165,63 @@ export default async function ServicesPage() {
           desc={
             canEdit
               ? 'Every service you offer, with its live capability profile.'
-              : 'Every service on your application, with its capability profile.'
+              : 'Read-only while your application is under review — changes go through My Application.'
           }
         />
+
         {partner.services.map((s) => {
+          const type = s.type as string
           const status = SERVICE_STATUS[s.status] ?? { tone: 'muted' as PillTone, label: s.status }
           const summary = capabilitySummary({
             capabilities: s.capabilities,
             storageClasses: s.storageClasses ?? [],
           })
-          const disclosureNote = `${s.disclosureLevel.replace(/_/g, ' ').toLowerCase()} disclosure`
+          const caps = (s.capabilities ?? {}) as Record<string, unknown>
+
+          // WAREHOUSE = the 3PL/FC service — managed in its dedicated pages.
+          if (type === 'WAREHOUSE') {
+            return (
+              <div key={s.id} className="mb-2.5 last:mb-0">
+                <LRow
+                  icon={serviceIcon(type)}
+                  iconClassName="bg-pink-50 text-pink-700"
+                  title={SERVICE_LABEL[type]}
+                  sub={
+                    summary
+                      ? `${summary} · 3PL fulfillment — managed in Settings`
+                      : '3PL fulfillment — managed in Settings'
+                  }
+                  right={
+                    <>
+                      <StPill tone={status.tone}>{status.label}</StPill>
+                      <a
+                        href="/settings/storage"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
+                      >
+                        Storage <ExternalLink className="h-3 w-3" />
+                      </a>
+                      <a
+                        href="/settings/fulfillment"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
+                      >
+                        Fulfillment <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </>
+                  }
+                />
+              </div>
+            )
+          }
+
           return (
-            <details key={s.id} className="group mb-2.5 last:mb-0">
+            <details key={s.id} className="group mb-2.5 last:mb-0" open={type === 'MANUFACTURING'}>
               <summary className="block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                 <LRow
                   className="mb-0"
-                  icon={serviceIcon(s.type)}
+                  icon={serviceIcon(type)}
                   iconClassName="bg-pink-50 text-pink-700"
-                  title={SERVICE_LABEL[s.type] ?? s.type}
-                  sub={summary ? `${summary} · ${disclosureNote}` : disclosureNote}
+                  title={SERVICE_LABEL[type] ?? type}
+                  sub={summary ?? 'No capability details yet — open to fill them in'}
                   right={
                     <>
                       <StPill tone={status.tone}>{status.label}</StPill>
@@ -177,23 +233,59 @@ export default async function ServicesPage() {
                 />
               </summary>
               <div className="mt-2 rounded-xl border border-ink-200 bg-white p-4">
-                {canEdit ? (
-                  <ServiceProfileForm
-                    serviceId={s.id}
-                    serviceType={s.type}
-                    disclosureLevel={s.disclosureLevel}
-                    initial={(s.capabilities as Record<string, unknown>) ?? {}}
-                    redirectAfterSave="/services"
-                    submitLabel="Save changes"
-                    successMessage="Service profile updated"
-                  />
-                ) : (
+                {!canEdit ? (
                   <CapabilityReadout capabilities={s.capabilities} />
+                ) : type === 'MANUFACTURING' ? (
+                  <ManufacturingEditor serviceId={s.id} capabilities={caps} />
+                ) : type === 'COPACKING' ? (
+                  <CopackEditor serviceId={s.id} capabilities={caps} />
+                ) : (
+                  <PrintEditor
+                    serviceId={s.id}
+                    capabilities={caps}
+                    appliesLabels={s.appliesLabels}
+                    substrateCount={substrateCount}
+                    dielineCount={dielineCount}
+                  />
                 )}
               </div>
             </details>
           )
         })}
+
+        {/* Storage at YOUR facility — typed columns on the producing service. */}
+        {producingSvc && storageVM && (
+          <details className="group mb-2.5 last:mb-0">
+            <summary className="block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <LRow
+                className="mb-0"
+                icon={<Warehouse />}
+                iconClassName="bg-pink-50 text-pink-700"
+                title="Storage at your facility"
+                sub={storageSummary(storageVM)}
+                right={
+                  <>
+                    <StPill tone={storageVM.offersStorage ? 'ok' : 'muted'}>
+                      {storageVM.offersStorage ? 'Offered' : 'Off'}
+                    </StPill>
+                    <span className="rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors group-hover:bg-ink-50">
+                      {canEdit ? 'Edit' : 'View'}
+                    </span>
+                  </>
+                }
+              />
+            </summary>
+            <div className="mt-2 rounded-xl border border-ink-200 bg-white p-4">
+              {canEdit ? (
+                <StorageEditor serviceId={producingSvc.id} initial={storageVM} />
+              ) : (
+                <p className="text-[13px] text-ink-500">
+                  Storage offering becomes editable once your application is approved.
+                </p>
+              )}
+            </div>
+          </details>
+        )}
 
         {partner.services.length === 0 && (
           <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-[13px] text-ink-500">
@@ -201,9 +293,6 @@ export default async function ServicesPage() {
           </p>
         )}
 
-        {/* Add a service (prototype #p-capabilities) — only types not yet
-            offered; the new service starts as DRAFT and goes live through its
-            Activation Setup track. */}
         {canEdit && missingTypes.length > 0 && (
           <div className="mt-4 border-t border-ink-100 pt-4">
             <div className="mb-2 text-[12px] font-semibold text-ink-700">Add a service</div>
