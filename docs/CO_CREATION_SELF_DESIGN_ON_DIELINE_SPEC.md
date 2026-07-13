@@ -84,3 +84,23 @@ On the LABEL object card: a **"Design the label"** button visible when PACKAGING
 - **D-S6 — Maker design service:** a future DESIGN milestone kind priced via the existing terms flow; NOT built now.
 
 Status updates same day: Cowork's LABEL viewer + "Design the label" affordance BUILT (proof renders from `payload.svgKey` with pins overlaid, both apps; affordance gated on PACKAGING APPROVED, creator mode, links `/rooms/[roomId]/label`). The messaging.ts `InputJsonValue` blocker below is FIXED. Shared-workspace layer (invited designer): docs/SHARED_DESIGN_WORKSPACE_SPEC.md — D-W1…D-W6 locked, W0 substrate built (`DesignCollaborator`, `Design.roomId` soft FK, `UserRole.DESIGNER`, seat caps, pure access + edit-lock engine). Slice 3 note for Code: `Design.roomId` exists; relaxing `Design.productId` to optional remains YOUR call in the room adapter.
+
+---
+
+## A11 build plan — regulated layer from the approved RECIPE (draft, needs a focused session)
+
+**Goal:** the deterministic FDA/nutrition/identity panels appear on the self-designed proof, generated from the room's approved RECIPE — creator never edits them (the doctrine: "FDA panels stay deterministic vector; creator designs the brand layer only"). Currently A8 ships `regulated: null` (reserved zones only).
+
+**Plumbing mapped (all present):**
+- Data: `resolveRoomRecipeLabel({ partnerId, domain: brief.category, payload })` (`@ilaunchify/orders`) → `RoomRecipeLabel` with `panel: PanelData | null`, `statement`, `containsLine`, `inciText`, `petGa`, `drugFacts`. (Already used by `resolveRoomLabelReadiness` for A10.)
+- Placement + size: the die-line's **frames** — `loadDielineFrames(...)` → `resolveLayout(layout, ctx)` (`packages/ui/src/canvas/frames.ts`). Regulated `FrameKind`s (`NUTRITION_FACTS`, `INGREDIENTS`, …; `FRAME_SCOPE[k]==='RECIPE'`/`IDENTITY`) carry a normalized `box {x,y,w,h}` in 0..1 → scale to the mm canvas. These are the SAME reserved zones A8 already shows.
+- Renderers: **client-side** Fabric generators `addNutritionFactsPanel` / `addSupplementPanel` / `addDrugFactsPanel` / `addAafcoPanel` (`packages/ui/src/canvas`) — the ones the product Studio uses; plus the pure SVG components in `packages/ui/src/nutrition`. PanelData adapters live at `apps/creator/.../design/canvas/lib/nutritionPanelAdapter.ts`.
+
+**Two approaches (pick in the focused session):**
+1. **Client-canvas (RECOMMENDED).** In `RoomLabelStudioClient`, after the substrate, add the domain's panel via the existing `addNutritionFactsPanel`-family generators as **locked** objects (`selectable:false, evented:false`, kept above brand art — the same lock treatment as the substrate) positioned/scaled into the regulated frame box. They flow through `canvas.toSVG()` naturally. Reuses existing infra; NO new server pattern. Leaves the composer's `regulated` slot unused (panels live in the brand export as locked objects) — or exclude+recompose if strict layering is wanted.
+2. **Server-compose.** Render the `packages/ui/src/nutrition` SVG components to strings via `renderToStaticMarkup` and pass as `composeLabelProofSvg`'s `regulated` layer. **Caveat:** `renderToStaticMarkup` is used NOWHERE server-side today — this introduces a new pattern (and `react-dom/server` in a server action). Cleaner separation, more risk.
+
+**Open items for the session:**
+- **Frames often null.** Like `normalizedSvgKey`, `PackagingDieline.frames` is frequently unset → no placement target. Decide: block that die-line (extend D-S2 to require frames), or a default panel placement (design/compliance call — wrong placement is a compliance risk, so prefer requiring curated frames).
+- **Multi-flavor** (`VarietyFactsSvg`) and **per-domain** selection (panel vs drugFacts vs petGa vs inci).
+- **Runtime verification is mandatory** — needs a seeded room (approved RECIPE + curated die-line with frames + `normalizedSvg`) to confirm the panel renders legibly in its frame. Do not ship A11 typecheck-only.
