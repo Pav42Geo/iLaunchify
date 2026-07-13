@@ -4,6 +4,7 @@ import {
   memberRoleLabel,
   messagePreview,
   countUnread,
+  findOrphanedChatKeys,
   isOnline,
   isTypingIn,
   chatAttachmentFromPayload,
@@ -119,5 +120,38 @@ describe('chatAttachmentFromPayload', () => {
     expect(chatAttachmentFromPayload('x')).toBeNull()
     expect(chatAttachmentFromPayload({ key: 'k', name: 'n' })).toBeNull()
     expect(chatAttachmentFromPayload({ ...good, size: '1234' })).toBeNull()
+  })
+})
+
+describe('findOrphanedChatKeys', () => {
+  const CUTOFF = new Date('2026-07-13T00:00:00Z')
+  const OLD = new Date('2026-07-10T00:00:00Z')
+  const FRESH = new Date('2026-07-13T05:00:00Z') // newer than the cutoff — in-flight composer
+
+  it('deletes only old, unreferenced /chat/ keys', () => {
+    const orphans = findOrphanedChatKeys({
+      objects: [
+        { key: 'rooms/r1/chat/a-orphan.pdf', lastModified: OLD }, // ← the one true orphan
+        { key: 'rooms/r1/chat/b-sent.pdf', lastModified: OLD }, // referenced
+        { key: 'dms/c1/chat/c-fresh.png', lastModified: FRESH }, // too fresh (in-flight composer)
+        { key: 'rooms/r1/labels/o1/proof/x.svg', lastModified: OLD }, // NOT chat — label proof
+        { key: 'rooms/r1/chat/d-unknown-age.pdf', lastModified: null }, // unknown age — skipped
+      ],
+      referencedKeys: ['rooms/r1/chat/b-sent.pdf'],
+      cutoff: CUTOFF,
+    })
+    expect(orphans).toEqual(['rooms/r1/chat/a-orphan.pdf'])
+  })
+
+  it('handles dm keys and an exactly-at-cutoff object (kept)', () => {
+    const orphans = findOrphanedChatKeys({
+      objects: [
+        { key: 'dms/c1/chat/e-orphan.gif', lastModified: OLD },
+        { key: 'dms/c1/chat/f-at-cutoff.gif', lastModified: CUTOFF },
+      ],
+      referencedKeys: new Set<string>(),
+      cutoff: CUTOFF,
+    })
+    expect(orphans).toEqual(['dms/c1/chat/e-orphan.gif'])
   })
 })

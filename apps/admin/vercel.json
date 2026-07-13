@@ -36,6 +36,14 @@
     {
       "path": "/api/cron/merit",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/archive-notifications",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-chat-attachments",
+      "schedule": "0 5 * * *"
     }
   ]
 }

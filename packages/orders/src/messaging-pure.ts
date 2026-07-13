@@ -91,3 +91,31 @@ export function countUnread(
     return !mine && new Date(m.createdAt).getTime() > cutoff
   }).length
 }
+
+/**
+ * Orphaned chat-attachment sweep (pure decision core). Composer uploads land
+ * in R2 BEFORE the message is sent — abandoned drafts leave objects behind
+ * forever. An object is an orphan when ALL hold:
+ *   1. its key contains a `/chat/` segment (the `rooms/` prefix also holds
+ *      label proofs etc. — those are NEVER candidates),
+ *   2. it is older than the cutoff (never race an in-flight composer), and
+ *   3. no message references the key.
+ * Objects with an unknown lastModified are SKIPPED (can't prove age — honest).
+ */
+export function findOrphanedChatKeys(input: {
+  objects: { key: string; lastModified: Date | string | null }[]
+  referencedKeys: Iterable<string>
+  cutoff: Date | string
+}): string[] {
+  const referenced =
+    input.referencedKeys instanceof Set ? (input.referencedKeys as Set<string>) : new Set(input.referencedKeys)
+  const cutoffMs = new Date(input.cutoff).getTime()
+  return input.objects
+    .filter((o) => {
+      if (!o.key.includes('/chat/')) return false
+      if (o.lastModified == null) return false
+      if (new Date(o.lastModified).getTime() >= cutoffMs) return false
+      return !referenced.has(o.key)
+    })
+    .map((o) => o.key)
+}

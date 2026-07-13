@@ -3,6 +3,7 @@
 
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getR2Client, getR2Config } from './r2-client'
+import { isDevFsMode, devFsWrite, devFsDelete } from './dev-fs'
 
 export interface UploadInput {
   key: string                       // generated via partnerFileKey() or similar
@@ -21,6 +22,12 @@ export interface UploadResult {
 }
 
 export async function uploadFile(input: UploadInput): Promise<UploadResult> {
+  // Dev-only local-fs fallback when R2 creds are absent (see dev-fs.ts).
+  if (isDevFsMode()) {
+    await devFsWrite(input.key, input.body)
+    return { key: input.key, bucket: 'dev-fs', sizeBytes: input.body.byteLength, etag: null }
+  }
+
   const cfg = getR2Config()
   const client = getR2Client()
 
@@ -47,6 +54,10 @@ export async function uploadFile(input: UploadInput): Promise<UploadResult> {
  * Delete a file by key. Idempotent — succeeds even if the object is already gone.
  */
 export async function deleteFile(key: string): Promise<void> {
+  if (isDevFsMode()) {
+    await devFsDelete(key)
+    return
+  }
   const cfg = getR2Config()
   const client = getR2Client()
   await client.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }))
