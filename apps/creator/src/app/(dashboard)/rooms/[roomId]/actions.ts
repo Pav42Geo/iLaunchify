@@ -13,6 +13,7 @@ import {
   agreeMilestoneTerms,
   assertBriefTransition,
   assertInterestTransition,
+  autoRevokeRoomDesigners,
   declineMilestoneTerms,
   evaluateMakerSwitch,
   labelProofPayloadSchema,
@@ -428,6 +429,10 @@ export async function creatorSwitchMaker(
       reopenedInterests: reopenIds.length,
     },
   })
+
+  // D-W5 parity: closing/switching a room kills every live designer seat
+  // (LABEL-approve + closeRoomWon are already hooked). Best-effort.
+  await autoRevokeRoomDesigners(user, roomId, 'ROOM_CLOSED').catch(() => undefined)
 
   // Respectful notice to the old maker (same copy family as a pass).
   await dispatchNotification({
