@@ -1,26 +1,28 @@
 'use client'
 
-// Room label Studio — client editor (A8). The creator (or an NDA-gated invited
-// designer with canEdit) places BRAND-layer artwork on the maker's normalized
-// die-line. The substrate is a locked, non-selectable Fabric group sent to the
-// back and NEVER persisted into designJson (it's re-added from ctx each open);
-// on submit it's excluded from the canvas export and re-supplied to the composer
-// so it appears exactly once. Regulated panels are a follow-up (reserved zones).
+// Room label Studio — client editor (A8 + C6 presence/lock + C9 attribution).
+// The creator (or an NDA-gated invited designer with canEdit) places BRAND-layer
+// artwork on the maker's normalized die-line. The substrate is a locked Fabric
+// group sent to the back and NEVER persisted into designJson (re-added from ctx
+// each open); on submit it's excluded from the canvas export and re-supplied to
+// composeLabelProofSvg so it appears exactly once. Regulated panels are a
+// follow-up (reserved zones).
 //
-// Fabric v6 idioms mirror packages/ui/src/canvas (loadSVGFromString →
-// groupSVGElements; canvas.toSVG()). Reuses the addText factory from
-// @ilaunchify/ui so brand text matches the product Studio.
+// C6: editing is turn-based (D-W4). Effective editability = access.canEdit AND
+// holding the lock; pokeEditLock is polled to acquire/heartbeat/wait, the server
+// save also re-checks the lock. Fabric v6 idioms mirror packages/ui/src/canvas.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as fabric from 'fabric'
 import { addText, composeLabelProofSvg, extractSvgInner, CANVAS_PROPERTIES_TO_INCLUDE } from '@ilaunchify/ui'
 import { creatorSubmitLabelProof } from '@/app/(dashboard)/rooms/[roomId]/actions'
 import type { RoomLabelStudioContext } from '@/lib/room-label-design'
-import { saveRoomLabelDesign } from './actions'
+import { saveRoomLabelDesign, pokeEditLock, releaseEditLock, type EditLockView } from './actions'
 
 const PX_PER_MM = 3.0
 const SUBSTRATE_TYPE = 'die-substrate' // marker so it's filtered out of designJson
 const AUTOSAVE_MS = 1500
+const LOCK_POLL_MS = 20_000 // < EDIT_LOCK_STALE_MS (90s) so the holder stays live
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -33,7 +35,7 @@ export function RoomLabelStudioClient({
   currentUserId: string
   currentUserName: string
 }) {
-  void currentUserId // C6 (presence/lock) will use these
+  void currentUserId
   void currentUserName
   const canvasElRef = useRef<HTMLCanvasElement | null>(null)
   const canvasRef = useRef<fabric.Canvas | null>(null)
@@ -43,8 +45,13 @@ export function RoomLabelStudioClient({
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [lock, setLock] = useState<EditLockView | null>(null)
 
-  const canEdit = ctx.access.canEdit
+  const hasEditAccess = ctx.access.canEdit
+  const canEditNow = hasEditAccess && !!lock?.iHold
+  const canEditNowRef = useRef(false)
+  canEditNowRef.current = canEditNow
+
   const pxW = Math.round(ctx.widthMm * PX_PER_MM)
   const pxH = Math.round(ctx.heightMm * PX_PER_MM)
 
@@ -58,7 +65,7 @@ export function RoomLabelStudioClient({
   }, [])
 
   const scheduleSave = useCallback(() => {
-    if (!canEdit) return
+    if (!canEditNowRef.current) return
     const canvas = canvasRef.current
     if (!canvas) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -67,9 +74,9 @@ export function RoomLabelStudioClient({
       const res = await saveRoomLabelDesign(ctx.roomId, brandDesignJson(canvas))
       setSaveState(res.ok ? 'saved' : 'error')
     }, AUTOSAVE_MS)
-  }, [canEdit, ctx.roomId, brandDesignJson])
+  }, [ctx.roomId, brandDesignJson])
 
-  // Mount the Fabric canvas once.
+  // Mount the Fabric canvas once (interactivity toggled later by the lock).
   useEffect(() => {
     const el = canvasElRef.current
     if (!el || canvasRef.current) return
@@ -79,13 +86,12 @@ export function RoomLabelStudioClient({
       width: pxW,
       height: pxH,
       backgroundColor: '#FFFFFF',
-      selection: canEdit,
+      selection: false,
       preserveObjectStacking: true,
     })
     canvasRef.current = canvas
 
     async function init() {
-      // 1. Restore the saved brand layer (clears the canvas first).
       if (ctx.designJson && typeof ctx.designJson === 'object') {
         try {
           await canvas.loadFromJSON(ctx.designJson)
@@ -95,7 +101,6 @@ export function RoomLabelStudioClient({
       }
       if (disposed) return
 
-      // 2. Add the maker's normalized die-line as a locked substrate, sent to back.
       try {
         const doc = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${ctx.widthMm} ${ctx.heightMm}">${ctx.substrateSvg}</svg>`
         const parsed = await fabric.loadSVGFromString(doc)
@@ -119,21 +124,14 @@ export function RoomLabelStudioClient({
           canvas.sendObjectToBack(group as unknown as fabric.FabricObject)
         }
       } catch {
-        /* substrate failed to parse — editor still usable, proof will note it */
+        /* substrate failed to parse — editor still usable */
       }
       if (disposed) return
 
-      // Non-editors: freeze every object.
-      if (!canEdit) {
-        canvas.forEachObject((o) => o.set({ selectable: false, evented: false }))
-      }
+      canvas.on('object:added', scheduleSave)
+      canvas.on('object:modified', scheduleSave)
+      canvas.on('object:removed', scheduleSave)
       canvas.requestRenderAll()
-
-      if (canEdit) {
-        canvas.on('object:added', scheduleSave)
-        canvas.on('object:modified', scheduleSave)
-        canvas.on('object:removed', scheduleSave)
-      }
       setReady(true)
     }
     void init()
@@ -147,15 +145,54 @@ export function RoomLabelStudioClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Toggle brand-object interactivity with the lock (substrate stays locked).
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.selection = canEditNow
+    canvas.forEachObject((o) => {
+      if ((o as { customType?: string }).customType === SUBSTRATE_TYPE) return
+      o.set({ selectable: canEditNow, evented: canEditNow })
+    })
+    if (!canEditNow) canvas.discardActiveObject()
+    canvas.requestRenderAll()
+  }, [canEditNow, ready])
+
+  // C6 lock: poll to acquire/heartbeat/wait; release on leave.
+  useEffect(() => {
+    if (!hasEditAccess) return
+    let alive = true
+    const tick = async () => {
+      const v = await pokeEditLock(ctx.roomId)
+      if (alive) setLock(v)
+    }
+    void tick()
+    const iv = setInterval(tick, LOCK_POLL_MS)
+    const onHide = () => {
+      void releaseEditLock(ctx.roomId)
+    }
+    window.addEventListener('pagehide', onHide)
+    return () => {
+      alive = false
+      clearInterval(iv)
+      window.removeEventListener('pagehide', onHide)
+      void releaseEditLock(ctx.roomId)
+    }
+  }, [hasEditAccess, ctx.roomId])
+
+  const requestControl = async () => setLock(await pokeEditLock(ctx.roomId))
+  const giveControl = async () => {
+    await releaseEditLock(ctx.roomId)
+    setLock(await pokeEditLock(ctx.roomId))
+  }
+
   const addHeading = () => {
     const canvas = canvasRef.current
-    if (!canvas || !canEdit) return
-    addText(canvas, 'Your brand', { fontSize: 40, fontWeight: 700 })
+    if (canvas && canEditNow) addText(canvas, 'Your brand', { fontSize: 40, fontWeight: 700 })
   }
   const addBodyText = () => {
     const canvas = canvasRef.current
-    if (!canvas || !canEdit) return
-    addText(canvas, 'Tagline or copy', { fontSize: 22 })
+    if (canvas && canEditNow) addText(canvas, 'Tagline or copy', { fontSize: 22 })
   }
 
   async function handleSubmit() {
@@ -164,8 +201,6 @@ export function RoomLabelStudioClient({
     setSubmitting(true)
     setSubmitError(null)
 
-    // Exclude the substrate from the canvas export, then re-supply it to the
-    // composer so it appears exactly once (and stays the immutable base layer).
     const substrate = substrateRef.current
     if (substrate) canvas.remove(substrate)
     const brandDoc = canvas.toSVG()
@@ -198,19 +233,38 @@ export function RoomLabelStudioClient({
     setSubmitting(false)
   }
 
+  // Presence line (C6).
+  const presence = (() => {
+    if (!hasEditAccess) return 'View only'
+    if (!lock) return null
+    if (lock.iHold) {
+      return lock.pendingRequesterName ? `${lock.pendingRequesterName} wants to edit` : 'You’re editing'
+    }
+    return lock.holderName ? `${lock.holderName} is editing — you’re viewing` : null
+  })()
+
   return (
     <div className="flex h-screen flex-col bg-ink-50">
-      {/* Top bar */}
       <header className="flex items-center justify-between gap-4 border-b border-ink-200 bg-white px-5 py-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-ink-900">{ctx.briefTitle} · Label</div>
-          <div className="truncate text-xs text-ink-500">
-            Designing on {ctx.partnerName}’s die-line
-            {!canEdit && ' · view only'}
-          </div>
+          <div className="truncate text-xs text-ink-500">Designing on {ctx.partnerName}’s die-line</div>
         </div>
         <div className="flex items-center gap-3">
-          {canEdit && (
+          {presence && <span className="text-xs text-ink-500">{presence}</span>}
+          {/* Holder sees a takeover request → can hand control over. */}
+          {lock?.iHold && lock.pendingRequesterName && (
+            <button type="button" onClick={giveControl} className="rounded-full border border-pink-300 px-3 py-1.5 text-xs font-medium text-pink-700 hover:bg-pink-50">
+              Give control
+            </button>
+          )}
+          {/* Waiter can request the turn. */}
+          {hasEditAccess && lock && !lock.iHold && (
+            <button type="button" onClick={requestControl} className="rounded-full border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50">
+              {lock.state === 'WAITING' ? 'Requested…' : 'Request edit control'}
+            </button>
+          )}
+          {canEditNow && (
             <span className="text-xs text-ink-400">
               {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Save failed' : ''}
             </span>
@@ -231,13 +285,11 @@ export function RoomLabelStudioClient({
         </div>
       </header>
 
-      {submitError && (
-        <div className="border-b border-red-200 bg-red-50 px-5 py-2 text-sm text-red-700">{submitError}</div>
-      )}
+      {submitError && <div className="border-b border-red-200 bg-red-50 px-5 py-2 text-sm text-red-700">{submitError}</div>}
 
       <div className="flex min-h-0 flex-1">
-        {/* Tool rail (editors only) */}
-        {canEdit && (
+        {/* Tool rail — only when I actually hold the edit turn. */}
+        {canEditNow && (
           <aside className="w-48 shrink-0 space-y-2 border-r border-ink-200 bg-white p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-ink-400">Brand layer</div>
             <button onClick={addHeading} className="w-full rounded-lg border border-ink-200 px-3 py-2 text-left text-sm text-ink-800 hover:bg-ink-50">
@@ -252,7 +304,6 @@ export function RoomLabelStudioClient({
           </aside>
         )}
 
-        {/* Canvas stage */}
         <main className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-6">
           <div className="rounded-lg bg-white shadow-sm ring-1 ring-ink-200">
             <canvas ref={canvasElRef} />
