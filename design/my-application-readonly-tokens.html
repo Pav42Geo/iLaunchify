@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · My Application — read-only Onboarding record (design-system tokens)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&family=Fraunces:ital,wght@1,400;1,500&display=swap" rel="stylesheet" />
+<style>
+/* =============================================================
+   Tokens wired to packages/ui/src/theme.css (raw channel ramps +
+   semantic + component + chrome) — same block as
+   activation-launch-console-tokens.html so this drops onto the
+   real design system unchanged.
+   ============================================================= */
+:root{
+  --pink-50-rgb:255 233 240;--pink-50:rgb(var(--pink-50-rgb));
+  --pink-100-rgb:255 208 224;--pink-100:rgb(var(--pink-100-rgb));
+  --pink-200-rgb:255 179 204;--pink-200:rgb(var(--pink-200-rgb));
+  --pink-300-rgb:255 127 168;--pink-300:rgb(var(--pink-300-rgb));
+  --pink-400-rgb:255 82 133;--pink-400:rgb(var(--pink-400-rgb));
+  --pink-500-rgb:255 46 99;--pink-500:rgb(var(--pink-500-rgb));
+  --pink-600-rgb:233 30 90;--pink-600:rgb(var(--pink-600-rgb));
+  --pink-700-rgb:199 19 80;--pink-700:rgb(var(--pink-700-rgb));
+  --neon-400-rgb:194 255 77;--neon-400:rgb(var(--neon-400-rgb));
+  --neon-500-rgb:181 255 61;--neon-500:rgb(var(--neon-500-rgb));
+  --ink-50-rgb:248 248 249;--ink-50:rgb(var(--ink-50-rgb));
+  --ink-100-rgb:238 239 241;--ink-100:rgb(var(--ink-100-rgb));
+  --ink-200-rgb:224 225 229;--ink-200:rgb(var(--ink-200-rgb));
+  --ink-300-rgb:203 204 211;--ink-300:rgb(var(--ink-300-rgb));
+  --ink-400-rgb:154 156 166;--ink-400:rgb(var(--ink-400-rgb));
+  --ink-500-rgb:107 109 120;--ink-500:rgb(var(--ink-500-rgb));
+  --ink-600-rgb:71 73 84;--ink-600:rgb(var(--ink-600-rgb));
+  --ink-700-rgb:51 52 60;--ink-700:rgb(var(--ink-700-rgb));
+  --ink-800-rgb:35 35 39;--ink-800:rgb(var(--ink-800-rgb));
+  --ink-900-rgb:24 24 26;--ink-900:rgb(var(--ink-900-rgb));
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-500:#B45309;--warning-700:#7C360A;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-500:#1F5BA8;--info-700:#163E72;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;--font-display:'Bricolage Grotesque','Inter',sans-serif;--font-serif:'Fraunces',Georgia,serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);--shadow-lg:0 12px 28px rgba(24,24,26,.12);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --bg-hero:#FFFFFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+.serif-em{font-family:var(--font-serif);font-style:italic;font-weight:500}
+.shell{max-width:1360px;margin:0 auto;padding:22px 20px 90px}
+
+/* proto bar */
+.proto-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:16px}
+.proto-brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:16px}
+.proto-brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center}
+.proto-brand .sq svg{width:13px;height:13px;color:#fff}
+.proto-brand small{font-family:var(--font-sans);font-weight:500;color:var(--ink-500);font-size:12px}
+.proto-note{font-size:12px;color:var(--ink-500);padding:0 4px;margin-bottom:16px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:13px;border-radius:var(--r-pill);padding:0 15px;height:36px;transition:all .18s var(--ease-out);white-space:nowrap}
+.btn svg{width:14px;height:14px}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{background:#000}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-neon{background:var(--neon-500);color:var(--ink-900)}.btn-neon:hover{background:var(--neon-400)}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn-out:hover{background:var(--ink-50)}
+
+/* ===== APP FRAME: journey topbar + gray sidebar + content ===== */
+.frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff}
+
+/* journey topbar (activation phase) — Onboarding pill active on THIS page */
+.jbar{background:var(--ink-900);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:24px;padding:12px 24px}
+.jbar .logo{display:flex;align-items:center;gap:7px;font-family:var(--font-display);font-weight:800;font-size:17px}
+.jbar .logo .sq{width:25px;height:25px;border-radius:7px;background:var(--pink-500);display:grid;place-items:center}
+.jbar .logo .sq svg{width:14px;height:14px;color:#fff}
+.jbar .logo small{font-family:var(--font-sans);font-weight:600;color:var(--neon-500);font-size:12px;margin-left:2px}
+.jsteps{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.10);border-radius:var(--r-pill);padding:4px}
+.jsteps span,.jsteps a{border-radius:var(--r-pill);padding:6px 14px;font-weight:600;font-size:12.5px;color:var(--ink-300)}
+.jsteps .active{background:#fff;color:var(--ink-900)}
+.jbar .acct{margin-left:auto;display:flex;align-items:center;gap:10px}
+.jbar .bell{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--ink-300)}
+.jbar .bell:hover{background:rgba(255,255,255,.1);color:#fff}
+.jbar .bell svg{width:19px;height:19px}
+.jbar .avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
+
+.cols{display:grid;grid-template-columns:224px 1fr;min-height:760px}
+/* gray sidebar (activation phase) */
+.side{background:var(--ink-50);border-right:1px solid var(--ink-200);padding:14px 12px}
+.side .portal{padding:4px 8px 0}
+.side .portal .t{font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:-.01em}
+.side .portal .pill{margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:var(--info-50);color:var(--info-700);border:1px solid var(--info-100);border-radius:var(--r-pill);padding:2px 8px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.side .portal .pill .dot{width:6px;height:6px;border-radius:50%;background:var(--info-500)}
+.side nav{margin-top:18px;display:grid;gap:4px}
+.side nav a{display:flex;align-items:center;gap:11px;border-radius:var(--r-md);padding:9px 10px;font-size:13.5px;color:var(--ink-600)}
+.side nav a svg{width:16px;height:16px;color:var(--ink-500)}
+.side nav a:hover{background:var(--ink-100)}
+.side nav a.active{background:var(--ink-100);color:var(--ink-900);font-weight:600}
+.side nav a.active svg{color:var(--ink-900)}
+
+/* ===== CONTENT ===== */
+.content{background:var(--ink-50);padding:24px 28px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start}
+
+/* hero band */
+.hero{grid-column:1/-1;background:var(--bg-hero);border:1px solid var(--ink-200);border-radius:24px;padding:22px 26px;display:flex;flex-wrap:wrap;align-items:center;gap:18px}
+.hero .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-500)}
+.hero h1{font-family:var(--font-display);font-weight:800;font-size:27px;letter-spacing:-.02em;line-height:1.1;margin-top:2px}
+.hero h1 .serif-em{color:var(--pink-700)}
+.hero .sub{font-size:13px;color:var(--ink-600);margin-top:4px}
+.hero .right{margin-left:auto;text-align:right}
+.hero .appid{font-size:11px;color:var(--ink-400);font-family:ui-monospace,monospace;margin-top:6px}
+.badge-approved{display:inline-flex;align-items:center;gap:7px;background:var(--success-50);border:1px solid var(--success-100);color:var(--success-700);border-radius:var(--r-pill);padding:7px 14px;font-weight:700;font-size:12.5px}
+.badge-approved svg{width:15px;height:15px}
+.lock-chip{display:inline-flex;align-items:center;gap:5px;background:var(--ink-100);border:1px solid var(--ink-200);color:var(--ink-600);border-radius:var(--r-pill);padding:4px 10px;font-size:11px;font-weight:600}
+.lock-chip svg{width:11px;height:11px}
+
+/* journey timeline */
+.timeline{grid-column:1/-1;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);padding:18px 22px;display:flex;align-items:flex-start;gap:0;overflow-x:auto}
+.tstep{flex:1;min-width:120px;position:relative;text-align:center;padding-top:4px}
+.tstep::before{content:"";position:absolute;top:15px;left:0;right:0;height:2px;background:var(--success-100)}
+.tstep:first-child::before{left:50%}
+.tstep:last-child::before{right:50%}
+.tstep .dotw{position:relative;z-index:1;width:24px;height:24px;margin:0 auto;border-radius:50%;background:var(--success-500);color:#fff;display:grid;place-items:center}
+.tstep .dotw svg{width:13px;height:13px}
+.tstep .tl{font-size:12px;font-weight:700;margin-top:8px}
+.tstep .td{font-size:11px;color:var(--ink-500)}
+.tstep.final .dotw{background:var(--ink-900);outline:3px solid var(--neon-500)}
+.tstep.final .tl{color:var(--ink-900)}
+
+/* main column */
+.main{display:grid;gap:16px}
+.note-banner{display:flex;gap:12px;align-items:flex-start;background:var(--success-50);border:1px solid var(--success-100);border-radius:var(--r-xl);padding:14px 16px}
+.note-banner svg{width:18px;height:18px;flex:none;color:var(--success-600);margin-top:1px}
+.note-banner .t{font-weight:700;font-size:13.5px;color:var(--success-700)}
+.note-banner .s{font-size:12.5px;color:var(--success-700);opacity:.85;margin-top:2px}
+.note-banner .s a{text-decoration:underline;text-underline-offset:2px;font-weight:600}
+
+/* section card */
+.sec{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);overflow:hidden}
+.sec-h{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--ink-100)}
+.sec-h .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--pink-50);color:var(--pink-700)}
+.sec-h .ic svg{width:18px;height:18px}
+.sec-h h3{font-family:var(--font-display);font-weight:700;font-size:15.5px}
+.sec-h .meta{font-size:11.5px;color:var(--ink-500)}
+.sec-h .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pill-verified{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--success-700);background:var(--success-50);border:1px solid var(--success-100);padding:3px 10px;border-radius:var(--r-pill)}
+.pill-verified svg{width:12px;height:12px}
+.sec-b{padding:16px 18px}
+.kv{display:grid;grid-template-columns:repeat(2,1fr);gap:0 26px}
+.kv .row{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid var(--ink-100);font-size:13px}
+.kv .row:nth-last-child(-n+2){border-bottom:none}
+.kv .k{color:var(--ink-500)}
+.kv .v{font-weight:600;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;padding:4px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:500;background:var(--ink-50);border:1px solid var(--ink-200);color:var(--ink-700)}
+.chip.pink{background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)}
+.subhd{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-400);margin:14px 0 8px}
+.subhd:first-child{margin-top:0}
+
+/* doc rows */
+.doc{display:flex;align-items:center;gap:12px;border:1px dashed var(--ink-300);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:10px}
+.doc:last-child{margin-bottom:0}
+.doc .fic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;background:var(--success-50);color:var(--success-600)}
+.doc.warn .fic{background:var(--warning-50);color:var(--warning-500)}
+.doc .fic svg{width:17px;height:17px}
+.doc .dn{font-weight:600;font-size:13px}
+.doc .dm{font-size:11px;color:var(--ink-500)}
+.doc .rt{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pill-warn{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--warning-700);background:var(--warning-50);border:1px solid var(--warning-100);padding:3px 10px;border-radius:var(--r-pill)}
+.tag-private{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--ink-500);background:var(--ink-100);border-radius:var(--r-pill);padding:2px 7px}
+.tag-private svg{width:9px;height:9px}
+
+/* admin note */
+.anote{background:var(--info-50);border:1px solid var(--info-100);border-radius:var(--r-lg);padding:11px 13px;font-size:12.5px;color:var(--info-700);display:flex;gap:9px}
+.anote svg{width:15px;height:15px;flex:none;margin-top:1px}
+.anote b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+
+/* right rail */
+.rail{display:grid;gap:16px}
+.rcard{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);padding:18px}
+.rcard .rh{font-family:var(--font-display);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.rcard .rh svg{width:16px;height:16px;color:var(--pink-600)}
+.next-step{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--ink-100);font-size:12.5px}
+.next-step:last-of-type{border-bottom:none}
+.next-step .nc{width:20px;height:20px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--success-50);color:var(--success-600)}
+.next-step .nc svg{width:12px;height:12px}
+.next-step.pending .nc{background:var(--pink-50);color:var(--pink-600)}
+.next-step b{display:block;font-weight:600}
+.next-step span{color:var(--ink-500);font-size:11.5px}
+.filelist{display:grid;gap:8px}
+.filelist .f{display:flex;align-items:center;gap:9px;font-size:12.5px}
+.filelist .f svg{width:14px;height:14px;color:var(--ink-400);flex:none}
+.filelist .f .nm{font-weight:600}
+.filelist .f .mt{color:var(--ink-400);font-size:11px;margin-left:auto;white-space:nowrap}
+.helpbox{background:var(--ink-900);color:#fff;border-radius:var(--r-xl);padding:18px}
+.helpbox .hh{font-family:var(--font-display);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.helpbox .hh svg{width:16px;height:16px;color:var(--neon-500)}
+.helpbox p{color:var(--ink-300);font-size:12.5px;margin:8px 0 12px}
+.foot-note{text-align:center;color:var(--ink-400);font-size:12px;margin-top:26px;line-height:1.7}
+@media(max-width:1000px){.wrap{grid-template-columns:1fr}.cols{grid-template-columns:1fr}.side{display:none}.kv{grid-template-columns:1fr}.kv .row:nth-last-child(-n+2){border-bottom:1px solid var(--ink-100)}.kv .row:last-child{border-bottom:none}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="proto-bar">
+    <div class="proto-brand"><span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L4.5 13H11l-1 9 9-13H12.5z"/></svg></span>iLaunchify <small>/my-application · read-only Onboarding record · tokens build</small></div>
+  </div>
+  <div class="proto-note"><b>Token build</b> — the approved partner's read-only application ("Onboarding" in the activation-phase nav). Shown inside the activation shell: dark journey topbar (Onboarding pill active on this page), gray sidebar with the Partner Portal (Onboarded) block. No edit buttons anywhere — the record is sealed; changes route to Settings → Company profile or re-review.</div>
+
+  <div class="frame">
+    <!-- journey topbar -->
+    <div class="jbar">
+      <div class="logo"><span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L4.5 13H11l-1 9 9-13H12.5z"/></svg></span>iLaunchify <small>Business</small></div>
+      <nav class="jsteps">
+        <span>Application</span>
+        <a class="active" href="#">Onboarding</a>
+        <a href="#">Activation Setup</a>
+      </nav>
+      <div class="acct">
+        <button class="bell" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
+        <span class="avatar">PG</span>
+      </div>
+    </div>
+
+    <div class="cols">
+      <!-- gray sidebar -->
+      <aside class="side">
+        <div class="portal">
+          <div class="t">Partner Portal</div>
+          <span class="pill"><span class="dot"></span>Onboarded</span>
+        </div>
+        <nav>
+          <a class="active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>Onboarding</a>
+          <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5L3 21l4.5-1.5M14 4s4 1 6 3 3 6 3 6l-8 8-6-2-2-6z"/></svg>Activation Setup</a>
+        </nav>
+      </aside>
+
+      <!-- content -->
+      <div class="content">
+        <div class="wrap">
+          <!-- HERO -->
+          <div class="hero">
+            <div>
+              <div class="eyebrow">Manufacturer · Onboarding record</div>
+              <h1>Your application, <span class="serif-em">approved.</span></h1>
+              <div class="sub">Northwind Nutrition Co. · submitted Jun 18, 2026 · approved Jul 8, 2026</div>
+            </div>
+            <div class="right">
+              <span class="badge-approved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>Approved · read-only</span>
+              <div class="appid">APP-2026-00318</div>
+            </div>
+          </div>
+
+          <!-- REVIEW TIMELINE -->
+          <div class="timeline">
+            <div class="tstep"><div class="dotw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div><div class="tl">Applied</div><div class="td">Jun 14</div></div>
+            <div class="tstep"><div class="dotw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div><div class="tl">Submitted</div><div class="td">Jun 18</div></div>
+            <div class="tstep"><div class="dotw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div><div class="tl">Identity verified</div><div class="td">Jun 24</div></div>
+            <div class="tstep"><div class="dotw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div><div class="tl">Operations review</div><div class="td">Jun 30</div></div>
+            <div class="tstep final"><div class="dotw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4.5 16.5L3 21l4.5-1.5M14 4s4 1 6 3 3 6 3 6l-8 8-6-2-2-6z"/></svg></div><div class="tl">Approved</div><div class="td">Jul 8</div></div>
+          </div>
+
+          <!-- MAIN -->
+          <div class="main">
+            <div class="note-banner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+              <div>
+                <div class="t">This is the record you were approved on — it's sealed.</div>
+                <div class="s">Company details are now managed in <a href="#">Settings → Company profile</a>; each service goes live through <a href="#">Activation Setup</a>. Identity or facility changes re-enter admin review.</div>
+              </div>
+            </div>
+
+            <!-- ① Business identity -->
+            <div class="sec">
+              <div class="sec-h">
+                <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg></span>
+                <div><h3>Business identity</h3><div class="meta">Verified Jun 24 by iLaunchify review</div></div>
+                <div class="right"><span class="lock-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Read-only</span><span class="pill-verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div>
+              </div>
+              <div class="sec-b">
+                <div class="kv">
+                  <div class="row"><span class="k">Doing-business-as</span><span class="v">Northwind Nutrition Co.</span></div>
+                  <div class="row"><span class="k">Legal entity</span><span class="v">Northwind Nutrition LLC</span></div>
+                  <div class="row"><span class="k">EIN</span><span class="v">••-•••4821</span></div>
+                  <div class="row"><span class="k">Website</span><span class="v">northwind.co</span></div>
+                  <div class="row"><span class="k">Primary phone</span><span class="v">+1 (503) 555-0142</span></div>
+                  <div class="row"><span class="k">Primary facility</span><span class="v">1420 NW Industrial Way, Portland, OR 97209</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ② Facility & capabilities -->
+            <div class="sec">
+              <div class="sec-h">
+                <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span>
+                <div><h3>Facility &amp; capabilities</h3><div class="meta">Verified Jun 30 · operations review</div></div>
+                <div class="right"><span class="lock-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Read-only</span><span class="pill-verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div>
+              </div>
+              <div class="sec-b">
+                <div class="subhd">Services applied for</div>
+                <div class="chips"><span class="chip pink">Manufacturing</span><span class="chip pink">Co-packing</span><span class="chip pink">Print production</span><span class="chip pink">Fulfillment</span></div>
+                <div class="subhd">Facilities</div>
+                <div class="kv">
+                  <div class="row"><span class="k">Plant A — Portland</span><span class="v">FDA-registered · 42,000 sq ft</span></div>
+                  <div class="row"><span class="k">Plant B — Reno</span><span class="v">Fulfillment · 1,200 pallet positions</span></div>
+                </div>
+                <div class="subhd">Declared formats</div>
+                <div class="chips"><span class="chip">Can</span><span class="chip">Bottle</span><span class="chip">Pouch</span><span class="chip">Capsule</span><span class="chip">Powder tub</span></div>
+              </div>
+            </div>
+
+            <!-- ③ Compliance documents -->
+            <div class="sec">
+              <div class="sec-h">
+                <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span>
+                <div><h3>Compliance documents</h3><div class="meta">3 files · private, admin-reviewed</div></div>
+                <div class="right"><span class="lock-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Read-only</span><span class="pill-verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div>
+              </div>
+              <div class="sec-b">
+                <div class="doc">
+                  <span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></span>
+                  <div><div class="dn">Certificate of incorporation</div><div class="dm">CERT_OF_INCORPORATION · verified Jun 24</div></div>
+                  <div class="rt"><span class="tag-private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Private</span></div>
+                </div>
+                <div class="doc">
+                  <span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></span>
+                  <div><div class="dn">Business license</div><div class="dm">BUSINESS_LICENSE · verified Jun 24</div></div>
+                  <div class="rt"><span class="tag-private"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Private</span></div>
+                </div>
+                <div class="doc warn">
+                  <span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+                  <div><div class="dn">General liability insurance</div><div class="dm">Coverage $2,000,000 · verified Jun 24</div></div>
+                  <div class="rt"><span class="pill-warn">Renewal in 22 days</span><button class="btn btn-pink" style="height:30px;font-size:12px;padding:0 12px">Upload renewal →</button></div>
+                </div>
+                <div class="anote" style="margin-top:12px">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                  <div><b>Admin note · Jun 30</b>Insurance certificate approved. Please keep coverage continuous — an expired GL policy auto-suspends routing until the renewal is verified.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ④ Public profile -->
+            <div class="sec">
+              <div class="sec-h">
+                <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></span>
+                <div><h3>Public profile</h3><div class="meta">Verified Jun 30 · now managed in Settings</div></div>
+                <div class="right"><span class="lock-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Read-only</span><span class="pill-verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div>
+              </div>
+              <div class="sec-b">
+                <div class="kv">
+                  <div class="row"><span class="k">Label disclosure</span><span class="v">Full &ldquo;Manufactured by&rdquo;</span></div>
+                  <div class="row"><span class="k">Market participation</span><span class="v">Public · open market</span></div>
+                </div>
+                <div class="anote" style="margin-top:12px;background:var(--ink-50);border-color:var(--ink-200);color:var(--ink-600)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  <div><b style="color:var(--ink-500)">Live surface</b>Your tagline, bio, logo and portfolio are edited in <a href="#" style="text-decoration:underline;text-underline-offset:2px;font-weight:600">Settings → Company profile</a> — not here.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT RAIL -->
+          <aside class="rail">
+            <div class="rcard">
+              <div class="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg>What's next</div>
+              <div class="next-step"><span class="nc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><div><b>Application approved</b><span>Jul 8 · identity + operations verified</span></div></div>
+              <div class="next-step pending"><span class="nc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5L3 21l4.5-1.5M14 4s4 1 6 3 3 6 3 6l-8 8-6-2-2-6z"/></svg></span><div><b>Finish Activation Setup</b><span>2 of 4 services live · ~8 min left</span></div></div>
+              <div class="next-step pending"><span class="nc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></span><div><b>Publish your public profile</b><span>Settings → Company profile</span></div></div>
+              <a class="btn btn-dark" style="width:100%;margin-top:12px" href="#">Continue Activation Setup →</a>
+            </div>
+
+            <div class="rcard">
+              <div class="rh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Documents on file</div>
+              <div class="filelist">
+                <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg><span class="nm">incorporation.pdf</span><span class="mt">Jun 18</span></div>
+                <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg><span class="nm">business-license.pdf</span><span class="mt">Jun 18</span></div>
+                <div class="f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg><span class="nm">gl-insurance-2026.pdf</span><span class="mt">Jun 18</span></div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;color:var(--ink-400)">Private — visible to you and iLaunchify review only. Never shown on your public profile.</div>
+            </div>
+
+            <div class="helpbox">
+              <div class="hh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>Need to change something?</div>
+              <p>Identity, facility, or document changes on an approved record re-enter admin review to keep your verified status honest. Tell us what changed and we'll open the right section.</p>
+              <button class="btn btn-neon" style="width:100%">Request a change</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot-note">Read-only Onboarding record = the approved <b>/my-application</b> inside the activation shell (journey topbar · gray sidebar · Partner Portal “Onboarded”).<br>Sections mirror PartnerVerificationSection (BUSINESS · FACILITY · DOCUMENTS · PUBLIC_PROFILE) with statuses from admin review; the ONLY actions are the GL renewal upload (compliance exception) and “Request a change” (re-review path). Everything else routes to Settings → Company profile / Activation Setup.</div>
+</div>
+</body>
+</html>
