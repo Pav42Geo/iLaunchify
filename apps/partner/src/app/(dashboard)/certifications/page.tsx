@@ -1,26 +1,19 @@
 // Partner certifications page — claim certs from admin library + manage.
 // Per docs/MANUFACTURER_PRODUCT_BUILDER.md §7.2 + #129.
+// Restyled 1:1 to the prototype "Certifications" settings panel
+// (design/partner-profile-prototype-v2.html) via the panel-kit primitives.
 //
 // Layout:
-//   "Your certifications" section — current claimed instances grouped by
-//     status (Verified / Pending review / Needs attention).
-//   "Add a certification" picker — CertificateType library minus types
-//     the partner already has an active claim for.
+//   Hero band (unchanged) → PanelCard: renewal InfoBanner + KpiStrip +
+//     certificate LRows (status pill + renew) → PanelCard: "Add a
+//     certification" picker (CertificateType library minus claimed types).
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CertExpiryBadge,
-  certExpiryTone,
-  cn,
-} from '@ilaunchify/ui'
-import { ShieldCheck, FileText, AlertTriangle, CheckCircle2, Clock, type LucideIcon } from 'lucide-react'
+import { certExpiryTone, daysUntilExpiry, cn } from '@ilaunchify/ui'
+import { ShieldCheck, AlertCircle, Clock, Info, Plus } from 'lucide-react'
+import { InfoBanner, KpiStrip, PanelCard, PanelHeader, StPill } from '@/components/panel-kit'
 import { CertificationsClient } from './CertificationsClient'
 import { RenewCertButton } from './RenewCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
@@ -84,6 +77,14 @@ export default async function CertificationsPage({
   const pending = instances.filter((i) => i.status === 'PENDING_REVIEW')
   const issues = instances.filter((i) => i.status === 'REJECTED' || i.status === 'EXPIRED')
 
+  // Soonest-expiring VERIFIED cert inside the 90-day renewal window — drives
+  // the renewal InfoBanner. Omitted entirely when nothing is expiring.
+  const expiringSoon = verified.filter((i) => {
+    const tone = certExpiryTone(i.expiryDate)
+    return tone === 'soon' || tone === 'urgent'
+  })
+  const nextRenewal = expiringSoon[0] ?? null
+
   // Resolve the admin-curated PNG web badge per cert type — the same branded
   // mark shown publicly once VERIFIED.
   const certBadgeUrls = await resolveCertBadgeUrls(
@@ -107,17 +108,10 @@ export default async function CertificationsPage({
           Industry certs you carry (NSF, USDA Organic, cGMP, Kosher, etc.). Upload the original
           PDF — only iLaunchify admin sees it. Verified certs show as branded badges publicly.
         </p>
-        {instances.length > 0 && (
-          <div className="mt-6 grid grid-cols-3 gap-3">
-            <Kpi label="Verified" value={verified.length} icon={CheckCircle2} tone="ink" />
-            <Kpi label="Pending review" value={pending.length} icon={Clock} tone="amber" />
-            <Kpi label="Needs attention" value={issues.length} icon={AlertTriangle} tone="pink" />
-          </div>
-        )}
       </div>
 
       {instances.length === 0 ? (
-        <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">
+        <PanelCard className="px-6 py-12 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
             <ShieldCheck className="h-6 w-6 text-pink-700" aria-hidden="true" />
           </div>
@@ -126,155 +120,81 @@ export default async function CertificationsPage({
             Claim a certification below to start the verification process. Admin reviews each
             within 1-2 business days.
           </p>
-        </section>
+        </PanelCard>
       ) : (
-        <div className="space-y-4">
-          {verified.length > 0 && (
-            <CertSection
-              title="Verified"
-              count={verified.length}
-              icon={CheckCircle2}
-              iconClass="text-success-600"
-            >
-              {verified.map((inst) => (
-                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
-              ))}
-            </CertSection>
+        <PanelCard>
+          <PanelHeader title="Your certifications" />
+
+          {nextRenewal && (
+            <InfoBanner tone="info" icon={<Info aria-hidden="true" />}>
+              <strong>{nextRenewal.certificateType.name}</strong> renews in{' '}
+              {daysUntilExpiry(nextRenewal.expiryDate)} days — upload the new certificate to keep
+              your standing.
+            </InfoBanner>
           )}
-          {pending.length > 0 && (
-            <CertSection
-              title="Pending review"
-              count={pending.length}
-              icon={Clock}
-              iconClass="text-warning-600"
-            >
-              {pending.map((inst) => (
-                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
-              ))}
-            </CertSection>
-          )}
-          {issues.length > 0 && (
-            <CertSection
-              title="Needs attention"
-              count={issues.length}
-              icon={AlertTriangle}
-              iconClass="text-danger-600"
-            >
-              {issues.map((inst) => (
-                <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
-              ))}
-            </CertSection>
-          )}
-        </div>
+
+          <KpiStrip
+            items={[
+              { v: verified.length, l: 'Verified' },
+              {
+                v: issues.length,
+                l: 'Needs attention',
+                vClassName: issues.length > 0 ? 'text-warning-500' : undefined,
+              },
+              { v: pending.length, l: 'Pending review' },
+              { v: instances.length, l: 'Total certificates' },
+            ]}
+          />
+
+          {[...verified, ...pending, ...issues].map((inst) => (
+            <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
+          ))}
+        </PanelCard>
       )}
 
       {/* Claim / Add new cert */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Add a certification</CardTitle>
-          <CardDescription>
-            Pick from the admin-curated list below.
-            {availableTypes.length === 0 && certTypes.length > 0 && (
-              <> You&apos;ve already claimed every active certificate type — well done.</>
-            )}
-            {certTypes.length === 0 && (
-              <>
-                {' '}
-                No certificate types are configured yet —{' '}
-                <Link href="mailto:partners@ilaunchify.com" className="underline">
-                  contact admin
-                </Link>{' '}
-                to add the ones you carry.
-              </>
-            )}
-          </CardDescription>
-        </CardHeader>
-        {availableTypes.length > 0 && (
-          <CardContent>
-            <CertificationsClient availableTypes={availableTypeOptions} />
-          </CardContent>
-        )}
-        <CardContent className="border-t border-ink-100 pt-4">
-          <p className="text-ui-body text-ink-500">
-            Carry a certification that isn&apos;t listed?{' '}
-            <Link
-              href="/certifications/request"
-              className="font-medium text-pink-700 underline-offset-2 hover:underline"
-            >
-              Request a new cert type →
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-// -----------------------------------------------------------------------------
-// Internal — server-rendered sections / rows
-// -----------------------------------------------------------------------------
-
-import type { ComponentType } from 'react'
-
-function Kpi({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string
-  value: number
-  icon: LucideIcon
-  tone: 'ink' | 'amber' | 'pink'
-}) {
-  const iconTone: Record<typeof tone, string> = {
-    ink: 'bg-ink-100 text-ink-700',
-    amber: 'bg-warning-100 text-warning-700',
-    pink: 'bg-pink-100 text-pink-700',
-  }
-  return (
-    <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
-      <div className="flex items-center gap-3">
-        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
-          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
-          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
-            {value.toLocaleString()}
-          </p>
+      <PanelCard>
+        <PanelHeader
+          title="Add a certification"
+          desc={
+            <>
+              Pick from the admin-curated list below.
+              {availableTypes.length === 0 && certTypes.length > 0 && (
+                <> You&apos;ve already claimed every active certificate type — well done.</>
+              )}
+              {certTypes.length === 0 && (
+                <>
+                  {' '}
+                  No certificate types are configured yet —{' '}
+                  <Link href="mailto:partners@ilaunchify.com" className="underline">
+                    contact admin
+                  </Link>{' '}
+                  to add the ones you carry.
+                </>
+              )}
+            </>
+          }
+        />
+        {availableTypes.length > 0 && <CertificationsClient availableTypes={availableTypeOptions} />}
+        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-ink-100 pt-4">
+          <p className="text-[13px] text-ink-500">Carry a certification that isn&apos;t listed?</p>
+          <Link
+            href="/certifications/request"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors hover:bg-ink-50"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+            Request a new cert type
+          </Link>
         </div>
-      </div>
+      </PanelCard>
     </div>
   )
 }
 
-function CertSection({
-  title,
-  count,
-  icon: Icon,
-  iconClass,
-  children,
-}: {
-  title: string
-  count: number
-  icon: ComponentType<{ className?: string }>
-  iconClass: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-      <header className="flex items-center gap-2 border-b border-ink-100 bg-[var(--bg-hero)] px-4 py-2.5">
-        <Icon className={`h-4 w-4 ${iconClass}`} aria-hidden="true" />
-        <h2 className="font-display text-[13.5px] font-semibold leading-none tracking-tight text-ink-900">
-          {title}
-        </h2>
-        <span className="text-[12px] font-normal text-ink-500">{count}</span>
-      </header>
-      <div className="space-y-2 p-3">{children}</div>
-    </section>
-  )
-}
+// -----------------------------------------------------------------------------
+// Internal — server-rendered certificate rows (prototype .lrow, flex-wrap so
+// the inline renew form / reviewer note can break onto a full-width line)
+// -----------------------------------------------------------------------------
 
 type CertRowInstance = {
   id: string
@@ -289,6 +209,10 @@ type CertRowInstance = {
   certificateType: { name: string; slug: string; description: string }
 }
 
+function expMonthYear(d: Date): string {
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
 function CertRow({
   inst,
   badgeUrl,
@@ -301,53 +225,78 @@ function CertRow({
   // Offer renewal when expired, or when a still-valid cert is within 90 days of
   // expiry (tone is 'soon' or 'urgent'). Pending/rejected rows don't renew.
   const tone = certExpiryTone(inst.expiryDate)
-  const canRenew =
-    inst.status === 'EXPIRED' ||
-    (inst.status === 'VERIFIED' && (tone === 'soon' || tone === 'urgent'))
+  const isExpiring = inst.status === 'VERIFIED' && (tone === 'soon' || tone === 'urgent')
+  const canRenew = inst.status === 'EXPIRED' || isExpiring
+  const days = daysUntilExpiry(inst.expiryDate)
+
+  const chipCls = isExpiring
+    ? 'bg-warning-50 text-warning-600'
+    : inst.status === 'VERIFIED'
+      ? 'bg-success-50 text-success-600'
+      : inst.status === 'PENDING_REVIEW'
+        ? 'bg-info-50 text-info-600'
+        : 'bg-danger-50 text-danger-600'
+
+  const sub = [
+    inst.issuingBody,
+    inst.certificateNumber ? `Cert #${inst.certificateNumber}` : null,
+    `exp ${expMonthYear(inst.expiryDate)}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
-    <div className="rounded-xl border border-ink-200 bg-white p-3">
-      <div className="flex items-start gap-3">
+    <div className="mb-2.5 flex flex-wrap items-center gap-3.5 rounded-xl border border-ink-200 px-4 py-[15px] transition-all last:mb-0 hover:border-ink-300 hover:shadow-sm">
+      <span
+        className={cn(
+          'grid h-10 w-10 flex-none place-items-center overflow-hidden rounded-[10px]',
+          chipCls,
+        )}
+      >
         {badgeUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={badgeUrl}
-            alt=""
-            className="h-9 w-9 flex-shrink-0 rounded-md border border-ink-200 bg-white object-contain p-1"
-          />
+          <img src={badgeUrl} alt="" className="h-full w-full bg-white object-contain p-1" />
+        ) : isExpiring || inst.status === 'REJECTED' || inst.status === 'EXPIRED' ? (
+          <AlertCircle className="h-[19px] w-[19px]" aria-hidden="true" />
+        ) : inst.status === 'PENDING_REVIEW' ? (
+          <Clock className="h-[19px] w-[19px]" aria-hidden="true" />
         ) : (
-          <div className="rounded-md bg-ink-100 p-2">
-            <FileText className="h-4 w-4 text-ink-500" />
-          </div>
+          <ShieldCheck className="h-[19px] w-[19px]" aria-hidden="true" />
         )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="font-medium text-ink-900">{inst.certificateType.name}</div>
-            <CertExpiryBadge expiryDate={inst.expiryDate} />
-          </div>
-          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-ui-caption text-ink-500">
-            {inst.issuingBody && <span>{inst.issuingBody}</span>}
-            {inst.certificateNumber && <span>#{inst.certificateNumber}</span>}
-            <span>Expires {new Date(inst.expiryDate).toLocaleDateString()}</span>
-          </div>
-          {inst.status === 'REJECTED' && inst.rejectionReason && (
-            <div className="mt-2 rounded bg-danger-50 px-2 py-1 text-ui-caption text-danger-800">
-              <span className="font-semibold">Reviewer note: </span>
-              {inst.rejectionReason}
-            </div>
-          )}
-          {canRenew && (
-            <div className="mt-2">
-              <RenewCertButton
-                instanceId={inst.id}
-                certName={inst.certificateType.name}
-                renewalPending={!!inst.replacedById}
-                autoOpen={renewId === inst.id}
-              />
-            </div>
-          )}
-        </div>
+      </span>
+      <div className="min-w-0">
+        <div className="text-[14px] font-semibold text-ink-900">{inst.certificateType.name}</div>
+        <div className="text-[12px] text-ink-500">{sub}</div>
       </div>
+      <div className="ml-auto flex flex-none items-center gap-3">
+        {isExpiring ? (
+          <StPill tone="warn">EXPIRING · {days}d</StPill>
+        ) : inst.status === 'VERIFIED' ? (
+          <StPill tone="ok">VERIFIED</StPill>
+        ) : inst.status === 'PENDING_REVIEW' ? (
+          <StPill tone="info">PENDING REVIEW</StPill>
+        ) : inst.status === 'REJECTED' ? (
+          <StPill tone="danger">REJECTED</StPill>
+        ) : (
+          <StPill tone="danger">EXPIRED</StPill>
+        )}
+      </div>
+      {/* Direct flex-wrap child: renders as an inline pill trigger when closed,
+          and as a w-full form that wraps onto its own full-width line when open. */}
+      {canRenew && (
+        <RenewCertButton
+          instanceId={inst.id}
+          certName={inst.certificateType.name}
+          renewalPending={!!inst.replacedById}
+          autoOpen={renewId === inst.id}
+        />
+      )}
+      {inst.status === 'REJECTED' && inst.rejectionReason && (
+        <div className="w-full rounded-lg bg-danger-50 px-3 py-2 text-[12px] text-danger-800">
+          <span className="font-semibold">Reviewer note: </span>
+          {inst.rejectionReason}
+        </div>
+      )}
     </div>
   )
 }

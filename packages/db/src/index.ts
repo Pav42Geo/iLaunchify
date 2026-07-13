@@ -357,3 +357,11 @@ export {
   type DocRequirement,
   type DocRequirementLevel,
 } from './partner-doc-tracks'
+
+// Public partner profile (Front Face) reader — Pavel 2026-07-12.
+export {
+  getPartnerProfile,
+  type PartnerProfileVM,
+  type ProfileServiceVM,
+  type ProfileReviewVM,
+} from './partner-profile'

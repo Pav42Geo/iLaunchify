@@ -1,11 +1,16 @@
 'use client'
 
-// Authoring form for manufacturer-level product defaults. Set once → every new
-// product inherits these so a team member fills only the product-specific
-// deltas. Tailwind + semantic tokens (matches the settings surface).
+// Authoring form for manufacturer-level product defaults — the "Product
+// defaults" panel of design/partner-profile-prototype-v2.html (Pavel
+// 2026-07-12): one "Run & storage defaults" Fieldset with 4-column field rows,
+// then the "Apply to new products" toggle as an LRow with a switch at right.
+// Set once → every new product inherits these so a team member fills only the
+// product-specific deltas. Save action + field set unchanged (visual restyle).
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
+import { List } from 'lucide-react'
+import { Fieldset, LRow, PanelCard } from '@/components/panel-kit'
 import { savePartnerProductDefaults, type ProductDefaultsInput } from './actions'
 
 interface FacilityOpt { id: string; name: string }
@@ -62,76 +67,82 @@ export function ProductDefaultsForm({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Master switch */}
-      <label className="flex items-start gap-3 rounded-2xl border border-ink-200 bg-white p-4">
-        <input
-          type="checkbox"
-          checked={v.applyToNewProducts}
-          onChange={(e) => set('applyToNewProducts', e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-pink-600"
-        />
-        <span>
-          <span className="block text-[14px] font-semibold text-ink-900">Apply these defaults to new products</span>
-          <span className="block text-[13px] text-ink-600">
-            When on, every new product starts pre-filled with the values below. Turn off to start each product blank.
-          </span>
-        </span>
-      </label>
+    <PanelCard>
+      <Fieldset icon={<List className="h-4 w-4" />} title="Run & storage defaults">
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+          <Field label="MOQ min"><input className={INP} type="number" min={0} value={v.moqMin ?? ''} onChange={(e) => set('moqMin', num(e.target.value))} placeholder="e.g. 500" /></Field>
+          <Field label="MOQ max"><input className={INP} type="number" min={0} value={v.moqMax ?? ''} onChange={(e) => set('moqMax', num(e.target.value))} placeholder="e.g. 5000" /></Field>
+          <Field label="Order increment"><input className={INP} type="number" min={0} value={v.orderIncrement ?? ''} onChange={(e) => set('orderIncrement', num(e.target.value))} placeholder="e.g. 100" /></Field>
+          <Field label="Monthly capacity"><input className={INP} type="number" min={0} value={v.monthlyCapacity ?? ''} onChange={(e) => set('monthlyCapacity', num(e.target.value))} placeholder="optional" /></Field>
+        </div>
 
-      <Card title="Origin & facility">
-        <Field label="Default manufacturing facility">
-          <select className={SEL} value={v.defaultFacilityId ?? ''} onChange={(e) => set('defaultFacilityId', e.target.value || null)}>
-            <option value="">No default</option>
-            {facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Country of origin">
-          <select className={SEL} value={v.countryOfOrigin ?? ''} onChange={(e) => set('countryOfOrigin', e.target.value || null)}>
-            <option value="">—</option>
-            {COUNTRY_OPTS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-        </Field>
-      </Card>
+        <div className="mt-3.5 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+          <Field label="Lead — repeat (days)"><input className={INP} type="number" min={0} value={v.leadTimeRepeatDays ?? ''} onChange={(e) => set('leadTimeRepeatDays', num(e.target.value))} placeholder="e.g. 21" /></Field>
+          <Field label="Lead — first run (days)"><input className={INP} type="number" min={0} value={v.leadTimeFirstRunDays ?? ''} onChange={(e) => set('leadTimeFirstRunDays', num(e.target.value))} placeholder="e.g. 35" /></Field>
+          <Field label="Storage temp min °F"><input className={INP} type="number" value={v.storageTempMinF ?? ''} onChange={(e) => set('storageTempMinF', e.target.value === '' ? null : parseInt(e.target.value, 10))} placeholder="optional" /></Field>
+          <Field label="Storage temp max °F"><input className={INP} type="number" value={v.storageTempMaxF ?? ''} onChange={(e) => set('storageTempMaxF', e.target.value === '' ? null : parseInt(e.target.value, 10))} placeholder="optional" /></Field>
+        </div>
 
-      <Card title="Production">
-        <Field label="MOQ (minimum order qty)"><input className={INP} type="number" min={0} value={v.moqMin ?? ''} onChange={(e) => set('moqMin', num(e.target.value))} placeholder="e.g. 500" /></Field>
-        <Field label="MOQ max"><input className={INP} type="number" min={0} value={v.moqMax ?? ''} onChange={(e) => set('moqMax', num(e.target.value))} placeholder="e.g. 5000" /></Field>
-        <Field label="Order increment"><input className={INP} type="number" min={0} value={v.orderIncrement ?? ''} onChange={(e) => set('orderIncrement', num(e.target.value))} placeholder="e.g. 100" /></Field>
-        <Field label="Monthly capacity (units)"><input className={INP} type="number" min={0} value={v.monthlyCapacity ?? ''} onChange={(e) => set('monthlyCapacity', num(e.target.value))} placeholder="optional" /></Field>
-        <Field label="Lead time — repeat (days)"><input className={INP} type="number" min={0} value={v.leadTimeRepeatDays ?? ''} onChange={(e) => set('leadTimeRepeatDays', num(e.target.value))} placeholder="e.g. 21" /></Field>
-        <Field label="Lead time — first run (days)"><input className={INP} type="number" min={0} value={v.leadTimeFirstRunDays ?? ''} onChange={(e) => set('leadTimeFirstRunDays', num(e.target.value))} placeholder="e.g. 35" /></Field>
-        <Field label="Fulfillment mode">
-          <select className={SEL} value={v.fulfillmentMode ?? ''} onChange={(e) => set('fulfillmentMode', (e.target.value || null) as ProductDefaultsInput['fulfillmentMode'])}>
-            <option value="">No default</option>
-            <option value="BULK_PRODUCTION">Bulk production</option>
-            <option value="ON_DEMAND">Make-to-order (on-demand)</option>
-            <option value="BOTH">Both</option>
-          </select>
-        </Field>
-        <Field label="Lot / batch tracking">
-          <select className={SEL} value={v.lotTracking === null ? '' : v.lotTracking ? 'on' : 'off'} onChange={(e) => set('lotTracking', e.target.value === '' ? null : e.target.value === 'on')}>
-            <option value="">No default</option>
-            <option value="on">On (recommended)</option>
-            <option value="off">Off</option>
-          </select>
-        </Field>
-      </Card>
+        <div className="mt-3.5 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+          <Field label="Default facility">
+            <select className={INP} value={v.defaultFacilityId ?? ''} onChange={(e) => set('defaultFacilityId', e.target.value || null)}>
+              <option value="">No default</option>
+              {facilities.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Country of origin">
+            <select className={INP} value={v.countryOfOrigin ?? ''} onChange={(e) => set('countryOfOrigin', e.target.value || null)}>
+              <option value="">—</option>
+              {COUNTRY_OPTS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Fulfillment mode">
+            <select className={INP} value={v.fulfillmentMode ?? ''} onChange={(e) => set('fulfillmentMode', (e.target.value || null) as ProductDefaultsInput['fulfillmentMode'])}>
+              <option value="">No default</option>
+              <option value="BULK_PRODUCTION">Bulk production</option>
+              <option value="ON_DEMAND">Make-to-order (on-demand)</option>
+              <option value="BOTH">Both</option>
+            </select>
+          </Field>
+          <Field label="Lot / batch tracking">
+            <select className={INP} value={v.lotTracking === null ? '' : v.lotTracking ? 'on' : 'off'} onChange={(e) => set('lotTracking', e.target.value === '' ? null : e.target.value === 'on')}>
+              <option value="">No default</option>
+              <option value="on">On (recommended)</option>
+              <option value="off">Off</option>
+            </select>
+          </Field>
+        </div>
 
-      <Card title="Storage">
-        <Field label="Storage class">
-          <select className={SEL} value={v.storageClass ?? ''} onChange={(e) => set('storageClass', (e.target.value || null) as ProductDefaultsInput['storageClass'])}>
-            <option value="">No default</option>
-            <option value="AMBIENT">Ambient (shelf-stable)</option>
-            <option value="CHILLED">Chilled (refrigerated)</option>
-            <option value="FROZEN">Frozen</option>
-          </select>
-        </Field>
-        <Field label="Min storage temp (°F)"><input className={INP} type="number" value={v.storageTempMinF ?? ''} onChange={(e) => set('storageTempMinF', e.target.value === '' ? null : parseInt(e.target.value, 10))} placeholder="optional" /></Field>
-        <Field label="Max storage temp (°F)"><input className={INP} type="number" value={v.storageTempMaxF ?? ''} onChange={(e) => set('storageTempMaxF', e.target.value === '' ? null : parseInt(e.target.value, 10))} placeholder="optional" /></Field>
-      </Card>
+        <div className="mt-3.5 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+          <Field label="Storage class">
+            <select className={INP} value={v.storageClass ?? ''} onChange={(e) => set('storageClass', (e.target.value || null) as ProductDefaultsInput['storageClass'])}>
+              <option value="">No default</option>
+              <option value="AMBIENT">Ambient (shelf-stable)</option>
+              <option value="CHILLED">Chilled (refrigerated)</option>
+              <option value="FROZEN">Frozen</option>
+            </select>
+          </Field>
+        </div>
+      </Fieldset>
 
-      <div className="flex items-center gap-3">
+      <LRow
+        title="Apply these defaults to new products"
+        sub="When on, every new product starts pre-filled with the values above. Turn off to start each product blank."
+        right={
+          <label className="relative inline-flex cursor-pointer items-center">
+            <input
+              type="checkbox"
+              checked={v.applyToNewProducts}
+              onChange={(e) => set('applyToNewProducts', e.target.checked)}
+              className="peer sr-only"
+            />
+            <span className="h-6 w-11 rounded-full bg-ink-300 transition-colors peer-checked:bg-pink-500 peer-focus-visible:ring-2 peer-focus-visible:ring-pink-500/40" />
+            <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
+          </label>
+        }
+      />
+
+      <div className="mt-5 flex items-center gap-3">
         <button
           type="button"
           onClick={save}
@@ -142,26 +153,17 @@ export function ProductDefaultsForm({
         </button>
         <span className="text-[12px] text-ink-500">Applies to products you create after saving.</span>
       </div>
-    </div>
+    </PanelCard>
   )
 }
 
-const INP = 'w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[14px] text-ink-900 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100'
-const SEL = INP
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-ink-200 bg-white p-5">
-      <h3 className="mb-4 font-display text-[16px] font-semibold tracking-tight text-ink-900">{title}</h3>
-      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
-    </section>
-  )
-}
+const INP =
+  'w-full rounded-md border border-ink-300 bg-white px-3 py-2.5 text-[13.5px] text-ink-900 transition-all focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-500/15'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[13px] font-semibold text-ink-800">{label}</span>
+      <span className="mb-1.5 block text-[12px] font-semibold text-ink-700">{label}</span>
       {children}
     </label>
   )

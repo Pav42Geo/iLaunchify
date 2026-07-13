@@ -1,11 +1,15 @@
 'use client'
 
 // FC settings client form — receiving spec + blackout dates (P1 §3.1.E).
+// Restyled 2026-07-12 to the settings-hub prototype panels (panel-kit
+// PanelCard/Fieldset/LRow + prototype toggle) — actions and logic unchanged.
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CalendarOff, Save, Trash2 } from 'lucide-react'
+import { CalendarOff, Save, Trash2, Truck } from 'lucide-react'
+import { cn } from '@ilaunchify/ui'
+import { Fieldset, LRow, PanelCard } from '@/components/panel-kit'
 import {
   saveReceivingSpec,
   addBlackoutDate,
@@ -67,132 +71,120 @@ export function FulfillmentSettingsForm({
     }
   }
 
-  const inputCls =
-    'mt-1 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200'
-
   const isWarehouse = serviceType === 'WAREHOUSE'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-ink-500">
         {SERVICE_HEADING[serviceType] ?? serviceType}
       </p>
-      {/* Receiving spec — WAREHOUSE only */}
-      {isWarehouse && (
-      <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <header className="border-b border-ink-200 bg-[var(--bg-hero)] px-5 py-3">
-          <h2 className="font-display text-[15px] font-semibold text-ink-900">Receiving requirements</h2>
-          <p className="text-[12px] text-ink-600">
-            Shown to producing partners on every dispatch shipping to your facility — clear specs
-            prevent dock rejections and discrepancies.
-          </p>
-        </header>
-        <div className="space-y-4 px-5 py-4">
-          <label className="flex items-center gap-2 text-[13px] font-medium text-ink-800">
-            <input
-              type="checkbox"
-              checked={spec.appointmentRequired}
-              onChange={(e) => setSpec((s) => ({ ...s, appointmentRequired: e.target.checked }))}
-              className="h-4 w-4 rounded border-ink-300 text-pink-600 focus:ring-pink-500"
+      <PanelCard>
+        {/* Receiving spec — WAREHOUSE only */}
+        {isWarehouse && (
+          <Fieldset icon={<Truck />} title="Receiving requirements" hint="Travels with every inbound dispatch">
+            <p className="mb-4 text-[12px] text-ink-500">
+              Shown to producing partners on every dispatch shipping to your facility — clear specs
+              prevent dock rejections and discrepancies.
+            </p>
+            <LRow
+              className="mb-3.5"
+              title="Delivery appointment required"
+              sub="Drivers must book a dock slot before arriving."
+              right={
+                <Toggle
+                  on={spec.appointmentRequired}
+                  label="Delivery appointment required"
+                  onClick={() =>
+                    setSpec((s) => ({ ...s, appointmentRequired: !s.appointmentRequired }))
+                  }
+                />
+              }
             />
-            Delivery appointment required
-          </label>
-          {spec.appointmentRequired && (
-            <label className="block text-[12px] font-medium text-ink-700">
-              Appointment notice / booking method
-              <input
-                type="text"
-                value={spec.appointmentNotice}
-                onChange={(e) => setSpec((s) => ({ ...s, appointmentNotice: e.target.value }))}
-                placeholder="e.g. 48h notice — book via receiving@yourfc.com"
-                className={inputCls}
-              />
-            </label>
-          )}
-          <label className="block text-[12px] font-medium text-ink-700">
-            Receiving hours
-            <input
-              type="text"
-              value={spec.receivingHours}
-              onChange={(e) => setSpec((s) => ({ ...s, receivingHours: e.target.value }))}
-              placeholder="e.g. Mon–Fri 7:00–15:00 PT"
-              className={inputCls}
-            />
-          </label>
-          <label className="block text-[12px] font-medium text-ink-700">
-            Pallet spec
-            <input
-              type="text"
-              value={spec.palletSpec}
-              onChange={(e) => setSpec((s) => ({ ...s, palletSpec: e.target.value }))}
-              placeholder="e.g. GMA 48×40, max 60in stack height, stretch-wrapped, no double-stacking"
-              className={inputCls}
-            />
-          </label>
-          <label className="block text-[12px] font-medium text-ink-700">
-            Label placement
-            <input
-              type="text"
-              value={spec.labelPlacement}
-              onChange={(e) => setSpec((s) => ({ ...s, labelPlacement: e.target.value }))}
-              placeholder="e.g. Pallet labels on two adjacent sides; carton labels top-right"
-              className={inputCls}
-            />
-          </label>
-          <label className="block text-[12px] font-medium text-ink-700">
-            Additional notes
-            <textarea
-              value={spec.notes}
-              onChange={(e) => setSpec((s) => ({ ...s, notes: e.target.value }))}
-              rows={3}
-              maxLength={1000}
-              placeholder="Anything else drivers or shippers must know"
-              className={inputCls}
-            />
-          </label>
-          <div className="flex justify-end">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => run(() => saveReceivingSpec({ serviceId, spec }), 'Receiving spec saved')}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink-900 px-5 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
-            >
-              <Save className="h-3.5 w-3.5" aria-hidden="true" /> {busy ? 'Saving…' : 'Save spec'}
-            </button>
-          </div>
-        </div>
-      </section>
-      )}
+            <div className="grid gap-3.5 sm:grid-cols-2">
+              {spec.appointmentRequired && (
+                <Field label="Appointment notice / booking method" className="sm:col-span-2">
+                  <input
+                    type="text"
+                    value={spec.appointmentNotice}
+                    onChange={(e) => setSpec((s) => ({ ...s, appointmentNotice: e.target.value }))}
+                    placeholder="e.g. 48h notice — book via receiving@yourfc.com"
+                    className={INP}
+                  />
+                </Field>
+              )}
+              <Field label="Receiving hours">
+                <input
+                  type="text"
+                  value={spec.receivingHours}
+                  onChange={(e) => setSpec((s) => ({ ...s, receivingHours: e.target.value }))}
+                  placeholder="e.g. Mon–Fri 7:00–15:00 PT"
+                  className={INP}
+                />
+              </Field>
+              <Field label="Pallet spec">
+                <input
+                  type="text"
+                  value={spec.palletSpec}
+                  onChange={(e) => setSpec((s) => ({ ...s, palletSpec: e.target.value }))}
+                  placeholder="e.g. GMA 48×40, max 60in stack height, stretch-wrapped, no double-stacking"
+                  className={INP}
+                />
+              </Field>
+              <Field label="Label placement" className="sm:col-span-2">
+                <input
+                  type="text"
+                  value={spec.labelPlacement}
+                  onChange={(e) => setSpec((s) => ({ ...s, labelPlacement: e.target.value }))}
+                  placeholder="e.g. Pallet labels on two adjacent sides; carton labels top-right"
+                  className={INP}
+                />
+              </Field>
+              <Field label="Additional notes" className="sm:col-span-2">
+                <textarea
+                  value={spec.notes}
+                  onChange={(e) => setSpec((s) => ({ ...s, notes: e.target.value }))}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="Anything else drivers or shippers must know"
+                  className={cn(INP, 'resize-y')}
+                />
+              </Field>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => run(() => saveReceivingSpec({ serviceId, spec }), 'Receiving spec saved')}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink-900 px-5 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+              >
+                <Save className="h-3.5 w-3.5" aria-hidden="true" /> {busy ? 'Saving…' : 'Save spec'}
+              </button>
+            </div>
+          </Fieldset>
+        )}
 
-      {/* Blackout dates */}
-      <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <header className="border-b border-ink-200 bg-[var(--bg-hero)] px-5 py-3">
-          <h2 className="font-display text-[15px] font-semibold text-ink-900">Blackout dates</h2>
-          <p className="text-[12px] text-ink-600">
+        {/* Blackout dates */}
+        <Fieldset icon={<CalendarOff />} title="Blackout dates" hint="Routing treats these days as zero capacity">
+          <p className="mb-4 text-[12px] text-ink-500">
             Windows when your facility can&apos;t receive or ship (closures, inventory counts,
-            maintenance). Routing treats these days as zero capacity.
+            maintenance).
           </p>
-        </header>
-        <div className="space-y-4 px-5 py-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="text-[12px] font-medium text-ink-700">
-              From
-              <input type="date" value={boStart} onChange={(e) => setBoStart(e.target.value)} className={inputCls} />
-            </label>
-            <label className="text-[12px] font-medium text-ink-700">
-              To
-              <input type="date" value={boEnd} onChange={(e) => setBoEnd(e.target.value)} className={inputCls} />
-            </label>
-            <label className="min-w-[180px] flex-1 text-[12px] font-medium text-ink-700">
-              Reason (optional)
+          <div className="mb-4 flex flex-wrap items-end gap-3">
+            <Field label="From">
+              <input type="date" value={boStart} onChange={(e) => setBoStart(e.target.value)} className={INP} />
+            </Field>
+            <Field label="To">
+              <input type="date" value={boEnd} onChange={(e) => setBoEnd(e.target.value)} className={INP} />
+            </Field>
+            <Field label="Reason (optional)" className="min-w-[180px] flex-1">
               <input
                 type="text"
                 value={boReason}
                 onChange={(e) => setBoReason(e.target.value)}
                 placeholder="e.g. Annual inventory count"
-                className={inputCls}
+                className={INP}
               />
-            </label>
+            </Field>
             <button
               type="button"
               disabled={busy || !boStart || !boEnd}
@@ -207,7 +199,7 @@ export function FulfillmentSettingsForm({
                   return r
                 }, 'Blackout window added')
               }
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink-900 px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+              className="inline-flex h-[41px] items-center gap-1.5 rounded-full bg-ink-900 px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
             >
               <CalendarOff className="h-3.5 w-3.5" aria-hidden="true" /> Add window
             </button>
@@ -216,27 +208,87 @@ export function FulfillmentSettingsForm({
           {blackouts.length === 0 ? (
             <p className="text-[12.5px] text-ink-500">No blackout windows scheduled.</p>
           ) : (
-            <ul className="divide-y divide-ink-50 rounded-xl border border-ink-100">
-              {blackouts.map((b) => (
-                <li key={b.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[13px]">
-                  <span className="tabular-nums font-medium text-ink-900">
+            blackouts.map((b) => (
+              <LRow
+                key={b.id}
+                icon={<CalendarOff />}
+                title={
+                  <span className="tabular-nums">
                     {new Date(b.startsOn).toLocaleDateString()} → {new Date(b.endsOn).toLocaleDateString()}
                   </span>
-                  {b.reason && <span className="text-ink-500">· {b.reason}</span>}
+                }
+                sub={b.reason ?? undefined}
+                right={
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => run(() => removeBlackoutDate({ blackoutId: b.id }), 'Blackout window removed')}
-                    className="ml-auto inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11.5px] font-medium text-ink-600 transition-colors hover:border-danger-300 hover:text-danger-600 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors hover:border-danger-300 hover:text-danger-600 disabled:opacity-50"
                   >
                     <Trash2 className="h-3 w-3" aria-hidden="true" /> Remove
                   </button>
-                </li>
-              ))}
-            </ul>
+                }
+              />
+            ))
           )}
-        </div>
-      </section>
+        </Fieldset>
+      </PanelCard>
     </div>
+  )
+}
+
+const INP =
+  'w-full rounded-md border border-ink-300 bg-white px-3 py-2.5 text-[13.5px] text-ink-900 transition-all placeholder:text-ink-400 focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-500/15 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400'
+
+function Field({
+  label,
+  className,
+  children,
+}: {
+  label: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <label className={cn('block', className)}>
+      <span className="mb-1.5 block text-[12px] font-semibold text-ink-700">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+/** Prototype toggle (.toggle / .toggle.on) — w-10 track, 19px white knob. */
+function Toggle({
+  on,
+  label,
+  disabled,
+  onClick,
+}: {
+  on: boolean
+  label: string
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        'relative h-[23px] w-10 flex-none rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
+        on ? 'bg-pink-500' : 'bg-ink-300',
+        disabled && 'cursor-not-allowed',
+      )}
+    >
+      <span
+        className={cn(
+          'absolute top-[2px] h-[19px] w-[19px] rounded-full bg-white transition-all',
+          on ? 'left-[19px]' : 'left-[2px]',
+        )}
+      />
+    </button>
   )
 }

@@ -1,7 +1,14 @@
 'use client'
 
-// Front Face body — 1:1 port of design/partner-profile-prototype-v2.html
-// SCREEN: FRONT FACE onto real profile data (lib/partner-profile.ts).
+// PartnerFrontFace — the public partner profile body, 1:1 port of
+// design/partner-profile-prototype-v2.html SCREEN: FRONT FACE.
+//
+// Shared component (Pavel 2026-07-12): rendered by BOTH the creator-facing
+// marketing route (/partners/[slug], tier-gated) and the partner app's own
+// /profile preview (partners can't pass the creator-tier gate, so they preview
+// here). Data comes from the getPartnerProfile reader in @ilaunchify/db; the
+// VM interfaces below mirror its return shape (structural typing at call sites
+// keeps them honest without a ui→db dependency).
 //
 // Dark hero (cover gradient + fading grid, 130px logo w/ verified seal, tier
 // badge, service-type line, display name, Fraunces tagline, location/disclosure/
@@ -9,11 +16,9 @@
 // Merit & standing / Certifications / Portfolio / Reviews) → light body grid
 // with the right rail (availability + map, Quick facts, Best for).
 // No quote/message CTAs in this slice (Pavel 2026-07-12).
-//
-// Icons imported HERE (client) — never across the RSC boundary (CLAUDE.md #5).
 
 import { useState } from 'react'
-import { cn } from '@ilaunchify/ui'
+import { cn } from '../lib/utils'
 import {
   BadgeCheck,
   Calendar,
@@ -26,7 +31,68 @@ import {
   Star,
   Warehouse,
 } from 'lucide-react'
-import type { PartnerProfileVM } from '@/lib/partner-profile'
+
+// ---------------------------------------------------------------------------
+// View model — mirrors @ilaunchify/db getPartnerProfile (structural match)
+// ---------------------------------------------------------------------------
+
+export interface FrontFaceServiceVM {
+  type: string
+  capabilities: Record<string, unknown>
+  storageClasses: string[]
+  weeklyPalletCapacity: number | null
+  ratingMean: number | null
+  ratingCount: number
+}
+
+export interface FrontFaceReviewVM {
+  initials: string
+  name: string
+  role: string
+  orders: number
+  overall: number
+  comment: string
+  createdAt: string
+}
+
+export interface PartnerFrontFaceVM {
+  companyName: string
+  slug: string
+  tagline: string | null
+  about: string | null
+  bestForTags: string[]
+  logoUrl: string | null
+  coverImageUrl: string | null
+  tier: 'VERIFIED' | 'TRUSTED' | 'PREMIER'
+  city: string | null
+  state: string | null
+  sinceYear: number
+  serviceTypes: string[]
+  services: FrontFaceServiceVM[]
+  certs: { name: string; qualifier: string }[]
+  portfolio: { title: string; meta: string | null; imageUrl: string | null }[]
+  stats: {
+    ordersFulfilled: number
+    ratingMean: number | null
+    ratingCount: number
+    meritScore: number | null
+    verifiedCerts: number
+  }
+  merit: {
+    feeBps: { verified: number; trusted: number; premier: number }
+    pillars: { name: string; weight: number; score: number; sub: string }[] | null
+    ordersCompleted: number | null
+    monthsActive: number | null
+    defectRatePer100: number | null
+    thresholdPremier: number
+  }
+  reviews: FrontFaceReviewVM[]
+  reviewSummary: { mean: number | null; count: number; buckets: { star: number; pct: number }[] }
+  quickFacts: { k: string; v: string }[]
+  activelyTaking: boolean
+}
+
+type PartnerProfileVM = PartnerFrontFaceVM
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -88,7 +154,7 @@ function serviceSub(s: PartnerProfileVM['services'][number]): string {
   return bits.join(' · ') || 'Active service'
 }
 
-export function ProfileBody({ profile }: { profile: PartnerProfileVM }) {
+export function PartnerFrontFace({ profile }: { profile: PartnerProfileVM }) {
   const [tab, setTab] = useState<TabKey>('overview')
   const p = profile
   const isPremier = p.tier === 'PREMIER'

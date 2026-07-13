@@ -4,11 +4,17 @@
 // invite form (email + admin flag + per-service role checkboxes), pending
 // invites with revoke, member rows with remove. Small shops tick everything
 // for one person — the form makes that the easy path.
+//
+// Restyled 1:1 to the prototype "Team & roles" settings panel
+// (design/partner-profile-prototype-v2.html): member rows are .lrow rows with
+// a 40px initials avatar, role pills on the right, outline-pill controls, and
+// a pink-pill "Invite teammate" primary action.
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { UserPlus, Trash2, MailX, ShieldCheck } from 'lucide-react'
+import { Plus, Trash2, Mail, MailX, ShieldCheck } from 'lucide-react'
+import { LRow, PanelCard, PanelHeader, StPill } from '@/components/panel-kit'
 import {
   invitePartnerTeammate,
   revokePartnerInvite,
@@ -22,6 +28,7 @@ export interface TeamMemberView {
   email: string
   isAdmin: boolean
   isFounder: boolean
+  isSelf: boolean
   acceptedAt: string
   lastActiveAt: string | null
   serviceRoles: Array<{ serviceLabel: string; roles: string[] }>
@@ -44,6 +51,30 @@ const ROLE_LABEL: Record<string, string> = {
   PARTNER_PREPRESS: 'Prepress',
   PARTNER_PRODUCTION: 'Production',
 }
+
+// Deterministic avatar background — small palette of CSS token vars, picked
+// by a stable hash of the member's display name. Real initials only.
+const AVATAR_BG = ['var(--pink-500)', 'var(--info-500)', 'var(--neon-600)', 'var(--ink-600)']
+
+function avatarBg(seed: string): string {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  return AVATAR_BG[h % AVATAR_BG.length] ?? 'var(--ink-600)'
+}
+
+function initialsOf(seed: string): string {
+  const parts = seed.trim().split(/\s+/).filter(Boolean)
+  const first = parts[0]?.[0] ?? ''
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
+  const two = `${first}${last}` || seed.slice(0, 2)
+  return two.toUpperCase()
+}
+
+const inputCls =
+  'mt-1 w-full rounded-md border border-ink-300 bg-white px-3 py-2.5 text-[13.5px] text-ink-900 placeholder:text-ink-400 transition-all focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-500/15'
+
+const outlinePillCls =
+  'inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-700 transition-colors hover:border-danger-300 hover:text-danger-600 disabled:opacity-50'
 
 export function TeamManager({
   members,
@@ -105,98 +136,116 @@ export function TeamManager({
   return (
     <div className="space-y-6">
       {/* Members */}
-      <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-        <header className="border-b border-ink-200 bg-[var(--bg-hero)] px-5 py-3">
-          <h2 className="font-display text-[15px] font-semibold text-ink-900">Team members</h2>
-        </header>
-        <ul className="divide-y divide-ink-50">
-          {members.map((m) => (
-            <li key={m.membershipId} className="flex flex-wrap items-center gap-3 px-5 py-3 text-[13px]">
-              <div className="min-w-0">
-                <p className="font-medium text-ink-900">
-                  {m.name ?? m.email}
-                  {m.isFounder && (
-                    <span className="ml-2 rounded bg-pink-50 px-1.5 py-0.5 text-[10px] font-medium uppercase text-pink-700">Founder</span>
-                  )}
-                  {m.isAdmin && !m.isFounder && (
-                    <span className="ml-2 rounded bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-ink-700">Admin</span>
-                  )}
-                </p>
-                <p className="text-[11.5px] text-ink-500">
-                  {m.email}
-                  {m.serviceRoles.length > 0 && (
-                    <> · {m.serviceRoles.map((s) => `${s.serviceLabel}: ${s.roles.map((r) => ROLE_LABEL[r] ?? r).join('+')}`).join(' · ')}</>
-                  )}
-                </p>
+      <PanelCard>
+        <PanelHeader
+          title="Team & roles"
+          desc="Admins manage everything; service roles see only their queues."
+        />
+        {members.map((m) => {
+          const display = m.name ?? m.email
+          return (
+            <div
+              key={m.membershipId}
+              className="mb-2.5 flex flex-wrap items-center gap-3.5 rounded-xl border border-ink-200 px-4 py-[15px] transition-all last:mb-0 hover:border-ink-300 hover:shadow-sm"
+            >
+              <div
+                className="grid h-10 w-10 flex-none place-items-center rounded-full text-[14px] font-bold text-white"
+                style={{ background: avatarBg(display) }}
+                aria-hidden="true"
+              >
+                {initialsOf(display)}
               </div>
-              <span className="ml-auto text-[11.5px] text-ink-400">
-                joined {new Date(m.acceptedAt).toLocaleDateString()}
-              </span>
-              {!m.isFounder && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    if (!confirm(`Remove ${m.email} from the team?`)) return
-                    void run(() => removePartnerTeammate({ membershipId: m.membershipId }), 'Teammate removed')
-                  }}
-                  className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11.5px] font-medium text-ink-600 transition-colors hover:border-danger-300 hover:text-danger-600 disabled:opacity-50"
-                >
-                  <Trash2 className="h-3 w-3" aria-hidden="true" /> Remove
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 text-[14px] font-semibold text-ink-900">
+                  {display}
+                  {m.isSelf && <StPill tone="muted">You</StPill>}
+                </div>
+                <div className="text-[12px] text-ink-500">
+                  {m.email} · joined {new Date(m.acceptedAt).toLocaleDateString()}
+                </div>
+              </div>
+              <div className="ml-auto flex flex-none flex-wrap items-center justify-end gap-2">
+                {m.isFounder ? (
+                  <StPill tone="info">Founder · Org admin</StPill>
+                ) : m.isAdmin ? (
+                  <StPill tone="info">Org admin</StPill>
+                ) : null}
+                {m.serviceRoles.map((s) => (
+                  <StPill key={`${m.membershipId}-${s.serviceLabel}`} tone="muted">
+                    {s.roles.map((r) => ROLE_LABEL[r] ?? r).join(' + ')} · {s.serviceLabel}
+                  </StPill>
+                ))}
+                {!m.isFounder && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      if (!confirm(`Remove ${m.email} from the team?`)) return
+                      void run(
+                        () => removePartnerTeammate({ membershipId: m.membershipId }),
+                        'Teammate removed',
+                      )
+                    }}
+                    className={outlinePillCls}
+                  >
+                    <Trash2 className="h-3 w-3" aria-hidden="true" /> Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </PanelCard>
 
       {/* Pending invites */}
       {invites.length > 0 && (
-        <section className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
-          <header className="border-b border-ink-200 bg-[var(--bg-hero)] px-5 py-3">
-            <h2 className="font-display text-[15px] font-semibold text-ink-900">Pending invites</h2>
-          </header>
-          <ul className="divide-y divide-ink-50">
-            {invites.map((i) => (
-              <li key={i.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-[13px]">
-                <span className="font-medium text-ink-900">{i.email}</span>
-                {i.grantAdmin && (
-                  <span className="rounded bg-ink-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-ink-700">Admin</span>
-                )}
-                <span className="ml-auto text-[11.5px] text-ink-400">
-                  expires {new Date(i.expiresAt).toLocaleDateString()}
-                </span>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void run(() => revokePartnerInvite({ inviteId: i.id }), 'Invite revoked')}
-                  className="inline-flex items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-[11.5px] font-medium text-ink-600 transition-colors hover:border-danger-300 hover:text-danger-600 disabled:opacity-50"
-                >
-                  <MailX className="h-3 w-3" aria-hidden="true" /> Revoke
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <PanelCard>
+          <PanelHeader title="Pending invites" />
+          {invites.map((i) => (
+            <LRow
+              key={i.id}
+              icon={<Mail aria-hidden="true" />}
+              title={i.email}
+              sub={`Invited ${new Date(i.createdAt).toLocaleDateString()} · expires ${new Date(i.expiresAt).toLocaleDateString()}`}
+              right={
+                <>
+                  {i.grantAdmin && <StPill tone="info">Org admin</StPill>}
+                  <StPill tone="warn">PENDING</StPill>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(() => revokePartnerInvite({ inviteId: i.id }), 'Invite revoked')
+                    }
+                    className={outlinePillCls}
+                  >
+                    <MailX className="h-3 w-3" aria-hidden="true" /> Revoke
+                  </button>
+                </>
+              }
+            />
+          ))}
+        </PanelCard>
       )}
 
       {/* Invite form */}
-      <section className="space-y-4 rounded-2xl border border-ink-200 bg-white px-5 py-4">
-        <h2 className="flex items-center gap-2 font-display text-[15px] font-semibold text-ink-900">
-          <UserPlus className="h-4 w-4 text-ink-500" aria-hidden="true" /> Invite a teammate
-        </h2>
+      <PanelCard>
+        <PanelHeader
+          title="Invite a teammate"
+          desc="Non-admins see only the services you grant. Small shops: tick everything for one person."
+        />
         <div className="flex flex-wrap items-end gap-3">
-          <label className="min-w-[240px] flex-1 text-[12px] font-medium text-ink-700">
+          <label className="min-w-[240px] flex-1 text-[12px] font-semibold text-ink-700">
             Email address
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="teammate@company.com"
-              className="mt-1 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-200"
+              className={inputCls}
             />
           </label>
-          <label className="flex items-center gap-2 pb-2 text-[13px] font-medium text-ink-800">
+          <label className="flex items-center gap-2 pb-2.5 text-[13px] font-medium text-ink-800">
             <input
               type="checkbox"
               checked={grantAdmin}
@@ -207,15 +256,15 @@ export function TeamManager({
           </label>
         </div>
 
-        <div>
-          <p className="text-[12px] font-medium text-ink-700">Service roles</p>
-          <p className="text-[11.5px] text-ink-500">
-            Non-admins see only the services you grant. Small shops: tick everything for one person.
-          </p>
+        <div className="mt-4">
+          <p className="text-[12px] font-semibold text-ink-700">Service roles</p>
           <div className="mt-2 space-y-2">
             {services.map((s) => (
-              <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-ink-100 bg-ink-50/60 px-3 py-2 text-[12.5px]">
-                <span className="font-medium text-ink-900">{s.label}</span>
+              <div
+                key={s.id}
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-ink-200 px-4 py-2.5 text-[12.5px]"
+              >
+                <span className="font-semibold text-ink-900">{s.label}</span>
                 {(['PARTNER_PREPRESS', 'PARTNER_PRODUCTION'] as const).map((role) => (
                   <label key={role} className="flex items-center gap-1.5 text-ink-700">
                     <input
@@ -232,17 +281,17 @@ export function TeamManager({
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="mt-5 flex justify-end">
           <button
             type="button"
             disabled={busy || email.trim() === ''}
             onClick={() => void submitInvite()}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-ink-900 px-5 text-[12.5px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+            className="inline-flex items-center gap-1.5 rounded-full bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <UserPlus className="h-3.5 w-3.5" aria-hidden="true" /> {busy ? 'Sending…' : 'Send invite'}
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> {busy ? 'Sending…' : 'Invite teammate'}
           </button>
         </div>
-      </section>
+      </PanelCard>
     </div>
   )
 }

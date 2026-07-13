@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { toast } from 'sonner'
 import { Upload, FileText, RefreshCw, X } from 'lucide-react'
+import { StPill } from '@/components/panel-kit'
 import { renewCertificate } from './actions'
 import { CERT_UPLOAD_CONSENT_TEXT } from './consent'
 
@@ -32,22 +33,21 @@ export function RenewCertButton({
 
   if (renewalPending) {
     return (
-      <span className="inline-flex items-center gap-1 text-ui-caption font-medium text-warning-700">
-        <RefreshCw className="h-3 w-3" /> Renewal pending review
-      </span>
+      <StPill tone="warn">
+        <RefreshCw aria-hidden="true" /> Renewal pending review
+      </StPill>
     )
   }
 
   if (!open) {
     return (
-      <Button
+      <button
         type="button"
-        variant="outline"
-        className="h-7 border-success-300 px-2.5 text-[11px] text-success-700 hover:bg-success-50"
         onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded-full bg-pink-500 px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600"
       >
-        <RefreshCw className="mr-1 h-3 w-3" /> Renew
-      </Button>
+        <RefreshCw className="h-3 w-3" aria-hidden="true" /> Renew
+      </button>
     )
   }
 
@@ -108,7 +108,7 @@ function RenewForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-3 space-y-4 rounded-lg border border-success-200 bg-success-50/40 p-4"
+      className="mt-1 w-full space-y-4 rounded-xl border border-ink-200 bg-white p-4"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -224,7 +224,7 @@ function RenewForm({
         <Button
           type="submit"
           disabled={isPending || !file || !expiryDate || !consent}
-          className="bg-ink-900 hover:bg-ink-700"
+          className="rounded-full bg-pink-500 text-white hover:bg-pink-600"
         >
           {isPending ? 'Submitting…' : 'Submit renewal'}
         </Button>

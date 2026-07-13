@@ -27,7 +27,7 @@ import {
   getPartnerProfile,
   getPartnerProfileGate,
 } from '@/lib/partner-profile'
-import { ProfileBody } from './ProfileBody'
+import { PartnerFrontFace } from '@ilaunchify/ui'
 
 export const dynamic = 'force-dynamic'
 
@@ -128,7 +128,7 @@ export default async function PartnerProfilePage({
         activeBrandId={activeBrandId}
       />
       <div className="mx-auto max-w-[1300px] px-5 py-6">
-        <ProfileBody profile={profile} />
+        <PartnerFrontFace profile={profile} />
       </div>
     </>
   )

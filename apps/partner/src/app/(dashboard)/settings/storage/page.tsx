@@ -92,10 +92,10 @@ export default async function StorageSettingsPage({ searchParams }: PageProps) {
                 <Link
                   key={s.id}
                   href={`/settings/storage?service=${s.id}`}
-                  className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 ${
+                  className={`inline-flex items-center rounded-full border px-2.5 py-[5px] text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1 ${
                     s.id === selected.id
-                      ? 'border-ink-900 bg-ink-900 text-white'
-                      : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50'
+                      ? 'border-pink-100 bg-pink-50 text-pink-700'
+                      : 'border-ink-200 bg-ink-50 text-ink-700 hover:bg-ink-100'
                   }`}
                 >
                   {SERVICE_LABEL[s.type] ?? s.type}

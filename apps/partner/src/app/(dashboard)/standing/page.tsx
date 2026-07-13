@@ -1,11 +1,14 @@
 // Partner "Your standing" — page (MM-6, docs/MANUFACTURER_MERIT_ENGINE.md §7).
-// Manufacturer-facing merit view: badge, pillars, path to the next badge, the
-// fee ladder, and ratings they can contest. Honest by design — while the engine
-// is in shadow the badge is a labeled projection and thin history never hurts.
+// Restyled 2026-07-12 1:1 to the "Merit & fee tier" panel of
+// design/partner-profile-prototype-v2.html using the settings panel kit.
+// Manufacturer-facing merit view: badge, fee ladder, pillars, path to the next
+// badge, and ratings they can contest. Honest by design — while the engine is
+// in shadow the badge is a labeled projection and thin history never hurts.
 
 import { Award, Star, TrendingUp } from 'lucide-react'
 import { cn } from '@ilaunchify/ui'
 import { requireUser } from '@ilaunchify/auth'
+import { PanelCard, PanelHeader, InfoBanner, StPill } from '@/components/panel-kit'
 import { loadStandingPage, type StandingView } from './data'
 import { ContestRatingButton } from './ContestRatingButton'
 import { StandingManualButton } from './StandingManual'
@@ -22,9 +25,20 @@ function Badge({ b }: { b: string }) {
   return <span className={cn('inline-flex items-center rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider', BADGE_PILL[b] ?? BADGE_PILL.VERIFIED)}>{b}</span>
 }
 
+// Prototype pillar sublines (.pillar .ps) — the fuller engine hints stay on the
+// card's title attribute so no explanation is lost.
+const PILLAR_SUB: Record<string, string> = {
+  craft: 'Quality ratings & low defect rate',
+  reliability: 'On-time, few strikes',
+  contribution: 'Platform participation',
+  standing: 'History & tenure',
+}
+
 export default async function StandingPage() {
   await requireUser()
   const data = await loadStandingPage()
+  // All services share the partner-level badge — the ladder highlights it.
+  const currentBadge = data.services[0]?.currentBadge ?? null
 
   return (
     <div className="space-y-6">
@@ -43,26 +57,41 @@ export default async function StandingPage() {
         </div>
       </div>
 
-      {/* Fee ladder — the reward for standing. */}
-      <section className="rounded-2xl border border-ink-200 bg-white p-6">
-        <div className="flex items-center gap-2">
-          <Star className="h-4 w-4 text-ink-500" />
-          <h2 className="font-display text-[15px] font-semibold text-ink-900">The fee ladder</h2>
-          {!data.live && (
-            <span className="ml-auto rounded-full border border-warning-200 bg-warning-50 px-2 py-[2px] text-[10.5px] font-semibold text-warning-800">
-              Preview — currently {data.baseFeePct} for everyone
-            </span>
-          )}
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {data.feeLadder.map((f) => (
-            <div key={f.badge} className="rounded-xl border border-ink-200 p-4">
-              <Badge b={f.label.toUpperCase()} />
-              <p className="mt-2 font-display text-[26px] font-bold tabular-nums leading-none text-ink-900">{f.pct}</p>
-              <p className="mt-1 text-[11.5px] text-ink-500">platform production fee</p>
-              <p className="mt-2 text-[12px] leading-snug text-ink-600">{f.blurb}</p>
-            </div>
-          ))}
+      {/* Merit & fee tier — the prototype's #p-merit panel. */}
+      <PanelCard>
+        <PanelHeader
+          title="Merit & fee tier"
+          desc={
+            <>
+              Your badge is <b className="font-semibold text-ink-700">earned</b>, not bought — the Merit
+              Engine sets your tier and production fee.
+            </>
+          }
+          aside={
+            !data.live ? (
+              <StPill tone="warn">Preview — currently {data.baseFeePct} for everyone</StPill>
+            ) : undefined
+          }
+        />
+
+        {/* Fee ladder (.fee-ladder / .fee-step) */}
+        <div className="grid gap-2.5 sm:grid-cols-3">
+          {data.feeLadder.map((f) => {
+            const isYou = currentBadge === f.badge
+            return (
+              <div
+                key={f.badge}
+                className={cn('rounded-xl border p-3 text-center', isYou ? 'border-pink-500 bg-pink-50' : 'border-ink-200')}
+              >
+                <p className={cn('text-[11px] font-bold uppercase tracking-[0.03em]', isYou ? 'text-pink-700' : 'text-ink-500')}>
+                  {f.label}
+                  {isYou && ' · you'}
+                </p>
+                <p className="mt-[3px] font-display text-[22px] font-bold tabular-nums leading-none text-ink-900">{f.pct}</p>
+                <p className="mt-1.5 text-[11px] leading-snug text-ink-500">{f.blurb}</p>
+              </div>
+            )
+          })}
         </div>
         {!data.live && (
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-500">
@@ -70,25 +99,31 @@ export default async function StandingPage() {
             don&rsquo;t change until the platform turns tiered pricing on.
           </p>
         )}
-      </section>
+      </PanelCard>
 
       {!data.hasManufacturing ? (
-        <section className="rounded-2xl border border-ink-200 bg-white p-8 text-center">
+        <PanelCard className="p-8 text-center">
           <p className="text-[13.5px] text-ink-600">Standing applies to manufacturing services. Once your manufacturing service is active and completing orders, your badge and pillar breakdown appear here.</p>
-        </section>
+        </PanelCard>
       ) : (
-        data.services.map((s) => <ServiceStanding key={s.serviceId} s={s} live={data.live} />)
+        data.services.map((s) => (
+          <ServiceStanding key={s.serviceId} s={s} live={data.live} thresholds={data.thresholds} />
+        ))
       )}
 
       {/* Ratings you can contest. */}
       {data.ratings.length > 0 && (
-        <section className="rounded-2xl border border-ink-200 bg-white p-6">
-          <h2 className="font-display text-[15px] font-semibold text-ink-900">Recent ratings</h2>
-          <p className="mt-1 text-[12.5px] text-ink-500">
-            Believe a rating is unfair or meant for another partner? Contest it — an admin reviews every appeal,
-            and your standing is frozen against demotion while it&rsquo;s open.
-          </p>
-          <div className="mt-4 divide-y divide-ink-100">
+        <PanelCard>
+          <PanelHeader
+            title="Recent ratings"
+            desc={
+              <>
+                Believe a rating is unfair or meant for another partner? Contest it — an admin reviews
+                every appeal, and your standing is frozen against demotion while it&rsquo;s open.
+              </>
+            }
+          />
+          <div className="divide-y divide-ink-100">
             {data.ratings.map((r) => (
               <div key={r.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
@@ -102,18 +137,28 @@ export default async function StandingPage() {
               </div>
             ))}
           </div>
-        </section>
+        </PanelCard>
       )}
     </div>
   )
 }
 
-function ServiceStanding({ s, live }: { s: StandingView; live: boolean }) {
+function ServiceStanding({
+  s,
+  live,
+  thresholds,
+}: {
+  s: StandingView
+  live: boolean
+  thresholds: { trusted: number; premier: number }
+}) {
   const projectedDiffers = s.projectedBadge !== s.currentBadge
+  const threshold =
+    s.projectedBadge === 'PREMIER' ? thresholds.premier : s.projectedBadge === 'TRUSTED' ? thresholds.trusted : null
   return (
-    <section className="rounded-2xl border border-ink-200 bg-white p-6">
+    <PanelCard>
       <div className="flex flex-wrap items-center gap-3">
-        <Award className="h-5 w-5 text-ink-500" />
+        <Award className="h-5 w-5 text-ink-500" aria-hidden="true" />
         <h2 className="font-display text-[17px] font-semibold text-ink-900">{s.serviceLabel}</h2>
         <Badge b={s.currentBadge} />
         {projectedDiffers && (
@@ -133,38 +178,54 @@ function ServiceStanding({ s, live }: { s: StandingView; live: boolean }) {
         </p>
       ) : (
         <>
-          <div className="mt-5 space-y-3.5">
+          {/* Snapshot summary (.info-banner, success tone) */}
+          {s.meritScore !== null && (
+            <InfoBanner tone="ok" icon={<Star />} className="mb-0 mt-4">
+              Merit score <b className="font-semibold">{Math.round(s.meritScore)} / 100</b> ·{' '}
+              {live ? 'qualifies for' : 'on track for'} {s.projectedBadge}
+              {threshold !== null && <> (threshold {threshold})</>} · {s.ordersCompleted.toLocaleString()} orders ·{' '}
+              {s.monthsActive} months active
+              {s.defectRatePer100 !== null && <> · defect rate {s.defectRatePer100} / 100</>}.
+            </InfoBanner>
+          )}
+
+          {/* Pillars (.pillars / .pillar) */}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {s.pillars.map((p) => (
-              <div key={p.key}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-[13px] font-medium text-ink-900">
-                    {p.label}
-                    <span className="ml-2 text-[11px] font-normal text-ink-400">weight {p.weightPct}%</span>
-                  </p>
-                  <p className="text-[13px] font-semibold tabular-nums text-ink-900">{p.score === null ? 'no data yet' : `${Math.round(p.score)}`}</p>
+              <div key={p.key} className="rounded-xl border border-ink-200 p-3.5" title={p.hint}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[13px] font-bold text-ink-900">{p.label}</p>
+                  <p className="text-[11px] font-semibold text-ink-400">{p.weightPct}%</p>
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-100">
+                <div className="mb-1.5 mt-[9px] h-[7px] overflow-hidden rounded-full bg-ink-100">
                   {p.score !== null && (
                     <div
-                      className={cn('h-full rounded-full', p.score >= 80 ? 'bg-success-500' : p.score >= 55 ? 'bg-warning-500' : 'bg-danger-500')}
+                      className="h-full rounded-full bg-pink-500"
                       style={{ width: `${Math.max(2, Math.min(100, p.score))}%` }}
                     />
                   )}
                 </div>
-                <p className="mt-1 text-[11.5px] text-ink-500">{p.hint}</p>
+                <p className="font-display text-[20px] font-bold tabular-nums leading-none text-ink-900">
+                  {p.score === null ? (
+                    <span className="text-[12px] font-normal text-ink-400">no data yet</span>
+                  ) : (
+                    Math.round(p.score)
+                  )}
+                </p>
+                <p className="mt-1 text-[11px] leading-snug text-ink-500">{PILLAR_SUB[p.key] ?? p.hint}</p>
               </div>
             ))}
           </div>
 
           {s.gaps.length > 0 && (
-            <div className="mt-5 rounded-xl border border-info-200 bg-info-50 px-4 py-3">
-              <p className="text-[12px] font-semibold text-info-900">Your path to the next badge</p>
+            <InfoBanner tone="info" className="mb-0 mt-[18px]">
+              <p className="font-semibold">Your path to the next badge</p>
               <ul className="mt-1.5 space-y-1">
                 {s.gaps.map((g, i) => (
-                  <li key={i} className="text-[12.5px] leading-snug text-info-800">• {g}</li>
+                  <li key={i} className="text-[12.5px] leading-snug">• {g}</li>
                 ))}
               </ul>
-            </div>
+            </InfoBanner>
           )}
 
           {s.promo && (
@@ -184,6 +245,6 @@ function ServiceStanding({ s, live }: { s: StandingView; live: boolean }) {
           </p>
         </>
       )}
-    </section>
+    </PanelCard>
   )
 }

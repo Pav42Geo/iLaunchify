@@ -3,14 +3,18 @@
 // badge-only — transparency is the self-correction mechanism, per Amazon's
 // Account Health model).
 //
-// Read-only: shows the latest nightly PartnerRiskFeature snapshot per service.
-// The score consumes nothing punitive automatically — hard gates (compliance)
-// live elsewhere; this page tells the partner exactly what to improve.
+// Restyled 2026-07-12 1:1 to the "Performance" panel of
+// design/partner-profile-prototype-v2.html (perf-rows + KPI strip) using the
+// settings panel kit. Read-only: shows the latest nightly PartnerRiskFeature
+// snapshot per service. The score consumes nothing punitive automatically —
+// hard gates (compliance) live elsewhere; this page tells the partner exactly
+// what to improve.
 
 import { Gauge } from 'lucide-react'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
+import { PanelCard, PanelHeader, KpiStrip, StPill, type PillTone } from '@/components/panel-kit'
 import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
@@ -23,10 +27,10 @@ const SERVICE_LABEL: Record<string, string> = {
   WAREHOUSE: 'Fulfillment Center',
 }
 
-const BAND_STYLE: Record<string, { label: string; pill: string; bar: string }> = {
-  HEALTHY: { label: 'Healthy', pill: 'border-success-200 bg-success-50 text-success-800', bar: 'bg-success-500' },
-  AT_RISK: { label: 'At risk', pill: 'border-warning-200 bg-warning-50 text-warning-800', bar: 'bg-warning-500' },
-  CRITICAL: { label: 'Critical', pill: 'border-danger-200 bg-danger-50 text-danger-800', bar: 'bg-danger-500' },
+const BAND_META: Record<string, { label: string; tone: PillTone }> = {
+  HEALTHY: { label: 'Healthy', tone: 'ok' },
+  AT_RISK: { label: 'At risk', tone: 'warn' },
+  CRITICAL: { label: 'Critical', tone: 'danger' },
 }
 
 const COMPONENT_META: { key: string; label: string; hint: string; weight: number }[] = [
@@ -86,79 +90,105 @@ export default async function PerformancePage() {
       {latest.map(({ service, feature }) => {
         const f = (feature?.featuresJson ?? {}) as Features
         const score = f.prs ?? null
-        const band = score !== null ? BAND_STYLE[f.prsBand ?? ''] : null
+        const band = score !== null ? BAND_META[f.prsBand ?? ''] : null
         const components = f.prsComponents ?? {}
         const penalty = components.penaltyPoints ?? 0
 
+        // Real summary numbers only — an item renders only when the snapshot has it.
+        const kpis: { v: React.ReactNode; l: string; vClassName?: string }[] = []
+        if (score !== null) kpis.push({ v: Math.round(score), l: 'Reliability score' })
+        if (band) {
+          kpis.push({
+            v: band.label,
+            l: 'Health band',
+            vClassName: band.tone === 'ok' ? 'text-success-700' : band.tone === 'warn' ? 'text-warning-700' : 'text-danger-700',
+          })
+        }
+        if (typeof f.deliveredCount === 'number') kpis.push({ v: f.deliveredCount.toLocaleString(), l: 'Delivered (90 days)' })
+        if (typeof f.activeStrikes === 'number') {
+          kpis.push({
+            v: f.activeStrikes,
+            l: 'Active strikes',
+            vClassName: f.activeStrikes > 0 ? 'text-danger-700' : 'text-success-700',
+          })
+        }
+
         return (
-          <section key={service.id} className="rounded-2xl border border-ink-200 bg-white p-6">
-            <div className="flex flex-wrap items-center gap-3">
-              <Gauge className="h-5 w-5 text-ink-500" aria-hidden="true" />
-              <h2 className="font-display text-[17px] font-semibold text-ink-900">
-                {SERVICE_LABEL[service.type as string] ?? service.type}
-              </h2>
-              {score !== null && band ? (
-                <>
-                  <span className="font-display text-[28px] font-bold tabular-nums leading-none text-ink-900">
-                    {Math.round(score)}
-                  </span>
-                  <span className={cn('inline-flex items-center rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider', band.pill)}>
-                    {band.label}
-                  </span>
-                </>
-              ) : (
-                <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider text-ink-600">
-                  Building history — neutral standing
+          <PanelCard key={service.id}>
+            <PanelHeader
+              title={SERVICE_LABEL[service.type as string] ?? service.type}
+              desc={
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  {score !== null && band ? (
+                    <StPill tone={band.tone}>Band: {band.label}</StPill>
+                  ) : (
+                    <StPill tone="muted">Building history — neutral standing</StPill>
+                  )}
+                  {typeof f.deliveredCount === 'number' && (
+                    <span>
+                      based on {f.deliveredCount} delivered job{f.deliveredCount === 1 ? '' : 's'} (90 days)
+                    </span>
+                  )}
                 </span>
-              )}
-              {typeof f.deliveredCount === 'number' && (
-                <span className="ml-auto text-[12px] text-ink-500">
-                  based on {f.deliveredCount} delivered job{f.deliveredCount === 1 ? '' : 's'} (90 days)
-                </span>
-              )}
-            </div>
+              }
+              aside={
+                score !== null ? (
+                  <span className="flex items-center gap-2">
+                    <Gauge className="h-5 w-5 text-ink-400" aria-hidden="true" />
+                    <span className="font-display text-[28px] font-bold tabular-nums leading-none text-ink-900">
+                      {Math.round(score)}
+                    </span>
+                  </span>
+                ) : undefined
+              }
+            />
 
             {score === null ? (
-              <p className="mt-4 max-w-2xl text-[13px] leading-relaxed text-ink-600">
+              <p className="max-w-2xl text-[13px] leading-relaxed text-ink-600">
                 Your score appears after your first completed orders. Until then you hold neutral
                 standing — history you haven't had the chance to build never counts against you.
               </p>
             ) : (
-              <div className="mt-5 space-y-3.5">
-                {COMPONENT_META.map((c) => {
-                  const v = components[c.key]
-                  return (
-                    <div key={c.key}>
-                      <div className="flex items-baseline justify-between gap-3">
-                        <p className="text-[13px] font-medium text-ink-900">
-                          {c.label}
-                          <span className="ml-2 text-[11px] font-normal text-ink-400">weight {c.weight}%</span>
-                        </p>
-                        <p className="text-[13px] font-semibold tabular-nums text-ink-900">
-                          {typeof v === 'number' ? `${Math.round(v)}%` : 'no data yet'}
-                        </p>
+              <>
+                {/* .perf-row: 190px label · flex-1 9px track · w-24 value */}
+                <div>
+                  {COMPONENT_META.map((c) => {
+                    const v = components[c.key]
+                    return (
+                      <div key={c.key} className="flex items-center gap-3.5 border-b border-ink-100 py-[11px] last:border-b-0">
+                        <div className="w-[190px] flex-none">
+                          <p className="text-[13px] font-semibold leading-snug text-ink-900">{c.label}</p>
+                          <p className="mt-px text-[11px] leading-snug text-ink-500">
+                            weight {c.weight}% · {c.hint}
+                          </p>
+                        </div>
+                        <div className="h-[9px] flex-1 overflow-hidden rounded-full bg-ink-100">
+                          {typeof v === 'number' && (
+                            <div
+                              className={cn('h-full rounded-full', v >= 90 ? 'bg-success-500' : v >= 70 ? 'bg-warning-500' : 'bg-danger-500')}
+                              style={{ width: `${Math.max(2, Math.min(100, v))}%` }}
+                            />
+                          )}
+                        </div>
+                        <div className="w-24 flex-none text-right text-[13px] font-bold tabular-nums text-ink-900">
+                          {typeof v === 'number' ? `${Math.round(v)}%` : <span className="font-normal text-ink-400">no data yet</span>}
+                        </div>
                       </div>
-                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-100">
-                        {typeof v === 'number' && (
-                          <div
-                            className={cn('h-full rounded-full', v >= 90 ? 'bg-success-500' : v >= 70 ? 'bg-warning-500' : 'bg-danger-500')}
-                            style={{ width: `${Math.max(2, Math.min(100, v))}%` }}
-                          />
-                        )}
-                      </div>
-                      <p className="mt-1 text-[11.5px] text-ink-500">{c.hint}</p>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
+
                 {penalty > 0 && (
-                  <p className="rounded-xl border border-danger-200 bg-danger-50 px-3 py-2 text-[12.5px] leading-relaxed text-danger-800">
+                  <p className="mt-4 rounded-xl border border-danger-200 bg-danger-50 px-3 py-2 text-[12.5px] leading-relaxed text-danger-800">
                     −{penalty} point{penalty === 1 ? '' : 's'} from active strikes or unresolved clawbacks.
                     These expire or clear when resolved — ask support if anything looks wrong.
                   </p>
                 )}
-              </div>
+
+                {kpis.length > 0 && <KpiStrip items={kpis} className="mb-0 mt-4" />}
+              </>
             )}
-          </section>
+          </PanelCard>
         )
       })}
 

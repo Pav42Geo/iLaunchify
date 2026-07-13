@@ -8,7 +8,6 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { Eye, Star } from 'lucide-react'
-import { marketingUrl } from '@/lib/marketing-url'
 import { computeProfileCompleteness } from '@/lib/profile-completeness'
 import { SettingsRail } from './SettingsRail'
 
@@ -123,10 +122,10 @@ export default async function SettingsLayout({ children }: { children: React.Rea
             </div>
           </div>
           {profileLive ? (
+            // In-app preview (partners can't pass the creator-tier gate on the
+            // marketing route) — the preview page links out to the live URL.
             <a
-              href={marketingUrl(`/partners/${partner.slug}`)}
-              target="_blank"
-              rel="noreferrer"
+              href="/profile"
               className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:bg-ink-50"
             >
               <Eye className="h-3.5 w-3.5" />

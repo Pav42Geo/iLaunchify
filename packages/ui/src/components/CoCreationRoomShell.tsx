@@ -17,6 +17,15 @@ import type { PanelData } from '@ilaunchify/types'
 import { Button } from '../primitives/button'
 import { Input } from '../primitives/input'
 import { Textarea } from '../primitives/textarea'
+import { Checkbox } from '../primitives/checkbox'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../primitives/dialog'
 import { cn } from '../lib/utils'
 import { productGradient, type ProductGradient } from '../tokens/colors'
 // Print-grade, CSS-immune label artifacts — the platform's single source of
@@ -512,22 +521,11 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
           🔒 IP: Creator-owned
         </span>
         {mode === 'creator' && props.canSwitchMaker && props.onSwitchMaker ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Switch makers? This archives the room with ${props.partnerName} (its decision log is kept), notifies them respectfully, and re-opens your shortlist so you can pick again.`,
-                )
-              ) {
-                void run(props.onSwitchMaker!)
-              }
-            }}
-            className="rounded-pill border border-ink-200 bg-white px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-500 transition hover:border-danger-200 hover:text-danger-700"
-          >
-            Switch maker…
-          </button>
+          <SwitchMakerControl
+            partnerName={props.partnerName}
+            busy={busy}
+            onConfirm={() => void run(props.onSwitchMaker!)}
+          />
         ) : null}
       </div>
 
@@ -2249,6 +2247,102 @@ function ObjectDetail({
 }
 
 // ---------------------------------------------------------------------------
+// Switch-maker guard (Pavel 2026-07-12) — replaces the old window.confirm.
+// Switching makers DISCONNECTS a working relationship, so it must not be a
+// one-click action: a warning dialog spells out the consequences and the
+// destructive button stays disabled until the creator explicitly acknowledges
+// the disconnect. Policy + cutoffs remain server-enforced (D-CC3); this is
+// only the entry-point friction.
+// ---------------------------------------------------------------------------
+
+function SwitchMakerControl({
+  partnerName,
+  busy,
+  onConfirm,
+}: {
+  partnerName: string
+  busy: boolean
+  onConfirm: () => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [ack, setAck] = React.useState(false)
+
+  return (
+    <>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => {
+          setAck(false)
+          setOpen(true)
+        }}
+        className="rounded-pill border border-ink-200 bg-white px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-500 transition hover:border-danger-200 hover:text-danger-700"
+      >
+        Switch maker…
+      </button>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o)
+          if (!o) setAck(false)
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Disconnect from {partnerName}?</DialogTitle>
+            <DialogDescription>
+              Switching makers ends your working relationship with {partnerName}. This is a real
+              disconnect, not a setting — here's what happens:
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-s-2 text-ui-caption text-ink-700">
+            <li className="flex gap-s-2">
+              <span aria-hidden className="mt-1 h-1.5 w-1.5 flex-none rounded-pill bg-danger-500" />
+              This room is <b>archived</b> — its messages and decision log are kept for the record,
+              but the collaboration stops.
+            </li>
+            <li className="flex gap-s-2">
+              <span aria-hidden className="mt-1 h-1.5 w-1.5 flex-none rounded-pill bg-danger-500" />
+              {partnerName} is <b>notified</b> that you've ended the collaboration.
+            </li>
+            <li className="flex gap-s-2">
+              <span aria-hidden className="mt-1 h-1.5 w-1.5 flex-none rounded-pill bg-danger-500" />
+              Any unfunded work in progress with them <b>stops</b>; your shortlist re-opens so you
+              can pick a different maker.
+            </li>
+          </ul>
+          <Checkbox
+            checked={ack}
+            onChange={(e) => setAck(e.currentTarget.checked)}
+            label={
+              <span className="text-ui-caption text-ink-700">
+                I understand this ends the collaboration with <b>{partnerName}</b>.
+              </span>
+            }
+          />
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+              Keep working together
+            </Button>
+            <button
+              type="button"
+              disabled={!ack || busy}
+              onClick={() => {
+                setOpen(false)
+                onConfirm()
+              }}
+              className="inline-flex items-center justify-center rounded-pill bg-danger-600 px-s-4 py-s-2 text-ui-caption font-bold text-white transition hover:bg-danger-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Disconnect &amp; switch maker
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // P1 dispute control (2026-07-10) — a quiet entry point that expands into a
 // description box. Opens a HIGH-priority support ticket linked to the room;
 // the decision log is the evidence trail and admin mediates. Deliberately
@@ -2269,11 +2363,13 @@ function RoomDisputeControl({
 
   if (!open) {
     return (
+      // Danger-colored + pulled in from the right edge (Pavel 2026-07-12) — the
+      // help entry reads as a warning-grade affordance, not chrome in a corner.
       <div className="flex justify-end border-b border-ink-100 bg-white px-s-4 py-s-1">
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="text-ui-label normal-case tracking-normal text-ink-400 underline-offset-2 transition hover:text-danger-700 hover:underline"
+          className="mr-s-6 text-ui-label normal-case tracking-normal text-danger-600 underline-offset-2 transition hover:text-danger-700 hover:underline"
         >
           Problem with this collaboration? Get help
         </button>

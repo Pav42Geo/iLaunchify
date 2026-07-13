@@ -10,6 +10,8 @@ import type {
   PreferenceMatrixCell,
   PreferenceChannel,
 } from '@ilaunchify/ui'
+import { Bell, Clock } from 'lucide-react'
+import { Fieldset } from '@/components/panel-kit'
 import { toast } from 'sonner'
 import type { NotificationChannel } from '@ilaunchify/db'
 import { toggleCategoryPreference, saveQuietHours } from './actions'
@@ -81,52 +83,55 @@ export function CategoryPreferencesForm({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="quiet-start" className="text-ui-label text-ink-700">
-            Start (UTC)
-          </Label>
-          <Input id="quiet-start" type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} className="w-32" />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="quiet-end" className="text-ui-label text-ink-700">
-            End (UTC)
-          </Label>
-          <Input id="quiet-end" type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} className="w-32" />
-        </div>
-        <Button type="button" onClick={handleQuietHoursSave} disabled={isPending}>
-          {isPending ? 'Saving…' : 'Save quiet hours'}
-        </Button>
-        {(quietStart || quietEnd) && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setQuietStart('')
-              setQuietEnd('')
-              startTransition(async () => {
-                await saveQuietHours({ startUtc: null, endUtc: null })
-                toast.success('Quiet hours cleared')
-              })
-            }}
-            disabled={isPending}
-          >
-            Clear
+    <div>
+      <Fieldset icon={<Clock />} title="Quiet hours (email)">
+        <p className="mb-4 text-[12px] text-ink-500">
+          Times are in UTC. Emails skipped during this window won&apos;t be re-sent later
+          (you&apos;ll see them in the bell when you check next).
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label htmlFor="quiet-start" className="mb-1.5 block text-[12px] font-semibold text-ink-700">
+              Start (UTC)
+            </Label>
+            <Input id="quiet-start" type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)} className="w-32" />
+          </div>
+          <div>
+            <Label htmlFor="quiet-end" className="mb-1.5 block text-[12px] font-semibold text-ink-700">
+              End (UTC)
+            </Label>
+            <Input id="quiet-end" type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)} className="w-32" />
+          </div>
+          <Button type="button" onClick={handleQuietHoursSave} disabled={isPending}>
+            {isPending ? 'Saving…' : 'Save quiet hours'}
           </Button>
-        )}
-      </div>
+          {(quietStart || quietEnd) && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setQuietStart('')
+                setQuietEnd('')
+                startTransition(async () => {
+                  await saveQuietHours({ startUtc: null, endUtc: null })
+                  toast.success('Quiet hours cleared')
+                })
+              }}
+              disabled={isPending}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+      </Fieldset>
 
-      <div className="pt-2">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-ink-700">
-          Notification groups
-        </h3>
+      <Fieldset icon={<Bell />} title="Notification groups" hint="Required groups can't be turned off">
         <NotificationPreferenceMatrix
           categories={categories}
           cells={matrix}
           onToggle={handleToggle}
         />
-      </div>
+      </Fieldset>
     </div>
   )
 }

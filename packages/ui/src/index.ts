@@ -88,6 +88,8 @@ export * from './components/StatusFunnel'
 export * from './components/first-run'
 export * from './components/AppHeaderUserMenu'
 export * from './components/NotificationBell'
+// Public partner profile body (Front Face) — marketing route + partner preview
+export * from './components/PartnerFrontFace'
 export * from './components/NotificationFeed'
 export * from './components/NotificationRowActions'
 export * from './components/notification-categories'

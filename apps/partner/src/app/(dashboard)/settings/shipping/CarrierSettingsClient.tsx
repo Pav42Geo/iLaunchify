@@ -2,12 +2,15 @@
 
 // Phase L2a — interactive half of /settings/shipping (page.tsx stays a server
 // component). Enable-platform-shipping button + BYO carrier-account form +
-// account list with deactivate.
+// account list with deactivate. Restyled 2026-07-12 to the settings-hub
+// prototype panels (panel-kit PanelCard/StPill/LRow) — actions unchanged.
 
 import { Button, Input, Label } from '@ilaunchify/ui'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
+import { Truck } from 'lucide-react'
+import { LRow, PanelCard, StPill } from '@/components/panel-kit'
 import {
   enablePlatformShipping,
   saveByoCarrierAccount,
@@ -53,20 +56,14 @@ export function CarrierSettingsClient({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {/* Platform account (default) */}
-      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <PanelCard className="p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-[16px] font-semibold tracking-tight text-ink-900">
+          <h2 className="font-display text-[15px] font-bold text-ink-900">
             iLaunchify shipping
           </h2>
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-[3px] text-[10px] font-semibold uppercase tracking-wider ${
-              platformAccount
-                ? 'border-success-200 bg-success-50 text-success-800'
-                : 'border-ink-200 bg-ink-100 text-ink-700'
-            }`}
-          >
+          <StPill tone={platformAccount ? 'ok' : 'muted'}>
             {platformAccount ? 'Active · default' : 'Not enabled'}
-          </span>
+          </StPill>
         </div>
         <p className="mt-2 text-[13px] leading-relaxed text-ink-600">
           The default. We open a shipping sub-account for you on the platform&rsquo;s carrier
@@ -94,23 +91,17 @@ export function CarrierSettingsClient({
             )}
           </>
         )}
-      </section>
+      </PanelCard>
 
       {/* BYO */}
-      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <PanelCard className="p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-[16px] font-semibold tracking-tight text-ink-900">
+          <h2 className="font-display text-[15px] font-bold text-ink-900">
             Bring your own carrier account
           </h2>
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-[3px] text-[10px] font-semibold uppercase tracking-wider ${
-              byoAccounts.length > 0
-                ? 'border-success-200 bg-success-50 text-success-800'
-                : 'border-ink-200 bg-ink-100 text-ink-700'
-            }`}
-          >
+          <StPill tone={byoAccounts.length > 0 ? 'ok' : 'muted'}>
             {byoAccounts.length > 0 ? `${byoAccounts.length} connected` : 'None'}
-          </span>
+          </StPill>
         </div>
         <p className="mt-2 text-[13px] leading-relaxed text-ink-600">
           Already have negotiated UPS/FedEx rates? Connect them and rate quotes use your
@@ -120,35 +111,34 @@ export function CarrierSettingsClient({
         </p>
 
         {byoAccounts.length > 0 && (
-          <ul className="mt-4 space-y-1.5">
+          <div className="mt-4">
             {byoAccounts.map((a) => (
-              <li
+              <LRow
                 key={a.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50/50 px-3 py-2"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-mono text-[12px] text-ink-800">{a.externalRef}</span>
-                  <span className="block text-[10.5px] text-ink-500">
-                    Added {new Date(a.createdAt).toLocaleDateString()}
-                  </span>
-                </span>
-                <Button
-                  variant="ghost"
-                  className="flex-shrink-0 text-danger-700 hover:text-danger-800"
-                  onClick={() =>
-                    run(() => deactivateCarrierAccount({ accountId: a.id }), 'Carrier account removed')
-                  }
-                  disabled={busy}
-                >
-                  Remove
-                </Button>
-              </li>
+                icon={<Truck />}
+                title={<span className="font-mono text-[12px]">{a.externalRef}</span>}
+                sub={`Added ${new Date(a.createdAt).toLocaleDateString()}`}
+                right={
+                  <Button
+                    variant="ghost"
+                    className="flex-shrink-0 text-danger-700 hover:text-danger-800"
+                    onClick={() =>
+                      run(() => deactivateCarrierAccount({ accountId: a.id }), 'Carrier account removed')
+                    }
+                    disabled={busy}
+                  >
+                    Remove
+                  </Button>
+                }
+              />
             ))}
-          </ul>
+          </div>
         )}
 
         <div className="mt-4 space-y-1.5">
-          <Label htmlFor="byo-ref">Carrier-account id</Label>
+          <Label htmlFor="byo-ref" className="text-[12px] font-semibold text-ink-700">
+            Carrier-account id
+          </Label>
           <div className="flex gap-2">
             <Input
               id="byo-ref"
@@ -171,7 +161,7 @@ export function CarrierSettingsClient({
             </Button>
           </div>
         </div>
-      </section>
+      </PanelCard>
     </div>
   )
 }

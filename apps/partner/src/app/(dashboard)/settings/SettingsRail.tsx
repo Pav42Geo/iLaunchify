@@ -15,6 +15,7 @@ import {
   Bell,
   Building2,
   CreditCard,
+  Eye,
   FileText,
   Globe,
   Image as ImageIcon,
@@ -47,6 +48,7 @@ const GROUPS = (b: RailBadges) => [
     label: 'Public profile',
     items: [
       { label: 'Company profile', href: '/settings/company', icon: Building2 },
+      { label: 'Front face (preview)', href: '/profile', icon: Eye },
       { label: 'Capabilities & services', href: '/services', icon: SlidersHorizontal },
       {
         label: 'Certifications',

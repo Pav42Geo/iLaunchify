@@ -46,6 +46,8 @@ export interface StandingView {
   gaps: string[] // engine-computed path to the next badge
   ordersCompleted: number
   monthsActive: number
+  /** Defect / reprint rate per 100 orders from the snapshot — null when unmeasured. */
+  defectRatePer100: number | null
   feeNowPct: string
   feeProjectedPct: string
   /** Active fee grace/promo, if any — overrides the fee for a window. */
@@ -55,6 +57,8 @@ export interface StandingView {
 export interface StandingPage {
   live: boolean // MeritPolicy.enabled — badge economics active vs. preview
   baseFeePct: string
+  /** Merit-score thresholds per badge (from MeritPolicy) — display only. */
+  thresholds: { trusted: number; premier: number }
   feeLadder: { badge: MeritBadge; label: string; pct: string; blurb: string }[]
   services: StandingView[]
   ratings: ContestableRating[]
@@ -113,7 +117,7 @@ export async function loadStandingPage(): Promise<StandingPage> {
     { badge: 'PREMIER', label: 'Premier', pct: feeBpsToPct(policy.feeBpsByBadge.PREMIER), blurb: 'Top standing — zero platform fee.' },
   ]
 
-  const empty: StandingPage = { live, baseFeePct: feeBpsToPct(baseFeeBps), feeLadder, services: [], ratings: [], hasManufacturing: false }
+  const empty: StandingPage = { live, baseFeePct: feeBpsToPct(baseFeeBps), thresholds: policy.thresholds, feeLadder, services: [], ratings: [], hasManufacturing: false }
   if (!access || access.serviceIds.length === 0) return empty
 
   // Merit is manufacturing-only (the sweep filters MANUFACTURING).
@@ -165,6 +169,7 @@ export async function loadStandingPage(): Promise<StandingPage> {
       gaps: snap && Array.isArray(snap.gapsJson) ? (snap.gapsJson as string[]) : [],
       ordersCompleted: snap?.ordersCompleted ?? 0,
       monthsActive: snap?.monthsActive ?? 0,
+      defectRatePer100: snap?.defectRatePer100 != null ? Number(snap.defectRatePer100) : null,
       feeNowPct: feeBpsToPct(feeNow.bps),
       feeProjectedPct: feeBpsToPct(feeProjected.bps),
       promo: activePromo ? { feePct: feeBpsToPct(activePromo.feeBps), source: activePromo.source, endsAt: activePromo.endsAt.toISOString() } : null,
@@ -187,6 +192,7 @@ export async function loadStandingPage(): Promise<StandingPage> {
   return {
     live,
     baseFeePct: feeBpsToPct(baseFeeBps),
+    thresholds: policy.thresholds,
     feeLadder,
     services: views,
     hasManufacturing: true,

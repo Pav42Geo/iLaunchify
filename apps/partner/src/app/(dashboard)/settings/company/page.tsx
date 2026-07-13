@@ -9,7 +9,6 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { marketingUrl } from '@/lib/marketing-url'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { CompanyProfileClient } from './CompanyProfileClient'
 
@@ -58,8 +57,9 @@ export default async function CompanyProfileSettingsPage() {
         ? 'FULL'
         : 'ANONYMOUS'
 
-  const previewHref =
-    partner.slug && partner.profilePublishedAt ? marketingUrl(`/partners/${partner.slug}`) : null
+  // In-app preview (the marketing route is creator-tier-gated, so the partner
+  // themselves can only see the Front Face via /profile).
+  const previewHref = partner.slug && partner.profilePublishedAt ? '/profile' : null
 
   return (
     <div className="space-y-6">

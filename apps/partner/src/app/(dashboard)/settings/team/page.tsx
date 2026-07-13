@@ -58,6 +58,7 @@ export default async function TeamSettingsPage() {
     email: m.user.email ?? '',
     isAdmin: m.isAdmin,
     isFounder: m.user.id === partner.userId,
+    isSelf: m.user.id === user.id,
     acceptedAt: m.acceptedAt.toISOString(),
     lastActiveAt: m.lastActiveAt?.toISOString() ?? null,
     serviceRoles: m.serviceMemberships.map((sm) => ({

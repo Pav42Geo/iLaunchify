@@ -17,7 +17,6 @@
     ],
     "how_to_extend": "Add an entry under `primitives` or `components` mirroring the schema below. Keep it truthful to the source JSDoc — the source files already document variants + NEVER rules. Update `generated` date."
   },
-
   "primitives": [
     {
       "name": "Button",
@@ -25,14 +24,42 @@
       "category": "action",
       "status": "stable",
       "intent": "Primary/secondary/tertiary user action. Full-pill shape.",
-      "variants": ["primary", "neon", "pink", "secondary", "outline", "ghost"],
-      "sizes": ["sm (36px)", "md (44px, default)", "lg (52px)", "xl (landing CTA)"],
-      "props": ["variant", "size", "asChild"],
+      "variants": [
+        "primary",
+        "neon",
+        "pink",
+        "secondary",
+        "outline",
+        "ghost"
+      ],
+      "sizes": [
+        "sm (36px)",
+        "md (44px, default)",
+        "lg (52px)",
+        "xl (landing CTA)"
+      ],
+      "props": [
+        "variant",
+        "size",
+        "asChild"
+      ],
       "use_when": "Any clickable action — submit, navigate, CTA.",
-      "never": ["Outer colored glow shadows", "neon variant on a light surface (1.3:1 contrast)", "two primary/neon buttons in one section"],
+      "never": [
+        "Outer colored glow shadows",
+        "neon variant on a light surface (1.3:1 contrast)",
+        "two primary/neon buttons in one section"
+      ],
       "variant_guide": "primary=black pill on light · neon=green pill on DARK only · pink=rare brand action · secondary=white pill+border · outline=over tinted/cream · ghost=tertiary",
-      "compose_with": ["HeroBanner (as children CTA)", "Dialog", "RowActionsMenu"],
-      "tokens": ["--button-primary-*", "--button-neon-*", "pink-500 focus ring"]
+      "compose_with": [
+        "HeroBanner (as children CTA)",
+        "Dialog",
+        "RowActionsMenu"
+      ],
+      "tokens": [
+        "--button-primary-*",
+        "--button-neon-*",
+        "pink-500 focus ring"
+      ]
     },
     {
       "name": "Badge",
@@ -40,11 +67,26 @@
       "category": "status",
       "status": "stable",
       "intent": "Small pill for status / category labels. 11px / 600 weight.",
-      "variants": ["success", "warning", "danger", "info", "neutral (default)", "pink", "neon"],
-      "props": ["variant"],
+      "variants": [
+        "success",
+        "warning",
+        "danger",
+        "info",
+        "neutral (default)",
+        "pink",
+        "neon"
+      ],
+      "props": [
+        "variant"
+      ],
       "use_when": "Labeling an object's status or category inline.",
-      "never": ["neon variant on light bg (dark surfaces only, pairs with bg-ink-900)"],
-      "alternatives": ["StatusPill (marketplace image-overlay status)", "Chip (interactive filter)"]
+      "never": [
+        "neon variant on light bg (dark surfaces only, pairs with bg-ink-900)"
+      ],
+      "alternatives": [
+        "StatusPill (marketplace image-overlay status)",
+        "Chip (interactive filter)"
+      ]
     },
     {
       "name": "Chip",
@@ -52,11 +94,21 @@
       "category": "filter",
       "status": "stable",
       "intent": "Interactive filter chip with active state. Active = pink-500 fill.",
-      "props": ["active", "removable", "onClick (consumer-wired)"],
+      "props": [
+        "active",
+        "removable",
+        "onClick (consumer-wired)"
+      ],
       "use_when": "Marketplace filter bars, cert filter rails, any URL-driven filter row.",
-      "never": ["Using it as a static label (that's Badge)"],
-      "compose_with": ["admin v2 filter chip rows"],
-      "alternatives": ["Badge (non-interactive)"]
+      "never": [
+        "Using it as a static label (that's Badge)"
+      ],
+      "compose_with": [
+        "admin v2 filter chip rows"
+      ],
+      "alternatives": [
+        "Badge (non-interactive)"
+      ]
     },
     {
       "name": "Card / CardHeader / CardTitle",
@@ -65,7 +117,9 @@
       "status": "stable",
       "intent": "Generic surface container.",
       "use_when": "Grouping content on creator/partner/marketing surfaces.",
-      "never": ["On admin LIST pages — the locked v2 surface forbids Card; use the hero band + plain table instead"]
+      "never": [
+        "On admin LIST pages — the locked v2 surface forbids Card; use the hero band + plain table instead"
+      ]
     },
     {
       "name": "Input",
@@ -74,8 +128,14 @@
       "status": "stable",
       "intent": "Single-line text field. Token-styled (border/bg/focus ring via --input-*).",
       "use_when": "One line of user input.",
-      "compose_with": ["Label", "form rows"],
-      "alternatives": ["Textarea (multiline)", "Select (choose from set)"]
+      "compose_with": [
+        "Label",
+        "form rows"
+      ],
+      "alternatives": [
+        "Textarea (multiline)",
+        "Select (choose from set)"
+      ]
     },
     {
       "name": "Textarea",
@@ -84,7 +144,9 @@
       "status": "stable",
       "intent": "Multi-line text field, resize-y.",
       "use_when": "Multi-line input.",
-      "compose_with": ["Label"]
+      "compose_with": [
+        "Label"
+      ]
     },
     {
       "name": "Select",
@@ -92,9 +154,19 @@
       "category": "form",
       "status": "stable",
       "intent": "Choose one option from a set. Built on Radix Select.",
-      "exports": ["Select", "SelectTrigger", "SelectValue", "SelectContent", "SelectItem", "SelectGroup"],
+      "exports": [
+        "Select",
+        "SelectTrigger",
+        "SelectValue",
+        "SelectContent",
+        "SelectItem",
+        "SelectGroup"
+      ],
       "use_when": "Single choice from a defined list.",
-      "alternatives": ["Radio (few visible options)", "Chip row (filter, multi)"]
+      "alternatives": [
+        "Radio (few visible options)",
+        "Chip row (filter, multi)"
+      ]
     },
     {
       "name": "Dialog",
@@ -102,9 +174,18 @@
       "category": "overlay",
       "status": "stable",
       "intent": "Modal dialog. Built on Radix Dialog.",
-      "exports": ["Dialog", "DialogTrigger", "DialogContent", "DialogHeader", "DialogTitle", "DialogClose"],
+      "exports": [
+        "Dialog",
+        "DialogTrigger",
+        "DialogContent",
+        "DialogHeader",
+        "DialogTitle",
+        "DialogClose"
+      ],
       "use_when": "Focused confirm/edit that shouldn't lose page context.",
-      "never": ["Long editing sessions (use a page/drawer instead)"]
+      "never": [
+        "Long editing sessions (use a page/drawer instead)"
+      ]
     },
     {
       "name": "Tabs",
@@ -112,7 +193,12 @@
       "category": "navigation",
       "status": "stable",
       "intent": "Section switcher — black underline on active, ink-600 inactive. Built on Radix Tabs.",
-      "exports": ["Tabs", "TabsList", "TabsTrigger", "TabsContent"],
+      "exports": [
+        "Tabs",
+        "TabsList",
+        "TabsTrigger",
+        "TabsContent"
+      ],
       "use_when": "Deep-spec sections on detail pages, admin queues."
     },
     {
@@ -122,7 +208,9 @@
       "status": "stable",
       "intent": "Boolean toggle.",
       "use_when": "Instant on/off setting.",
-      "alternatives": ["Checkbox (form submit context)"]
+      "alternatives": [
+        "Checkbox (form submit context)"
+      ]
     },
     {
       "name": "Checkbox",
@@ -130,7 +218,9 @@
       "category": "form",
       "status": "stable",
       "intent": "Boolean / multi-select with optional label.",
-      "props": ["label"]
+      "props": [
+        "label"
+      ]
     },
     {
       "name": "Radio",
@@ -138,8 +228,12 @@
       "category": "form",
       "status": "stable",
       "intent": "One-of-few selection with optional label.",
-      "props": ["label"],
-      "alternatives": ["Select (many options)"]
+      "props": [
+        "label"
+      ],
+      "alternatives": [
+        "Select (many options)"
+      ]
     },
     {
       "name": "Label",
@@ -147,7 +241,13 @@
       "category": "form",
       "status": "stable",
       "intent": "Accessible field label. Built on Radix Label.",
-      "compose_with": ["Input", "Textarea", "Select", "Checkbox", "Radio"]
+      "compose_with": [
+        "Input",
+        "Textarea",
+        "Select",
+        "Checkbox",
+        "Radio"
+      ]
     },
     {
       "name": "RowActionsMenu",
@@ -156,11 +256,14 @@
       "status": "stable",
       "intent": "3-dot per-row action menu. Actions DEEP-LINK to detail pages, never inline-mutate.",
       "use_when": "Final column of any list/table row.",
-      "never": ["Inline mutations from the menu — link to the detail page that owns the action"],
-      "compose_with": ["admin v2 tables"]
+      "never": [
+        "Inline mutations from the menu — link to the detail page that owns the action"
+      ],
+      "compose_with": [
+        "admin v2 tables"
+      ]
     }
   ],
-
   "components": [
     {
       "name": "ProductCard",
@@ -169,8 +272,16 @@
       "object": "ProductTemplate @ card size",
       "status": "stable",
       "intent": "Marketplace card for a ProductTemplate. 1:1 image area (status + verify + emoji + heart + pastel gradient) then title, cert chips, footer (MIN UNITS · LEAD TIME · PRICE).",
-      "never": ["Partner identity/name/location on the card", "an Inquire/CTA button — the whole card is clickable; price replaces the CTA"],
-      "compose_with": ["StatusPill", "VerifyCheck", "HeartFavorite", "CertChip"],
+      "never": [
+        "Partner identity/name/location on the card",
+        "an Inquire/CTA button — the whole card is clickable; price replaces the CTA"
+      ],
+      "compose_with": [
+        "StatusPill",
+        "VerifyCheck",
+        "HeartFavorite",
+        "CertChip"
+      ],
       "ref": "docs/OOUX_OBJECT_MAP.md §2.3, docs/MARKETPLACE_DESIGN.md §5"
     },
     {
@@ -179,8 +290,14 @@
       "category": "status",
       "status": "stable",
       "intent": "Status pill overlaid top-left of a ProductCard image (Bestseller/New/Fast ship/Low MOQ/Top rated/Popular).",
-      "variants": ["light (default, white pill)", "pink (New)", "dark (rare)"],
-      "alternatives": ["Badge (inline body status)"]
+      "variants": [
+        "light (default, white pill)",
+        "pink (New)",
+        "dark (rare)"
+      ],
+      "alternatives": [
+        "Badge (inline body status)"
+      ]
     },
     {
       "name": "HeroBanner",
@@ -188,9 +305,21 @@
       "category": "layout",
       "status": "stable",
       "intent": "Dark slab with pink radial glow + Bricolage headline + Fraunces italic emphasis (neon) + optional eyebrow + optional right-anchored graphic. Caller passes the CTA via children.",
-      "variants": ["island (compact slab)", "page (full hero)"],
-      "props": ["variant", "eyebrow", "headline", "deck", "children (CTA)", "graphic"],
-      "compose_with": ["Button (as children)"]
+      "variants": [
+        "island (compact slab)",
+        "page (full hero)"
+      ],
+      "props": [
+        "variant",
+        "eyebrow",
+        "headline",
+        "deck",
+        "children (CTA)",
+        "graphic"
+      ],
+      "compose_with": [
+        "Button (as children)"
+      ]
     },
     {
       "name": "MetricCard",
@@ -198,27 +327,95 @@
       "category": "data-display",
       "status": "stable",
       "intent": "KPI card — label, big tabular value, optional trend delta. The dashboard KPI-strip building block (replaces ad-hoc KpiWidget variants).",
-      "props": ["label", "value", "magnitude", "upIsGood", "sublabel"],
-      "compose_with": ["admin v2 5-card KPI strip"],
+      "props": [
+        "label",
+        "value",
+        "magnitude",
+        "upIsGood",
+        "sublabel"
+      ],
+      "compose_with": [
+        "admin v2 5-card KPI strip"
+      ],
       "note": "Admin surfaces also have apps/admin/src/components/widgets/KpiWidget.tsx for the locked v2 strip."
+    },
+    {
+      "intent": "Public partner profile body (Front Face) — dark hero (cover + logo + tier badge + Fraunces tagline), 5-cell stat strip, tabs (Overview/Capabilities/Merit/Certs/Portfolio/Reviews), right rail. Shared by marketing /partners/[slug] (creator-tier-gated) and the partner app /profile preview.",
+      "source": "src/components/PartnerFrontFace.tsx",
+      "use_when": "Rendering a partner's public Front Face from the @ilaunchify/db getPartnerProfile reader.",
+      "never": "Don't fabricate profile data; don't render for partners without FULL disclosure — the reader already gates.",
+      "compose_with": [
+        "MarketplaceHeader (marketing)",
+        "partner settings hub"
+      ],
+      "name": "PartnerFrontFace"
     }
   ],
-
   "catalog_pointers": {
     "note": "~55 object-view components live in packages/ui/src/components/. Not all are hand-documented here yet — check the source JSDoc before building a new one; most are self-documented. High-frequency ones by domain:",
-    "identity_trust": ["Brand", "CertChip", "CertStrip", "CertExpiryBadge", "VerifyCheck", "RatingStars"],
-    "product_packaging": ["ProductObjectCard", "ProductSpecGrid", "ProductPassportView", "PackagingPicker", "PackagingStudioShell", "PackBuilder", "VarietyPackBuilder", "FlavorSwatch", "IngredientsList", "IngredientSlotCard"],
-    "orders_ops": ["OrderTimelineView", "ProductionManifestView", "RolePacketView", "ShippingInfoCard", "ActionQueue", "StatusFunnel"],
-    "dashboard_data": ["TrendChart", "MetricCard", "charts/*", "dashboard/*"],
-    "notifications": ["NotificationBell", "NotificationFeed", "NotificationPreferenceMatrix", "NotificationRowActions"],
-    "favorites": ["HeartFavorite", "FavoriteRow", "FavoritesListView", "FavoritesContext"],
-    "chrome": ["AppHeader", "AppHeaderUserMenu", "SectionLabel", "InfoTip", "Tooltip", "ViewToggle"]
+    "identity_trust": [
+      "Brand",
+      "CertChip",
+      "CertStrip",
+      "CertExpiryBadge",
+      "VerifyCheck",
+      "RatingStars"
+    ],
+    "product_packaging": [
+      "ProductObjectCard",
+      "ProductSpecGrid",
+      "ProductPassportView",
+      "PackagingPicker",
+      "PackagingStudioShell",
+      "PackBuilder",
+      "VarietyPackBuilder",
+      "FlavorSwatch",
+      "IngredientsList",
+      "IngredientSlotCard"
+    ],
+    "orders_ops": [
+      "OrderTimelineView",
+      "ProductionManifestView",
+      "RolePacketView",
+      "ShippingInfoCard",
+      "ActionQueue",
+      "StatusFunnel"
+    ],
+    "dashboard_data": [
+      "TrendChart",
+      "MetricCard",
+      "charts/*",
+      "dashboard/*"
+    ],
+    "notifications": [
+      "NotificationBell",
+      "NotificationFeed",
+      "NotificationPreferenceMatrix",
+      "NotificationRowActions"
+    ],
+    "favorites": [
+      "HeartFavorite",
+      "FavoriteRow",
+      "FavoritesListView",
+      "FavoritesContext"
+    ],
+    "chrome": [
+      "AppHeader",
+      "AppHeaderUserMenu",
+      "SectionLabel",
+      "InfoTip",
+      "Tooltip",
+      "ViewToggle"
+    ]
   },
-
   "screen_recipes": {
     "admin_list_page": {
       "recipe": "hero band (bg-[var(--bg-hero)], rounded-3xl) → 5-card KPI strip → URL-driven Chip filter rows → plain sortable <table> → RowActionsMenu final column → prev/next paginator @ 50/page",
-      "never": ["shadcn Card", "@ilaunchify/ui Card", "inline row mutations"],
+      "never": [
+        "shadcn Card",
+        "@ilaunchify/ui Card",
+        "inline row mutations"
+      ],
       "builder": "use the v2-admin-surface-builder subagent",
       "ref": ".claude/memory/ilaunchify-admin-surface-pattern.md; canonical: apps/admin/src/app/(dashboard)/audit|partners|products/page.tsx"
     },

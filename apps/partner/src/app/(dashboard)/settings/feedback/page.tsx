@@ -1,6 +1,10 @@
-// Always-on account feedback (docs/FEEDBACK_MODULE.md §3.4) — Creator.
+// Always-on account feedback (docs/FEEDBACK_MODULE.md §3.4) — Partner.
 // No window, no gate: any experience, bug, or idea, anytime.
+// Restyled 2026-07-12 to the settings-hub prototype "Preferences" panel
+// (panel-kit PanelCard/LRow/StPill) — the form itself is unchanged.
 
+import { MessageSquare } from 'lucide-react'
+import { LRow, PanelCard, StPill } from '@/components/panel-kit'
 import { FeedbackForm } from './FeedbackForm'
 
 export const dynamic = 'force-dynamic'
@@ -22,9 +26,17 @@ export default function FeedbackPage() {
         </p>
       </div>
 
-      <section className="rounded-2xl border border-ink-200 bg-white p-5">
+      <PanelCard>
+        <LRow
+          className="mb-[18px]"
+          icon={<MessageSquare />}
+          iconClassName="bg-pink-50 text-pink-700"
+          title="Share feedback"
+          sub="Tell us what to build next — a human reads every submission."
+          right={<StPill tone="ok">Always open</StPill>}
+        />
         <FeedbackForm />
-      </section>
+      </PanelCard>
     </div>
   )
 }

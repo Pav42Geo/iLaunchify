@@ -1,6 +1,16 @@
 'use client'
 
+// Market participation card — the "Market participation" panel of
+// design/partner-profile-prototype-v2.html (Pavel 2026-07-12): a "Visibility
+// mode" Fieldset with the PUBLIC/INVITED_ONLY switcher as a seg-radio, plus
+// the mode description as an LRow. Switching to PUBLIC still goes through the
+// exact clickwrap warning + capacity confirmation modal (audited
+// setParticipationMode action) — visual restyle only.
+
 import { useState, useTransition } from 'react'
+import { cn } from '@ilaunchify/ui'
+import { Globe, Lock } from 'lucide-react'
+import { Fieldset, LRow, PanelCard, StPill } from '@/components/panel-kit'
 import { setParticipationMode } from '../participation-actions'
 import { PUBLIC_OPERATOR_TERMS_VERSION, PUBLIC_MODE_WARNING_POINTS } from '../participation-terms'
 
@@ -37,57 +47,62 @@ export function ParticipationModeCard({ mode }: { mode: 'PUBLIC' | 'INVITED_ONLY
     })
   }
 
+  // Seg-radio: clicking the inactive segment triggers the existing flow —
+  // PUBLIC is gated by the clickwrap modal, INVITED_ONLY switches directly.
+  function pickMode(next: 'PUBLIC' | 'INVITED_ONLY') {
+    if (pending || next === mode) return
+    setError(null)
+    if (next === 'PUBLIC') setShowGoPublic(true)
+    else goPrivate()
+  }
+
   return (
-    <div className="rounded-2xl border border-ink-200 bg-white p-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-[13px] font-semibold text-ink-700">Current mode</span>
-        <span
-          className={
-            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-bold uppercase tracking-wide ' +
-            (isPublic
-              ? 'border-pink-200 bg-pink-50 text-pink-700'
-              : 'border-ink-200 bg-ink-50 text-ink-600')
-          }
-        >
-          {isPublic ? '🌊 Open market' : '🔒 Invited-only (private)'}
-        </span>
-      </div>
-
-      <p className="mt-3 max-w-2xl text-[13px] text-ink-600">
-        {isPublic
-          ? 'You’re in open-market rotation — orders are auto-assigned and you’re discoverable. You’re expected to accept and fulfill assigned orders on time.'
-          : 'You work privately — orders reach you only through direct nominations from manufacturers who invite you. You’re excluded from auto-rotation and hidden from public discovery. No firehose.'}
-      </p>
-
-      {error && (
-        <p className="mt-3 rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-[12px] text-danger-700">
-          {error}
+    <PanelCard>
+      <Fieldset icon={<Globe className="h-4 w-4" />} title="Visibility mode">
+        <div className="inline-flex w-fit overflow-hidden rounded-md border border-ink-300">
+          {(
+            [
+              ['INVITED_ONLY', 'Invited-only (private)'],
+              ['PUBLIC', 'Open market'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => pickMode(key)}
+              disabled={pending}
+              className={cn(
+                'px-[18px] py-2 text-[13px] font-semibold transition-colors disabled:opacity-50',
+                mode === key ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50',
+              )}
+            >
+              {pending && key !== mode ? 'Switching…' : label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2.5 text-[12px] text-ink-500">
+          Switching to the open market requires accepting the Public Operator Terms and confirming
+          your capacity is current.
         </p>
-      )}
 
-      <div className="mt-5 border-t border-ink-100 pt-4">
-        {isPublic ? (
-          <button
-            type="button"
-            onClick={goPrivate}
-            disabled={pending}
-            className="rounded-full border border-ink-300 bg-white px-4 py-2 text-[13px] font-semibold text-ink-800 hover:bg-ink-50 disabled:opacity-50"
-          >
-            {pending ? 'Switching…' : 'Switch to invited-only (private)'}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setError(null)
-              setShowGoPublic(true)
-            }}
-            className="rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
-          >
-            Go open-market…
-          </button>
+        {error && (
+          <p className="mt-3 rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-[12px] text-danger-700">
+            {error}
+          </p>
         )}
-      </div>
+      </Fieldset>
+
+      <LRow
+        icon={isPublic ? <Globe /> : <Lock />}
+        iconClassName="bg-pink-50 text-pink-700"
+        title={isPublic ? 'Open market' : 'Invited-only (private)'}
+        sub={
+          isPublic
+            ? 'You’re in open-market rotation — orders are auto-assigned and you’re discoverable. You’re expected to accept and fulfill assigned orders on time.'
+            : 'You work privately — orders reach you only through direct nominations from manufacturers who invite you. You’re excluded from auto-rotation and hidden from public discovery. No firehose.'
+        }
+        right={<StPill tone={isPublic ? 'ok' : 'muted'}>Current mode</StPill>}
+      />
 
       {showGoPublic && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -164,6 +179,6 @@ export function ParticipationModeCard({ mode }: { mode: 'PUBLIC' | 'INVITED_ONLY
           </div>
         </div>
       )}
-    </div>
+    </PanelCard>
   )
 }

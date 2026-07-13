@@ -6,7 +6,7 @@
 import { requireUser } from '@ilaunchify/auth'
 import { prisma } from '@ilaunchify/db'
 import { getPreferenceMatrixView } from '@ilaunchify/notifications'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ilaunchify/ui'
+import { PanelCard } from '@/components/panel-kit'
 import { CategoryPreferencesForm } from './CategoryPreferencesForm'
 import { rolePrefix } from '@/lib/role-skins'
 import { serviceOwnedBy } from '@/lib/partner-context'
@@ -45,23 +45,14 @@ export default async function NotificationPreferencesPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Quiet hours (email)</CardTitle>
-          <CardDescription>
-            Times are in UTC. Emails skipped during this window won&apos;t be re-sent later
-            (you&apos;ll see them in the bell when you check next).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CategoryPreferencesForm
-            categories={categories}
-            cells={cells}
-            quietHoursStartUtc={userRow?.quietHoursStartUtc ?? null}
-            quietHoursEndUtc={userRow?.quietHoursEndUtc ?? null}
-          />
-        </CardContent>
-      </Card>
+      <PanelCard>
+        <CategoryPreferencesForm
+          categories={categories}
+          cells={cells}
+          quietHoursStartUtc={userRow?.quietHoursStartUtc ?? null}
+          quietHoursEndUtc={userRow?.quietHoursEndUtc ?? null}
+        />
+      </PanelCard>
     </div>
   )
 }

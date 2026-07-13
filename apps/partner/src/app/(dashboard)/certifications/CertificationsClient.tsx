@@ -239,7 +239,7 @@ function ClaimForm({ certType, onClose }: { certType: CertTypeOption; onClose: (
         <Button
           type="submit"
           disabled={isPending || !file || !expiryDate || !consent}
-          className="bg-ink-900 hover:bg-ink-700"
+          className="rounded-full bg-pink-500 text-white hover:bg-pink-600"
         >
           {isPending ? 'Submitting…' : 'Submit for review'}
         </Button>
