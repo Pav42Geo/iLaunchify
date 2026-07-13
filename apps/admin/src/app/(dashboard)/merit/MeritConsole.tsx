@@ -96,6 +96,17 @@ export function MeritConsole({ initial }: { initial: MeritPolicyInput }) {
           <Num label="Trusted" value={p.trustedFeeBps} onChange={num('trustedFeeBps')} hint={`${(p.trustedFeeBps / 100).toFixed(2)}%`} />
           <Num label="Premier" value={p.premierFeeBps} onChange={num('premierFeeBps')} hint={`${(p.premierFeeBps / 100).toFixed(2)}%`} />
         </div>
+
+        <div className="space-y-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-widest text-ink-500">Team seats per badge</h3>
+          <Num label="Verified" value={p.verifiedTeamSeats} onChange={num('verifiedTeamSeats')} />
+          <Num label="Trusted" value={p.trustedTeamSeats} onChange={num('trustedTeamSeats')} />
+          <Num label="Premier" value={p.premierTeamSeats} onChange={num('premierTeamSeats')} hint={p.premierTeamSeats === 0 ? 'unlimited' : undefined} />
+          <p className="text-[11px] leading-relaxed text-ink-500">
+            Earned capacity, never sold (LOCKED 2026-07-13). Badge drops are gentle: over-cap
+            teams keep everyone — only NEW invites are blocked. 0 = unlimited.
+          </p>
+        </div>
       </div>
 
       {/* Go-live switch — this is the lever that turns standing into real badges

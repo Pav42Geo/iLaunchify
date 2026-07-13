@@ -1643,6 +1643,13 @@ model MeritPolicy {
   verifiedFeeBps         Int      @default(450)
   trustedFeeBps          Int      @default(250)
   premierFeeBps          Int      @default(0)
+  // Team seats per badge — LOCKED 2026-07-13 (Merit perk, EARNED never sold):
+  // Verified 3 / Trusted 10 / Premier unlimited (0 = unlimited). Badge DROP is
+  // GENTLE: new invites blocked over cap, existing staff NEVER revoked —
+  // teammates are operational people running live production queues.
+  verifiedTeamSeats      Int      @default(3)
+  trustedTeamSeats       Int      @default(10)
+  premierTeamSeats       Int      @default(0)
   // Hysteresis + grace (MM-2 cron applies these; engine is instantaneous).
   promoteSustainDays     Int      @default(30)
   demoteMissDays         Int      @default(60)

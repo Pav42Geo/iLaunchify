@@ -6,6 +6,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { SERVICE_TYPE_LABEL, type PartnerServiceType } from '@/lib/role-skins'
 import { TeamManager, type TeamMemberView, type PendingInviteView, type ServiceOption } from './TeamManager'
+import { resolvePartnerTeamSeatCap } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Team — Partners' }
@@ -20,6 +21,7 @@ export default async function TeamSettingsPage() {
     select: {
       userId: true,
       companyName: true,
+      tier: true,
       services: { select: { id: true, type: true } },
       memberships: {
         where: { removedAt: null },
@@ -82,6 +84,11 @@ export default async function TeamSettingsPage() {
     label: serviceLabel.get(s.id) ?? (s.type as string),
   }))
 
+  // Team seats = Merit perk (LOCKED 2026-07-13): Verified 3 / Trusted 10 /
+  // Premier unlimited, admin-tunable. Badge drops are gentle — over-cap teams
+  // keep everyone; only new invites are blocked.
+  const seatCap = await resolvePartnerTeamSeatCap(partner.tier)
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
@@ -95,6 +102,19 @@ export default async function TeamSettingsPage() {
           Invite teammates and scope what they see. Admins manage everything; service roles see
           only their queues — a prepress tech never touches billing.
         </p>
+        {seatCap !== null ? (
+          <p className="mt-2 text-[12px] font-medium text-ink-700">
+            {members.length + invites.length} of {seatCap} team seat{seatCap === 1 ? '' : 's'} used ·{' '}
+            <span className="text-ink-500">
+              seats grow with your merit standing (Trusted and Premier unlock more)
+            </span>
+          </p>
+        ) : (
+          <p className="mt-2 text-[12px] font-medium text-ink-700">
+            {members.length + invites.length} team seat{members.length + invites.length === 1 ? '' : 's'} ·{' '}
+            <span className="text-ink-500">unlimited at your standing</span>
+          </p>
+        )}
       </div>
 
       <TeamManager members={members} invites={invites} services={services} />

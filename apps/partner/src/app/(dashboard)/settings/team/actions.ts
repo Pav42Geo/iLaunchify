@@ -23,6 +23,28 @@ export interface ServiceGrantInput {
 
 const VALID_SERVICE_ROLES = new Set(['PARTNER_PREPRESS', 'PARTNER_PRODUCTION'])
 
+/**
+ * Team-seat cap for a partner badge (Merit perk — EARNED, never sold).
+ * Reads the admin-tuned MeritPolicy; falls back to the locked defaults
+ * (Verified 3 / Trusted 10 / Premier unlimited). Returns null = unlimited.
+ */
+export async function resolvePartnerTeamSeatCap(tier: string): Promise<number | null> {
+  const policy = await prisma.meritPolicy
+    .findUnique({
+      where: { id: 1 },
+      select: { verifiedTeamSeats: true, trustedTeamSeats: true, premierTeamSeats: true },
+    })
+    .catch(() => null)
+  const ladder: Record<string, number> = {
+    VERIFIED: policy?.verifiedTeamSeats ?? 3,
+    TRUSTED: policy?.trustedTeamSeats ?? 10,
+    PREMIER: policy?.premierTeamSeats ?? 0,
+  }
+  const cap = ladder[tier]
+  if (cap === undefined) return null // unknown tier — fail open, invite gate isn't security
+  return cap === 0 ? null : cap // 0 = unlimited (Premier default)
+}
+
 export async function invitePartnerTeammate({
   email,
   grantAdmin,
@@ -38,11 +60,29 @@ export async function invitePartnerTeammate({
 
   const partner = await prisma.partner.findUnique({
     where: { id: access.partnerId },
-    select: { id: true, status: true, companyName: true, services: { select: { id: true } } },
+    select: { id: true, status: true, companyName: true, tier: true, services: { select: { id: true } } },
   })
   if (!partner) return { ok: false, error: 'Partner not found.' }
   if (partner.status !== 'ACTIVE' && partner.status !== 'INTEGRATION_ENHANCED') {
     return { ok: false, error: 'Team invites unlock once your company is approved and active.' }
+  }
+
+  // Team seats per badge — Merit perk (LOCKED 2026-07-13): Verified 3 /
+  // Trusted 10 / Premier unlimited, admin-tunable in the Merit console.
+  // Badge DROP is GENTLE: this gate blocks NEW invites over cap; existing
+  // teammates are operational staff and are never revoked.
+  const seatCap = await resolvePartnerTeamSeatCap(partner.tier)
+  if (seatCap !== null) {
+    const [members, pending] = await Promise.all([
+      prisma.partnerMembership.count({ where: { partnerId: partner.id, removedAt: null } }),
+      prisma.partnerInvite.count({ where: { partnerId: partner.id, status: 'PENDING' } }),
+    ])
+    if (members + pending >= seatCap) {
+      return {
+        ok: false,
+        error: `Your ${partner.tier.toLowerCase()} standing includes ${seatCap} team seat${seatCap === 1 ? '' : 's'} — seats grow as your merit standing rises.`,
+      }
+    }
   }
 
   const address = email.trim().toLowerCase()

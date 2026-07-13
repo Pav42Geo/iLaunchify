@@ -30,6 +30,8 @@ export interface MeritConsole {
   policy: MeritPolicy
   enabled: boolean
   windows: { promoteSustainDays: number; demoteMissDays: number; graceDays: number }
+  /** Team seats per badge (Merit perk, LOCKED 2026-07-13) — 0 = unlimited. */
+  teamSeats: { verified: number; trusted: number; premier: number }
   rows: MeritRow[]
   /** Distribution of the engine's qualified badge (shadow). */
   distribution: Record<MeritBadge, number>
@@ -76,6 +78,11 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
     promoteSustainDays: policyRow?.promoteSustainDays ?? 30,
     demoteMissDays: policyRow?.demoteMissDays ?? 60,
     graceDays: policyRow?.graceDays ?? 60,
+  }
+  const teamSeats = {
+    verified: policyRow?.verifiedTeamSeats ?? 3,
+    trusted: policyRow?.trustedTeamSeats ?? 10,
+    premier: policyRow?.premierTeamSeats ?? 0,
   }
   const enabled = policyRow?.enabled ?? false
 
@@ -173,7 +180,7 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
   }))
 
   return {
-    policy, enabled, windows, rows, distribution, mismatches,
+    policy, enabled, windows, teamSeats, rows, distribution, mismatches,
     hasSnapshots: snaps.length > 0,
     baseProductionFeeBps,
     baseProductionFeePct: feeBpsToPct(baseProductionFeeBps),

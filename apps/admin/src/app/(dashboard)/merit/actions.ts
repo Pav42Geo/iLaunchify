@@ -20,6 +20,8 @@ export interface MeritPolicyInput {
   premierMinOrders: number; premierMinMonths: number; premierMaxDefectPer100: number
   opsConfidence: number
   verifiedFeeBps: number; trustedFeeBps: number; premierFeeBps: number
+  // Team seats per badge (Merit perk, LOCKED 2026-07-13) — 0 = unlimited.
+  verifiedTeamSeats: number; trustedTeamSeats: number; premierTeamSeats: number
   promoteSustainDays: number; demoteMissDays: number; graceDays: number
   enabled: boolean
 }

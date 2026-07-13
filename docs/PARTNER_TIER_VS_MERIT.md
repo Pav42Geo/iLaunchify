@@ -133,3 +133,18 @@ an earned reward ladder that the Merit Engine drives.**
 2. Which perks attach to Trusted / Premier, and are they admin-tunable.
 3. Fate of `promotion-criteria.ts` / `PromotionCriteriaCard`: delete vs. redirect to the merit console.
 4. Whether the `/tiers` partner hand-set tier stays as an emergency override once Merit goes live.
+
+## Perk: team seats per badge (LOCKED 2026-07-13)
+
+Team capacity is an EARNED perk on the badge ladder — never sold:
+**Verified 3 · Trusted 10 · Premier unlimited** (0 = unlimited), admin-tunable
+in the Merit console next to the fee ladder (`MeritPolicy.verifiedTeamSeats` /
+`trustedTeamSeats` / `premierTeamSeats`).
+
+Enforcement: `invitePartnerTeammate` counts live memberships + PENDING invites
+against the badge cap. **Badge drops are GENTLE** — the asymmetry vs. creator
+designer seats is deliberate: a partner teammate is operational staff running
+live production queues; revoking one mid-order damages fulfillment (ours and
+the creator's), not just the partner. Over-cap teams keep everyone; only NEW
+invites are blocked until standing recovers. Partner-facing: the Team page
+shows "X of Y seats · seats grow with your merit standing".

@@ -56,6 +56,7 @@ export default async function MeritPage() {
           premierMinOrders: c.policy.evidence.premierMinOrders, premierMinMonths: c.policy.evidence.premierMinMonths,
           premierMaxDefectPer100: c.policy.evidence.premierMaxDefectPer100, opsConfidence: c.policy.opsConfidence,
           verifiedFeeBps: c.policy.feeBpsByBadge.VERIFIED, trustedFeeBps: c.policy.feeBpsByBadge.TRUSTED, premierFeeBps: c.policy.feeBpsByBadge.PREMIER,
+          verifiedTeamSeats: c.teamSeats.verified, trustedTeamSeats: c.teamSeats.trusted, premierTeamSeats: c.teamSeats.premier,
           promoteSustainDays: c.windows.promoteSustainDays, demoteMissDays: c.windows.demoteMissDays, graceDays: c.windows.graceDays,
           enabled: c.enabled,
         }}
