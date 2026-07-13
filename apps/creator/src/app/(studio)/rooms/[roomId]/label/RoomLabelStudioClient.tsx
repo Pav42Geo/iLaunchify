@@ -301,8 +301,8 @@ export function RoomLabelStudioClient({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting || !ready || notReady}
-              title={notReady ? ctx.submitReadiness.blocking[0] ?? 'Recipe Facts are incomplete' : undefined}
+              disabled={submitting || !ready}
+              title={notReady ? (ctx.submitReadiness.blocking[0] ?? 'Recipe Facts are incomplete — you can still send') : undefined}
               className="rounded-full bg-pink-600 px-5 py-2 text-sm font-medium text-white hover:bg-pink-500 disabled:opacity-50"
             >
               {submitting ? 'Sending…' : 'Send to room for approval'}
@@ -315,7 +315,7 @@ export function RoomLabelStudioClient({
 
       {ctx.access.isOwner && notReady && (
         <div className="border-b border-warning-200 bg-warning-50 px-5 py-2 text-sm text-warning-800">
-          Can’t send a proof yet — {ctx.submitReadiness.blocking[0] ?? 'the recipe Facts are incomplete'}. Finish the recipe in the room first.
+          Heads up — {ctx.submitReadiness.blocking[0] ?? 'the recipe Facts are incomplete'}. You can still send the proof; the maker reviews it before printing.
         </div>
       )}
 

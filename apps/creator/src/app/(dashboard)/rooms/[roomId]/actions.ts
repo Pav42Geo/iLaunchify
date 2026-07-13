@@ -231,14 +231,9 @@ export async function creatorSubmitLabelProof(
   })
   if (!dieline) return { ok: false, error: 'That die-line is not from this maker' }
 
-  // Gate 3 (A10) — label compliance readiness: refuse to finalize a proof while
-  // the room's recipe Facts are incomplete (authoritative; the Studio disables
-  // the button too). Same readiness pass the room-side copy shows.
-  const { resolveRoomLabelReadiness } = await import('@/lib/room-label-design')
-  const readiness = await resolveRoomLabelReadiness(roomId)
-  if (readiness.outcome === 'NOT_READY') {
-    return { ok: false, error: 'The label’s Facts aren’t ready yet — finish the recipe before sending a proof.' }
-  }
+  // A10 — compliance pre-check is NON-GATING in V1 (room-compliance.ts: "it
+  // informs, it never blocks"; the maker reviews the proof anyway per D-S3). The
+  // Studio surfaces the readiness warning; submit is allowed. So no gate here.
 
   // Upload the composed SVG as a new, room+object-scoped artifact (the partner's
   // original file stays immutable — this is a separate key).

@@ -18,7 +18,7 @@ Owners: **[Code]** Studio/die-line zone · **[Cowork]** room/messaging/UI-shell 
 - [x] A7 · messaging.ts `InputJsonValue` tsc blocker fixed — **[Cowork]**
 - [x] A8 · Studio front-end: room-context editor at `(studio)/rooms/[roomId]/label` (substrate = pinned die-line `normalizedSvg` per D-S2; locked layers; save via `Design.roomId`) — **[Code]** (slice 3, unblocked)
 - [x] A9 · Review inversion (D-S3): non-submitter reviews — service choke-point guard in `reviewObject` + real `partnerReviewObject` action + shell shows review controls to the non-submitter side — **[Cowork]**
-- [x] A10 · Compliance pre-check gates the proof submit (reuse `checkRoomLabelReadiness`) — **[Code]** Studio submit gate (authoritative in creatorSubmitLabelProof + disabled button) + **[Cowork]** room-side copy
+- [x] A10 · Compliance pre-check on proof submit — **[Code]** NON-GATING (V1): `checkRoomLabelReadiness` surfaced as a Studio warning, submit allowed (maker reviews per D-S3); not `compliance-client` (no persisted Recipe pre-materialization) + **[Cowork]** room-side copy
 - [ ] A11 · Regulated layer composed from approved RECIPE (deterministic panels) — **[Code]** build plan in CO_CREATION_SELF_DESIGN_ON_DIELINE_SPEC.md (client-canvas approach recommended; frames-as-placement; needs focused session + runtime verification)
 - [x] A12 · `normalizedSvgKey` backfill for verified die-lines — **[Code]** script written (`pnpm --filter @ilaunchify/db backfill:dieline-svg -- --apply`, dry-run default); **Pavel runs** against shared DB+R2
 - [ ] A13 · DESIGN milestone kind (maker's internal design service, priced via terms flow) — **deferred by D-S6**
