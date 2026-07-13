@@ -20,8 +20,9 @@ export interface FacilityInput {
   addressLine1: string
   addressLine2?: string
   city: string
-  region: string // state code
+  region: string // state / province code
   postalCode: string
+  country?: string
   isDefault?: boolean
 }
 
@@ -55,9 +56,10 @@ export async function saveFacility(input: FacilityInput): Promise<FacilityResult
   if (!name || !addressLine1 || !city || !region || !postalCode)
     return { ok: false, error: 'Name, street, city, state and ZIP are all required.' }
   const addressLine2 = input.addressLine2?.trim().slice(0, 160) || null
+  const country = (input.country?.trim().slice(0, 2).toUpperCase() || 'US') as string
 
   const approved = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
-  const data = { name, addressLine1, addressLine2, city, region, postalCode }
+  const data = { name, addressLine1, addressLine2, city, region, postalCode, country }
 
   let facilityId = input.id ?? null
   if (facilityId) {

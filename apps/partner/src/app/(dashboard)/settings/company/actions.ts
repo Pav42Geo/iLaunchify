@@ -92,6 +92,7 @@ export interface FacilityAddressInput {
   city?: string
   state?: string
   postalCode?: string
+  country?: string
 }
 
 /**
@@ -111,6 +112,7 @@ export async function saveFacilityAddress(input: FacilityAddressInput): Promise<
       city: true,
       state: true,
       postalCode: true,
+      country: true,
     },
   })
   if (!partner) return
@@ -125,6 +127,9 @@ export async function saveFacilityAddress(input: FacilityAddressInput): Promise<
   set('city', 80)
   set('state', 40)
   set('postalCode', 20)
+  // Country is NOT nullable on Partner — only write a non-empty value.
+  if (typeof input.country === 'string' && input.country.trim())
+    data.country = input.country.trim().slice(0, 2).toUpperCase()
   if (Object.keys(data).length === 0) return
 
   const changed = Object.entries(data).some(

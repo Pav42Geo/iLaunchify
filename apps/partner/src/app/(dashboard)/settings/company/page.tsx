@@ -32,6 +32,7 @@ export default async function CompanyProfileSettingsPage() {
       city: true,
       state: true,
       postalCode: true,
+      country: true,
       slug: true,
       logoUrl: true,
       coverImageUrl: true,
@@ -54,6 +55,7 @@ export default async function CompanyProfileSettingsPage() {
           city: true,
           region: true,
           postalCode: true,
+          country: true,
           isDefault: true,
         },
       },
@@ -144,6 +146,7 @@ export default async function CompanyProfileSettingsPage() {
           city: partner.city ?? '',
           state: partner.state ?? '',
           postalCode: partner.postalCode ?? '',
+          country: partner.country || 'US',
           approved: partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED',
           businessReviewPending:
             businessSection != null && businessSection.status !== 'VERIFIED',

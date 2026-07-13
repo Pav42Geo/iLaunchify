@@ -1,6 +1,36 @@
-// US states + DC — the canonical option list for address "State" selects
-// (Company profile primary address + facility editors, Pavel 2026-07-12).
-// USPS two-letter codes; values stored on Partner.state / PartnerFacility.region.
+// Address regions — country-driven "State/Province" option lists for the
+// Company profile primary address + facility editors (Pavel 2026-07-12).
+// Two-letter codes; values stored on Partner.state / PartnerFacility.region.
+// Countries mirror docs/MARKETS_AND_REGIONS.md V1 (US active, Canada
+// schema-ready); other countries fall back to a free-text region input.
+
+export const COUNTRIES: { code: string; name: string }[] = [
+  { code: 'US', name: 'United States' },
+  { code: 'CA', name: 'Canada' },
+]
+
+export const CA_PROVINCES: { code: string; name: string }[] = [
+  { code: 'AB', name: 'Alberta' },
+  { code: 'BC', name: 'British Columbia' },
+  { code: 'MB', name: 'Manitoba' },
+  { code: 'NB', name: 'New Brunswick' },
+  { code: 'NL', name: 'Newfoundland and Labrador' },
+  { code: 'NS', name: 'Nova Scotia' },
+  { code: 'NT', name: 'Northwest Territories' },
+  { code: 'NU', name: 'Nunavut' },
+  { code: 'ON', name: 'Ontario' },
+  { code: 'PE', name: 'Prince Edward Island' },
+  { code: 'QC', name: 'Quebec' },
+  { code: 'SK', name: 'Saskatchewan' },
+  { code: 'YT', name: 'Yukon' },
+]
+
+/** Region options for a country — null means "use a free-text input". */
+export function regionsForCountry(country: string): { code: string; name: string }[] | null {
+  if (country === 'US') return US_STATES
+  if (country === 'CA') return CA_PROVINCES
+  return null
+}
 
 export const US_STATES: { code: string; name: string }[] = [
   { code: 'AL', name: 'Alabama' },

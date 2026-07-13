@@ -9,7 +9,8 @@
 import { useState, useTransition } from 'react'
 import { cn } from '@ilaunchify/ui'
 import { Check, Loader2, MapPin, Pencil, Plus, Star, Trash2, Warehouse, X } from 'lucide-react'
-import { US_STATES } from '@/lib/us-states'
+import { COUNTRIES } from '@/lib/us-states'
+import { RegionSelect } from './RegionSelect'
 import { deleteFacility, saveFacility, setPrimaryFacility } from './facilities-actions'
 
 export interface FacilityVM {
@@ -20,6 +21,7 @@ export interface FacilityVM {
   city: string
   region: string
   postalCode: string
+  country: string
   isDefault: boolean
 }
 
@@ -34,6 +36,7 @@ type Draft = {
   city: string
   region: string
   postalCode: string
+  country: string
 }
 
 const emptyDraft: Draft = {
@@ -44,6 +47,7 @@ const emptyDraft: Draft = {
   city: '',
   region: '',
   postalCode: '',
+  country: 'US',
 }
 
 export function FacilitiesManager({ facilities }: { facilities: FacilityVM[] }) {
@@ -65,6 +69,7 @@ export function FacilitiesManager({ facilities }: { facilities: FacilityVM[] }) 
         city: draft.city,
         region: draft.region,
         postalCode: draft.postalCode,
+        country: draft.country,
       })
       if (res.ok) setDraft(null)
       else setError(res.error)
@@ -152,6 +157,7 @@ export function FacilitiesManager({ facilities }: { facilities: FacilityVM[] }) 
                     city: fac.city,
                     region: fac.region,
                     postalCode: fac.postalCode,
+                    country: fac.country || 'US',
                   })
                 }
                 className="grid h-8 w-8 place-items-center rounded-full border border-ink-200 bg-white text-ink-500 hover:border-ink-300 hover:text-ink-900 disabled:opacity-40"
@@ -232,25 +238,32 @@ function FacilityEditor({
           className={inputCls}
         />
       </div>
-      <div className="mt-2.5 grid grid-cols-3 gap-2.5">
+      <div className="mt-2.5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <select
+          value={draft.country}
+          onChange={(e) => {
+            set('country', e.target.value)
+            set('region', '')
+          }}
+          className={inputCls}
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.name}
+            </option>
+          ))}
+        </select>
         <input
           value={draft.city}
           onChange={(e) => set('city', e.target.value)}
           placeholder="City"
           className={inputCls}
         />
-        <select value={draft.region} onChange={(e) => set('region', e.target.value)} className={inputCls}>
-          <option value="">State…</option>
-          {US_STATES.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        <RegionSelect country={draft.country} value={draft.region} onChange={(v) => set('region', v)} />
         <input
           value={draft.postalCode}
           onChange={(e) => set('postalCode', e.target.value)}
-          placeholder="ZIP"
+          placeholder={draft.country === 'CA' ? 'Postal code' : 'ZIP'}
           className={inputCls}
         />
       </div>
