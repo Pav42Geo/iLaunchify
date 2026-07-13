@@ -152,6 +152,9 @@ export interface CoCreationRoomShellProps {
   /** Creator's per-room auto-approve for designer submissions (creator⇄designer only). */
   designReviewAutoApprove?: boolean
   onToggleAutoApprove?: (enabled: boolean) => Promise<Result>
+  /** Tier lock: when set, the invite input is replaced by this upsell copy
+   *  (Maker = 0 designer seats — Builder+ perk). */
+  designerInviteLocked?: string
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
   messages: RoomShellMessage[]
@@ -732,6 +735,7 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
                   ? (enabled) => void run(() => props.onToggleAutoApprove!(enabled))
                   : undefined
               }
+              designerInviteLocked={props.designerInviteLocked}
               onSearchIngredients={props.onSearchIngredients}
               onCreateIngredient={props.onCreateIngredient}
               briefDomain={props.briefDomain}
@@ -946,6 +950,7 @@ function ObjectDetail({
   onDecideDesignReview,
   designReviewAutoApprove,
   onToggleAutoApprove,
+  designerInviteLocked,
   onSearchIngredients,
   onCreateIngredient,
   briefDomain,
@@ -978,6 +983,7 @@ function ObjectDetail({
   onDecideDesignReview?: (requestId: string, decision: 'APPROVED' | 'CHANGES_REQUESTED', note?: string) => void
   designReviewAutoApprove?: boolean
   onToggleAutoApprove?: (enabled: boolean) => void
+  designerInviteLocked?: string
   onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
   onCreateIngredient?: (input: IngredientCreateInput) => Promise<
     { ok: true; ingredient: IngredientPick } | { ok: false; error: string }
@@ -1415,6 +1421,7 @@ function ObjectDetail({
                 onDecide={onDecideDesignReview}
                 autoApprove={designReviewAutoApprove ?? false}
                 onToggleAutoApprove={onToggleAutoApprove}
+                inviteLocked={designerInviteLocked}
               />
             ) : null}
           </>
@@ -3461,6 +3468,7 @@ function DesignTeamCard({
   onDecide,
   autoApprove,
   onToggleAutoApprove,
+  inviteLocked,
 }: {
   seats: { id: string; email: string; name: string | null; role: string; status: string; ndaAccepted: boolean }[]
   busy: boolean
@@ -3472,6 +3480,8 @@ function DesignTeamCard({
   /** Creator's per-room auto-approve (creator⇄designer setting, no admin path). */
   autoApprove: boolean
   onToggleAutoApprove?: (enabled: boolean) => void
+  /** Tier lock message — replaces the invite input (Maker = 0 seats). */
+  inviteLocked?: string
 }) {
   const [email, setEmail] = React.useState('')
   const [decisionNote, setDecisionNote] = React.useState('')
@@ -3581,31 +3591,45 @@ function DesignTeamCard({
         ))
       )}
 
-      <div className="mt-s-2 flex gap-s-2">
-        <Input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="designer@studio.com"
-          type="email"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && email.trim()) {
+      {inviteLocked ? (
+        <div className="mt-s-2 flex flex-wrap items-center gap-s-2 rounded-lg border border-pink-100 bg-pink-50 px-s-3 py-s-2">
+          <span className="flex-1 text-ui-label normal-case tracking-normal text-pink-700">
+            🔒 {inviteLocked}
+          </span>
+          <Link
+            href="/settings/plan"
+            className="rounded-pill bg-pink-500 px-s-3 py-s-1 text-ui-label tracking-normal text-white transition-colors hover:bg-pink-600"
+          >
+            Upgrade →
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-s-2 flex gap-s-2">
+          <Input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="designer@studio.com"
+            type="email"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && email.trim()) {
+                onInvite(email.trim())
+                setEmail('')
+              }
+            }}
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={busy || !email.trim()}
+            onClick={() => {
               onInvite(email.trim())
               setEmail('')
-            }
-          }}
-        />
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={busy || !email.trim()}
-          onClick={() => {
-            onInvite(email.trim())
-            setEmail('')
-          }}
-        >
-          ＋ Invite
-        </Button>
-      </div>
+            }}
+          >
+            ＋ Invite
+          </Button>
+        </div>
+      )}
       {past.length > 0 ? (
         <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-400">
           {past.length} past seat{past.length === 1 ? '' : 's'} (revoked/expired) — access ends automatically when the label is approved or the room closes.

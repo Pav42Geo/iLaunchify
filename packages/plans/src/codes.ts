@@ -43,12 +43,15 @@ export function designAlternateCap(tier: string): number | null {
 }
 
 // -----------------------------------------------------------------------------
-// Shared Design Workspace D-W2 (LOCKED 2026-07-13): concurrent invited-designer
-// seats per creator tier — same ladder philosophy as alternates. null = unlimited.
+// Shared Design Workspace D-W2 (LOCKED 2026-07-13; AMENDED same day by Pavel:
+// Maker gets ZERO seats — invited designers are a Builder+ perk). Concurrent
+// invited-designer seats per creator tier. null = unlimited. These are the
+// CODE FALLBACKS — the live numbers are admin-tunable in CoCreationSettings
+// (Product Builder → Settings → Shared design workspace).
 // -----------------------------------------------------------------------------
 
 export const DESIGNER_SEAT_CAPS: Record<'maker' | 'builder' | 'agency', number | null> = {
-  maker: 1,
+  maker: 0,
   builder: 2,
   agency: 5,
 }

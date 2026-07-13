@@ -71,6 +71,13 @@ export async function saveCoCreationSettings(
     ) {
       data.makerSwitchPolicy = patch.makerSwitchPolicy
     }
+    // Shared design workspace — per-tier caps (2026-07-13)
+    set('designerSeatsMaker', 0, 20)
+    set('designerSeatsBuilder', 0, 20)
+    set('designerSeatsAgency', 0, 50)
+    set('maxActiveBriefsMaker', 0, 100)
+    set('maxActiveBriefsBuilder', 0, 100)
+    set('maxActiveBriefsAgency', 0, 100)
     // Anti-circumvention chat policy (2026-07-13)
     if (
       patch.contactLeakPolicy !== undefined &&

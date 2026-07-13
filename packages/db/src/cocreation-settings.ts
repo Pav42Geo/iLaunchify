@@ -36,6 +36,13 @@ export interface CoCreationSettingsValues {
     | 'UNTIL_FUNDED'
   makerSwitchGraceDays: number
   maxMakerSwitches: number
+  // Shared design workspace — per-tier caps (designer seats exact; briefs 0 = unlimited)
+  designerSeatsMaker: number
+  designerSeatsBuilder: number
+  designerSeatsAgency: number
+  maxActiveBriefsMaker: number
+  maxActiveBriefsBuilder: number
+  maxActiveBriefsAgency: number
   // Anti-circumvention: chat contact-leak policy (detector in @ilaunchify/orders)
   contactLeakPolicy: 'OFF' | 'WARN' | 'WARN_AND_FLAG' | 'BLOCK'
   // Promoted interests (labeled slots — never touch ranking)
@@ -63,6 +70,14 @@ export const COCREATION_SETTINGS_DEFAULTS: CoCreationSettingsValues = {
   makerSwitchPolicy: 'UNTIL_FIRST_SUBMISSION',
   makerSwitchGraceDays: 14,
   maxMakerSwitches: 1,
+  // Maker = 0 designer seats (Builder+ perk, Pavel 2026-07-13); brief caps
+  // default unlimited so behavior is unchanged until the admin tunes them.
+  designerSeatsMaker: 0,
+  designerSeatsBuilder: 2,
+  designerSeatsAgency: 5,
+  maxActiveBriefsMaker: 0,
+  maxActiveBriefsBuilder: 0,
+  maxActiveBriefsAgency: 0,
   // Warn + flag by default: visible to the sender, reviewable by the admin,
   // never a silent block (tighten to BLOCK from the console when needed).
   contactLeakPolicy: 'WARN_AND_FLAG',
@@ -99,6 +114,12 @@ export async function getCoCreationSettings(): Promise<CoCreationSettingsValues>
           makerSwitchPolicy: true,
           makerSwitchGraceDays: true,
           maxMakerSwitches: true,
+          designerSeatsMaker: true,
+          designerSeatsBuilder: true,
+          designerSeatsAgency: true,
+          maxActiveBriefsMaker: true,
+          maxActiveBriefsBuilder: true,
+          maxActiveBriefsAgency: true,
           contactLeakPolicy: true,
           promotedInterestsEnabled: true,
           promotedSlotsPerBrief: true,

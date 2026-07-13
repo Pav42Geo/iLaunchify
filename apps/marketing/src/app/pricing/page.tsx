@@ -276,6 +276,33 @@ const SECTIONS: ComparisonSection[] = [
     ],
   },
   {
+    // Co-Creation Studio + Shared Design Workspace perks (Pavel 2026-07-13):
+    // briefs = Builder+ (D-CC1); designer seats = Builder 2 / Agency 5, Maker
+    // none (live numbers admin-tunable in Co-Creation Settings).
+    label: 'Co-creation & design',
+    rows: [
+      {
+        label: 'Post co-creation briefs to matched makers',
+        maker: false,
+        builder: true,
+        agency: true,
+      },
+      {
+        label: 'DIY label design on your maker’s die-line',
+        maker: true,
+        builder: true,
+        agency: true,
+      },
+      {
+        label: 'Invited-designer seats (shared workspace)',
+        maker: '—',
+        builder: '2',
+        agency: '5',
+      },
+      { label: 'Design alternates per slot', maker: '2', builder: '5', agency: 'Unlimited' },
+    ],
+  },
+  {
     label: 'Production economics',
     rows: [
       { label: 'Production-order fee', maker: '15%', builder: '12%', agency: '8%' },

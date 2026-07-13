@@ -10184,6 +10184,17 @@ model CoCreationSettings {
   makerSwitchGraceDays Int    @default(14) // WITHIN_GRACE_DAYS window; 0 = no time limit
   maxMakerSwitches     Int    @default(1) // per brief; 0 = unlimited
 
+  // ---- Shared design workspace — per-tier caps (Pavel 2026-07-13) ----
+  // Live source for the tier ladders; @ilaunchify/plans holds the code
+  // fallbacks. Designer seats: exact counts (0 = no seats — Maker's default;
+  // invited designers are a Builder+ perk). Active-brief caps: 0 = unlimited.
+  designerSeatsMaker    Int @default(0)
+  designerSeatsBuilder  Int @default(2)
+  designerSeatsAgency   Int @default(5)
+  maxActiveBriefsMaker  Int @default(0) // concurrently open briefs/rooms; 0 = unlimited
+  maxActiveBriefsBuilder Int @default(0)
+  maxActiveBriefsAgency Int @default(0)
+
   // ---- Anti-circumvention (counsel redlines 2026-07-07; detector 2026-07-13) ----
   // What happens when a chat message carries contact-exchange signals (emails,
   // phones, messenger-app mentions): OFF | WARN | WARN_AND_FLAG | BLOCK.

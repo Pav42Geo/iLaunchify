@@ -7,6 +7,7 @@ import {
   isLabelProofPayload,
   listRoomDesignerSeats,
   getOpenDesignReview,
+  resolveDesignerSeatCap,
   CO_CREATION_RATING_DIMENSIONS,
 } from '@ilaunchify/orders'
 import { getSignedReadUrl } from '@ilaunchify/storage'
@@ -137,6 +138,19 @@ export default async function RoomPage({
   const designerSeats = packagingApproved ? await listRoomDesignerSeats(room.id) : []
   // C7 — pending internal design review awaiting this creator's decision.
   const designReview = packagingApproved ? await getOpenDesignReview(room.id) : null
+  // Tier gate (Pavel 2026-07-13): Maker = 0 designer seats — Builder+ perk.
+  const seatCap = packagingApproved
+    ? await resolveDesignerSeatCap(
+        (await prisma.creatorProfile.findUnique({
+          where: { userId: user.id },
+          select: { subscriptionTier: true },
+        }))?.subscriptionTier.toLowerCase() ?? 'maker',
+      )
+    : null
+  const designerInviteLocked =
+    seatCap === 0
+      ? 'Invite a trusted designer to co-work on this label — available on Builder and Agency plans.'
+      : undefined
 
   // "Confirm & create product" unlocks when the recipe is approved, the room
   // is still active, and nothing was materialized yet (§6 CLOSED_WON).
@@ -218,6 +232,7 @@ export default async function RoomPage({
         designerSeats={designerSeats}
         designReview={designReview}
         designReviewAutoApprove={room.designReviewAutoApprove}
+        designerInviteLocked={designerInviteLocked}
         briefDomain={room.brief.category}
         briefTitle={room.brief.title}
         briefNicheSlug={room.brief.nicheSlug}

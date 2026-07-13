@@ -102,7 +102,7 @@ save is attributed (who + when) — the audit trail IS the collaboration record.
   account — rejected: over-grants; account-less: rejected — NDA + audit need
   identity.)
 - **D-W2 — Who can invite + seat caps.** Recommend: creator only (owner), caps
-  by tier — Maker 1 / Builder 2 / Agency 5 concurrent designer seats (same
+  by tier — AMENDED 2026-07-13: Maker 0 (Builder+ perk, upsell shown in-room) / Builder 2 / Agency 5 concurrent designer seats, admin-tunable in Co-Creation Settings (same
   ladder as Alternates; monetization surface).
 - **D-W3 — Designer submit rights.** Recommend: designer can mark "ready for
   review" but ONLY the creator submits the proof to the room (keeps the room

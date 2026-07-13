@@ -193,6 +193,24 @@ export async function postBrief(input: PostBriefInput): Promise<PostBriefResult>
     return { ok: false, error: 'Co-creation briefs are a Builder feature — upgrade your plan to post one.' }
   }
 
+  // Per-tier ACTIVE-brief cap (admin-tunable in Co-Creation Settings; 0 = unlimited).
+  const { resolveActiveBriefCap } = await import('@ilaunchify/orders')
+  const briefCap = await resolveActiveBriefCap(tier)
+  if (briefCap > 0) {
+    const active = await prisma.productBrief.count({
+      where: {
+        creator: { userId: user.id },
+        status: { in: ['POSTED', 'INTEREST_OPEN', 'SHORTLISTING', 'MATCHED', 'IN_ROOM'] },
+      },
+    })
+    if (active >= briefCap) {
+      return {
+        ok: false,
+        error: `Your plan allows ${briefCap} active brief${briefCap === 1 ? '' : 's'} at a time — close one or upgrade to post another.`,
+      }
+    }
+  }
+
   const parsed = PostBriefSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }

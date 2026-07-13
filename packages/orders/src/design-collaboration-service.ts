@@ -11,7 +11,7 @@
 // ndaAcceptedAt is null, so shipping this dark is safe by construction.
 
 import { randomBytes } from 'crypto'
-import { prisma } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import {
   dispatchNotification,
@@ -28,6 +28,32 @@ import {
 } from './design-collaboration'
 
 export const DESIGNER_INVITE_TTL_DAYS = 14 // D-W5
+
+/**
+ * Live per-tier designer-seat cap: admin-tuned CoCreationSettings first,
+ * @ilaunchify/plans code ladder as the fallback shape. Maker = 0 by default
+ * (Pavel 2026-07-13: invited designers are a Builder+ perk).
+ */
+export async function resolveDesignerSeatCap(tier: string): Promise<number | null> {
+  const s = await getCoCreationSettings()
+  const ladder: Record<string, number> = {
+    maker: s.designerSeatsMaker,
+    builder: s.designerSeatsBuilder,
+    agency: s.designerSeatsAgency,
+  }
+  return tier in ladder ? (ladder[tier] ?? 0) : designerSeatCap(tier)
+}
+
+/** Live per-tier ACTIVE-brief cap (0 = unlimited). */
+export async function resolveActiveBriefCap(tier: string): Promise<number> {
+  const s = await getCoCreationSettings()
+  const ladder: Record<string, number> = {
+    maker: s.maxActiveBriefsMaker,
+    builder: s.maxActiveBriefsBuilder,
+    agency: s.maxActiveBriefsAgency,
+  }
+  return ladder[tier] ?? 0
+}
 
 type Actor = { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'DESIGNER' }
 export type SeatResult = { ok: true } | { ok: false; error: string }
@@ -101,10 +127,14 @@ export async function inviteDesigner(input: {
       status: { in: ['INVITED', 'ACTIVE'] },
     },
   })
-  const capCheck = canGrantDesignerSeat({
-    cap: designerSeatCap(input.creatorTier),
-    occupiedSeats,
-  })
+  const cap = await resolveDesignerSeatCap(input.creatorTier)
+  if (cap === 0) {
+    return {
+      ok: false,
+      error: 'Designer seats are a Builder and Agency perk — upgrade your plan to invite a designer.',
+    }
+  }
+  const capCheck = canGrantDesignerSeat({ cap, occupiedSeats })
   if (!capCheck.ok) return capCheck
 
   const token = randomBytes(24).toString('base64url')

@@ -57,6 +57,8 @@ export function RoomClient(props: {
   designReview?: { id: string; requestedByName: string | null; note: string | null; createdAt: string } | null
   /** Creator's per-room auto-approve for designer submissions. */
   designReviewAutoApprove?: boolean
+  /** Tier lock message for the invite input (Maker = 0 seats). */
+  designerInviteLocked?: string
   briefDomain: string
   briefTitle: string
   briefNicheSlug: string
@@ -99,6 +101,7 @@ export function RoomClient(props: {
       }
       designReviewAutoApprove={props.designReviewAutoApprove}
       onToggleAutoApprove={(enabled) => refresh(setAutoApproveAction(props.roomId, enabled))}
+      designerInviteLocked={props.designerInviteLocked}
       briefDomain={props.briefDomain}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}

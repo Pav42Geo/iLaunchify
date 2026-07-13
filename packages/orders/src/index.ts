@@ -531,6 +531,8 @@ export {
   requestDesignReview,
   decideDesignReview,
   setDesignReviewAutoApprove,
+  resolveDesignerSeatCap,
+  resolveActiveBriefCap,
 } from './design-collaboration-service'
 export type {
   DesignerSeatView,

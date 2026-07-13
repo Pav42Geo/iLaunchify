@@ -281,6 +281,31 @@ export function CoCreationSettingsForm({ initial }: { initial: CoCreationSetting
       </Card>
 
       <Card
+        icon={Wand2}
+        title="Shared design workspace"
+        desc="Per-creator-tier caps for the invited-designer workspace and brief posting. Designer seats: exact counts — 0 means the tier has NO seats (Maker's default; a Builder+ perk shown on the plan cards). Active-brief caps: 0 = unlimited."
+      >
+        <Field label="Designer seats — Maker" hint="Concurrent invited-designer seats on the Maker plan. 0 = locked (upsell shows in the room).">
+          <input className={NUM} type="number" min={0} max={20} value={v.designerSeatsMaker} onChange={num('designerSeatsMaker', 0)} />
+        </Field>
+        <Field label="Designer seats — Builder">
+          <input className={NUM} type="number" min={0} max={20} value={v.designerSeatsBuilder} onChange={num('designerSeatsBuilder', 0)} />
+        </Field>
+        <Field label="Designer seats — Agency">
+          <input className={NUM} type="number" min={0} max={50} value={v.designerSeatsAgency} onChange={num('designerSeatsAgency', 0)} />
+        </Field>
+        <Field label="Active briefs — Maker" hint="Concurrently open briefs/rooms per creator. 0 = unlimited. (Posting itself stays Builder+ per D-CC1.)">
+          <input className={NUM} type="number" min={0} max={100} value={v.maxActiveBriefsMaker} onChange={num('maxActiveBriefsMaker', 0)} />
+        </Field>
+        <Field label="Active briefs — Builder">
+          <input className={NUM} type="number" min={0} max={100} value={v.maxActiveBriefsBuilder} onChange={num('maxActiveBriefsBuilder', 0)} />
+        </Field>
+        <Field label="Active briefs — Agency">
+          <input className={NUM} type="number" min={0} max={100} value={v.maxActiveBriefsAgency} onChange={num('maxActiveBriefsAgency', 0)} />
+        </Field>
+      </Card>
+
+      <Card
         icon={RefreshCcw}
         title="Chat anti-circumvention"
         desc="Counsel redlines 2026-07-07: room chat + DMs are the easiest place to move a deal off-platform. The detector spots contact-exchange signals (emails — including “name at gmail dot com”, phone numbers, messenger-app mentions); this policy decides what happens. It never silently censors."
