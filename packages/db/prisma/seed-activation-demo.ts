@@ -52,16 +52,19 @@ async function main() {
           leadSource: 'activation-demo-seed',
           onboardingProgress: { welcomeSeen: true }, // no activationComplete → stays mid-activation
           services: {
+            // DRAFT = the true mid-activation state (D8 flips DRAFT→ACTIVE at
+            // go-live; an ACTIVE service now COUNTS as live in
+            // getPartnerActivationStatus — Pavel 2026-07-12).
             create: [
               {
                 type: 'MANUFACTURING',
-                status: 'ACTIVE',
+                status: 'DRAFT',
                 disclosureLevel: 'ANONYMOUS',
                 capabilities: MFG_CAPS,
               },
               {
                 type: 'COPACKING',
-                status: 'ACTIVE',
+                status: 'DRAFT',
                 disclosureLevel: 'ANONYMOUS',
                 capabilities: COPACK_CAPS,
               },
@@ -88,16 +91,19 @@ async function main() {
     const byType = new Map(partner.services.map((s) => [s.type, s]))
     const mfg = byType.get('MANUFACTURING')
     const copack = byType.get('COPACKING')
+    // Reset services to DRAFT (mid-activation) — ACTIVE services now count as
+    // LIVE in the activation resolver, so a previous walk that flipped them
+    // must be undone for the demo to restart (activationCompletedAt cleared too).
     if (mfg) {
       await prisma.partnerService.update({
         where: { id: mfg.id },
-        data: { status: 'ACTIVE', capabilities: MFG_CAPS },
+        data: { status: 'DRAFT', capabilities: MFG_CAPS, activationCompletedAt: null },
       })
     }
     if (copack) {
       await prisma.partnerService.update({
         where: { id: copack.id },
-        data: { status: 'ACTIVE', capabilities: COPACK_CAPS },
+        data: { status: 'DRAFT', capabilities: COPACK_CAPS, activationCompletedAt: null },
       })
     }
 

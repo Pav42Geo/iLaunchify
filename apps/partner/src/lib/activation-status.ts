@@ -36,6 +36,7 @@ export async function getPartnerActivationStatus(
       select: {
         id: true,
         type: true,
+        status: true,
         capabilities: true,
         storageClasses: true,
         weeklyPalletCapacity: true,
@@ -51,6 +52,21 @@ export async function getPartnerActivationStatus(
   const autoKeys = await deriveAutoCompletedKeys(partnerId, services)
   const completedKeys = [...new Set([...manualKeys, ...autoKeys])]
   const progress = activationProgress(serviceTypes, new Set(completedKeys))
+
+  // LIVE = D8 steps complete OR the service row is already status ACTIVE.
+  // The FSM flips DRAFT→ACTIVE at go-live, so an ACTIVE service IS routing —
+  // legacy/seeded partners (e.g. the main-seed sample manufacturer) went live
+  // before the Activation checklist existed and have no step rows; without
+  // this they'd be trapped in the limited activation nav forever
+  // (Pavel 2026-07-12). Reflected back into perService so /activation pads,
+  // the sidebar phase, and the go-live gate all agree.
+  const activeTypes = new Set(
+    services.filter((s) => s.status === 'ACTIVE').map((s) => s.type as PartnerServiceType),
+  )
+  for (const t of serviceTypes) {
+    const p = progress.perService[t]
+    if (p && activeTypes.has(t)) p.live = true
+  }
   const liveServiceTypes = serviceTypes.filter((t) => progress.perService[t]?.live)
 
   return {
