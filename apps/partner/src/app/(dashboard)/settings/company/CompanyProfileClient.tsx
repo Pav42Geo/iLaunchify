@@ -385,25 +385,29 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
         </Field>
       </Fieldset>
 
-      {/* Facilities & label disclosure */}
-      <Fieldset icon={<MapPin className="h-4 w-4" />} title="Facilities & label disclosure" hint="disclosureLevel">
+      {/* Facilities & marketplace identity */}
+      <Fieldset icon={<MapPin className="h-4 w-4" />} title="Facilities & marketplace identity" hint="disclosureLevel">
         {f.hasNameableService ? (
-          // Disclosure is the PARTNER'S OWN call (Pavel 2026-07-12) — they're
-          // the responsible party named on the label, so no admin approval.
+          // Marketplace identity — the partner's ONE decision here (Pavel
+          // 2026-07-12): stay anonymous (white-label norm — no channel
+          // conflict) or be named. Named = product pages show "Manufacturer:
+          // {you}", your public Front Face is reachable, and creators MAY
+          // choose "Manufactured by you" on labels (their call, in the
+          // Studio). Underneath this writes DisclosureLevel ANONYMOUS/FULL;
+          // the legacy CITY_STATE tier is rendered nowhere and isn't offered.
           <Field
-            label="How your name appears on labels & the marketplace"
+            label="Marketplace identity"
             help={
               f.disclosure === 'FULL'
-                ? `Full = "Manufactured by ${f.companyName}${f.city ? `, ${f.city}` : ''}${f.state ? `, ${f.state}` : ''}" — your name shows on product pages and unlocks your public profile.`
-                : 'Your choice — Anonymous / City + State keep your name off product pages, and your public profile stays unreachable.'
+                ? `Named: product pages show "Manufacturer: ${f.companyName}", your public profile is live to eligible creators, and creators can pick "Manufactured by ${f.companyName}${f.city ? `, ${f.city}` : ''}${f.state ? `, ${f.state}` : ''}" on their labels.`
+                : 'Anonymous: creators see only your earned badge (Trusted / Premier) — never your name. Your public profile stays unreachable and labels can never name you.'
             }
           >
             <div className="inline-flex w-fit overflow-hidden rounded-md border border-ink-300">
               {(
                 [
                   ['ANONYMOUS', 'Anonymous'],
-                  ['CITY_STATE', 'City + State'],
-                  ['FULL', 'Full "Manufactured by"'],
+                  ['FULL', 'Show my company name'],
                 ] as const
               ).map(([key, label]) => (
                 <button
@@ -423,7 +427,8 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
           </Field>
         ) : (
           <p className="text-[12.5px] text-ink-500">
-            Disclosure applies to Manufacturing / Co-packing services — none on this account yet.
+            Marketplace identity applies to Manufacturing / Co-packing services — none on this
+            account yet.
           </p>
         )}
         {/* Facilities are the SINGLE address source (Pavel 2026-07-12): the
@@ -489,7 +494,7 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             disabled={pending || (!f.published && f.disclosure !== 'FULL' && f.hasNameableService)}
             title={
               !f.published && f.disclosure !== 'FULL' && f.hasNameableService
-                ? 'Publishing unlocks once iLaunchify sets your disclosure to Full "Manufactured by"'
+                ? 'Switch Marketplace identity to "Show my company name" to publish your profile'
                 : undefined
             }
             className={cn(
