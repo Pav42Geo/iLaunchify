@@ -26,11 +26,23 @@ import {
 } from 'lucide-react'
 import {
   saveCompanyProfile,
+  saveFacilityAddress,
   setDisclosureLevel,
   setProfilePublished,
   type DisclosureLevelKey,
 } from './actions'
 import { uploadPartnerProfileImage, removePartnerProfileImage } from './media-actions'
+import { replaceVerificationDocument } from './docs-actions'
+
+export interface DocSlotVM {
+  kind: 'CERT_OF_INCORPORATION' | 'BUSINESS_LICENSE' | 'INSURANCE'
+  label: string
+  filename: string | null
+  uploadedAt: string | null
+  expiresAt: string | null
+  sectionStatus: string
+  sectionVerifiedAt: string | null
+}
 
 export interface CompanyProfileInitial {
   companyName: string
@@ -43,8 +55,13 @@ export interface CompanyProfileInitial {
   logoUrl: string | null
   coverImageUrl: string | null
   addressLine1: string
+  addressLine2: string
   city: string
   state: string
+  postalCode: string
+  approved: boolean
+  businessReviewPending: boolean
+  docSlots: DocSlotVM[]
   hasNameableService: boolean
   disclosure: string
   published: boolean
@@ -109,6 +126,31 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
         about: f.about,
         bestForTags: f.bestForTags,
       })
+      setSaveState('saved')
+    })
+  }
+
+  // Address autosave — separate action: on an approved account it flips the
+  // BUSINESS verification section back to PENDING (identity re-review).
+  const addressDirtyRef = useRef(false)
+  const setAddr = (k: 'addressLine1' | 'addressLine2' | 'city' | 'state' | 'postalCode', v: string) => {
+    setF((p) => ({ ...p, [k]: v }))
+    addressDirtyRef.current = true
+    setSaveState('dirty')
+  }
+  const flushAddress = () => {
+    if (!addressDirtyRef.current) return
+    addressDirtyRef.current = false
+    setSaveState('saving')
+    startTransition(async () => {
+      await saveFacilityAddress({
+        addressLine1: f.addressLine1,
+        addressLine2: f.addressLine2,
+        city: f.city,
+        state: f.state,
+        postalCode: f.postalCode,
+      })
+      if (f.approved) setF((p) => ({ ...p, businessReviewPending: true }))
       setSaveState('saved')
     })
   }
@@ -301,7 +343,11 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             className={inputCls}
           />
         </Field>
-        <Field label="About" counter={`${f.about.length} / 600`}>
+        <Field
+          label="About"
+          counter={`${f.about.length} / 600`}
+          help="Wrap your differentiator in *asterisks* — it renders in Fraunces italic on your profile."
+        >
           <textarea
             value={f.about}
             maxLength={600}
@@ -386,11 +432,46 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             Disclosure applies to Manufacturing / Co-packing services — none on this account yet.
           </p>
         )}
-        <Field label="Primary facility · street address">
-          <input value={f.addressLine1} disabled className={cn(inputCls, 'bg-ink-50 text-ink-500')} />
-          <p className="mt-1 text-[11px] text-ink-500">
-            Address changes go through your application (identity re-review).
-          </p>
+        <Field
+          label="Primary facility · street address"
+          help="Address changes on an approved account re-enter identity review — your services keep routing while the new address is verified."
+        >
+          <input
+            value={f.addressLine1}
+            onChange={(e) => setAddr('addressLine1', e.target.value)}
+            onBlur={flushAddress}
+            placeholder="Street address"
+            className={inputCls}
+          />
+          <div className="mt-2 grid grid-cols-3 gap-2.5">
+            <input
+              value={f.city}
+              onChange={(e) => setAddr('city', e.target.value)}
+              onBlur={flushAddress}
+              placeholder="City"
+              className={inputCls}
+            />
+            <input
+              value={f.state}
+              onChange={(e) => setAddr('state', e.target.value)}
+              onBlur={flushAddress}
+              placeholder="State"
+              className={inputCls}
+            />
+            <input
+              value={f.postalCode}
+              onChange={(e) => setAddr('postalCode', e.target.value)}
+              onBlur={flushAddress}
+              placeholder="ZIP"
+              className={inputCls}
+            />
+          </div>
+          {f.businessReviewPending && (
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-warning-100 bg-warning-50 px-2.5 py-[3px] text-[11px] font-bold text-warning-700">
+              <Loader2 className="h-3 w-3" />
+              Identity re-review pending
+            </span>
+          )}
         </Field>
         {f.facilities
           .filter((fac) => !fac.isDefault)
@@ -415,27 +496,17 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
           ))}
       </Fieldset>
 
-      {/* Verification documents */}
+      {/* Verification documents — per-document slots (prototype docslots).
+          Replace / renew uploads go through the real onboarding rail and, on an
+          approved account, flip the DOCUMENTS section back into admin review. */}
       <Fieldset icon={<FileText className="h-4 w-4" />} title="Verification documents" hint="Private · admin-reviewed">
-        <div className="flex items-center gap-3.5 rounded-xl border border-dashed border-ink-300 px-4 py-[13px]">
-          <span className="grid h-9 w-9 flex-none place-items-center rounded-[9px] bg-success-50 text-success-600">
-            <Check className="h-[18px] w-[18px]" />
-          </span>
-          <div>
-            <div className="text-[13px] font-semibold text-ink-900">
-              Incorporation · business license · liability insurance
-            </div>
-            <div className="text-[11px] text-ink-500">
-              Managed in your application — replacements re-enter admin review.
-            </div>
-          </div>
-          <a
-            href="/my-application"
-            className="ml-auto rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
-          >
-            Manage →
-          </a>
-        </div>
+        {f.docSlots.map((slot) => (
+          <DocSlot key={slot.kind} slot={slot} />
+        ))}
+        <p className="mt-2 text-[11px] text-ink-500">
+          Replacements re-enter admin review; your services keep routing while the new document is
+          verified.
+        </p>
       </Fieldset>
 
       {/* savebar */}
@@ -498,6 +569,116 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
 
 const inputCls =
   'w-full rounded-md border border-ink-300 bg-white px-3 py-2.5 text-[13.5px] text-ink-900 transition-all focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-500/15'
+
+// -----------------------------------------------------------------------------
+// Verification document slot (prototype .docslot) — real replace/renew rail
+// -----------------------------------------------------------------------------
+
+const DAY = 24 * 60 * 60 * 1000
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+function DocSlot({ slot }: { slot: DocSlotVM }) {
+  const [error, setError] = useState<string | null>(null)
+  const [expiry, setExpiry] = useState('')
+  const [pending, startTransition] = useTransition()
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const needsExpiry = slot.kind === 'INSURANCE'
+  const expiringSoon =
+    slot.expiresAt != null && new Date(slot.expiresAt).getTime() <= Date.now() + 30 * DAY
+  const daysLeft = slot.expiresAt
+    ? Math.max(0, Math.ceil((new Date(slot.expiresAt).getTime() - Date.now()) / DAY))
+    : null
+  const missing = slot.filename == null
+  const inReview = !missing && slot.sectionStatus !== 'VERIFIED'
+  const done = !missing && slot.sectionStatus === 'VERIFIED' && !expiringSoon
+
+  const meta = missing
+    ? 'Not uploaded yet'
+    : [
+        slot.filename,
+        slot.uploadedAt ? `uploaded ${fmtDate(slot.uploadedAt)}` : null,
+        slot.expiresAt
+          ? expiringSoon
+            ? `renewal in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`
+            : `expires ${fmtDate(slot.expiresAt)}`
+          : null,
+        inReview ? 'in admin review' : slot.sectionVerifiedAt ? `verified ${fmtDate(slot.sectionVerifiedAt)}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+
+  const upload = (file: File | undefined) => {
+    if (!file) return
+    if (needsExpiry && !expiry) {
+      setError('Enter the new expiry date printed on the certificate first.')
+      return
+    }
+    setError(null)
+    const fd = new FormData()
+    fd.set('file', file)
+    if (needsExpiry && expiry) fd.set('expiresAt', expiry)
+    startTransition(async () => {
+      const res = await replaceVerificationDocument(slot.kind, fd)
+      if (!res.ok) setError(res.error)
+    })
+  }
+
+  return (
+    <div className="mb-2.5 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-ink-300 px-3.5 py-[13px] last:mb-0">
+      <span
+        className={cn(
+          'grid h-9 w-9 flex-none place-items-center rounded-[9px]',
+          done && 'bg-success-50 text-success-600',
+          (expiringSoon || inReview) && 'bg-warning-50 text-warning-500',
+          missing && 'bg-ink-100 text-ink-400',
+        )}
+      >
+        {done ? <Check className="h-[18px] w-[18px]" /> : <Loader2 className={cn('h-[18px] w-[18px]', pending && 'animate-spin')} />}
+      </span>
+      <div className="min-w-0">
+        <div className="text-[13px] font-semibold text-ink-900">{slot.label}</div>
+        <div className="truncate text-[11px] text-ink-500">{meta}</div>
+        {error && <div className="text-[11px] font-semibold text-danger-500">{error}</div>}
+      </div>
+      <div className="ml-auto flex flex-none flex-wrap items-center gap-2">
+        {needsExpiry && (
+          <input
+            type="date"
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value)}
+            title="New expiry date (printed on the certificate)"
+            className="rounded-md border border-ink-300 px-2 py-1.5 text-[12px] text-ink-700 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-500/15"
+          />
+        )}
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => fileRef.current?.click()}
+          className={cn(
+            'rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-40',
+            missing || expiringSoon
+              ? 'bg-pink-500 text-white hover:bg-pink-600'
+              : 'border border-ink-300 bg-white text-ink-900 hover:bg-ink-50',
+          )}
+        >
+          {missing ? 'Upload' : expiringSoon ? 'Upload renewal' : 'Replace'}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf,image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            upload(e.target.files?.[0])
+            e.target.value = ''
+          }}
+        />
+      </div>
+    </div>
+  )
+}
 
 function Fieldset({
   icon,

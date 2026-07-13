@@ -86,6 +86,72 @@ export async function setDisclosureLevel(level: DisclosureLevelKey): Promise<voi
   revalidatePath('/settings/company')
 }
 
+export interface FacilityAddressInput {
+  addressLine1?: string
+  addressLine2?: string
+  city?: string
+  state?: string
+  postalCode?: string
+}
+
+/**
+ * Primary facility street address — editable per the prototype, but an
+ * approved partner's address change RE-ENTERS identity review (the BUSINESS
+ * verification section flips back to PENDING; audited). Keeps "verified" honest.
+ */
+export async function saveFacilityAddress(input: FacilityAddressInput): Promise<void> {
+  const user = await requireUser()
+  const partner = await prisma.partner.findUnique({
+    where: { userId: user.id },
+    select: {
+      id: true,
+      status: true,
+      addressLine1: true,
+      addressLine2: true,
+      city: true,
+      state: true,
+      postalCode: true,
+    },
+  })
+  if (!partner) return
+
+  const data: Record<string, string | null> = {}
+  const set = (k: keyof FacilityAddressInput, max: number) => {
+    const v = input[k]
+    if (typeof v === 'string') data[k] = v.trim().slice(0, max) || null
+  }
+  set('addressLine1', 160)
+  set('addressLine2', 160)
+  set('city', 80)
+  set('state', 40)
+  set('postalCode', 20)
+  if (Object.keys(data).length === 0) return
+
+  const changed = Object.entries(data).some(
+    ([k, v]) => (partner[k as keyof typeof partner] ?? null) !== v,
+  )
+  if (!changed) return
+
+  await prisma.partner.update({ where: { id: partner.id }, data })
+
+  const approved = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
+  if (approved) {
+    await prisma.partnerVerificationSection.upsert({
+      where: { partnerId_type: { partnerId: partner.id, type: 'BUSINESS' } },
+      create: { partnerId: partner.id, type: 'BUSINESS', status: 'PENDING' },
+      update: { status: 'PENDING', verifiedAt: null, verifiedById: null },
+    })
+  }
+  await logAuditAs(user, {
+    entityType: 'Partner',
+    entityId: partner.id,
+    action: 'FACILITY_ADDRESS_CHANGED',
+    payload: { fields: Object.keys(data), reReview: approved },
+  })
+  revalidatePath('/settings/company')
+  revalidatePath('/my-application')
+}
+
 function slugify(name: string): string {
   return name
     .toLowerCase()

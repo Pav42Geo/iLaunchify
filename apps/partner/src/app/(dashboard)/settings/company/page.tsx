@@ -22,13 +22,16 @@ export default async function CompanyProfileSettingsPage() {
     where: { userId: user.id },
     select: {
       id: true,
+      status: true,
       companyName: true,
       legalName: true,
       websiteUrl: true,
       contactPhone: true,
       addressLine1: true,
+      addressLine2: true,
       city: true,
       state: true,
+      postalCode: true,
       slug: true,
       logoUrl: true,
       coverImageUrl: true,
@@ -42,9 +45,46 @@ export default async function CompanyProfileSettingsPage() {
         select: { disclosureLevel: true },
       },
       facilities: { select: { name: true, city: true, region: true, isDefault: true } },
+      verificationSections: {
+        where: { type: { in: ['BUSINESS', 'DOCUMENTS'] } },
+        select: { type: true, status: true, verifiedAt: true },
+      },
+      files: {
+        where: { sectionType: 'DOCUMENTS' },
+        orderBy: { uploadedAt: 'desc' },
+        select: {
+          kind: true,
+          originalFilename: true,
+          uploadedAt: true,
+          expiresAt: true,
+        },
+      },
     },
   })
   if (!partner) return null
+
+  // Verification-document slots (prototype docslots) — latest file per
+  // canonical kind + the DOCUMENTS section's review status. Real data only.
+  const docsSection = partner.verificationSections.find((s) => s.type === 'DOCUMENTS')
+  const businessSection = partner.verificationSections.find((s) => s.type === 'BUSINESS')
+  const DOC_KINDS = ['CERT_OF_INCORPORATION', 'BUSINESS_LICENSE', 'INSURANCE'] as const
+  const DOC_LABEL: Record<(typeof DOC_KINDS)[number], string> = {
+    CERT_OF_INCORPORATION: 'Certificate of incorporation',
+    BUSINESS_LICENSE: 'Business license',
+    INSURANCE: 'General liability insurance',
+  }
+  const docSlots = DOC_KINDS.map((kind) => {
+    const f = partner.files.find((x) => x.kind === kind) ?? null
+    return {
+      kind,
+      label: DOC_LABEL[kind],
+      filename: f?.originalFilename ?? null,
+      uploadedAt: f?.uploadedAt?.toISOString() ?? null,
+      expiresAt: f?.expiresAt?.toISOString() ?? null,
+      sectionStatus: (docsSection?.status ?? 'PENDING') as string,
+      sectionVerifiedAt: docsSection?.verifiedAt?.toISOString() ?? null,
+    }
+  })
 
   // One disclosure control for all nameable services — most restrictive wins
   // for display when they diverge.
@@ -88,8 +128,14 @@ export default async function CompanyProfileSettingsPage() {
           logoUrl: partner.logoUrl,
           coverImageUrl: partner.coverImageUrl,
           addressLine1: partner.addressLine1 ?? '',
+          addressLine2: partner.addressLine2 ?? '',
           city: partner.city ?? '',
           state: partner.state ?? '',
+          postalCode: partner.postalCode ?? '',
+          approved: partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED',
+          businessReviewPending:
+            businessSection != null && businessSection.status !== 'VERIFIED',
+          docSlots,
           hasNameableService: partner.services.length > 0,
           disclosure,
           published: Boolean(partner.profilePublishedAt),

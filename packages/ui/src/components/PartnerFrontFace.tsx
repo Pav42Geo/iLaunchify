@@ -303,7 +303,7 @@ export function PartnerFrontFace({ profile }: { profile: PartnerProfileVM }) {
           {/* About — overview */}
           {tab === 'overview' && p.about && (
             <Card title={`About ${p.companyName.split(' ')[0]}`}>
-              <p className="text-[14.5px] leading-[1.65] text-ink-600">{p.about}</p>
+              <AboutProse text={p.about} />
             </Card>
           )}
 
@@ -644,6 +644,25 @@ export function PartnerFrontFace({ profile }: { profile: PartnerProfileVM }) {
         </aside>
       </div>
     </div>
+  )
+}
+
+/** About prose — *asterisk* segments render as Fraunces italic emphasis
+ *  (authored in the partner's Company profile editor). */
+function AboutProse({ text }: { text: string }) {
+  const parts = text.split(/\*([^*]+)\*/g)
+  return (
+    <p className="text-[14.5px] leading-[1.65] text-ink-600">
+      {parts.map((seg, i) =>
+        i % 2 === 1 ? (
+          <em key={i} className="font-serif font-medium italic text-ink-900">
+            {seg}
+          </em>
+        ) : (
+          seg
+        ),
+      )}
+    </p>
   )
 }
 
