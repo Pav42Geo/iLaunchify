@@ -21,11 +21,15 @@ function buildCsp() {
     "default-src 'self'",
     // cdn.jsdelivr.net — three.js ESM module for the partner Packaging Studio (3D),
     // loaded at runtime (no bundled npm dep). Pinned host, not a wildcard.
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.jsdelivr.net",
+    // www.googletagmanager.com — Google Analytics 4 (gtag.js), all four apps.
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.jsdelivr.net https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
+    // GA hosts listed explicitly so they survive when the https: wildcard is
+    // dropped at CSP-tightening time (GA serves its collect pixel/img here).
+    "img-src 'self' data: blob: https: https://www.googletagmanager.com https://*.google-analytics.com",
     "font-src 'self' data:",
-    "connect-src 'self' https:",
+    // *.google-analytics.com + *.analytics.google.com — GA4 measurement beacons.
+    "connect-src 'self' https: https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
     "frame-src https://js.stripe.com https://hooks.stripe.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
