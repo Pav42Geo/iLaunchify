@@ -156,6 +156,8 @@ export { DieCutFrame, DieCutLegend } from './canvas/DieCutFrame'
 export * from './canvas/frames'
 // Frame compliance gate — submit-gate validation (pure, DB-free).
 export * from './canvas/frame-compliance'
+// Label responsible-party line composer (21 CFR 101.5)
+export * from './canvas/responsibility'
 // Packaging composition — 3D surface map + component resolution (pure, DB-free).
 export * from './canvas/packaging'
 // C9 — normalized dieline SVG generator (from a PackagingDieline structured spec)

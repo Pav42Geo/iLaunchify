@@ -199,6 +199,13 @@ enum DisclosureLevel {
   ANONYMOUS // "Manufactured for [Creator] in the USA"
 }
 
+// Label responsible-party line — the creator's per-product choice (21 CFR 101.5).
+enum ResponsiblePartyMode {
+  BRAND_MANUFACTURED_FOR // "Manufactured for [Brand] …" (default)
+  BRAND_DISTRIBUTED_BY // "Distributed by [Brand] …"
+  MANUFACTURER // "Manufactured by [Partner] …" — requires partner disclosure FULL
+}
+
 // =============================================================================
 // ENUMS — BRAND, PRODUCT, RECIPE
 // =============================================================================
@@ -1859,6 +1866,16 @@ model Brand {
   name                    String
   handle                  String                     @unique // public URL slug (storefront route)
   positioning             String? // short positioning statement
+  // --- Legal identity for the label responsible-party line (21 CFR 101.5,
+  // Pavel 2026-07-12): "Distributed by / Manufactured for [Brand], City, ST ZIP".
+  // All optional/additive — the Studio blocks the brand-mode line until filled.
+  legalName               String? // entity on the label; falls back to `name`
+  legalAddressLine1       String?
+  legalAddressLine2       String?
+  legalCity               String?
+  legalState              String?
+  legalPostalCode         String?
+  legalCountry            String? // defaults to 'US' at compose time
   // === Brand Assets (V1 corrected scope per docs/DESIGN_STUDIO_REBUILD.md §4) ===
   // The brand identity in iLaunchify is a packaging-design ASSET LIBRARY that
   // feeds the Fabric.js canvas — NOT a web design-system editor. Per memory note
@@ -2072,6 +2089,15 @@ model Product {
   inventoryAvailable      Int?
   // Disclosure level override (defaults to PartnerService's, but creator can override)
   disclosureLevelOverride DisclosureLevel?
+  // Label responsible-party line (21 CFR 101.5, Pavel 2026-07-12) — the
+  // CREATOR'S choice of signature line on this product's label:
+  //   BRAND_MANUFACTURED_FOR (default) → "Manufactured for [Brand], City, ST ZIP"
+  //   BRAND_DISTRIBUTED_BY             → "Distributed by [Brand], City, ST ZIP"
+  //   MANUFACTURER                     → "Manufactured by [Partner], City, ST ZIP"
+  //     (only offerable when the manufacturer's service disclosureLevel = FULL —
+  //      naming the partner is THEIR opt-in). Composed by
+  //      packages/ui/src/canvas/responsibility.ts from real Brand/Partner records.
+  responsiblePartyMode    ResponsiblePartyMode @default(BRAND_MANUFACTURED_FOR)
   // Visual
   primaryImageAssetId     String?
   // Catalog binding — every V1 creator product starts from a ProductTemplate
