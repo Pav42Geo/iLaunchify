@@ -519,6 +519,7 @@ function ShipToPicker({
               onChange={onChange}
               options={options}
               suggestedFc={destinations?.suggestedFc ?? null}
+              fcAlternatives={destinations?.fcAlternatives ?? []}
               labeling={labeling}
               effectiveFcOffer={effectiveFcOffer}
             />
@@ -680,6 +681,7 @@ function FulfillmentCenterBlock({
   onChange,
   options,
   suggestedFc,
+  fcAlternatives,
   labeling,
   effectiveFcOffer,
 }: {
@@ -687,6 +689,7 @@ function FulfillmentCenterBlock({
   onChange: (patch: Partial<FulfillmentState>) => void
   options: FulfillmentOptions | null
   suggestedFc: SuggestedFcOption | null
+  fcAlternatives: SuggestedFcOption[]
   labeling: FcLabelingContext | null
   effectiveFcOffer: FcLabelingOffer | null
 }) {
@@ -750,14 +753,49 @@ function FulfillmentCenterBlock({
         {choosingOther ? 'Use the suggested center' : 'Choose a different center'}
       </button>
 
-      {choosingOther && (
-        <SpecificWarehouseBlock
-          options={options}
-          pickedId={state.warehousePartnerServiceId}
-          onPick={(id) => onChange({ warehousePartnerServiceId: id, labelingAtFc: null })}
-          labelingFcIds={labelingFcIds}
-        />
-      )}
+      {choosingOther &&
+        (fcAlternatives.length > 0 ? (
+          // AFE — the top-3 next-best eligible centers, ranked (distance = the
+          // trade-off signal). Falls back to the full picker only when we have no
+          // scored alternatives (pre-L4a rows).
+          <div className="space-y-1.5">
+            {fcAlternatives.map((alt) => {
+              const picked = state.warehousePartnerServiceId === alt.partnerServiceId
+              return (
+                <button
+                  key={alt.partnerServiceId}
+                  type="button"
+                  onClick={() => onChange({ warehousePartnerServiceId: alt.partnerServiceId, labelingAtFc: null })}
+                  className={
+                    'flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ' +
+                    (picked ? 'border-pink-400 bg-pink-50/40 ring-1 ring-pink-200' : 'border-ink-200 bg-white hover:bg-ink-50/40')
+                  }
+                >
+                  <span className="min-w-0">
+                    <span className="font-semibold text-ink-900">{alt.partnerName}</span>
+                    {alt.city && (
+                      <span className="text-ink-500">
+                        {' '}· {alt.city}
+                        {alt.state ? `, ${alt.state}` : ''}
+                      </span>
+                    )}
+                    {labelingFcIds.has(alt.partnerServiceId) && <> <FcLabelingBadge /></>}
+                  </span>
+                  {alt.distanceMiles !== null && (
+                    <span className="flex-shrink-0 text-[11.5px] text-ink-500">~{alt.distanceMiles} mi</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <SpecificWarehouseBlock
+            options={options}
+            pickedId={state.warehousePartnerServiceId}
+            onPick={(id) => onChange({ warehousePartnerServiceId: id, labelingAtFc: null })}
+            labelingFcIds={labelingFcIds}
+          />
+        ))}
 
       {/* PS-3c (§8.1a) — "Finalize labeling here": ONLY when this order needs
           application downstream of the manufacturer AND the effective FC's
