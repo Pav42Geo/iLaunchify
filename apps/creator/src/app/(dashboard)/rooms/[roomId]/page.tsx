@@ -22,9 +22,17 @@ export const metadata = { title: 'Collaboration room — iLaunchify' }
  * CO_CREATION_MARKETPLACE_SPEC §16 P0. Ownership enforced in the query;
  * a foreign room 404s. The private brief payload reveals in-room only (§9).
  */
-export default async function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
+export default async function RoomPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ roomId: string }>
+  searchParams: Promise<{ object?: string }>
+}) {
   const user = await requireUser()
   const { roomId } = await params
+  // ?object= deep link (Messages object card) — pre-selects that build object.
+  const { object: initialObjectId } = await searchParams
 
   const room = await prisma.coCreationRoom.findFirst({
     where: { id: roomId, brief: { creator: { userId: user.id } } },
@@ -166,6 +174,7 @@ export default async function RoomPage({ params }: { params: Promise<{ roomId: s
       <div data-full-bleed className="col-span-full -mb-6">
       <RoomClient
         roomId={room.id}
+        initialObjectId={initialObjectId}
         rooms={switcherRooms}
         recipeLabels={recipeLabels}
         briefDomain={room.brief.category}

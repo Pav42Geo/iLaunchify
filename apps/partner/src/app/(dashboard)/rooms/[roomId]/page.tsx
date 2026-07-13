@@ -22,13 +22,17 @@ export const metadata = { title: 'Collaboration room — iLaunchify Partners' }
  */
 export default async function PartnerRoomPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ roomId: string }>
+  searchParams: Promise<{ object?: string }>
 }) {
   const user = await requireUser()
   const access = await getPartnerAccess(user.id)
   if (!access) redirect('/dashboard')
   const { roomId } = await params
+  // ?object= deep link (Messages object card) — pre-selects that build object.
+  const { object: initialObjectId } = await searchParams
 
   const room = await prisma.coCreationRoom.findFirst({
     where: { id: roomId, partnerId: access.partnerId },
@@ -131,6 +135,7 @@ export default async function PartnerRoomPage({
       <div data-full-bleed className="col-span-full -mb-6">
       <RoomClient
       roomId={room.id}
+      initialObjectId={initialObjectId}
       rooms={switcherRooms}
       recipeLabels={recipeLabels}
       rating={ratingProp}

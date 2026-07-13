@@ -514,7 +514,7 @@ export function MessagesShell(props: MessagesShellProps) {
                           </div>
                           {m.objectRef && props.roomHref ? (
                             <Link
-                              href={props.roomHref}
+                              href={`${props.roomHref}?object=${encodeURIComponent(m.objectRef.objectId)}`}
                               className="mt-s-1 flex items-center gap-s-2 rounded-lg border border-ink-200 bg-white px-s-3 py-s-2 text-left shadow-sm transition-colors hover:border-pink-300"
                             >
                               <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-ink-900 text-ui-caption text-white">

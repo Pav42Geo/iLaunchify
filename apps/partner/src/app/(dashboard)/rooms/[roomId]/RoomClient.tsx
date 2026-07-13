@@ -27,6 +27,8 @@ import { roomSearchIngredients, roomCreateIngredient } from './ingredient-search
 
 export function RoomClient(props: {
   roomId: string
+  /** ?object= deep link from a Messages object card — pre-selects that build object. */
+  initialObjectId?: string
   rooms: RoomSwitcherEntry[]
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
   rating?: {
@@ -76,6 +78,7 @@ export function RoomClient(props: {
       partnerName={props.partnerName}
       ndaSigned={props.ndaSigned}
       objects={props.objects}
+      initialObjectId={props.initialObjectId}
       milestones={props.milestones}
       events={props.events}
       messages={props.messages}

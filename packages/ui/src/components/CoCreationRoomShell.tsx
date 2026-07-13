@@ -111,6 +111,9 @@ export interface CoCreationRoomShellProps {
   /** Niche gradient key for artwork surfaces (label proof, header avatar). */
   accentGradient?: ProductGradient
   objects: RoomShellObject[]
+  /** Deep-link target (?object=<id> from a chat object card) — selects this
+   *  build object on first render when it belongs to the room. */
+  initialObjectId?: string
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
   messages: RoomShellMessage[]
@@ -443,7 +446,14 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
     () => [...props.objects].sort((a, b) => kindRank(a.kind) - kindRank(b.kind)),
     [props.objects],
   )
-  const [selectedId, setSelectedId] = React.useState(objects[0]?.id ?? '')
+  // Deep link from a chat object card (?object=<id>) selects that build
+  // object on arrival (Rooms & Messages, Pavel 2026-07-13); falls back to the
+  // first object when the id is stale/foreign.
+  const [selectedId, setSelectedId] = React.useState(() =>
+    props.initialObjectId && objects.some((o) => o.id === props.initialObjectId)
+      ? props.initialObjectId
+      : (objects[0]?.id ?? ''),
+  )
   const [rightTab, setRightTab] = React.useState<'activity' | 'messages'>('activity')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
