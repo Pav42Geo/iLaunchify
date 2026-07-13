@@ -46,7 +46,11 @@ const Schema = z.object({
 type Values = z.infer<typeof Schema>
 type ServiceT = Values['serviceTypes'][number]
 
-const SERVICE_ORDER: ServiceT[] = ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']
+// WAREHOUSE (3PL/FC) removed from SELF-SERVE application (Pavel 2026-07-13):
+// the Fulfillment Center network is a curated, admin-contracted program — 3PLs
+// come in via admin Logistics → Fulfillment Centers, never this wizard. The
+// zod enum still accepts WAREHOUSE so previously saved drafts don't break.
+const SERVICE_ORDER: ServiceT[] = ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING']
 const SERVICE: Record<ServiceT, { label: string; sub: string }> = {
   MANUFACTURING: { label: 'Manufacturing', sub: 'Make from scratch' },
   COPACKING: { label: 'Co-packing', sub: 'Fill & package' },

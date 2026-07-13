@@ -61,11 +61,10 @@ const SERVICE_TYPE_OPTIONS: Array<{ value: ServiceType; label: string; descripti
     label: 'Packaging printing',
     description: 'You print labels, stickers, or full packaging artwork',
   },
-  {
-    value: 'WAREHOUSE',
-    label: 'Warehouse / 3PL',
-    description: 'You hold inventory + pick-and-pack for fulfillment',
-  },
+  // WAREHOUSE (3PL/FC) deliberately NOT self-selectable (Pavel 2026-07-13):
+  // the FC network is admin-contracted (Logistics → Fulfillment Centers).
+  // Producers offer "storage at your facility" on their producing service
+  // instead; invited FC partners get the WAREHOUSE service admin-assigned.
 ]
 
 export function YourBusinessSection({

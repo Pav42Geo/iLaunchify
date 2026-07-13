@@ -187,10 +187,10 @@ export default async function SettingsPage() {
       <Section title="Fulfillment">
         <SettingCard
           icon={<Warehouse className="h-[18px] w-[18px]" aria-hidden="true" />}
-          title="Storage & fulfillment"
-          href="/settings/storage"
+          title="Storage at your facility"
+          href="/services"
           cta="Set storage offering"
-          description="Offer finished-goods storage at your facility — storage classes, monthly rates within admin-approved bands, and ship-on-demand."
+          description="Offer finished-goods storage at YOUR plant (hold-at-manufacturer) — classes, dwell, billing, and ship-on-demand. Edited on your Services page. Not a fulfillment center."
         />
         <SettingCard
           icon={<Truck className="h-[18px] w-[18px]" aria-hidden="true" />}

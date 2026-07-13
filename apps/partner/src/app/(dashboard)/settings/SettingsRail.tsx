@@ -71,7 +71,9 @@ const GROUPS = (b: RailBadges) => [
     items: [
       { label: 'Fulfillment', href: '/settings/fulfillment', icon: Package },
       { label: 'Shipping', href: '/settings/shipping', icon: Truck },
-      { label: 'Storage', href: '/settings/storage', icon: Warehouse },
+      // Storage → the /services "Storage at your facility" card (one editor;
+      // /settings/storage redirects there — Pavel 2026-07-13).
+      { label: 'Storage at your facility', href: '/services', icon: Warehouse },
       { label: 'Market participation', href: '/settings/participation', icon: Globe },
       { label: 'Product defaults', href: '/settings/product-defaults', icon: Route },
       { label: 'Labeling', href: '/settings/labeling', icon: Tags },

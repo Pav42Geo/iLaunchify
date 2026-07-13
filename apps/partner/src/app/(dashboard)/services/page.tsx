@@ -142,6 +142,8 @@ export default async function ServicesPage() {
         storageMinMonthlyCents: producingSvc.storageMinMonthlyCents,
         canShipParcel: producingSvc.canShipParcel,
         onDemandEnabled: producingSvc.onDemandEnabled,
+        pickFeeCents: producingSvc.pickFeeCents,
+        packFeeCents: producingSvc.packFeeCents,
       }
     : null
 

@@ -128,6 +128,9 @@ export interface StorageOfferingInput {
   storageMinMonthlyCents?: number | null
   canShipParcel?: boolean
   onDemandEnabled?: boolean
+  /** Per-parcel fees for ON_DEMAND dispatches from held stock (cents). */
+  pickFeeCents?: number | null
+  packFeeCents?: number | null
 }
 
 /**
@@ -177,6 +180,14 @@ export async function saveStorageOffering(
   }
   if (typeof input.canShipParcel === 'boolean') data.canShipParcel = input.canShipParcel
   if (typeof input.onDemandEnabled === 'boolean') data.onDemandEnabled = input.onDemandEnabled
+  if (input.pickFeeCents !== undefined) {
+    const v = int(input.pickFeeCents)
+    if (v !== undefined) data.pickFeeCents = v
+  }
+  if (input.packFeeCents !== undefined) {
+    const v = int(input.packFeeCents)
+    if (v !== undefined) data.packFeeCents = v
+  }
   if (Object.keys(data).length === 0) return { ok: true }
 
   await prisma.partnerService.update({ where: { id: service.id }, data: data as never })

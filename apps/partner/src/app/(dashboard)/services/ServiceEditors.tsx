@@ -617,6 +617,8 @@ export interface StorageTypedVM {
   storageMinMonthlyCents: number | null
   canShipParcel: boolean
   onDemandEnabled: boolean
+  pickFeeCents: number | null
+  packFeeCents: number | null
 }
 
 export function StorageEditor({ serviceId, initial }: { serviceId: string; initial: StorageTypedVM }) {
@@ -631,6 +633,8 @@ export function StorageEditor({ serviceId, initial }: { serviceId: string; initi
       initial.storageMinMonthlyCents != null ? (initial.storageMinMonthlyCents / 100).toFixed(2) : '',
     canShipParcel: initial.canShipParcel,
     onDemandEnabled: initial.onDemandEnabled,
+    pickFee: initial.pickFeeCents != null ? (initial.pickFeeCents / 100).toFixed(2) : '',
+    packFee: initial.packFeeCents != null ? (initial.packFeeCents / 100).toFixed(2) : '',
   })
   const s = useSave()
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => {
@@ -656,6 +660,8 @@ export function StorageEditor({ serviceId, initial }: { serviceId: string; initi
         storageMinMonthlyCents: dollarsToCents(f.storageMinMonthly),
         canShipParcel: f.canShipParcel,
         onDemandEnabled: f.onDemandEnabled,
+        pickFeeCents: dollarsToCents(f.pickFee),
+        packFeeCents: dollarsToCents(f.packFee),
       }),
     )
 
@@ -767,6 +773,16 @@ export function StorageEditor({ serviceId, initial }: { serviceId: string; initi
                 />
               </div>
             </div>
+            {f.onDemandEnabled && (
+              <div className="mt-3 grid grid-cols-2 gap-3 border-t border-ink-100 pt-3 sm:w-1/2">
+                <FieldL label="Pick fee ($ / parcel)">
+                  <input value={f.pickFee} onChange={(e) => set('pickFee', e.target.value)} className={inputCls} />
+                </FieldL>
+                <FieldL label="Pack fee ($ / parcel)">
+                  <input value={f.packFee} onChange={(e) => set('packFee', e.target.value)} className={inputCls} />
+                </FieldL>
+              </div>
+            )}
             <RouteTags tags={['On-demand channel orders', 'EasyPost rate shop']} />
           </FieldsetBox>
         </>
