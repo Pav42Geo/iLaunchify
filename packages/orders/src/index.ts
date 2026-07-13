@@ -497,6 +497,14 @@ export type {
   ChatAttachment,
   PresenceRow,
 } from './messaging'
+// Anti-circumvention contact-leak detector (pure) — chat policy enforcement
+export {
+  detectContactLeaks,
+  evaluateContactLeak,
+  CONTACT_LEAK_POLICIES,
+  CONTACT_LEAK_WARNING,
+} from './contact-leak'
+export type { ContactLeakKind, ContactLeakMatch, ContactLeakPolicy } from './contact-leak'
 // MM-5 — badge → production-fee resolution (shadow-safe, reversible).
 // MM-7 — fee-grace / promo layer (global grace + manual grants).
 export { resolveManufacturerFeeBps, feeBpsToPct, resolveActivePromo, addMonths, addDays, addDuration } from './merit-fee'

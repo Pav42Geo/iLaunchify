@@ -78,7 +78,7 @@ export interface ShellMember {
   isAdmin: boolean
 }
 
-export type ShellResult = { ok: boolean; error?: string }
+export type ShellResult = { ok: boolean; error?: string; warning?: string }
 
 export interface ShellObjectRef {
   kind: string
@@ -243,6 +243,8 @@ export function MessagesShell(props: MessagesShellProps) {
   const [draft, setDraft] = React.useState('')
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  /** Soft policy notice (e.g. contact-leak terms reminder) — message still sent. */
+  const [notice, setNotice] = React.useState<string | null>(null)
   const [mentionQuery, setMentionQuery] = React.useState<string | null>(null)
   const [pendingAttach, setPendingAttach] = React.useState<ShellObjectRef | null>(null)
   const [attachOpen, setAttachOpen] = React.useState(false)
@@ -302,6 +304,7 @@ export function MessagesShell(props: MessagesShellProps) {
     setAttachOpen(false)
     setPendingFile(null)
     setEmojiOpen(false)
+    setNotice(null)
     setPresence(new Map())
   }, [selectedKey])
 
@@ -347,6 +350,7 @@ export function MessagesShell(props: MessagesShellProps) {
       setPendingAttach(null)
       setAttachOpen(false)
       setPendingFile(null)
+      setNotice(res.warning ?? null)
       router.refresh()
     } else {
       setError(res.error ?? 'Message failed to send')
@@ -709,6 +713,20 @@ export function MessagesShell(props: MessagesShellProps) {
               <p className="px-s-5 pb-s-1 text-ui-label normal-case tracking-normal text-ink-500" aria-live="polite">
                 {typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing
                 <span className="animate-pulse">…</span>
+              </p>
+            ) : null}
+
+            {notice ? (
+              <p className="flex items-start gap-s-2 border-t border-warning-100 bg-warning-50 px-s-4 py-s-1 text-ui-label normal-case tracking-normal text-warning-700" role="status">
+                <span className="flex-1">⚠ {notice}</span>
+                <button
+                  type="button"
+                  onClick={() => setNotice(null)}
+                  aria-label="Dismiss notice"
+                  className="font-bold text-warning-700 hover:opacity-70"
+                >
+                  ×
+                </button>
               </p>
             ) : null}
 

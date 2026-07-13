@@ -10135,6 +10135,13 @@ model CoCreationSettings {
   makerSwitchGraceDays Int    @default(14) // WITHIN_GRACE_DAYS window; 0 = no time limit
   maxMakerSwitches     Int    @default(1) // per brief; 0 = unlimited
 
+  // ---- Anti-circumvention (counsel redlines 2026-07-07; detector 2026-07-13) ----
+  // What happens when a chat message carries contact-exchange signals (emails,
+  // phones, messenger-app mentions): OFF | WARN | WARN_AND_FLAG | BLOCK.
+  // Default WARN_AND_FLAG: message sends, sender sees the terms reminder, an
+  // AuditLog flag row lands for admin review. Never silently censors.
+  contactLeakPolicy String @default("WARN_AND_FLAG")
+
   // ---- Promoted interests (StaffMeUp-inverted: labeled slots, rank untouched) ----
   promotedInterestsEnabled    Boolean @default(false) // master switch; token checkout gated on payments go-live
   promotedSlotsPerBrief       Int     @default(2)

@@ -281,6 +281,35 @@ export function CoCreationSettingsForm({ initial }: { initial: CoCreationSetting
       </Card>
 
       <Card
+        icon={RefreshCcw}
+        title="Chat anti-circumvention"
+        desc="Counsel redlines 2026-07-07: room chat + DMs are the easiest place to move a deal off-platform. The detector spots contact-exchange signals (emails — including “name at gmail dot com”, phone numbers, messenger-app mentions); this policy decides what happens. It never silently censors."
+      >
+        <Field
+          label="Contact-leak policy"
+          hint="Warn + flag (default): the message sends, the sender sees the terms reminder, and an audit flag lands for admin review. Block refuses the message outright."
+        >
+          <select
+            aria-label="Contact leak policy"
+            value={v.contactLeakPolicy}
+            onChange={(e) => {
+              setV((s) => ({
+                ...s,
+                contactLeakPolicy: e.target.value as CoCreationSettingsValues['contactLeakPolicy'],
+              }))
+              setStatus(null)
+            }}
+            className="w-72 rounded-md border border-ink-300 bg-white px-2.5 py-1.5 text-[13px] font-medium text-ink-900 shadow-sm focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+          >
+            <option value="OFF">Off — detector disabled</option>
+            <option value="WARN">Warn — remind the sender, send anyway</option>
+            <option value="WARN_AND_FLAG">Warn + flag for admin review (default)</option>
+            <option value="BLOCK">Block — refuse messages with contact details</option>
+          </select>
+        </Field>
+      </Card>
+
+      <Card
         icon={Sparkles}
         title="Promoted interests"
         desc="StaffMeUp-inverted (decided 2026-07-10): makers buy LABELED promoted slots pinned above the organic list — fit and merit ranking are never affected, and only brief-eligible makers can promote. Token checkout ships with the payments slice; until then this stays off."

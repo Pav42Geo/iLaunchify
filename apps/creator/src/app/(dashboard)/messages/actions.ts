@@ -21,7 +21,7 @@ import {
 import { uploadFile, roomChatAttachmentKey, dmChatAttachmentKey } from '@ilaunchify/storage'
 import { z } from 'zod'
 
-export type MessagesActionResult = { ok: boolean; error?: string }
+export type MessagesActionResult = { ok: boolean; error?: string; warning?: string }
 
 // ⧉ object anchor — only the id is trusted from the client; title/subtitle are
 // re-derived server-side from the room's own object so a message can never
@@ -133,7 +133,7 @@ export async function sendRoomMessageAction(
     notifyUserIds: members.filter((m) => m.side === 'PARTNER').map((m) => m.userId),
     roomTitle: room.brief.title,
   })
-  return res.ok ? { ok: true } : { ok: false, error: res.error }
+  return res.ok ? { ok: true, ...(res.warning ? { warning: res.warning } : {}) } : { ok: false, error: res.error }
 }
 
 export async function markRoomReadAction(roomId: string): Promise<void> {
@@ -201,7 +201,7 @@ export async function sendDmAction(
     body: parsed.data,
     ...(attachment ? { attachment } : {}),
   })
-  return res.ok ? { ok: true } : { ok: false, error: res.error }
+  return res.ok ? { ok: true, ...(res.warning ? { warning: res.warning } : {}) } : { ok: false, error: res.error }
 }
 
 export async function markDmReadAction(conversationId: string): Promise<void> {

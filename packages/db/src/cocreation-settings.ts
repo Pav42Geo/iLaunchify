@@ -36,6 +36,8 @@ export interface CoCreationSettingsValues {
     | 'UNTIL_FUNDED'
   makerSwitchGraceDays: number
   maxMakerSwitches: number
+  // Anti-circumvention: chat contact-leak policy (detector in @ilaunchify/orders)
+  contactLeakPolicy: 'OFF' | 'WARN' | 'WARN_AND_FLAG' | 'BLOCK'
   // Promoted interests (labeled slots — never touch ranking)
   promotedInterestsEnabled: boolean
   promotedSlotsPerBrief: number
@@ -61,6 +63,9 @@ export const COCREATION_SETTINGS_DEFAULTS: CoCreationSettingsValues = {
   makerSwitchPolicy: 'UNTIL_FIRST_SUBMISSION',
   makerSwitchGraceDays: 14,
   maxMakerSwitches: 1,
+  // Warn + flag by default: visible to the sender, reviewable by the admin,
+  // never a silent block (tighten to BLOCK from the console when needed).
+  contactLeakPolicy: 'WARN_AND_FLAG',
   promotedInterestsEnabled: false,
   promotedSlotsPerBrief: 2,
   promoTokenPriceCents: 2500,
@@ -94,6 +99,7 @@ export async function getCoCreationSettings(): Promise<CoCreationSettingsValues>
           makerSwitchPolicy: true,
           makerSwitchGraceDays: true,
           maxMakerSwitches: true,
+          contactLeakPolicy: true,
           promotedInterestsEnabled: true,
           promotedSlotsPerBrief: true,
           promoTokenPriceCents: true,

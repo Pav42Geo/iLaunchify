@@ -21,7 +21,7 @@ import {
 import { uploadFile, roomChatAttachmentKey, dmChatAttachmentKey } from '@ilaunchify/storage'
 import { z } from 'zod'
 
-export type MessagesActionResult = { ok: boolean; error?: string }
+export type MessagesActionResult = { ok: boolean; error?: string; warning?: string }
 
 // Chat attachments — same rail + limits as ticket attachments.
 const UPLOAD_MAX_BYTES = 15 * 1024 * 1024
@@ -142,7 +142,7 @@ export async function sendRoomMessageAction(
     notifyUserIds: members.filter((m) => m.side === 'CREATOR').map((m) => m.userId),
     roomTitle: room.brief.title,
   })
-  return res.ok ? { ok: true } : { ok: false, error: res.error }
+  return res.ok ? { ok: true, ...(res.warning ? { warning: res.warning } : {}) } : { ok: false, error: res.error }
 }
 
 export async function markRoomReadAction(roomId: string): Promise<void> {
@@ -199,7 +199,7 @@ export async function sendDmAction(
     body: parsed.data,
     ...(attachment ? { attachment } : {}),
   })
-  return res.ok ? { ok: true } : { ok: false, error: res.error }
+  return res.ok ? { ok: true, ...(res.warning ? { warning: res.warning } : {}) } : { ok: false, error: res.error }
 }
 
 export async function markDmReadAction(conversationId: string): Promise<void> {

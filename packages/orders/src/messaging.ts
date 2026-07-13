@@ -15,8 +15,10 @@
 // dispatch only when the recipient had NO unread messages in that thread —
 // the first message pings, the rest ride the unread badge.
 
-import { prisma, type RoomStatus } from '@ilaunchify/db'
+import { prisma, getCoCreationSettings, type RoomStatus } from '@ilaunchify/db'
 import { dispatchNotification } from '@ilaunchify/notifications'
+import { logAuditAs } from '@ilaunchify/audit'
+import { evaluateContactLeak, CONTACT_LEAK_WARNING } from './contact-leak'
 
 import {
   chatAttachmentFromPayload,
@@ -311,13 +313,61 @@ export interface SendRoomMessageInput {
   roomTitle?: string
 }
 
-export type MessagingResult = { ok: true; id?: string } | { ok: false; error: string }
+export type MessagingResult =
+  | { ok: true; id?: string; warning?: string }
+  | { ok: false; error: string }
+
+/**
+ * Anti-circumvention choke point (single place for room chat + DMs).
+ * Returns BLOCK error copy, a WARN(-and-flag) warning, or nothing.
+ */
+async function applyContactLeakPolicy(input: {
+  body: string
+  actor: { id: string; role: 'CREATOR' | 'PARTNER' }
+  entityType: 'RoomMessage' | 'DirectMessage'
+  threadId: string
+}): Promise<{ blocked?: string; warning?: string; flag?: () => Promise<void> }> {
+  const policy = (await getCoCreationSettings()).contactLeakPolicy
+  const verdict = evaluateContactLeak(input.body, policy)
+  if (verdict.action === 'ALLOW') return {}
+  if (verdict.action === 'BLOCK') return { blocked: CONTACT_LEAK_WARNING }
+  const result: { warning: string; flag?: () => Promise<void> } = {
+    warning: CONTACT_LEAK_WARNING,
+  }
+  if (verdict.action === 'WARN_AND_FLAG') {
+    // Flag runs AFTER the message row exists (caller invokes with the id).
+    result.flag = async () => {
+      await logAuditAs(
+        { id: input.actor.id, role: input.actor.role },
+        {
+          entityType: input.entityType,
+          entityId: input.threadId,
+          action: 'CONTACT_LEAK_FLAGGED',
+          payload: {
+            kinds: [...new Set(verdict.matches.map((m) => m.kind))],
+            excerpts: verdict.matches.slice(0, 5).map((m) => m.excerpt),
+          },
+        },
+      ).catch(() => undefined) // flag is best-effort; never fail the send
+    }
+  }
+  return result
+}
 
 export async function sendRoomChatMessage(input: SendRoomMessageInput): Promise<MessagingResult> {
   const body = input.body.trim()
   // Attachment-only sends are fine; text-only sends still need text.
   if (!body && !input.attachment) return { ok: false, error: 'Empty message' }
   if (body.length > 4000) return { ok: false, error: 'Message too long' }
+
+  // Anti-circumvention (admin policy: OFF / WARN / WARN_AND_FLAG / BLOCK).
+  const leak = await applyContactLeakPolicy({
+    body,
+    actor: { id: input.author.userId, role: input.author.side },
+    entityType: 'RoomMessage',
+    threadId: input.roomId,
+  })
+  if (leak.blocked) return { ok: false, error: leak.blocked }
 
   const created = await prisma.roomMessage.create({
     data: {
@@ -364,7 +414,8 @@ export async function sendRoomChatMessage(input: SendRoomMessageInput): Promise<
       })
     }
   }
-  return { ok: true, id: created.id }
+  if (leak.flag) await leak.flag()
+  return { ok: true, id: created.id, ...(leak.warning ? { warning: leak.warning } : {}) }
 }
 
 export async function markRoomRead(roomId: string, userId: string): Promise<void> {
@@ -447,6 +498,15 @@ export async function sendDirectMessage(input: {
   })
   if (!me) return { ok: false, error: 'Not a participant' }
 
+  // Anti-circumvention — DMs are the likeliest leak channel; same policy.
+  const leak = await applyContactLeakPolicy({
+    body,
+    actor: { id: input.authorUserId, role: me.side === 'PARTNER' ? 'PARTNER' : 'CREATOR' },
+    entityType: 'DirectMessage',
+    threadId: input.conversationId,
+  })
+  if (leak.blocked) return { ok: false, error: leak.blocked }
+
   const created = await prisma.directMessage.create({
     data: {
       conversationId: input.conversationId,
@@ -485,7 +545,8 @@ export async function sendDirectMessage(input: {
       })
     }
   }
-  return { ok: true, id: created.id }
+  if (leak.flag) await leak.flag()
+  return { ok: true, id: created.id, ...(leak.warning ? { warning: leak.warning } : {}) }
 }
 
 export async function markConversationRead(conversationId: string, userId: string): Promise<void> {

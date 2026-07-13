@@ -71,6 +71,13 @@ export async function saveCoCreationSettings(
     ) {
       data.makerSwitchPolicy = patch.makerSwitchPolicy
     }
+    // Anti-circumvention chat policy (2026-07-13)
+    if (
+      patch.contactLeakPolicy !== undefined &&
+      ['OFF', 'WARN', 'WARN_AND_FLAG', 'BLOCK'].includes(patch.contactLeakPolicy)
+    ) {
+      data.contactLeakPolicy = patch.contactLeakPolicy
+    }
     set('promotedSlotsPerBrief', 0, 10)
     set('promoTokenPriceCents', 0, 1_000_00)
     if (patch.moduleEnabled !== undefined) data.moduleEnabled = !!patch.moduleEnabled
