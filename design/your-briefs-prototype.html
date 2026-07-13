@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iLaunchify — Your Briefs (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- iLaunchify tokens (packages/ui/src/tokens/colors.ts · theme.css) ---- */
+    --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;
+    --pink-400:#FF5285;--pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;--pink-800:#9E0E40;
+    --neon-500:#B5FF3D;
+    --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+    --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+    --success-50:#E7F4EC;--success-500:#1E7C4A;--success-700:#135733;
+    --warning-50:#FFF4E2;--warning-500:#B45309;
+    --danger-50:#FBE8E7;--danger-500:#C2362F;--danger-600:#A62A26;
+    --info-50:#E8F1FB;--info-500:#1F5BA8;
+    --g-lime:radial-gradient(120% 130% at 50% 0%,#E8FFB8,#B8FF66 65%,#9EE61F);
+    --g-pink:radial-gradient(120% 130% at 50% 0%,#FFE0EC,#FFB3CC 60%,#FF7FA8);
+    --g-purple:radial-gradient(120% 130% at 50% 0%,#EEE6FF,#C9B6FF 60%,#A48CFF);
+    --g-yellow:radial-gradient(120% 130% at 50% 0%,#FFF6C2,#FFE074 60%,#F5C842);
+    --g-cyan:radial-gradient(120% 130% at 50% 0%,#D1F2FF,#8DE0FF 60%,#5BC5F0);
+    --g-mint:radial-gradient(120% 130% at 50% 0%,#D6F5E4,#9CE6BB 60%,#6BD198);
+    --sans:'Inter',-apple-system,system-ui,sans-serif;
+    --display:'Bricolage Grotesque','Inter',sans-serif;
+    --serif:'Fraunces',Georgia,serif;
+    --r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+    --el-card:0 1px 2px rgba(24,24,26,.05);
+    --el-pop:0 16px 40px -16px rgba(24,24,26,.30);
+    --el-lg:0 12px 28px rgba(24,24,26,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--ink-50);color:var(--ink-900);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  select{font-family:inherit}
+  .muted{color:var(--ink-500)}.small{font-size:12px}.tiny{font-size:11px}.b{font-weight:700}
+  .disp{font-family:var(--display);letter-spacing:-.02em}
+  em,.emph{font-family:var(--serif);font-style:italic;font-weight:500;color:var(--pink-700)}
+
+  .app{max-width:1120px;margin:18px auto;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--el-lg)}
+
+  /* ---- header chrome (mirrors co-creation-demo) ---- */
+  .hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;background:#fff;border-bottom:1px solid var(--ink-200)}
+  .mark{width:28px;height:28px;border-radius:8px;background:var(--pink-500);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;font-family:var(--display)}
+  .word{font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
+  .word .lo{color:var(--pink-500)}
+  .sublabel{font-size:12px;color:var(--ink-500);border-left:1px solid var(--ink-200);padding-left:12px;margin-left:2px}
+  .hdr .spacer{flex:1}
+  .rav{width:26px;height:26px;border-radius:50%;background:var(--pink-500)}
+
+  .btn{font-size:13px;font-weight:700;padding:10px 18px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:7px;transition:.14s}
+  .btn.primary{background:var(--ink-900);color:#fff}.btn.primary:hover{background:#000;transform:translateY(-1px)}
+  .btn.pink{background:var(--pink-500);color:#fff}.btn.pink:hover{background:var(--pink-600)}
+  .btn.ghost{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn.ghost:hover{background:var(--ink-50)}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:var(--r-pill)}
+  .p-open{background:var(--info-50);color:var(--info-500)}
+  .p-choosing{background:var(--warning-50);color:var(--warning-500)}
+  .p-room{background:var(--pink-50);color:var(--pink-700)}
+  .p-prod{background:var(--success-50);color:var(--success-700)}
+  .p-done{background:var(--ink-100);color:var(--ink-600)}
+
+  /* ---- page head ---- */
+  .phead{display:flex;align-items:flex-start;gap:16px;padding:26px 28px 6px}
+  .phead h1{font-family:var(--display);font-size:27px;margin:0 0 3px;letter-spacing:-.02em}
+  .phead .sub{font-size:13.5px;color:var(--ink-500);margin:0}
+  .phead .spacer{flex:1}
+
+  /* ---- stats strip ---- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px 28px 6px}
+  .stat{background:var(--ink-50);border:1px solid var(--ink-100);border-radius:var(--r-lg);padding:12px 16px}
+  .stat .n{font-family:var(--display);font-size:24px;font-weight:800;line-height:1.1}
+  .stat .l{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-500);margin-top:2px}
+  .stat.hot{background:var(--pink-50);border-color:var(--pink-100)}
+  .stat.hot .n{color:var(--pink-700)}
+
+  /* ---- toolbar ---- */
+  .toolbar{display:flex;align-items:center;gap:8px;padding:16px 28px 4px;flex-wrap:wrap}
+  .ftab{font-size:12.5px;font-weight:700;color:var(--ink-500);padding:7px 14px;border-radius:var(--r-pill);border:1px solid var(--ink-200);background:#fff;display:inline-flex;gap:6px;align-items:center}
+  .ftab .ct{font-size:10.5px;background:var(--ink-100);color:var(--ink-600);border-radius:var(--r-pill);padding:1px 7px}
+  .ftab.on{background:var(--ink-900);border-color:var(--ink-900);color:#fff}
+  .ftab.on .ct{background:rgba(255,255,255,.18);color:#fff}
+  .toolbar .spacer{flex:1}
+  .toolbar select{border:1px solid var(--ink-300);border-radius:var(--r-md);padding:8px 11px;font-size:12.5px;background:#fff;color:var(--ink-700)}
+
+  /* ---- brief cards ---- */
+  .list{padding:16px 28px 30px;display:flex;flex-direction:column;gap:14px}
+  .bk{border:1px solid var(--ink-200);border-radius:var(--r-xl);background:#fff;box-shadow:var(--el-card);transition:.16s}
+  .bk:hover{border-color:var(--pink-300);box-shadow:var(--el-pop);transform:translateY(-2px)}
+  .bk.attn{border-color:var(--pink-500);box-shadow:0 0 0 3px var(--pink-50)}
+  .bk .inner{padding:18px 20px 16px}
+  .bhead{display:flex;gap:13px;align-items:flex-start}
+  .lg2{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:23px;flex:none}
+  .bt{flex:1;min-width:0}
+  .bt h3{font-family:var(--display);font-size:17.5px;margin:0;letter-spacing:-.01em}
+  .bmeta{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--ink-500);margin-top:2px}
+  .attnchip{font-size:10.5px;font-weight:800;background:var(--pink-500);color:#fff;padding:3px 9px;border-radius:var(--r-pill);animation:pulse 2.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+
+  /* journey mini-stepper */
+  .journey{display:flex;align-items:center;gap:0;margin:14px 0 4px}
+  .jst{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:var(--ink-400);white-space:nowrap}
+  .jst .d{width:9px;height:9px;border-radius:50%;background:var(--ink-200);flex:none}
+  .jst.done{color:var(--success-700)}.jst.done .d{background:var(--success-500)}
+  .jst.on{color:var(--pink-700)}.jst.on .d{background:var(--pink-500);box-shadow:0 0 0 3px var(--pink-50)}
+  .jconn{height:2px;flex:1;background:var(--ink-200);margin:0 8px;min-width:14px}
+  .jconn.done{background:var(--success-500)}
+
+  /* terms chips (demo .term) */
+  .terms{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .term{background:var(--ink-50);border:1px solid var(--ink-100);border-radius:10px;padding:6px 11px;min-width:110px;text-align:center}
+  .term .l{font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-500)}
+  .term .v{font-size:13.5px;font-weight:700;margin-top:1px}
+
+  /* footer row */
+  .bfoot{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .stack{display:flex}
+  .stack .m{width:20px;height:20px;border-radius:50%;border:2px solid #fff;margin-left:-6px}
+  .stack .m:first-child{margin-left:0}
+  .urgency{font-size:11px;font-weight:700;color:var(--ink-500);background:var(--ink-100);padding:3px 9px;border-radius:var(--r-pill)}
+  .urgency.hot{color:var(--danger-600);background:var(--danger-50)}
+  .bfoot .spacer{flex:1}
+  .quiet{font-size:12px;font-weight:600;color:var(--ink-500)}
+  .quiet:hover{color:var(--ink-900);text-decoration:underline}
+
+  /* empty state */
+  .empty{display:none;text-align:center;padding:56px 24px}
+  .empty .em{font-size:40px}
+  .empty h3{font-family:var(--display);font-size:20px;margin:10px 0 6px}
+  .empty p{font-size:13px;color:var(--ink-500);max-width:46ch;margin:0 auto 18px}
+
+  .note{max-width:1120px;margin:10px auto 28px;font-size:11.5px;color:var(--ink-400);text-align:center}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- header chrome -->
+  <div class="hdr">
+    <div class="mark">iL</div>
+    <div class="word">i<span class="lo">Launchify</span></div>
+    <div class="sublabel disp">Co-Creation Studio</div>
+    <div class="spacer"></div>
+    <span class="small muted">Pavel G.</span>
+    <div class="rav"></div>
+  </div>
+
+  <!-- page head -->
+  <div class="phead">
+    <div>
+      <h1>Your briefs</h1>
+      <p class="sub">Products you're <em>co-creating</em> with iLaunchify manufacturers — from idea to production.</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn primary">＋ Post a brief</button>
+  </div>
+
+  <!-- stats strip -->
+  <div class="stats" id="stats"></div>
+
+  <!-- filter toolbar -->
+  <div class="toolbar" id="ftabs">
+    <button class="ftab on" data-f="all">All <span class="ct" id="ct-all"></span></button>
+    <button class="ftab" data-f="open">Collecting interest <span class="ct" id="ct-open"></span></button>
+    <button class="ftab" data-f="choosing">Choosing a maker <span class="ct" id="ct-choosing"></span></button>
+    <button class="ftab" data-f="room">In room <span class="ct" id="ct-room"></span></button>
+    <button class="ftab" data-f="prod">In production <span class="ct" id="ct-prod"></span></button>
+    <div class="spacer"></div>
+    <select id="sort">
+      <option value="attn">Needs attention first</option>
+      <option value="new">Newest first</option>
+      <option value="old">Oldest first</option>
+    </select>
+  </div>
+
+  <!-- cards -->
+  <div class="list" id="list"></div>
+
+  <!-- empty state -->
+  <div class="empty" id="empty">
+    <div class="em">💡</div>
+    <h3>Nothing here yet</h3>
+    <p>Bring a recipe or just an idea — post a brief and fit-matched, verified manufacturers raise their hands. You compare, pick one, and build together in a private room.</p>
+    <button class="btn pink">Start your first brief →</button>
+  </div>
+</div>
+
+<p class="note">Prototype — design/your-briefs-prototype.html · matches co-creation-demo tokens · data is illustrative</p>
+
+<script>
+// ---- seeded data (illustrative; real page reads ProductBrief + rooms + interests) ----
+const BRIEFS=[
+  {id:1,title:'Passion-fruit Protein Water',emoji:'🥤',g:'--g-cyan',niche:'Fitness & Sports',status:'choosing',
+   posted:'2d ago',vol:'5,000',budget:'$1.20–1.80',lead:'6 wk',cat:'Functional Beverages',
+   interested:4,newInterests:2,respondsIn:'11d',attn:'4 interests — compare & pick',journey:2},
+  {id:2,title:'Adaptogen Gummy Duo',emoji:'🍬',g:'--g-purple',niche:'Wellness',status:'room',
+   posted:'9d ago',vol:'10,000',budget:'$2.10–2.60',lead:'8 wk',cat:'Supplements',
+   maker:'VitaForm Labs',roomLine:'recipe v2 needs your review',attn:'recipe v2 — your review',journey:3},
+  {id:3,title:'Sea-salt Recovery Electrolytes',emoji:'⚡',g:'--g-lime',niche:'Fitness & Sports',status:'open',
+   posted:'6h ago',vol:'3,000',budget:'$0.90–1.30',lead:'5 wk',cat:'Functional Beverages',
+   interested:1,newInterests:1,respondsIn:'13d',journey:1,fresh:true},
+  {id:4,title:'Calm-night Herbal Tea',emoji:'🍵',g:'--g-mint',niche:'Wellness',status:'prod',
+   posted:'6w ago',vol:'8,000',budget:'$1.45–1.60',lead:'7 wk',cat:'Tea & Infusions',
+   maker:'Golden Leaf Co-Pack',journey:4},
+  {id:5,title:'Kids' + String.fromCharCode(8217) + ' Omega Chews',emoji:'🐟',g:'--g-yellow',niche:'Family & Kids',status:'open',
+   posted:'1d ago',vol:'6,000',budget:'$1.80–2.20',lead:'6 wk',cat:'Supplements',
+   interested:0,respondsIn:'12d',journey:1},
+];
+const JOURNEY=['Posted','Interests','Shortlist','Room','Production'];
+const STATUS={
+  open:{pill:'p-open',label:'⏳ Collecting interest',cta:'View brief',ctaCls:'ghost'},
+  choosing:{pill:'p-choosing',label:'★ Choosing a maker',cta:'Review interests →',ctaCls:'pink'},
+  room:{pill:'p-room',label:'🚪 In collaboration room',cta:'Open room →',ctaCls:'pink'},
+  prod:{pill:'p-prod',label:'✓ In production',cta:'View product →',ctaCls:'primary'},
+};
+let filter='all',sort='attn';
+
+function stackHtml(n,fresh){
+  if(!n)return '<span class="small muted">Be first interests pending — matched makers were notified</span>';
+  const g=['--g-purple','--g-pink','--g-lime','--g-cyan'];
+  let s='<span class="stack">'+Array.from({length:Math.min(n,4)},(_,i)=>`<span class="m" style="background:var(${g[i]})"></span>`).join('')+'</span>';
+  return s+`<span class="small muted">${n} interested${fresh?` · <b style="color:var(--pink-700)">${fresh} new</b>`:''}</span>`;
+}
+function journeyHtml(step){
+  return '<div class="journey">'+JOURNEY.map((l,i)=>{
+    const cls=i<step?'done':i===step?'on':'';
+    return `<span class="jst ${cls}"><span class="d"></span>${l}</span>`+(i<JOURNEY.length-1?`<span class="jconn ${i<step?'done':''}"></span>`:'');
+  }).join('')+'</div>';
+}
+function card(b){
+  const st=STATUS[b.status];
+  return `<div class="bk ${b.attn?'attn':''}" style="${b.fresh?'border-color:var(--pink-500);box-shadow:0 0 0 3px var(--pink-50)':''}">
+    <div class="inner">
+      <div class="bhead">
+        <div class="lg2" style="background:var(${b.g})">${b.emoji}</div>
+        <div class="bt">
+          <h3 class="disp">${b.title}</h3>
+          <div class="bmeta"><span>${b.niche}</span><span>posted ${b.posted}</span>${b.maker?`<span>with <b>${b.maker}</b></span>`:''}${b.roomLine?`<span style="color:var(--warning-500)">· ${b.roomLine}</span>`:''}</div>
+        </div>
+        ${b.attn?`<span class="attnchip">● ${b.attn}</span>`:''}
+        <span class="pill ${st.pill}">${st.label}</span>
+      </div>
+      ${journeyHtml(b.journey)}
+      <div class="terms">
+        <div class="term"><div class="l">Volume</div><div class="v">${b.vol}</div></div>
+        <div class="term"><div class="l">Budget/unit</div><div class="v">${b.budget}</div></div>
+        <div class="term"><div class="l">Lead time</div><div class="v">${b.lead}</div></div>
+        <div class="term"><div class="l">Category</div><div class="v" style="font-size:11.5px">${b.cat}</div></div>
+      </div>
+      <div class="bfoot">
+        ${b.status==='open'||b.status==='choosing'?stackHtml(b.interested,b.newInterests):''}
+        ${b.respondsIn?`<span class="urgency">⏱ pool open ${b.respondsIn} more</span>`:''}
+        <span class="spacer"></span>
+        <button class="quiet">View brief</button>
+        <button class="btn ${st.ctaCls}" style="padding:8px 16px;font-size:12.5px">${st.cta}</button>
+      </div>
+    </div>
+  </div>`;
+}
+function render(){
+  let l=BRIEFS.filter(b=>filter==='all'||b.status===filter);
+  if(sort==='attn')l=[...l].sort((a,b)=>(b.attn?1:0)-(a.attn?1:0));
+  else if(sort==='new')l=[...l].reverse();
+  document.getElementById('list').innerHTML=l.map(card).join('');
+  document.getElementById('empty').style.display=l.length?'none':'block';
+  document.getElementById('list').style.display=l.length?'flex':'none';
+  // counts
+  const ct=s=>BRIEFS.filter(b=>s==='all'||b.status===s).length;
+  for(const f of ['all','open','choosing','room','prod'])document.getElementById('ct-'+f).textContent=ct(f);
+  // stats
+  const attn=BRIEFS.filter(b=>b.attn).length;
+  document.getElementById('stats').innerHTML=`
+    <div class="stat ${attn?'hot':''}"><div class="n">${attn}</div><div class="l">Need your decision</div></div>
+    <div class="stat"><div class="n">${ct('open')+ct('choosing')}</div><div class="l">In the pool</div></div>
+    <div class="stat"><div class="n">${ct('room')}</div><div class="l">In rooms</div></div>
+    <div class="stat"><div class="n">${ct('prod')}</div><div class="l">In production</div></div>`;
+}
+document.getElementById('ftabs').addEventListener('click',e=>{
+  const t=e.target.closest('.ftab');if(!t)return;
+  filter=t.dataset.f;
+  document.querySelectorAll('.ftab').forEach(x=>x.classList.toggle('on',x===t));
+  render();
+});
+document.getElementById('sort').addEventListener('change',e=>{sort=e.target.value;render();});
+render();
+</script>
+</body>
+</html>
