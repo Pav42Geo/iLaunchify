@@ -308,6 +308,66 @@ export async function loadEarlierMessagesAction(
   }
 }
 
+/**
+ * Dock snapshot — the mini-chat window's poll (membership-guarded). Returns
+ * the newest window of shell-shaped messages + names for the typing line.
+ */
+export async function loadDockThreadAction(thread: { kind: 'room' | 'dm'; id: string }): Promise<{
+  ok: boolean
+  title?: string
+  subtitle?: string
+  messages?: ShellChatMessage[]
+  memberNames?: Record<string, string>
+  error?: string
+}> {
+  const user = await requireUser()
+
+  if (thread.kind === 'room') {
+    const room = await ownedRoom(thread.id, user.id)
+    if (!room) return { ok: false, error: 'Room not found' }
+    const [{ messages }, members] = await Promise.all([
+      listRoomChatMessages(thread.id, { limit: 40 }),
+      getRoomMembers(thread.id),
+    ])
+    return {
+      ok: true,
+      title: room.brief.title,
+      memberNames: Object.fromEntries(members.map((m) => [m.userId, m.name])),
+      messages: await Promise.all(
+        messages.map(async (m) => ({ ...m, attachment: await signAttachment(m.attachment) })),
+      ),
+    }
+  }
+
+  if (!(await isConversationParticipant(thread.id, user.id)))
+    return { ok: false, error: 'Conversation not found' }
+  const parts = await prisma.conversationParticipant.findMany({
+    where: { conversationId: thread.id },
+    select: { userId: true, displayName: true, roleLabel: true, side: true },
+  })
+  const other = parts.find((p) => p.userId !== user.id)
+  const { messages } = await listDirectMessages(thread.id, { limit: 40 })
+  return {
+    ok: true,
+    title: other?.displayName ?? 'Direct message',
+    subtitle: other?.roleLabel ?? undefined,
+    memberNames: Object.fromEntries(parts.map((p) => [p.userId, p.displayName])),
+    messages: await Promise.all(
+      messages.map(async (m) => ({
+        id: m.id,
+        authorUserId: m.authorUserId,
+        authorName: m.authorUserId === user.id ? 'You' : (other?.displayName ?? 'Collaborator'),
+        authorRoleLabel: m.authorUserId === user.id ? null : (other?.roleLabel ?? null),
+        authorRole: m.authorUserId === user.id ? 'CREATOR' : other?.side === 'PARTNER' ? 'PARTNER' : 'CREATOR',
+        body: m.body,
+        objectRef: null,
+        attachment: await signAttachment(m.attachment),
+        createdAt: m.createdAt,
+      })),
+    ),
+  }
+}
+
 /** Upload a composer file to thread-scoped R2 storage (membership-guarded). */
 export async function uploadChatAttachmentAction(
   thread: { kind: 'room' | 'dm'; id: string },

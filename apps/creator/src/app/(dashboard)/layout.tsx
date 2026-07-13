@@ -17,11 +17,13 @@ import { LegalGate } from './LegalGate'
 import { DashboardSidebar } from '@/components/nav/DashboardSidebar'
 import { DashboardTopbar } from '@/components/nav/DashboardTopbar'
 import { LaunchChecklistDrawer } from '@/components/checklist/LaunchChecklistDrawer'
+import { MessagesDockHost } from '@/components/MessagesDockHost'
 import {
   LaunchChecklistProvider,
   type ChecklistSnapshot,
   type StripeStatus,
 } from '@/components/checklist/LaunchChecklistProvider'
+import { countUnreadThreads } from '@ilaunchify/orders'
 import { getCreatorChecklistState } from './_actions/checklist-actions'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -84,12 +86,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const roomSeen =
     user.role !== 'CREATOR' || !state || typeof progress.roomFirstVisitAt === 'string'
 
+  // Messages badge — threads (rooms + DMs) with unread messages. Refreshes on
+  // every navigation; the /messages page itself polls live. Fail-soft: the
+  // count is decoration, never worth blocking the layout.
+  const messagesUnread = await countUnreadThreads(user.id, 'CREATOR').catch(() => 0)
+
   return (
     <LaunchChecklistProvider initialSnapshot={snapshot} meta={{ shouldAutoOpen }}>
       <div className="flex h-screen flex-col">
         <DashboardTopbar user={user} />
         <div className="flex min-h-0 flex-1">
-          <DashboardSidebar showBriefs={showBriefs} roomSeen={roomSeen} />
+          <DashboardSidebar showBriefs={showBriefs} roomSeen={roomSeen} messagesUnread={messagesUnread} />
           {/* overflow-x-clip lets a landing page's hero break full-bleed
               (margin-left: calc(50% - 50vw); width: 100vw) and get clipped to
               the content area instead of spilling under the sidebar.
@@ -112,6 +119,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </div>
       <LaunchChecklistDrawer />
+      {/* Stacked mini-chat windows (co-creation routes only — self-hiding). */}
+      <MessagesDockHost meUserId={user.id} />
     </LaunchChecklistProvider>
   )
 }

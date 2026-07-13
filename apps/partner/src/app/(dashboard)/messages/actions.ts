@@ -161,6 +161,67 @@ export async function loadEarlierMessagesAction(
   }
 }
 
+/**
+ * Dock snapshot — the mini-chat window's poll (org/participant-guarded).
+ * Returns the newest window of shell-shaped messages + typing-line names.
+ */
+export async function loadDockThreadAction(thread: { kind: 'room' | 'dm'; id: string }): Promise<{
+  ok: boolean
+  title?: string
+  subtitle?: string
+  messages?: ShellChatMessage[]
+  memberNames?: Record<string, string>
+  error?: string
+}> {
+  const ctx = await actingContext()
+  if (!ctx) return { ok: false, error: 'No partner access' }
+
+  if (thread.kind === 'room') {
+    const room = await orgRoom(thread.id, ctx.access.partnerId)
+    if (!room) return { ok: false, error: 'Room not found' }
+    const [{ messages }, members] = await Promise.all([
+      listRoomChatMessages(thread.id, { limit: 40 }),
+      getRoomMembers(thread.id),
+    ])
+    return {
+      ok: true,
+      title: room.brief.title,
+      memberNames: Object.fromEntries(members.map((m) => [m.userId, m.name])),
+      messages: await Promise.all(
+        messages.map(async (m) => ({ ...m, attachment: await signAttachment(m.attachment) })),
+      ),
+    }
+  }
+
+  if (!(await isConversationParticipant(thread.id, ctx.user.id)))
+    return { ok: false, error: 'Conversation not found' }
+  const parts = await prisma.conversationParticipant.findMany({
+    where: { conversationId: thread.id },
+    select: { userId: true, displayName: true, roleLabel: true, side: true },
+  })
+  const other = parts.find((p) => p.userId !== ctx.user.id)
+  const { messages } = await listDirectMessages(thread.id, { limit: 40 })
+  return {
+    ok: true,
+    title: other?.displayName ?? 'Direct message',
+    subtitle: other?.roleLabel ?? undefined,
+    memberNames: Object.fromEntries(parts.map((p) => [p.userId, p.displayName])),
+    messages: await Promise.all(
+      messages.map(async (m) => ({
+        id: m.id,
+        authorUserId: m.authorUserId,
+        authorName: m.authorUserId === ctx.user.id ? 'You' : (other?.displayName ?? 'Collaborator'),
+        authorRoleLabel: m.authorUserId === ctx.user.id ? null : (other?.roleLabel ?? null),
+        authorRole: m.authorUserId === ctx.user.id ? 'PARTNER' : other?.side === 'CREATOR' ? 'CREATOR' : 'PARTNER',
+        body: m.body,
+        objectRef: null,
+        attachment: await signAttachment(m.attachment),
+        createdAt: m.createdAt,
+      })),
+    ),
+  }
+}
+
 /** This member's own name + specialist label, straight from the members list. */
 async function selfInRoom(roomId: string, userId: string) {
   const members = await getRoomMembers(roomId)

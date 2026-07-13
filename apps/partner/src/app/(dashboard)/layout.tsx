@@ -23,7 +23,9 @@ import { headers } from 'next/headers'
 import { PartnerSidebar } from '@/components/nav/PartnerSidebar'
 import { PartnerTopbar } from '@/components/nav/PartnerTopbar'
 import { ActivationJourneyTopbar } from '@/components/nav/ActivationJourneyTopbar'
+import { MessagesDockHost } from '@/components/MessagesDockHost'
 import { resolveActivationLimited } from '@/lib/activation-status'
+import { countUnreadThreads } from '@ilaunchify/orders'
 
 // Statuses where the partner is mid-onboarding (form not yet submitted).
 const PRE_SUBMIT_STATUSES = new Set([
@@ -151,6 +153,12 @@ export default async function PartnerDashboardLayout({ children }: { children: R
     (effectivePoolServiceTypes.includes('MANUFACTURING') ||
       (effectivePoolServiceTypes.includes('COPACKING') && copackBriefPool))
 
+  // Messages badge — threads (rooms + DMs) with unread messages. Fail-soft:
+  // decoration, never worth blocking the layout.
+  const messagesUnread = restricted
+    ? 0
+    : await countUnreadThreads(user.id, 'PARTNER', access.partnerId).catch(() => 0)
+
   return (
     <div className="flex h-screen flex-col">
       {/* Activation phase wears the ONBOARDING journey header (dark band,
@@ -187,6 +195,7 @@ export default async function PartnerDashboardLayout({ children }: { children: R
           briefPoolEnabled={briefPoolEnabled}
           isOrgAdmin={access.isAdmin}
           activationLimited={activationLimited}
+          messagesUnread={messagesUnread}
         />
         {/* FULL-BLEED GRID (2026-07-10, mirrors the creator layout): main is a
             plain scroll block; the inner grid replaces p-6 + max-w-6xl —
@@ -205,6 +214,8 @@ export default async function PartnerDashboardLayout({ children }: { children: R
           </div>
         </main>
       </div>
+      {/* Stacked mini-chat windows (co-creation routes only — self-hiding). */}
+      <MessagesDockHost meUserId={user.id} />
     </div>
   )
 }

@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation'
 import { cn } from '../lib/utils'
 import { productGradient, type ProductGradient } from '../tokens/colors'
 import { eventText, type RoomShellEvent } from './CoCreationRoomShell'
+import { dockThread } from './MessagesDock'
 
 // ── data contracts (mirror @ilaunchify/orders messaging views) ──────────────
 
@@ -659,6 +660,28 @@ export function MessagesShell(props: MessagesShellProps) {
                 </p>
               </div>
               <span className="flex-1" />
+              {props.selected ? (
+                <button
+                  type="button"
+                  aria-label="Collapse to a mini chat window"
+                  title="Collapse to mini chat"
+                  onClick={() => {
+                    // Dock this thread bottom-right and go back to the work —
+                    // the conversation keeps running in the mini window.
+                    dockThread({
+                      kind: props.selected!.kind,
+                      id: props.selected!.id,
+                      title: props.headerTitle,
+                      ...(props.headerIcon ? { icon: props.headerIcon } : {}),
+                    })
+                    if (window.history.length > 1) router.back()
+                    else if (props.roomHref) router.push(props.roomHref)
+                  }}
+                  className="hidden h-8 w-8 items-center justify-center rounded-pill text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 md:flex"
+                >
+                  ⊟
+                </button>
+              ) : null}
               {props.roomHref && isRoom ? (
                 <Link
                   href={props.roomHref}

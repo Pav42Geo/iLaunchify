@@ -82,6 +82,8 @@ export * from './components/CoCreationRoomShell'
 export * from './components/CoCreationStepper'
 // Rooms & Messages hub (2026-07-13) — three-pane shell, light rail variant
 export * from './components/MessagesShell'
+// Messages dock — stacked mini-chat windows across the Co-Creation Studio
+export * from './components/MessagesDock'
 export * from './lib/co-creation'
 export * from './lib/room-compliance'
 export * from './lib/sample-shipment'
