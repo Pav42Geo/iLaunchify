@@ -2283,7 +2283,13 @@ enum LabelSource {
 
 model Design {
   id                  String           @id @default(cuid())
-  productId           String
+  // Room-scoped label designs (self-design-on-dieline, slice 3 / A8) have NO
+  // product — they belong to a co-creation room via roomId below. Relaxed to
+  // optional 2026-07-13 (Code's call per the roomId note). Product-scoped
+  // designs still always set it. brandId stays required: the room adapter
+  // resolves the room owner-creator's brand (blocks honestly if they have none),
+  // avoiding a nullable-brand blast radius across the product Studio.
+  productId           String?
   brandId             String
   templateVersionId   String? // which template version this started from
   status              DesignStatus     @default(DRAFT)
@@ -2322,14 +2328,16 @@ model Design {
   // existing rows). Populated when multi-surface products (wrap / box) arrive.
   surfaceKey          String?
   // Relations
-  product             Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product             Product?         @relation(fields: [productId], references: [id], onDelete: Cascade)
   brand               Brand            @relation(fields: [brandId], references: [id])
   templateVersion     TemplateVersion? @relation(fields: [templateVersionId], references: [id])
   versions            DesignVersion[]
+  editLock            DesignEditLock?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
   @@index([productId, flavorPresetId])
+  @@index([roomId])
 }
 
 model DesignVersion {
@@ -2340,6 +2348,9 @@ model DesignVersion {
   // Generation lineage
   source             AssetSource               @default(USER_UPLOAD)
   generationMeta     Json?
+  // C9 version attribution — who saved this version (snapshot userId; surfaced
+  // in the Studio version list). Nullable: pre-C9 rows + non-room designs.
+  savedByUserId      String?
   // Export references
   exportedPdfAssetId String?
   exportedAt         DateTime?
@@ -2353,6 +2364,25 @@ model DesignVersion {
   createdAt          DateTime                  @default(now())
 
   @@unique([designId, version])
+}
+
+/// C6 turn-based edit lock for a room-scoped Design (Shared Design Workspace
+/// D-W4). One row per Design. The PURE engine decides ACQUIRE/HOLD/REQUEST/WAIT
+/// from these fields (resolveEditLock, @ilaunchify/orders design-collaboration) —
+/// this model is only the persisted (holder, heartbeat, pending-request) state.
+model DesignEditLock {
+  id                String    @id @default(uuid())
+  designId          String    @unique
+  /// Current editor (userId). Everyone else views.
+  holderUserId      String
+  /// Bumped while the holder is actively editing; staleness = takeover signal.
+  heartbeatAt       DateTime
+  /// Pending takeover requester + when they asked (grace window in the engine).
+  requestedByUserId String?
+  requestedAt       DateTime?
+  design            Design    @relation(fields: [designId], references: [id], onDelete: Cascade)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 // =============================================================================
