@@ -19,13 +19,15 @@ export const metadata = { title: 'Contract new FC — Admin' }
 export default async function ContractFcPage() {
   await requireCapability('platform:admin')
 
-  // Eligible = approved partners that don't already run a WAREHOUSE service.
+  // Eligible = any non-sanctioned partner without a WAREHOUSE service —
+  // including invited/in-review 3PLs (pre-approval grant makes their
+  // onboarding show the FC program; review + activation still gate go-live).
   const partners = await prisma.partner.findMany({
     where: {
-      status: { in: ['ACTIVE', 'INTEGRATION_ENHANCED'] },
+      status: { notIn: ['SUSPENDED', 'TERMINATED', 'PAUSED'] },
       services: { none: { type: 'WAREHOUSE' } },
     },
-    select: { id: true, companyName: true, city: true, state: true },
+    select: { id: true, companyName: true, city: true, state: true, status: true },
     orderBy: { companyName: 'asc' },
     take: 200,
   })
@@ -110,7 +112,11 @@ export default async function ContractFcPage() {
             <ContractFcForm
               partners={partners.map((p) => ({
                 id: p.id,
-                label: `${p.companyName}${p.city ? ` — ${p.city}${p.state ? `, ${p.state}` : ''}` : ''}`,
+                label: `${p.companyName}${p.city ? ` — ${p.city}${p.state ? `, ${p.state}` : ''}` : ''}${
+                  p.status === 'ACTIVE' || p.status === 'INTEGRATION_ENHANCED'
+                    ? ''
+                    : ` · ${p.status.replace(/_/g, ' ').toLowerCase()}`
+                }`,
               }))}
             />
           )}
@@ -125,9 +131,11 @@ export default async function ContractFcPage() {
             <h3 className="font-display text-[15px] font-bold text-ink-900">New 3PL company?</h3>
           </div>
           <p className="text-[12.5px] leading-[1.6] text-ink-600">
-            Bring them through the normal partner funnel first — invite via Leads, identity +
-            operations review, approval. Once they&rsquo;re ACTIVE, return here to grant the
-            WAREHOUSE service under their contract.
+            Invite them via Leads, then return here and grant the WAREHOUSE service{' '}
+            <b>right away</b> — the grant is what makes their onboarding show the FC program
+            (Fulfillment appears as a contracted, locked service; it&rsquo;s never
+            self-selectable). Identity + operations review and the Activation track still gate
+            go-live.
           </p>
           <Link
             href="/leads"

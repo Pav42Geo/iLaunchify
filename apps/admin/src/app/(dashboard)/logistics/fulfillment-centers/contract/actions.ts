@@ -40,10 +40,16 @@ export async function contractFulfillmentCenter(
     },
   })
   if (!partner) return { error: 'Partner not found.' }
-  if (partner.status !== 'ACTIVE' && partner.status !== 'INTEGRATION_ENHANCED')
-    return { error: `${partner.companyName} isn’t approved yet — approve the partner first.` }
+  // Pre-approval grants are ALLOWED (Pavel 2026-07-13): an invited 3PL gets
+  // the WAREHOUSE service at contract time so their onboarding shows the FC
+  // program; identity/ops review + the Activation track still gate go-live.
+  // Only sanctioned states are blocked.
+  if (['SUSPENDED', 'TERMINATED', 'PAUSED'].includes(partner.status as string))
+    return { error: `${partner.companyName} is ${partner.status.toLowerCase()} — resolve that first.` }
   if (partner.services.some((s) => (s.type as string) === 'WAREHOUSE'))
     return { error: `${partner.companyName} already has a WAREHOUSE service.` }
+  const preApproval =
+    partner.status !== 'ACTIVE' && partner.status !== 'INTEGRATION_ENHANCED'
 
   const service = await prisma.partnerService.create({
     data: {
@@ -65,6 +71,8 @@ export async function contractFulfillmentCenter(
       companyName: partner.companyName,
       contractRef,
       note: note || null,
+      preApproval, // granted before partner approval (invited 3PL path)
+      partnerStatus: partner.status,
       via: 'admin-fc-contracting',
     },
   })

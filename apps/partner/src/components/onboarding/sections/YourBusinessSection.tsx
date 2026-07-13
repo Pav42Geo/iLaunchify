@@ -220,6 +220,29 @@ export function YourBusinessSection({
               </label>
             )
           })}
+
+          {/* Fulfillment (3PL) is a CONTRACTED program (Pavel 2026-07-13) —
+              never self-selectable. When iLaunchify has granted the WAREHOUSE
+              service (FC contracting flow), it shows here as a locked pill so
+              the onboarding reflects who they are; the save action never
+              deletes unchecked services, so the grant is safe either way. */}
+          {state.serviceTypes.includes('WAREHOUSE') && (
+            <div className="flex items-center gap-3 rounded-[14px] border-[1.5px] border-info-200 bg-info-50 p-3.5">
+              <div className="min-w-0">
+                <div className="text-[13.5px] font-bold text-ink-900">Fulfillment Center (3PL)</div>
+                <div className="text-[12px] text-info-700">
+                  Added by iLaunchify under your FC network contract — configured in Activation
+                  Setup after approval.
+                </div>
+              </div>
+              <span
+                aria-hidden="true"
+                className="ml-auto flex h-5 w-5 flex-none items-center justify-center rounded-full border-[1.5px] border-info-500 bg-info-500 text-[12px] font-bold text-white"
+              >
+                ✓
+              </span>
+            </div>
+          )}
         </div>
       </Field>
     </div>
