@@ -10,6 +10,7 @@
 // user toggles.
 
 import { createContext, useContext, useState, type ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
 
 export type ServiceKey = 'MANUFACTURING' | 'COPACKING' | 'LABEL_PRINTING' | 'WAREHOUSE'
 
@@ -45,13 +46,18 @@ export function useOnboardingServices(): Ctx {
 }
 
 // Header indicator — all four pills, each lit in its color when assigned.
+// On /onboarding/welcome they stay gray even when services were pre-seeded
+// (application picks / co-partner invite): pills only light once the user has
+// actually checked them in the wizard (Pavel 2026-07-12).
 export function HeaderServicePills() {
   const { selected } = useOnboardingServices()
+  const pathname = usePathname()
+  const confirmed = !pathname?.endsWith('/welcome')
   return (
     <div className="ml-auto flex items-center gap-1.5">
       <span className="text-[11px] font-medium text-ink-400">Services:</span>
       {SERVICE_PILLS.map((p) => {
-        const on = selected.includes(p.key)
+        const on = confirmed && selected.includes(p.key)
         return (
           <span
             key={p.key}
