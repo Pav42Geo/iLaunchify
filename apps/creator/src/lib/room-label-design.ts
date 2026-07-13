@@ -14,9 +14,10 @@
 // relaxed 2026-07-13). brandId = the room owner-creator's brand.
 
 import { prisma } from '@ilaunchify/db'
-import { getCollaboratorAccessForUser, getOpenDesignReview, resolveRoomRecipeLabel } from '@ilaunchify/orders'
+import { getCollaboratorAccessForUser, getOpenDesignReview, resolveRoomRecipeLabel, type RoomRecipeLabel } from '@ilaunchify/orders'
 import { getSignedReadUrl } from '@ilaunchify/storage'
 import { extractSvgInner, checkRoomLabelReadiness, type RoomComplianceReport } from '@ilaunchify/ui'
+import type { PanelData } from '@ilaunchify/types'
 
 export type RoomLabelBlock =
   | 'NO_ACCESS' // no live seat / not the owner
@@ -55,8 +56,19 @@ export interface RoomLabelStudioContext {
   versions: RoomLabelVersion[]
   /** C7 — a PENDING internal design-review request already exists for this room. */
   openReviewPending: boolean
-  /** A10 — compliance readiness gate for the proof submit (blocking = why not). */
+  /** A10 — compliance readiness for the proof submit (non-gating; blocking = why not). */
   submitReadiness: { outcome: RoomComplianceReport['outcome']; blocking: string[] }
+  /** A11 — deterministic regulated panel to composite into the proof (null = skip). */
+  regulated: RoomLabelRegulated | null
+}
+
+export interface RoomLabelRegulated {
+  /** FOOD/BEVERAGE Nutrition Facts panel data (fed to NutritionFactsSvg). */
+  panel: PanelData
+  ingredientStatement: string | null
+  contains: string | null
+  /** Where the panel sits, in full-bleed mm (the die-line's NUTRITION_FACTS frame). */
+  frameBoxMm: { x: number; y: number; w: number; h: number }
 }
 
 export interface RoomLabelVersion {
@@ -122,6 +134,7 @@ export async function resolveRoomLabelStudio(
       widthMm: true,
       heightMm: true,
       bleedMm: true,
+      frames: true,
       packagingType: { select: { displayName: true } },
     },
     orderBy: { partnerConfirmedAt: 'asc' },
@@ -183,7 +196,37 @@ export async function resolveRoomLabelStudio(
   }))
 
   const openReviewPending = !!(await getOpenDesignReview(roomId))
-  const readiness = await resolveRoomLabelReadiness(roomId)
+
+  // A11 — regulated layer (V1: FOOD/BEVERAGE Nutrition Facts). Resolve the room's
+  // RECIPE label once; reuse for readiness + the deterministic panel. The panel is
+  // placed into the die-line's NUTRITION_FACTS frame (normalized to the TRIM box)
+  // converted to full-bleed mm; null when there's no panel data or no such frame
+  // (skip — the maker reviews). Other domains + a no-frame default are follow-ups.
+  const recipeLabel = await loadRoomRecipeLabel(roomId)
+  const readiness = recipeLabel
+    ? checkRoomLabelReadiness(recipeLabel)
+    : ({ outcome: 'NOT_READY', items: [{ id: 'no-recipe', severity: 'BLOCKING', message: 'The recipe isn’t submitted yet — the label’s Facts panel can’t be generated.' }] } as RoomComplianceReport)
+
+  let regulated: RoomLabelRegulated | null = null
+  const isFoodish = recipeLabel?.domain === 'FOOD' || recipeLabel?.domain === 'BEVERAGE_FUNCTIONAL'
+  if (recipeLabel && isFoodish && recipeLabel.panel) {
+    const framesJson = chosen.frames as { frames?: Array<{ kind?: string; box?: { x: number; y: number; w: number; h: number } }> } | null
+    const factsBox = framesJson?.frames?.find((f) => f.kind === 'NUTRITION_FACTS')?.box ?? null
+    if (factsBox) {
+      regulated = {
+        panel: recipeLabel.panel,
+        ingredientStatement: recipeLabel.statement,
+        contains: recipeLabel.containsLine,
+        // NormBox is 0..1 of the TRIM box; place inside the full-bleed canvas.
+        frameBoxMm: {
+          x: bleedMm + factsBox.x * widthMm,
+          y: bleedMm + factsBox.y * heightMm,
+          w: factsBox.w * widthMm,
+          h: factsBox.h * heightMm,
+        },
+      }
+    }
+  }
 
   return {
     ok: true,
@@ -214,6 +257,7 @@ export async function resolveRoomLabelStudio(
         outcome: readiness.outcome,
         blocking: readiness.items.filter((i) => i.severity === 'BLOCKING').map((i) => i.message),
       },
+      regulated,
     },
   }
 }
@@ -226,7 +270,10 @@ export async function resolveRoomLabelStudio(
  * resolver (to disable the submit button) and creatorSubmitLabelProof (the
  * authoritative gate) so they never disagree.
  */
-export async function resolveRoomLabelReadiness(roomId: string): Promise<RoomComplianceReport> {
+/** Resolve the room's live domain-aware label from its latest submitted RECIPE
+ *  version (same inputs as the room page). null when no recipe / not computable.
+ *  Shared by the readiness pass (A10) and the regulated-layer build (A11). */
+async function loadRoomRecipeLabel(roomId: string): Promise<RoomRecipeLabel | null> {
   const room = await prisma.coCreationRoom.findUnique({
     where: { id: roomId },
     select: {
@@ -239,17 +286,16 @@ export async function resolveRoomLabelReadiness(roomId: string): Promise<RoomCom
     },
   })
   const payload = room?.objects[0]?.versions[0]?.payload
-  if (!room || payload == null) {
-    return {
-      outcome: 'NOT_READY',
-      items: [{ id: 'no-recipe', severity: 'BLOCKING', message: 'The recipe isn’t submitted yet — the label’s Facts panel can’t be generated.' }],
-    }
-  }
-  const label = await resolveRoomRecipeLabel({ partnerId: room.partnerId, domain: room.brief.category, payload })
+  if (!room || payload == null) return null
+  return resolveRoomRecipeLabel({ partnerId: room.partnerId, domain: room.brief.category, payload })
+}
+
+export async function resolveRoomLabelReadiness(roomId: string): Promise<RoomComplianceReport> {
+  const label = await loadRoomRecipeLabel(roomId)
   if (!label) {
     return {
       outcome: 'NOT_READY',
-      items: [{ id: 'no-label', severity: 'BLOCKING', message: 'The label facts can’t be computed from the current recipe yet.' }],
+      items: [{ id: 'no-recipe', severity: 'BLOCKING', message: 'The recipe isn’t submitted yet — the label’s Facts panel can’t be generated.' }],
     }
   }
   return checkRoomLabelReadiness(label)

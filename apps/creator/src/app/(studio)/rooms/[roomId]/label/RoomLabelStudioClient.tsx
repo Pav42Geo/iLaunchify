@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as fabric from 'fabric'
-import { addText, composeLabelProofSvg, extractSvgInner, CANVAS_PROPERTIES_TO_INCLUDE } from '@ilaunchify/ui'
+import { addText, composeLabelProofSvg, extractSvgInner, CANVAS_PROPERTIES_TO_INCLUDE, NutritionFactsSvg } from '@ilaunchify/ui'
 import { creatorSubmitLabelProof } from '@/app/(dashboard)/rooms/[roomId]/actions'
 import { requestDesignReviewAction } from '@/app/(dashboard)/rooms/[roomId]/design-team-actions'
 import type { RoomLabelStudioContext } from '@/lib/room-label-design'
@@ -41,6 +41,7 @@ export function RoomLabelStudioClient({
   const canvasElRef = useRef<HTMLCanvasElement | null>(null)
   const canvasRef = useRef<fabric.Canvas | null>(null)
   const substrateRef = useRef<fabric.FabricObject | null>(null)
+  const regulatedRef = useRef<HTMLDivElement | null>(null) // hidden A11 panel, serialized at submit
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
@@ -225,8 +226,23 @@ export function RoomLabelStudioClient({
 
     const brandInner = extractSvgInner(brandDoc)
     const scaledBrand = `<g transform="scale(${(1 / PX_PER_MM).toFixed(5)})">${brandInner}</g>`
+
+    // A11 — composite the deterministic regulated panel (rendered hidden as a
+    // real, style-isolated SVG) into its die-line frame, in mm. The panel's
+    // viewBox is 320 units wide (authoritative geometry); scale to the frame.
+    let regulatedLayer: string | null = null
+    const regulatedFrames: string[] = []
+    if (ctx.regulated && regulatedRef.current) {
+      const svgEl = regulatedRef.current.querySelector('svg')
+      if (svgEl) {
+        const b = ctx.regulated.frameBoxMm
+        regulatedLayer = `<g transform="translate(${b.x.toFixed(3)} ${b.y.toFixed(3)}) scale(${(b.w / 320).toFixed(5)})">${extractSvgInner(svgEl.outerHTML)}</g>`
+        regulatedFrames.push('NUTRITION_FACTS')
+      }
+    }
+
     const svg = composeLabelProofSvg(
-      { substrate: ctx.substrateSvg, brand: scaledBrand, regulated: null },
+      { substrate: ctx.substrateSvg, brand: scaledBrand, regulated: regulatedLayer },
       { widthMm: ctx.widthMm, heightMm: ctx.heightMm },
     )
 
@@ -236,6 +252,7 @@ export function RoomLabelStudioClient({
       widthMm: ctx.widthMm,
       heightMm: ctx.heightMm,
       designId: ctx.designId,
+      regulatedFrames,
       ...(ctx.latestVersion > 0 ? { designVersion: ctx.latestVersion } : {}),
     })
 
@@ -361,6 +378,19 @@ export function RoomLabelStudioClient({
           )}
         </aside>
       </div>
+
+      {/* A11 — regulated panel rendered off-screen as a real style-isolated SVG;
+          serialized + composited into the proof at submit (never editable). */}
+      {ctx.regulated && (
+        <div ref={regulatedRef} aria-hidden className="pointer-events-none absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden">
+          <NutritionFactsSvg
+            data={ctx.regulated.panel}
+            ingredientStatement={ctx.regulated.ingredientStatement ?? undefined}
+            contains={ctx.regulated.contains ?? undefined}
+            widthPx={null}
+          />
+        </div>
+      )}
     </div>
   )
 }
