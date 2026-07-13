@@ -18,7 +18,7 @@ Owners: **[Code]** Studio/die-line zone · **[Cowork]** room/messaging/UI-shell 
 - [x] A7 · messaging.ts `InputJsonValue` tsc blocker fixed — **[Cowork]**
 - [x] A8 · Studio front-end: room-context editor at `(studio)/rooms/[roomId]/label` (substrate = pinned die-line `normalizedSvg` per D-S2; locked layers; save via `Design.roomId`) — **[Code]** (slice 3, unblocked)
 - [x] A9 · Review inversion (D-S3): non-submitter reviews — service choke-point guard in `reviewObject` + real `partnerReviewObject` action + shell shows review controls to the non-submitter side — **[Cowork]**
-- [ ] A10 · Compliance pre-check gates the proof submit (reuse `checkRoomLabelReadiness`) — **[Code]** in the Studio submit + **[Cowork]** room-side copy
+- [x] A10 · Compliance pre-check gates the proof submit (reuse `checkRoomLabelReadiness`) — **[Code]** Studio submit gate (authoritative in creatorSubmitLabelProof + disabled button) + **[Cowork]** room-side copy
 - [ ] A11 · Regulated layer composed from approved RECIPE (deterministic panels into `composeLabelProofSvg`) — **[Code]** (spec follow-up)
 - [ ] A12 · `normalizedSvgKey` backfill for verified die-lines — **[Code]** (spec follow-up)
 - [ ] A13 · DESIGN milestone kind (maker's internal design service, priced via terms flow) — **deferred by D-S6**
@@ -37,9 +37,9 @@ Owners: **[Code]** Studio/die-line zone · **[Cowork]** room/messaging/UI-shell 
 - [x] C2 · Invite flow: creator invites by email (seat-cap guarded), token accept at `/design-invite/[token]` → minimal DESIGNER account (role flips only for footprint-free accounts) — **[Cowork]**
 - [x] C3 · Room-side seat management card (invite / pending / revoke; auto-revoke wired at LABEL approval + closeRoomWon; switch-archive hook = one line in Code's actions.ts) — **[Cowork]**
 - [x] C4 · NDA acceptance gate wired (accept page renders `designer-nda` from Legal CMS; no doc published = honest hold, access dead by construction; Studio-side check = `getCollaboratorAccessForUser`) — **[Cowork]** · **[Code]** Studio check rides A8's guard
-- [ ] C5 · Designer's app surface: DESIGNER role routing (invited Studios + notifications ONLY; scope wall enforced) — **[Cowork]** guards + **[Code]** Studio context
+- [x] C5 · Designer's app surface: `requireRole` bounces DESIGNER sessions to `/designer` (their home: seat list + NDA state + workspace links, no creator chrome); every existing allow-list already excludes the role; Studio entry stays seat-guarded via `getCollaboratorAccessForUser` — **[Cowork]** · **[Code]** Studio context landed with A8
 - [x] C6 · Edit lock persisted + Studio presence line ("Maria is editing — you're viewing", takeover flow) — **[Code]** (engine ready in @ilaunchify/orders)
-- [x] C7 · Internal approval loop: `DesignReviewRequest` + request/decide services + both notifications; creator decides from the room's Design team card; `requestDesignReviewAction` exported for Code's Studio "Ready for review" button — **[Cowork]** done · **[Code]** Studio affordance pending
+- [x] C7 · Internal approval loop: `DesignReviewRequest` + request/decide services + both notifications; creator decides from the room's Design team card; `requestDesignReviewAction` exported for Code's Studio "Ready for review" button — **[Cowork]** done · **[Code]** Studio affordance landed (Ready-for-review button)
 - [ ] C8 · Contact-leak policy applied to Studio comments — **[Cowork]**
 - [x] C9 · Version attribution surfaced (who saved each DesignVersion) — **[Code]**
 
