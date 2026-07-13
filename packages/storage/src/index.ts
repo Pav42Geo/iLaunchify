@@ -28,6 +28,8 @@ export {
   certPdfKey,
   certificateThumbnailKey,
   ticketAttachmentKey,
+  roomChatAttachmentKey,
+  dmChatAttachmentKey,
   dielineNormalizedKey,
   flavorAssetKey,
   packagingModelAssetKey,

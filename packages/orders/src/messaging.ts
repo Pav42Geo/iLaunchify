@@ -18,11 +18,32 @@
 import { prisma, type RoomStatus } from '@ilaunchify/db'
 import { dispatchNotification } from '@ilaunchify/notifications'
 
-import { countUnread, memberRoleLabel, messagePreview, type MessagingSide } from './messaging-pure'
+import {
+  chatAttachmentFromPayload,
+  countUnread,
+  isOnline,
+  isTypingIn,
+  memberRoleLabel,
+  messagePreview,
+  type ChatAttachment,
+  type MessagingSide,
+} from './messaging-pure'
 
 // Pure helpers live in messaging-pure.ts (network-free test suite); re-export
 // so consumers keep one import surface.
-export { countUnread, memberRoleLabel, messagePreview, type MessagingSide }
+export {
+  chatAttachmentFromPayload,
+  countUnread,
+  isOnline,
+  isTypingIn,
+  memberRoleLabel,
+  messagePreview,
+  PRESENCE_ONLINE_MS,
+  TYPING_ACTIVE_MS,
+  type ChatAttachment,
+  type MessagingSide,
+  type PresenceRow,
+} from './messaging-pure'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (UI contract — consumed by packages/ui MessagesShell)
@@ -36,6 +57,7 @@ export interface ChatMessageView {
   authorRoleLabel: string | null
   body: string
   objectRef: { kind: string; objectId: string; title: string; subtitle?: string } | null
+  attachment: ChatAttachment | null
   createdAt: string // ISO
 }
 
@@ -51,6 +73,7 @@ export interface RoomThreadSummary {
 
 export interface ConversationSummary {
   id: string
+  otherUserId: string | null
   otherName: string
   otherRoleLabel: string | null
   otherSide: MessagingSide
@@ -165,6 +188,7 @@ export async function listConversations(userId: string): Promise<ConversationSum
     ).length
     return {
       id: p.conversationId,
+      otherUserId: other?.userId ?? null,
       otherName: other?.displayName ?? 'Collaborator',
       otherRoleLabel: other?.roleLabel ?? null,
       otherSide: (other?.side === 'PARTNER' ? 'PARTNER' : 'CREATOR') as MessagingSide,
@@ -198,6 +222,7 @@ export async function listRoomChatMessages(roomId: string, take = 200): Promise<
     authorRoleLabel: m.authorRoleLabel,
     body: m.body,
     objectRef: toObjectRef(m.objectRef),
+    attachment: chatAttachmentFromPayload(m.attachment),
     createdAt: m.createdAt.toISOString(),
   }))
 }
@@ -205,7 +230,9 @@ export async function listRoomChatMessages(roomId: string, take = 200): Promise<
 export async function listDirectMessages(
   conversationId: string,
   take = 200,
-): Promise<{ id: string; authorUserId: string; body: string; createdAt: string }[]> {
+): Promise<
+  { id: string; authorUserId: string; body: string; attachment: ChatAttachment | null; createdAt: string }[]
+> {
   const rows = await prisma.directMessage.findMany({
     where: { conversationId },
     orderBy: { createdAt: 'asc' },
@@ -215,6 +242,7 @@ export async function listDirectMessages(
     id: m.id,
     authorUserId: m.authorUserId,
     body: m.body,
+    attachment: chatAttachmentFromPayload(m.attachment),
     createdAt: m.createdAt.toISOString(),
   }))
 }
@@ -276,6 +304,8 @@ export interface SendRoomMessageInput {
   author: { userId: string; name: string; roleLabel: string | null; side: MessagingSide }
   body: string
   objectRef?: { kind: string; objectId: string; title: string; subtitle?: string }
+  /** Pre-uploaded R2 attachment (key validated by the calling action). */
+  attachment?: ChatAttachment
   /** Users on the other side to ping if this is their first unread. */
   notifyUserIds?: string[]
   roomTitle?: string
@@ -285,7 +315,8 @@ export type MessagingResult = { ok: true; id?: string } | { ok: false; error: st
 
 export async function sendRoomChatMessage(input: SendRoomMessageInput): Promise<MessagingResult> {
   const body = input.body.trim()
-  if (!body) return { ok: false, error: 'Empty message' }
+  // Attachment-only sends are fine; text-only sends still need text.
+  if (!body && !input.attachment) return { ok: false, error: 'Empty message' }
   if (body.length > 4000) return { ok: false, error: 'Message too long' }
 
   const created = await prisma.roomMessage.create({
@@ -297,6 +328,7 @@ export async function sendRoomChatMessage(input: SendRoomMessageInput): Promise<
       authorRoleLabel: input.author.roleLabel,
       body,
       ...(input.objectRef ? { objectRef: input.objectRef } : {}),
+      ...(input.attachment ? { attachment: input.attachment } : {}),
     },
   })
   // Sender has obviously read their own message.
@@ -327,7 +359,7 @@ export async function sendRoomChatMessage(input: SendRoomMessageInput): Promise<
           roomTitle: input.roomTitle ?? 'your collaboration room',
           byName: input.author.name,
           ...(input.author.roleLabel ? { roleLabel: input.author.roleLabel } : {}),
-          preview: messagePreview(body),
+          preview: body ? messagePreview(body) : `📎 ${input.attachment?.name ?? 'attachment'}`,
         },
       })
     }
@@ -398,9 +430,10 @@ export async function sendDirectMessage(input: {
   authorName: string
   authorRoleLabel: string | null
   body: string
+  attachment?: ChatAttachment
 }): Promise<MessagingResult> {
   const body = input.body.trim()
-  if (!body) return { ok: false, error: 'Empty message' }
+  if (!body && !input.attachment) return { ok: false, error: 'Empty message' }
   if (body.length > 4000) return { ok: false, error: 'Message too long' }
 
   const me = await prisma.conversationParticipant.findUnique({
@@ -415,7 +448,12 @@ export async function sendDirectMessage(input: {
   if (!me) return { ok: false, error: 'Not a participant' }
 
   const created = await prisma.directMessage.create({
-    data: { conversationId: input.conversationId, authorUserId: input.authorUserId, body },
+    data: {
+      conversationId: input.conversationId,
+      authorUserId: input.authorUserId,
+      body,
+      ...(input.attachment ? { attachment: input.attachment } : {}),
+    },
   })
   await prisma.conversation.update({
     where: { id: input.conversationId },
@@ -442,7 +480,7 @@ export async function sendDirectMessage(input: {
           conversationId: input.conversationId,
           byName: input.authorName,
           ...(input.authorRoleLabel ? { roleLabel: input.authorRoleLabel } : {}),
-          preview: messagePreview(body),
+          preview: body ? messagePreview(body) : `📎 ${input.attachment?.name ?? 'attachment'}`,
         },
       })
     }
@@ -455,6 +493,87 @@ export async function markConversationRead(conversationId: string, userId: strin
     where: { conversationId, userId },
     data: { lastReadAt: new Date() },
   })
+}
+
+/**
+ * Number of threads (rooms + DMs) with unread messages — the sidebar badge.
+ * Thread-count, not message-count (Slack-style: "3 conversations need you",
+ * not "47 messages"), so a chatty thread never inflates the number.
+ */
+export async function countUnreadThreads(
+  userId: string,
+  side: MessagingSide,
+  partnerId?: string,
+): Promise<number> {
+  const [rooms, convs] = await Promise.all([
+    listMessagingRooms(userId, side, partnerId),
+    listConversations(userId),
+  ])
+  return (
+    rooms.filter((r) => r.unreadCount > 0).length + convs.filter((c) => c.unreadCount > 0).length
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Presence (DB heartbeat + short poll — see messaging-pure for semantics)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ThreadPresenceView {
+  userId: string
+  online: boolean
+  typing: boolean
+}
+
+/**
+ * Record a heartbeat for a user. `typing` marks the thread they're typing in
+ * right now (cleared when false). Called every few seconds while /messages is
+ * open — one upserted row per user, never unbounded growth.
+ */
+export async function recordHeartbeat(
+  userId: string,
+  threadKey: string | null,
+  typing: boolean,
+): Promise<void> {
+  const now = new Date()
+  const typingData = typing && threadKey ? { typingThreadKey: threadKey, typingAt: now } : { typingThreadKey: null, typingAt: null }
+  await prisma.presenceState.upsert({
+    where: { userId },
+    create: { userId, lastSeenAt: now, ...typingData },
+    update: { lastSeenAt: now, ...typingData },
+  })
+}
+
+/** Presence snapshot for a thread's members (poll response). */
+export async function getThreadPresence(
+  userIds: string[],
+  threadKey: string,
+): Promise<ThreadPresenceView[]> {
+  if (userIds.length === 0) return []
+  const rows = await prisma.presenceState.findMany({ where: { userId: { in: userIds } } })
+  const byUser = new Map(rows.map((r) => [r.userId, r]))
+  const now = Date.now()
+  return userIds.map((userId) => {
+    const row = byUser.get(userId) ?? null
+    return {
+      userId,
+      online: isOnline(row, now),
+      typing: isTypingIn(row, threadKey, now),
+    }
+  })
+}
+
+/** Bulk online map (rail dots) — no typing, just lastSeenAt freshness. */
+export async function getOnlineMap(userIds: string[]): Promise<Record<string, boolean>> {
+  if (userIds.length === 0) return {}
+  const rows = await prisma.presenceState.findMany({
+    where: { userId: { in: userIds } },
+    select: { userId: true, lastSeenAt: true },
+  })
+  const now = Date.now()
+  const map: Record<string, boolean> = {}
+  for (const id of userIds) map[id] = false
+  for (const r of rows) map[r.userId] = isOnline(r, now)
+  return map
 }
 
 /** Membership check for DM server actions (callers own the guards). */

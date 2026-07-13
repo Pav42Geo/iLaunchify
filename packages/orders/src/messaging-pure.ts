@@ -29,6 +29,53 @@ export function messagePreview(body: string, max = 80): string {
   return oneLine.length > max ? `${oneLine.slice(0, max - 1)}…` : oneLine
 }
 
+// ── presence (DB-heartbeat + short-poll realtime layer, 2026-07-13) ─────────
+// Honest semantics: a green dot means "active in Messages within the last
+// minute", typing means a keystroke signal within the last few seconds for
+// THIS thread. Never fabricated.
+
+export const PRESENCE_ONLINE_MS = 60_000
+export const TYPING_ACTIVE_MS = 6_000
+
+export interface PresenceRow {
+  lastSeenAt: Date | string
+  typingThreadKey: string | null
+  typingAt: Date | string | null
+}
+
+export function isOnline(row: Pick<PresenceRow, 'lastSeenAt'> | null, now = Date.now()): boolean {
+  if (!row) return false
+  return now - new Date(row.lastSeenAt).getTime() <= PRESENCE_ONLINE_MS
+}
+
+export function isTypingIn(row: PresenceRow | null, threadKey: string, now = Date.now()): boolean {
+  if (!row || !row.typingAt || row.typingThreadKey !== threadKey) return false
+  return now - new Date(row.typingAt).getTime() <= TYPING_ACTIVE_MS
+}
+
+// ── chat attachments ─────────────────────────────────────────────────────────
+
+export interface ChatAttachment {
+  key: string
+  name: string
+  mimeType: string
+  size: number
+}
+
+/** Parse an attachment payload from an untrusted Json column (null on junk). */
+export function chatAttachmentFromPayload(v: unknown): ChatAttachment | null {
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  if (
+    typeof o.key !== 'string' ||
+    typeof o.name !== 'string' ||
+    typeof o.mimeType !== 'string' ||
+    typeof o.size !== 'number'
+  )
+    return null
+  return { key: o.key, name: o.name, mimeType: o.mimeType, size: o.size }
+}
+
 /**
  * Unread count from a read cursor: messages strictly newer than the cursor and
  * not authored by the viewer (side-based for legacy rows without authorUserId).

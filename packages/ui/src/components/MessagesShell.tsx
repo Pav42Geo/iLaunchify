@@ -37,6 +37,7 @@ export interface ShellRoomThread {
 
 export interface ShellConversation {
   id: string
+  otherUserId?: string | null
   otherName: string
   otherRoleLabel: string | null
   lastMessage: { mine: boolean; body: string; createdAt: string } | null
@@ -51,7 +52,22 @@ export interface ShellChatMessage {
   authorRole: string // 'CREATOR' | 'PARTNER'
   body: string
   objectRef: { kind: string; objectId: string; title: string; subtitle?: string } | null
+  /** Signed-URL attachment resolved server-side ({ url } expires; refresh re-signs). */
+  attachment: { name: string; url: string; mimeType: string; size: number } | null
   createdAt: string
+}
+
+export interface ShellAttachmentMeta {
+  key: string
+  name: string
+  mimeType: string
+  size: number
+}
+
+export interface ShellThreadPresence {
+  userId: string
+  online: boolean
+  typing: boolean
 }
 
 export interface ShellMember {
@@ -97,7 +113,23 @@ export interface MessagesShellProps {
   inviteHref?: string
   /** Room threads: build objects the composer's ⧉ button can anchor to. */
   attachableObjects?: ShellObjectRef[]
-  onSendMessage: (body: string, objectRef?: ShellObjectRef) => Promise<ShellResult>
+  /** userId → online, resolved at page load (rail DM dots + members initial). */
+  onlineMap?: Record<string, boolean>
+  /**
+   * Presence heartbeat (poll seam): called every few seconds while a thread is
+   * open; `typing` reflects live keystrokes. Returns the thread's presence
+   * snapshot. Absent = no presence UI at all (never fabricate dots).
+   */
+  onHeartbeat?: (typing: boolean) => Promise<ShellThreadPresence[]>
+  /** Upload a composer file to thread-scoped storage; returns the R2 meta. */
+  onUploadAttachment?: (
+    formData: FormData,
+  ) => Promise<{ ok: boolean; attachment?: ShellAttachmentMeta; error?: string }>
+  onSendMessage: (
+    body: string,
+    objectRef?: ShellObjectRef,
+    attachment?: ShellAttachmentMeta,
+  ) => Promise<ShellResult>
   /** Members panel "Message" → find-or-create the 1:1 thread, returns its id. */
   onStartDm?: (otherUserId: string) => Promise<{ ok: boolean; conversationId?: string; error?: string }>
   onMarkRead?: () => Promise<void>
@@ -127,6 +159,21 @@ function RoleBadge({ side, label }: { side: string; label: string }) {
     >
       {label}
     </span>
+  )
+}
+
+/** Presence dot — rendered ONLY when state is known (never fabricated). */
+function PresenceDot({ online }: { online: boolean | null }) {
+  if (online === null) return null
+  return (
+    <span
+      aria-hidden
+      title={online ? 'Active in Messages now' : 'Away'}
+      className={cn(
+        'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-pill border-2 border-white',
+        online ? 'bg-success-500' : 'bg-ink-300',
+      )}
+    />
   )
 }
 
@@ -199,6 +246,13 @@ export function MessagesShell(props: MessagesShellProps) {
   const [mentionQuery, setMentionQuery] = React.useState<string | null>(null)
   const [pendingAttach, setPendingAttach] = React.useState<ShellObjectRef | null>(null)
   const [attachOpen, setAttachOpen] = React.useState(false)
+  // File attachment + emoji + presence state (realtime layer, 2026-07-13)
+  const [pendingFile, setPendingFile] = React.useState<ShellAttachmentMeta | null>(null)
+  const [uploading, setUploading] = React.useState(false)
+  const [emojiOpen, setEmojiOpen] = React.useState(false)
+  const [presence, setPresence] = React.useState<Map<string, ShellThreadPresence>>(new Map())
+  const lastKeyRef = React.useRef(0)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const markedRef = React.useRef<string | null>(null)
   const rootRef = React.useRef<HTMLDivElement>(null)
@@ -242,28 +296,78 @@ export function MessagesShell(props: MessagesShellProps) {
     if (el) el.scrollTop = el.scrollHeight
   }, [props.messages.length, selectedKey])
 
-  // Switching threads drops any half-composed attachment.
+  // Switching threads drops any half-composed attachment + presence snapshot.
   React.useEffect(() => {
     setPendingAttach(null)
     setAttachOpen(false)
+    setPendingFile(null)
+    setEmojiOpen(false)
+    setPresence(new Map())
   }, [selectedKey])
+
+  // Presence heartbeat — short poll while a thread is open. `typing` is true
+  // when the user pressed a key in the last 4s. The response refreshes the
+  // dots + typing line without a full RSC refresh.
+  const onHeartbeat = props.onHeartbeat
+  React.useEffect(() => {
+    if (!onHeartbeat || !selectedKey) return
+    let cancelled = false
+    const beat = async () => {
+      try {
+        const rows = await onHeartbeat(Date.now() - lastKeyRef.current < 4000)
+        if (!cancelled) setPresence(new Map(rows.map((r) => [r.userId, r])))
+      } catch {
+        /* presence is decoration — never surface poll errors */
+      }
+    }
+    void beat()
+    const t = setInterval(() => void beat(), 5000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [onHeartbeat, selectedKey])
+
+  /** Online state for a user: live snapshot first, page-load map as fallback. */
+  const onlineFor = (userId: string): boolean | null => {
+    const live = presence.get(userId)
+    if (live) return live.online
+    if (props.onlineMap && userId in props.onlineMap) return props.onlineMap[userId] ?? false
+    return null // unknown — render NO dot rather than a fake one
+  }
 
   async function send() {
     const body = draft.trim()
-    if (!body || busy) return
+    if ((!body && !pendingFile) || busy) return
     setBusy(true)
     setError(null)
-    const res = await props.onSendMessage(body, pendingAttach ?? undefined)
+    const res = await props.onSendMessage(body, pendingAttach ?? undefined, pendingFile ?? undefined)
     if (res.ok) {
       setDraft('')
       setPendingAttach(null)
       setAttachOpen(false)
+      setPendingFile(null)
       router.refresh()
     } else {
       setError(res.error ?? 'Message failed to send')
     }
     setBusy(false)
   }
+
+  async function pickFile(file: File) {
+    if (!props.onUploadAttachment || uploading) return
+    setUploading(true)
+    setError(null)
+    const fd = new FormData()
+    fd.set('file', file)
+    const res = await props.onUploadAttachment(fd)
+    if (res.ok && res.attachment) setPendingFile(res.attachment)
+    else setError(res.error ?? 'Upload failed')
+    setUploading(false)
+  }
+
+  // Curated emoji palette — no dependency, tokens-safe.
+  const EMOJI = ['👍','🙏','🎉','🔥','✅','❌','👀','💡','🚀','😀','😂','😉','🤔','😅','❤️','⭐','📦','🧪','🍬','🥤','⏱','✍️','🤝','💬']
 
   async function startDm(otherUserId: string) {
     if (!props.onStartDm || busy) return
@@ -283,9 +387,18 @@ export function MessagesShell(props: MessagesShellProps) {
 
   function onDraftChange(v: string) {
     setDraft(v)
+    lastKeyRef.current = Date.now() // feeds the typing heartbeat
     const m = /@([\w .]*)$/.exec(v)
     setMentionQuery(m && props.selected?.kind === 'room' ? (m[1] ?? '') : null)
   }
+
+  // Typing line — live snapshot only, excluding me; names from the members
+  // panel (rooms) or the thread title (DMs).
+  const typingNames = [...presence.values()]
+    .filter((p) => p.typing && p.userId !== props.meUserId)
+    .map(
+      (p) => props.members.find((m) => m.userId === p.userId)?.name ?? props.headerTitle,
+    )
 
   function insertMention(name: string) {
     setDraft((d) => d.replace(/@[\w .]*$/, `@${name} `))
@@ -392,8 +505,9 @@ export function MessagesShell(props: MessagesShellProps) {
               href={`/messages?dm=${c.id}`}
               active={props.selected?.kind === 'dm' && props.selected.id === c.id}
               tile={
-                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-pill bg-pink-100 text-ui-caption font-bold text-pink-800">
+                <span className="relative flex h-9 w-9 flex-none items-center justify-center rounded-pill bg-pink-100 text-ui-caption font-bold text-pink-800">
                   {c.otherName.slice(0, 2).toUpperCase()}
+                  <PresenceDot online={c.otherUserId ? onlineFor(c.otherUserId) : null} />
                 </span>
               }
               name={c.otherName}
@@ -432,6 +546,17 @@ export function MessagesShell(props: MessagesShellProps) {
                 <h2 className="truncate font-display text-ui-subhead text-ink-900">{props.headerTitle}</h2>
                 <p className="truncate text-ui-label normal-case tracking-normal text-ink-500">
                   {props.headerSubtitle}
+                  {(() => {
+                    // DM header live status — only when presence is known.
+                    if (isRoom) return null
+                    const other = props.conversations.find(
+                      (c) => props.selected?.kind === 'dm' && c.id === props.selected.id,
+                    )?.otherUserId
+                    const on = other ? onlineFor(other) : null
+                    return on === null ? null : (
+                      <span className={on ? 'text-success-700' : ''}> · {on ? 'active now' : 'away'}</span>
+                    )
+                  })()}
                 </p>
               </div>
               <span className="flex-1" />
@@ -502,16 +627,18 @@ export function MessagesShell(props: MessagesShellProps) {
                               {timeLabel(m.createdAt)}
                             </span>
                           </div>
-                          <div
-                            className={cn(
-                              'mt-1 inline-block whitespace-pre-wrap rounded-xl border px-s-3 py-s-2 text-left text-ui-caption leading-relaxed',
-                              mine
-                                ? 'rounded-tr-sm border-pink-100 bg-pink-50 text-ink-800'
-                                : 'rounded-tl-sm border-ink-100 bg-ink-50 text-ink-800',
-                            )}
-                          >
-                            {m.body}
-                          </div>
+                          {m.body ? (
+                            <div
+                              className={cn(
+                                'mt-1 inline-block whitespace-pre-wrap rounded-xl border px-s-3 py-s-2 text-left text-ui-caption leading-relaxed',
+                                mine
+                                  ? 'rounded-tr-sm border-pink-100 bg-pink-50 text-ink-800'
+                                  : 'rounded-tl-sm border-ink-100 bg-ink-50 text-ink-800',
+                              )}
+                            >
+                              {m.body}
+                            </div>
+                          ) : null}
                           {m.objectRef && props.roomHref ? (
                             <Link
                               href={`${props.roomHref}?object=${encodeURIComponent(m.objectRef.objectId)}`}
@@ -535,6 +662,40 @@ export function MessagesShell(props: MessagesShellProps) {
                               </span>
                             </Link>
                           ) : null}
+                          {m.attachment ? (
+                            m.attachment.mimeType.startsWith('image/') ? (
+                              <a href={m.attachment.url} target="_blank" rel="noreferrer" className="mt-s-1 block">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={m.attachment.url}
+                                  alt={m.attachment.name}
+                                  className="max-h-64 rounded-lg border border-ink-200 object-contain"
+                                />
+                              </a>
+                            ) : (
+                              <a
+                                href={m.attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-s-1 flex items-center gap-s-2 rounded-lg border border-ink-200 bg-white px-s-3 py-s-2 text-left shadow-sm transition-colors hover:border-pink-300"
+                              >
+                                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md bg-ink-100 text-ui-caption">
+                                  📎
+                                </span>
+                                <span className="min-w-0">
+                                  <span className="block truncate text-ui-caption font-bold text-ink-900">
+                                    {m.attachment.name}
+                                  </span>
+                                  <span className="block text-ui-label normal-case tracking-normal text-ink-500">
+                                    {(m.attachment.size / 1024).toFixed(0)} KB
+                                  </span>
+                                </span>
+                                <span className="ml-auto whitespace-nowrap text-ui-label tracking-normal text-pink-600">
+                                  Download →
+                                </span>
+                              </a>
+                            )
+                          ) : null}
                         </div>
                       </div>
                       </React.Fragment>
@@ -543,6 +704,13 @@ export function MessagesShell(props: MessagesShellProps) {
                 </React.Fragment>
               ))}
             </div>
+
+            {typingNames.length > 0 ? (
+              <p className="px-s-5 pb-s-1 text-ui-label normal-case tracking-normal text-ink-500" aria-live="polite">
+                {typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing
+                <span className="animate-pulse">…</span>
+              </p>
+            ) : null}
 
             {error ? (
               <p className="border-t border-danger-100 bg-danger-50 px-s-4 py-s-1 text-ui-label normal-case tracking-normal text-danger-700" role="alert">
@@ -604,9 +772,27 @@ export function MessagesShell(props: MessagesShellProps) {
                   ))}
                 </div>
               ) : null}
-              {/* pending attachment chip */}
+              {/* emoji picker popover */}
+              {emojiOpen ? (
+                <div className="absolute bottom-full right-s-6 z-10 mb-s-1 grid w-64 grid-cols-8 gap-1 rounded-lg border border-ink-200 bg-white p-s-2 shadow-lg">
+                  {EMOJI.map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => {
+                        setDraft((d) => d + e)
+                        setEmojiOpen(false)
+                      }}
+                      className="rounded-md p-1 text-lg hover:bg-pink-50"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {/* pending chips: object anchor + uploaded file */}
               {pendingAttach ? (
-                <div className="mb-s-1 inline-flex items-center gap-s-2 rounded-pill border border-pink-100 bg-pink-50 px-s-3 py-s-1 text-ui-label tracking-normal text-pink-700">
+                <div className="mb-s-1 mr-s-2 inline-flex items-center gap-s-2 rounded-pill border border-pink-100 bg-pink-50 px-s-3 py-s-1 text-ui-label tracking-normal text-pink-700">
                   ⧉ {pendingAttach.title}
                   <button
                     type="button"
@@ -618,7 +804,48 @@ export function MessagesShell(props: MessagesShellProps) {
                   </button>
                 </div>
               ) : null}
+              {pendingFile ? (
+                <div className="mb-s-1 inline-flex items-center gap-s-2 rounded-pill border border-ink-200 bg-ink-50 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-700">
+                  📎 {pendingFile.name} · {(pendingFile.size / 1024).toFixed(0)} KB
+                  <button
+                    type="button"
+                    onClick={() => setPendingFile(null)}
+                    aria-label="Remove file"
+                    className="text-ink-500 hover:text-ink-900"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
+              {uploading ? (
+                <div className="mb-s-1 inline-flex items-center gap-s-2 rounded-pill border border-ink-200 bg-ink-50 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-500">
+                  Uploading<span className="animate-pulse">…</span>
+                </div>
+              ) : null}
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="application/pdf,image/png,image/jpeg,image/webp,image/gif"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) void pickFile(f)
+                  e.target.value = ''
+                }}
+              />
               <div className="flex items-end gap-s-2 rounded-xl border border-ink-200 bg-ink-50 px-s-3 py-s-2 transition-colors focus-within:border-pink-500 focus-within:bg-white">
+                {props.onUploadAttachment ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    title="Attach a file"
+                    aria-label="Attach a file"
+                    className="flex h-8 w-8 flex-none items-center justify-center rounded-pill text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:opacity-40"
+                  >
+                    ＋
+                  </button>
+                ) : null}
                 {isRoom && (props.attachableObjects?.length ?? 0) > 0 ? (
                   <button
                     type="button"
@@ -650,8 +877,20 @@ export function MessagesShell(props: MessagesShellProps) {
                 />
                 <button
                   type="button"
+                  onClick={() => setEmojiOpen((v) => !v)}
+                  title="Emoji"
+                  aria-label="Insert emoji"
+                  className={cn(
+                    'flex h-8 w-8 flex-none items-center justify-center rounded-pill transition-colors',
+                    emojiOpen ? 'bg-ink-900 text-white' : 'text-ink-500 hover:bg-ink-100 hover:text-ink-900',
+                  )}
+                >
+                  ☺
+                </button>
+                <button
+                  type="button"
                   onClick={() => void send()}
-                  disabled={busy || !draft.trim()}
+                  disabled={busy || (!draft.trim() && !pendingFile)}
                   className="flex h-8 w-8 flex-none items-center justify-center rounded-pill bg-pink-500 text-white transition-colors hover:bg-pink-600 disabled:opacity-40"
                   aria-label="Send message"
                 >
@@ -692,7 +931,7 @@ export function MessagesShell(props: MessagesShellProps) {
               {props.mode === 'creator' ? 'Your team' : 'Creator side'} · {creatorMembers.length}
             </p>
             {creatorMembers.map((m) => (
-              <MemberRow key={m.userId} member={m} meUserId={props.meUserId} busy={busy} onStartDm={props.onStartDm ? startDm : undefined} />
+              <MemberRow key={m.userId} member={m} meUserId={props.meUserId} busy={busy} online={onlineFor(m.userId)} onStartDm={props.onStartDm ? startDm : undefined} />
             ))}
             {props.mode === 'creator' ? (
               <p className="mx-s-1 mt-s-1 rounded-lg border border-dashed border-ink-300 px-s-2 py-s-2 text-center text-ui-label normal-case tracking-normal text-ink-400">
@@ -706,7 +945,7 @@ export function MessagesShell(props: MessagesShellProps) {
               {props.mode === 'partner' ? 'Your team' : 'Maker team'} · {partnerMembers.length}
             </p>
             {partnerMembers.map((m) => (
-              <MemberRow key={m.userId} member={m} meUserId={props.meUserId} busy={busy} onStartDm={props.onStartDm ? startDm : undefined} />
+              <MemberRow key={m.userId} member={m} meUserId={props.meUserId} busy={busy} online={onlineFor(m.userId)} onStartDm={props.onStartDm ? startDm : undefined} />
             ))}
             {props.mode === 'partner' && props.inviteHref ? (
               <Link
@@ -732,18 +971,21 @@ function MemberRow({
   member,
   meUserId,
   busy,
+  online = null,
   onStartDm,
 }: {
   member: ShellMember
   meUserId: string
   busy: boolean
+  online?: boolean | null
   onStartDm?: (otherUserId: string) => void | Promise<void>
 }) {
   const isMe = member.userId === meUserId
   return (
     <div className="group flex items-center gap-s-2 rounded-lg px-s-1 py-s-1 hover:bg-ink-50">
-      <span className="flex h-8 w-8 flex-none items-center justify-center rounded-pill bg-ink-100 text-ui-label tracking-normal text-ink-700">
+      <span className="relative flex h-8 w-8 flex-none items-center justify-center rounded-pill bg-ink-100 text-ui-label tracking-normal text-ink-700">
         {member.name.slice(0, 2).toUpperCase()}
+        <PresenceDot online={online} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-ui-caption font-semibold text-ink-900">

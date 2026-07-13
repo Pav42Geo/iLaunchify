@@ -12,11 +12,13 @@ import {
   type ProductGradient,
 } from '@ilaunchify/ui'
 import {
+  heartbeatAction,
   markDmReadAction,
   markRoomReadAction,
   sendDmAction,
   sendRoomMessageAction,
   startDmAction,
+  uploadChatAttachmentAction,
 } from './actions'
 
 export function MessagesClient(props: {
@@ -34,6 +36,7 @@ export function MessagesClient(props: {
   attachableObjects?: ShellObjectRef[]
   systemEvents?: { id: string; kind: string; data: Record<string, unknown>; createdAt: string }[]
   lastReadAt?: string | null
+  onlineMap?: Record<string, boolean>
 }) {
   const sel = props.selected
   return (
@@ -55,11 +58,19 @@ export function MessagesClient(props: {
       systemEvents={props.systemEvents}
       lastReadAt={props.lastReadAt}
       fullScreen
-      onSendMessage={async (body, objectRef) => {
+      onlineMap={props.onlineMap}
+      onHeartbeat={sel ? async (typing) => heartbeatAction(sel, typing) : undefined}
+      onUploadAttachment={sel ? async (fd) => uploadChatAttachmentAction(sel, fd) : undefined}
+      onSendMessage={async (body, objectRef, attachment) => {
         if (!sel) return { ok: false, error: 'No thread selected' }
         return sel.kind === 'room'
-          ? sendRoomMessageAction(sel.id, body, objectRef ? { objectId: objectRef.objectId } : undefined)
-          : sendDmAction(sel.id, body)
+          ? sendRoomMessageAction(
+              sel.id,
+              body,
+              objectRef ? { objectId: objectRef.objectId } : undefined,
+              attachment,
+            )
+          : sendDmAction(sel.id, body, attachment)
       }}
       onStartDm={
         sel?.kind === 'room' ? async (otherUserId) => startDmAction(sel.id, otherUserId) : undefined

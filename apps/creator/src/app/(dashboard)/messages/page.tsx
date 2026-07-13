@@ -1,12 +1,15 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import {
+  getOnlineMap,
   getRoomMembers,
   listConversations,
   listDirectMessages,
   listMessagingRooms,
   listRoomChatMessages,
+  type ChatAttachment,
 } from '@ilaunchify/orders'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import {
   nicheGradientKey,
   OBJECT_KIND_LABEL,
@@ -61,6 +64,19 @@ export default async function MessagesPage({
       ? ({ kind: 'dm', id: selectedDm.id } as const)
       : null
 
+  // Fail-soft signed URL for a chat attachment (presence of R2 env varies).
+  async function signAttachment(
+    a: ChatAttachment | null,
+  ): Promise<ShellChatMessage['attachment']> {
+    if (!a) return null
+    try {
+      const url = await getSignedReadUrl(a.key)
+      return { name: a.name, url, mimeType: a.mimeType, size: a.size }
+    } catch {
+      return null
+    }
+  }
+
   let messages: ShellChatMessage[] = []
   let members: ShellMember[] = []
   let attachableObjects: ShellObjectRef[] = []
@@ -88,7 +104,9 @@ export default async function MessagesPage({
         select: { lastReadAt: true },
       }),
     ])
-    messages = msgs
+    messages = await Promise.all(
+      msgs.map(async (m) => ({ ...m, attachment: await signAttachment(m.attachment) })),
+    )
     members = mems.map((m) => ({ ...m }))
     systemEvents = events.map((e) => ({
       id: e.id,
@@ -107,19 +125,32 @@ export default async function MessagesPage({
     headerSubtitle = `with ${selectedRoom.counterpartName} · ${mems.length} members`
   } else if (selectedDm) {
     const raw = await listDirectMessages(selectedDm.id)
-    messages = raw.map((m) => ({
-      id: m.id,
-      authorUserId: m.authorUserId,
-      authorName: m.authorUserId === user.id ? 'You' : selectedDm.otherName,
-      authorRoleLabel: m.authorUserId === user.id ? null : selectedDm.otherRoleLabel,
-      authorRole: m.authorUserId === user.id ? 'CREATOR' : selectedDm.otherSide,
-      body: m.body,
-      objectRef: null,
-      createdAt: m.createdAt,
-    }))
+    messages = await Promise.all(
+      raw.map(async (m) => ({
+        id: m.id,
+        authorUserId: m.authorUserId,
+        authorName: m.authorUserId === user.id ? 'You' : selectedDm.otherName,
+        authorRoleLabel: m.authorUserId === user.id ? null : selectedDm.otherRoleLabel,
+        authorRole: m.authorUserId === user.id ? 'CREATOR' : selectedDm.otherSide,
+        body: m.body,
+        objectRef: null,
+        attachment: await signAttachment(m.attachment),
+        createdAt: m.createdAt,
+      })),
+    )
     headerTitle = selectedDm.otherName
     headerSubtitle = selectedDm.otherRoleLabel ?? 'Direct message'
   }
+
+  // Page-load presence map (rail DM dots + members' initial state). Live
+  // updates ride the heartbeat poll; this is just the first paint. Fail-soft.
+  const presenceIds = [
+    ...conversations.flatMap((c) => (c.otherUserId ? [c.otherUserId] : [])),
+    ...members.map((m) => m.userId),
+  ]
+  const onlineMap = await getOnlineMap([...new Set(presenceIds)]).catch(
+    () => ({}) as Record<string, boolean>,
+  )
 
   return (
     // Studio workspace (Pavel 2026-07-13): full-bleed, viewport-filling —
@@ -142,6 +173,7 @@ export default async function MessagesPage({
         attachableObjects={attachableObjects}
         systemEvents={systemEvents}
         lastReadAt={lastReadAt}
+        onlineMap={onlineMap}
       />
     </div>
   )

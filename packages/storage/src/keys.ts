@@ -32,6 +32,23 @@ export function ticketAttachmentKey(params: { ticketId: string; filename: string
   return `tickets/${params.ticketId}/attachments/${id}-${safe}`
 }
 
+// Rooms & Messages chat attachments (2026-07-13). Thread-scoped prefixes so
+// (a) delete-all-by-thread is one List+Delete, and (b) send actions can
+// validate a client-supplied key actually belongs to the thread by prefix.
+//   rooms/{roomId}/chat/{cuid}-{filename}
+//   dms/{conversationId}/chat/{cuid}-{filename}
+export function roomChatAttachmentKey(params: { roomId: string; filename: string }): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `rooms/${params.roomId}/chat/${id}-${safe}`
+}
+
+export function dmChatAttachmentKey(params: { conversationId: string; filename: string }): string {
+  const id = generateCuid()
+  const safe = sanitizeFilename(params.filename)
+  return `dms/${params.conversationId}/chat/${id}-${safe}`
+}
+
 export function partnerFileKey(params: {
   partnerId: string
   section: 'business' | 'facility' | 'documents' | 'public_profile'

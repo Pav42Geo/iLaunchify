@@ -10160,6 +10160,9 @@ model RoomMessage {
   authorRoleLabel String? // specialist label snapshot ("Food Scientist", "QA & Regulatory")
   body            String
   objectRef       Json? // { kind, objectId, title, subtitle } — anchored build-object card
+  /// { key, name, mimeType, size } — R2 object (room-prefixed key, validated
+  /// server-side). One attachment per message (V1).
+  attachment      Json?
   room            CoCreationRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
   createdAt       DateTime       @default(now())
 
@@ -10218,10 +10221,30 @@ model DirectMessage {
   conversationId String
   authorUserId   String
   body           String
+  /// { key, name, mimeType, size } — R2 object uploaded via @ilaunchify/storage
+  /// (same rail as ticket attachments). Key is conversation-prefixed and
+  /// validated server-side before send. One attachment per message (V1).
+  attachment     Json?
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
 
   @@index([conversationId, createdAt])
+}
+
+/// Presence heartbeat — one row per user, upserted while Messages is open
+/// (Rooms & Messages realtime layer, 2026-07-13). Deliberately DB-backed +
+/// short-polled instead of websockets in V1: green dot = lastSeenAt within
+/// 60s ("active in Messages now" — honest, never fabricated), typing =
+/// typingAt within ~6s for the matching thread key ("room:<id>" | "dm:<id>").
+/// Swappable seam if a push layer ever lands.
+model PresenceState {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  lastSeenAt      DateTime  @default(now())
+  typingThreadKey String? // "room:<roomId>" | "dm:<conversationId>"
+  typingAt        DateTime?
+
+  @@index([lastSeenAt])
 }
 
 /// Append-only decision/activity log row — the dispute evidence trail (§9).

@@ -472,7 +472,17 @@ export {
   getOrCreateDmConversation,
   sendDirectMessage,
   markConversationRead,
+  countUnreadThreads,
   isConversationParticipant,
+  // Presence (DB heartbeat + short poll) + chat attachments
+  recordHeartbeat,
+  getThreadPresence,
+  getOnlineMap,
+  chatAttachmentFromPayload,
+  isOnline,
+  isTypingIn,
+  PRESENCE_ONLINE_MS,
+  TYPING_ACTIVE_MS,
 } from './messaging'
 export type {
   MessagingSide,
@@ -483,6 +493,9 @@ export type {
   SendRoomMessageInput,
   MessagingResult,
   DmParty,
+  ThreadPresenceView,
+  ChatAttachment,
+  PresenceRow,
 } from './messaging'
 // MM-5 — badge → production-fee resolution (shadow-safe, reversible).
 // MM-7 — fee-grace / promo layer (global grace + manual grants).

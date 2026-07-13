@@ -1,6 +1,15 @@
 // Pure messaging helpers — network-free (runs in run-vitest-suites.mjs).
 import { describe, it, expect } from 'vitest'
-import { memberRoleLabel, messagePreview, countUnread } from './messaging-pure'
+import {
+  memberRoleLabel,
+  messagePreview,
+  countUnread,
+  isOnline,
+  isTypingIn,
+  chatAttachmentFromPayload,
+  PRESENCE_ONLINE_MS,
+  TYPING_ACTIVE_MS,
+} from './messaging-pure'
 
 describe('memberRoleLabel', () => {
   it('prefers the explicit free-text title', () => {
@@ -73,5 +82,42 @@ describe('countUnread', () => {
       { createdAt: t(11), authorUserId: null, authorRole: 'PARTNER' }, // legacy theirs
     ]
     expect(countUnread(msgs, viewer, null)).toBe(1)
+  })
+})
+
+describe('presence helpers', () => {
+  const NOW = Date.UTC(2026, 6, 13, 12, 0, 0)
+
+  it('isOnline: within the window, at the edge, and expired', () => {
+    expect(isOnline({ lastSeenAt: new Date(NOW - 5_000) }, NOW)).toBe(true)
+    expect(isOnline({ lastSeenAt: new Date(NOW - PRESENCE_ONLINE_MS) }, NOW)).toBe(true)
+    expect(isOnline({ lastSeenAt: new Date(NOW - PRESENCE_ONLINE_MS - 1) }, NOW)).toBe(false)
+    expect(isOnline(null, NOW)).toBe(false)
+  })
+
+  it('isTypingIn: matches thread key and freshness', () => {
+    const row = {
+      lastSeenAt: new Date(NOW),
+      typingThreadKey: 'room:r1',
+      typingAt: new Date(NOW - 2_000),
+    }
+    expect(isTypingIn(row, 'room:r1', NOW)).toBe(true)
+    expect(isTypingIn(row, 'room:r2', NOW)).toBe(false) // other thread
+    expect(
+      isTypingIn({ ...row, typingAt: new Date(NOW - TYPING_ACTIVE_MS - 1) }, 'room:r1', NOW),
+    ).toBe(false) // stale
+    expect(isTypingIn({ ...row, typingAt: null }, 'room:r1', NOW)).toBe(false)
+    expect(isTypingIn(null, 'room:r1', NOW)).toBe(false)
+  })
+})
+
+describe('chatAttachmentFromPayload', () => {
+  it('parses a valid payload and rejects junk', () => {
+    const good = { key: 'rooms/r1/chat/ab-file.pdf', name: 'file.pdf', mimeType: 'application/pdf', size: 1234 }
+    expect(chatAttachmentFromPayload(good)).toEqual(good)
+    expect(chatAttachmentFromPayload(null)).toBeNull()
+    expect(chatAttachmentFromPayload('x')).toBeNull()
+    expect(chatAttachmentFromPayload({ key: 'k', name: 'n' })).toBeNull()
+    expect(chatAttachmentFromPayload({ ...good, size: '1234' })).toBeNull()
   })
 })
