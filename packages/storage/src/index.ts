@@ -31,6 +31,7 @@ export {
   roomChatAttachmentKey,
   dmChatAttachmentKey,
   dielineNormalizedKey,
+  labelProofKey,
   flavorAssetKey,
   packagingModelAssetKey,
 } from './keys'

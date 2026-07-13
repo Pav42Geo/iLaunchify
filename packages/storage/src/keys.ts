@@ -158,6 +158,20 @@ export function dielineNormalizedKey(params: { dielineId: string }): string {
   return `dielines/${params.dielineId}/normalized/${id}.svg`
 }
 
+// Self-designed label proof (co-creation §7 — Design Studio bridge). The
+// composited NORMALIZED label SVG (mm units): maker's immutable dieline
+// substrate + deterministic regulated panels + the creator's brand layer.
+// Path convention:
+//   rooms/{roomId}/labels/{objectId}/proof/{cuid}.svg
+// Room + LABEL-object scoped so each resubmission namespaces cleanly; the
+// newest key rides the BuildObjectVersion payload (LabelProofPayload.svgKey).
+// NOT the partner's original artwork (that stays immutable under
+// packagingAssetKey / partnerFileKey).
+export function labelProofKey(params: { roomId: string; objectId: string }): string {
+  const id = generateCuid()
+  return `rooms/${params.roomId}/labels/${params.objectId}/proof/${id}.svg`
+}
+
 // Admin Packaging Studio — an imported 3D model (glTF/glb) or its preview thumbnail
 // for a PackagingType. Path convention:
 //   packaging-models/{packagingTypeId}/{kind}/{cuid}-{filename}

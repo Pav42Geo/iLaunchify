@@ -85,6 +85,9 @@ export { evaluateMakerSwitch, MAKER_SWITCH_POLICIES } from './maker-switch'
 export type { MakerSwitchPolicy, MakerSwitchFacts, MakerSwitchVerdict } from './maker-switch'
 export { resolveRoomRecipeLabel, autoMatchRecipePayload } from './room-label'
 export type { RoomRecipeLabel, RoomRecipeRowResolution, RoomRecipeServing } from './room-label'
+// Co-creation §7 — creator self-designed LABEL proof payload (the shared seam)
+export { labelProofPayloadSchema, isLabelProofPayload, LABEL_PROOF_KIND } from './room-label-proof'
+export type { LabelProofPayload } from './room-label-proof'
 export {
   assertDispatchTransition,
   DEFAULT_ACCEPT_WINDOW_HOURS,

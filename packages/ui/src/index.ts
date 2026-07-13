@@ -171,6 +171,13 @@ export {
   type DielineFold,
   type DielineSurface,
 } from './canvas/dielineSvg'
+// Co-creation §7 — label-proof SVG composer (self-design on the maker's dieline)
+export {
+  composeLabelProofSvg,
+  extractSvgInner,
+  type LabelProofLayers,
+  type LabelProofDims,
+} from './canvas/labelProofSvg'
 export { parseDielineSvg, type DielineParseResult, type ParsedBox as DielineParsedBox, type ParsedFold as DielineParsedFold } from './canvas/dielineParse'
 export { parsePdfDieline, type PdfDielineResult, type PdfDielineBox } from './canvas/dielinePdf'
 export { SUBSTRATE_SWATCHES, substrateById, defaultSubstrateId, type SubstrateSwatch } from './canvas/substrates'
