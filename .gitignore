@@ -77,3 +77,6 @@ FOD-reference/
 
 # Local dev asset storage (uploaded brand logos etc. — never committed)
 .dev-storage/
+
+# Scratch/temp artifacts
+_tmp_*
