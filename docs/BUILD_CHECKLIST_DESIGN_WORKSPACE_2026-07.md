@@ -16,7 +16,7 @@ Owners: **[Code]** Studio/die-line zone · **[Cowork]** room/messaging/UI-shell 
 - [x] A5 · LABEL viewer: proof renders from `payload.svgKey`, mm-sized, pins overlaid, both apps — **[Cowork]**
 - [x] A6 · "Design the label" affordance (creator, PACKAGING approved → `/rooms/[roomId]/label`) — **[Cowork]**
 - [x] A7 · messaging.ts `InputJsonValue` tsc blocker fixed — **[Cowork]**
-- [ ] A8 · Studio front-end: room-context editor at `(studio)/rooms/[roomId]/label` (substrate = pinned die-line `normalizedSvg` per D-S2; locked layers; save via `Design.roomId`) — **[Code]** (slice 3, unblocked)
+- [x] A8 · Studio front-end: room-context editor at `(studio)/rooms/[roomId]/label` (substrate = pinned die-line `normalizedSvg` per D-S2; locked layers; save via `Design.roomId`) — **[Code]** (slice 3, unblocked)
 - [ ] A9 · Review inversion (D-S3): non-submitter reviews the LABEL version (partner review path currently refuses) — **[Cowork]**
 - [ ] A10 · Compliance pre-check gates the proof submit (reuse `checkRoomLabelReadiness`) — **[Code]** in the Studio submit + **[Cowork]** room-side copy
 - [ ] A11 · Regulated layer composed from approved RECIPE (deterministic panels into `composeLabelProofSvg`) — **[Code]** (spec follow-up)
@@ -38,10 +38,10 @@ Owners: **[Code]** Studio/die-line zone · **[Cowork]** room/messaging/UI-shell 
 - [ ] C3 · Room-side seat management card (invite / pending / revoke; auto-revoke on LABEL approval or room close per D-W5) — **[Cowork]**
 - [ ] C4 · NDA acceptance gate wired (no Studio render before `ndaAcceptedAt`) — **[Cowork]** gate + **[Code]** Studio check
 - [ ] C5 · Designer's app surface: DESIGNER role routing (invited Studios + notifications ONLY; scope wall enforced) — **[Cowork]** guards + **[Code]** Studio context
-- [ ] C6 · Edit lock persisted + Studio presence line ("Maria is editing — you're viewing", takeover flow) — **[Code]** (engine ready in @ilaunchify/orders)
+- [x] C6 · Edit lock persisted + Studio presence line ("Maria is editing — you're viewing", takeover flow) — **[Code]** (engine ready in @ilaunchify/orders)
 - [ ] C7 · Internal approval loop: designer "Ready for review" → creator approve/request changes (notifications DESIGN_REVIEW_REQUESTED / DESIGN_REVIEW_DECISION) — **[Cowork]** service+notify · **[Code]** Studio affordances
 - [ ] C8 · Contact-leak policy applied to Studio comments — **[Cowork]**
-- [ ] C9 · Version attribution surfaced (who saved each DesignVersion) — **[Code]**
+- [x] C9 · Version attribution surfaced (who saved each DesignVersion) — **[Code]**
 
 ## Phase D — W2 polish (after W1 ships)
 
