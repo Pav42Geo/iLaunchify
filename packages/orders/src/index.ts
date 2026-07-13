@@ -465,6 +465,7 @@ export {
   memberRoleLabel,
   messagePreview,
   countUnread,
+  findOrphanedChatKeys,
   listMessagingRooms,
   listConversations,
   listRoomChatMessages,

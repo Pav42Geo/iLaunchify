@@ -36,6 +36,7 @@ import {
 export {
   chatAttachmentFromPayload,
   countUnread,
+  findOrphanedChatKeys,
   isOnline,
   isTypingIn,
   memberRoleLabel,
