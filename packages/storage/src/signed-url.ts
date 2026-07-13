@@ -4,11 +4,15 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { getR2Client, getR2Config } from './r2-client'
+import { isDevFsMode, devFsReadDataUrl } from './dev-fs'
 
 export async function getSignedReadUrl(
   key: string,
   options: { expiresInSeconds?: number } = {},
 ): Promise<string> {
+  // Dev-only: serve the locally-stored object as a data: URL (see dev-fs.ts).
+  if (isDevFsMode()) return devFsReadDataUrl(key)
+
   const cfg = getR2Config()
   const client = getR2Client()
   const command = new GetObjectCommand({ Bucket: cfg.bucket, Key: key })
