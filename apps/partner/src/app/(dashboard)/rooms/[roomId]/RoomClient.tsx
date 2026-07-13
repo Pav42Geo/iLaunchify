@@ -31,6 +31,8 @@ export function RoomClient(props: {
   initialObjectId?: string
   rooms: RoomSwitcherEntry[]
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
+  /** Latest self-design LABEL proof (signed URL, mm dims) — pin board renders it. */
+  labelProof?: { version: number; url: string; widthMm: number; heightMm: number } | null
   rating?: {
     counterpartName: string
     dimensions: { slug: string; label: string; sublabel: string }[]
@@ -60,6 +62,7 @@ export function RoomClient(props: {
       fullScreen
       rooms={props.rooms}
       recipeLabels={props.recipeLabels}
+      labelProof={props.labelProof}
       rating={props.rating}
       onRateCounterpart={(scores, comment) =>
         refresh(partnerRateCreator(props.roomId, scores, comment))

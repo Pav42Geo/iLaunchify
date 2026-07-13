@@ -378,7 +378,8 @@ export async function sendRoomChatMessage(input: SendRoomMessageInput): Promise<
       authorRoleLabel: input.author.roleLabel,
       body,
       ...(input.objectRef ? { objectRef: input.objectRef } : {}),
-      ...(input.attachment ? { attachment: input.attachment } : {}),
+      // Interface → Prisma InputJsonValue: spread into a plain object literal.
+      ...(input.attachment ? { attachment: { ...input.attachment } } : {}),
     },
   })
   // Sender has obviously read their own message.
@@ -512,7 +513,8 @@ export async function sendDirectMessage(input: {
       conversationId: input.conversationId,
       authorUserId: input.authorUserId,
       body,
-      ...(input.attachment ? { attachment: input.attachment } : {}),
+      // Interface → Prisma InputJsonValue: spread into a plain object literal.
+      ...(input.attachment ? { attachment: { ...input.attachment } } : {}),
     },
   })
   await prisma.conversation.update({

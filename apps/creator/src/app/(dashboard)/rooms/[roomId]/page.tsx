@@ -4,8 +4,10 @@ import { notFound } from 'next/navigation'
 import {
   resolveRoomRecipeLabel,
   evaluateMakerSwitch,
+  isLabelProofPayload,
   CO_CREATION_RATING_DIMENSIONS,
 } from '@ilaunchify/orders'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import {
   CoCreationStepper,
   nicheGradientKey,
@@ -102,6 +104,32 @@ export default async function RoomPage({
       ).flatMap((x) => (x.label ? [{ version: x.version, label: x.label }] : []))
     : []
 
+  // Self-design-on-dieline (CO_CREATION_SELF_DESIGN_ON_DIELINE_SPEC): the
+  // latest LABEL version that is a self-design proof renders as the REAL
+  // artwork on the pin board — signed URL from payload.svgKey (fail-soft).
+  const labelObj = room.objects.find((o) => o.kind === 'LABEL')
+  const latestLabel = labelObj?.versions[labelObj.versions.length - 1]
+  let labelProof: { version: number; url: string; widthMm: number; heightMm: number } | null = null
+  if (latestLabel && isLabelProofPayload(latestLabel.payload)) {
+    try {
+      labelProof = {
+        version: latestLabel.version,
+        url: await getSignedReadUrl(latestLabel.payload.svgKey),
+        widthMm: latestLabel.payload.widthMm,
+        heightMm: latestLabel.payload.heightMm,
+      }
+    } catch {
+      labelProof = null
+    }
+  }
+  // "Design the label" affordance — only once the approved PACKAGING object
+  // pins the maker's die-line (D1+D2). Route = room-scoped Studio (Code's
+  // slice 3, spec §"Editor route").
+  const packagingApproved =
+    room.objects.find((o) => o.kind === 'PACKAGING')?.status === 'APPROVED'
+  const designLabelHref =
+    room.status === 'ACTIVE' && packagingApproved ? `/rooms/${room.id}/label` : undefined
+
   // "Confirm & create product" unlocks when the recipe is approved, the room
   // is still active, and nothing was materialized yet (§6 CLOSED_WON).
   const recipe = room.objects.find((o) => o.kind === 'RECIPE')
@@ -177,6 +205,8 @@ export default async function RoomPage({
         initialObjectId={initialObjectId}
         rooms={switcherRooms}
         recipeLabels={recipeLabels}
+        labelProof={labelProof}
+        designLabelHref={designLabelHref}
         briefDomain={room.brief.category}
         briefTitle={room.brief.title}
         briefNicheSlug={room.brief.nicheSlug}

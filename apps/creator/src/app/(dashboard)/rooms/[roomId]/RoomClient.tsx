@@ -34,6 +34,10 @@ export function RoomClient(props: {
   initialObjectId?: string
   rooms: RoomSwitcherEntry[]
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
+  /** Latest self-design LABEL proof (signed URL, mm dims) — pin board renders it. */
+  labelProof?: { version: number; url: string; widthMm: number; heightMm: number } | null
+  /** "Design the label" Studio deep link — present only when PACKAGING is APPROVED. */
+  designLabelHref?: string
   briefDomain: string
   briefTitle: string
   briefNicheSlug: string
@@ -65,6 +69,8 @@ export function RoomClient(props: {
       fullScreen
       rooms={props.rooms}
       recipeLabels={props.recipeLabels}
+      labelProof={props.labelProof}
+      designLabelHref={props.designLabelHref}
       briefDomain={props.briefDomain}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}

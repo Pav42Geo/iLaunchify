@@ -114,6 +114,20 @@ export interface CoCreationRoomShellProps {
   /** Deep-link target (?object=<id> from a chat object card) — selects this
    *  build object on first render when it belongs to the room. */
   initialObjectId?: string
+  /**
+   * Latest self-designed label proof (CO_CREATION_SELF_DESIGN_ON_DIELINE_SPEC):
+   * signed URL of the composited mm-space SVG, resolved by the page from
+   * `payload.svgKey` when `isLabelProofPayload(latest.payload)`. The pin board
+   * renders THIS instead of the mock canvas when present.
+   */
+  labelProof?: { version: number; url: string; widthMm: number; heightMm: number } | null
+  /**
+   * "Design the label" entry affordance (creator mode) — the room-scoped
+   * Studio route (`/rooms/[roomId]/label`). Pages pass it ONLY when the
+   * PACKAGING object is APPROVED (D1+D2: the approved packaging pins the
+   * maker's die-line the creator designs on).
+   */
+  designLabelHref?: string
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
   messages: RoomShellMessage[]
@@ -669,6 +683,8 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               briefTitle={props.briefTitle}
               partnerName={props.partnerName}
               recipeLabels={props.recipeLabels ?? []}
+              labelProof={props.labelProof ?? null}
+              designLabelHref={props.designLabelHref}
               onSearchIngredients={props.onSearchIngredients}
               onCreateIngredient={props.onCreateIngredient}
               briefDomain={props.briefDomain}
@@ -874,6 +890,8 @@ function ObjectDetail({
   briefTitle,
   partnerName,
   recipeLabels,
+  labelProof,
+  designLabelHref,
   onSearchIngredients,
   onCreateIngredient,
   briefDomain,
@@ -890,6 +908,8 @@ function ObjectDetail({
   briefTitle: string
   partnerName: string
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
+  labelProof: { version: number; url: string; widthMm: number; heightMm: number } | null
+  designLabelHref?: string
   onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
   onCreateIngredient?: (input: IngredientCreateInput) => Promise<
     { ok: true; ingredient: IngredientPick } | { ok: false; error: string }
@@ -1307,6 +1327,8 @@ function ObjectDetail({
             briefTitle={briefTitle}
             partnerName={partnerName}
             onComment={onComment}
+            proof={labelProof ?? null}
+            designLabelHref={designLabelHref}
           />
         ) : versions.length === 0 && !editing ? (
           <p className="rounded-lg bg-white px-s-3 py-s-4 text-center text-ui-caption text-ink-500">
@@ -3343,6 +3365,8 @@ function LabelPinBoard({
   briefTitle,
   partnerName,
   onComment,
+  proof,
+  designLabelHref,
 }: {
   object: RoomShellObject
   mode: 'creator' | 'partner'
@@ -3352,6 +3376,10 @@ function LabelPinBoard({
   briefTitle: string
   partnerName: string
   onComment: (body: string, anchor?: string) => void
+  /** Latest self-design proof (signed URL, mm dimensions) — real artwork wins over the mock. */
+  proof: { version: number; url: string; widthMm: number; heightMm: number } | null
+  /** Creator-mode Studio deep link — present only when PACKAGING is APPROVED. */
+  designLabelHref?: string
 }) {
   const [pending, setPending] = React.useState<{ x: number; y: number } | null>(null)
   const [note, setNote] = React.useState('')
@@ -3382,22 +3410,49 @@ function LabelPinBoard({
 
   return (
     <div className="grid gap-s-3 sm:grid-cols-2">
-      {/* Proof canvas */}
+      {/* Proof canvas — the REAL composited self-design proof when one exists
+          (payload.svgKey via signed URL, aspect from widthMm/heightMm);
+          otherwise the placeholder mock. Pins overlay either. */}
       <div className="flex flex-col items-center rounded-lg border border-dashed border-ink-300 bg-white p-s-4">
+        {mode === 'creator' && designLabelHref ? (
+          <Link
+            href={designLabelHref}
+            className="mb-s-3 inline-flex items-center gap-s-2 rounded-pill bg-pink-500 px-s-4 py-s-2 text-ui-caption font-semibold text-white transition-colors hover:bg-pink-600"
+          >
+            🎨 {proof ? 'Re-design the label' : 'Design the label'} →
+          </Link>
+        ) : null}
         <div
           role="button"
           aria-label="Label proof — click to drop a feedback pin"
           tabIndex={0}
           onClick={dropPin}
-          className="relative h-48 w-28 cursor-crosshair rounded-lg shadow-lg"
-          style={{ background: gradient }}
+          className={cn(
+            'relative cursor-crosshair rounded-lg shadow-lg',
+            proof ? 'max-h-72 w-auto max-w-full overflow-hidden bg-white' : 'h-48 w-28',
+          )}
+          style={
+            proof
+              ? { aspectRatio: `${proof.widthMm} / ${proof.heightMm}`, maxWidth: '100%' }
+              : { background: gradient }
+          }
         >
-          <div className="absolute inset-x-s-2 bottom-1/4 top-1/4 flex flex-col items-center justify-center rounded-md bg-white/90">
-            <div className="text-center font-display text-ui-label normal-case leading-tight tracking-normal text-ink-900">
-              {titleWords.slice(0, 2).join(' ').toUpperCase()}
+          {proof ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={proof.url}
+              alt={`Self-designed label proof v${proof.version}`}
+              className="h-full w-full object-contain"
+              draggable={false}
+            />
+          ) : (
+            <div className="absolute inset-x-s-2 bottom-1/4 top-1/4 flex flex-col items-center justify-center rounded-md bg-white/90">
+              <div className="text-center font-display text-ui-label normal-case leading-tight tracking-normal text-ink-900">
+                {titleWords.slice(0, 2).join(' ').toUpperCase()}
+              </div>
+              <div className="mt-s-1 text-center text-[0.5rem] text-ink-500">{titleWords.slice(2).join(' ')}</div>
             </div>
-            <div className="mt-s-1 text-center text-[0.5rem] text-ink-500">{titleWords.slice(2).join(' ')}</div>
-          </div>
+          )}
           {pins.map((p, i) => (
             <span
               key={p.id}
@@ -3421,6 +3476,12 @@ function LabelPinBoard({
         <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-500">
           💡 Click the label to drop a feedback pin
         </p>
+        {proof ? (
+          <p className="mt-s-1 text-ui-label normal-case tracking-normal text-ink-400">
+            Self-designed proof v{proof.version} · {proof.widthMm}×{proof.heightMm} mm ·
+            regulated panels locked
+          </p>
+        ) : null}
         {pending ? (
           <div className="mt-s-2 flex w-full gap-s-2">
             <Input

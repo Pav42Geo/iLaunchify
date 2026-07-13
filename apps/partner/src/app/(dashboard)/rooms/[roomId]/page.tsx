@@ -1,7 +1,12 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import { notFound, redirect } from 'next/navigation'
-import { resolveRoomRecipeLabel, CREATOR_RATING_DIMENSIONS } from '@ilaunchify/orders'
+import {
+  resolveRoomRecipeLabel,
+  isLabelProofPayload,
+  CREATOR_RATING_DIMENSIONS,
+} from '@ilaunchify/orders'
+import { getSignedReadUrl } from '@ilaunchify/storage'
 import {
   CoCreationStepper,
   nicheGradientKey,
@@ -71,6 +76,24 @@ export default async function PartnerRoomPage({
       ).flatMap((x) => (x.label ? [{ version: x.version, label: x.label }] : []))
     : []
 
+  // Self-design LABEL proof — the maker sees the creator's composited artwork
+  // on the pin board too (signed URL from payload.svgKey, fail-soft).
+  const labelObj = room.objects.find((o) => o.kind === 'LABEL')
+  const latestLabel = labelObj?.versions[labelObj.versions.length - 1]
+  let labelProof: { version: number; url: string; widthMm: number; heightMm: number } | null = null
+  if (latestLabel && isLabelProofPayload(latestLabel.payload)) {
+    try {
+      labelProof = {
+        version: latestLabel.version,
+        url: await getSignedReadUrl(latestLabel.payload.svgKey),
+        widthMm: latestLabel.payload.widthMm,
+        heightMm: latestLabel.payload.heightMm,
+      }
+    } catch {
+      labelProof = null
+    }
+  }
+
   // Room switcher — every ACTIVE room this maker org is in.
   const [activeRooms, nicheRows] = await Promise.all([
     prisma.coCreationRoom.findMany({
@@ -136,6 +159,7 @@ export default async function PartnerRoomPage({
       <RoomClient
       roomId={room.id}
       initialObjectId={initialObjectId}
+      labelProof={labelProof}
       rooms={switcherRooms}
       recipeLabels={recipeLabels}
       rating={ratingProp}
