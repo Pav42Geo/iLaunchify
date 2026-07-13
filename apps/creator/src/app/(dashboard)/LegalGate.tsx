@@ -6,8 +6,23 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import type { OutstandingLegalDoc } from '@ilaunchify/auth/server'
 import { acceptLegalVersions } from './legal-gate-actions'
+
+// Client-safe shape of a legal doc the gate renders. Declared locally (not
+// imported from '@ilaunchify/auth/server') because that subpath pulls
+// @ilaunchify/legal → node:crypto, which Next 15 webpack cannot bundle for the
+// browser — a client component must never import from the server subpath.
+// Mirror of OutstandingLegalDoc in packages/auth/src/legal-gate.ts.
+interface OutstandingLegalDoc {
+  documentId: string
+  slug: string
+  title: string
+  versionId: string
+  version: string
+  bodyHtml: string
+  summaryOfChanges: string | null
+  effectiveAt: string | null
+}
 
 export function LegalGate({ docs }: { docs: OutstandingLegalDoc[] }) {
   const router = useRouter()
