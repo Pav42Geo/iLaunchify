@@ -62,6 +62,39 @@ export function SiteFooter({
   )
 }
 
+/** Inline trigger for the same contact modal, usable anywhere on the
+ *  Application/Onboarding surfaces (e.g. the welcome page's "Talk to our
+ *  team" — Pavel 2026-07-12: modal form instead of mailto). Renders as a
+ *  text link; pass className to match the surrounding copy. */
+export function ContactTeamLink({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={
+          className ??
+          'underline underline-offset-2 hover:text-ink-800 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500'
+        }
+      >
+        {children}
+      </button>
+      {open && (
+        <Modal title="Contact us" onClose={() => setOpen(false)}>
+          <ContactForm onDone={() => setOpen(false)} />
+        </Modal>
+      )}
+    </>
+  )
+}
+
 function FooterLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button

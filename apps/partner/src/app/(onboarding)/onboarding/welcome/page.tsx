@@ -19,6 +19,7 @@ import { prisma } from '@ilaunchify/db'
 import { CalendarClock, FileText, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { ContinueSetupButton } from './ContinueButton'
+import { ContactTeamLink } from '@/components/SiteFooter'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Welcome — iLaunchify Partners' }
@@ -173,9 +174,9 @@ export default async function WelcomePage() {
           How does verification work?
         </Link>{' '}
         ·{' '}
-        <a href="mailto:partners@ilaunchify.com" className="underline">
+        <ContactTeamLink className="underline underline-offset-2 hover:text-ink-800">
           Talk to our team
-        </a>
+        </ContactTeamLink>
       </p>
     </main>
   )
