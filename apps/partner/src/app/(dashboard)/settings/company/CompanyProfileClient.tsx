@@ -24,11 +24,15 @@ import {
   Megaphone,
   X,
 } from 'lucide-react'
-import { saveCompanyProfile, saveFacilityAddress, setProfilePublished } from './actions'
+import {
+  saveCompanyProfile,
+  setDisclosureLevel,
+  setProfilePublished,
+  type DisclosureLevelKey,
+} from './actions'
 import { uploadPartnerProfileImage, removePartnerProfileImage } from './media-actions'
 import { replaceVerificationDocument, getVerificationDocUrl } from './docs-actions'
 import { FacilitiesManager, type FacilityVM } from './FacilitiesManager'
-import { RegionSelect } from './RegionSelect'
 
 export interface DocSlotVM {
   kind: 'CERT_OF_INCORPORATION' | 'BUSINESS_LICENSE' | 'INSURANCE'
@@ -50,16 +54,11 @@ export interface CompanyProfileInitial {
   bestForTags: string[]
   logoUrl: string | null
   coverImageUrl: string | null
-  addressLine1: string
-  addressLine2: string
+  /** Display-only (synced from the primary facility) — used in disclosure help copy. */
   city: string
   state: string
-  postalCode: string
-  country: string
   /** ACTIVE platform markets (admin-managed) — the only offerable countries. */
   countries: { code: string; name: string }[]
-  approved: boolean
-  businessReviewPending: boolean
   docSlots: DocSlotVM[]
   hasNameableService: boolean
   disclosure: string
@@ -142,32 +141,12 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
     })
   }
 
-  // Address autosave — separate action: on an approved account it flips the
-  // BUSINESS verification section back to PENDING (identity re-review).
-  const addressDirtyRef = useRef(false)
-  const setAddr = (
-    k: 'addressLine1' | 'addressLine2' | 'city' | 'state' | 'postalCode' | 'country',
-    v: string,
-  ) => {
-    // Switching country invalidates the region code (different option list).
-    setF((p) => (k === 'country' ? { ...p, country: v, state: '' } : { ...p, [k]: v }))
-    addressDirtyRef.current = true
-    setSaveState('dirty')
-  }
-  const flushAddress = () => {
-    if (!addressDirtyRef.current) return
-    addressDirtyRef.current = false
+  const changeDisclosure = (level: DisclosureLevelKey) => {
+    set('disclosure', level)
+    dirtyRef.current = false
     setSaveState('saving')
     startTransition(async () => {
-      await saveFacilityAddress({
-        addressLine1: f.addressLine1,
-        addressLine2: f.addressLine2,
-        city: f.city,
-        state: f.state,
-        postalCode: f.postalCode,
-        country: f.country,
-      })
-      if (f.approved) setF((p) => ({ ...p, businessReviewPending: true }))
+      await setDisclosureLevel(level)
       setSaveState('saved')
     })
   }
@@ -409,41 +388,37 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
       {/* Facilities & label disclosure */}
       <Fieldset icon={<MapPin className="h-4 w-4" />} title="Facilities & label disclosure" hint="disclosureLevel">
         {f.hasNameableService ? (
-          // Disclosure is an iLaunchify ADMIN decision (Pavel 2026-07-12) —
-          // shown read-only here so the partner knows their current level,
-          // never as a self-serve control.
+          // Disclosure is the PARTNER'S OWN call (Pavel 2026-07-12) — they're
+          // the responsible party named on the label, so no admin approval.
           <Field
-            label="Label & marketplace disclosure"
+            label="How your name appears on labels & the marketplace"
             help={
               f.disclosure === 'FULL'
-                ? `Full = "Manufactured by ${f.companyName}${f.city ? `, ${f.city}` : ''}${f.state ? `, ${f.state}` : ''}" — your name appears on product pages and your public profile is reachable.`
-                : 'Your name stays hidden on product pages and your public profile is unreachable at this level.'
+                ? `Full = "Manufactured by ${f.companyName}${f.city ? `, ${f.city}` : ''}${f.state ? `, ${f.state}` : ''}" — your name shows on product pages and unlocks your public profile.`
+                : 'Your choice — Anonymous / City + State keep your name off product pages, and your public profile stays unreachable.'
             }
           >
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-ink-200 bg-ink-50 px-4 py-3">
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-bold',
-                  f.disclosure === 'FULL'
-                    ? 'border-success-100 bg-success-50 text-success-700'
-                    : 'border-ink-200 bg-white text-ink-600',
-                )}
-              >
-                {f.disclosure === 'FULL'
-                  ? 'Full "Manufactured by"'
-                  : f.disclosure === 'CITY_STATE'
-                    ? 'City + State'
-                    : 'Anonymous'}
-              </span>
-              <span className="text-[12px] text-ink-500">
-                Set by iLaunchify based on your verification standing.
-              </span>
-              <a
-                href="/help"
-                className="ml-auto rounded-full border border-ink-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-ink-700 hover:bg-ink-50"
-              >
-                Request a change →
-              </a>
+            <div className="inline-flex w-fit overflow-hidden rounded-md border border-ink-300">
+              {(
+                [
+                  ['ANONYMOUS', 'Anonymous'],
+                  ['CITY_STATE', 'City + State'],
+                  ['FULL', 'Full "Manufactured by"'],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => changeDisclosure(key)}
+                  disabled={pending}
+                  className={cn(
+                    'px-[18px] py-2 text-[13px] font-semibold transition-colors',
+                    f.disclosure === key ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-50',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </Field>
         ) : (
@@ -451,68 +426,10 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             Disclosure applies to Manufacturing / Co-packing services — none on this account yet.
           </p>
         )}
-        <Field
-          label="Primary facility · street address"
-          help="Address changes on an approved account re-enter identity review — your services keep routing while the new address is verified."
-        >
-          <input
-            value={f.addressLine1}
-            onChange={(e) => setAddr('addressLine1', e.target.value)}
-            onBlur={flushAddress}
-            placeholder="Street address"
-            className={inputCls}
-          />
-          <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {f.countries.length === 1 ? (
-              // Single active platform market → fixed country, exactly like
-              // the onboarding form.
-              <input
-                value={f.countries[0]?.name ?? f.country}
-                disabled
-                className={cn(inputCls, 'bg-ink-50 text-ink-500')}
-              />
-            ) : (
-              <select
-                value={f.country}
-                onChange={(e) => setAddr('country', e.target.value)}
-                onBlur={flushAddress}
-                className={inputCls}
-              >
-                {f.countries.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            <input
-              value={f.city}
-              onChange={(e) => setAddr('city', e.target.value)}
-              onBlur={flushAddress}
-              placeholder="City"
-              className={inputCls}
-            />
-            <RegionSelect
-              country={f.country}
-              value={f.state}
-              onChange={(v) => setAddr('state', v)}
-              onBlur={flushAddress}
-            />
-            <input
-              value={f.postalCode}
-              onChange={(e) => setAddr('postalCode', e.target.value)}
-              onBlur={flushAddress}
-              placeholder={f.country === 'CA' ? 'Postal code' : 'ZIP'}
-              className={inputCls}
-            />
-          </div>
-          {f.businessReviewPending && (
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-warning-100 bg-warning-50 px-2.5 py-[3px] text-[11px] font-bold text-warning-700">
-              <Loader2 className="h-3 w-3" />
-              Identity re-review pending
-            </span>
-          )}
-        </Field>
+        {/* Facilities are the SINGLE address source (Pavel 2026-07-12): the
+            primary facility IS the address of record — no duplicate loose
+            fields. Each facility edits in its own editor with an explicit
+            Save button. */}
         <div className="mt-1">
           <div className="mb-2 text-[12px] font-semibold text-ink-700">Facilities</div>
           <FacilitiesManager facilities={f.facilities} countries={f.countries} />

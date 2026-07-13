@@ -44,6 +44,38 @@ async function flagFacilityReview(partnerId: string, approved: boolean) {
   })
 }
 
+/**
+ * The PRIMARY facility IS the partner's address of record (Pavel 2026-07-12 —
+ * no separate loose address fields). Whenever the default facility changes,
+ * mirror it onto the legacy Partner address columns so every existing reader
+ * (my-application, admin review, routing) stays correct.
+ */
+async function syncPartnerAddressFromPrimary(partnerId: string) {
+  const primary = await prisma.partnerFacility.findFirst({
+    where: { partnerId, isDefault: true },
+    select: {
+      addressLine1: true,
+      addressLine2: true,
+      city: true,
+      region: true,
+      postalCode: true,
+      country: true,
+    },
+  })
+  if (!primary) return
+  await prisma.partner.update({
+    where: { id: partnerId },
+    data: {
+      addressLine1: primary.addressLine1,
+      addressLine2: primary.addressLine2,
+      city: primary.city,
+      state: primary.region,
+      postalCode: primary.postalCode,
+      country: primary.country,
+    },
+  })
+}
+
 export async function saveFacility(input: FacilityInput): Promise<FacilityResult> {
   const { user, partner } = await requirePartner()
   if (!partner) return { ok: false, error: 'No partner account.' }
@@ -84,6 +116,7 @@ export async function saveFacility(input: FacilityInput): Promise<FacilityResult
   }
 
   if (input.isDefault) await makeDefault(partner.id, facilityId)
+  await syncPartnerAddressFromPrimary(partner.id)
   await flagFacilityReview(partner.id, approved)
   await logAuditAs(user, {
     entityType: 'Partner',
@@ -115,6 +148,7 @@ export async function setPrimaryFacility(facilityId: string): Promise<FacilityRe
   })
   if (!fac) return { ok: false, error: 'Facility not found.' }
   await makeDefault(partner.id, facilityId)
+  await syncPartnerAddressFromPrimary(partner.id)
   await logAuditAs(user, {
     entityType: 'Partner',
     entityId: partner.id,

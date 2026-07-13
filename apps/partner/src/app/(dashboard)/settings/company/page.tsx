@@ -82,10 +82,45 @@ export default async function CompanyProfileSettingsPage() {
   // like the onboarding form; activating CA in admin adds Canada here.
   const countries = await getActiveMarketCountries()
 
+  // Facilities are the SINGLE address source (Pavel 2026-07-12). Legacy
+  // partners whose address lives only on the Partner row (captured in
+  // onboarding, pre-facilities) get their primary facility backfilled from it
+  // — best-effort, mirrors the layout's membership backfill pattern.
+  if (partner.facilities.length === 0 && partner.addressLine1 && partner.city) {
+    try {
+      const created = await prisma.partnerFacility.create({
+        data: {
+          partnerId: partner.id,
+          name: `${partner.companyName} — ${partner.city}`,
+          addressLine1: partner.addressLine1,
+          addressLine2: partner.addressLine2,
+          city: partner.city,
+          region: partner.state ?? '',
+          postalCode: partner.postalCode ?? '',
+          country: partner.country || 'US',
+          isDefault: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          addressLine1: true,
+          addressLine2: true,
+          city: true,
+          region: true,
+          postalCode: true,
+          country: true,
+          isDefault: true,
+        },
+      })
+      partner.facilities.push(created)
+    } catch {
+      // Non-fatal — the manager just starts empty.
+    }
+  }
+
   // Verification-document slots (prototype docslots) — latest file per
   // canonical kind + the DOCUMENTS section's review status. Real data only.
   const docsSection = partner.verificationSections.find((s) => s.type === 'DOCUMENTS')
-  const businessSection = partner.verificationSections.find((s) => s.type === 'BUSINESS')
   const DOC_KINDS = ['CERT_OF_INCORPORATION', 'BUSINESS_LICENSE', 'INSURANCE'] as const
   const DOC_LABEL: Record<(typeof DOC_KINDS)[number], string> = {
     CERT_OF_INCORPORATION: 'Certificate of incorporation',
@@ -146,16 +181,9 @@ export default async function CompanyProfileSettingsPage() {
           bestForTags: partner.bestForTags ?? [],
           logoUrl: partner.logoUrl,
           coverImageUrl: partner.coverImageUrl,
-          addressLine1: partner.addressLine1 ?? '',
-          addressLine2: partner.addressLine2 ?? '',
           city: partner.city ?? '',
           state: partner.state ?? '',
-          postalCode: partner.postalCode ?? '',
-          country: partner.country || 'US',
           countries,
-          approved: partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED',
-          businessReviewPending:
-            businessSection != null && businessSection.status !== 'VERIFIED',
           docSlots,
           hasNameableService: partner.services.length > 0,
           disclosure,
