@@ -8,6 +8,7 @@ export {
   FEE_EVENTS,
   DESIGN_ALTERNATE_CAPS,
   designAlternateCap,
+  designerSeatCap,
 } from './codes'
 
 export type {
