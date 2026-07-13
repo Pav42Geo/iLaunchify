@@ -109,7 +109,7 @@ export default async function WelcomePage() {
           <div>
             <h2 className="font-semibold text-ink-900">Here&apos;s what to expect</h2>
             <p className="mt-2 text-ui-body text-ink-600">
-              The form takes about <strong>10–15 minutes</strong> if you have your documents ready.
+              The form takes about <strong>5–10 minutes</strong> if you have your documents ready.
               Our verification team typically reviews within <strong>3–5 business days</strong> —
               you&apos;ll see live status the whole way.
             </p>
