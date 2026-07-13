@@ -56,11 +56,12 @@ export const scenarioSupportAgentFenced = () => {
 export const scenarioSupportLeadFenced = () => {
   const can: Parameters<typeof hasCapability>[1][] = [
     'tickets:admin', 'refunds:approve', 'orders:write', 'billing:read', 'reviews:write',
-    'partners:approve',
   ]
   const cannot: Parameters<typeof hasCapability>[1][] = [
     'billing:write', 'refunds:execute', 'tiers:write', 'users:admin',
     'security:admin', 'platform:admin',
+    // Super-only by default (Pavel 2026-07-13) — grantable per-role in /roles.
+    'partners:approve',
   ]
   for (const c of can) assert(hasCapability('SUPPORT_LEAD', c), `lead should have ${c}`)
   for (const c of cannot) assert(!hasCapability('SUPPORT_LEAD', c), `lead should NOT have ${c}`)
