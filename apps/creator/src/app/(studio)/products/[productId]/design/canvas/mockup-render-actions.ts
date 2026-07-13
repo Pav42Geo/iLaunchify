@@ -36,7 +36,7 @@ export async function saveDesignMockupRender(
       },
       select: { id: true, product: { select: { id: true, brandId: true } } },
     })
-    if (!design) return { ok: false, error: 'Design not found or access denied' }
+    if (!design || !design.product) return { ok: false, error: 'Design not found or access denied' }
 
     const buf = Buffer.from(pngBase64, 'base64')
     if (!buf.byteLength) return { ok: false, error: 'Empty render' }

@@ -30,10 +30,13 @@ type Result = { ok: true; designId?: string } | { ok: false; error: string }
  */
 async function alternateCapError(
   userId: string,
-  slot: { productId: string; flavorPresetId: string | null; surfaceKey: string | null },
+  // productId is nullable since Design.productId was relaxed for room-scoped
+  // designs (2026-07-13); alternates are a product-Studio concept, so a design
+  // with no product simply has no cap.
+  slot: { productId: string | null; flavorPresetId: string | null; surfaceKey: string | null },
 ): Promise<string | null> {
   const cap = designAlternateCap(await getCreatorTier(userId))
-  if (cap === null) return null
+  if (cap === null || !slot.productId) return null
   const siblings = await prisma.design
     .findMany({
       where: { productId: slot.productId, flavorPresetId: slot.flavorPresetId, surfaceKey: slot.surfaceKey },
