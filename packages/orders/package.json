@@ -2,6 +2,7 @@
   "name": "@ilaunchify/orders",
   "version": "0.1.0",
   "private": true,
+  "sideEffects": false,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
@@ -14,6 +15,7 @@
     "@ilaunchify/db": "workspace:*",
     "@ilaunchify/notifications": "workspace:*",
     "@ilaunchify/nutrition": "workspace:*",
+    "@ilaunchify/plans": "workspace:*",
     "@ilaunchify/risk": "workspace:*",
     "@ilaunchify/types": "workspace:*",
     "zod": "^3.23.8"

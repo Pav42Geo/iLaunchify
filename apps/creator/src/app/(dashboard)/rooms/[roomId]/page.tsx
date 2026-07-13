@@ -5,6 +5,7 @@ import {
   resolveRoomRecipeLabel,
   evaluateMakerSwitch,
   isLabelProofPayload,
+  listRoomDesignerSeats,
   CO_CREATION_RATING_DIMENSIONS,
 } from '@ilaunchify/orders'
 import { getSignedReadUrl } from '@ilaunchify/storage'
@@ -130,6 +131,10 @@ export default async function RoomPage({
   const designLabelHref =
     room.status === 'ACTIVE' && packagingApproved ? `/rooms/${room.id}/label` : undefined
 
+  // Shared Design Workspace C3 — invited-designer seats (creator-only card;
+  // shown alongside the label board once packaging pins the die-line).
+  const designerSeats = packagingApproved ? await listRoomDesignerSeats(room.id) : []
+
   // "Confirm & create product" unlocks when the recipe is approved, the room
   // is still active, and nothing was materialized yet (§6 CLOSED_WON).
   const recipe = room.objects.find((o) => o.kind === 'RECIPE')
@@ -207,6 +212,7 @@ export default async function RoomPage({
         recipeLabels={recipeLabels}
         labelProof={labelProof}
         designLabelHref={designLabelHref}
+        designerSeats={designerSeats}
         briefDomain={room.brief.category}
         briefTitle={room.brief.title}
         briefNicheSlug={room.brief.nicheSlug}

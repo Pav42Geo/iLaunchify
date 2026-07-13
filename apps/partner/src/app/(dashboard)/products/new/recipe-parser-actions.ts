@@ -219,7 +219,7 @@ function countParsesThisMonth(userId: string): Promise<number> {
 }
 
 function logRateLimit(
-  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' },
+  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'DESIGNER' },
   productTemplateId: string,
   window: 'minute' | 'day' | 'month',
 ): Promise<void> {

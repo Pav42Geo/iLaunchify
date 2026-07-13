@@ -60,7 +60,7 @@ export function evaluateCollaboratorAccess(
 export function canGrantDesignerSeat(input: {
   cap: number | null
   occupiedSeats: number
-}): { ok: boolean; error?: string } {
+}): { ok: true } | { ok: false; error: string } {
   if (input.cap === null) return { ok: true }
   if (input.occupiedSeats >= input.cap) {
     return {

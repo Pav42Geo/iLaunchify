@@ -516,6 +516,18 @@ export type {
   EditLockState,
   EditLockVerdict,
 } from './design-collaboration'
+// W1 invite/accept/revoke service (C2/C3/C4 + D-W5 auto-revoke)
+export {
+  inviteDesigner,
+  revokeDesignerSeat,
+  autoRevokeRoomDesigners,
+  acceptDesignerInvite,
+  markSeatNdaAccepted,
+  listRoomDesignerSeats,
+  getCollaboratorAccessForUser,
+  DESIGNER_INVITE_TTL_DAYS,
+} from './design-collaboration-service'
+export type { DesignerSeatView, SeatResult } from './design-collaboration-service'
 // Anti-circumvention contact-leak detector (pure) — chat policy enforcement
 export {
   detectContactLeaks,

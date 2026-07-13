@@ -20,7 +20,7 @@ import { assertBuildObjectTransition } from './room-object-fsm'
 import { autoMatchRecipePayload } from './room-label'
 
 /** The session user shape logAuditAs expects. */
-export type RoomActor = { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER'; adminRole?: string | null }
+export type RoomActor = { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'DESIGNER'; adminRole?: string | null }
 
 export type RoomRole = 'CREATOR' | 'PARTNER'
 
@@ -162,6 +162,13 @@ export async function reviewObject(
       ...(note ? { note } : {}),
     },
   })
+
+  // D-W5 (Shared Design Workspace): LABEL approval ends every invited-designer
+  // seat in the room — access is engagement-scoped, never open-ended.
+  if (decision === 'APPROVE' && object.kind === 'LABEL') {
+    const { autoRevokeRoomDesigners } = await import('./design-collaboration-service')
+    await autoRevokeRoomDesigners(ctx.actor, ctx.roomId, 'LABEL_APPROVED').catch(() => undefined)
+  }
 
   return { ok: true }
 }

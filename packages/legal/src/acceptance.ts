@@ -15,7 +15,9 @@
 
 import { canonicalJson, sha256Hex } from './hash'
 
-export type LegalActorType = 'CREATOR' | 'PARTNER' | 'ADMIN'
+// DESIGNER added 2026-07-13 (Shared Design Workspace D-W6 — the designer NDA
+// acceptance rides this same tamper-evident ledger).
+export type LegalActorType = 'CREATOR' | 'PARTNER' | 'ADMIN' | 'DESIGNER'
 export type LegalAcceptanceMethod = 'clickwrap' | 'typed-signature'
 
 export interface LegalAcceptanceInput {

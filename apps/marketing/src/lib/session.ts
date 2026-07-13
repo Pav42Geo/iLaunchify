@@ -21,7 +21,7 @@ export interface MarketingSessionUser {
   id: string
   email: string
   name: string | null
-  role: 'ADMIN' | 'CREATOR' | 'PARTNER'
+  role: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'DESIGNER'
 }
 
 export interface MarketingSessionBrand {

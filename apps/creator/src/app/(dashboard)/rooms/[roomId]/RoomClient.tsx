@@ -27,6 +27,7 @@ import {
   creatorSubmitVersion,
   creatorSwitchMaker,
 } from './actions'
+import { inviteDesignerAction, revokeDesignerAction } from './design-team-actions'
 
 export function RoomClient(props: {
   roomId: string
@@ -38,6 +39,15 @@ export function RoomClient(props: {
   labelProof?: { version: number; url: string; widthMm: number; heightMm: number } | null
   /** "Design the label" Studio deep link — present only when PACKAGING is APPROVED. */
   designLabelHref?: string
+  /** Invited-designer seats (Shared Design Workspace C3). */
+  designerSeats?: {
+    id: string
+    email: string
+    name: string | null
+    role: string
+    status: string
+    ndaAccepted: boolean
+  }[]
   briefDomain: string
   briefTitle: string
   briefNicheSlug: string
@@ -71,6 +81,9 @@ export function RoomClient(props: {
       recipeLabels={props.recipeLabels}
       labelProof={props.labelProof}
       designLabelHref={props.designLabelHref}
+      designerSeats={props.designerSeats}
+      onInviteDesigner={(email) => refresh(inviteDesignerAction(props.roomId, email))}
+      onRevokeDesigner={(seatId) => refresh(revokeDesignerAction(props.roomId, seatId))}
       briefDomain={props.briefDomain}
       briefTitle={props.briefTitle}
       accentGradient={nicheGradientKey(props.briefNicheSlug)}

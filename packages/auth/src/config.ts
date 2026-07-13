@@ -22,7 +22,7 @@ declare module 'next-auth' {
       email: string
       name?: string | null
       image?: string | null
-      role: 'ADMIN' | 'CREATOR' | 'PARTNER'
+      role: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'DESIGNER'
       // Admin RBAC sub-role (docs/ADMIN_RBAC.md). Null for non-admins or an
       // admin not yet assigned a role. Authorization still resolves live via
       // requireCapability — this is for UI display only.

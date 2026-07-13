@@ -285,6 +285,12 @@ export async function materializeRoomWon(
     toValue: 'CLOSED_WON',
     payload: { briefId: room.briefId, productId: product.id },
   })
+
+  // D-W5 (Shared Design Workspace): room close ends every invited-designer seat.
+  {
+    const { autoRevokeRoomDesigners } = await import('./design-collaboration-service')
+    await autoRevokeRoomDesigners(actor, room.id, 'ROOM_CLOSED').catch(() => undefined)
+  }
   await logAuditAs(actor, {
     entityType: 'ProductBrief',
     entityId: room.briefId,

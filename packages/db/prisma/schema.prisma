@@ -4831,6 +4831,7 @@ enum AuditActorRole {
   CREATOR
   PARTNER
   SYSTEM // Webhook handlers, cron jobs, migrations
+  DESIGNER // Invited packaging designer (Shared Design Workspace D-W1, 2026-07-13)
 }
 
 model AuditLog {
@@ -10440,6 +10441,7 @@ enum LegalAudience {
   PUBLIC
   CREATOR
   PARTNER
+  DESIGNER // Invited packaging designers — the designer NDA (D-W6, 2026-07-13)
   ALL
 }
 
@@ -10465,4 +10467,5 @@ enum LegalActorType {
   CREATOR
   PARTNER
   ADMIN
+  DESIGNER // Invited packaging designer (Shared Design Workspace D-W6 NDA, 2026-07-13)
 }

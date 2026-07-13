@@ -128,6 +128,20 @@ export interface CoCreationRoomShellProps {
    * maker's die-line the creator designs on).
    */
   designLabelHref?: string
+  /**
+   * Shared Design Workspace C3 (creator mode): invited-designer seats on this
+   * room's label design + the invite/revoke actions. Absent = card hidden.
+   */
+  designerSeats?: {
+    id: string
+    email: string
+    name: string | null
+    role: string
+    status: string
+    ndaAccepted: boolean
+  }[]
+  onInviteDesigner?: (email: string) => Promise<Result>
+  onRevokeDesigner?: (seatId: string) => Promise<Result>
   milestones: RoomShellMilestone[]
   events: RoomShellEvent[]
   messages: RoomShellMessage[]
@@ -685,6 +699,17 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
               recipeLabels={props.recipeLabels ?? []}
               labelProof={props.labelProof ?? null}
               designLabelHref={props.designLabelHref}
+              designerSeats={props.designerSeats}
+              onInviteDesigner={
+                props.onInviteDesigner
+                  ? (email) => void run(() => props.onInviteDesigner!(email))
+                  : undefined
+              }
+              onRevokeDesigner={
+                props.onRevokeDesigner
+                  ? (seatId) => void run(() => props.onRevokeDesigner!(seatId))
+                  : undefined
+              }
               onSearchIngredients={props.onSearchIngredients}
               onCreateIngredient={props.onCreateIngredient}
               briefDomain={props.briefDomain}
@@ -892,6 +917,9 @@ function ObjectDetail({
   recipeLabels,
   labelProof,
   designLabelHref,
+  designerSeats,
+  onInviteDesigner,
+  onRevokeDesigner,
   onSearchIngredients,
   onCreateIngredient,
   briefDomain,
@@ -910,6 +938,16 @@ function ObjectDetail({
   recipeLabels: { version: number; label: RoomRecipeLabelView }[]
   labelProof: { version: number; url: string; widthMm: number; heightMm: number } | null
   designLabelHref?: string
+  designerSeats?: {
+    id: string
+    email: string
+    name: string | null
+    role: string
+    status: string
+    ndaAccepted: boolean
+  }[]
+  onInviteDesigner?: (email: string) => void
+  onRevokeDesigner?: (seatId: string) => void
   onSearchIngredients?: (query: string) => Promise<IngredientPick[]>
   onCreateIngredient?: (input: IngredientCreateInput) => Promise<
     { ok: true; ingredient: IngredientPick } | { ok: false; error: string }
@@ -1318,18 +1356,28 @@ function ObjectDetail({
         ) : null}
 
         {isLabel ? (
-          <LabelPinBoard
-            object={object}
-            mode={mode}
-            meName={meName}
-            busy={busy}
-            gradient={gradient}
-            briefTitle={briefTitle}
-            partnerName={partnerName}
-            onComment={onComment}
-            proof={labelProof ?? null}
-            designLabelHref={designLabelHref}
-          />
+          <>
+            <LabelPinBoard
+              object={object}
+              mode={mode}
+              meName={meName}
+              busy={busy}
+              gradient={gradient}
+              briefTitle={briefTitle}
+              partnerName={partnerName}
+              onComment={onComment}
+              proof={labelProof ?? null}
+              designLabelHref={designLabelHref}
+            />
+            {mode === 'creator' && designerSeats && onInviteDesigner && onRevokeDesigner ? (
+              <DesignTeamCard
+                seats={designerSeats}
+                busy={busy}
+                onInvite={onInviteDesigner}
+                onRevoke={onRevokeDesigner}
+              />
+            ) : null}
+          </>
         ) : versions.length === 0 && !editing ? (
           <p className="rounded-lg bg-white px-s-3 py-s-4 text-center text-ui-caption text-ink-500">
             {canSubmit
@@ -3349,6 +3397,107 @@ function RecipeFactsCompare({
         Both labels computed from catalog data for their own formula version.
       </p>
     </aside>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Design team card — invited-designer seats (Shared Design Workspace C3,
+// D-W2 creator-only invites / D-W5 revoke anytime / D-W6 NDA state shown).
+// ---------------------------------------------------------------------------
+
+const SEAT_PILL: Record<string, { label: string; cls: string }> = {
+  INVITED: { label: 'Invited', cls: 'bg-warning-50 text-warning-700' },
+  ACTIVE: { label: 'Active', cls: 'bg-success-50 text-success-700' },
+  REVOKED: { label: 'Revoked', cls: 'bg-ink-100 text-ink-500' },
+  EXPIRED: { label: 'Expired', cls: 'bg-ink-100 text-ink-500' },
+}
+
+function DesignTeamCard({
+  seats,
+  busy,
+  onInvite,
+  onRevoke,
+}: {
+  seats: { id: string; email: string; name: string | null; role: string; status: string; ndaAccepted: boolean }[]
+  busy: boolean
+  onInvite: (email: string) => void
+  onRevoke: (seatId: string) => void
+}) {
+  const [email, setEmail] = React.useState('')
+  const live = seats.filter((s) => s.status === 'INVITED' || s.status === 'ACTIVE')
+  const past = seats.filter((s) => s.status === 'REVOKED' || s.status === 'EXPIRED')
+
+  return (
+    <div className="mt-s-3 rounded-lg border border-ink-200 bg-white p-s-4">
+      <div className="flex items-baseline gap-s-2">
+        <p className="font-display text-ui-caption font-bold text-ink-900">Design team</p>
+        <p className="text-ui-label normal-case tracking-normal text-ink-500">
+          Invite a trusted designer — scoped to THIS label only, behind a designer agreement.
+        </p>
+      </div>
+
+      {live.length === 0 ? (
+        <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-400">
+          No designer seats yet.
+        </p>
+      ) : (
+        live.map((s) => (
+          <div key={s.id} className="mt-s-2 flex items-center gap-s-2 rounded-lg border border-ink-100 bg-ink-50 px-s-3 py-s-2">
+            <span className="flex h-7 w-7 flex-none items-center justify-center rounded-pill bg-pink-100 text-ui-label tracking-normal text-pink-800">
+              {(s.name ?? s.email).slice(0, 2).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-ui-caption font-semibold text-ink-900">{s.name ?? s.email}</span>
+              <span className="block truncate text-ui-label normal-case tracking-normal text-ink-500">
+                {s.email} · {s.role.toLowerCase()} · {s.ndaAccepted ? 'agreement signed ✓' : 'agreement pending'}
+              </span>
+            </span>
+            <span className={cn('rounded-pill px-s-2 py-0.5 text-ui-label tracking-normal', SEAT_PILL[s.status]?.cls ?? 'bg-ink-100 text-ink-500')}>
+              {SEAT_PILL[s.status]?.label ?? s.status}
+            </span>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onRevoke(s.id)}
+              className="rounded-pill border border-ink-300 px-s-2 py-0.5 text-ui-label tracking-normal text-ink-600 transition-colors hover:border-danger-500 hover:text-danger-600"
+            >
+              Revoke
+            </button>
+          </div>
+        ))
+      )}
+
+      <div className="mt-s-2 flex gap-s-2">
+        <Input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="designer@studio.com"
+          type="email"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && email.trim()) {
+              onInvite(email.trim())
+              setEmail('')
+            }
+          }}
+        />
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={busy || !email.trim()}
+          onClick={() => {
+            onInvite(email.trim())
+            setEmail('')
+          }}
+        >
+          ＋ Invite
+        </Button>
+      </div>
+      {past.length > 0 ? (
+        <p className="mt-s-2 text-ui-label normal-case tracking-normal text-ink-400">
+          {past.length} past seat{past.length === 1 ? '' : 's'} (revoked/expired) — access ends automatically when the label is approved or the room closes.
+        </p>
+      ) : null}
+    </div>
   )
 }
 

@@ -40,7 +40,7 @@ export async function getOutstandingLegalDocs(
   actorType: Role,
 ): Promise<OutstandingLegalDoc[]> {
   const now = new Date()
-  const audiences: Array<'PUBLIC' | 'CREATOR' | 'PARTNER' | 'ALL'> =
+  const audiences: Array<'PUBLIC' | 'CREATOR' | 'PARTNER' | 'DESIGNER' | 'ALL'> =
     actorType === 'ADMIN' ? ['ALL'] : [actorType, 'ALL']
 
   const docs = await prisma.legalDocument.findMany({

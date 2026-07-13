@@ -43,7 +43,9 @@ export async function logAudit(input: AuditEntryInput): Promise<void> {
  * call requireUser() at the top). Maps user.role -> actorRole automatically.
  */
 export async function logAuditAs(
-  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER'; adminRole?: string | null },
+  // DESIGNER added 2026-07-13 (Shared Design Workspace D-W1 — invited designers
+  // accept seats + NDAs, both audited).
+  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'DESIGNER'; adminRole?: string | null },
   entry: Omit<AuditEntryInput, 'actorId' | 'actorRole'>,
 ): Promise<void> {
   return logAudit({

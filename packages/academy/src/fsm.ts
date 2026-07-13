@@ -48,7 +48,7 @@ export async function transitionAcademyStatus(input: {
   entity: AcademyEntity
   id: string
   to: AcademyStatus
-  actor: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' }
+  actor: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'DESIGNER' }
 }): Promise<TransitionResult> {
   const { entity, id, to, actor } = input
 
