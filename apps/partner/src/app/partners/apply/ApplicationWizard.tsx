@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import { Input, Label, TurnstileWidget } from '@ilaunchify/ui'
+import { Input, TurnstileWidget, FormField, FieldRow } from '@ilaunchify/ui'
 import { ContainerCategory, StructuralPackType, DieCutCategory, StorageClass, FcVasJobType } from '@ilaunchify/db'
 import { MANUFACTURING_PROCESS_OPTIONS } from '@ilaunchify/types'
 import { CertificatePicker, type CertPickerOption } from '@/components/CertificatePicker'
@@ -296,17 +296,17 @@ export function ApplicationWizard({
         <FieldBox label="Company name" error={formState.errors.companyName?.message} star>
           <Input placeholder="Northwind Co." {...register('companyName')} />
         </FieldBox>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={2}>
           <FieldBox label="Legal name (if different)">
             <Input placeholder="Northwind Co. LLC" {...register('legalName')} />
           </FieldBox>
           <FieldBox label="Years in business" star>
             <Input placeholder="e.g. 8" {...register('yearsInBusiness')} />
           </FieldBox>
-        </div>
+        </FieldRow>
         {/* Location — carries forward to onboarding; drives proximity matching +
             region diversity. State list is your real Region data. */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={3}>
           <FieldBox label="Country">
             <ApplySelect
               {...register('country', {
@@ -334,8 +334,8 @@ export function ApplicationWizard({
           <FieldBox label="City">
             <Input placeholder="Columbus" {...register('city')} />
           </FieldBox>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        </FieldRow>
+        <FieldRow cols={3}>
           <FieldBox label="Production facilities" star>
             <ApplySelect {...register('facilityCount')}>
               <option value="">Select…</option>
@@ -363,7 +363,7 @@ export function ApplicationWizard({
               <option value="OTHER">Other</option>
             </ApplySelect>
           </FieldBox>
-        </div>
+        </FieldRow>
       </>
     )
   }
@@ -433,22 +433,22 @@ export function ApplicationWizard({
           Who should we <Em>reach out to?</Em>
         </H>
         <Sub>And a couple lines of context so we can judge fit.</Sub>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={2}>
           <FieldBox label="Your name" error={formState.errors.contactName?.message} star>
             <Input placeholder="Jane Doe" {...register('contactName')} />
           </FieldBox>
           <FieldBox label="Work email" error={formState.errors.email?.message} star>
             <Input type="email" placeholder="you@company.com" {...register('email')} />
           </FieldBox>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        </FieldRow>
+        <FieldRow cols={2}>
           <FieldBox label="Phone (optional)">
             <Input {...register('phone')} />
           </FieldBox>
           <FieldBox label="Website" error={formState.errors.website?.message} star>
             <Input placeholder="https://" {...register('website')} />
           </FieldBox>
-        </div>
+        </FieldRow>
         <FieldBox label="Who have you produced for? (brands / categories)">
           <textarea
             className="flex min-h-[60px] w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-sm placeholder:text-ink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
@@ -529,14 +529,14 @@ export function ApplicationWizard({
             ))}
           </Chips>
         </FieldBox>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={2}>
           <FieldBox label="Smallest batch you'll run">
             <Input placeholder="e.g. 500 units" value={str(k, 'batchMin')} onChange={(e) => setDetail(k, 'batchMin', e.target.value)} />
           </FieldBox>
           <FieldBox label="Largest batch (ceiling)">
             <Input placeholder="e.g. 250,000 units" value={str(k, 'batchMax')} onChange={(e) => setDetail(k, 'batchMax', e.target.value)} />
           </FieldBox>
-        </div>
+        </FieldRow>
       </>
     )
   }
@@ -590,14 +590,14 @@ export function ApplicationWizard({
             ))}
           </Chips>
         </FieldBox>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={2}>
           <FieldBox label="Smallest run you'll take">
             <Input placeholder="e.g. 1,000 units" value={str(k, 'minRun')} onChange={(e) => setDetail(k, 'minRun', e.target.value)} />
           </FieldBox>
           <FieldBox label="Largest run (ceiling)">
             <Input placeholder="e.g. 500,000 units" value={str(k, 'maxRun')} onChange={(e) => setDetail(k, 'maxRun', e.target.value)} />
           </FieldBox>
-        </div>
+        </FieldRow>
         <FieldBox label="Current capacity utilization (%)">
           <Input placeholder="e.g. 70" value={str(k, 'utilization')} onChange={(e) => setDetail(k, 'utilization', e.target.value)} />
         </FieldBox>
@@ -658,14 +658,14 @@ export function ApplicationWizard({
             onToggle={(v) => toggleDetail(k, 'vas', v)}
           />
         </FieldBox>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={2}>
           <FieldBox label="Rough capacity">
             <Input placeholder="e.g. 500 pallets" value={str(k, 'capacity')} onChange={(e) => setDetail(k, 'capacity', e.target.value)} />
           </FieldBox>
           <FieldBox label="Location (city / state)">
             <Input placeholder="Columbus, OH" value={str(k, 'location')} onChange={(e) => setDetail(k, 'location', e.target.value)} />
           </FieldBox>
-        </div>
+        </FieldRow>
       </>
     )
   }
@@ -817,26 +817,12 @@ function FieldBox({
   star?: boolean
   children: React.ReactNode
 }) {
-  // `grid gap-y-1.5` + subgrid: when this box sits in a row-defining grid (see the
-  // sm:grid-cols-* rows below), its label + control align to the SAME two rows as
-  // its neighbours — so inputs line up even when one label wraps to two lines and
-  // another is one. Standalone (no grid parent), subgrid falls back to a plain
-  // grid and it renders exactly like the old space-y-1.5 stack.
+  // Thin wrapper over the shared FormField — keeps the apply-specific prop name
+  // (`star`) and the mb-4 rhythm; all label/alignment logic lives in FormField.
   return (
-    <div className="mb-4 grid gap-y-1.5 sm:row-span-2 sm:[grid-template-rows:subgrid]">
-      <div className="flex items-baseline gap-1">
-        <Label>{label}</Label>
-        {star && (
-          <span className="text-pink-500" aria-label="required" title="Required">
-            *
-          </span>
-        )}
-      </div>
-      <div className="space-y-1.5">
-        {children}
-        {error && <p className="text-[12px] text-danger-600">{error}</p>}
-      </div>
-    </div>
+    <FormField label={label} error={error} required={star} className="mb-4">
+      {children}
+    </FormField>
   )
 }
 function SelectCard({

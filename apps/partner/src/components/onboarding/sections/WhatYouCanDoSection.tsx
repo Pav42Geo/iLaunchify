@@ -249,7 +249,7 @@ function ManufacturingForm({
           onToggle={(v) => toggleArr('processes', v)}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+      <FieldRow cols={2}>
         <Field id="mfg-moqmin" label="Minimum order (units)">
           <Input
             id="mfg-moqmin"
@@ -270,8 +270,8 @@ function ManufacturingForm({
             onBlur={() => persist(value)}
           />
         </Field>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+      </FieldRow>
+      <FieldRow cols={2}>
         <Field id="mfg-lt-min" label="Lead time (days, min)">
           <Input
             id="mfg-lt-min"
@@ -292,7 +292,7 @@ function ManufacturingForm({
             onBlur={() => persist(value)}
           />
         </Field>
-      </div>
+      </FieldRow>
     </div>
   )
 }
@@ -415,7 +415,7 @@ function CopackingForm({
           onToggle={(v) => toggleField('packagingFormats', v)}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+      <FieldRow cols={3}>
         <Field id="cop-moq" label="Typical MOQ (units)">
           <Input
             id="cop-moq"
@@ -446,7 +446,7 @@ function CopackingForm({
             onBlur={commit}
           />
         </Field>
-      </div>
+      </FieldRow>
     </div>
   )
 }
@@ -495,7 +495,7 @@ function LabelPrintingForm({
           onToggle={(v) => toggleField('dieCuts', v)}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+      <FieldRow cols={2}>
         <Field id="lp-lt-min" label="Lead time (days, min)">
           <Input
             id="lp-lt-min"
@@ -516,7 +516,7 @@ function LabelPrintingForm({
             onBlur={commit}
           />
         </Field>
-      </div>
+      </FieldRow>
     </div>
   )
 }
@@ -549,7 +549,7 @@ function WarehouseForm({
           onToggle={toggleStorage}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+      <FieldRow cols={2}>
         <Field id="wh-pallets" label="Pallet capacity">
           <Input
             id="wh-pallets"

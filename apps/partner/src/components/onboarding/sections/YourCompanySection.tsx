@@ -14,7 +14,7 @@
 // source of truth on the server.
 
 import { useState, useTransition } from 'react'
-import { Input, Label } from '@ilaunchify/ui'
+import { Input, FormField, FieldRow } from '@ilaunchify/ui'
 import type { PartnerFile } from '@ilaunchify/db'
 import { saveYourCompanySection, saveInsuranceCoverageUsd } from '../../../app/(onboarding)/onboarding/actions'
 import { FileUploadSlot, type ExistingFile } from '../../../app/(onboarding)/onboarding/documents/FileUploadSlot'
@@ -98,7 +98,7 @@ export function YourCompanySection({
       {/* Legal entity */}
       <section className="space-y-4">
         <h3 className="text-base font-semibold text-ink-900">Legal entity</h3>
-        <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={2}>
           <Field id="companyName" label="Doing-business-as (DBA)" required>
             <Input
               id="companyName"
@@ -115,9 +115,9 @@ export function YourCompanySection({
               onBlur={commit}
             />
           </Field>
-        </div>
+        </FieldRow>
 
-        <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={2}>
           <Field id="websiteUrl" label="Website">
             <Input
               id="websiteUrl"
@@ -136,7 +136,7 @@ export function YourCompanySection({
               onBlur={commit}
             />
           </Field>
-        </div>
+        </FieldRow>
       </section>
 
       {/* Address */}
@@ -164,7 +164,7 @@ export function YourCompanySection({
           />
         </Field>
 
-        <div className="grid gap-4 sm:grid-cols-4 sm:gap-y-1.5 sm:[grid-template-rows:auto_auto]">
+        <FieldRow cols={4}>
           <Field id="city" label="City" required>
             <Input
               id="city"
@@ -199,7 +199,7 @@ export function YourCompanySection({
               onBlur={commit}
             />
           </Field>
-        </div>
+        </FieldRow>
       </section>
 
       {/* Documents */}
@@ -271,22 +271,15 @@ function Field({
   children: React.ReactNode
 }) {
   return (
-    <div className="grid gap-y-1.5 sm:row-span-2 sm:[grid-template-rows:subgrid]">
-      <div className="flex items-baseline gap-1">
-        <Label htmlFor={id} className="text-sm font-medium text-ink-900">
-          {label}
-          {required && (
-            <span className="ml-0.5 text-pink-500" aria-label="required" title="Required">
-              *
-            </span>
-          )}
-        </Label>
-      </div>
-      <div className="space-y-1.5">
-        {children}
-        {hint && <p className="text-ui-caption text-ink-500">{hint}</p>}
-      </div>
-    </div>
+    <FormField
+      htmlFor={id}
+      label={label}
+      hint={hint}
+      required={required}
+      labelClassName="text-sm font-medium text-ink-900"
+    >
+      {children}
+    </FormField>
   )
 }
 
