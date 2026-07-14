@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Partner Dashboard v2 — command center + personalized feed (token build)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink-50:#F7F7F8;--ink-100:#EFEFF1;--ink-200:#E3E3E7;--ink-300:#C9C9D0;--ink-400:#9B9BA6;
+  --ink-500:#71717C;--ink-600:#52525B;--ink-700:#3F3F46;--ink-900:#18181A;
+  --pink-50:#FFF0F4;--pink-100:#FFDCE6;--pink-200:#FFB8CC;--pink-500:#FF2E63;--pink-700:#C40E44;
+  --success-50:#EAF7EE;--success-200:#BFE8CC;--success-600:#1F7A3D;
+  --warning-50:#FFF6E8;--warning-200:#FFE2B8;--warning-600:#B36F04;
+  --danger-50:#FDECEC;--danger-200:#F7C6C6;--danger-600:#C22B2B;
+  --info-50:#EAF3FF;--info-200:#BDDAFF;--info-700:#1660B8;
+  --neon-500:#B5FF3D;
+  --font-body:'Inter',system-ui,sans-serif;--font-display:'Bricolage Grotesque',sans-serif;--font-serif:'Fraunces',serif;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font-body);background:var(--ink-50);color:var(--ink-900);padding:24px clamp(14px,3.5vw,40px);max-width:1140px;margin:0 auto}
+
+/* persona switcher (prototype only) */
+.persona{display:flex;gap:6px;margin-bottom:18px}
+.persona button{border:1px solid var(--ink-200);background:#fff;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;color:var(--ink-600);cursor:pointer;font-family:var(--font-body)}
+.persona button.on{background:var(--ink-900);border-color:var(--ink-900);color:#fff}
+
+/* greeting */
+.greet{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:16px}
+.greet h1{font-family:var(--font-display);font-weight:800;font-size:24px;letter-spacing:-.015em}
+.greet h1 em{font-family:var(--font-serif);font-style:italic;font-weight:600;color:var(--pink-700)}
+.greet .sub{font-size:12.5px;color:var(--ink-500);margin-top:2px}
+.greet .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.badge{display:inline-flex;align-items:center;gap:5px;background:var(--neon-500);color:var(--ink-900);border-radius:999px;padding:4px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 15px;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid transparent}
+.btn-dark{background:var(--ink-900);color:#fff}
+.btn-out{background:#fff;border-color:var(--ink-300);color:var(--ink-900)}
+
+/* today strip */
+.stats{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--ink-200);border-radius:14px;overflow:hidden;margin-bottom:16px}
+.stat{flex:1;min-width:118px;padding:12px 16px;position:relative}
+.stat+.stat::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:1px;background:var(--ink-100)}
+.stat .v{font-family:var(--font-display);font-weight:800;font-size:19px;line-height:1}
+.stat .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-400);margin-top:4px}
+.stat .d{font-size:10px;font-weight:700;margin-left:5px}
+.stat .d.up{color:var(--success-600)}.stat .d.dn{color:var(--danger-600)}
+.stat.warn .v{color:var(--warning-600)}.stat.ok .v{color:var(--success-600)}.stat.pink .v{color:var(--pink-700)}
+
+/* action center */
+.sechdr{display:flex;align-items:center;gap:8px;margin:2px 0 10px;font-family:var(--font-display);font-size:14px;font-weight:700}
+.sechdr small{font-size:11px;color:var(--ink-400);font-weight:600;font-family:var(--font-body)}
+.actions{display:grid;gap:8px;margin-bottom:20px}
+.act{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--ink-200);border-left-width:4px;border-radius:12px;padding:12px 14px}
+.act.red{border-left-color:var(--danger-600)}
+.act.amber{border-left-color:var(--warning-600)}
+.act.plain{border-left-color:var(--ink-300)}
+.act .t{font-size:13px;font-weight:700}
+.act .s{font-size:11.5px;color:var(--ink-500);margin-top:1px}
+.act .cta{margin-left:auto;flex:none}
+.pill-cta{display:inline-flex;border-radius:999px;background:var(--ink-900);color:#fff;padding:6px 13px;font-size:11.5px;font-weight:600;cursor:pointer;border:0}
+.ghost-cta{display:inline-flex;border-radius:999px;background:#fff;color:var(--ink-900);padding:6px 13px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--ink-300)}
+
+/* two-column feed */
+.cols{display:grid;grid-template-columns:1fr 300px;gap:16px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:14px;padding:16px;margin-bottom:12px}
+.tag{display:inline-flex;border-radius:999px;padding:2px 9px;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.tag.opp{background:var(--pink-50);color:var(--pink-700)}
+.tag.dem{background:var(--info-50);color:var(--info-700)}
+.tag.perf{background:var(--success-50);color:var(--success-600)}
+.tag.news{background:var(--ink-100);color:var(--ink-600)}
+.tag.rfq{background:var(--warning-50);color:var(--warning-600)}
+.card .t{font-size:14px;font-weight:700;letter-spacing:-.005em}
+.card .s{font-size:12.5px;color:var(--ink-500);margin-top:3px;line-height:1.55}
+.card .row{display:flex;align-items:center;gap:8px;margin-top:12px}
+.meta{font-size:11px;color:var(--ink-400)}
+/* mini bar chart */
+.bars{display:flex;align-items:flex-end;gap:5px;height:56px;margin-top:12px}
+.bars i{flex:1;background:var(--pink-100);border-radius:4px 4px 0 0}
+.bars i.hot{background:var(--pink-500)}
+/* right rail */
+.rail .card{padding:14px}
+.ring{width:52px;height:52px;border-radius:99px;display:grid;place-items:center;background:conic-gradient(var(--pink-500) 82%,var(--ink-100) 0);flex:none}
+.ring i{width:38px;height:38px;border-radius:99px;background:#fff;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:800}
+.mrow{display:flex;justify-content:space-between;font-size:12px;padding:7px 0;border-bottom:1px solid var(--ink-100)}
+.mrow:last-child{border-bottom:0}
+.mrow b{font-variant-numeric:tabular-nums}
+.news-img{height:74px;border-radius:10px;background:linear-gradient(135deg,var(--ink-900),#3a3a42);margin-bottom:10px;display:grid;place-items:center;color:var(--neon-500);font-family:var(--font-display);font-weight:800;font-size:13px;letter-spacing:.02em}
+.note{position:fixed;right:14px;bottom:12px;background:#fff;border:1px solid var(--ink-200);border-radius:12px;padding:9px 13px;font-size:11px;color:var(--ink-500);max-width:460px;box-shadow:0 8px 28px rgba(24,24,26,.08)}
+.note b{color:var(--ink-700)}
+</style>
+</head>
+<body>
+
+<div class="persona">
+  <button class="on" onclick="setP(this,'mfr')">Manufacturer</button>
+  <button onclick="setP(this,'printer')">Pure printer</button>
+  <button onclick="setP(this,'fc')">Fulfillment Center</button>
+</div>
+
+<div id="app"></div>
+
+<div class="note"><b>Dashboard v2 (token build)</b> — the Shopify-Home / Amazon-Action-Center hybrid: ① greeting + badge + one primary CTA · ② Today strip (real numbers, trend ticks) · ③ Action Center, severity-sorted, one click each · ④ "For you" feed — matched briefs, on-demand asks, RFQs, demand insights, product performance, platform news — mixed per ROLE · ⑤ rail: payouts, merit ring, announcement, academy. Switch personas above to see the dynamic mix.</div>
+
+<script>
+const ACT={
+ mfr:[
+  ['red','Dispatch #ILF-2417 needs acceptance by 6:00 PM today','VITAL Co. · labels only · $640','Review order'],
+  ['amber','General Liability insurance expires in 22 days','Upload the renewal to keep your standing','Upload renewal'],
+  ['amber','Prepress not set on Co-packing','The Studio can’t auto-prepare exports for this service yet','Set it up'],
+ ],
+ printer:[
+  ['red','RFQ closes tomorrow: shrink sleeves, 12oz, metallic ink','You were shortlisted from your capability profile','Claim RFQ'],
+  ['amber','2 die-lines awaiting your confirmation','Parsed specs need a dimension check','Review die-lines'],
+ ],
+ fc:[
+  ['red','2 releases awaiting pick since yesterday','RL-19 Shopify DC · RL-18 Amazon FBA','Open outbound'],
+  ['amber','Inbound SHP-87 at dock — reconcile receiving','Beacon Label Co. · 12,000 labels','Reconcile'],
+ ]}
+const FEED={
+ mfr:[
+  ['opp','Co-creation match · 92% fit','Adaptogen sleep gummies — brief #B-214','Supplement · gummies · 5k first run · terms-only interest, never a recipe. 3 manufacturers invited.',['Express interest','View brief']],
+  ['dem','Demand signal','Creators are searching “collagen peptides” 2.4× more this month','Your Collagen elixir template matches. Consider a variant with marine collagen — 3 briefs mentioned it.',['See matching briefs']],
+  ['perf','Your products','Collagen elixir pulled 214 orders (30d) · +18%','Top template by demand. 2 creators asked for on-demand selling — one request is waiting.',['Review on-demand request'],true],
+  ['news','From iLaunchify','Print rotation is opening to new providers','If you work with a great sleeve printer, nominate them as your co-partner — they serve your legs directly.',['Learn about co-partners']],
+ ],
+ printer:[
+  ['rfq','Capability RFQ · shortlisted','Shrink sleeves · 12oz can · metallic ink','Claiming pre-fills a draft offering — you set pricing, we verify, the manufacturer goes live.',['Claim — I can print this','Skip']],
+  ['dem','Demand signal','Pressure-label jobs up 31% in Supplement this month','Your substrate list covers 4 of the 6 most-requested materials. Add PET clear to cover 90% of jobs.',['Update substrates']],
+  ['perf','Your work','98.6% on-time across 240 print jobs (90d)','Best-in-class reliability — you’re 4 points from Premier standing.',['See your path to Premier'],true],
+  ['news','From iLaunchify','Sample rotation pool is live','Sample-capable printers get first-run creator jobs. You’re already flagged sample-capable.',['Review sample settings']],
+ ],
+ fc:[
+  ['perf','Your facility','Dock-to-stock 1.4 days avg (30d) · target ≤2','14,200 units on hand · 22 pallets · 2 lots expiring within 30 days (FEFO flags set).',['Open inventory'],true],
+  ['dem','Volume ahead','3 manufacturers routed storage-bound runs your way next week','Est. 8 pallets inbound. Receiving specs travel with each dispatch.',['See expected inbound']],
+  ['news','From iLaunchify','Value-added services get a storefront','Kitting & labeling VAS you list are now visible to creators at checkout. 2 of yours are live.',['Manage VAS']],
+ ]}
+const STATS={
+ mfr:[['3','Awaiting acceptance','','pink'],['5','In production','',''],['2','Ready to ship','','warn'],['$12,480','Earned · 30d','+18%','ok'],['96','Merit score','','']],
+ printer:[['1','RFQs open','','warn'],['6','Jobs in press','',''],['98.6%','On-time (90d)','+0.4%','ok'],['$6,120','Earned · 30d','+9%','ok'],['Trusted','Badge','','']],
+ fc:[['3','Inbound expected','','pink'],['2','Awaiting pick','','warn'],['14,200','Units on hand','',''],['$3,890','Accrued · 30d','+12%','ok'],['Healthy','Risk band','','ok']]}
+const NAMES={mfr:'Acme Foods',printer:'Beacon Label Co.',fc:'Summit 3PL'}
+const BADGES={mfr:'Premier',printer:'Trusted',fc:'Verified'}
+
+let p='mfr'
+function setP(el,k){document.querySelectorAll('.persona button').forEach(b=>b.classList.remove('on'));el.classList.add('on');p=k;render()}
+function render(){
+ const acts=ACT[p].map(([sev,t,s,cta])=>`<div class="act ${sev}"><div><div class="t">${t}</div><div class="s">${s}</div></div><span class="cta"><button class="pill-cta">${cta}</button></span></div>`).join('')
+ const feed=FEED[p].map(([tag,k,t,s,ctas,chart])=>`<div class="card"><span class="tag ${tag}">${k}</span><div class="t">${t}</div><div class="s">${s}</div>${chart?'<div class="bars"><i style="height:30%"></i><i style="height:45%"></i><i style="height:38%"></i><i style="height:60%"></i><i style="height:52%"></i><i style="height:74%"></i><i class="hot" style="height:100%"></i></div>':''}<div class="row">${ctas.map((c,i)=>`<button class="${i===0?'pill-cta':'ghost-cta'}">${c}</button>`).join('')}</div></div>`).join('')
+ const stats=STATS[p].map(([v,l,d,tone])=>`<div class="stat ${tone}"><div class="v">${v}${d?`<span class="d up">${d}</span>`:''}</div><div class="l">${l}</div></div>`).join('')
+ document.getElementById('app').innerHTML=`
+  <div class="greet">
+    <div><h1>Good morning, <em>${NAMES[p]}</em>.</h1><div class="sub">Tuesday, July 14 · everything below is live from your account</div></div>
+    <div class="right"><span class="badge">★ ${BADGES[p]}</span><button class="btn btn-out">View public profile</button></div>
+  </div>
+  <div class="stats">${stats}</div>
+  <div class="sechdr">Needs you now <small>· severity-sorted · clears itself as you act</small></div>
+  <div class="actions">${acts}</div>
+  <div class="cols">
+    <div>
+      <div class="sechdr">For you <small>· matched to your services, capabilities and history</small></div>
+      ${feed}
+    </div>
+    <div class="rail">
+      <div class="card"><div class="sechdr" style="margin-top:0">Payouts</div>
+        <div class="mrow"><span>Pending</span><b>$3,120.00</b></div>
+        <div class="mrow"><span>Jul 12 · #ILF-2415</span><b>$2,430.00</b></div>
+        <div class="mrow"><span>Jul 9 · #ILF-2411</span><b>$1,884.00</b></div>
+        <div class="row"><button class="ghost-cta" style="width:100%;justify-content:center">All payouts</button></div>
+      </div>
+      <div class="card"><div style="display:flex;gap:12px;align-items:center">
+        <span class="ring"><i>82%</i></span>
+        <div><div class="t" style="font-size:13px">Profile 82% complete</div><div class="s" style="margin-top:2px">Write your About section to finish</div></div>
+      </div></div>
+      <div class="card"><div class="news-img">iLaunchify ACADEMY</div>
+        <div class="t" style="font-size:13px">Winning co-creation briefs</div>
+        <div class="s">7-min video — how top manufacturers write terms creators pick.</div>
+        <div class="row"><button class="ghost-cta">Watch</button></div>
+      </div>
+      <div class="card"><span class="tag news">Announcement</span>
+        <div class="t" style="font-size:13px">Holiday capacity survey</div>
+        <div class="s">Tell us your Q4 capacity by Jul 25 — it feeds routing so you're never over-committed.</div>
+        <div class="row"><button class="ghost-cta">Take the survey</button></div>
+      </div>
+    </div>
+  </div>`
+}
+render()
+</script>
+</body>
+</html>
