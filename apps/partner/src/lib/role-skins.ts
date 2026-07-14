@@ -21,9 +21,7 @@ import {
   Box,
   Package,
   Printer,
-  Zap,
   Gauge,
-  Megaphone,
   Medal,
   Rocket,
   Lightbulb,
@@ -84,7 +82,6 @@ const NAV_STANDING: PartnerNavItem = {
   // Tab-merged (Pavel 2026-07-13): Merit & fee tier · Performance.
   activeMatch: ['/standing', '/performance'],
 }
-const NAV_ON_DEMAND: PartnerNavItem = { href: '/on-demand', label: 'On-demand', icon: Zap }
 const NAV_PRODUCTS: PartnerNavItem = {
   href: '/products',
   label: 'Products',
@@ -103,10 +100,9 @@ const NAV_PACKAGING: PartnerNavItem = {
   href: '/packaging',
   label: 'Packaging',
   icon: Box,
-  // Tab-merged (Pavel 2026-07-14): Packaging · Prepress output.
-  activeMatch: ['/packaging', '/print-spec'],
+  // IA reorg (Pavel 2026-07-14): Systems · Offerings · Die-lines tabs.
+  activeMatch: ['/packaging'],
 }
-const NAV_CAPABILITY: PartnerNavItem = { href: '/capability-requests', label: 'Capability requests', icon: Megaphone }
 const NAV_PAYMENTS: PartnerNavItem = {
   href: '/payments',
   label: 'Payments',
@@ -119,7 +115,6 @@ const NAV_PAYMENTS: PartnerNavItem = {
 // Co-creation Opportunity Pool (CO_CREATION_MARKETPLACE_SPEC §10) — matched
 // creator briefs + Express Interest. Manufacturing-only, commercial (terms/
 // pricing) → org-admin.
-const NAV_OPPORTUNITIES: PartnerNavItem = { href: '/opportunities', label: 'Opportunities', icon: Lightbulb }
 // Rooms & Messages hub (2026-07-13) — room chat + 1:1 DMs. Operational: every
 // team member in a collaboration room chats there, not just org admins.
 // Messages was REMOVED from the main sidebar (Pavel 2026-07-13) — it lives
@@ -231,24 +226,30 @@ export function roleNavGroupsFor(
   if (isOrgAdmin) {
     // Post-approval setup — hidden once everything is live (Pavel 2026-07-13).
     if (!opts?.activationComplete) work.push(NAV_ACTIVATION)
-    // Co-creation briefs (Pavel 2026-07-10, admin-choosable poolAccessPolicy):
-    // manufacturers always; co-packers unless the admin set MFG_ONLY.
-    if (
+    // ONE Requests inbox (IA reorg, Pavel 2026-07-14) — Opportunities ·
+    // On-demand · Capability RFQs live as role-scoped tabs of a single item.
+    // Eligibility = the union of the old three rows; href = the first tab the
+    // role actually has.
+    const hasOpportunities =
       opts?.briefPoolEnabled !== false &&
       (producing || (has('COPACKING') && opts?.copackBriefPool !== false))
-    ) {
-      work.push(NAV_OPPORTUNITIES)
+    const hasOnDemand = producing
+    const hasCapability = purePrinter
+    if (hasOpportunities || hasOnDemand || hasCapability) {
+      work.push({
+        href: hasOpportunities ? '/opportunities' : hasOnDemand ? '/on-demand' : '/capability-requests',
+        label: 'Requests',
+        icon: Lightbulb,
+        activeMatch: ['/opportunities', '/on-demand', '/capability-requests'],
+      })
     }
-    if (producing) work.push(NAV_ON_DEMAND)
   }
 
   const catalog: PartnerNavItem[] = []
   if (isOrgAdmin) {
-    // Packaging carries Prepress output as a tab — so it shows for every
-    // prepress-capable role (producers, co-packers, printers).
+    // Packaging = Systems · Offerings · Die-lines tabs — every prepress-capable
+    // role (prepress prefs themselves live in the /services accordions now).
     if (prepress) catalog.push(NAV_PACKAGING)
-    // PS-8c — claimable capability RFQs → pure printers only.
-    if (purePrinter) catalog.push(NAV_CAPABILITY)
   }
 
   const business: PartnerNavItem[] = []

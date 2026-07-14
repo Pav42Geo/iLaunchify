@@ -23,9 +23,18 @@ const TAB_SETS = {
     { href: '/products', label: 'Products' },
     { href: '/accessories', label: 'Accessories' },
   ],
+  // IA reorg (Pavel 2026-07-14): the hidden Packaging subpages become visible
+  // tabs; Prepress moved into the /services accordions (per-service anyway).
   packaging: [
-    { href: '/packaging', label: 'Packaging' },
-    { href: '/print-spec', label: 'Prepress output' },
+    { href: '/packaging', label: 'Systems' },
+    { href: '/packaging/offerings', label: 'Offerings' },
+    { href: '/packaging/dielines', label: 'Die-lines' },
+  ],
+  // One inbox for everything asked of the partner (Pavel 2026-07-14).
+  requests: [
+    { href: '/opportunities', label: 'Opportunities' },
+    { href: '/on-demand', label: 'On-demand' },
+    { href: '/capability-requests', label: 'Capability RFQs' },
   ],
   company: [
     { href: '/settings/company', label: 'Profile' },
@@ -70,10 +79,15 @@ export function PageTabs({
   const tabs = TAB_SETS[group].filter((t) => !hidden.includes(t.href))
   // A single remaining tab is no tab bar at all.
   if (tabs.length < 2) return null
+  // LONGEST-prefix match wins so nested tabs (/packaging vs /packaging/offerings)
+  // light exactly one tab.
+  const activeHref = tabs
+    .filter((t) => pathname === t.href || pathname.startsWith(`${t.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href
   return (
     <div className="flex gap-0 overflow-x-auto border-b border-ink-200">
       {tabs.map((t) => {
-        const active = pathname === t.href || pathname.startsWith(`${t.href}/`)
+        const active = t.href === activeHref
         return (
           <Link
             key={t.href}

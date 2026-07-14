@@ -4,17 +4,23 @@
 
 import { loadOnDemandRequests } from './actions'
 import { OnDemandQueueClient } from './OnDemandQueueClient'
+import { requireUser } from '@ilaunchify/auth'
+import { PageTabs } from '@/components/PageTabs'
+import { getRequestsHiddenTabs } from '@/lib/requests-tabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'On-demand requests — Partners' }
 
 export default async function OnDemandRequestsPage() {
+  const user = await requireUser()
+  const requestsHidden = await getRequestsHiddenTabs(user.id)
   const { migrated, rows } = await loadOnDemandRequests()
   const pending = rows.filter((r) => r.status === 'REQUESTED' || r.status === 'PARTNER_REVIEW')
   const decided = rows.filter((r) => r.status !== 'REQUESTED' && r.status !== 'PARTNER_REVIEW')
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <PageTabs group="requests" hidden={requestsHidden} />
       <div>
         <h1 className="font-display text-2xl font-bold text-ink-900">On-demand requests</h1>
         <p className="mt-1 text-[13.5px] text-ink-600">

@@ -39,6 +39,8 @@ import {
   PrinterSampleCard,
   type VasRowView,
 } from '../settings/labeling/LabelingSettingsForm'
+// Prepress delivery folded in per service (IA reorg, Pavel 2026-07-14).
+import { PrepressSection } from '../print-spec/PrepressSection'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Services — Partners' }
@@ -295,6 +297,17 @@ export default async function ServicesPage() {
                     substrateCount={substrateCount}
                     dielineCount={dielineCount}
                   />
+                )}
+                {/* Prepress delivery — was /print-spec (IA reorg, Pavel 2026-07-14). */}
+                {canEdit && (
+                  <details className="mt-4 border-t border-ink-100 pt-3">
+                    <summary className="cursor-pointer list-none text-[13px] font-semibold text-ink-700 hover:text-ink-900 [&::-webkit-details-marker]:hidden">
+                      Prepress delivery — file format, color, bleed, dieline handoff ▸
+                    </summary>
+                    <div className="mt-3">
+                      <PrepressSection serviceId={s.id} />
+                    </div>
+                  </details>
                 )}
               </div>
             </details>

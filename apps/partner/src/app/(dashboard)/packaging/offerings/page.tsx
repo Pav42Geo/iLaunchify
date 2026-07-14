@@ -14,6 +14,7 @@ import {
 } from './constants'
 import { OfferingRowActions } from './OfferingRowActions'
 import { rolePrefix } from '@/lib/role-skins'
+import { PageTabs } from '@/components/PageTabs'
 
 // v2 status pills — semantic tones (replaces legacy ring badges on this surface)
 const OFFERING_STATUS_PILL: Record<string, { label: string; cls: string }> = {
@@ -53,6 +54,7 @@ export default async function OfferingsListPage() {
 
   return (
     <div className="space-y-6">
+      <PageTabs group="packaging" />
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

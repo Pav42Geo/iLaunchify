@@ -3,23 +3,24 @@
 // Restyled 1:1 to the prototype "Certifications" settings panel
 // (design/partner-profile-prototype-v2.html) via the panel-kit primitives.
 //
-// Layout:
-//   Hero band (unchanged) → PanelCard: renewal InfoBanner + KpiStrip +
-//     certificate LRows (status pill + renew) → PanelCard: "Add a
-//     certification" picker (CertificateType library minus claimed types).
+// Layout (modern list chrome, Pavel 2026-07-14):
+//   Company tabs → slim title row (search in the actions slot) → stat strip →
+//   renewal InfoBanner → certificate LRows → "Add a certification" picker →
+//   "Declared during onboarding" proof prompts.
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { certExpiryTone, daysUntilExpiry, cn } from '@ilaunchify/ui'
 import { ShieldCheck, AlertCircle, Clock, Info, Plus } from 'lucide-react'
-import { InfoBanner, KpiStrip, PanelCard, PanelHeader, StPill } from '@/components/panel-kit'
+import { InfoBanner, PanelCard, PanelHeader, StPill } from '@/components/panel-kit'
 import { CertificationsClient } from './CertificationsClient'
 import { CertSearchInput } from './CertSearchInput'
 import { RenewCertButton } from './RenewCertButton'
 import { DownloadCertButton } from './DownloadCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow, StatStrip } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Certifications — iLaunchify Partners' }
@@ -120,6 +121,13 @@ export default async function CertificationsPage({
   return (
     <div className="space-y-6">
       <PageTabs group="company" />
+      {/* Modern list chrome (Pavel 2026-07-14): slim title row + stat strip,
+          same pattern as the operational pages. Search rides the title row. */}
+      <ListTitleRow
+        title="Certifications"
+        sub="Your certificates gate marketplace eligibility & unlock profile badges. The PDF stays private to iLaunchify admin — only the branded badge shows publicly."
+        actions={<CertSearchInput />}
+      />
       {instances.length === 0 ? (
         <PanelCard className="px-6 py-12 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
@@ -132,45 +140,35 @@ export default async function CertificationsPage({
           </p>
         </PanelCard>
       ) : (
-        <PanelCard>
-          {/* Prototype #p-certs panel-h — no page hero (Pavel 2026-07-13) —
-              with the cert search top-right. */}
-          <PanelHeader
-            title="Certifications"
-            desc="Your certificates gate marketplace eligibility & unlock profile badges. The PDF stays private to iLaunchify admin — only the branded badge shows publicly."
-            aside={<CertSearchInput />}
+        <>
+          <StatStrip
+            items={[
+              { v: verified.length, l: 'Verified', tone: 'ok' },
+              { v: issues.length, l: 'Needs attention', tone: issues.length > 0 ? 'warn' : 'ink' },
+              { v: pending.length, l: 'Pending review' },
+              { v: instances.length, l: 'Total certificates' },
+            ]}
           />
 
           {nextRenewal && (
-            <InfoBanner tone="info" icon={<Info aria-hidden="true" />}>
+            <InfoBanner tone="info" icon={<Info aria-hidden="true" />} className="mb-0">
               <strong>{nextRenewal.certificateType.name}</strong> renews in{' '}
               {daysUntilExpiry(nextRenewal.expiryDate)} days — upload the new certificate to keep
               your standing.
             </InfoBanner>
           )}
 
-          <KpiStrip
-            items={[
-              { v: verified.length, l: 'Verified' },
-              {
-                v: issues.length,
-                l: 'Needs attention',
-                vClassName: issues.length > 0 ? 'text-warning-500' : undefined,
-              },
-              { v: pending.length, l: 'Pending review' },
-              { v: instances.length, l: 'Total certificates' },
-            ]}
-          />
-
-          {visibleInstances.map((inst) => (
-            <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
-          ))}
-          {visibleInstances.length === 0 && (
-            <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-[13px] text-ink-500">
-              No certificates match &ldquo;{q}&rdquo;.
-            </p>
-          )}
-        </PanelCard>
+          <PanelCard>
+            {visibleInstances.map((inst) => (
+              <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
+            ))}
+            {visibleInstances.length === 0 && (
+              <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-[13px] text-ink-500">
+                No certificates match &ldquo;{q}&rdquo;.
+              </p>
+            )}
+          </PanelCard>
+        </>
       )}
 
       {/* Claim / Add new cert — above the declared prompts (Pavel 2026-07-13) */}

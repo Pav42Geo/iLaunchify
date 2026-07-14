@@ -10,6 +10,8 @@ import { ExpressInterestDialog } from './ExpressInterestDialog'
 import { WithdrawInterestButton } from './WithdrawInterestButton'
 import { PromoteInterestButton } from './PromoteInterestButton'
 import { PoolLiveBar } from './PoolLiveBar'
+import { PageTabs } from '@/components/PageTabs'
+import { getRequestsHiddenTabs } from '@/lib/requests-tabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Opportunities — iLaunchify Partners' }
@@ -56,6 +58,7 @@ export default async function OpportunitiesPage({
   searchParams: Promise<{ tab?: string; sort?: string; cat?: string }>
 }) {
   const user = await requireUser()
+  const requestsHidden = await getRequestsHiddenTabs(user.id)
   const acting = await getActingPartner(user.id)
   if (!acting) redirect('/dashboard')
   const { partner } = acting
@@ -122,6 +125,7 @@ export default async function OpportunitiesPage({
         ]}
       />
       <div className="space-y-6">
+      <PageTabs group="requests" hidden={requestsHidden} />
       {/* Pool header (demo .briefhdr — maker identity + capability line) */}
       <div className="flex items-center gap-s-3 rounded-xl border border-ink-200 bg-ink-50 px-s-4 py-s-4">
         <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-ink-900 text-ui-section text-white">

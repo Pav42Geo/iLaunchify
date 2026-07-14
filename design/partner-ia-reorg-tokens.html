@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Partner IA reorg — 13-row nav, every page + tabs (token build)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink-50:#F7F7F8;--ink-100:#EFEFF1;--ink-200:#E3E3E7;--ink-300:#C9C9D0;--ink-400:#9B9BA6;
+  --ink-500:#71717C;--ink-600:#52525B;--ink-700:#3F3F46;--ink-900:#18181A;
+  --pink-50:#FFF0F4;--pink-100:#FFDCE6;--pink-200:#FFB8CC;--pink-500:#FF2E63;--pink-700:#C40E44;
+  --success-50:#EAF7EE;--success-200:#BFE8CC;--success-600:#1F7A3D;--success-800:#0F4A24;
+  --warning-50:#FFF6E8;--warning-200:#FFE2B8;--warning-600:#B36F04;--warning-800:#7A4B03;
+  --info-50:#EAF3FF;--info-200:#BDDAFF;--info-800:#0E4D96;
+  --font-body:'Inter',system-ui,sans-serif;--font-display:'Bricolage Grotesque',sans-serif;--font-serif:'Fraunces',serif;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font-body);background:var(--ink-50);color:var(--ink-900)}
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+/* ===== sidebar (ink-50, groups) ===== */
+.sb{background:var(--ink-50);border-right:1px solid var(--ink-200);padding:16px 12px 24px;overflow-y:auto}
+.sb .portal{padding:2px 10px 12px}
+.sb .portal .t{font-family:var(--font-display);font-weight:700;font-size:13px}
+.sb .portal .pill{display:inline-flex;align-items:center;gap:5px;margin-top:5px;border:1px solid var(--success-200);background:var(--success-50);color:var(--success-600);font-size:10px;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:999px}
+.sb .portal .pill i{width:6px;height:6px;border-radius:99px;background:var(--success-600)}
+.grp{margin-top:13px}
+.gl{padding:0 10px 4px;font-size:10.5px;font-weight:800;letter-spacing:.07em;color:var(--ink-400);text-transform:uppercase}
+.it{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;font-size:13px;font-weight:500;color:var(--ink-600);cursor:pointer;user-select:none}
+.it:hover{background:var(--ink-100)}
+.it.on{background:var(--pink-50);color:var(--pink-700);font-weight:600}
+.it svg{width:15px;height:15px;flex:none;color:var(--ink-500)}
+.it.on svg{color:var(--pink-700)}
+.it .th{margin-left:auto;font-size:9px;font-weight:700;color:var(--ink-400);border:1px solid var(--ink-200);border-radius:5px;padding:1px 4px}
+.it.on .th{color:var(--pink-700);border-color:var(--pink-200)}
+/* ===== main ===== */
+.main{padding:24px clamp(16px,3vw,36px);max-width:1080px}
+.hdr{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:14px}
+.hdr h1{font-family:var(--font-display);font-weight:700;font-size:21px;letter-spacing:-.01em}
+.hdr .sub{font-size:12.5px;color:var(--ink-500);margin-top:2px;max-width:640px}
+.hdr .act{margin-left:auto;display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid transparent}
+.btn-dark{background:var(--ink-900);color:#fff}
+.btn-out{background:#fff;border-color:var(--ink-300);color:var(--ink-900)}
+/* tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--ink-200);margin-bottom:16px;overflow-x:auto}
+.tab{padding:9px 3px;margin-right:22px;font-size:13px;font-weight:600;color:var(--ink-500);border-bottom:2.5px solid transparent;cursor:pointer;white-space:nowrap}
+.tab.on{color:var(--pink-700);border-color:var(--pink-500)}
+.tab b{font-size:10px;font-weight:800;background:var(--ink-100);color:var(--ink-500);border-radius:99px;padding:1px 6px;margin-left:5px}
+.tab.on b{background:var(--pink-100);color:var(--pink-700)}
+/* stat strip */
+.stats{display:flex;flex-wrap:wrap;background:#fff;border:1px solid var(--ink-200);border-radius:14px;overflow:hidden;margin-bottom:14px}
+.stat{flex:1;min-width:110px;padding:11px 16px;position:relative}
+.stat+.stat::before{content:"";position:absolute;left:0;top:11px;bottom:11px;width:1px;background:var(--ink-100)}
+.stat .v{font-family:var(--font-display);font-weight:800;font-size:18px;line-height:1}
+.stat .l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-400);margin-top:4px}
+.stat.warn .v{color:var(--warning-600)}.stat.ok .v{color:var(--success-600)}.stat.pink .v{color:var(--pink-700)}
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid var(--ink-200);background:#fff;padding:5px 11px;font-size:12px;font-weight:600;color:var(--ink-600);cursor:pointer}
+.chip.on{background:var(--ink-900);border-color:var(--ink-900);color:#fff}
+.chip b{font-size:10px;font-weight:800;background:var(--ink-100);color:var(--ink-600);border-radius:99px;padding:1px 5px}
+.chip.on b{background:rgba(255,255,255,.18);color:#fff}
+/* table + cards */
+.tw{background:#fff;border:1px solid var(--ink-200);border-radius:14px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:12.5px;text-align:left}
+thead th{padding:9px 13px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-400);border-bottom:1px solid var(--ink-200);background:var(--ink-50)}
+tbody td{padding:11px 13px;border-bottom:1px solid var(--ink-100)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--pink-50)}
+.pill{display:inline-flex;border-radius:999px;border:1px solid;padding:2px 8px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.pill.ok{background:var(--success-50);border-color:var(--success-200);color:var(--success-800)}
+.pill.info{background:var(--info-50);border-color:var(--info-200);color:var(--info-800)}
+.pill.warn{background:var(--warning-50);border-color:var(--warning-200);color:var(--warning-800)}
+.pill.muted{background:var(--ink-100);border-color:var(--ink-200);color:var(--ink-700)}
+.qbtn{display:inline-flex;border-radius:999px;background:var(--ink-900);color:#fff;border:0;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer}
+/* accordion (services) */
+.acc{background:#fff;border:1px solid var(--ink-200);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.acc .row{display:flex;align-items:center;gap:12px;cursor:pointer}
+.acc .ic{width:36px;height:36px;border-radius:10px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.acc .ic svg{width:17px;height:17px}
+.acc .t{font-size:13.5px;font-weight:700}
+.acc .s{font-size:11.5px;color:var(--ink-500);margin-top:1px}
+.acc .edit{margin-left:auto;border:1px solid var(--ink-300);border-radius:999px;background:#fff;padding:5px 12px;font-size:11.5px;font-weight:600}
+.acc .body{display:none;margin-top:12px;border-top:1px solid var(--ink-100);padding-top:12px}
+.acc.open .body{display:block}
+.acc .sect{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.sectchip{border:1px solid var(--ink-200);background:var(--ink-50);border-radius:8px;padding:6px 10px;font-size:11.5px;font-weight:600;color:var(--ink-700)}
+.sectchip.new{border-color:var(--pink-200);background:var(--pink-50);color:var(--pink-700)}
+.mock{display:grid;gap:7px;margin-top:8px}
+.bar{height:10px;border-radius:5px;background:var(--ink-100)}
+.w60{width:60%}.w80{width:80%}.w40{width:40%}
+.req{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--ink-200);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.req .t{font-size:13.5px;font-weight:700}
+.req .s{font-size:12px;color:var(--ink-500);margin-top:2px;max-width:560px}
+.req .cta{margin-left:auto;display:flex;gap:8px;flex:none}
+.note{position:fixed;right:14px;bottom:12px;background:#fff;border:1px solid var(--ink-200);border-radius:12px;padding:9px 13px;font-size:11px;color:var(--ink-500);max-width:430px;box-shadow:0 8px 28px rgba(24,24,26,.08)}
+.note b{color:var(--ink-700)}
+</style>
+</head>
+<body>
+<div class="app">
+<nav class="sb" id="sb">
+  <div class="portal"><div class="t">Partner Portal</div><span class="pill"><i></i>ACTIVE</span></div>
+  <div class="grp">
+    <div class="it" data-p="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</div>
+    <div class="it on" data-p="orders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/></svg>Orders<span class="th">4 tabs</span></div>
+    <div class="it" data-p="requests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.5-6.9A2 2 0 0016.7 4H7.3a2 2 0 00-1.8 1.1z"/></svg>Requests<span class="th">3 tabs</span></div>
+    <div class="it" data-p="products"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4v10l8 4 8-4z"/><path d="M12 11v10M4 7l8 4 8-4"/></svg>Products<span class="th">2 tabs</span></div>
+  </div>
+  <div class="grp"><div class="gl">Catalog</div>
+    <div class="it" data-p="packaging"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Packaging<span class="th">3 tabs</span></div>
+  </div>
+  <div class="grp"><div class="gl">Business</div>
+    <div class="it" data-p="services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>Services<span class="th">+ co-partners</span></div>
+    <div class="it" data-p="company"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg>Company profile<span class="th">3 tabs</span></div>
+    <div class="it" data-p="standing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Standing<span class="th">2 tabs</span></div>
+  </div>
+  <div class="grp"><div class="gl">Operations</div>
+    <div class="it" data-p="logistics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Logistics<span class="th">2 tabs</span></div>
+    <div class="it" data-p="market"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20"/></svg>Market participation</div>
+  </div>
+  <div class="grp"><div class="gl">Account</div>
+    <div class="it" data-p="payments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>Payments<span class="th">4 tabs</span></div>
+    <div class="it" data-p="team"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Team &amp; roles</div>
+    <div class="it" data-p="prefs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Preferences<span class="th">2 tabs</span></div>
+  </div>
+</nav>
+<main class="main" id="main"></main>
+</div>
+<div class="note"><b>IA reorg (token build)</b> — 13 rows, everything else is a tab: Requests unifies Opportunities · On-demand · Capability RFQs; Prepress folds into each Services accordion; Packaging's hidden subpages (Offerings, Die-lines) become visible tabs. Rule: queues in Work · what you sell in Catalog · what you configure in Business · money in Account.</div>
+
+<script>
+const T=(rows)=>`<div class="tw"><table><thead><tr>${rows.h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.r.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+const MOCK='<div class="tw" style="padding:16px"><div class="mock"><div class="bar w80"></div><div class="bar w60"></div><div class="bar w80"></div><div class="bar w40"></div></div></div>'
+
+const PAGES={
+dashboard:{title:'Dashboard',sub:'Operations cockpit — attention queue, pipeline funnel, payouts.',tabs:null,body:()=>MOCK},
+
+orders:{title:'Orders',sub:'Everything arriving at your dock and leaving it — production dispatches and, for FC partners, the receiving → stock → shipping cycle.',
+ tabs:['Dispatches|11','Inbound|3','Inventory|8','Outbound|2'],
+ body:(i)=>[
+  `<div class="chips"><span class="chip on">All <b>11</b></span><span class="chip">Awaiting <b>3</b></span><span class="chip">Producing <b>5</b></span><span class="chip">Ready <b>2</b></span><span class="chip">Delivered <b>14</b></span></div>`+T({h:['Order','Brand','Status','Amount','Due',''],r:[
+   ['#ILF-2419<br><small style="color:var(--ink-500)">Collagen elixir · 1,200u</small>','GLOW Beauty','<span class="pill warn">Ready</span>','$4,860','Jul 16','<button class="qbtn">Mark shipped</button>'],
+   ['#ILF-2418<br><small style="color:var(--ink-500)">Pre-workout · 800u</small>','FORGE Labs','<span class="pill info">Producing</span>','$3,120','Jul 21','⋯'],
+   ['#ILF-2417<br><small style="color:var(--ink-500)">Labels only</small>','VITAL Co.','<span class="pill muted">Pending accept</span>','$640','by Jul 15','⋯']]}),
+  T({h:['Shipment','From','Expected','Units','Status'],r:[['SHP-88','Acme Foods · San Jose','Jul 15','2,400','<span class="pill info">In transit</span>'],['SHP-87','Beacon Label Co.','Jul 14','12,000 labels','<span class="pill warn">At dock</span>']]}),
+  `<div class="stats"><div class="stat pink"><div class="v">8</div><div class="l">Active holds</div></div><div class="stat"><div class="v">14,200</div><div class="l">Units on hand</div></div><div class="stat"><div class="v">22</div><div class="l">Pallets</div></div><div class="stat warn"><div class="v">2</div><div class="l">Open releases</div></div></div>`+T({h:['Agreement','Product','Units','Lots','Expiring'],r:[['SA-31','Collagen elixir','6,400','3','<span class="pill warn">Lot A12 · 21d</span>'],['SA-29','Greens sachets','7,800','2','—']]}),
+  T({h:['Release','Destination','Units','Status',''],r:[['RL-19','Shopify DC · Reno','1,200','<span class="pill warn">Awaiting pick</span>','<button class="qbtn">Start picking</button>'],['RL-18','Amazon FBA · ONT8','2,000','<span class="pill info">Picking</span>','⋯']]})][i]},
+
+requests:{title:'Requests',sub:'One inbox for everything creators and the platform ask of you — review and respond, nothing here edits your catalog.',
+ tabs:['Opportunities|6','On-demand|2','Capability RFQs|1'],
+ body:(i)=>[
+  `<div class="req"><div><div class="t">Adaptogen sleep gummies · brief #B-214</div><div class="s">Supplement · gummies · 5k first run · matched to your Supplement + Food domains. Express interest with terms only — never a recipe.</div></div><div class="cta"><button class="btn btn-out">Pass</button><button class="btn btn-dark">Express interest</button></div></div>
+   <div class="req"><div><div class="t">Protein iced coffee · brief #B-209</div><div class="s">Beverage functional · cans · co-creation room opens on selection.</div><span class="pill info" style="margin-top:6px">Interest expressed</span></div><div class="cta"><button class="btn btn-out">View brief</button></div></div>`,
+  `<div class="req"><div><div class="t">GLOW Beauty wants Collagen elixir on-demand</div><div class="s">Each consumer sale becomes a production order to you with locked branding. Volume est. 200–400u/mo, ships from your storage.</div></div><div class="cta"><button class="btn btn-out">Decline</button><button class="btn btn-dark">Approve</button></div></div>`,
+  `<div class="req"><div><div class="t">RFQ: shrink sleeves, 12oz can, metallic ink</div><div class="s">You were shortlisted from your print capability profile. Claiming pre-fills a draft offering.</div></div><div class="cta"><button class="btn btn-out">Skip</button><button class="btn btn-dark">Claim — I can print this</button></div></div>`][i]},
+
+products:{title:'Products',sub:'What creators can customize and order from you.',
+ tabs:['Products|12','Accessories|4'],
+ body:(i)=>[
+  `<div class="chips"><span class="chip on">All <b>12</b></span><span class="chip">Live <b>7</b></span><span class="chip">Drafts <b>3</b></span><span class="chip">In review <b>2</b></span></div>`+T({h:['Product','Status','Base price','Orders','Updated'],r:[['Collagen elixir','<span class="pill ok">Live</span>','$4.05','214','Jul 12'],['Pre-workout tub','<span class="pill ok">Live</span>','$3.90','88','Jul 10'],['Greens sachets','<span class="pill muted">Draft</span>','—','—','Jul 8']]}),
+  T({h:['Accessory','Status','Price','Applies to'],r:[['Bamboo scoop','<span class="pill ok">Active</span>','$0.32','Tubs'],['Thank-you card','<span class="pill warn">Pending review</span>','$0.08','All']]})][i]},
+
+packaging:{title:'Packaging',sub:'Physical packaging you offer, the decoration combos you price, and the die-lines behind them — the hidden subpages are now visible tabs.',
+ tabs:['Systems|9','Offerings|14','Die-lines|11'],
+ body:(i)=>[
+  `<div class="stats"><div class="stat ok"><div class="v">6</div><div class="l">Active</div></div><div class="stat"><div class="v">2</div><div class="l">Drafts</div></div><div class="stat warn"><div class="v">1</div><div class="l">Retired</div></div></div>`+T({h:['System','Container','Status','Surfaces'],r:[['16oz HDPE tub','Tub','<span class="pill ok">Active</span>','3'],['12oz sleek can','Can','<span class="pill ok">Active</span>','1']]}),
+  T({h:['Offering','Decoration','MOQ','Lead','Status'],r:[['12oz can','Shrink sleeve','5,000','12d','<span class="pill ok">Active</span>'],['16oz tub','Pressure label','1,000','7d','<span class="pill ok">Active</span>']]}),
+  T({h:['Die-line','Container','Status','Updated'],r:[['Sleeve 12oz v3','Can','<span class="pill ok">Active</span>','Jul 9'],['Tub wrap 16oz','Tub','<span class="pill info">Parsed</span>','Jul 13']]})][i]},
+
+services:{title:'Services',sub:'Everything you offer and how you run it — capabilities, storage, product defaults, labeling, prepress delivery. One accordion per concern.',
+ tabs:['Services','Co-partners|2'],
+ body:(i)=>[
+  `<div class="acc open"><div class="row" onclick="this.parentNode.classList.toggle('open')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></span><div><div class="t">Manufacturing</div><div class="s">Supplement · Food · MOQ 500 · lead 28–70d</div></div><button class="edit">Edit</button></div>
+    <div class="body"><div class="sect"><span class="sectchip">Domains &amp; formats</span><span class="sectchip">Formulation &amp; samples</span><span class="sectchip">Runs &amp; capacity</span><span class="sectchip new">Prepress delivery ← was /print-spec</span></div><div class="mock"><div class="bar w80"></div><div class="bar w60"></div></div></div></div>
+   <div class="acc"><div class="row" onclick="this.parentNode.classList.toggle('open')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 14h12v8H6z"/></svg></span><div><div class="t">Print production</div><div class="s">Sleeves · pressure labels · sample-capable</div></div><button class="edit">Edit</button></div>
+    <div class="body"><div class="sect"><span class="sectchip">Specs &amp; application</span><span class="sectchip new">Prepress delivery</span></div></div></div>
+   <div class="acc"><div class="row" onclick="this.parentNode.classList.toggle('open')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><div><div class="t">Storage at your facility</div><div class="s">Ambient + chilled · 90d dwell · ships on demand</div></div><button class="edit">Edit</button></div></div>
+   <div class="acc"><div class="row" onclick="this.parentNode.classList.toggle('open')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span><div><div class="t">Product defaults</div><div class="s">repeat 28d · MOQ 500–5,000 · pre-fills every new product</div></div><button class="edit">Edit</button></div></div>
+   <div class="acc"><div class="row" onclick="this.parentNode.classList.toggle('open')"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V7a2 2 0 00-2-2H6a2 2 0 00-2 2v5"/><path d="M2 12h20v6a2 2 0 01-2 2H4a2 2 0 01-2-2z"/></svg></span><div><div class="t">Labeling &amp; value-added</div><div class="s">Print sourcing · label application · VAS</div></div><button class="edit">Edit</button></div></div>`,
+  `<div class="req"><div><div class="t">Beacon Label Co. <span class="pill ok" style="margin-left:6px">Active</span></div><div class="s">Your nominated printer for shrink-sleeve legs — serves your orders directly, no rotation.</div></div><div class="cta"><button class="btn btn-out">Manage</button></div></div>
+   <div class="req"><div><div class="t">Bayview Packing <span class="pill info" style="margin-left:6px">Invited</span></div><div class="s">Co-packing nominee — awaiting their acceptance.</div></div><div class="cta"><button class="btn btn-out">Resend invite</button></div></div>`][i]},
+
+company:{title:'Company profile',sub:'Your identity, exactly how creators see it, and the credentials behind it.',
+ tabs:['Profile','Front face (preview)','Certifications|6'],
+ body:(i)=>[MOCK,MOCK,`<div class="stats"><div class="stat ok"><div class="v">5</div><div class="l">Verified</div></div><div class="stat warn"><div class="v">1</div><div class="l">Needs attention</div></div><div class="stat"><div class="v">0</div><div class="l">Pending review</div></div><div class="stat"><div class="v">6</div><div class="l">Total</div></div></div>`+T({h:['Certificate','Number','Expires','Status'],r:[['FDA Registered facility','FDA-88213','Aug 2027','<span class="pill ok">Verified</span>'],['General liability insurance','—','Aug 2026','<span class="pill warn">Expiring</span>']]})][i]},
+
+standing:{title:'Standing',sub:'How iLaunchify sees your work — the earned badge and the nightly reliability score.',
+ tabs:['Merit & fee tier','Performance'],body:()=>MOCK},
+
+logistics:{title:'Logistics',sub:'How goods reach and leave your facility.',
+ tabs:['Receiving & availability','Carrier & shipping'],body:()=>MOCK},
+
+market:{title:'Market participation',sub:'Every partner starts invited-only — opening to marketplace discovery and rotation is your choice.',tabs:null,body:()=>MOCK},
+
+payments:{title:'Payments',sub:'All money admin in one place — money moves via Stripe Connect.',
+ tabs:['Payouts','Billing','Tax documents','Storage billing'],body:()=>MOCK},
+
+team:{title:'Team & roles',sub:'Invite teammates and scope what they see.',tabs:null,body:()=>MOCK},
+
+prefs:{title:'Preferences',sub:'Notifications and a direct line to us.',tabs:['Notifications','Feedback'],body:()=>MOCK},
+}
+
+function render(key, ti=0){
+  const p=PAGES[key]
+  let h=`<div class="hdr"><div><h1>${p.title}</h1><div class="sub">${p.sub}</div></div>`
+  if(key==='products') h+=`<div class="act"><button class="btn btn-out">Import</button><button class="btn btn-dark">+ New product</button></div>`
+  if(key==='packaging') h+=`<div class="act"><button class="btn btn-dark">+ Add packaging</button></div>`
+  h+=`</div>`
+  if(p.tabs){
+    h+=`<div class="tabs">${p.tabs.map((t,i)=>{const [l,c]=t.split('|');return `<div class="tab${i===ti?' on':''}" onclick="render('${key}',${i})">${l}${c?`<b>${c}</b>`:''}</div>`}).join('')}</div>`
+  }
+  h+=p.body(ti)
+  document.getElementById('main').innerHTML=h
+}
+document.querySelectorAll('.it').forEach(it=>it.addEventListener('click',()=>{
+  document.querySelectorAll('.it').forEach(x=>x.classList.remove('on'))
+  it.classList.add('on')
+  render(it.dataset.p)
+}))
+render('orders')
+</script>
+</body>
+</html>

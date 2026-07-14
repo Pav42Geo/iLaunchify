@@ -7,15 +7,21 @@
 import { Megaphone } from 'lucide-react'
 import { getCapabilityInbox } from './data'
 import { CapabilityRequestsClient } from './CapabilityRequestsClient'
+import { requireUser } from '@ilaunchify/auth'
+import { PageTabs } from '@/components/PageTabs'
+import { getRequestsHiddenTabs } from '@/lib/requests-tabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Capability requests — iLaunchify Partners' }
 
 export default async function CapabilityRequestsPage() {
+  const user = await requireUser()
+  const requestsHidden = await getRequestsHiddenTabs(user.id)
   const { labelServiceId, requests } = await getCapabilityInbox()
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
+      <PageTabs group="requests" hidden={requestsHidden} />
       <header>
         <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-widest text-pink-700">
           <Megaphone className="h-4 w-4" />

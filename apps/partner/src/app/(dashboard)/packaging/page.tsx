@@ -77,18 +77,7 @@ export default async function PackagingListPage() {
         sub="One system per SKU's worth of physical packaging — active items are visible to creators picking packaging."
         actions={
           <>
-            <Link
-              href="/packaging/offerings"
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-            >
-              <Layers className="h-3.5 w-3.5" aria-hidden="true" /> Decoration offerings
-            </Link>
-            <Link
-              href="/packaging/dielines"
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-            >
-              <FileBox className="h-3.5 w-3.5" aria-hidden="true" /> Dielines
-            </Link>
+            {/* Offerings + Die-lines are TABS now (IA reorg, Pavel 2026-07-14). */}
             <Link
               href="/packaging/new"
               className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
