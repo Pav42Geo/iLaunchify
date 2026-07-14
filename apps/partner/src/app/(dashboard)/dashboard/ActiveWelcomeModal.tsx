@@ -1,31 +1,32 @@
 'use client'
 
-// One-time celebration modal shown when a partner lands on /dashboard for
-// the first time after their account is ACTIVE. Reuses Tailwind/ARIA
-// patterns from the rest of the app — no shadcn Dialog dependency.
+// One-time go-live celebration — the activation prototype's .celebrate-card
+// (design/activation-launch-console-tokens.html) on a WHITE surface (Pavel
+// 2026-07-13: post-activation chrome is white — black pill CTA, pink accents,
+// Fraunces italic accent word; neon stays dark-only).
 //
-// State is purely "open until the user dismisses it." The parent
-// dashboard page only renders this when activeWelcomeSeen is not set.
-// On dismiss we call markActiveWelcomeSeen so refreshing the page
-// doesn't re-open it.
+// Rendered by /dashboard ONLY when status is ACTIVE, every service is live,
+// and onboardingProgress.activeWelcomeSeen is unset. Any dismissal path
+// stamps the flag so it never shows again.
 
 import { useState, useTransition } from 'react'
-import { Sparkles, X, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Rocket, X, ArrowRight } from 'lucide-react'
 import { markActiveWelcomeSeen } from './welcome-modal-actions'
 
 export function ActiveWelcomeModal({ companyName }: { companyName: string }) {
   const [open, setOpen] = useState(true)
   const [, startTransition] = useTransition()
+  const router = useRouter()
 
-  function dismiss() {
-    // Optimistic close; flag-stamp fires in the background. If it fails the
-    // modal will reappear on next page load — acceptable UX (worst case the
-    // partner sees the celebration twice).
+  function dismiss(href?: string) {
+    // Optimistic close; the flag-stamp fires in the background. If it fails,
+    // worst case the partner sees the celebration once more.
     setOpen(false)
     startTransition(async () => {
       await markActiveWelcomeSeen()
     })
+    if (href) router.push(href)
   }
 
   if (!open) return null
@@ -35,77 +36,65 @@ export function ActiveWelcomeModal({ companyName }: { companyName: string }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/70 p-5 backdrop-blur-[4px]"
       onClick={(e) => {
         if (e.target === e.currentTarget) dismiss()
       }}
     >
-      <div className="relative w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-8 shadow-xl">
+      {/* .celebrate-card, white variant — soft pink glow from the top edge */}
+      <div className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-pink-200 bg-white p-[34px] text-center shadow-xl">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 [background:radial-gradient(80%_80%_at_50%_-10%,var(--pink-100),transparent_60%)]"
+        />
+
         <button
           type="button"
-          onClick={dismiss}
+          onClick={() => dismiss()}
           aria-label="Close"
-          className="absolute right-3 top-3 rounded-md p-1 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
+          className="absolute right-3 top-3 z-10 rounded-md p-1 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
 
-        <div className="flex flex-col items-center text-center">
-          <div className="rounded-full bg-pink-100 p-4">
-            <Sparkles className="h-8 w-8 text-pink-700" aria-hidden />
-          </div>
+        {/* .rocket tile */}
+        <div className="relative z-10 mx-auto grid h-[76px] w-[76px] animate-[ilfy-pop_.45s_ease-out] place-items-center rounded-[20px] bg-pink-500 text-white">
+          <Rocket className="h-[38px] w-[38px]" aria-hidden="true" />
+        </div>
 
-          <h2
-            id="welcome-modal-title"
-            className="mt-5 font-display text-[24px] font-bold tracking-[-0.02em] text-ink-900"
-          >
-            You&apos;re live, {companyName}!
-          </h2>
-          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-ink-600">
-            Your partner profile is fully verified. Creators can now route production orders to
-            you, and you&apos;ll receive an email + in-app notification when a new dispatch needs
-            your acceptance.
-          </p>
+        <h2
+          id="welcome-modal-title"
+          className="relative z-10 mt-5 font-display text-[24px] font-extrabold tracking-[-0.01em] text-ink-900"
+        >
+          You&rsquo;re <span className="font-serif italic text-pink-700">live</span>, {companyName}.
+        </h2>
+        <p className="relative z-10 mx-auto mt-2 max-w-[340px] text-[13.5px] leading-relaxed text-ink-600">
+          Creators can now route production orders to you. You&rsquo;ll get an email and an in-app
+          notification whenever a dispatch needs your acceptance — payouts land via Stripe about 2
+          business days after each shipment.
+        </p>
 
-          <div className="mt-6 w-full space-y-3 rounded-xl border border-ink-200 bg-[var(--bg-hero)] p-4 text-left text-sm">
-            <div className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
-              What happens next
-            </div>
-            <NextStep>
-              New orders show up in your{' '}
-              <Link href="/orders" className="font-medium text-pink-700 underline">
-                Orders inbox
-              </Link>
-            </NextStep>
-            <NextStep>
-              Stripe Connect deposits payouts 2 business days after each shipment
-            </NextStep>
-            <NextStep>
-              Edit your capabilities anytime from{' '}
-              <Link href="/services" className="font-medium text-pink-700 underline">
-                Services
-              </Link>
-            </NextStep>
-          </div>
-
+        {/* .cbtns */}
+        <div className="relative z-10 mt-5 flex flex-wrap items-center justify-center gap-2.5">
           <button
             type="button"
-            onClick={dismiss}
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-ink-900 px-5 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+            onClick={() => dismiss('/services')}
+            className="inline-flex items-center rounded-full border border-ink-300 bg-white px-4 py-2 text-[13px] font-semibold text-ink-900 transition-colors hover:bg-ink-50"
           >
-            Take me to the dashboard <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            Review my services
+          </button>
+          <button
+            type="button"
+            onClick={() => dismiss('/orders')}
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+          >
+            See my orders <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>
-    </div>
-  )
-}
 
-function NextStep({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-2">
-      <span aria-hidden className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-pink-500" />
-      <span className="text-ink-700">{children}</span>
+      {/* pop keyframes (same curve as the prototype; plain <style> — no styled-jsx) */}
+      <style>{`@keyframes ilfy-pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
     </div>
   )
 }

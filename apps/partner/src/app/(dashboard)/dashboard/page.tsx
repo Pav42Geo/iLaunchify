@@ -395,7 +395,14 @@ export default async function ProviderDashboardHome() {
 
   return (
     <div className="space-y-6">
-      {partner.status === 'ACTIVE' && <ActiveWelcomeModal companyName={partner.companyName} />}
+      {/* One-time go-live celebration (Pavel 2026-07-13): only when the flag
+          hasn't been stamped AND every service is actually live — previously
+          it re-rendered on every load for any ACTIVE partner (the flag was
+          stamped but never read) and even fired mid-activation. */}
+      {partner.status === 'ACTIVE' &&
+        pendingActivationCount === 0 &&
+        ((partner.onboardingProgress as Record<string, unknown> | null) ?? {}).activeWelcomeSeen !==
+          true && <ActiveWelcomeModal companyName={partner.companyName} />}
 
       {/* Hero — compact, unified */}
       <div className="rounded-2xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-4">
