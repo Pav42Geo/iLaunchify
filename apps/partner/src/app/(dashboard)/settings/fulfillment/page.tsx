@@ -35,20 +35,9 @@ export default async function FulfillmentSettingsPage() {
   if (services.length === 0) redirect('/settings')
 
   return (
+    // Prototype #p-fulfillment styling — no page hero (Pavel 2026-07-13);
+    // the per-service panel cards open the page directly.
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Fulfillment Center · Settings · Facility
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Receiving & availability
-        </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          Your receiving requirements travel with every inbound dispatch; blackout windows pause
-          new routing to your facility.
-        </p>
-      </div>
-
       {services.map((s) => {
         const spec =
           typeof s.receivingSpecJson === 'object' && s.receivingSpecJson !== null && !Array.isArray(s.receivingSpecJson)
@@ -70,6 +59,13 @@ export default async function FulfillmentSettingsPage() {
           />
         )
       })}
+
+      <p className="text-[12px] leading-relaxed text-ink-400">
+        Your receiving requirements travel with every inbound dispatch; blackout windows pause new
+        routing to your facility for the dates you set. Storage you offer at your own plant is
+        configured on your <a href="/services" className="underline">Services</a> page — this page
+        is facility receiving &amp; availability.
+      </p>
     </div>
   )
 }

@@ -41,19 +41,21 @@ export default async function ShippingSettingsPage() {
   const byoAccounts = accounts.filter((a) => a.type === 'BYO_PARCEL').map(toView)
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
+    // Prototype panel styling — no page hero (Pavel 2026-07-13); a slim
+    // breadcrumb + panel header carries the intro instead.
+    <div className="space-y-6">
+      <div>
         <Link
           href="/settings"
-          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-600 hover:text-ink-900"
+          className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink-500 hover:text-ink-900"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Settings
         </Link>
-        <h1 className="mt-2 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+        <h1 className="mt-1.5 font-display text-[19px] font-bold leading-tight text-ink-900">
           Carrier &amp; shipping
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-0.5 max-w-2xl text-[13px] text-ink-600">
           How your dispatches get parcel labels. Use iLaunchify shipping (our platform carrier
           account — the default, zero setup) or connect your own negotiated carrier rates.
         </p>
