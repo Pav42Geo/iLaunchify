@@ -1212,3 +1212,70 @@ export async function withdrawDispatch({
   revalidatePath('/orders')
   return { ok: true }
 }
+
+// =============================================================================
+// Correct tracking after shipping (Etsy-pattern, Pavel 2026-07-14).
+// A typo'd tracking number shouldn't need a support ticket — but corrections
+// are only honest close to the ship event, so the window is 3 days (Etsy's
+// rule), and every correction is audited with the before/after values.
+// =============================================================================
+
+const TRACKING_CORRECTION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
+
+export async function correctDispatchTracking({
+  dispatchId,
+  trackingCarrier,
+  trackingNumber,
+}: {
+  dispatchId: string
+  trackingCarrier: string
+  trackingNumber: string
+}): Promise<Result> {
+  const user = await requireUser()
+  const dispatch = await loadOwnedDispatch(user.id, dispatchId)
+  if (!dispatch) return { ok: false, error: 'Dispatch not found' }
+  if (dispatch.status !== 'SHIPPED' && dispatch.status !== 'IN_TRANSIT') {
+    return { ok: false, error: `Tracking can only be corrected after shipping (status is ${dispatch.status}).` }
+  }
+  if (!dispatch.shippedAt) return { ok: false, error: 'No ship timestamp on this dispatch.' }
+  if (Date.now() - dispatch.shippedAt.getTime() > TRACKING_CORRECTION_WINDOW_MS) {
+    return {
+      ok: false,
+      error: 'The 3-day correction window has passed — contact support with the right tracking number.',
+    }
+  }
+  const carrier = trackingCarrier.trim()
+  const tracking = trackingNumber.trim()
+  if (!tracking) return { ok: false, error: 'Enter the corrected tracking number.' }
+
+  const from = { carrier: dispatch.trackingCarrier, tracking: dispatch.trackingNumber }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.orderDispatch.update({
+      where: { id: dispatch.id },
+      data: { trackingCarrier: carrier || null, trackingNumber: tracking },
+    })
+    // Keep the custody leg (if the ship recorded one) in step with the fix.
+    await tx.shipmentLeg.updateMany({
+      where: { orderDispatchId: dispatch.id, trackingNumber: from.tracking ?? undefined },
+      data: { carrierName: carrier || null, trackingNumber: tracking },
+    })
+  })
+
+  await logAuditAs(user, {
+    entityType: 'OrderDispatch',
+    entityId: dispatch.id,
+    action: 'DISPATCH_TRACKING_CORRECTED',
+    payload: {
+      orderId: dispatch.orderId,
+      fromCarrier: from.carrier,
+      fromTracking: from.tracking,
+      toCarrier: carrier || null,
+      toTracking: tracking,
+    },
+  })
+
+  revalidatePath(`/orders/${dispatchId}`)
+  revalidatePath('/orders')
+  return { ok: true }
+}

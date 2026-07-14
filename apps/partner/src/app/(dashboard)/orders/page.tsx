@@ -29,6 +29,7 @@ import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { serviceOwnedBy } from '@/lib/partner-context'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { PageTabs } from '@/components/PageTabs'
+import { QuickShipButton } from './QuickShipButton'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — Partners' }
@@ -237,7 +238,11 @@ export default async function OrdersPage({
                           : new Date(d.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-5 py-3">
-                        <div className="flex justify-end">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Etsy-pattern quick-ship (Pavel 2026-07-14) — READY rows only. */}
+                          {d.status === 'READY' && (
+                            <QuickShipButton dispatchId={d.id} label={(d.order as { orderNumber?: string | null }).orderNumber ? `Order ${(d.order as { orderNumber?: string | null }).orderNumber}` : 'This dispatch'} />
+                          )}
                           <OrderRowActions dispatchId={d.id} orderId={d.order.id} orderNumber={(d.order as { orderNumber?: string | null }).orderNumber} />
                         </div>
                       </td>
@@ -370,7 +375,11 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
         <ActionLink href={`/help/new?category=order-issue&dispatchId=${d.id}`} icon={LifeBuoy}>
           Get order support
         </ActionLink>
-        <span className="ml-auto">
+        <span className="ml-auto inline-flex items-center gap-2">
+          {/* Etsy-pattern quick-ship (Pavel 2026-07-14) — READY cards only. */}
+          {d.status === 'READY' && (
+            <QuickShipButton dispatchId={d.id} label={(d.order as { orderNumber?: string | null }).orderNumber ? `Order ${(d.order as { orderNumber?: string | null }).orderNumber}` : 'This dispatch'} />
+          )}
           <OrderRowActions dispatchId={d.id} orderId={d.order.id} orderNumber={(d.order as { orderNumber?: string | null }).orderNumber} />
         </span>
       </footer>

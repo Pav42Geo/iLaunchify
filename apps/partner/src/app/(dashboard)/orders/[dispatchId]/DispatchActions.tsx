@@ -18,9 +18,11 @@ import {
   requestDispatchChanges,
   withdrawDispatch,
   requestCancellation,
+  correctDispatchTracking,
   type FlaggedField,
 } from './actions'
 import { BuyLabelPanel } from './BuyLabelPanel'
+import { CarrierTrackingFields } from '../CarrierTrackingFields'
 
 // Phase L1.1b — server-computed shipping-gate summary (page.tsx derives it via
 // getDispatchShippingContext). The ShipPanel renders the block/allow state and
@@ -43,9 +45,21 @@ interface Props {
   status: string
   type: 'PRODUCT' | 'LABEL' | 'COPACKING'
   shipping?: ShipPanelShippingData
+  /** Post-ship tracking correction (Pavel 2026-07-14) — 3-day Etsy window. */
+  shippedAtIso?: string | null
+  trackingCarrier?: string | null
+  trackingNumber?: string | null
 }
 
-export function DispatchActions({ dispatchId, status, type, shipping }: Props) {
+export function DispatchActions({
+  dispatchId,
+  status,
+  type,
+  shipping,
+  shippedAtIso,
+  trackingCarrier,
+  trackingNumber,
+}: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
 
@@ -194,6 +208,12 @@ export function DispatchActions({ dispatchId, status, type, shipping }: Props) {
           >
             Mark delivered
           </Button>
+          <CorrectTrackingSection
+            dispatchId={dispatchId}
+            shippedAtIso={shippedAtIso}
+            trackingCarrier={trackingCarrier}
+            trackingNumber={trackingNumber}
+          />
         </CardContent>
       </Card>
     )
@@ -828,6 +848,82 @@ function WithdrawPanel({
 }
 
 // =============================================================================
+// Correct tracking (Etsy 3-day window, Pavel 2026-07-14) — collapsed link on
+// the SHIPPED panel; expands into the shared carrier/tracking fields and calls
+// the audited correctDispatchTracking action. Hidden once the window passes.
+// =============================================================================
+
+function CorrectTrackingSection({
+  dispatchId,
+  shippedAtIso,
+  trackingCarrier,
+  trackingNumber,
+}: {
+  dispatchId: string
+  shippedAtIso?: string | null
+  trackingCarrier?: string | null
+  trackingNumber?: string | null
+}) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [carrier, setCarrier] = useState(trackingCarrier ?? '')
+  const [tracking, setTracking] = useState(trackingNumber ?? '')
+  const [busy, setBusy] = useState(false)
+
+  const withinWindow =
+    !!shippedAtIso && Date.now() - new Date(shippedAtIso).getTime() <= 3 * 24 * 60 * 60 * 1000
+  if (!withinWindow) return null
+
+  async function submit() {
+    setBusy(true)
+    try {
+      const r = await correctDispatchTracking({ dispatchId, trackingCarrier: carrier, trackingNumber: tracking })
+      if (!r.ok) {
+        toast.error(r.error ?? 'Failed')
+        return
+      }
+      toast.success('Tracking corrected')
+      setOpen(false)
+      router.refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="border-t border-ink-100 pt-2">
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-[12px] font-semibold text-ink-500 underline underline-offset-2 hover:text-ink-900"
+        >
+          Wrong tracking number? Correct it (3-day window)
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <CarrierTrackingFields
+            idPrefix="correct"
+            carrier={carrier}
+            tracking={tracking}
+            onCarrierChange={setCarrier}
+            onTrackingChange={setTracking}
+          />
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={submit} disabled={busy || !tracking.trim()}>
+              Save correction
+            </Button>
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
 // Ship panel — L1.1b document-gated mark-shipped (BYO tracking stays the V1
 // path; platform label/BOL purchase arrives with Phase L2). The gate summary
 // comes precomputed from the server; shipDispatch re-runs it server-side, so
@@ -915,14 +1011,13 @@ function ShipPanel({
             }}
           />
         )}
-        <div className="space-y-1.5">
-          <Label htmlFor="carrier">Carrier</Label>
-          <Input id="carrier" placeholder="USPS, UPS, FedEx…" value={carrier} onChange={(e) => setCarrier(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="tracking">Tracking #</Label>
-          <Input id="tracking" value={tracking} onChange={(e) => setTracking(e.target.value)} />
-        </div>
+        {/* Carrier dropdown + tracking with format auto-detect (Pavel 2026-07-14). */}
+        <CarrierTrackingFields
+          carrier={carrier}
+          tracking={tracking}
+          onCarrierChange={setCarrier}
+          onTrackingChange={setTracking}
+        />
         {showSeal && (
           <div className="space-y-1.5">
             <Label htmlFor="sealNumber">Trailer seal #</Label>

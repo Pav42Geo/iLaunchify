@@ -596,6 +596,9 @@ export default async function DispatchDetailPage({
             dispatchId={dispatch.id}
             status={dispatch.status}
             type={dispatch.type}
+            shippedAtIso={dispatch.shippedAt?.toISOString() ?? null}
+            trackingCarrier={dispatch.trackingCarrier}
+            trackingNumber={dispatch.trackingNumber}
             shipping={
               shippingCtx
                 ? {
