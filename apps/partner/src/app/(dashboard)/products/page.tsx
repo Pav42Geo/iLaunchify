@@ -34,7 +34,6 @@ import { ProductRowActions } from './ProductRowActions'
 import { SelectionProvider, SelectAllCheckbox, RowCheckbox } from './ProductSelection'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { LiveToggle } from './LiveToggle'
-import { ProductsGetStarted } from './ProductsGetStarted'
 import { ProductImportButton } from './import/ProductImportButton'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { PageTabs } from '@/components/PageTabs'
@@ -164,13 +163,8 @@ export default async function ProductsListPage({
       })
     : []) as unknown as Row[]
 
-  // First-run: a partner with zero product templates gets the editorial
-  // "get started" landing instead of the management chrome. The moment they
-  // create their first draft (a DRAFT template row), this list is non-empty
-  // and the regular Products page renders automatically.
-  if (templates.length === 0) {
-    return <ProductsGetStarted companyName={partner.companyName} categories={importCategories} />
-  }
+  // First-run landing REMOVED (Pavel 2026-07-14): zero templates renders the
+  // normal management chrome with its built-in empty state — no editorial page.
 
   // Resolve hero thumbnails (Asset id → URL) for the name cell.
   const heroUrls = await resolveCertBadgeUrls(templates.map((r) => r.imageAssetId))
