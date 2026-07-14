@@ -15,6 +15,7 @@ import { certExpiryTone, daysUntilExpiry, cn } from '@ilaunchify/ui'
 import { ShieldCheck, AlertCircle, Clock, Info, Plus } from 'lucide-react'
 import { InfoBanner, KpiStrip, PanelCard, PanelHeader, StPill } from '@/components/panel-kit'
 import { CertificationsClient } from './CertificationsClient'
+import { CertSearchInput } from './CertSearchInput'
 import { RenewCertButton } from './RenewCertButton'
 import { DownloadCertButton } from './DownloadCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
@@ -25,9 +26,10 @@ export const metadata = { title: 'Certifications — iLaunchify Partners' }
 export default async function CertificationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ renew?: string; claim?: string }>
+  searchParams: Promise<{ renew?: string; claim?: string; q?: string }>
 }) {
-  const { renew: renewId, claim: claimTypeId } = await searchParams
+  const { renew: renewId, claim: claimTypeId, q } = await searchParams
+  const query = (q ?? '').trim().toLowerCase()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -105,6 +107,15 @@ export default async function CertificationsPage({
       ? (certBadgeUrls.get(i.certificateType.thumbnailFileId) ?? null)
       : null
 
+  // ?q= search — filters the rows by type name / cert number / issuing body.
+  // KPIs stay global (they describe your standing, not the filter).
+  const matchesQuery = (i: (typeof instances)[number]): boolean =>
+    !query ||
+    [i.certificateType.name, i.certificateNumber, i.issuingBody]
+      .filter((s): s is string => !!s)
+      .some((s) => s.toLowerCase().includes(query))
+  const visibleInstances = [...verified, ...pending, ...issues].filter(matchesQuery)
+
   return (
     <div className="space-y-6">
       {instances.length === 0 ? (
@@ -120,10 +131,12 @@ export default async function CertificationsPage({
         </PanelCard>
       ) : (
         <PanelCard>
-          {/* Prototype #p-certs panel-h — no page hero (Pavel 2026-07-13). */}
+          {/* Prototype #p-certs panel-h — no page hero (Pavel 2026-07-13) —
+              with the cert search top-right. */}
           <PanelHeader
             title="Certifications"
             desc="Your certificates gate marketplace eligibility & unlock profile badges. The PDF stays private to iLaunchify admin — only the branded badge shows publicly."
+            aside={<CertSearchInput />}
           />
 
           {nextRenewal && (
@@ -147,47 +160,18 @@ export default async function CertificationsPage({
             ]}
           />
 
-          {[...verified, ...pending, ...issues].map((inst) => (
+          {visibleInstances.map((inst) => (
             <CertRow key={inst.id} inst={inst} badgeUrl={badgeFor(inst)} renewId={renewId} />
           ))}
+          {visibleInstances.length === 0 && (
+            <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-[13px] text-ink-500">
+              No certificates match &ldquo;{q}&rdquo;.
+            </p>
+          )}
         </PanelCard>
       )}
 
-      {/* Declared during onboarding, proof still missing — keeps the onboarding
-          promise ("you'll upload the PDF for each after approval"). */}
-      {declaredPending.length > 0 && (
-        <PanelCard>
-          <PanelHeader
-            title="Declared during onboarding"
-            desc="You told us you carry these — upload the certificate PDF so admin can verify and unlock the public badge."
-          />
-          {declaredPending.map((t) => (
-            <div
-              key={t.id}
-              className="mb-2.5 flex flex-wrap items-center gap-3.5 rounded-xl border border-warning-100 bg-warning-50/40 px-4 py-[15px] last:mb-0"
-            >
-              <span className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-warning-50 text-warning-500">
-                <Clock className="h-[19px] w-[19px]" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <div className="text-[14px] font-semibold text-ink-900">{t.name}</div>
-                <div className="text-[12px] text-ink-500">Declared in onboarding · proof not uploaded yet</div>
-              </div>
-              <div className="ml-auto flex flex-none items-center gap-3">
-                <StPill tone="warn">PROOF NEEDED</StPill>
-                <Link
-                  href={`/certifications?claim=${t.id}#add-cert`}
-                  className="inline-flex items-center rounded-full bg-pink-500 px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600"
-                >
-                  Upload proof
-                </Link>
-              </div>
-            </div>
-          ))}
-        </PanelCard>
-      )}
-
-      {/* Claim / Add new cert */}
+      {/* Claim / Add new cert — above the declared prompts (Pavel 2026-07-13) */}
       <PanelCard id="add-cert">
         <PanelHeader
           title="Add a certification"
@@ -229,6 +213,40 @@ export default async function CertificationsPage({
           </Link>
         </div>
       </PanelCard>
+
+      {/* Declared during onboarding, proof still missing — keeps the onboarding
+          promise ("you'll upload the PDF for each after approval"). */}
+      {declaredPending.length > 0 && (
+        <PanelCard>
+          <PanelHeader
+            title="Declared during onboarding"
+            desc="You told us you carry these — upload the certificate PDF so admin can verify and unlock the public badge."
+          />
+          {declaredPending.map((t) => (
+            <div
+              key={t.id}
+              className="mb-2.5 flex flex-wrap items-center gap-3.5 rounded-xl border border-warning-100 bg-warning-50/40 px-4 py-[15px] last:mb-0"
+            >
+              <span className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-warning-50 text-warning-500">
+                <Clock className="h-[19px] w-[19px]" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[14px] font-semibold text-ink-900">{t.name}</div>
+                <div className="text-[12px] text-ink-500">Declared in onboarding · proof not uploaded yet</div>
+              </div>
+              <div className="ml-auto flex flex-none items-center gap-3">
+                <StPill tone="warn">PROOF NEEDED</StPill>
+                <Link
+                  href={`/certifications?claim=${t.id}#add-cert`}
+                  className="inline-flex items-center rounded-full bg-pink-500 px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600"
+                >
+                  Upload proof
+                </Link>
+              </div>
+            </div>
+          ))}
+        </PanelCard>
+      )}
     </div>
   )
 }
