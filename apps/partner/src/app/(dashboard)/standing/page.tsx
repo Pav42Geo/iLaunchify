@@ -190,8 +190,21 @@ function ServiceStanding({
 
       {!s.hasSnapshot ? (
         <p className="mt-4 max-w-2xl text-[13px] leading-relaxed text-ink-600">
-          Your standing is calculated nightly once you have completed orders. Until then you hold neutral,
-          Verified standing — nothing you haven&rsquo;t had the chance to build counts against you.
+          {s.currentBadge === 'VERIFIED' ? (
+            <>
+              Your standing is calculated nightly once you have completed orders. Until then you hold
+              neutral, Verified standing — nothing you haven&rsquo;t had the chance to build counts
+              against you.
+            </>
+          ) : (
+            // Badge above VERIFIED with no snapshot = an iLaunchify-granted
+            // tier (audited admin override). Don't claim "neutral Verified".
+            <>
+              You hold <b className="font-semibold text-ink-800">{s.currentBadge}</b> standing, granted
+              by iLaunchify. Nightly scoring starts once you have completed orders — from then on, the
+              four pillars below keep the badge earned.
+            </>
+          )}
         </p>
       ) : (
         <>
