@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requirePartnerActor } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
-import { Printer } from 'lucide-react'
+import { ArrowLeft, Printer } from 'lucide-react'
 import type {
   ColorSpace,
   DielineDelivery,
@@ -30,8 +30,7 @@ export const metadata = { title: 'Prepress output — iLaunchify Partners' }
 const SERVICE_TYPE_LABELS: Record<string, string> = {
   MANUFACTURING: 'Manufacturing',
   COPACKING: 'Co-packing',
-  LABEL_PRINTING: 'Packaging printing',
-  WAREHOUSE: 'Warehouse / 3PL',
+  LABEL_PRINTING: 'Print production',
 }
 
 // Model defaults — used when a service has no spec row yet.
@@ -69,8 +68,13 @@ export default async function PrintSpecPage({
   const actor = await requirePartnerActor()
   if (!actor.ok) return null
 
+  // Prepress-capable services ONLY (role-skins rule): a Warehouse/3PL never
+  // exports print files — it was wrongly listed here before (Pavel 2026-07-14).
   const services = await prisma.partnerService.findMany({
-    where: { partnerId: actor.partnerId },
+    where: {
+      partnerId: actor.partnerId,
+      type: { in: ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING'] },
+    },
     select: { id: true, type: true },
     orderBy: { createdAt: 'asc' },
   })
@@ -78,10 +82,18 @@ export default async function PrintSpecPage({
   // Modern list chrome (Pavel 2026-07-14) — same slim title row as the other
   // operational pages; the Packaging tab bar above already provides the way back.
   const header = (
-    <ListTitleRow
-      title="Prepress output"
-      sub="Your prepress export preferences per service — file format, color management, resolution, bleed, dieline delivery, and the export-bundle manifest format."
-    />
+    <div className="space-y-3">
+      <Link
+        href="/packaging"
+        className="inline-flex items-center gap-1 rounded text-[12px] font-semibold text-ink-500 transition-colors hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Packaging catalog
+      </Link>
+      <ListTitleRow
+        title="Prepress output"
+        sub="Your prepress export preferences per service — file format, color management, resolution, bleed, dieline delivery, and the export-bundle manifest format."
+      />
+    </div>
   )
 
   if (services.length === 0) {
