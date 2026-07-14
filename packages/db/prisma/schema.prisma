@@ -1076,6 +1076,9 @@ model Partner {
   promoTokenLedger              PromoTokenLedger[]            @relation("PartnerPromoTokens")
   // Public partner profile (Front Face) portfolio tiles
   portfolioItems                PartnerPortfolioItem[]        @relation("PartnerPortfolioItems")
+  slugHistory                   PartnerSlugHistory[]          @relation("PartnerSlugHistory")
+  accessOverrides               PartnerAccessOverride[]       @relation("PartnerAccessOverrides")
+  accessRequests                PartnerAccessRequest[]        @relation("PartnerAccessRequests")
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 }
@@ -10554,4 +10557,119 @@ enum LegalActorType {
   PARTNER
   ADMIN
   DESIGNER // Invited packaging designer (Shared Design Workspace D-W6 NDA, 2026-07-13)
+}
+
+// =============================================================================
+// PARTNER ACCESS & OPPORTUNITY CONSOLE + PUBLIC-URL SLUG HISTORY
+// docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.md + PUBLIC_PARTNER_PROFILE_SPEC.
+// All additive, uuid() ids. The resolver (packages/auth) composes:
+//   master switch → per-partner override → global default → hard prerequisites.
+// =============================================================================
+
+enum AccessLeverState {
+  INHERIT // follow the global default
+  ALLOW // force ON for this partner
+  DENY // force OFF for this partner
+}
+
+// Every admin-controllable "opportunity". Enum-valued levers (named-reviews
+// audience, etc.) carry their choice in the override's `value` column.
+enum PartnerAccessLever {
+  // Group A — identity & disclosure
+  PUBLIC_PROFILE
+  PROFILE_SHARING
+  NAMED_REVIEWS
+  RATINGS_VISIBLE
+  CERTS_VISIBLE
+  MERIT_BADGE_VISIBLE
+  // Group B — marketplace opportunities
+  DISCOVERABILITY
+  BRIEF_INTAKE
+  PRINT_ROTATION
+  CAPABILITY_RFQ
+  NOMINATION_ELIGIBLE
+  SAMPLE_INTAKE
+  QUOTE_MESSAGING
+}
+
+enum PartnerAccessRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  WITHDRAWN
+}
+
+// Slug rename history — every slug a partner has ever used, so old public links
+// 301-redirect to the current one (URL format #1, Pavel 2026-07-14). The CURRENT
+// slug lives on Partner.slug; this table holds the prior ones. uuid stays the
+// immutable identity; the slug is the mutable public label on top.
+model PartnerSlugHistory {
+  id        String   @id @default(uuid())
+  partnerId String
+  partner   Partner  @relation("PartnerSlugHistory", fields: [partnerId], references: [id], onDelete: Cascade)
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([partnerId])
+}
+
+// Global Partner Access & Opportunity policy (singleton): defaults every partner
+// inherits + master kill switches. A master OFF beats any per-partner ALLOW.
+// Absorbs the older PartnerProfileSetting over time (kept until data migrates).
+model PartnerAccessPolicy {
+  id                        String   @id @default("singleton")
+  // Master switches (platform-wide kill switches)
+  publicProfilesEnabled     Boolean  @default(true)
+  discoverabilityEnabled    Boolean  @default(true)
+  // Group A defaults
+  defaultProfileVisibility  String   @default("invited") // 'public' | 'invited' | 'off'
+  namedReviewsAudience      String   @default("paid") // 'paid' | 'any' | 'anonymous'
+  minCreatorTierForIdentity String   @default("agency") // dial: PDP link + named reviews
+  defaultProfileSharing     Boolean  @default(true)
+  // Group B defaults
+  defaultBriefIntake        Boolean  @default(true)
+  defaultDiscoverable       Boolean  @default(true)
+  defaultPrintRotation      Boolean  @default(false)
+  defaultSampleIntake       Boolean  @default(true)
+  updatedById               String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
+// Per-partner lever override — beats the global default; prerequisites can still
+// subtract. `value` holds enum-valued lever choices. Every write is audit-logged.
+model PartnerAccessOverride {
+  id        String             @id @default(uuid())
+  partnerId String
+  partner   Partner            @relation("PartnerAccessOverrides", fields: [partnerId], references: [id], onDelete: Cascade)
+  lever     PartnerAccessLever
+  state     AccessLeverState   @default(INHERIT)
+  value     String? // enum-valued levers only
+  reason    String?            @db.String(500)
+  expiresAt DateTime? // temporary grant/restriction; null = permanent
+  setById   String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([partnerId, lever])
+  @@index([partnerId])
+}
+
+// Partner-initiated unlock request (phase 2). Approving writes the override +
+// AuditLog + notifies the partner.
+model PartnerAccessRequest {
+  id          String                     @id @default(uuid())
+  partnerId   String
+  partner     Partner                    @relation("PartnerAccessRequests", fields: [partnerId], references: [id], onDelete: Cascade)
+  lever       PartnerAccessLever
+  requested   String? // requested value for enum levers
+  note        String?                    @db.String(500)
+  status      PartnerAccessRequestStatus @default(PENDING)
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  @@index([status])
+  @@index([partnerId])
 }

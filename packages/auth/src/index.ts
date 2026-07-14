@@ -91,3 +91,17 @@ export type {
 
 // P3 multi-seat partner access (docs/PRINT_PRODUCTION_WORKFLOW.md §2.2)
 export { getPartnerAccess, requirePartnerAdminAccess, type PartnerAccess } from './partner-access'
+// Partner Access & Opportunity resolver — pure lever decider
+// (docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.md).
+export {
+  resolvePartnerOpportunity,
+  resolveNamedReviewsAudience,
+  type AccessLeverState,
+  type PartnerAccessLever,
+  type NamedReviewsAudience,
+  type AccessPolicy,
+  type AccessOverride,
+  type PartnerFacts,
+  type LeverSource,
+  type LeverResolution,
+} from './partner-opportunity'
