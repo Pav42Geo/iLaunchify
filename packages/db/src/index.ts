@@ -109,6 +109,14 @@ export {
   type SupportSettingsValues,
   type SupportPriority,
 } from './support-settings'
+export {
+  getPartnerAccessPolicy,
+  PARTNER_ACCESS_POLICY_DEFAULTS,
+  type PartnerAccessPolicyValues,
+  type ProfileVisibility,
+  type NamedReviewsAudience,
+  type IdentityTier,
+} from './partner-access-policy'
 export { getCannedReplies, type CannedReplyRow } from './canned-replies'
 export {
   getAnalyticsSettings,

@@ -159,6 +159,10 @@ export const AUDIT_ENTITY_TYPES = [
   // Public partner profile — Front Face (design/partner-profile-prototype-v2.html, 2026-07-12)
   'PartnerProfileSetting', // admin visibility gate: minCreatorTier + kill switch
   'PartnerPortfolioItem', // public profile portfolio tiles
+  // Partner Access & Opportunity console (docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.md)
+  'PartnerAccessPolicy', // global defaults + master switches (singleton)
+  'PartnerAccessOverride', // per-partner lever override
+  'PartnerAccessRequest', // partner-initiated unlock request (phase 2)
   'PartnerNomination', // D7 nomination — directed-partner pin + consent (dark until counsel)
   'NominationSetting', // nomination feature gate (enabled=false until counsel blesses D7)
   // Co-creation marketplace P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md, 2026-07-10)
