@@ -117,6 +117,11 @@ export {
   type NamedReviewsAudience,
   type IdentityTier,
 } from './partner-access-policy'
+export {
+  getPartnerAccessContext,
+  type PartnerAccessContext,
+  type PartnerAccessOverrideRow,
+} from './partner-access-context'
 export { getCannedReplies, type CannedReplyRow } from './canned-replies'
 export {
   getAnalyticsSettings,
