@@ -17,16 +17,19 @@
 // with the right rail (availability + map, Quick facts, Best for).
 // No quote/message CTAs in this slice (Pavel 2026-07-12).
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '../lib/utils'
 import {
   BadgeCheck,
   Calendar,
   Check,
+  Copy,
   Factory,
+  Mail,
   MapPin,
   Package,
   Printer,
+  Share2,
   ShieldCheck,
   Star,
   Warehouse,
@@ -154,13 +157,49 @@ function serviceSub(s: PartnerProfileVM['services'][number]): string {
   return bits.join(' · ') || 'Active service'
 }
 
-export function PartnerFrontFace({ profile }: { profile: PartnerProfileVM }) {
+export function PartnerFrontFace({
+  profile,
+  canShare = false,
+}: {
+  profile: PartnerProfileVM
+  /** Show the Share control. Signed-in paid creators only — the route passes this. */
+  canShare?: boolean
+}) {
   const [tab, setTab] = useState<TabKey>('overview')
+  const [shareOpen, setShareOpen] = useState(false)
+  const shareRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!shareOpen) return
+    const onDoc = (e: MouseEvent) => {
+      if (shareRef.current && !shareRef.current.contains(e.target as Node)) setShareOpen(false)
+    }
+    document.addEventListener('click', onDoc)
+    return () => document.removeEventListener('click', onDoc)
+  }, [shareOpen])
   const p = profile
   const isPremier = p.tier === 'PREMIER'
   const isTrusted = p.tier === 'TRUSTED'
   const initial = p.companyName.charAt(0).toUpperCase()
   const location = [p.city, p.state].filter(Boolean).join(', ')
+  const serviceLine = p.serviceTypes.map((t) => SERVICE_LABEL[t] ?? t).join(' · ')
+  const profileUrl = `ilaunchify.com/partners/${p.slug}`
+  const shareTo = (kind: 'linkedin' | 'x' | 'facebook' | 'email') => {
+    if (typeof window === 'undefined') return
+    const u = encodeURIComponent(window.location.href)
+    const map = {
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${u}`,
+      x: `https://twitter.com/intent/tweet?url=${u}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${u}`,
+      email: `mailto:?body=${u}`,
+    }
+    window.open(map[kind], '_blank', 'noopener')
+  }
+  const copyLink = () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    navigator.clipboard.writeText(
+      typeof window !== 'undefined' ? window.location.href : `https://${profileUrl}`,
+    )
+  }
 
   const stats: { v: React.ReactNode; l: string }[] = []
   if (p.stats.ratingMean != null && p.stats.ratingCount > 0)
@@ -181,10 +220,10 @@ export function PartnerFrontFace({ profile }: { profile: PartnerProfileVM }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-lg">
       {/* ================= HERO (dark) ================= */}
-      <div data-surface="dark" className="relative overflow-hidden bg-ink-900 text-white">
+      <div data-surface="dark" className="relative overflow-visible bg-ink-900 text-white">
         {/* cover */}
         <div
-          className="relative h-[180px]"
+          className="relative h-[230px]"
           style={
             p.coverImageUrl
               ? { backgroundImage: `url(${p.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -209,41 +248,116 @@ export function PartnerFrontFace({ profile }: { profile: PartnerProfileVM }) {
           )}
         </div>
 
-        <div className="relative z-[2] -mt-[58px] flex flex-wrap items-end gap-6 px-6 pb-[30px] sm:px-[34px]">
-          {/* logo */}
-          <div
-            className="relative grid h-[130px] w-[130px] flex-none place-items-center overflow-hidden rounded-[26px] border-4 border-ink-900"
-            style={
-              p.logoUrl
-                ? { background: `center / cover url(${p.logoUrl})` }
-                : { background: 'linear-gradient(135deg, var(--pink-500), var(--pink-700))', boxShadow: '0 14px 34px rgba(0,0,0,.4)' }
-            }
-          >
-            {!p.logoUrl && (
-              <span className="font-display text-[46px] font-extrabold text-white">{initial}</span>
-            )}
-            <span className="absolute -bottom-1.5 -right-1.5 grid h-[34px] w-[34px] place-items-center rounded-full border-[3px] border-ink-900 bg-neon-500">
-              <Check className="h-4 w-4 text-ink-900" strokeWidth={3} />
-            </span>
-          </div>
-
-          <div className="min-w-[260px] flex-1 pb-1">
-            <div className="mb-2 flex flex-wrap items-center gap-2.5">
-              {(isPremier || isTrusted) && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-neon-500 px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.04em] text-ink-900">
-                  <Star className="h-[13px] w-[13px] fill-ink-900" />
-                  {isPremier ? 'Premier · 0% fee' : 'Trusted · 2.5% fee'}
-                </span>
+        <div className="relative z-[5] px-6 pb-[26px] sm:px-[34px]">
+          <div className="flex items-end gap-5">
+            {/* logo — straddles the banner */}
+            <div
+              className="relative -mt-[52px] grid h-[118px] w-[118px] flex-none place-items-center overflow-hidden rounded-[24px] border-4 border-ink-900"
+              style={
+                p.logoUrl
+                  ? { background: `center / cover url(${p.logoUrl})` }
+                  : { background: 'linear-gradient(135deg, var(--pink-500), var(--pink-700))', boxShadow: '0 14px 34px rgba(0,0,0,.4)' }
+              }
+            >
+              {!p.logoUrl && (
+                <span className="font-display text-[42px] font-extrabold text-white">{initial}</span>
               )}
-              <span className="text-[12px] font-medium text-ink-300">
-                {p.serviceTypes.map((t) => SERVICE_LABEL[t] ?? t).join(' · ')}
+              <span className="absolute -bottom-1.5 -right-1.5 grid h-[34px] w-[34px] place-items-center rounded-full border-[3px] border-ink-900 bg-neon-500">
+                <Check className="h-4 w-4 text-ink-900" strokeWidth={3} />
               </span>
             </div>
-            <h1 className="font-display text-[38px] font-extrabold leading-[1.02] tracking-[-0.02em]">
-              {p.companyName}
-            </h1>
+
+            {/* services + name + inline tier badge — on the black */}
+            <div className="min-w-0 pb-1.5">
+              <div className="text-[12px] font-medium text-ink-300">{serviceLine}</div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-[11px]">
+                <h1 className="font-display text-[28px] font-extrabold leading-[1.05] tracking-[-0.02em]">
+                  {p.companyName}
+                </h1>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.04em]',
+                    isPremier
+                      ? 'bg-neon-500 text-ink-900'
+                      : isTrusted
+                        ? 'border border-pink-100 bg-pink-50 text-pink-700'
+                        : 'border border-info-100 bg-info-50 text-info-700',
+                  )}
+                >
+                  {isPremier || isTrusted ? (
+                    <Star className={cn('h-[13px] w-[13px]', isPremier ? 'fill-ink-900' : 'fill-pink-700')} />
+                  ) : (
+                    <BadgeCheck className="h-[13px] w-[13px]" />
+                  )}
+                  {isPremier ? 'Premier' : isTrusted ? 'Trusted' : 'Verified'}
+                </span>
+              </div>
+            </div>
+
+            {/* share — signed-in paid creators only */}
+            {canShare && (
+              <div ref={shareRef} className="relative ml-auto self-end pb-1.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShareOpen((v) => !v)
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-[15px] py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-white/20"
+                >
+                  <Share2 className="h-[15px] w-[15px]" /> Share
+                </button>
+                {shareOpen && (
+                  <div className="absolute right-0 top-[calc(100%+10px)] z-40 w-[288px] rounded-2xl border border-ink-200 bg-white p-4 text-ink-900 shadow-lg">
+                    <div className="mb-3 font-display text-[14px] font-bold">Share this profile</div>
+                    <div className="mb-3 flex items-center gap-2 rounded-lg border border-ink-200 bg-ink-50 py-1.5 pl-3 pr-1.5">
+                      <span className="flex-1 truncate text-[12px] text-ink-600">{profileUrl}</span>
+                      <button
+                        type="button"
+                        onClick={copyLink}
+                        className="inline-flex items-center gap-1 rounded-md bg-ink-900 px-2.5 py-1.5 text-[11.5px] font-bold text-white"
+                      >
+                        <Copy className="h-3 w-3" /> Copy
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {(
+                        [
+                          ['linkedin', 'LinkedIn'],
+                          ['x', 'X'],
+                          ['facebook', 'Facebook'],
+                          ['email', 'Email'],
+                        ] as const
+                      ).map(([kind, label]) => (
+                        <button
+                          key={kind}
+                          type="button"
+                          onClick={() => shareTo(kind)}
+                          className="flex flex-col items-center gap-1.5 rounded-md border border-ink-200 px-1 py-2.5 text-[10.5px] font-semibold text-ink-600 transition-colors hover:bg-ink-50"
+                        >
+                          {kind === 'email' ? (
+                            <Mail className="h-[18px] w-[18px]" />
+                          ) : kind === 'linkedin' ? (
+                            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5A2.5 2.5 0 002.5 6 2.5 2.5 0 005 8.5 2.5 2.5 0 007.5 6 2.5 2.5 0 004.98 3.5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V21h-4v-5.3c0-1.26-.02-2.9-1.77-2.9-1.77 0-2.04 1.38-2.04 2.8V21H9z" /></svg>
+                          ) : kind === 'x' ? (
+                            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-7.1 8.1L23 22h-6.8l-4.8-6.3L5.8 22H2.7l7.6-8.7L2 2h6.9l4.3 5.7L18.9 2zm-1.2 18h1.7L7.4 3.8H5.6z" /></svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0022 12z" /></svg>
+                          )}
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* tagline + meta — below, on the black */}
+          <div className="mt-4">
             {p.tagline && (
-              <p className="mt-2 max-w-[600px] text-[15px] text-ink-300">
+              <p className="whitespace-nowrap text-[15px] text-ink-300 max-[680px]:whitespace-normal">
                 <span className="font-serif font-medium italic text-neon-500">{p.tagline}</span>
               </p>
             )}
@@ -358,35 +472,46 @@ export function PartnerFrontFace({ profile }: { profile: PartnerProfileVM }) {
                 </span>
               }
             >
+              {/* Tier attainment — NEVER the fee the partner is charged (D6, public). */}
               <div className="mt-2 grid grid-cols-3 gap-2.5">
                 {(
                   [
-                    ['Verified', p.merit.feeBps.verified, p.tier === 'VERIFIED'],
-                    ['Trusted', p.merit.feeBps.trusted, isTrusted],
-                    ['Premier', p.merit.feeBps.premier, isPremier],
+                    ['Verified', 0, p.tier === 'VERIFIED'],
+                    ['Trusted', 1, isTrusted],
+                    ['Premier', 2, isPremier],
                   ] as const
-                ).map(([label, bps, cur]) => (
-                  <div
-                    key={label}
-                    className={cn(
-                      'rounded-xl border p-3 text-center',
-                      cur ? 'border-pink-500 bg-pink-50' : 'border-ink-200',
-                    )}
-                  >
+                ).map(([label, rank, cur]) => {
+                  const curRank = isPremier ? 2 : isTrusted ? 1 : 0
+                  const attained = rank < curRank
+                  return (
                     <div
+                      key={label}
                       className={cn(
-                        'text-[11px] font-bold uppercase tracking-[0.03em]',
-                        cur ? 'text-pink-700' : 'text-ink-500',
+                        'rounded-xl border p-3 text-center',
+                        cur ? 'border-pink-500 bg-pink-50' : 'border-ink-200',
                       )}
                     >
-                      {label}
-                      {cur ? ' · current' : ''}
+                      <div
+                        className={cn(
+                          'text-[11px] font-bold uppercase tracking-[0.03em]',
+                          cur ? 'text-pink-700' : 'text-ink-500',
+                        )}
+                      >
+                        {label}
+                        {cur ? ' · current' : ''}
+                      </div>
+                      <div className="mt-1 flex justify-center">
+                        {cur ? (
+                          <Star className="h-5 w-5 fill-pink-500 text-pink-500" />
+                        ) : attained ? (
+                          <Check className="h-5 w-5 text-success-600" strokeWidth={3} />
+                        ) : (
+                          <span className="text-[18px] font-bold text-ink-300">·</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-0.5 font-display text-[22px] font-extrabold text-ink-900">
-                      {(bps / 100).toFixed(bps % 100 === 0 ? 0 : 1)}%
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               {p.merit.ordersCompleted != null && (
                 <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-success-100 bg-success-50 px-3.5 py-3 text-[13px] text-success-700">

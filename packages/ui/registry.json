@@ -340,10 +340,10 @@
       "note": "Admin surfaces also have apps/admin/src/components/widgets/KpiWidget.tsx for the locked v2 strip."
     },
     {
-      "intent": "Public partner profile body (Front Face) — dark hero (cover + logo + tier badge + Fraunces tagline), 5-cell stat strip, tabs (Overview/Capabilities/Merit/Certs/Portfolio/Reviews), right rail. Shared by marketing /partners/[slug] (creator-tier-gated) and the partner app /profile preview.",
+      "intent": "Public partner profile body (Front Face) — dark hero (230px cover; logo straddles the banner with services + name + inline tier badge beside it on the black, tagline + location below), 5-cell stat strip, tabs (Overview/Capabilities/Merit/Certs/Reviews), right rail. Tier badge shows attainment ONLY (Verified/Trusted/Premier) — never the partner-charged fee. Optional `canShare` renders a Share popover (signed-in PAID creators only). Shared by marketing /partners/[slug] and the partner app /profile preview. See docs/PUBLIC_PARTNER_PROFILE_SPEC_2026-07-14.md.",
       "source": "src/components/PartnerFrontFace.tsx",
-      "use_when": "Rendering a partner's public Front Face from the @ilaunchify/db getPartnerProfile reader.",
-      "never": "Don't fabricate profile data; don't render for partners without FULL disclosure — the reader already gates.",
+      "use_when": "Rendering a partner's public Front Face from the @ilaunchify/db getPartnerProfile reader. Pass canShare only for paid viewers.",
+      "never": "Don't fabricate profile data. NEVER show the fee a partner is charged, product SKUs/prices, or named client reviews to non-paid viewers (reader masks these). Don't render for partners without FULL disclosure — the reader gates.",
       "compose_with": [
         "MarketplaceHeader (marketing)",
         "partner settings hub"

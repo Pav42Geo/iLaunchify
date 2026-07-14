@@ -73,7 +73,10 @@ export interface PartnerProfileVM {
  * PARTNER-side gate (not published / not ACTIVE / no nameable service / not
  * FULL disclosure / invited-only). Viewer-side gating is the caller's job.
  */
-export async function getPartnerProfile(slug: string): Promise<PartnerProfileVM | null> {
+export async function getPartnerProfile(
+  slug: string,
+  viewer?: { isPaid?: boolean },
+): Promise<PartnerProfileVM | null> {
   const partner = await prisma.partner.findUnique({
     where: { slug },
     select: {
@@ -112,12 +115,8 @@ export async function getPartnerProfile(slug: string): Promise<PartnerProfileVM 
         orderBy: { expiryDate: 'desc' },
         take: 12,
       },
-      portfolioItems: {
-        where: { published: true },
-        orderBy: { sortOrder: 'asc' },
-        select: { title: true, meta: true, imageUrl: true },
-        take: 12,
-      },
+      // D2 (PUBLIC_PARTNER_PROFILE_SPEC): no products/portfolio on the public
+      // profile — naming client SKUs would identify the manufacturer. Not read.
       facilities: { select: { city: true, region: true } },
       productDefaults: {
         select: { moqMin: true, leadTimeRepeatDays: true, leadTimeFirstRunDays: true },
@@ -182,13 +181,16 @@ export async function getPartnerProfile(slug: string): Promise<PartnerProfileVM 
       : Promise.resolve([]),
   ])
 
-  // Reviewer display names (first name + last initial) — best-effort.
+  // D3: full client names are for PAID viewers only. When the viewer is not paid
+  // we never even fetch reviewer names — they must not reach a non-paid browser.
+  const named = viewer?.isPaid === true
   const reviewerIds = [...new Set(ratings.map((r) => r.creatorUserId))]
-  const reviewers = reviewerIds.length
-    ? await prisma.user
-        .findMany({ where: { id: { in: reviewerIds } }, select: { id: true, name: true } })
-        .catch(() => [] as { id: string; name: string | null }[])
-    : []
+  const reviewers =
+    named && reviewerIds.length
+      ? await prisma.user
+          .findMany({ where: { id: { in: reviewerIds } }, select: { id: true, name: true } })
+          .catch(() => [] as { id: string; name: string | null }[])
+      : []
   const reviewerName = (id: string) => {
     const raw = reviewers.find((u) => u.id === id)?.name?.trim()
     if (!raw) return 'Creator'
@@ -272,7 +274,7 @@ export async function getPartnerProfile(slug: string): Promise<PartnerProfileVM 
       name: c.certificateType.name,
       qualifier: `exp ${c.expiryDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`,
     })),
-    portfolio: partner.portfolioItems,
+    portfolio: [], // D2: no products/portfolio on the public profile
     stats: {
       ordersFulfilled: deliveredCount,
       ratingMean: weightedMean,
@@ -299,22 +301,23 @@ export async function getPartnerProfile(slug: string): Promise<PartnerProfileVM 
       defectRatePer100: meritSnap?.defectRatePer100 == null ? null : Number(meritSnap.defectRatePer100),
       thresholdPremier: policy?.premierThreshold ?? 82,
     },
+    // D3: client identity masked unless the viewer is a PAID creator.
     reviews: ratings
       .filter((r) => (r.comment ?? '').trim().length > 0)
-      .map((r) => ({
-        initials: reviewerName(r.creatorUserId)
-          .split(/\s+/)
-          .map((w) => w.charAt(0))
-          .join('')
-          .slice(0, 2)
-          .toUpperCase(),
-        name: reviewerName(r.creatorUserId),
-        role: r.role,
-        orders: ordersByReviewer.get(r.creatorUserId) ?? 1,
-        overall: Number(r.overall),
-        comment: (r.comment ?? '').trim(),
-        createdAt: r.createdAt.toISOString(),
-      })),
+      .map((r) => {
+        const display = named ? reviewerName(r.creatorUserId) : 'Verified creator'
+        return {
+          initials: named
+            ? display.split(/\s+/).map((w) => w.charAt(0)).join('').slice(0, 2).toUpperCase()
+            : 'VC',
+          name: display,
+          role: named ? r.role : '',
+          orders: ordersByReviewer.get(r.creatorUserId) ?? 1,
+          overall: Number(r.overall),
+          comment: (r.comment ?? '').trim(),
+          createdAt: r.createdAt.toISOString(),
+        }
+      }),
     reviewSummary: { mean: weightedMean, count: ratingAgg.length, buckets },
     quickFacts,
     activelyTaking: true, // PUBLIC participation implies open to briefs
