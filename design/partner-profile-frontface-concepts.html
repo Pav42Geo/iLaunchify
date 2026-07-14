@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Partner Front-Face — 3 Redesign Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&family=Fraunces:ital,wght@1,400;1,500;1,600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;--pink-400:#FF5285;
+  --pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;--pink-800:#9E0E40;--pink-900:#6E0A2D;
+  --neon-300:#D4FF7A;--neon-400:#C2FF4D;--neon-500:#B5FF3D;--neon-600:#9EE61F;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+  --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-500:#B45309;--warning-700:#7C360A;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-500:#1F5BA8;--info-700:#163E72;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;
+  --font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --font-serif:'Fraunces',Georgia,serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);
+  --shadow-lg:0 12px 28px rgba(24,24,26,.12);--shadow-xl:0 24px 48px rgba(24,24,26,.16);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.serif-em{font-family:var(--font-serif);font-style:italic;font-weight:500}
+.disp{font-family:var(--font-display);letter-spacing:-.01em}
+
+.proto-shell{max-width:1180px;margin:0 auto;padding:22px 20px 90px}
+.proto-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:14px;position:sticky;top:12px;z-index:80}
+.proto-brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:16px}
+.proto-brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center}
+.proto-brand .sq svg{width:13px;height:13px;color:#fff}
+.proto-brand small{font-family:var(--font-sans);font-weight:500;color:var(--ink-500);font-size:12px}
+.proto-seg{display:flex;gap:4px;background:var(--ink-100);border-radius:var(--r-pill);padding:4px;margin-left:auto}
+.proto-seg button{border-radius:var(--r-pill);padding:9px 15px;font-weight:600;font-size:12.5px;color:var(--ink-600);transition:all .2s var(--ease-out);white-space:nowrap}
+.proto-seg button.active{background:var(--ink-900);color:#fff}
+.proto-seg button .em{color:var(--pink-400);font-weight:700}
+.proto-seg button.active .em{color:var(--neon-500)}
+.proto-note{font-size:12px;color:var(--ink-500);padding:0 4px;margin-bottom:16px;line-height:1.6}
+.proto-note b{color:var(--ink-700)}
+.concept{display:none;animation:fade .4s var(--ease-out)}
+.concept.show{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* shared bits */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;border-radius:var(--r-pill);padding:0 20px;height:44px;transition:all .18s var(--ease-out);white-space:nowrap}
+.btn svg{width:16px;height:16px}
+.btn.sm{height:36px;font-size:13px;padding:0 15px}.btn.sm svg{width:14px;height:14px}
+.btn.lg{height:50px;font-size:15px;padding:0 26px}
+.btn-neon{background:var(--neon-500);color:var(--ink-900)}.btn-neon:hover{background:var(--neon-400);transform:translateY(-1px)}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{background:#000}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn-out:hover{background:var(--ink-50)}
+.btn-onwhite{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.btn-onwhite:hover{background:rgba(255,255,255,.18)}
+.btn-icon-dark{width:44px;padding:0;background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.btn-icon-dark:hover{background:rgba(255,255,255,.18)}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm)}
+.card.pad{padding:22px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:500;background:var(--ink-50);border:1px solid var(--ink-200);color:var(--ink-700)}
+.chip.pink{background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)}
+.chip.dark{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14);color:#fff}
+.chip.neon{background:rgba(181,255,61,.14);border-color:rgba(181,255,61,.3);color:var(--neon-500)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.tier-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r-pill);font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;background:var(--neon-500);color:var(--ink-900)}
+.tier-badge svg{width:13px;height:13px}
+.verified-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--info-700);background:var(--info-50);padding:1px 7px;border-radius:var(--r-pill)}
+.verified-tag svg{width:10px;height:10px}
+.frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff}
+.foot-note{text-align:center;color:var(--ink-400);font-size:12px;margin-top:22px;line-height:1.7}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--pink-700)}
+.eyebrow.on-dark{color:var(--neon-500)}
+
+/* ============ shared hero scaffolding ============ */
+.hero{position:relative;background:var(--ink-900);color:#fff;overflow:hidden}
+.hero .cover{position:relative;background:radial-gradient(120% 160% at 82% -10%,rgba(181,255,61,.20),transparent 55%),radial-gradient(110% 150% at 12% 120%,rgba(255,46,99,.30),transparent 60%),linear-gradient(120deg,#1d1d20,#232327 60%,#18181A)}
+.hero .cover::after{content:"";position:absolute;inset:0;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:28px 28px;-webkit-mask-image:linear-gradient(180deg,#000,transparent);mask-image:linear-gradient(180deg,#000,transparent)}
+
+/* =================================================================
+   CONCEPT A — THE STORYTELLER (editorial / magazine)
+   ================================================================= */
+.sty-hero{padding:34px 40px 30px}
+.sty-hero .cover{position:absolute;inset:0}
+.sty-top{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+.sty-logo{display:flex;align-items:center;gap:12px}
+.sty-logo .mk{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:22px;color:#fff}
+.sty-logo .nm{font-family:var(--font-display);font-weight:700;font-size:15px}
+.sty-logo .nm small{display:block;font-family:var(--font-sans);font-weight:500;font-size:11px;color:var(--ink-400)}
+.sty-headline{position:relative;z-index:2;max-width:820px}
+.sty-headline h1{font-family:var(--font-display);font-weight:800;font-size:52px;line-height:1.02;letter-spacing:-.025em;margin:14px 0 0}
+.sty-headline h1 .serif-em{color:var(--neon-500);font-size:.92em}
+.sty-headline p{color:var(--ink-300);font-size:17px;max-width:600px;margin-top:16px;line-height:1.55}
+.sty-cta{position:relative;z-index:2;display:flex;gap:11px;flex-wrap:wrap;margin-top:24px}
+.sty-meta{position:relative;z-index:2;display:flex;gap:22px;flex-wrap:wrap;margin-top:24px;color:var(--ink-400);font-size:13px}
+.sty-meta span{display:inline-flex;align-items:center;gap:7px}
+.sty-meta svg{width:15px;height:15px}
+.sty-meta b{color:#fff;font-weight:600}
+/* reel strip */
+.reel{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,.08);position:relative;z-index:2}
+.reel-item{aspect-ratio:9/13;position:relative;overflow:hidden;cursor:pointer;display:grid;place-items:end start}
+.reel-item .g{position:absolute;inset:0}
+.reel-item .lab{position:relative;z-index:2;padding:12px;color:#fff}
+.reel-item .lab .k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.85}
+.reel-item .lab .t{font-family:var(--font-display);font-weight:700;font-size:14px;margin-top:2px}
+.reel-item .play{position:absolute;top:12px;right:12px;z-index:2;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);display:grid;place-items:center;border:1px solid rgba(255,255,255,.25)}
+.reel-item .play svg{width:13px;height:13px;color:#fff}
+.reel-item .dur{position:absolute;bottom:12px;right:12px;z-index:2;font-size:10px;font-weight:600;color:#fff;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:5px}
+.reel-item:hover .g{transform:scale(1.05)}
+.reel-item .g{transition:transform .4s var(--ease-out)}
+/* editorial body */
+.sty-body{background:#fff;padding:38px 40px 44px}
+.sty-lede{font-family:var(--font-serif);font-style:italic;font-weight:400;font-size:26px;line-height:1.4;color:var(--ink-800);max-width:760px;margin:0 auto 6px;text-align:center}
+.sty-lede .hl{font-style:normal;font-family:var(--font-display);font-weight:700;color:var(--pink-700)}
+.sty-founder{display:flex;gap:18px;align-items:center;max-width:760px;margin:32px auto;padding:20px 22px;border:1px solid var(--ink-200);border-radius:var(--r-xl);background:var(--ink-50)}
+.sty-founder .fa{width:64px;height:64px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--ink-700),var(--ink-900));display:grid;place-items:center;color:#fff;font-weight:700;font-size:20px}
+.sty-founder .q{font-family:var(--font-serif);font-style:italic;font-size:16px;color:var(--ink-700);line-height:1.5}
+.sty-founder .who{font-size:12px;color:var(--ink-500);margin-top:8px}
+.sty-founder .who b{color:var(--ink-900);font-family:var(--font-sans);font-weight:700;font-style:normal}
+.sty-sec{max-width:960px;margin:0 auto}
+.sty-sec-h{text-align:center;margin:44px 0 22px}
+.sty-sec-h h2{font-family:var(--font-display);font-weight:800;font-size:28px;letter-spacing:-.02em;margin-top:6px}
+.sty-sec-h p{color:var(--ink-500);font-size:14px;margin-top:6px}
+/* process timeline */
+.proc{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.proc-step{padding:0 16px;position:relative;text-align:center}
+.proc-step:not(:last-child)::after{content:"";position:absolute;top:26px;right:-1px;width:100%;height:2px;background:repeating-linear-gradient(90deg,var(--ink-300) 0 6px,transparent 6px 12px)}
+.proc-step .n{width:54px;height:54px;border-radius:50%;margin:0 auto 12px;background:#fff;border:2px solid var(--pink-500);color:var(--pink-700);display:grid;place-items:center;position:relative;z-index:2;font-family:var(--font-display);font-weight:800;font-size:20px}
+.proc-step h4{font-weight:700;font-size:14px}
+.proc-step p{font-size:12px;color:var(--ink-500);margin-top:4px;line-height:1.45}
+/* behind the glass photo grid */
+.glass-grid{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:150px 150px;gap:10px}
+.glass{border-radius:var(--r-lg);overflow:hidden;position:relative;display:grid;place-items:end start}
+.glass:first-child{grid-row:span 2}
+.glass .lab{position:relative;z-index:2;padding:12px;color:#fff;font-weight:600;font-size:12px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.glass .tagpin{position:absolute;top:10px;left:10px;z-index:2;font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);padding:3px 8px;border-radius:var(--r-pill);border:1px solid rgba(255,255,255,.2)}
+/* pull quotes */
+.pullq-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pullq{border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:22px;position:relative}
+.pullq .mark{font-family:var(--font-serif);font-size:52px;line-height:0;color:var(--pink-200);position:absolute;top:26px;left:18px}
+.pullq .txt{font-size:15.5px;color:var(--ink-700);line-height:1.55;padding-left:26px;font-style:italic;font-family:var(--font-serif)}
+.pullq .by{display:flex;align-items:center;gap:10px;margin-top:16px;padding-left:26px}
+.pullq .by .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;flex:none}
+.pullq .by .nm{font-weight:600;font-size:13px}
+.pullq .by .mt{font-size:11px;color:var(--ink-500)}
+.sty-cta-band{margin:46px auto 0;max-width:960px;background:linear-gradient(120deg,var(--ink-900),#232327);border-radius:var(--r-2xl);padding:34px;text-align:center;color:#fff;position:relative;overflow:hidden}
+.sty-cta-band::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 160% at 85% 0,rgba(181,255,61,.18),transparent 55%),radial-gradient(120% 160% at 10% 120%,rgba(255,46,99,.28),transparent 60%)}
+.sty-cta-band h3{position:relative;font-family:var(--font-display);font-weight:800;font-size:26px;letter-spacing:-.02em}
+.sty-cta-band p{position:relative;color:var(--ink-300);margin-top:8px;font-size:14px}
+.sty-cta-band .row{position:relative;display:flex;gap:11px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+
+/* =================================================================
+   CONCEPT B — THE PROOF MACHINE (trust-maximalist)
+   ================================================================= */
+.pm-hero{padding:32px 36px 0}
+.pm-hero .cover{position:absolute;inset:0}
+.pm-top{position:relative;z-index:2;display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.pm-logo{width:88px;height:88px;border-radius:22px;flex:none;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;box-shadow:0 12px 30px rgba(0,0,0,.4);border:3px solid var(--ink-900);position:relative}
+.pm-logo .mono{font-family:var(--font-display);font-weight:800;font-size:34px;color:#fff}
+.pm-logo .vb{position:absolute;right:-5px;bottom:-5px;width:28px;height:28px;border-radius:50%;background:var(--neon-500);border:3px solid var(--ink-900);display:grid;place-items:center}
+.pm-logo .vb svg{width:14px;height:14px;color:var(--ink-900)}
+.pm-id{flex:1;min-width:240px}
+.pm-id .eb{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:8px}
+.pm-id h1{font-family:var(--font-display);font-weight:800;font-size:34px;line-height:1.03;letter-spacing:-.02em}
+.pm-id .sub{color:var(--ink-300);font-size:14px;margin-top:6px}
+.pm-hero-cta{display:flex;flex-direction:column;gap:9px;align-items:stretch;min-width:200px}
+.pm-hero-cta .btn{width:100%}
+/* headline proof stat */
+.pm-headstat{position:relative;z-index:2;display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;margin:26px 0 4px;padding:22px 0;border-top:1px solid rgba(255,255,255,.1)}
+.pm-bignum{font-family:var(--font-display);font-weight:800;font-size:82px;line-height:.9;color:var(--neon-500);letter-spacing:-.03em}
+.pm-bignum sup{font-size:34px;top:-1.1em}
+.pm-headstat .cap{max-width:420px}
+.pm-headstat .cap .t{font-family:var(--font-display);font-weight:700;font-size:20px}
+.pm-headstat .cap .d{color:var(--ink-300);font-size:13.5px;margin-top:6px;line-height:1.5}
+.pm-headstat .cap .d b{color:var(--neon-500)}
+/* stat strip */
+.pm-strip{position:relative;z-index:2;display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.08);margin:0 -36px}
+.pm-cell{background:var(--ink-900);padding:15px 20px}
+.pm-cell .v{font-family:var(--font-display);font-weight:700;font-size:21px;color:#fff;display:flex;align-items:center;gap:6px}
+.pm-cell .v .up{color:var(--neon-500);font-size:11px;font-weight:600}
+.pm-cell .v .star{color:var(--pink-400)}
+.pm-cell .l{font-size:11px;color:var(--ink-400);margin-top:2px}
+/* body */
+.pm-body{background:var(--ink-50);padding:24px 36px 40px;display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start}
+.pm-sech{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px}
+.pm-sech h3{font-family:var(--font-display);font-weight:700;font-size:17px}
+.pm-sech .lk{color:var(--pink-700);font-weight:600;font-size:13px}
+/* live ticker */
+.ticker{background:var(--ink-900);border-radius:var(--r-xl);padding:14px 16px;overflow:hidden;position:relative;margin-bottom:18px}
+.ticker .th{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--neon-500);margin-bottom:10px}
+.ticker .th .dot{width:7px;height:7px;border-radius:50%;background:var(--neon-500);box-shadow:0 0 0 3px rgba(181,255,61,.25);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.tick-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);color:#fff;font-size:12.5px}
+.tick-row:last-child{border-bottom:none}
+.tick-row .ta{width:26px;height:26px;border-radius:7px;flex:none;display:grid;place-items:center;font-weight:700;font-size:11px;color:#fff}
+.tick-row .tt{flex:1}.tick-row .tt b{font-weight:600}
+.tick-row .tm{color:var(--ink-400);font-size:11px}
+.tick-row .tg{color:var(--neon-500);font-weight:600;font-size:11px}
+/* reasons to rebook */
+.reasons{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.reason{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:15px;background:#fff}
+.reason .ic{width:34px;height:34px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;margin-bottom:10px}
+.reason .ic svg{width:17px;height:17px}
+.reason h4{font-weight:700;font-size:13.5px}
+.reason p{font-size:12px;color:var(--ink-500);margin-top:4px;line-height:1.45}
+/* merit pillars */
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pillar{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px;background:#fff}
+.pillar .pn{font-weight:700;font-size:13px;display:flex;justify-content:space-between}
+.pillar .pn .w{font-size:11px;color:var(--ink-400);font-weight:600}
+.pillar .track{height:7px;border-radius:var(--r-pill);background:var(--ink-100);overflow:hidden;margin:9px 0 6px}
+.pillar .fill{height:100%;background:var(--pink-500);border-radius:var(--r-pill)}
+.pillar .sc{font-family:var(--font-display);font-weight:700;font-size:20px}
+.pillar .ps{font-size:11px;color:var(--ink-500)}
+.fee-ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.fee-step{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px;text-align:center;background:#fff}
+.fee-step.cur{border-color:var(--pink-500);background:var(--pink-50)}
+.fee-step .ft{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-500)}
+.fee-step.cur .ft{color:var(--pink-700)}
+.fee-step .fv{font-family:var(--font-display);font-weight:800;font-size:22px;margin-top:3px}
+/* review wall */
+.rev-summary{display:flex;gap:24px;align-items:center;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--ink-200);margin-bottom:14px}
+.rev-big{font-family:var(--font-display);font-weight:800;font-size:48px;line-height:1}
+.rev-stars{color:var(--pink-500);font-size:17px;letter-spacing:2px}
+.rev-count{font-size:12px;color:var(--ink-500);margin-top:3px}
+.rev-bars{flex:1;min-width:200px}
+.rev-row{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-500);margin:3px 0}
+.rev-row .track{flex:1;height:7px;border-radius:var(--r-pill);background:var(--ink-100);overflow:hidden}
+.rev-row .fill{height:100%;background:var(--pink-500);border-radius:var(--r-pill)}
+.review{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--ink-100)}
+.review:last-child{border-bottom:none;padding-bottom:0}
+.avatar{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;color:#fff;font-size:13px}
+.review .rname{font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
+.review .rmeta{font-size:11px;color:var(--ink-500)}
+.review .rtext{font-size:13px;color:var(--ink-600);margin-top:5px}
+/* side */
+.side .card+.card{margin-top:14px}
+.side-h{font-family:var(--font-display);font-weight:700;font-size:14px;margin-bottom:10px}
+.fact{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--ink-100);font-size:13px}
+.fact:last-child{border-bottom:none}.fact .k{color:var(--ink-500)}.fact .v{font-weight:600;text-align:right}
+.trust-panel .tp-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--ink-100)}
+.trust-panel .tp-row:last-child{border-bottom:none}
+.trust-panel .tp-row svg{width:16px;height:16px;color:var(--success-600);flex:none}
+.trust-panel .tp-row .t{font-size:12.5px;font-weight:600}
+.trust-panel .tp-row .s{font-size:11px;color:var(--ink-500)}
+.resp{display:flex;align-items:center;gap:10px;background:var(--success-50);border:1px solid var(--success-100);border-radius:var(--r-lg);padding:11px 13px}
+.resp .dot{width:9px;height:9px;border-radius:50%;background:var(--success-500);box-shadow:0 0 0 4px var(--success-100)}
+.resp .t{font-weight:600;font-size:12.5px;color:var(--success-700)}
+.resp .s{font-size:11px;color:var(--success-600)}
+
+/* =================================================================
+   CONCEPT C — THE LAUNCH DEAL (conversion-first)
+   ================================================================= */
+.ld-hero{padding:0}
+.ld-offer{background:var(--neon-500);color:var(--ink-900);padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:12px;font-weight:700;font-size:13px;flex-wrap:wrap;text-align:center}
+.ld-offer .p-tag{background:var(--ink-900);color:var(--neon-500);font-size:10px;font-weight:800;letter-spacing:.05em;padding:3px 9px;border-radius:var(--r-pill);text-transform:uppercase}
+.ld-offer .cd{font-family:var(--font-display);font-weight:800}
+.ld-main{position:relative;background:var(--ink-900);color:#fff;padding:30px 36px 34px;overflow:hidden}
+.ld-main .cover{position:absolute;inset:0}
+.ld-grid{position:relative;z-index:2;display:grid;grid-template-columns:1fr 380px;gap:28px;align-items:start}
+.ld-left .top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.ld-left .top .mk{width:52px;height:52px;border-radius:14px;flex:none;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;font-family:var(--font-display);font-weight:800;font-size:24px;color:#fff}
+.ld-left .top .nm{font-family:var(--font-display);font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+.ld-left .top .mt{font-size:12px;color:var(--ink-400);margin-top:2px}
+.ld-left h1{font-family:var(--font-display);font-weight:800;font-size:40px;line-height:1.03;letter-spacing:-.025em}
+.ld-left h1 .serif-em{color:var(--neon-500)}
+.ld-left .lede{color:var(--ink-300);font-size:15px;margin-top:14px;max-width:480px;line-height:1.55}
+/* quick match chips */
+.qmatch{margin-top:22px}
+.qmatch .ql{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-400);margin-bottom:9px}
+.qmatch .row{display:flex;flex-wrap:wrap;gap:7px}
+/* trust row */
+.ld-trust{display:flex;gap:20px;flex-wrap:wrap;margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.1)}
+.ld-trust .t{display:flex;flex-direction:column}
+.ld-trust .t .v{font-family:var(--font-display);font-weight:700;font-size:22px;display:flex;align-items:center;gap:6px}
+.ld-trust .t .v .star{color:var(--pink-400)}
+.ld-trust .t .l{font-size:11px;color:var(--ink-400);margin-top:1px}
+/* estimator card */
+.estimator{background:#fff;border-radius:var(--r-2xl);box-shadow:var(--shadow-xl);overflow:hidden;color:var(--ink-900)}
+.est-head{background:var(--ink-900);color:#fff;padding:16px 20px}
+.est-head .t{font-family:var(--font-display);font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px}
+.est-head .t svg{width:16px;height:16px;color:var(--neon-500)}
+.est-head .s{font-size:12px;color:var(--ink-400);margin-top:3px}
+.est-body{padding:20px}
+.est-field{margin-bottom:16px}
+.est-field label{display:block;font-size:12px;font-weight:600;color:var(--ink-700);margin-bottom:8px}
+.est-field .seg{display:flex;gap:6px;flex-wrap:wrap}
+.est-field .seg button{flex:1;min-width:64px;border:1.5px solid var(--ink-200);border-radius:var(--r-md);padding:9px 6px;font-size:12.5px;font-weight:600;color:var(--ink-600);background:#fff;transition:all .15s}
+.est-field .seg button.on{border-color:var(--pink-500);background:var(--pink-50);color:var(--pink-700)}
+.est-slider{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:var(--r-pill);background:var(--ink-200);outline:none}
+.est-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--pink-500);cursor:pointer;box-shadow:0 2px 6px rgba(255,46,99,.4);border:3px solid #fff}
+.est-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--pink-500);cursor:pointer;border:3px solid #fff}
+.est-units{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px}
+.est-units .u{font-family:var(--font-display);font-weight:800;font-size:24px}
+.est-units .r{font-size:11px;color:var(--ink-400)}
+.est-out{background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px;margin:16px 0}
+.est-out .row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px}
+.est-out .row .k{color:var(--ink-500)}
+.est-out .row .v{font-weight:600}
+.est-out .row.total{border-top:1px solid var(--ink-200);margin-top:6px;padding-top:10px}
+.est-out .row.total .k{font-weight:700;color:var(--ink-900)}
+.est-out .row.total .v{font-family:var(--font-display);font-weight:800;font-size:22px;color:var(--pink-700)}
+.est-out .fee0{font-size:11px;color:var(--success-700);font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.est-note{font-size:11px;color:var(--ink-400);text-align:center;margin-top:12px;line-height:1.45}
+/* below body */
+.ld-below{background:#fff;padding:30px 36px 40px}
+.ld-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.ld-path{border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:20px;position:relative;transition:all .18s var(--ease-out)}
+.ld-path:hover{border-color:var(--pink-300);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.ld-path .num{font-family:var(--font-display);font-weight:800;font-size:13px;color:var(--pink-700);background:var(--pink-50);width:30px;height:30px;border-radius:9px;display:grid;place-items:center;margin-bottom:12px}
+.ld-path h4{font-family:var(--font-display);font-weight:700;font-size:16px}
+.ld-path p{font-size:13px;color:var(--ink-500);margin-top:6px;line-height:1.5}
+.ld-path .meta{font-size:12px;color:var(--pink-700);font-weight:600;margin-top:12px;display:inline-flex;align-items:center;gap:6px}
+.ld-secband{margin-top:30px;display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:center;background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-2xl);padding:28px}
+.ld-secband h3{font-family:var(--font-display);font-weight:800;font-size:24px;letter-spacing:-.02em}
+.ld-secband p{color:var(--ink-600);font-size:14px;margin-top:8px;line-height:1.55}
+.ld-secband .mini-revs{display:flex;flex-direction:column;gap:10px}
+.ld-mini-rev{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px 14px}
+.ld-mini-rev .txt{font-size:12.5px;color:var(--ink-700);font-style:italic}
+.ld-mini-rev .by{font-size:11px;color:var(--ink-500);margin-top:6px}
+.ld-mini-rev .by b{color:var(--ink-900)}
+/* sticky bottom bar */
+.ld-sticky{position:sticky;bottom:0;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-top:1px solid var(--ink-200);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ld-sticky .who{display:flex;align-items:center;gap:10px}
+.ld-sticky .who .mk{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;font-family:var(--font-display);font-weight:800;color:#fff;font-size:17px}
+.ld-sticky .who .nm{font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px}
+.ld-sticky .who .mt{font-size:11px;color:var(--ink-500)}
+.ld-sticky .sp{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+
+@media(max-width:1020px){
+  .pm-body,.ld-grid,.ld-secband{grid-template-columns:1fr}
+  .reel{grid-template-columns:1fr 1fr}
+  .proc,.pillars,.ld-cols,.reasons,.pullq-grid,.glass-grid{grid-template-columns:1fr 1fr}
+  .glass:first-child{grid-row:auto}
+  .pm-strip{grid-template-columns:1fr 1fr 1fr}
+}
+@media(max-width:640px){
+  .sty-headline h1{font-size:36px}.ld-left h1{font-size:30px}.pm-bignum{font-size:60px}
+  .proc,.pillars,.ld-cols,.reasons,.pullq-grid,.glass-grid,.reel,.pm-strip{grid-template-columns:1fr}
+  .pm-headstat{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="proto-shell">
+  <div class="proto-bar">
+    <div class="proto-brand">
+      <span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L4.5 13H11l-1 9 9-13H12.5z"/></svg></span>
+      iLaunchify <small>Front-face concepts</small>
+    </div>
+    <div class="proto-seg">
+      <button class="active" onclick="showConcept('sty',this)">A · The <span class="em">Storyteller</span></button>
+      <button onclick="showConcept('pm',this)">B · The <span class="em">Proof Machine</span></button>
+      <button onclick="showConcept('ld',this)">C · The <span class="em">Launch Deal</span></button>
+    </div>
+  </div>
+  <div class="proto-note">Three redesign directions for the <b>public manufacturer front face</b> creators land on — all built on the same partner (Northwind Nutrition Co.), the same real data model (merit tiers, disclosure levels, capability enums, verified reviews) and the locked design system. Research-grounded for 2026: trust made <b>numerical</b> (repeat rate), <b>storytelling-first</b> (process + real people), and <b>long-term partnership</b> framing. Toggle above.</div>
+
+  <!-- ================= CONCEPT A: THE STORYTELLER ================= -->
+  <div id="c-sty" class="concept show">
+    <div class="frame">
+      <div class="hero sty-hero">
+        <div class="cover"></div>
+        <div class="sty-top">
+          <div class="sty-logo">
+            <span class="mk">N</span>
+            <span class="nm">Northwind Nutrition Co.<small>Manufacturer · Portland, OR · since 2023</small></span>
+          </div>
+          <span class="tier-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier · 0% fee</span>
+        </div>
+        <div class="sty-headline">
+          <span class="eyebrow on-dark">Formulation → fulfillment, under one roof</span>
+          <h1>We make the products <span class="serif-em">creators are proud to</span> put their name on.</h1>
+          <p>Functional beverages, powders &amp; supplements — small MOQs, fast reorders, and a team that catches problems before they hit your print run.</p>
+        </div>
+        <div class="sty-cta">
+          <button class="btn btn-neon lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Start a brief</button>
+          <button class="btn btn-onwhite lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>Watch the 90-sec tour</button>
+        </div>
+        <div class="sty-meta">
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg><b>72%</b> of creators re-book</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg><b>4.9</b> · 312 verified reviews</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Replies in <b>&lt; 2h</b></span>
+        </div>
+      </div>
+      <!-- reel strip -->
+      <div class="reel">
+        <div class="reel-item"><div class="g" style="background:linear-gradient(160deg,#FF2E63,#6E0A2D)"></div><span class="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="dur">0:48</span><div class="lab"><div class="k">Inside the line</div><div class="t">Cold-fill, start to seal</div></div></div>
+        <div class="reel-item"><div class="g" style="background:linear-gradient(160deg,#1d1d20,#474954)"></div><span class="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="dur">1:12</span><div class="lab"><div class="k">Creator story</div><div class="t">GLOW's first 5k run</div></div></div>
+        <div class="reel-item"><div class="g" style="background:linear-gradient(160deg,#9EE61F,#176A3E)"></div><span class="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="dur">0:35</span><div class="lab"><div class="k">How-to</div><div class="t">From recipe to label</div></div></div>
+        <div class="reel-item"><div class="g" style="background:linear-gradient(160deg,#1F5BA8,#163E72)"></div><span class="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span class="dur">0:58</span><div class="lab"><div class="k">Behind the glass</div><div class="t">A day at Portland</div></div></div>
+      </div>
+      <!-- editorial body -->
+      <div class="sty-body">
+        <p class="sty-lede">"A creator should never have to choose between <span class="hl">a great product</span> and <span class="hl">a partner who has their back.</span> We built Northwind so they don't."</p>
+        <div class="sty-founder">
+          <div class="fa">RA</div>
+          <div>
+            <div class="q">"I spent a decade watching small brands get burned by MOQs they couldn't hit and co-packers who ghosted them at launch. Northwind is the partner I wish they'd had."</div>
+            <div class="who"><b>Rosa Alvarez</b> — Founder &amp; Head of Production</div>
+          </div>
+        </div>
+
+        <div class="sty-sec">
+          <div class="sty-sec-h">
+            <span class="eyebrow">The work, from every angle</span>
+            <h2>Four steps, one roof, zero handoffs</h2>
+            <p>Your SKU never leaves our ecosystem between recipe and doorstep.</p>
+          </div>
+          <div class="proc">
+            <div class="proc-step"><div class="n">01</div><h4>Formulate</h4><p>In-house food scientists dial in taste, stability &amp; compliance.</p></div>
+            <div class="proc-step"><div class="n">02</div><h4>Fill</h4><p>Cold-fill, hot-fill &amp; encapsulation from 500 units.</p></div>
+            <div class="proc-step"><div class="n">03</div><h4>Label</h4><p>Digital &amp; flexo print — we catch label issues pre-run.</p></div>
+            <div class="proc-step"><div class="n">04</div><h4>Fulfill</h4><p>Climate-controlled FC straight to Shopify &amp; TikTok Shop.</p></div>
+          </div>
+
+          <div class="sty-sec-h">
+            <span class="eyebrow">Behind the glass</span>
+            <h2>Real facility. Real people. Real runs.</h2>
+            <p>No stock photos — this is where your product actually gets made.</p>
+          </div>
+          <div class="glass-grid">
+            <div class="glass" style="background:linear-gradient(150deg,#33343C,#18181A)"><span class="tagpin">Portland · fill line</span><span class="lab">GMP cold-fill line — 40k units/day</span></div>
+            <div class="glass" style="background:linear-gradient(150deg,#FF7FA8,#C71350)"><span class="tagpin">QA lab</span><span class="lab">In-house testing</span></div>
+            <div class="glass" style="background:linear-gradient(150deg,#6B6D78,#33343C)"><span class="tagpin">Print</span><span class="lab">Digital label press</span></div>
+            <div class="glass" style="background:linear-gradient(150deg,#B5FF3D,#176A3E)"><span class="tagpin">FC</span><span class="lab">1,200 pallet positions</span></div>
+            <div class="glass" style="background:linear-gradient(150deg,#1F5BA8,#163E72)"><span class="tagpin">Team</span><span class="lab">28 on the floor</span></div>
+          </div>
+
+          <div class="sty-sec-h">
+            <span class="eyebrow">In their words</span>
+            <h2>Creators who came back</h2>
+            <p>Verified reviews from real orders — the ones that came back for run two, three, seven.</p>
+          </div>
+          <div class="pullq-grid">
+            <div class="pullq"><span class="mark">"</span><div class="txt">Caught a label compliance issue before it hit print. On-time every single run — I stopped stress-checking tracking.</div><div class="by"><span class="av" style="background:#FF2E63">MK</span><div><div class="nm">Maya K. · GLOW Wellness</div><div class="mt">7 orders · <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div></div></div></div>
+            <div class="pullq"><span class="mark">"</span><div class="txt">Small MOQ let us test three flavors without gambling the runway. That's the whole reason we're still in business.</div><div class="by"><span class="av" style="background:#1F5BA8">DT</span><div><div class="nm">Devon T. · Forge Labs</div><div class="mt">5 orders · <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div></div></div></div>
+          </div>
+
+          <div class="sty-cta-band">
+            <h3>Tell us what you're launching.</h3>
+            <p>Share a brief and we'll come back with a real quote — usually same day.</p>
+            <div class="row">
+              <button class="btn btn-neon lg">Start a brief</button>
+              <button class="btn btn-onwhite lg">Order a sample kit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot-note"><b>A · The Storyteller</b> — editorial, influencer-native. Reel strip, founder note, process timeline, "behind the glass" facility grid, review pull-quotes. Sells the human + craft story first; specs live one tab deeper.</div>
+  </div>
+
+  <!-- ================= CONCEPT B: THE PROOF MACHINE ================= -->
+  <div id="c-pm" class="concept">
+    <div class="frame">
+      <div class="hero pm-hero">
+        <div class="cover"></div>
+        <div class="pm-top">
+          <div class="pm-logo"><span class="mono">N</span><span class="vb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></div>
+          <div class="pm-id">
+            <div class="eb"><span class="tier-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier · 0% fee</span><span class="chip dark">Manufacturing · Co-pack · Print · Fulfillment</span></div>
+            <h1>Northwind Nutrition Co.</h1>
+            <div class="sub">Portland, OR · disclosure: full "Manufactured by" · on iLaunchify since 2023</div>
+          </div>
+          <div class="pm-hero-cta">
+            <button class="btn btn-neon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Request a quote</button>
+            <button class="btn btn-onwhite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Message</button>
+          </div>
+        </div>
+        <div class="pm-headstat">
+          <div class="pm-bignum">72<sup>%</sup></div>
+          <div class="cap">
+            <div class="t">of creators who launch with us re-book.</div>
+            <div class="d">Repeat rate is trust made numerical — and the single hardest metric to fake. Northwind sits in the <b>top 3%</b> of production partners on iLaunchify.</div>
+          </div>
+        </div>
+        <div class="pm-strip">
+          <div class="pm-cell"><div class="v">98.6%<span class="up">▲</span></div><div class="l">OTIF delivery</div></div>
+          <div class="pm-cell"><div class="v">2,480</div><div class="l">Orders fulfilled</div></div>
+          <div class="pm-cell"><div class="v"><span class="star">★</span> 4.9</div><div class="l">312 verified reviews</div></div>
+          <div class="pm-cell"><div class="v">&lt; 2h</div><div class="l">Avg. response</div></div>
+          <div class="pm-cell"><div class="v">96</div><div class="l">Merit score</div></div>
+        </div>
+      </div>
+      <div class="pm-body">
+        <div class="pm-main">
+          <div class="card pad" style="margin-bottom:18px">
+            <div class="pm-sech"><h3>Why creators re-book</h3><span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Backed by order data</span></div>
+            <div class="reasons">
+              <div class="reason"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span><h4>On-time, or you're told early</h4><p>98.6% OTIF across 2,480 orders. Proactive flags, not launch-day surprises.</p></div>
+              <div class="reason"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></span><h4>Compliance caught pre-print</h4><p>In-house QA reviews every label against FDA rules before the run.</p></div>
+              <div class="reason"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 9l-5 5-3-3-4 4"/></svg></span><h4>Small MOQ, fast reorder</h4><p>From 500 units, 10–14 day reorders. Scale on demand, not on faith.</p></div>
+              <div class="reason"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><h4>One roof, zero handoffs</h4><p>Formulate, fill, label &amp; fulfill in-house — no lost-in-translation partners.</p></div>
+            </div>
+          </div>
+
+          <div class="card pad" style="margin-bottom:18px">
+            <div class="pm-sech"><h3>Merit standing</h3><span class="chip pink">Premier · earned, not purchased</span></div>
+            <div class="pillars">
+              <div class="pillar"><div class="pn">Craft <span class="w">40%</span></div><div class="track"><div class="fill" style="width:97%"></div></div><div class="sc">97</div><div class="ps">Quality &amp; low defect rate</div></div>
+              <div class="pillar"><div class="pn">Reliability <span class="w">30%</span></div><div class="track"><div class="fill" style="width:96%"></div></div><div class="sc">96</div><div class="ps">On-time, few strikes</div></div>
+              <div class="pillar"><div class="pn">Contribution <span class="w">20%</span></div><div class="track"><div class="fill" style="width:91%"></div></div><div class="sc">91</div><div class="ps">Platform participation</div></div>
+              <div class="pillar"><div class="pn">Standing <span class="w">10%</span></div><div class="track"><div class="fill" style="width:99%"></div></div><div class="sc">99</div><div class="ps">History &amp; tenure</div></div>
+            </div>
+            <div class="fee-ladder">
+              <div class="fee-step"><div class="ft">Verified</div><div class="fv">4.5%</div></div>
+              <div class="fee-step"><div class="ft">Trusted</div><div class="fv">2.5%</div></div>
+              <div class="fee-step cur"><div class="ft">Premier</div><div class="fv">0%</div></div>
+            </div>
+          </div>
+
+          <div class="card pad">
+            <div class="pm-sech"><h3>Verified reviews</h3><span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified orders only</span></div>
+            <div class="rev-summary">
+              <div><div class="rev-big">4.9</div><div class="rev-stars">★★★★★</div><div class="rev-count">312 reviews</div></div>
+              <div class="rev-bars">
+                <div class="rev-row"><span>5</span><div class="track"><div class="fill" style="width:88%"></div></div><span>88%</span></div>
+                <div class="rev-row"><span>4</span><div class="track"><div class="fill" style="width:9%"></div></div><span>9%</span></div>
+                <div class="rev-row"><span>3</span><div class="track"><div class="fill" style="width:2%"></div></div><span>2%</span></div>
+                <div class="rev-row"><span>2</span><div class="track"><div class="fill" style="width:1%"></div></div><span>1%</span></div>
+                <div class="rev-row"><span>1</span><div class="track"><div class="fill" style="width:0"></div></div><span>0%</span></div>
+              </div>
+            </div>
+            <div class="review"><div class="avatar" style="background:#FF2E63">MK</div><div><div class="rname">Maya K. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">GLOW Wellness · 7 orders · ★★★★★</div><div class="rtext">"Caught a label compliance issue before it hit print. On-time every run."</div></div></div>
+            <div class="review"><div class="avatar" style="background:#1F5BA8">DT</div><div><div class="rname">Devon T. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">Forge Labs · 5 orders · ★★★★★</div><div class="rtext">"Small MOQ let us test three flavors without gambling the runway."</div></div></div>
+          </div>
+        </div>
+        <aside class="side">
+          <div class="ticker">
+            <div class="th"><span class="dot"></span>Live · last 24 hours</div>
+            <div class="tick-row"><span class="ta" style="background:#FF2E63">GW</span><div class="tt"><b>GLOW</b> collagen elixir · 3,000 u <div class="tm">shipped · 2h ago</div></div><span class="tg">OTIF</span></div>
+            <div class="tick-row"><span class="ta" style="background:#1F5BA8">FL</span><div class="tt"><b>Forge Labs</b> pre-workout · reorder <div class="tm">in production · 5h ago</div></div><span class="tg">↺ rebook</span></div>
+            <div class="tick-row"><span class="ta" style="background:#176A3E">VT</span><div class="tt"><b>Vital</b> greens sachets · 1,500 u <div class="tm">QA passed · 9h ago</div></div><span class="tg">✓ QA</span></div>
+          </div>
+          <div class="card pad trust-panel">
+            <div class="side-h">Verified by iLaunchify</div>
+            <div class="tp-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg><div><div class="t">FDA Registered · cGMP 21 CFR 111</div><div class="s">Facility verified · exp 2027</div></div></div>
+            <div class="tp-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg><div><div class="t">SQF Level 2 · USDA Organic</div><div class="s">Food safety &amp; handler cert</div></div></div>
+            <div class="tp-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg><div><div class="t">Non-GMO · Kosher (OU)</div><div class="s">Project verified</div></div></div>
+          </div>
+          <div class="card pad">
+            <div class="resp"><span class="dot"></span><div><div class="t">Actively taking new briefs</div><div class="s">Replies within 2 hours</div></div></div>
+            <div style="margin-top:12px">
+              <div class="fact"><span class="k">Minimum order</span><span class="v">500 units</span></div>
+              <div class="fact"><span class="k">Lead time</span><span class="v">12–28 days</span></div>
+              <div class="fact"><span class="k">Reorder time</span><span class="v">10–14 days</span></div>
+              <div class="fact"><span class="k">Facilities</span><span class="v">Portland · Reno</span></div>
+              <div class="fact"><span class="k">Markets</span><span class="v">US · Canada</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+    <div class="foot-note"><b>B · The Proof Machine</b> — trust-maximalist / procurement-grade. Repeat-rate hero stat, "why creators re-book" backed by order data, merit pillars + fee ladder, live order ticker, verified-review wall, verification panel. Every claim is evidence-anchored.</div>
+  </div>
+
+  <!-- ================= CONCEPT C: THE LAUNCH DEAL ================= -->
+  <div id="c-ld" class="concept">
+    <div class="frame">
+      <div class="ld-offer">
+        <span class="p-tag">Premier partner</span>
+        <span>First production run from <span class="cd">500 units</span> · <span class="cd">0% platform fee</span> · sample kit ships in 48h</span>
+      </div>
+      <div class="ld-main">
+        <div class="cover"></div>
+        <div class="ld-grid">
+          <div class="ld-left">
+            <div class="top">
+              <span class="mk">N</span>
+              <div><div class="nm">Northwind Nutrition Co. <span class="tier-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier</span></div><div class="mt">Portland, OR · Manufacturing · Co-pack · Print · Fulfillment</div></div>
+            </div>
+            <h1>Your first run, <span class="serif-em">off the ground</span> in weeks — not quarters.</h1>
+            <p class="lede">Functional beverages, powders &amp; supplements from 500 units. Tell us what you're launching and get a real quote back — usually same day.</p>
+            <div class="qmatch">
+              <div class="ql">What are you making?</div>
+              <div class="row">
+                <span class="chip neon">Functional beverage</span>
+                <span class="chip dark">Powder / mix</span>
+                <span class="chip dark">Capsules</span>
+                <span class="chip dark">Gummies</span>
+                <span class="chip dark">Sachets</span>
+                <span class="chip dark">Variety pack</span>
+              </div>
+            </div>
+            <div class="ld-trust">
+              <div class="t"><div class="v"><span class="star">★</span> 4.9</div><div class="l">312 verified reviews</div></div>
+              <div class="t"><div class="v">72%</div><div class="l">re-book rate</div></div>
+              <div class="t"><div class="v">98.6%</div><div class="l">on-time delivery</div></div>
+              <div class="t"><div class="v">&lt; 2h</div><div class="l">avg. response</div></div>
+            </div>
+          </div>
+          <!-- estimator -->
+          <div class="estimator">
+            <div class="est-head">
+              <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h5"/></svg>Instant estimate</div>
+              <div class="s">Ballpark only — a real quote follows your brief.</div>
+            </div>
+            <div class="est-body">
+              <div class="est-field">
+                <label>Product type</label>
+                <div class="seg" id="est-type">
+                  <button class="on" data-rate="2.40">Beverage</button>
+                  <button data-rate="1.85">Powder</button>
+                  <button data-rate="3.10">Capsule</button>
+                </div>
+              </div>
+              <div class="est-field">
+                <label>Run size</label>
+                <input type="range" class="est-slider" id="est-range" min="500" max="10000" step="500" value="3000" oninput="calcEst()" />
+                <div class="est-units"><span class="u" id="est-u">3,000</span><span class="r">units · 500 min → 10k</span></div>
+              </div>
+              <div class="est-out">
+                <div class="row"><span class="k">Est. unit cost</span><span class="v" id="est-unit">$2.40</span></div>
+                <div class="row"><span class="k">Platform fee</span><span class="v"><span class="fee0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10"><path d="M20 6L9 17l-5-5"/></svg>0% · Premier</span></span></div>
+                <div class="row total"><span class="k">Est. run total</span><span class="v" id="est-total">$7,200</span></div>
+              </div>
+              <button class="btn btn-pink lg" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Turn this into a brief</button>
+              <div class="est-note">No commitment. Locks nothing. We reply with a real, itemized quote — usually same day.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ld-below">
+        <div class="ld-cols">
+          <div class="ld-path"><div class="num">1</div><h4>Order a sample kit</h4><p>Taste and hold the quality before you commit a dollar to a run. Ships in 48h.</p><span class="meta">Fastest way to start →</span></div>
+          <div class="ld-path"><div class="num">2</div><h4>Start a brief</h4><p>Tell us the product, target cost &amp; timeline. Get a real itemized quote back — usually same day.</p><span class="meta">Most popular →</span></div>
+          <div class="ld-path"><div class="num">3</div><h4>Book a 15-min call</h4><p>Prefer to talk it through? Grab time with our production team, no deck required.</p><span class="meta">Calendar →</span></div>
+        </div>
+        <div class="ld-secband">
+          <div>
+            <span class="eyebrow">Why start here</span>
+            <h3>Low risk to start. Hard to leave.</h3>
+            <p>500-unit minimums and same-day quotes mean you can test a launch without gambling the runway. 72% of creators who run once, run again — because on-time, compliant, one-roof production is the thing you stop worrying about.</p>
+            <div class="chips" style="margin-top:16px">
+              <span class="chip pink">FDA · cGMP verified</span>
+              <span class="chip pink">0% Premier fee</span>
+              <span class="chip">Shopify · TikTok Shop ready</span>
+            </div>
+          </div>
+          <div class="mini-revs">
+            <div class="ld-mini-rev"><div class="txt">"Small MOQ let us test three flavors without gambling the runway."</div><div class="by"><b>Devon T.</b> · Forge Labs · 5 orders · ✓ Verified</div></div>
+            <div class="ld-mini-rev"><div class="txt">"Same-day quote, sample kit in two days. We signed after the first call."</div><div class="by"><b>Maya K.</b> · GLOW Wellness · 7 orders · ✓ Verified</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="ld-sticky">
+        <div class="who"><span class="mk">N</span><div><div class="nm">Northwind Nutrition Co. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Premier</span></div><div class="mt">★ 4.9 · 500-unit min · replies &lt; 2h</div></div></div>
+        <div class="sp">
+          <button class="btn btn-out sm">Order sample kit</button>
+          <button class="btn btn-pink sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Start a brief</button>
+        </div>
+      </div>
+    </div>
+    <div class="foot-note"><b>C · The Launch Deal</b> — conversion-first. Offer bar, capability quick-match, live estimator (drag the slider), three entry paths, low-risk framing, sticky action bar. Turns browsing into a brief fast.</div>
+  </div>
+</div>
+
+<script>
+function showConcept(id,btn){
+  document.querySelectorAll('.concept').forEach(c=>c.classList.remove('show'));
+  document.getElementById('c-'+id).classList.add('show');
+  document.querySelectorAll('.proto-seg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+// estimator
+let estRate=2.40;
+document.querySelectorAll('#est-type button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#est-type button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    estRate=parseFloat(b.dataset.rate);
+    calcEst();
+  });
+});
+function calcEst(){
+  const units=parseInt(document.getElementById('est-range').value);
+  // gentle volume discount
+  let rate=estRate;
+  if(units>=5000) rate=estRate*0.9;
+  else if(units>=2000) rate=estRate*0.95;
+  const total=units*rate;
+  document.getElementById('est-u').textContent=units.toLocaleString();
+  document.getElementById('est-unit').textContent='$'+rate.toFixed(2);
+  document.getElementById('est-total').textContent='$'+Math.round(total).toLocaleString();
+}
+calcEst();
+</script>
+</body>
+</html>

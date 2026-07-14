@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Partner Public Profile — Front Face (v2 base)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&family=Fraunces:ital,wght@1,400;1,500;1,600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;--pink-400:#FF5285;
+  --pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;--pink-800:#9E0E40;--pink-900:#6E0A2D;
+  --neon-300:#D4FF7A;--neon-400:#C2FF4D;--neon-500:#B5FF3D;--neon-600:#9EE61F;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+  --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-500:#B45309;--warning-600:#984309;--warning-700:#7C360A;
+  --danger-50:#FBE8E7;--danger-100:#F6C9C7;--danger-500:#C2362F;--danger-700:#87211E;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-500:#1F5BA8;--info-700:#163E72;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;
+  --font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --font-serif:'Fraunces',Georgia,serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);
+  --shadow-lg:0 12px 28px rgba(24,24,26,.12);--shadow-xl:0 24px 48px rgba(24,24,26,.16);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.serif-em{font-family:var(--font-serif);font-style:italic;font-weight:500}
+.disp{font-family:var(--font-display);letter-spacing:-.01em}
+
+.proto-shell{max-width:1160px;margin:0 auto;padding:22px 20px 90px}
+.proto-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:14px;position:sticky;top:12px;z-index:80}
+.proto-brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:16px}
+.proto-brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center}
+.proto-brand .sq svg{width:13px;height:13px;color:#fff}
+.proto-brand small{font-family:var(--font-sans);font-weight:500;color:var(--ink-500);font-size:12px}
+.viewer{display:flex;align-items:center;gap:9px;margin-left:auto;flex-wrap:wrap}
+.viewer .vl{font-size:12px;font-weight:600;color:var(--ink-500)}
+.proto-seg{display:flex;gap:4px;background:var(--ink-100);border-radius:var(--r-pill);padding:4px}
+.proto-seg button{border-radius:var(--r-pill);padding:8px 15px;font-weight:600;font-size:12.5px;color:var(--ink-600);transition:all .2s var(--ease-out);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.proto-seg button svg{width:13px;height:13px}
+.proto-seg button.active{background:var(--ink-900);color:#fff}
+.proto-seg button.active .lk{color:var(--warning-500)}
+.proto-seg button.active .un{color:var(--neon-500)}
+.proto-note{font-size:12px;color:var(--ink-500);padding:0 4px;margin-bottom:16px;line-height:1.6}
+.proto-note b{color:var(--ink-700)}
+
+/* shared */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;border-radius:var(--r-pill);padding:0 20px;height:44px;transition:all .18s var(--ease-out);white-space:nowrap}
+.btn svg{width:16px;height:16px}
+.btn.sm{height:36px;font-size:13px;padding:0 15px}.btn.sm svg{width:14px;height:14px}
+.btn.lg{height:50px;font-size:15px;padding:0 24px}
+.btn-neon{background:var(--neon-500);color:var(--ink-900)}.btn-neon:hover{background:var(--neon-400);transform:translateY(-1px)}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{background:#000}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn-out:hover{background:var(--ink-50)}
+.btn-onwhite{background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.btn-onwhite:hover{background:rgba(255,255,255,.18)}
+.btn-icon-dark{width:44px;padding:0;background:rgba(255,255,255,.10);color:#fff;border:1px solid rgba(255,255,255,.16)}.btn-icon-dark:hover{background:rgba(255,255,255,.18)}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm)}
+.card.pad{padding:22px}.card+.card{margin-top:18px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--r-pill);font-size:12px;font-weight:500;background:var(--ink-50);border:1px solid var(--ink-200);color:var(--ink-700)}
+.chip.pink{background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.tier-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r-pill);font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;background:var(--neon-500);color:var(--ink-900)}
+.tier-badge svg{width:13px;height:13px}
+.tier-badge.sm{padding:3px 9px;font-size:10px}.tier-badge.sm svg{width:11px;height:11px}
+/* merit tier ladder — Verified (entry) → Trusted → Premier (default neon) */
+.tier-badge.verified{background:var(--info-50);color:var(--info-700);border:1px solid var(--info-100)}
+.tier-badge.trusted{background:var(--pink-50);color:var(--pink-700);border:1px solid var(--pink-100)}
+/* NEW manufacturer badge (no merit history yet) */
+.badge-new{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:var(--r-pill);font-weight:800;font-size:11px;letter-spacing:.05em;text-transform:uppercase;background:var(--pink-500);color:#fff}
+.badge-new svg{width:12px;height:12px}
+.badge-new.sm{padding:3px 8px;font-size:10px}.badge-new.sm svg{width:11px;height:11px}
+/* badge reference strip */
+.badge-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:11px 15px;margin-bottom:16px;font-size:12px;color:var(--ink-500)}
+.badge-legend .bl-l{font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:11px;color:var(--ink-400)}
+.badge-legend .bl-item{display:inline-flex;align-items:center;gap:6px}
+.badge-legend .sep{width:1px;height:18px;background:var(--ink-200)}
+.verified-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--info-700);background:var(--info-50);padding:1px 7px;border-radius:var(--r-pill)}
+.verified-tag svg{width:10px;height:10px}
+.pill-ok{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--success-700);background:var(--success-50);border:1px solid var(--success-100);padding:2px 8px;border-radius:var(--r-pill)}
+.foot-note{text-align:center;color:var(--ink-400);font-size:12px;margin-top:24px;line-height:1.7}
+
+/* =============== PRODUCT-PAGE ENTRY POINT (the gate) =============== */
+.entry{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-sm);padding:16px 18px;margin-bottom:16px}
+.entry .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);margin-bottom:10px}
+.entry-row{display:flex;gap:14px;align-items:center}
+.entry-thumb{width:60px;height:60px;border-radius:12px;flex:none;background:linear-gradient(150deg,#FF2E63,#9E0E40);display:grid;place-items:center;font-family:var(--font-display);font-weight:800;color:#fff;font-size:15px}
+.entry-info{flex:1;min-width:0}
+.entry-info .pn{font-family:var(--font-display);font-weight:700;font-size:16px}
+.entry-info .pm{font-size:12px;color:var(--ink-500);margin-top:1px}
+/* attribution line */
+.attrib{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:13px;flex-wrap:wrap}
+.attrib .pre{color:var(--ink-500)}
+.attrib .mfr-link{color:var(--pink-700);font-weight:700;display:inline-flex;align-items:center;gap:5px;border-bottom:1.5px solid var(--pink-200);cursor:pointer;transition:all .15s}
+.attrib .mfr-link:hover{border-color:var(--pink-500)}
+.attrib .mfr-link svg{width:13px;height:13px}
+.attrib .mfr-plain{color:var(--ink-700);font-weight:600}
+.attrib .hint{font-size:11px;color:var(--ink-400);margin-left:2px}
+.entry-cta{margin-left:auto}
+@media(max-width:640px){.entry-cta{margin-left:0}.entry-row{flex-wrap:wrap}}
+
+/* =============== MAKER prototype note (no wall, no upsell) =============== */
+.makernote{display:flex;gap:10px;align-items:flex-start;background:var(--ink-50);border:1px dashed var(--ink-300);border-radius:var(--r-lg);padding:13px 15px;font-size:12.5px;color:var(--ink-500);line-height:1.55}
+.makernote svg{width:16px;height:16px;flex:none;margin-top:1px;color:var(--ink-400)}
+.makernote b{color:var(--ink-700)}
+
+/* ===================== FRONT FACE (from v2) ===================== */
+.pf-frame{border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-lg);background:#fff}
+.pf-hero{position:relative;background:var(--ink-900);color:#fff;overflow:visible}
+.pf-hero .cover{height:230px;position:relative;background:radial-gradient(120% 160% at 82% -10%,rgba(181,255,61,.20),transparent 55%),radial-gradient(110% 150% at 12% 120%,rgba(255,46,99,.30),transparent 60%),linear-gradient(120deg,#1d1d20,#232327 60%,#18181A)}
+.pf-hero .cover::after{content:"";position:absolute;inset:0;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:28px 28px;-webkit-mask-image:linear-gradient(180deg,#000,transparent);mask-image:linear-gradient(180deg,#000,transparent)}
+.pf-hero-inner{position:relative;z-index:5;padding:0 34px 26px;display:block}
+.pf-idrow{display:flex;gap:20px;align-items:flex-end}
+.pf-beside{padding-bottom:6px;min-width:0}
+.pf-belowrow{margin-top:16px}
+.pf-logo{width:118px;height:118px;border-radius:24px;flex:none;margin-top:-52px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));display:grid;place-items:center;box-shadow:0 14px 34px rgba(0,0,0,.4);border:4px solid var(--ink-900);position:relative}
+.pf-logo .mono{font-family:var(--font-display);font-weight:800;font-size:42px;color:#fff}
+/* share button + popover (right of the name row, on the black area) */
+.pf-hero-actions{position:relative;margin-left:auto;align-self:flex-end;padding-bottom:6px;z-index:6}
+.share-btn{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:var(--r-pill);padding:9px 15px;font-weight:600;font-size:13px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:all .15s}
+.share-btn:hover{background:rgba(255,255,255,.22)}
+.share-btn svg{width:15px;height:15px}
+.share-pop{position:absolute;top:calc(100% + 10px);right:0;width:288px;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);box-shadow:var(--shadow-xl);padding:16px;display:none;color:var(--ink-900);z-index:40}
+.share-pop.open{display:block}
+.share-pop .sp-h{font-family:var(--font-display);font-weight:700;font-size:14px;margin-bottom:11px}
+.sp-url{display:flex;align-items:center;gap:8px;background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-md);padding:5px 5px 5px 11px;margin-bottom:12px}
+.sp-url .u{flex:1;font-size:12px;color:var(--ink-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-url .sp-copy{background:var(--ink-900);color:#fff;border-radius:var(--r-sm);padding:6px 11px;font-size:11.5px;font-weight:700;flex:none;display:inline-flex;align-items:center;gap:5px}
+.sp-url .sp-copy.done{background:var(--success-500)}
+.sp-url .sp-copy svg{width:12px;height:12px}
+.sp-socials{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sp-ico{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border:1px solid var(--ink-200);border-radius:var(--r-md);font-size:10.5px;color:var(--ink-600);font-weight:600;transition:all .15s}
+.sp-ico:hover{border-color:var(--ink-300);background:var(--ink-50)}
+.sp-ico svg{width:18px;height:18px}
+.pf-logo .vbadge{position:absolute;right:-6px;bottom:-6px;width:34px;height:34px;border-radius:50%;background:var(--neon-500);border:3px solid var(--ink-900);display:grid;place-items:center}
+.pf-logo .vbadge svg{width:16px;height:16px;color:var(--ink-900)}
+.pf-headwrap{margin-top:15px;max-width:720px}
+.pf-eyebrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:7px}
+.pf-type{font-size:12px;color:var(--ink-300);font-weight:500}
+.pf-name{font-family:var(--font-display);font-weight:800;font-size:28px;line-height:1.05;letter-spacing:-.02em}
+.pf-nameline{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.pf-tag{margin-top:8px;color:var(--ink-300);font-size:15px;white-space:nowrap}
+.pf-tag .serif-em{color:var(--neon-500)}
+.pf-meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;color:var(--ink-400);font-size:13px}
+.pf-meta span{display:inline-flex;align-items:center;gap:6px}
+.pf-meta svg{width:14px;height:14px;color:var(--ink-400)}
+.pf-cta{display:flex;gap:10px;flex-wrap:wrap;align-self:flex-end;padding-bottom:4px}
+.pf-share{display:flex;align-items:center;gap:8px;flex-wrap:wrap;align-self:flex-end;padding-bottom:4px}
+.share-url{display:inline-flex;align-items:center;gap:9px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:var(--r-pill);padding:6px 6px 6px 13px;color:#fff}
+.share-url .gl{width:14px;height:14px;color:var(--ink-400);flex:none}
+.share-url .u{color:var(--ink-300);font-size:12.5px;font-weight:500;max-width:236px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-url .copy{display:inline-flex;align-items:center;gap:5px;background:var(--neon-500);color:var(--ink-900);border-radius:var(--r-pill);padding:6px 12px;font-weight:700;font-size:11.5px;transition:all .15s}
+.share-url .copy svg{width:12px;height:12px}
+.share-url .copy.done{background:var(--success-500);color:#fff}
+.share-ico{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;color:#fff;transition:all .15s}
+.share-ico:hover{background:rgba(255,255,255,.2);transform:translateY(-1px)}
+.share-ico svg{width:16px;height:16px}
+.pf-stats{position:relative;z-index:2;display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(255,255,255,.08);border-top:1px solid rgba(255,255,255,.08)}
+.pf-stat{background:var(--ink-900);padding:15px 26px}
+.pf-stat .v{font-family:var(--font-display);font-weight:700;font-size:22px;color:#fff;display:flex;align-items:center;gap:7px}
+.pf-stat .v .up{color:var(--neon-500);font-size:12px;font-weight:600}
+.pf-stat .v .star{color:var(--pink-400)}
+.pf-stat .l{font-size:11.5px;color:var(--ink-400);margin-top:2px}
+.pf-tabs{position:sticky;top:66px;z-index:20;background:#fff;border-bottom:1px solid var(--ink-200);padding:0 34px;display:flex;gap:4px;overflow-x:auto}
+.pf-tabs button{padding:16px 4px;margin-right:22px;font-weight:600;font-size:14px;color:var(--ink-500);border-bottom:2.5px solid transparent;transition:all .18s;white-space:nowrap}
+.pf-tabs button:hover{color:var(--ink-900)}
+.pf-tabs button.active{color:var(--pink-700);border-color:var(--pink-500)}
+.pf-body{background:var(--ink-50);padding:26px 34px 40px;display:grid;grid-template-columns:1fr 320px;gap:22px;align-items:start}
+.pf-sec.hide{display:none}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px}
+.sec-h h3{font-family:var(--font-display);font-weight:700;font-size:18px}
+.sec-h .link{color:var(--pink-700);font-weight:600;font-size:13px}
+.prose{color:var(--ink-600);font-size:14.5px;line-height:1.65}
+.prose strong{color:var(--ink-900)}
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cap{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:16px;transition:all .18s var(--ease-out)}
+.cap:hover{border-color:var(--pink-300);box-shadow:var(--shadow-md)}
+.cap .top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cap .ic{width:38px;height:38px;border-radius:10px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.cap .ic svg{width:19px;height:19px}
+.cap h4{font-weight:700;font-size:14px}
+.cap .sub{font-size:12px;color:var(--ink-500)}
+.cert-wall{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.cert{display:flex;gap:11px;align-items:center;border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px 13px}
+.cert .seal{width:40px;height:40px;border-radius:10px;background:var(--success-50);color:var(--success-600);display:grid;place-items:center;flex:none}
+.cert .seal svg{width:20px;height:20px}
+.cert .nm{font-weight:600;font-size:13px}
+.cert .mt{font-size:11px;color:var(--ink-500)}
+.port-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.port{border:1px solid var(--ink-200);border-radius:var(--r-lg);overflow:hidden;transition:all .2s var(--ease-out);cursor:pointer}
+.port:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--ink-300)}
+.port .img{height:120px;display:grid;place-items:center}
+.port .img .bottle{font-family:var(--font-display);font-weight:800;font-size:15px;color:#fff;text-align:center;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,.16)}
+.port .cap2{padding:10px 12px}
+.port .cap2 .t{font-weight:600;font-size:13px}
+.port .cap2 .m{font-size:11px;color:var(--ink-500)}
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pillar{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px}
+.pillar .pn{font-weight:700;font-size:13px;display:flex;justify-content:space-between}
+.pillar .pn .w{font-size:11px;color:var(--ink-400);font-weight:600}
+.pillar .track{height:7px;border-radius:var(--r-pill);background:var(--ink-100);overflow:hidden;margin:9px 0 6px}
+.pillar .fill{height:100%;background:var(--pink-500);border-radius:var(--r-pill)}
+.pillar .ps{font-size:11px;color:var(--ink-500)}
+.pillar .sc{font-family:var(--font-display);font-weight:700;font-size:20px}
+.fee-ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.fee-step{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px;text-align:center}
+.fee-step.cur{border-color:var(--pink-500);background:var(--pink-50)}
+.fee-step .ft{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-500)}
+.fee-step.cur .ft{color:var(--pink-700)}
+.fee-step .fv{font-family:var(--font-display);font-weight:800;font-size:22px;margin-top:3px}
+.rev-summary{display:flex;gap:26px;align-items:center;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid var(--ink-200);margin-bottom:16px}
+.rev-big{font-family:var(--font-display);font-weight:800;font-size:52px;line-height:1}
+.rev-stars{color:var(--pink-500);font-size:18px;letter-spacing:2px}
+.rev-count{font-size:12px;color:var(--ink-500);margin-top:4px}
+.rev-bars{flex:1;min-width:220px}
+.rev-row{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink-500);margin:3px 0}
+.rev-row .track{flex:1;height:7px;border-radius:var(--r-pill);background:var(--ink-100);overflow:hidden}
+.rev-row .fill{height:100%;background:var(--pink-500);border-radius:var(--r-pill)}
+.review{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--ink-100)}
+.review:last-child{border-bottom:none;padding-bottom:0}
+.avatar{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;color:#fff;font-size:14px}
+.review .rname{font-weight:600;font-size:13px}
+.review .rmeta{font-size:11px;color:var(--ink-500)}
+.review .rtext{font-size:13.5px;color:var(--ink-600);margin-top:5px}
+.pf-side .card+.card{margin-top:16px}
+.fact{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--ink-100);font-size:13px}
+.fact:last-child{border-bottom:none}.fact .k{color:var(--ink-500)}.fact .v{font-weight:600;text-align:right}
+.side-h{font-family:var(--font-display);font-weight:700;font-size:15px;margin-bottom:8px}
+.resp{display:flex;align-items:center;gap:10px;background:var(--success-50);border:1px solid var(--success-100);border-radius:var(--r-lg);padding:12px 14px}
+.resp .dot{width:9px;height:9px;border-radius:50%;background:var(--success-500);box-shadow:0 0 0 4px var(--success-100)}
+.resp .t{font-weight:600;font-size:13px;color:var(--success-700)}
+.resp .s{font-size:11px;color:var(--success-600)}
+.map{height:120px;border-radius:var(--r-lg);margin-top:12px;position:relative;overflow:hidden;background:radial-gradient(circle at 60% 45%,rgba(255,46,99,.16),transparent 40%),linear-gradient(120deg,var(--ink-100),var(--ink-50));border:1px solid var(--ink-200)}
+.map .pin{position:absolute;left:58%;top:42%;width:16px;height:16px;border-radius:50% 50% 50% 0;background:var(--pink-500);transform:rotate(-45deg);box-shadow:0 4px 10px rgba(255,46,99,.4)}
+
+/* =============== PUBLIC TEASER (logged-out visitor via shared link) =============== */
+.pf-teaser{background:var(--ink-50);padding:22px 34px 40px}
+.teaser-ribbon{display:flex;align-items:center;gap:9px;background:var(--info-50);border:1px solid var(--info-100);color:var(--info-700);border-radius:var(--r-lg);padding:11px 14px;font-size:13px;margin-bottom:18px}
+.teaser-ribbon svg{width:16px;height:16px;flex:none}
+.teaser-ribbon b{font-weight:700}
+.teaser-about{margin-bottom:18px}
+.teaser-about .prose{-webkit-mask-image:linear-gradient(180deg,#000 60%,transparent);mask-image:linear-gradient(180deg,#000 60%,transparent)}
+.teaser-peek{position:relative;border-radius:var(--r-xl);overflow:hidden}
+.teaser-peek .blurred{filter:blur(6px);opacity:.55;pointer-events:none;user-select:none}
+.teaser-gate{position:absolute;inset:0;display:grid;place-items:center;padding:24px;background:linear-gradient(180deg,rgba(248,248,249,.35),rgba(248,248,249,.92) 62%)}
+.gate-card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-2xl);box-shadow:var(--shadow-xl);padding:28px;max-width:440px;text-align:center}
+.gate-card .gic{width:56px;height:56px;border-radius:16px;margin:0 auto 16px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center}
+.gate-card .gic svg{width:26px;height:26px}
+.gate-card h3{font-family:var(--font-display);font-weight:800;font-size:21px;letter-spacing:-.01em}
+.gate-card p{color:var(--ink-500);font-size:13.5px;margin-top:8px;line-height:1.55}
+.gate-list{display:flex;flex-direction:column;gap:8px;text-align:left;margin:18px auto;max-width:300px}
+.gate-list .gl-row{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink-700);font-weight:500}
+.gate-list .gl-row svg{width:15px;height:15px;color:var(--success-600);flex:none}
+.gate-card .grow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+.gate-card .gnote{font-size:11.5px;color:var(--ink-400);margin-top:14px}
+
+@media(max-width:1080px){
+  .pf-body{grid-template-columns:1fr}.pf-stats{grid-template-columns:1fr 1fr 1fr}
+  .cert-wall,.port-grid{grid-template-columns:1fr 1fr}.pillars{grid-template-columns:1fr 1fr}
+}
+@media(max-width:680px){
+  .cap-grid{grid-template-columns:1fr}
+  .pf-idrow{flex-direction:column;align-items:flex-start;gap:12px}
+  .pf-beside{padding-bottom:0}
+  .pf-tag{white-space:normal}
+  .pf-name{font-size:26px}.pf-stats{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="proto-shell">
+  <div class="proto-bar">
+    <div class="proto-brand">
+      <span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L4.5 13H11l-1 9 9-13H12.5z"/></svg></span>
+      iLaunchify <small>Public partner profile · v2 base</small>
+    </div>
+    <div class="viewer">
+      <span class="vl">Viewing as:</span>
+      <div class="proto-seg">
+        <button id="v-guest" onclick="setTier('guest',this)"><svg class="lk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20z"/></svg>Logged out</button>
+        <button id="v-maker" onclick="setTier('maker',this)"><svg class="lk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Maker</button>
+        <button id="v-builder" class="active" onclick="setTier('builder',this)"><svg class="un" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>Builder</button>
+        <button id="v-agency" onclick="setTier('agency',this)"><svg class="un" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>Agency</button>
+      </div>
+    </div>
+  </div>
+  <div class="proto-note"><b>Access rule:</b> the public profile is reachable ONLY through the manufacturer link on a product detail page. <b>Maker</b> creators see a normal product page with a generic "Manufacturer" label — no name, no link, and nothing else (no profile, no lock, no upsell). <b>Builder / Agency</b> (paid) see the manufacturer's name as the link (no "Manufacturer:" prefix) into the full profile. <b>Logged out</b> = someone opening a shared profile link: they get a <b>public preview</b> (name, badge, stats + a blurred gate) inviting them to join. Switch views above.</div>
+
+  <!-- ===== BADGE REFERENCE ===== -->
+  <div id="badgeLegend" class="badge-legend">
+    <span class="bl-l">Badges</span>
+    <span class="bl-item"><span class="badge-new sm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 4.6L18 8l-4 3 1.2 4.8L12 13.6 8.8 15.8 10 11 6 8l4.4-1.4z"/></svg>New</span> new manufacturer, no merit history yet</span>
+    <span class="sep"></span>
+    <span class="bl-item">Merit tier:
+      <span class="tier-badge verified sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span>
+      <span class="tier-badge trusted sm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Trusted</span>
+      <span class="tier-badge sm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier</span>
+    </span>
+  </div>
+
+  <!-- ===== PRODUCT-PAGE ENTRY POINT (the only link into the profile) ===== -->
+  <div id="entry" class="entry">
+    <div class="lbl">Product detail page · manufacturer attribution</div>
+    <div class="entry-row">
+      <div class="entry-thumb">GLOW</div>
+      <div class="entry-info">
+        <div class="pn">GLOW Collagen Elixir</div>
+        <div class="pm">Functional beverage · 12-pack · shrink-sleeve</div>
+        <!-- attribution renders per tier -->
+        <div class="attrib" id="attrib-maker" style="display:none">
+          <span class="pre">Made by</span>
+          <span class="mfr-plain">Manufacturer</span>
+          <span class="tier-badge sm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier</span>
+          <span class="hint">· identity hidden on Maker</span>
+        </div>
+        <div class="attrib" id="attrib-paid">
+          <span class="mfr-link" onclick="openProfile()">Northwind Nutrition Co.<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg></span>
+          <span class="tier-badge sm"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier</span>
+          <span class="hint">· name links to profile</span>
+        </div>
+      </div>
+      <div class="entry-cta"><button class="btn btn-pink sm">Customize this product</button></div>
+    </div>
+  </div>
+
+  <!-- ===== MAKER: nothing below the product page ===== -->
+  <div id="makernote" class="makernote" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg>
+    <span>Prototype note — a real Maker sees only the product page above. There is <b>no</b> profile, link, lock, or upsell anywhere. The manufacturer simply has no identity on this plan.</span>
+  </div>
+
+  <!-- ===== FRONT FACE (paid) ===== -->
+  <div id="profile" class="pf-frame">
+    <div class="pf-hero">
+      <div class="cover"></div>
+      <div class="pf-hero-inner">
+        <div class="pf-idrow">
+          <div class="pf-logo"><span class="mono">N</span><span class="vbadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span></div>
+          <div class="pf-beside">
+            <div class="pf-eyebrow">
+              <span class="pf-type">Manufacturing · Co-packing · Print · Fulfillment</span>
+            </div>
+            <div class="pf-nameline">
+              <h1 class="pf-name">Northwind Nutrition Co.</h1>
+              <span class="tier-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 18.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Premier</span>
+            </div>
+          </div>
+          <div class="pf-hero-actions" id="heroActions">
+            <button class="share-btn" onclick="toggleShare(event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Share</button>
+            <div class="share-pop" id="sharePop">
+              <div class="sp-h">Share this profile</div>
+              <div class="sp-url">
+                <span class="u" id="profile-url">ilaunchify.com/partners/northwind-nutrition</span>
+                <button class="sp-copy" onclick="copyProfileLink(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy</button>
+              </div>
+              <div class="sp-socials">
+                <button class="sp-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5A2.5 2.5 0 002.5 6 2.5 2.5 0 005 8.5 2.5 2.5 0 007.5 6 2.5 2.5 0 004.98 3.5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V21h-4v-5.3c0-1.26-.02-2.9-1.77-2.9-1.77 0-2.04 1.38-2.04 2.8V21H9z"/></svg>LinkedIn</button>
+                <button class="sp-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.1 8.1L23 22h-6.8l-4.8-6.3L5.8 22H2.7l7.6-8.7L2 2h6.9l4.3 5.7L18.9 2zm-1.2 18h1.7L7.4 3.8H5.6z"/></svg>X</button>
+                <button class="sp-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0022 12z"/></svg>Facebook</button>
+                <button class="sp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>Email</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pf-belowrow">
+          <p class="pf-tag">Functional beverages &amp; supplements, <span class="serif-em">made right</span> — formulation to fulfillment under one roof.</p>
+          <div class="pf-meta">
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Portland, OR · disclosure: full "Manufactured by"</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>On iLaunchify since 2023</span>
+          </div>
+        </div>
+      </div>
+      <div class="pf-stats">
+        <div class="pf-stat"><div class="v">98.6%<span class="up">▲</span></div><div class="l">OTIF delivery</div></div>
+        <div class="pf-stat"><div class="v">2,480</div><div class="l">Orders fulfilled</div></div>
+        <div class="pf-stat"><div class="v"><span class="star">★</span> 4.9</div><div class="l">312 verified reviews</div></div>
+        <div class="pf-stat"><div class="v">&lt; 2h</div><div class="l">Avg. response</div></div>
+        <div class="pf-stat"><div class="v">96</div><div class="l">Merit score</div></div>
+      </div>
+    </div>
+    <!-- ===== PUBLIC TEASER (logged-out) ===== -->
+    <div id="pf-teaser" class="pf-teaser" style="display:none">
+      <div class="teaser-ribbon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span>You're viewing a <b>public preview</b>. Sign in or join iLaunchify as a creator to see the full profile.</span></div>
+      <div class="teaser-about"><div class="card pad"><div class="sec-h"><h3>About Northwind</h3></div><p class="prose">Northwind Nutrition is a <strong>full-stack CPG production partner</strong> — functional beverages, powders, and encapsulated supplements. Two FDA-registered, GMP-certified facilities (Portland &amp; Reno) with in-house formulation, filling, labeling, and a climate-controlled fulfillment center, so a creator's SKU never leaves our ecosystem between recipe and doorstep. We favor small MOQs and fast reorders for early-stage brands scaling to national retail.</p></div></div>
+      <div class="teaser-peek">
+        <div class="blurred">
+          <div class="card pad" style="margin-bottom:16px"><div class="sec-h"><h3>Capabilities</h3></div><div class="cap-grid">
+            <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></span><div><h4>Manufacturing</h4><div class="sub">MOQ 500 · lead 12–28d</div></div></div><div class="chips"><span class="chip pink">Beverage</span><span class="chip pink">Supplement</span><span class="chip">Cold-fill</span><span class="chip">Encapsulation</span></div></div>
+            <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><div><h4>Co-packing</h4><div class="sub">Cans · bottles · pouches</div></div></div><div class="chips"><span class="chip">Shrink-sleeve</span><span class="chip">Variety packs</span><span class="chip">Kitting</span></div></div>
+          </div></div>
+          <div class="card pad"><div class="sec-h"><h3>Certifications</h3></div><div class="cert-wall">
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">FDA Registered</div><div class="mt">Facility · exp 2027</div></div></div>
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">cGMP · 21 CFR 111</div><div class="mt">Verified</div></div></div>
+            <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">USDA Organic</div><div class="mt">Handler cert</div></div></div>
+          </div></div>
+        </div>
+        <div class="teaser-gate">
+          <div class="gate-card">
+            <div class="gic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+            <h3>See the full profile</h3>
+            <p>Join iLaunchify as a creator to unlock everything behind Northwind's front face.</p>
+            <div class="gate-list">
+              <div class="gl-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Full capabilities &amp; MOQs</div>
+              <div class="gl-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Certifications &amp; merit standing</div>
+              <div class="gl-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Portfolio &amp; 312 verified reviews</div>
+              <div class="gl-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Request a quote &amp; message directly</div>
+            </div>
+            <div class="grow">
+              <button class="btn btn-pink">Join as a creator</button>
+              <button class="btn btn-out">Sign in</button>
+            </div>
+            <div class="gnote">Free to browse · named partners unlock on a paid plan</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pf-tabs" class="pf-tabs">
+      <button class="active" onclick="pfTab('overview',this)">Overview</button>
+      <button onclick="pfTab('capabilities',this)">Capabilities</button>
+      <button onclick="pfTab('standing',this)">Merit &amp; standing</button>
+      <button onclick="pfTab('certs',this)">Certifications</button>
+      <button onclick="pfTab('portfolio',this)">Portfolio</button>
+      <button onclick="pfTab('reviews',this)">Reviews</button>
+    </div>
+    <div id="pf-body" class="pf-body">
+      <div class="pf-main">
+        <div class="pf-sec" data-sec="overview"><div class="card pad"><div class="sec-h"><h3>About Northwind</h3></div><p class="prose">Northwind Nutrition is a <strong>full-stack CPG production partner</strong> — functional beverages, powders, and encapsulated supplements. Two FDA-registered, GMP-certified facilities (Portland &amp; Reno) with in-house formulation, filling, labeling, and a climate-controlled fulfillment center, so a creator's SKU never leaves our ecosystem between recipe and doorstep. We favor <strong>small MOQs and fast reorders</strong> for early-stage brands scaling to national retail.</p></div></div>
+
+        <div class="pf-sec" data-sec="overview capabilities"><div class="card pad"><div class="sec-h"><h3>Capabilities</h3><a class="link">Full sheet →</a></div><div class="cap-grid">
+          <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></span><div><h4>Manufacturing</h4><div class="sub">MOQ 500 · lead 12–28d</div></div></div><div class="chips"><span class="chip pink">Beverage</span><span class="chip pink">Supplement</span><span class="chip">Cold-fill</span><span class="chip">Hot-fill</span><span class="chip">Encapsulation</span></div></div>
+          <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></span><div><h4>Co-packing</h4><div class="sub">Cans · bottles · pouches</div></div></div><div class="chips"><span class="chip">Shrink-sleeve</span><span class="chip">Variety packs</span><span class="chip">Kitting</span><span class="chip">Cartoning</span></div></div>
+          <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg></span><div><h4>Print production</h4><div class="sub">Digital · flexo</div></div></div><div class="chips"><span class="chip">PS label</span><span class="chip">Shrink sleeve</span><span class="chip">Spot UV / foil</span><span class="chip">FSC stock</span></div></div>
+          <div class="cap"><div class="top"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/></svg></span><div><h4>Fulfillment</h4><div class="sub">1,200 pallet positions</div></div></div><div class="chips"><span class="chip pink">Ambient</span><span class="chip pink">Chilled</span><span class="chip">Shopify</span><span class="chip">TikTok Shop</span></div></div>
+        </div></div></div>
+
+        <div class="pf-sec hide" data-sec="standing"><div class="card pad"><div class="sec-h"><h3>Merit standing</h3><span class="pill-ok">Premier · earned, not purchased</span></div>
+          <div class="fee-ladder"><div class="fee-step"><div class="ft">Verified</div><div class="fv">✓</div></div><div class="fee-step"><div class="ft">Trusted</div><div class="fv">✓</div></div><div class="fee-step cur"><div class="ft">Premier</div><div class="fv">★</div></div></div>
+          <div class="pillars" style="margin-top:16px">
+            <div class="pillar"><div class="pn">Craft <span class="w">40%</span></div><div class="track"><div class="fill" style="width:97%"></div></div><div class="sc">97</div><div class="ps">Quality ratings &amp; low defect rate</div></div>
+            <div class="pillar"><div class="pn">Reliability <span class="w">30%</span></div><div class="track"><div class="fill" style="width:96%"></div></div><div class="sc">96</div><div class="ps">On-time, few strikes</div></div>
+            <div class="pillar"><div class="pn">Contribution <span class="w">20%</span></div><div class="track"><div class="fill" style="width:91%"></div></div><div class="sc">91</div><div class="ps">Platform participation</div></div>
+            <div class="pillar"><div class="pn">Standing <span class="w">10%</span></div><div class="track"><div class="fill" style="width:99%"></div></div><div class="sc">99</div><div class="ps">History &amp; tenure</div></div>
+          </div>
+        </div></div>
+
+        <div class="pf-sec hide" data-sec="certs"><div class="card pad"><div class="sec-h"><h3>Certifications &amp; compliance</h3><span class="pill-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified by iLaunchify</span></div><div class="cert-wall">
+          <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">FDA Registered</div><div class="mt">Facility · exp 2027</div></div></div>
+          <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">cGMP · 21 CFR 111</div><div class="mt">Verified</div></div></div>
+          <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">USDA Organic</div><div class="mt">Handler cert</div></div></div>
+          <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">SQF Level 2</div><div class="mt">Food safety</div></div></div>
+          <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">Kosher (OU)</div><div class="mt">Verified</div></div></div>
+          <div class="cert"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></span><div><div class="nm">Non-GMO</div><div class="mt">Project verified</div></div></div>
+        </div></div></div>
+
+        <div class="pf-sec hide" data-sec="portfolio"><div class="card pad"><div class="sec-h"><h3>Recent work</h3><a class="link">See all 40 →</a></div><div class="port-grid">
+          <div class="port"><div class="img" style="background:linear-gradient(150deg,#FF2E63,#9E0E40)"><span class="bottle">GLOW</span></div><div class="cap2"><div class="t">Collagen elixir</div><div class="m">Beverage · shrink-sleeve</div></div></div>
+          <div class="port"><div class="img" style="background:linear-gradient(150deg,#232327,#474954)"><span class="bottle">FORGE</span></div><div class="cap2"><div class="t">Pre-workout tub</div><div class="m">Powder · label</div></div></div>
+          <div class="port"><div class="img" style="background:linear-gradient(150deg,#B5FF3D,#9EE61F)"><span class="bottle" style="color:#18181A">VITAL</span></div><div class="cap2"><div class="t">Greens sachets</div><div class="m">Variety · kitting</div></div></div>
+          <div class="port"><div class="img" style="background:linear-gradient(150deg,#1F5BA8,#163E72)"><span class="bottle">CALM</span></div><div class="cap2"><div class="t">Sleep gummies</div><div class="m">Supplement · carton</div></div></div>
+          <div class="port"><div class="img" style="background:linear-gradient(150deg,#FF7FA8,#C71350)"><span class="bottle">AURA</span></div><div class="cap2"><div class="t">Electrolyte cans</div><div class="m">Beverage · full run</div></div></div>
+          <div class="port"><div class="img" style="background:linear-gradient(150deg,#474954,#18181A)"><span class="bottle">ROOT</span></div><div class="cap2"><div class="t">Adaptogen drops</div><div class="m">Tincture · label</div></div></div>
+        </div></div></div>
+
+        <div class="pf-sec hide" data-sec="reviews"><div class="card pad"><div class="sec-h"><h3>Creator reviews</h3><span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified orders only</span></div>
+          <div class="rev-summary"><div><div class="rev-big">4.9</div><div class="rev-stars">★★★★★</div><div class="rev-count">312 reviews</div></div><div class="rev-bars">
+            <div class="rev-row"><span>5</span><div class="track"><div class="fill" style="width:88%"></div></div><span>88%</span></div>
+            <div class="rev-row"><span>4</span><div class="track"><div class="fill" style="width:9%"></div></div><span>9%</span></div>
+            <div class="rev-row"><span>3</span><div class="track"><div class="fill" style="width:2%"></div></div><span>2%</span></div>
+            <div class="rev-row"><span>2</span><div class="track"><div class="fill" style="width:1%"></div></div><span>1%</span></div>
+            <div class="rev-row"><span>1</span><div class="track"><div class="fill" style="width:0"></div></div><span>0%</span></div>
+          </div></div>
+          <div class="review"><div class="avatar" style="background:#FF2E63">MK</div><div><div class="rname">Maya K. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">GLOW Wellness · 3 orders · ★★★★★</div><div class="rtext">"Caught a label compliance issue before it hit print. On-time every run."</div></div></div>
+          <div class="review"><div class="avatar" style="background:#1F5BA8">DT</div><div><div class="rname">Devon T. <span class="verified-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Verified</span></div><div class="rmeta">Forge Labs · 7 orders · ★★★★★</div><div class="rtext">"Small MOQ let us test three flavors without gambling the runway."</div></div></div>
+        </div></div>
+      </div>
+      <aside class="pf-side">
+        <div class="card pad"><div class="resp"><span class="dot"></span><div><div class="t">Actively taking new briefs</div><div class="s">Replies within 2 hours</div></div></div><div class="map"><span class="pin"></span></div></div>
+        <div class="card pad"><div class="side-h">Quick facts</div>
+          <div class="fact"><span class="k">Minimum order</span><span class="v">500 units</span></div>
+          <div class="fact"><span class="k">Lead time</span><span class="v">12–28 days</span></div>
+          <div class="fact"><span class="k">Reorder time</span><span class="v">10–14 days</span></div>
+          <div class="fact"><span class="k">Facilities</span><span class="v">Portland · Reno</span></div>
+          <div class="fact"><span class="k">Markets</span><span class="v">US · Canada</span></div>
+        </div>
+        <div class="card pad"><div class="side-h">Best for</div><div class="chips"><span class="chip pink">Functional beverage</span><span class="chip pink">Supplements</span><span class="chip">Wellness</span><span class="chip">Sports nutrition</span><span class="chip">First launch</span></div></div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="foot-note">Working base = the v2 front face you liked, front-face only. Gate wired in: reachable only via the product-page manufacturer link · Maker sees a nameless "Manufacturer" (no link, no profile, no upsell) · Builder / Agency see the named link into this profile.<br>Tweak from here.</div>
+</div>
+
+<script>
+function pfTab(sec,btn){
+  document.querySelectorAll('.pf-tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.pf-sec').forEach(s=>{
+    s.classList.toggle('hide', !s.getAttribute('data-sec').split(' ').includes(sec));
+  });
+}
+function setTier(tier,btn){
+  document.querySelectorAll('.viewer .proto-seg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const guest = tier==='guest';
+  const paid  = tier==='builder' || tier==='agency';
+  // Product-page entry point only makes sense for a signed-in creator.
+  // A logged-out visitor arrives at the profile URL directly (shared link).
+  document.getElementById('entry').style.display    = guest ? 'none' : 'block';
+  document.getElementById('badgeLegend').style.display = guest ? 'none' : 'flex';
+  document.getElementById('attrib-maker').style.display = (!guest && !paid) ? 'flex' : 'none';
+  document.getElementById('attrib-paid').style.display  = (!guest && paid)  ? 'flex' : 'none';
+  // Maker (signed in) gets nothing below the product page — no wall, no upsell.
+  document.getElementById('makernote').style.display = (!guest && !paid) ? 'flex' : 'none';
+  // Profile visible for guest (teaser) and paid (full). Hidden for Maker.
+  document.getElementById('profile').style.display = (guest || paid) ? 'block' : 'none';
+  // Toggle teaser vs full members view inside the profile.
+  document.getElementById('pf-teaser').style.display = guest ? 'block' : 'none';
+  document.getElementById('pf-tabs').style.display   = guest ? 'none' : 'flex';
+  document.getElementById('pf-body').style.display   = guest ? 'none' : 'grid';
+  // Share is a signed-in creator action — never shown to logged-out visitors.
+  document.getElementById('heroActions').style.display = paid ? 'block' : 'none';
+  document.getElementById('sharePop').classList.remove('open');
+}
+function toggleShare(e){
+  e.stopPropagation();
+  document.getElementById('sharePop').classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  const pop=document.getElementById('sharePop');
+  const act=document.getElementById('heroActions');
+  if(pop && act && !act.contains(e.target)) pop.classList.remove('open');
+});
+function openProfile(){
+  document.getElementById('profile').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function copyProfileLink(btn){
+  const url = 'https://' + document.getElementById('profile-url').textContent.trim();
+  const done = ()=>{ const o=btn.innerHTML; btn.classList.add('done'); btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>Copied'; setTimeout(()=>{btn.classList.remove('done');btn.innerHTML=o;},1800); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(done).catch(done); }
+  else { done(); }
+}
+</script>
+</body>
+</html>
