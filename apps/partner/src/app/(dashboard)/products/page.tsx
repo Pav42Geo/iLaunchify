@@ -37,6 +37,7 @@ import { LiveToggle } from './LiveToggle'
 import { ProductImportButton } from './import/ProductImportButton'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Products — iLaunchify Partners' }
@@ -237,21 +238,12 @@ export default async function ProductsListPage({
     <div className="space-y-6">
       <PageTabs group="products" />
       {/* Hero — cream band + KPI strip (partner-v2 chrome) */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              {roleWord} · Products
-            </p>
-            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              Products
-            </h1>
-            <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-              Templates you offer. Live templates appear in the creator marketplace and can be
-              customized + ordered.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+      {/* Modern list chrome (Pavel 2026-07-14) — slim title row + stat strip. */}
+      <ListTitleRow
+        title="Products"
+        sub="Templates you offer — live ones appear in the creator marketplace."
+        actions={
+          <>
             <ProductImportButton categories={importCategories} />
             <Link
               href="/products/new"
@@ -259,51 +251,9 @@ export default async function ProductsListPage({
             >
               <Plus className="h-4 w-4" aria-hidden="true" /> New product
             </Link>
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <Kpi
-            href={buildHref({ tab: 'needs-changes' })}
-            label="Needs changes"
-            value={countFor('needs-changes')}
-            icon={AlertTriangle}
-            tone="amber"
-            active={tab === 'needs-changes'}
-          />
-          <Kpi
-            href={buildHref({ tab: 'drafts' })}
-            label="Drafts"
-            value={countFor('drafts')}
-            icon={FileEdit}
-            tone="ink"
-            active={tab === 'drafts'}
-          />
-          <Kpi
-            href={buildHref({ tab: 'in-review' })}
-            label="In review"
-            value={countFor('in-review')}
-            icon={Hourglass}
-            tone="sky"
-            active={tab === 'in-review'}
-          />
-          <Kpi
-            href={buildHref({ tab: 'live' })}
-            label="Live"
-            value={countFor('live')}
-            icon={Radio}
-            tone="pink"
-            active={tab === 'live'}
-          />
-          <Kpi
-            href="/certifications"
-            label="Cert refresh needed"
-            value={certRefresh}
-            icon={ShieldAlert}
-            tone="amber"
-          />
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Status chips — URL-driven — + view toggle */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -348,7 +298,15 @@ export default async function ProductsListPage({
               className="w-56 rounded-full border border-ink-200 bg-white py-1.5 pl-8 pr-3 text-[12.5px] text-ink-900 placeholder:text-ink-400 focus:border-ink-400 focus:outline-none focus:ring-2 focus:ring-pink-500/30"
             />
           </form>
-          <ViewToggle value={view} defaultMode="cards" />
+          {certRefresh > 0 && (
+          <Link
+            href="/certifications"
+            className="inline-flex items-center gap-1.5 rounded-full border border-warning-200 bg-warning-50 px-3 py-1 text-[12px] font-semibold text-warning-800 transition-colors hover:border-warning-500"
+          >
+            Cert refresh needed <span className="tabular-nums">{certRefresh}</span>
+          </Link>
+        )}
+        <ViewToggle value={view} defaultMode="cards" />
         </div>
       </div>
 
@@ -495,53 +453,6 @@ export default async function ProductsListPage({
 // Chrome primitives (local — partner-v2 reference)
 // -----------------------------------------------------------------------------
 
-function Kpi({
-  href,
-  label,
-  value,
-  icon: Icon,
-  tone,
-  active,
-}: {
-  href: string
-  label: string
-  value: number
-  icon: LucideIcon
-  tone: 'ink' | 'sky' | 'pink' | 'amber'
-  active?: boolean
-}) {
-  const iconTone: Record<typeof tone, string> = {
-    ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-info-100 text-info-700',
-    pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-warning-100 text-warning-700',
-  }
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'group rounded-2xl border border-ink-200 bg-white px-4 py-3.5 transition-shadow',
-        'hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)]',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
-        active && 'ring-1 ring-pink-300/60',
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
-          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">
-            {label}
-          </p>
-          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
-            {value.toLocaleString()}
-          </p>
-        </div>
-      </div>
-    </Link>
-  )
-}
 
 function SortableTh({
   label,

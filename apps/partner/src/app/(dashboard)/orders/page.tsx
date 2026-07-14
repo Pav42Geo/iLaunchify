@@ -10,10 +10,7 @@ import { cn, ViewToggle, type ViewMode } from '@ilaunchify/ui'
 import Link from 'next/link'
 import {
   Inbox,
-  Factory,
-  PackageCheck,
   Truck,
-  CircleCheck,
   ArrowUpDown,
   Eye,
   LifeBuoy,
@@ -30,6 +27,7 @@ import { serviceOwnedBy } from '@/lib/partner-context'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { PageTabs } from '@/components/PageTabs'
 import { QuickShipButton } from './QuickShipButton'
+import { ListTitleRow } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — Partners' }
@@ -137,26 +135,13 @@ export default async function OrdersPage({
       {/* FC partners work Receiving → Stock → Shipping as tabs of Orders
           (Pavel 2026-07-14); everyone else sees the plain dispatch inbox. */}
       {services.some((s) => (s.type as string) === 'WAREHOUSE') && <PageTabs group="orders" />}
-      {/* Cream hero + KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          {roleWord} · Orders
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Orders
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-600">
-          {all.length} dispatch{all.length === 1 ? '' : 'es'} in the last 50 events.
-        </p>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-          <Kpi href={buildHref({ tab: 'awaiting' })} label="Awaiting" value={countFor('awaiting')} icon={Inbox} tone="pink" active={tab === 'awaiting'} />
-          <Kpi href={buildHref({ tab: 'production' })} label="In production" value={countFor('production')} icon={Factory} tone="amber" active={tab === 'production'} />
-          <Kpi href={buildHref({ tab: 'ready' })} label="Ready to ship" value={countFor('ready')} icon={PackageCheck} tone="sky" active={tab === 'ready'} />
-          <Kpi href={buildHref({ tab: 'transit' })} label="In transit" value={countFor('transit')} icon={Truck} tone="ink" active={tab === 'transit'} />
-          <Kpi href={buildHref({ tab: 'delivered' })} label="Delivered" value={countFor('delivered')} icon={CircleCheck} tone="ink" active={tab === 'delivered'} />
-        </div>
-      </div>
+      {/* Modern list chrome (Pavel 2026-07-14): slim title row + quiet stat
+          strip replace the cream hero + KPI cards. Cells still link to their
+          filter tabs — the old KPI→filter behavior survives. */}
+      <ListTitleRow
+        title="Orders"
+        sub={`${all.length} dispatch${all.length === 1 ? '' : 'es'} in the last 50 events · ${roleWord}`}
+      />
 
       {/* Status filter chips + view toggle */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -201,7 +186,7 @@ export default async function OrdersPage({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px]">
               <thead>
-                <tr className="border-b border-ink-100 text-[12px] uppercase tracking-wider text-ink-700">
+                <tr className="border-b border-ink-200 bg-ink-50 text-[10.5px] uppercase tracking-[0.06em] text-ink-400">
                   <th className="px-5 py-2.5 font-semibold">Order</th>
                   <th className="px-3 py-2.5 font-semibold">Brand</th>
                   <th className="px-3 py-2.5 font-semibold">Service</th>
@@ -471,49 +456,6 @@ function Sep() {
 
 // -----------------------------------------------------------------------------
 
-function Kpi({
-  href,
-  label,
-  value,
-  icon: Icon,
-  tone,
-  active,
-}: {
-  href: string
-  label: string
-  value: number
-  icon: LucideIcon
-  tone: 'ink' | 'sky' | 'pink' | 'amber'
-  active?: boolean
-}) {
-  const iconTone: Record<typeof tone, string> = {
-    ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-info-100 text-info-700',
-    pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-warning-100 text-warning-700',
-  }
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'group rounded-2xl border border-ink-200 bg-white px-4 py-3.5 transition-shadow hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
-        active && 'ring-1 ring-pink-300/60',
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
-          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
-          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
-            {value.toLocaleString()}
-          </p>
-        </div>
-      </div>
-    </Link>
-  )
-}
 
 function SortTh({
   label,

@@ -17,6 +17,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { computeStorageAccrual, type StorageFeeSnapshot } from '@ilaunchify/shipping'
 import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow, StatStrip } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Storage billing — Partners' }
@@ -131,25 +132,18 @@ export default async function BillingPage() {
   return (
     <div className="space-y-6">
       <PageTabs group="payments" />
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Fulfillment Center · Billing
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Storage & fulfillment ledger
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-600">
-          Live accrual per agreement, computed from the rates frozen when each agreement started —
-          the same math the platform settles from. Monthly in arrears; any started month bills in full.
-        </p>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Accrued net" value={formatCentsOrDash(totalNet)} icon={Receipt} tone="pink" />
-          <Kpi label="Storage" value={formatCentsOrDash(totalStorage)} icon={Boxes} tone="ink" />
-          <Kpi label="Pick & pack" value={formatCentsOrDash(totalPickPack)} icon={PackageSearch} tone="sky" />
-          <Kpi label="Platform fee" value={formatCentsOrDash(totalPlatform)} icon={Percent} tone="ink" />
-        </div>
-      </div>
+      <ListTitleRow
+        title="Storage & fulfillment ledger"
+        sub="Live accrual per agreement, computed from the rates frozen when each agreement started."
+      />
+      <StatStrip
+        items={[
+          { v: formatCentsOrDash(totalNet), l: 'Accrued net', tone: 'pink' },
+          { v: formatCentsOrDash(totalStorage), l: 'Storage' },
+          { v: formatCentsOrDash(totalPickPack), l: 'Pick & pack' },
+          { v: formatCentsOrDash(totalPlatform), l: 'Platform fee' },
+        ]}
+      />
 
       {rows.length === 0 ? (
         <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">
@@ -225,33 +219,3 @@ export default async function BillingPage() {
   )
 }
 
-function Kpi({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string
-  value: string
-  icon: LucideIcon
-  tone: 'ink' | 'sky' | 'pink'
-}) {
-  const iconTone: Record<typeof tone, string> = {
-    ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-info-100 text-info-700',
-    pink: 'bg-pink-100 text-pink-700',
-  }
-  return (
-    <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
-      <div className="flex items-center gap-3">
-        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
-          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
-          <p className="font-display text-[20px] font-bold leading-none tabular-nums text-ink-900">{value}</p>
-        </div>
-      </div>
-    </div>
-  )
-}

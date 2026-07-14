@@ -18,6 +18,7 @@ import { ReleaseRowActions } from './ReleaseRowActions'
 import { countOutbound, loadOutboundRows, type OutboundTab } from './outbound-data'
 import { serviceOwnedBy } from '@/lib/partner-context'
 import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Outbound — Partners' }
@@ -62,25 +63,10 @@ export default async function OutboundPage({
     <div className="space-y-6">
       <PageTabs group="orders" />
       {/* Hero band + KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Fulfillment Center · Outbound
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Release queue
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-600">
-          Pick, pack and ship releases out of stored stock. Balances decrement when you mark a
-          release shipped — pick expiring lots first (see Inventory).
-        </p>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Awaiting pick" value={counts.requested} icon={Send} tone={counts.requested > 0 ? 'amber' : 'ink'} />
-          <Kpi label="Picking" value={counts.picking} icon={PackageSearch} tone="sky" />
-          <Kpi label="Shipped" value={counts.shipped} icon={Truck} tone="ink" />
-          <Kpi label="Delivered" value={counts.delivered} icon={CircleCheck} tone="ink" />
-        </div>
-      </div>
+      <ListTitleRow
+        title="Release queue"
+        sub="Pick, pack and ship releases out of stored stock — balances decrement when you mark a release shipped; pick expiring lots first."
+      />
 
       {/* Tab chips */}
       <div className="flex flex-wrap gap-1.5">
@@ -195,35 +181,3 @@ export default async function OutboundPage({
   )
 }
 
-function Kpi({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string
-  value: number
-  icon: LucideIcon
-  tone: 'ink' | 'sky' | 'amber'
-}) {
-  const iconTone: Record<typeof tone, string> = {
-    ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-info-100 text-info-700',
-    amber: 'bg-warning-100 text-warning-700',
-  }
-  return (
-    <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
-      <div className="flex items-center gap-3">
-        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
-          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
-          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
-            {value.toLocaleString()}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}

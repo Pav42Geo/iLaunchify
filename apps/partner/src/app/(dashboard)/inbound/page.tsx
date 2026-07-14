@@ -20,6 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow, StatStrip } from '@/components/list-kit'
 import {
   countInbound,
   getOwnedWarehouseServiceIds,
@@ -69,25 +70,18 @@ export default async function InboundPage({
     <div className="space-y-6">
       <PageTabs group="orders" />
       {/* Hero band + KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Fulfillment Center · Inbound
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Inbound receiving
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-600">
-          Production shipments headed to your facility — reconcile received counts against the
-          manifest and flag any discrepancies.
-        </p>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi href={buildHref('expected')} label="Expected" value={expectedCount} icon={PackageOpen} tone="pink" active={tab === 'expected'} />
-          <Kpi href={buildHref('expected')} label="Shipped" value={counts.shipped} icon={PackageCheck} tone="amber" />
-          <Kpi href={buildHref('expected')} label="In transit" value={counts.inTransit} icon={Truck} tone="sky" />
-          <Kpi href={buildHref('history')} label="Received" value={counts.received} icon={CircleCheck} tone="ink" active={tab === 'history'} />
-        </div>
-      </div>
+      <ListTitleRow
+        title="Inbound receiving"
+        sub="Production shipments headed to your facility — reconcile received counts against the manifest and flag discrepancies."
+      />
+      <StatStrip
+        items={[
+          { v: expectedCount, l: 'Expected', tone: 'pink', href: buildHref('expected'), active: tab === 'expected' },
+          { v: counts.shipped, l: 'Shipped', href: buildHref('expected') },
+          { v: counts.inTransit, l: 'In transit', href: buildHref('expected') },
+          { v: counts.received, l: 'Received', tone: 'ok', href: buildHref('history'), active: tab === 'history' },
+        ]}
+      />
 
       {/* Tab chips */}
       <div className="flex flex-wrap gap-1.5">
@@ -237,46 +231,3 @@ function InboundTable({ rows, tab }: { rows: InboundRow[]; tab: InboundTab }) {
   )
 }
 
-function Kpi({
-  href,
-  label,
-  value,
-  icon: Icon,
-  tone,
-  active,
-}: {
-  href: string
-  label: string
-  value: number
-  icon: LucideIcon
-  tone: 'ink' | 'sky' | 'pink' | 'amber'
-  active?: boolean
-}) {
-  const iconTone: Record<typeof tone, string> = {
-    ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-info-100 text-info-700',
-    pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-warning-100 text-warning-700',
-  }
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'group rounded-2xl border border-ink-200 bg-white px-4 py-3.5 transition-shadow hover:shadow-[0_4px_18px_-8px_rgba(0,0,0,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2',
-        active && 'ring-1 ring-pink-300/60',
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
-          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
-          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
-            {value.toLocaleString()}
-          </p>
-        </div>
-      </div>
-    </Link>
-  )
-}

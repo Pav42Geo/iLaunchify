@@ -17,6 +17,7 @@ import { SERVICE_TYPE_LABEL, type PartnerServiceType } from '@/lib/role-skins'
 import { loadInventory, loadFefoLots } from './inventory-data'
 import { serviceOwnedBy } from '@/lib/partner-context'
 import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow, StatStrip } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Inventory — Partners' }
@@ -62,25 +63,18 @@ export default async function InventoryPage({
     <div className="space-y-6">
       <PageTabs group="orders" />
       {/* Hero band + KPI strip */}
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Fulfillment Center · Inventory
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Inventory on hand
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-600">
-          Storage agreements held at your facility. Balances move only through releases and
-          discrepancy resolutions — every change is audited.
-        </p>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Kpi label="Active holds" value={rows.filter((r) => r.status !== 'CLOSED').length} icon={Boxes} tone="pink" />
-          <Kpi label="Units on hand" value={totalUnits} icon={Layers} tone="ink" />
-          <Kpi label="Pallets" value={totalPallets} icon={PackageOpen} tone="sky" />
-          <Kpi label="Open releases" value={openReleases} icon={CalendarClock} tone={openReleases > 0 ? 'amber' : 'ink'} />
-        </div>
-      </div>
+      <ListTitleRow
+        title="Inventory on hand"
+        sub="Storage agreements held at your facility — balances move only through releases and discrepancy resolutions; every change is audited."
+      />
+      <StatStrip
+        items={[
+          { v: rows.filter((r) => r.status !== 'CLOSED').length, l: 'Active holds', tone: 'pink' },
+          { v: totalUnits, l: 'Units on hand' },
+          { v: totalPallets, l: 'Pallets' },
+          { v: openReleases, l: 'Open releases', tone: openReleases > 0 ? 'warn' : 'ink' },
+        ]}
+      />
 
       {/* Tab chips */}
       <div className="flex flex-wrap gap-1.5">
@@ -195,36 +189,3 @@ export default async function InventoryPage({
   )
 }
 
-function Kpi({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string
-  value: number
-  icon: LucideIcon
-  tone: 'ink' | 'sky' | 'pink' | 'amber'
-}) {
-  const iconTone: Record<typeof tone, string> = {
-    ink: 'bg-ink-100 text-ink-700',
-    sky: 'bg-info-100 text-info-700',
-    pink: 'bg-pink-100 text-pink-700',
-    amber: 'bg-warning-100 text-warning-700',
-  }
-  return (
-    <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
-      <div className="flex items-center gap-3">
-        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
-          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
-          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
-            {value.toLocaleString()}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}

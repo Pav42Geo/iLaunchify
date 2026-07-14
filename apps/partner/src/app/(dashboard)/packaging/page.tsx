@@ -72,22 +72,11 @@ export default async function PackagingListPage() {
   return (
     <div className="space-y-6">
       <PageTabs group="packaging" />
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-              {roleWord} · Packaging
-            </p>
-            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-              Packaging catalog
-            </h1>
-            <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-              The packaging you offer. Each system lists one SKU&apos;s worth of physical packaging
-              (a 16oz jar, a 12oz can, a stick pack, etc.). Active items are visible to creators
-              when they pick packaging for a product.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+      <ListTitleRow
+        title="Packaging catalog"
+        sub="One system per SKU's worth of physical packaging — active items are visible to creators picking packaging."
+        actions={
+          <>
             <Link
               href="/packaging/offerings"
               className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
@@ -106,17 +95,18 @@ export default async function PackagingListPage() {
             >
               <Plus className="h-4 w-4" aria-hidden="true" /> Add packaging
             </Link>
-          </div>
-        </div>
-
-        {partner.packagingSystems.length > 0 && (
-          <div className="mt-6 grid grid-cols-3 gap-3">
-            <Kpi label="Active" value={active.length} icon={CheckCircle2} tone="emerald" />
-            <Kpi label="Drafts" value={drafts.length} icon={FileEdit} tone="ink" />
-            <Kpi label="Retired" value={retired.length} icon={Archive} tone="amber" />
-          </div>
-        )}
-      </div>
+          </>
+        }
+      />
+      {partner.packagingSystems.length > 0 && (
+        <StatStrip
+          items={[
+            { v: active.length, l: 'Active', tone: 'ok' },
+            { v: drafts.length, l: 'Drafts' },
+            { v: retired.length, l: 'Retired', tone: retired.length > 0 ? 'warn' : 'ink' },
+          ]}
+        />
+      )}
 
       {/* Catalog-review submissions — the partner's own tracker for custom packaging
           they sent to the iLaunchify team to add to the shared Library. */}
@@ -187,38 +177,6 @@ export default async function PackagingListPage() {
   )
 }
 
-function Kpi({
-  label,
-  value,
-  icon: Icon,
-  tone,
-}: {
-  label: string
-  value: number
-  icon: LucideIcon
-  tone: 'ink' | 'emerald' | 'amber'
-}) {
-  const iconTone: Record<typeof tone, string> = {
-    ink: 'bg-ink-100 text-ink-700',
-    emerald: 'bg-success-100 text-success-700',
-    amber: 'bg-warning-100 text-warning-700',
-  }
-  return (
-    <div className="rounded-2xl border border-ink-200 bg-white px-4 py-3.5">
-      <div className="flex items-center gap-3">
-        <span className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl', iconTone[tone])}>
-          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-700">{label}</p>
-          <p className="font-display text-[22px] font-bold leading-none tabular-nums text-ink-900">
-            {value.toLocaleString()}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function Section({
   title,
@@ -242,6 +200,7 @@ function Section({
 
 import type { PackagingTopology, PackagingStatus } from '@ilaunchify/db'
 import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow, StatStrip } from '@/components/list-kit'
 
 type Row = {
   id: string

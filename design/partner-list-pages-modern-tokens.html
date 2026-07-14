@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Modern operational list pages — no hero, no KPI cards (token build)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink-50:#F7F7F8;--ink-100:#EFEFF1;--ink-200:#E3E3E7;--ink-300:#C9C9D0;--ink-400:#9B9BA6;
+  --ink-500:#71717C;--ink-600:#52525B;--ink-700:#3F3F46;--ink-900:#18181A;
+  --pink-50:#FFF0F4;--pink-100:#FFDCE6;--pink-200:#FFB8CC;--pink-500:#FF2E63;--pink-700:#C40E44;
+  --success-50:#EAF7EE;--success-200:#BFE8CC;--success-600:#1F7A3D;--success-800:#0F4A24;
+  --warning-50:#FFF6E8;--warning-200:#FFE2B8;--warning-600:#B36F04;--warning-800:#7A4B03;
+  --info-50:#EAF3FF;--info-200:#BDDAFF;--info-800:#0E4D96;
+  --danger-50:#FDECEC;--danger-200:#F7C6C6;--danger-800:#8E1616;
+  --font-body:'Inter',system-ui,sans-serif;--font-display:'Bricolage Grotesque',sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font-body);background:var(--ink-50);color:var(--ink-900);padding:28px clamp(16px,4vw,44px);max-width:1160px;margin:0 auto}
+
+/* ============ 1 · Slim title row — title + inline stats + actions ============ */
+.titlerow{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;margin-bottom:18px}
+.titlerow h1{font-family:var(--font-display);font-weight:700;font-size:21px;letter-spacing:-.01em}
+.titlerow .sub{font-size:12.5px;color:var(--ink-500);margin-top:3px}
+.titlerow .actions{margin-left:auto;display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 15px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:.15s}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{opacity:.88}
+.btn-out{background:#fff;border-color:var(--ink-300);color:var(--ink-900)}.btn-out:hover{background:var(--ink-100)}
+.btn svg{width:14px;height:14px}
+
+/* ============ 2 · Stat strip — the KPI cards, collapsed to a quiet line ============ */
+.stats{display:flex;flex-wrap:wrap;gap:0;margin-bottom:14px;background:#fff;border:1px solid var(--ink-200);border-radius:14px;overflow:hidden}
+.stat{flex:1;min-width:120px;padding:12px 18px;position:relative}
+.stat + .stat::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:1px;background:var(--ink-100)}
+.stat .v{font-family:var(--font-display);font-weight:800;font-size:19px;line-height:1;letter-spacing:-.01em}
+.stat .v small{font-size:11px;font-weight:600;color:var(--ink-400);margin-left:4px;letter-spacing:0}
+.stat .l{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-400);margin-top:4px}
+.stat.warn .v{color:var(--warning-600)}
+.stat.ok .v{color:var(--success-600)}
+
+/* ============ 3 · Toolbar — filter chips w/ counts + search + view toggle ============ */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid var(--ink-200);background:#fff;padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--ink-600);cursor:pointer}
+.chip:hover{background:var(--ink-100)}
+.chip.on{background:var(--ink-900);border-color:var(--ink-900);color:#fff}
+.chip b{font-size:10.5px;font-weight:800;background:var(--ink-100);color:var(--ink-600);border-radius:99px;padding:1px 6px}
+.chip.on b{background:rgba(255,255,255,.18);color:#fff}
+.chip.warn-dot::after{content:"";width:6px;height:6px;border-radius:99px;background:var(--warning-600)}
+.toolbar .search{margin-left:auto;position:relative}
+.toolbar .search input{height:34px;width:220px;border:1px solid var(--ink-200);border-radius:999px;background:#fff;padding:0 12px 0 32px;font-size:12.5px;font-family:var(--font-body)}
+.toolbar .search svg{position:absolute;left:11px;top:9px;width:14px;height:14px;color:var(--ink-400)}
+.viewtoggle{display:inline-flex;border:1px solid var(--ink-200);border-radius:999px;background:#fff;overflow:hidden}
+.viewtoggle button{border:0;background:none;padding:7px 11px;cursor:pointer;color:var(--ink-400)}
+.viewtoggle button.on{background:var(--ink-100);color:var(--ink-900)}
+.viewtoggle svg{width:14px;height:14px;display:block}
+
+/* ============ 4 · Table — flat, airy, hover-lift, no chrome ============ */
+.tablewrap{background:#fff;border:1px solid var(--ink-200);border-radius:16px;overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px;text-align:left}
+thead th{padding:11px 14px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-400);border-bottom:1px solid var(--ink-200);background:var(--ink-50)}
+thead th:first-child{padding-left:20px}
+tbody td{padding:13px 14px;border-bottom:1px solid var(--ink-100);vertical-align:middle}
+tbody td:first-child{padding-left:20px}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:var(--pink-50)}
+.oid{font-weight:600}
+.oid small{display:block;font-weight:400;color:var(--ink-500);font-size:11.5px;margin-top:1px}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;border:1px solid;padding:2px 9px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.pill.ok{background:var(--success-50);border-color:var(--success-200);color:var(--success-800)}
+.pill.info{background:var(--info-50);border-color:var(--info-200);color:var(--info-800)}
+.pill.warn{background:var(--warning-50);border-color:var(--warning-200);color:var(--warning-800)}
+.pill.muted{background:var(--ink-100);border-color:var(--ink-200);color:var(--ink-700)}
+.money{font-variant-numeric:tabular-nums;font-weight:600}
+.dim{color:var(--ink-500);font-size:12px;font-variant-numeric:tabular-nums}
+.rowactions{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+.qship{display:inline-flex;align-items:center;gap:5px;border-radius:999px;background:var(--ink-900);color:#fff;border:0;padding:6px 12px;font-size:11.5px;font-weight:600;cursor:pointer}
+.qship:hover{opacity:.88}
+.dots{border:0;background:none;color:var(--ink-400);cursor:pointer;border-radius:8px;padding:4px}
+.dots:hover{background:var(--ink-100);color:var(--ink-900)}
+.tfoot{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;font-size:12px;color:var(--ink-500);border-top:1px solid var(--ink-100)}
+.tfoot .pager{display:flex;gap:6px}
+.tfoot .pager button{border:1px solid var(--ink-200);background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--ink-600)}
+
+.proto-note{position:fixed;right:16px;bottom:14px;background:#fff;border:1px solid var(--ink-200);border-radius:12px;padding:10px 14px;font-size:11.5px;color:var(--ink-500);max-width:470px;box-shadow:0 8px 28px rgba(24,24,26,.08)}
+.proto-note b{color:var(--ink-700)}
+</style>
+</head>
+<body>
+
+<!-- 1 · slim title row -->
+<div class="titlerow">
+  <div>
+    <h1>Orders</h1>
+    <div class="sub">Production dispatches routed to Acme Foods · money moves via Stripe Connect</div>
+  </div>
+  <div class="actions">
+    <button class="btn btn-out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 11l4 4 4-4M4 21h16"/></svg>Export</button>
+    <button class="btn btn-dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7"/></svg>Inbound queue</button>
+  </div>
+</div>
+
+<!-- 2 · stat strip (replaces the hero KPI cards) -->
+<div class="stats">
+  <div class="stat"><div class="v">3</div><div class="l">Awaiting acceptance</div></div>
+  <div class="stat"><div class="v">5</div><div class="l">In production</div></div>
+  <div class="stat warn"><div class="v">2</div><div class="l">Ready to ship</div></div>
+  <div class="stat"><div class="v">1</div><div class="l">In transit</div></div>
+  <div class="stat ok"><div class="v">$12,480<small>30 days</small></div><div class="l">Earned</div></div>
+</div>
+
+<!-- 3 · toolbar -->
+<div class="toolbar">
+  <span class="chip on">All <b>11</b></span>
+  <span class="chip">Needs acceptance <b>3</b></span>
+  <span class="chip">Producing <b>5</b></span>
+  <span class="chip warn-dot">Ready <b>2</b></span>
+  <span class="chip">Shipped <b>1</b></span>
+  <span class="chip">Delivered <b>14</b></span>
+  <span class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg><input placeholder="Search order #, product, brand…"/></span>
+  <span class="viewtoggle">
+    <button class="on" title="Table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <button title="Cards"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+  </span>
+</div>
+
+<!-- 4 · flat modern table -->
+<div class="tablewrap">
+  <table>
+    <thead>
+      <tr><th>Order</th><th>Brand</th><th>Type</th><th>Status</th><th>Amount</th><th>Due</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="oid">#ILF-2419<small>Collagen elixir · 1,200 units</small></td>
+        <td>GLOW Beauty</td><td class="dim">Product</td>
+        <td><span class="pill warn">Ready</span></td>
+        <td class="money">$4,860.00</td><td class="dim">Jul 16</td>
+        <td><div class="rowactions"><button class="qship"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7"/></svg>Mark shipped</button><button class="dots">⋯</button></div></td>
+      </tr>
+      <tr>
+        <td class="oid">#ILF-2418<small>Pre-workout tub · 800 units</small></td>
+        <td>FORGE Labs</td><td class="dim">Product</td>
+        <td><span class="pill info">Producing</span></td>
+        <td class="money">$3,120.00</td><td class="dim">Jul 21</td>
+        <td><div class="rowactions"><button class="dots">⋯</button></div></td>
+      </tr>
+      <tr>
+        <td class="oid">#ILF-2417<small>Greens sachets · labels only</small></td>
+        <td>VITAL Co.</td><td class="dim">Label</td>
+        <td><span class="pill muted">Pending accept</span></td>
+        <td class="money">$640.00</td><td class="dim">by Jul 15</td>
+        <td><div class="rowactions"><button class="dots">⋯</button></div></td>
+      </tr>
+      <tr>
+        <td class="oid">#ILF-2415<small>Collagen elixir · 600 units</small></td>
+        <td>GLOW Beauty</td><td class="dim">Product</td>
+        <td><span class="pill ok">Delivered</span></td>
+        <td class="money">$2,430.00</td><td class="dim">Jul 9</td>
+        <td><div class="rowactions"><button class="dots">⋯</button></div></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="tfoot"><span>Showing 4 of 25 dispatches</span><span class="pager"><button>← Prev</button><button>Next →</button></span></div>
+</div>
+
+<div class="proto-note"><b>Modern list pattern (token build)</b> — replaces the cream hero + big KPI cards on every operational list (Orders, Products, Inbound, Inventory, Outbound, Packaging, Accessories, Storage billing): ① slim title row with actions · ② one quiet stat strip (same numbers, ⅓ the height, dividers not cards) · ③ filter chips that CARRY the counts + right-aligned search & view toggle · ④ flat table, gray micro-header, pink hover, row-level quick actions. Everything stays URL-driven exactly as today.</div>
+
+</body>
+</html>
