@@ -20,7 +20,8 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { InfoTip, leadConflictWarning } from '@ilaunchify/ui'
 import { toast } from 'sonner'
-import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveSampleOptions, saveFlavorRules, savePackSizes, type FeeInput, type SampleOptionInput, type InitialDraft, type FlavorFillRuleInput, type PricingBasisInput, type FlavorPolicyInput, type PackSizeInput } from './build-actions'
+import { updateBasics, saveFlavors, saveFees, saveProduction, savePacking, saveSampleOptions, saveFlavorRules, savePackSizes, saveDraftAsProductDefaults, type FeeInput, type SampleOptionInput, type InitialDraft, type FlavorFillRuleInput, type PricingBasisInput, type FlavorPolicyInput, type PackSizeInput } from './build-actions'
+import type { ProductDefaultsRow } from '../../settings/product-defaults/actions'
 import { OptionAxesCard, type OptionAxisUI } from './OptionAxesCard'
 import { ApprovalTriggersCard, CompatibilityRulesCard } from './AdvancedRulesCard'
 import type { PackingProfileOption } from './ProductTypeGate'
@@ -86,7 +87,7 @@ export function computePackSplits(capacity: number, minPerFlavor: number, evenOn
 }
 
 export function VariantsPacksStep({
-  packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial, locked = false, registerFlush,
+  packingProfiles, facilities, baseSku, draftId, selected, onSelect, flavors, onFlavors, axes, onAxes, initial, productDefaults, locked = false, registerFlush,
 }: {
   packingProfiles: PackingProfileOption[]
   facilities: FacilityOption[]
@@ -99,6 +100,9 @@ export function VariantsPacksStep({
   axes: OptionAxisUI[]
   onAxes: (a: OptionAxisUI[]) => void
   initial?: InitialDraft | null
+  /** Partner's saved product defaults (null if none) — drives the run-facts
+   *  "Save as my defaults" opt-in (shown only when values differ). */
+  productDefaults?: ProductDefaultsRow | null
   /** Lock-after-recipe (#38): once a recipe is authored the structural type is
    *  fixed — disable changing it. The rest of the step stays editable. */
   locked?: boolean
@@ -193,7 +197,7 @@ export function VariantsPacksStep({
       {/* Shared production block — applies to EVERY product type */}
       {selected && (
         <div className="card" style={{ marginBottom: 16 }}>
-          <SharedProduction draftId={draftId} facilities={facilities} baseSku={baseSku} initial={initial} registerFlush={registerFlush} />
+          <SharedProduction draftId={draftId} facilities={facilities} baseSku={baseSku} initial={initial} productDefaults={productDefaults ?? null} registerFlush={registerFlush} />
         </div>
       )}
 
@@ -262,7 +266,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 /** Production & availability — shared across all product types. Fulfillment mode
  *  drives MOQ/increment; capacity vs MOQ raises a warning. */
-function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; initial?: InitialDraft | null; registerFlush?: (fn: () => Promise<void> | void) => () => void }) {
+function SharedProduction({ draftId, facilities, baseSku, initial, productDefaults, registerFlush }: { draftId: string | null; facilities: FacilityOption[]; baseSku: string; initial?: InitialDraft | null; productDefaults: ProductDefaultsRow | null; registerFlush?: (fn: () => Promise<void> | void) => () => void }) {
   const p = initial?.production
   const fmInit: 'bulk' | 'mto' | 'both' = p?.fulfillmentMode === 'ON_DEMAND' ? 'mto' : p?.fulfillmentMode === 'BOTH' ? 'both' : 'bulk'
   const [fulfillment, setFulfillment] = useState<'bulk' | 'mto' | 'both'>(fmInit)
@@ -306,6 +310,31 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
 
   // Persist production spec onto the draft's default variant (#35) — debounced.
   const fulfillmentEnum = fulfillment === 'mto' ? 'ON_DEMAND' : fulfillment === 'both' ? 'BOTH' : 'BULK_PRODUCTION'
+
+  // "Save these as my defaults" opt-in (product-defaults capture). Rendered only
+  // when the entered run facts DIFFER from the partner's saved defaults (or none
+  // exist) — no dead checkbox. Saved on the step's flush, after the autosaves.
+  const [saveAsDefaults, setSaveAsDefaults] = useState(false)
+  const savedDefaultsRef = useRef(false)
+  const curTempMin = tempMin === '' ? null : tempMin
+  const curTempMax = tempMax === '' ? null : tempMax
+  const curCapacity = capacity || null
+  const defaultsDiffer =
+    !productDefaults ||
+    productDefaults.fulfillmentMode !== fulfillmentEnum ||
+    (productDefaults.moqMin ?? null) !== effMoq ||
+    (productDefaults.orderIncrement ?? null) !== effInc ||
+    (productDefaults.monthlyCapacity ?? null) !== curCapacity ||
+    (productDefaults.leadTimeRepeatDays ?? null) !== leadRepeat ||
+    (productDefaults.leadTimeFirstRunDays ?? null) !== leadFirstRun ||
+    (productDefaults.lotTracking ?? null) !== lotTracking ||
+    (productDefaults.storageClass ?? null) !== storageClass ||
+    (productDefaults.storageTempMinF ?? null) !== curTempMin ||
+    (productDefaults.storageTempMaxF ?? null) !== curTempMax
+  // Re-arm the one-shot save whenever a run fact changes (edited values re-save).
+  useEffect(() => {
+    savedDefaultsRef.current = false
+  }, [fulfillmentEnum, effMoq, effInc, curCapacity, leadRepeat, leadFirstRun, lotTracking, storageClass, curTempMin, curTempMax])
   const prodTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!draftId) return
@@ -351,6 +380,17 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
       netContentValue: netVal === '' ? null : netVal,
       netContentUnit: netUnit || null,
     })
+    // Opt-in: capture these run facts as the partner's defaults (from the draft
+    // we just persisted). One-shot per edit; never blocks navigation.
+    if (saveAsDefaults && defaultsDiffer && !savedDefaultsRef.current) {
+      const res = await saveDraftAsProductDefaults(draftId)
+      if (res.ok) {
+        savedDefaultsRef.current = true
+        toast.success('Saved — new products will start from these values. Edit anytime under Services → Product defaults.')
+      } else {
+        toast.error(res.error)
+      }
+    }
   }
   useEffect(() => {
     if (!registerFlush) return
@@ -422,6 +462,12 @@ function SharedProduction({ draftId, facilities, baseSku, initial, registerFlush
       )}
       {onDemand && (
         <p className="hint" style={{ marginTop: 8 }}>On-demand: no batch minimum (MOQ = 1); lead time runs longer than bulk.</p>
+      )}
+      {defaultsDiffer && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, cursor: 'pointer', fontSize: 13 }}>
+          <input type="checkbox" checked={saveAsDefaults} onChange={(e) => setSaveAsDefaults(e.target.checked)} />
+          <span>Save these as my defaults for future products</span>
+        </label>
       )}
     </>
   )

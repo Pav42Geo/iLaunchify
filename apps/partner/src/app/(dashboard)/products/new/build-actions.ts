@@ -14,6 +14,7 @@ import { suggestPhrases, PHRASE_FACT_FLAGS } from '@ilaunchify/marketplace'
 import { uploadFile, getSignedReadUrl, deleteFile } from '@ilaunchify/storage'
 import { lookupFeeRate, creatorTierToPlanCode, FEE_EVENTS } from '@ilaunchify/plans'
 import { FORMAT_OPTIONS, MANUFACTURING_PROCESS_OPTIONS, ALLERGEN_FREE_OPTIONS, MARKET_FILTER_OPTIONS } from '@ilaunchify/types'
+import { savePartnerProductDefaults, type ProductDefaultsInput } from '../../settings/product-defaults/actions'
 
 const FALLBACK_FEE_PCT = 15
 
@@ -2370,6 +2371,92 @@ export async function updateBasics(
   } catch (err) {
     console.error('[updateBasics] failed:', err)
     return { ok: false, error: `Could not save: ${(err as Error).message}` }
+  }
+}
+
+/**
+ * "Save these as my defaults" — capture the DRAFT's current run facts as the
+ * partner's PartnerProductDefaults (the opt-in on the run-facts step). Reads the
+ * PERSISTED draft (the checkbox fires after the step's autosaves flush) and reuses
+ * savePartnerProductDefaults — the single writer for the row (validates facility
+ * ownership + upserts by partnerId). applyToNewProducts is preserved from the
+ * existing row, defaulting to true when none exists — the checkbox never flips it
+ * off (createDraftShell's false=seed-nothing meaning is untouched).
+ */
+export async function saveDraftAsProductDefaults(draftId: string): Promise<Result> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: draftId },
+      select: {
+        manufacturerServiceId: true,
+        countryOfOrigin: true,
+        leadTimeRepeatDays: true,
+        leadTimeFirstRunDays: true,
+        storageClass: true,
+        storageTempMinF: true,
+        storageTempMaxF: true,
+      },
+    })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) {
+      return { ok: false, error: 'Not your product.' }
+    }
+
+    // The default variant (unitsPerPack: null) carries the variant-level facts.
+    const variant = await prisma.productTemplateVariant.findFirst({
+      where: { productTemplateId: draftId, unitsPerPack: null },
+      select: {
+        moqMin: true,
+        moqMax: true,
+        orderIncrement: true,
+        monthlyCapacity: true,
+        fulfillmentMode: true,
+        lotTracking: true,
+        facilityId: true,
+      },
+    })
+
+    // Preserve the existing applyToNewProducts (never flip it off); true when none.
+    const existing = await (
+      prisma as unknown as {
+        partnerProductDefaults: {
+          findUnique: (a: unknown) => Promise<{ applyToNewProducts: boolean } | null>
+        }
+      }
+    ).partnerProductDefaults
+      .findUnique({ where: { partnerId: partner.id }, select: { applyToNewProducts: true } })
+      .catch(() => null)
+
+    const input: ProductDefaultsInput = {
+      defaultFacilityId: variant?.facilityId ?? null,
+      countryOfOrigin: tpl.countryOfOrigin ?? null,
+      leadTimeRepeatDays: tpl.leadTimeRepeatDays ?? null,
+      leadTimeFirstRunDays: tpl.leadTimeFirstRunDays ?? null,
+      moqMin: variant?.moqMin ?? null,
+      moqMax: variant?.moqMax ?? null,
+      orderIncrement: variant?.orderIncrement ?? null,
+      monthlyCapacity: variant?.monthlyCapacity ?? null,
+      fulfillmentMode: variant?.fulfillmentMode ?? null,
+      lotTracking: variant?.lotTracking ?? null,
+      // PartnerProductDefaults only models the three basic classes; a non-
+      // representable class (e.g. PROTECT_HEAT) captures as null.
+      storageClass:
+        tpl.storageClass === 'AMBIENT' || tpl.storageClass === 'CHILLED' || tpl.storageClass === 'FROZEN'
+          ? tpl.storageClass
+          : null,
+      storageTempMinF: tpl.storageTempMinF ?? null,
+      storageTempMaxF: tpl.storageTempMaxF ?? null,
+      applyToNewProducts: existing?.applyToNewProducts ?? true,
+    }
+    return await savePartnerProductDefaults(input)
+  } catch (err) {
+    console.error('[saveDraftAsProductDefaults] failed:', err)
+    return { ok: false, error: `Could not save defaults: ${(err as Error).message}` }
   }
 }
 

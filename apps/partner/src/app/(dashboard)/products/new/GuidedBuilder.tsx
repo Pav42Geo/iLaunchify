@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
 import { createDraftShell, saveOptionAxes, hasRecipeRows, loadDraft, type InitialDraft } from './build-actions'
+import type { ProductDefaultsRow } from '../../settings/product-defaults/actions'
 import { snapshotDraft, listDraftSnapshots } from './snapshot-actions'
 import { archiveDraft, submitProductForReview } from '../actions'
 import { RecipeBuilderStep } from './RecipeBuilderStep'
@@ -64,6 +65,9 @@ interface GuidedBuilderProps {
   serviceScopes: string[]
   /** When resuming a draft (?draft=<id>) — seeds the builder state. */
   initial?: InitialDraft | null
+  /** The partner's saved product defaults (null if none). The run-facts step
+   *  shows the "Save as my defaults" opt-in only when values differ from this. */
+  productDefaults?: ProductDefaultsRow | null
   /** Recipe-builder Mode 2 (AI parser) enabled for this partner's plan (Trusted+). */
   aiAvailable?: boolean
   /** Recipe-builder Mode 3 (declared panel) enabled for this partner's plan. */
@@ -105,6 +109,7 @@ export function GuidedBuilder({
   facilities,
   packingProfiles,
   initial: initialProp,
+  productDefaults = null,
   aiAvailable = false,
   declareAvailable = false,
   currencies = ['USD'],
@@ -494,6 +499,7 @@ export function GuidedBuilder({
                 facilities={facilities}
                 baseSku={name}
                 draftId={draftId}
+                productDefaults={productDefaults}
                 selected={profile}
                 onSelect={setProfile}
                 locked={recipeLocked}

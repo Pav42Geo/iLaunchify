@@ -11,6 +11,7 @@ import { hasFeature, partnerTierToPlanCode } from '@ilaunchify/plans'
 import { GuidedBuilder } from './GuidedBuilder'
 import { PartnerTopbarRight } from '@/components/nav/PartnerTopbarRight'
 import { loadDraft } from './build-actions'
+import { getPartnerProductDefaults } from '../../settings/product-defaults/actions'
 import type { StructuralPackType } from './structuralPackType'
 
 export const dynamic = 'force-dynamic'
@@ -114,6 +115,10 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
   // Resume an existing draft when ?draft=<id> is present (#35 load-back).
   const initial = draft ? await loadDraft(draft) : null
 
+  // Current saved defaults — lets the run-facts step show the "Save as my
+  // defaults" opt-in only when the entered values actually differ.
+  const productDefaults = await getPartnerProductDefaults(partner.id)
+
   // Admin domain on/off (DomainSetting) — only enabled domains appear in the
   // Step-1 domain picker. OTC ships disabled.
   const enabledDomains = await getEnabledDomains()
@@ -136,6 +141,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
       )}
       <GuidedBuilder
         initial={initial}
+        productDefaults={productDefaults}
         studioLogo={studioLogo}
       categories={categories}
       subcategories={subcategories}
