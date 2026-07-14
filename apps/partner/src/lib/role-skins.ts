@@ -16,7 +16,6 @@
 import {
   Inbox,
   Wrench,
-  Settings,
   BarChart3,
   DollarSign,
   Box,
@@ -35,7 +34,11 @@ import {
   Handshake,
   Rocket,
   Lightbulb,
-  MessageCircle,
+  Landmark,
+  Truck,
+  Globe,
+  Users,
+  Bell,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -55,6 +58,18 @@ export interface PartnerNavItem {
   href: string
   label: string
   icon: LucideIcon
+  /**
+   * Extra pathname prefixes that keep this item highlighted — used by the
+   * tab-merged pages (e.g. Payments is active on /payments AND
+   * /settings/billing AND /settings/tax-documents).
+   */
+  activeMatch?: string[]
+}
+
+/** One labeled sidebar section (label null = the unlabeled top cluster). */
+export interface PartnerNavGroup {
+  label: string | null
+  items: PartnerNavItem[]
 }
 
 // ---------------------------------------------------------------------------
@@ -69,7 +84,13 @@ const NAV_ORDERS: PartnerNavItem = { href: '/orders', label: 'Orders', icon: Inb
 const NAV_PERFORMANCE: PartnerNavItem = { href: '/performance', label: 'Performance', icon: Gauge }
 // MM-6 — manufacturer merit standing (badge → fee tier). Manufacturing-only,
 // commercial (shows the fee it unlocks) → org-admin.
-const NAV_STANDING: PartnerNavItem = { href: '/standing', label: 'Your standing', icon: Medal }
+const NAV_STANDING: PartnerNavItem = {
+  href: '/standing',
+  label: 'Standing',
+  icon: Medal,
+  // Tab-merged (Pavel 2026-07-13): Merit & fee tier · Performance.
+  activeMatch: ['/standing', '/performance'],
+}
 const NAV_INBOUND: PartnerNavItem = { href: '/inbound', label: 'Inbound', icon: PackageOpen }
 const NAV_INVENTORY: PartnerNavItem = { href: '/inventory', label: 'Inventory', icon: Boxes }
 const NAV_OUTBOUND: PartnerNavItem = { href: '/outbound', label: 'Outbound', icon: Send }
@@ -82,8 +103,15 @@ const NAV_PRINT_SPEC: PartnerNavItem = { href: '/print-spec', label: 'Prepress o
 const NAV_CAPABILITY: PartnerNavItem = { href: '/capability-requests', label: 'Capability requests', icon: Megaphone }
 const NAV_ACCESSORIES: PartnerNavItem = { href: '/accessories', label: 'Accessories', icon: Gift }
 const NAV_CERTIFICATIONS: PartnerNavItem = { href: '/certifications', label: 'Certifications', icon: Award }
-const NAV_PAYMENTS: PartnerNavItem = { href: '/payments', label: 'Payments', icon: DollarSign }
-const NAV_SETTINGS: PartnerNavItem = { href: '/settings', label: 'Settings', icon: Settings }
+const NAV_PAYMENTS: PartnerNavItem = {
+  href: '/payments',
+  label: 'Payments',
+  icon: DollarSign,
+  // Tab-merged (Pavel 2026-07-13): Payouts · Billing · Tax documents.
+  activeMatch: ['/payments', '/settings/billing', '/settings/tax-documents'],
+}
+// NAV_SETTINGS retired (Pavel 2026-07-13) — the Settings hub + rail merged
+// into this ONE sidebar; /settings redirects to /settings/company.
 const NAV_COPARTNERS: PartnerNavItem = { href: '/co-partners', label: 'Co-partners', icon: Handshake }
 // Co-creation Opportunity Pool (CO_CREATION_MARKETPLACE_SPEC §10) — matched
 // creator briefs + Express Interest. Manufacturing-only, commercial (terms/
@@ -91,8 +119,37 @@ const NAV_COPARTNERS: PartnerNavItem = { href: '/co-partners', label: 'Co-partne
 const NAV_OPPORTUNITIES: PartnerNavItem = { href: '/opportunities', label: 'Opportunities', icon: Lightbulb }
 // Rooms & Messages hub (2026-07-13) — room chat + 1:1 DMs. Operational: every
 // team member in a collaboration room chats there, not just org admins.
-const NAV_MESSAGES: PartnerNavItem = { href: '/messages', label: 'Messages', icon: MessageCircle }
+// Messages was REMOVED from the main sidebar (Pavel 2026-07-13) — it lives
+// only inside the Co-Creation Studio nav (CO_CREATION_NAV in PartnerSidebar).
 const NAV_ACTIVATION: PartnerNavItem = { href: '/activation', label: 'Activation Setup', icon: Rocket }
+
+// Merged-sidebar additions (Pavel 2026-07-13): the Settings rail folded into
+// the ONE sidebar; these were rail-only destinations before. Tab-merged pages
+// carry activeMatch so the item stays lit on every tab.
+const NAV_COMPANY: PartnerNavItem = {
+  href: '/settings/company',
+  label: 'Company profile',
+  icon: Landmark,
+  activeMatch: ['/settings/company', '/profile'],
+}
+const NAV_LOGISTICS: PartnerNavItem = {
+  href: '/settings/fulfillment',
+  label: 'Logistics',
+  icon: Truck,
+  activeMatch: ['/settings/fulfillment', '/settings/shipping'],
+}
+const NAV_MARKET: PartnerNavItem = {
+  href: '/settings/participation',
+  label: 'Market participation',
+  icon: Globe,
+}
+const NAV_TEAM: PartnerNavItem = { href: '/settings/team', label: 'Team & roles', icon: Users }
+const NAV_PREFERENCES: PartnerNavItem = {
+  href: '/settings/notifications',
+  label: 'Preferences',
+  icon: Bell,
+  activeMatch: ['/settings/notifications', '/settings/feedback'],
+}
 
 /**
  * Resolve the sidebar nav for a partner from their service types.
@@ -123,7 +180,20 @@ export function roleNavFor(
     activationComplete?: boolean
   } = {},
 ): PartnerNavItem[] {
-  const isOrgAdmin = opts.isOrgAdmin ?? true // founders/back-compat default
+  return roleNavGroupsFor(serviceTypes, opts).flatMap((g) => g.items)
+}
+
+/**
+ * Merged-sidebar groups (Pavel 2026-07-13, design/partner-merged-sidebar-tokens.html):
+ * ONE navigation — the Settings rail is folded in, the hub is retired.
+ * Top cluster (unlabeled) → Work → Catalog → Business → Operations → Account.
+ * Messages is Co-Creation-Studio-only. Products is top-level.
+ */
+export function roleNavGroupsFor(
+  serviceTypes: readonly string[],
+  opts: Parameters<typeof roleNavFor>[1] = {},
+): PartnerNavGroup[] {
+  const isOrgAdmin = opts?.isOrgAdmin ?? true // founders/back-compat default
   const effective: readonly string[] =
     serviceTypes.length > 0
       ? serviceTypes
@@ -138,44 +208,68 @@ export function roleNavFor(
   const purePrinter = has('LABEL_PRINTING') && !producing && !has('COPACKING')
 
   // P3 §2 role scoping: non-admin members get the OPERATIONAL surfaces of
-  // their services; commercial + catalog surfaces (products, packaging,
-  // pricing, payments, billing) are org-admin only.
-  const nav: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS, NAV_PERFORMANCE]
-  // Messages: co-creation participants (producers + co-packers). Rooms outlive
-  // the module kick-off toggle — never strand an in-flight conversation.
-  if (producing || has('COPACKING')) nav.push(NAV_MESSAGES)
-  if (fulfillment) nav.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
+  // their services; commercial + catalog surfaces are org-admin only.
+
+  // Top cluster — the everyday surfaces.
+  const top: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS]
+  if (producing && isOrgAdmin) top.push(NAV_PRODUCTS) // Pavel: Products top-level
+  if (fulfillment) top.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
+
+  const work: PartnerNavItem[] = []
   if (isOrgAdmin) {
-    // Post-approval setup surface — the union of every service's activation
-    // track. Hidden once everything is live (Pavel 2026-07-13).
-    if (!opts.activationComplete) nav.push(NAV_ACTIVATION)
-    if (producing) nav.push(NAV_STANDING)
+    // Post-approval setup — hidden once everything is live (Pavel 2026-07-13).
+    if (!opts?.activationComplete) work.push(NAV_ACTIVATION)
     // Co-creation briefs (Pavel 2026-07-10, admin-choosable poolAccessPolicy):
-    // manufacturers always; co-packers unless the admin set MFG_ONLY (layout
-    // passes copackBriefPool from settings). Recipe-door-only scoping for
-    // co-packers is enforced in the pool loader + express-interest action.
+    // manufacturers always; co-packers unless the admin set MFG_ONLY.
     if (
-      opts.briefPoolEnabled !== false &&
-      (producing || (has('COPACKING') && opts.copackBriefPool !== false))
+      opts?.briefPoolEnabled !== false &&
+      (producing || (has('COPACKING') && opts?.copackBriefPool !== false))
     ) {
-      nav.push(NAV_OPPORTUNITIES)
+      work.push(NAV_OPPORTUNITIES)
     }
-    if (producing) nav.push(NAV_ON_DEMAND, NAV_PRODUCTS)
-    nav.push(NAV_SERVICES)
-    if (producing) nav.push(NAV_PACKAGING)
-    if (prepress) nav.push(NAV_PRINT_SPEC)
-    // PS-8c — claimable capability RFQs. Public print work → pure printers only
-    // (a producer/co-packer that also prints closes its own cycle, doesn't claim).
-    if (purePrinter) nav.push(NAV_CAPABILITY)
-    if (producing) nav.push(NAV_ACCESSORIES)
-    // Co-partners (D7) — a manufacturer directs its own print/pack subcontractors.
-    // Gated on the nomination feature being enabled (dark until counsel clears it).
-    if (producing && opts.showCoPartners) nav.push(NAV_COPARTNERS)
-    nav.push(NAV_CERTIFICATIONS, NAV_PAYMENTS)
-    if (fulfillment) nav.push(NAV_BILLING)
+    if (producing) work.push(NAV_ON_DEMAND)
   }
-  nav.push(NAV_SETTINGS)
-  return nav
+
+  const catalog: PartnerNavItem[] = []
+  if (isOrgAdmin) {
+    if (producing) catalog.push(NAV_PACKAGING)
+    if (prepress) catalog.push(NAV_PRINT_SPEC)
+    // PS-8c — claimable capability RFQs → pure printers only.
+    if (purePrinter) catalog.push(NAV_CAPABILITY)
+    if (producing) catalog.push(NAV_ACCESSORIES)
+  }
+
+  const business: PartnerNavItem[] = []
+  if (isOrgAdmin) {
+    business.push(NAV_COMPANY, NAV_SERVICES, NAV_CERTIFICATIONS)
+    if (producing) business.push(NAV_STANDING)
+    // Co-partners (D7) — dark until counsel clears nomination.
+    if (producing && opts?.showCoPartners) business.push(NAV_COPARTNERS)
+  } else {
+    // Members keep the operational reliability view (Risk Center M3).
+    business.push(NAV_PERFORMANCE)
+  }
+
+  const operations: PartnerNavItem[] = []
+  if (isOrgAdmin) operations.push(NAV_LOGISTICS, NAV_MARKET)
+
+  const account: PartnerNavItem[] = []
+  if (isOrgAdmin) {
+    account.push(NAV_PAYMENTS)
+    if (fulfillment) account.push(NAV_BILLING)
+    account.push(NAV_TEAM)
+  }
+  account.push(NAV_PREFERENCES) // every member can tune notifications/feedback
+
+  const groups: PartnerNavGroup[] = [
+    { label: null, items: top },
+    { label: 'Work', items: work },
+    { label: 'Catalog', items: catalog },
+    { label: 'Business', items: business },
+    { label: 'Operations', items: operations },
+    { label: 'Account', items: account },
+  ]
+  return groups.filter((g) => g.items.length > 0)
 }
 
 // ---------------------------------------------------------------------------

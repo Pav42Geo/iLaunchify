@@ -11,6 +11,7 @@ import { cn } from '@ilaunchify/ui'
 import Link from 'next/link'
 import { DollarSign, ArrowDownToLine, AlertCircle, ArrowUpDown, type LucideIcon } from 'lucide-react'
 import { PaymentRowActions } from './PaymentRowActions'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Payments — Partner' }
@@ -107,6 +108,7 @@ export default async function PaymentsPage({
 
   return (
     <div className="space-y-6">
+      <PageTabs group="payments" />
       {/* Slim header — prototype panel chrome, no hero (Pavel 2026-07-13) */}
       <div>
         <div className="flex flex-wrap items-start justify-between gap-3">

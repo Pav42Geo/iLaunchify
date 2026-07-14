@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Partner merged sidebar — one nav, 5 tab-merged pages (token build)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink-50:#F7F7F8;--ink-100:#EFEFF1;--ink-200:#E3E3E7;--ink-300:#C9C9D0;--ink-400:#9B9BA6;
+  --ink-500:#71717C;--ink-600:#52525B;--ink-700:#3F3F46;--ink-900:#18181A;
+  --pink-50:#FFF0F4;--pink-100:#FFDCE6;--pink-200:#FFB8CC;--pink-500:#FF2E63;--pink-700:#C40E44;
+  --success-50:#EAF7EE;--success-200:#BFE8CC;--success-600:#1F7A3D;--success-700:#166130;
+  --warning-50:#FFF6E8;--warning-500:#E8930C;
+  --info-50:#EAF3FF;--info-500:#2F7DE1;
+  --bg-hero:#FFFFFF;
+  --font-body:'Inter',system-ui,sans-serif;--font-display:'Bricolage Grotesque',sans-serif;--font-serif:'Fraunces',serif;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font-body);background:var(--ink-50);color:var(--ink-900)}
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+
+/* ================= SIDEBAR ================= */
+.sb{background:#fff;border-right:1px solid var(--ink-200);padding:16px 12px 24px;overflow-y:auto}
+.sb .portal{padding:2px 10px 14px}
+.sb .portal .t{font-family:var(--font-display);font-weight:700;font-size:13px;color:var(--ink-900)}
+.sb .portal .pill{display:inline-flex;align-items:center;gap:5px;margin-top:5px;border:1px solid var(--success-200);background:var(--success-50);color:var(--success-700);font-size:10px;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:999px}
+.sb .portal .pill i{width:6px;height:6px;border-radius:99px;background:var(--success-600)}
+.grp{margin-top:14px}
+.grp .gl{padding:0 10px 5px;font-size:10.5px;font-weight:800;letter-spacing:.07em;color:var(--ink-400);text-transform:uppercase}
+.it{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:13px;font-weight:500;color:var(--ink-700);cursor:pointer;user-select:none}
+.it:hover{background:var(--ink-100)}
+.it.on{background:var(--pink-50);color:var(--pink-700);font-weight:600}
+.it svg{width:16px;height:16px;flex:none;color:var(--ink-500)}
+.it.on svg{color:var(--pink-700)}
+.it .bdg{margin-left:auto;background:var(--warning-500);color:#fff;font-size:9.5px;font-weight:800;border-radius:99px;padding:1px 6px}
+.it .cnt{margin-left:auto;background:var(--pink-500);color:#fff;font-size:9.5px;font-weight:800;border-radius:99px;padding:1px 6px}
+.it .tabhint{margin-left:auto;font-size:9.5px;font-weight:700;color:var(--ink-400);border:1px solid var(--ink-200);border-radius:6px;padding:1px 5px}
+.it.on .tabhint{color:var(--pink-700);border-color:var(--pink-200)}
+
+/* ================= MAIN ================= */
+.main{padding:26px 30px;max-width:1060px}
+.hdr h1{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:-.01em}
+.hdr p{margin-top:3px;font-size:13px;color:var(--ink-600);max-width:640px}
+/* tabs */
+.tabs{display:flex;gap:2px;margin-top:16px;border-bottom:1px solid var(--ink-200)}
+.tab{padding:10px 4px;margin-right:22px;font-size:13.5px;font-weight:600;color:var(--ink-500);border-bottom:2.5px solid transparent;cursor:pointer}
+.tab:hover{color:var(--ink-900)}
+.tab.on{color:var(--pink-700);border-color:var(--pink-500)}
+.pane{display:none;padding-top:18px}
+.pane.show{display:block}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:16px;padding:20px;margin-bottom:14px}
+.card h3{font-family:var(--font-display);font-size:15px;font-weight:700}
+.card p{font-size:12.5px;color:var(--ink-500);margin-top:4px}
+.mock{margin-top:14px;display:grid;gap:8px}
+.mock .bar{height:12px;border-radius:6px;background:var(--ink-100)}
+.mock .bar.w60{width:60%}.mock .bar.w80{width:80%}.mock .bar.w40{width:40%}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.kpi{background:#fff;border:1px solid var(--ink-200);border-radius:14px;padding:14px}
+.kpi .v{font-family:var(--font-display);font-weight:800;font-size:20px}
+.kpi .l{font-size:11px;color:var(--ink-500);margin-top:2px}
+.note{position:fixed;right:16px;bottom:14px;background:#fff;border:1px solid var(--ink-200);border-radius:12px;padding:10px 14px;font-size:11.5px;color:var(--ink-500);max-width:460px;box-shadow:0 8px 28px rgba(24,24,26,.08)}
+.note b{color:var(--ink-700)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ============ MERGED SIDEBAR ============ -->
+<nav class="sb" id="sb">
+  <div class="portal">
+    <div class="t">Partner Portal</div>
+    <span class="pill"><i></i>ACTIVE</span>
+  </div>
+
+  <div class="grp">
+    <div class="it" data-page="plain" data-title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</div>
+    <div class="it" data-page="plain" data-title="Orders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/></svg>Orders</div>
+    <div class="it" data-page="plain" data-title="Products"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4v10l8 4 8-4z"/><path d="M12 11v10M4 7l8 4 8-4"/></svg>Products</div>
+    <!-- Messages removed (Pavel 2026-07-13): lives ONLY inside the Co-Creation Studio nav -->
+  </div>
+
+  <div class="grp"><div class="gl">Work</div>
+    <div class="it" data-page="plain" data-title="Opportunities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>Opportunities</div>
+    <div class="it" data-page="plain" data-title="On-demand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg>On-demand</div>
+  </div>
+
+  <div class="grp"><div class="gl">Catalog</div>
+    <div class="it" data-page="plain" data-title="Packaging"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>Packaging</div>
+    <div class="it" data-page="plain" data-title="Prepress output"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 14h12v8H6z"/></svg>Prepress output</div>
+    <div class="it" data-page="plain" data-title="Accessories"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>Accessories</div>
+  </div>
+
+  <div class="grp"><div class="gl">Business</div>
+    <div class="it" data-page="company"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg>Company profile<span class="tabhint">2 tabs</span></div>
+    <div class="it" data-page="plain" data-title="Services"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>Services</div>
+    <div class="it" data-page="plain" data-title="Certifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg>Certifications<span class="bdg">1</span></div>
+    <div class="it" data-page="standing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.1 6.6.9-4.8 4.6 1.2 6.6L12 17.6 6.1 20.2l1.2-6.6L2.5 9l6.6-.9z"/></svg>Standing<span class="tabhint">2 tabs</span></div>
+    <div class="it" data-page="plain" data-title="Co-partners"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Co-partners</div>
+  </div>
+
+  <div class="grp"><div class="gl">Operations</div>
+    <div class="it" data-page="logistics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Logistics<span class="tabhint">2 tabs</span></div>
+    <div class="it" data-page="plain" data-title="Market participation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20"/></svg>Market participation</div>
+  </div>
+
+  <div class="grp"><div class="gl">Account</div>
+    <div class="it on" data-page="payments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>Payments<span class="tabhint">3 tabs</span></div>
+    <div class="it" data-page="plain" data-title="Team & roles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Team &amp; roles<span class="cnt">4</span></div>
+    <div class="it" data-page="prefs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>Preferences<span class="tabhint">2 tabs</span></div>
+  </div>
+</nav>
+
+<!-- ============ MAIN ============ -->
+<main class="main" id="main"></main>
+</div>
+
+<div class="note"><b>Merged sidebar (token build)</b> — Settings rail + app sidebar become ONE nav. Products top-level. Five tab-merged pages (chips show tab count): Company profile (Profile · Front face) · Standing (Merit · Performance) · Logistics (Receiving · Shipping) · Payments (Payouts · Billing · Tax docs) · Preferences (Notifications · Feedback). Labeling folds into Services; the Settings hub is retired (status pills → Dashboard); Messages lives only in the Co-Creation Studio. Click around — every tabbed page is live.</div>
+
+<script>
+const PAGES = {
+  payments: {
+    title: 'Payments', desc: 'Your earnings, payouts, billing identity and tax forms — all money admin in one place. Money moves through Stripe Connect.',
+    tabs: [
+      {label:'Payouts', body:`<div class="kpis"><div class="kpi"><div class="v">$12,480</div><div class="l">Earned · 30 days</div></div><div class="kpi"><div class="v">$148k</div><div class="l">Lifetime earned</div></div><div class="kpi"><div class="v">$3,120</div><div class="l">Pending payout</div></div><div class="kpi"><div class="v">$0</div><div class="l">Clawbacks</div></div></div><div class="card" style="margin-top:14px"><h3>Payout history</h3><p>The existing /payments table — filter chips, statuses, Stripe dashboard link.</p><div class="mock"><div class="bar w80"></div><div class="bar w60"></div><div class="bar w80"></div><div class="bar w40"></div></div></div>`},
+      {label:'Billing', body:`<div class="card"><h3>Billing details</h3><p>Invoice contact + tax ID — the existing /settings/billing form, unchanged.</p><div class="mock"><div class="bar w60"></div><div class="bar w40"></div><div class="bar w60"></div></div></div>`},
+      {label:'Tax documents', body:`<div class="card"><h3>1099s &amp; annual earnings</h3><p>Issued and filed through Stripe — the existing /settings/tax-documents page.</p><div class="mock"><div class="bar w80"></div><div class="bar w60"></div></div></div>`},
+    ],
+  },
+  company: {
+    title: 'Company profile', desc: 'Your official identity — and exactly how eligible creators see it.',
+    tabs: [
+      {label:'Profile', body:`<div class="card"><h3>Identity, media &amp; disclosure</h3><p>Logo/cover uploads, tagline, about, best-for tags, facilities, verification documents, marketplace identity — the existing /settings/company page.</p><div class="mock"><div class="bar w80"></div><div class="bar w60"></div><div class="bar w80"></div></div></div>`},
+      {label:'Front face (preview)', body:`<div class="card"><h3>What creators see</h3><p>The live PartnerFrontFace render + go-live checklist with Fix links — the existing /profile page.</p><div class="mock"><div class="bar w60"></div><div class="bar w80"></div><div class="bar w40"></div></div></div>`},
+    ],
+  },
+  standing: {
+    title: 'Standing', desc: 'How iLaunchify sees your work — the earned badge and the nightly reliability score.',
+    tabs: [
+      {label:'Merit & fee tier', body:`<div class="card"><h3>Fee ladder + pillars</h3><p>Badge, fee ladder, welcome offer, merit pillars, path to next badge, contestable ratings — the existing /standing page.</p><div class="mock"><div class="bar w80"></div><div class="bar w60"></div></div></div>`},
+      {label:'Performance', body:`<div class="card"><h3>Reliability score</h3><p>Weighted components from the nightly risk snapshot — the existing /performance page.</p><div class="mock"><div class="bar w60"></div><div class="bar w80"></div></div></div>`},
+    ],
+  },
+  logistics: {
+    title: 'Logistics', desc: 'How goods leave and reach your facility — receiving rules, availability windows, and parcel labels.',
+    tabs: [
+      {label:'Receiving & availability', body:`<div class="card"><h3>Receiving spec + blackout dates</h3><p>Per-service cards — the existing /settings/fulfillment page.</p><div class="mock"><div class="bar w80"></div><div class="bar w40"></div></div></div>`},
+      {label:'Carrier & shipping', body:`<div class="card"><h3>iLaunchify shipping or BYO carrier</h3><p>EasyPost platform account vs your negotiated rates — the existing /settings/shipping page.</p><div class="mock"><div class="bar w60"></div><div class="bar w60"></div></div></div>`},
+    ],
+  },
+  prefs: {
+    title: 'Preferences', desc: 'Notifications and a direct line to us.',
+    tabs: [
+      {label:'Notifications', body:`<div class="card"><h3>Grouped notification switches</h3><p>The existing /settings/notifications page — required groups stay locked on.</p><div class="mock"><div class="bar w60"></div><div class="bar w60"></div><div class="bar w60"></div></div></div>`},
+      {label:'Feedback', body:`<div class="card"><h3>Give feedback</h3><p>The existing /settings/feedback box — a human reads every submission.</p><div class="mock"><div class="bar w80"></div></div></div>`},
+    ],
+  },
+}
+
+function renderPlain(title){
+  document.getElementById('main').innerHTML =
+    `<div class="hdr"><h1>${title}</h1><p>Unchanged page — exactly what's live today${title==='Services' ? ' (+ the Labeling &amp; VAS card folds in here as one more accordion)' : ''}.</p></div>
+     <div class="card" style="margin-top:18px"><div class="mock"><div class="bar w80"></div><div class="bar w60"></div><div class="bar w80"></div><div class="bar w40"></div></div></div>`
+}
+function renderTabs(key, idx=0){
+  const p = PAGES[key]
+  document.getElementById('main').innerHTML =
+    `<div class="hdr"><h1>${p.title}</h1><p>${p.desc}</p></div>
+     <div class="tabs">${p.tabs.map((t,i)=>`<div class="tab${i===idx?' on':''}" onclick="renderTabs('${key}',${i})">${t.label}</div>`).join('')}</div>
+     <div class="pane show">${p.tabs[idx].body}</div>`
+}
+document.querySelectorAll('.it').forEach(it=>{
+  it.addEventListener('click',()=>{
+    document.querySelectorAll('.it').forEach(x=>x.classList.remove('on'))
+    it.classList.add('on')
+    const pg = it.dataset.page
+    if(pg==='plain') renderPlain(it.dataset.title)
+    else renderTabs(pg)
+  })
+})
+renderTabs('payments')
+</script>
+</body>
+</html>

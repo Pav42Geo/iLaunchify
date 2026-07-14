@@ -26,15 +26,13 @@ export default async function CoPartnersPage() {
 
   const enabled = await isNominationEnabled()
 
+  // Slim header — prototype panel chrome, no hero (Pavel 2026-07-13)
   const Hero = (
-    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-      <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-        {roleWord} · Co-partners
-      </p>
-      <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+    <div>
+      <h1 className="font-display text-[19px] font-bold leading-tight text-ink-900">
         Co-partners
       </h1>
-      <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+      <p className="mt-0.5 max-w-2xl text-[13px] text-ink-600">
         For legs you don’t run in-house, nominate a specific print or co-packing partner to work with
         directly — they serve your orders for that leg without going through rotation.
       </p>

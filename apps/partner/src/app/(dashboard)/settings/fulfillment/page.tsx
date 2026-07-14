@@ -7,6 +7,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { FulfillmentSettingsForm, type BlackoutRow } from './FulfillmentSettingsForm'
 import type { ReceivingSpecInput } from './actions'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Fulfillment settings — Partners' }
@@ -38,6 +39,7 @@ export default async function FulfillmentSettingsPage() {
     // Prototype #p-fulfillment styling — no page hero (Pavel 2026-07-13);
     // the per-service panel cards open the page directly.
     <div className="space-y-6">
+      <PageTabs group="logistics" />
       {services.map((s) => {
         const spec =
           typeof s.receivingSpecJson === 'object' && s.receivingSpecJson !== null && !Array.isArray(s.receivingSpecJson)

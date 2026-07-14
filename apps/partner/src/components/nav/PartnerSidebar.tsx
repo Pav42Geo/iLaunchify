@@ -14,7 +14,7 @@ import {
   MessageCircle,
 } from 'lucide-react'
 import type { PartnerStatus } from '@ilaunchify/db'
-import { roleNavFor, type PartnerNavItem } from '@/lib/role-skins'
+import { roleNavGroupsFor, type PartnerNavItem, type PartnerNavGroup } from '@/lib/role-skins'
 import { isCoCreationPath } from './CoCreationTopbarSlots'
 
 // Full nav is now resolved per role — docs/PARTNER_ROLE_ACCOUNTS.md §2 (one
@@ -106,16 +106,19 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
   // Inside the Co-Creation Studio the sidebar shows ONLY the tool's nav
   // (Pavel 2026-07-11) — regardless of role skin.
   const coCreation = isCoCreationPath(pathname)
-  const nav = coCreation
-    ? CO_CREATION_NAV
+  // MERGED sidebar (Pavel 2026-07-13): grouped sections, Settings rail folded
+  // in. Reduced shells (co-creation / restricted / activation) render as one
+  // unlabeled group.
+  const navGroups: PartnerNavGroup[] = coCreation
+    ? [{ label: null, items: CO_CREATION_NAV }]
     : restricted
-      ? RESTRICTED_NAV
+      ? [{ label: null, items: RESTRICTED_NAV }]
       : activationLimited
-        ? LIMITED_ACTIVATION_NAV
+        ? [{ label: null, items: LIMITED_ACTIVATION_NAV }]
         : // Full menu renders only once activation is COMPLETE (mid-activation
           // partners get LIMITED_ACTIVATION_NAV above) — so Activation Setup
           // never appears in it (Pavel 2026-07-13).
-          roleNavFor(serviceTypes ?? [], {
+          roleNavGroupsFor(serviceTypes ?? [], {
             isOrgAdmin,
             showCoPartners,
             copackBriefPool,
@@ -176,10 +179,9 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
       data-partner-sidebar
       className={cn(
         'relative hidden shrink-0 border-r border-ink-200 p-3 transition-[width] duration-200 ease-out lg:block',
-        // Light-gray band in co-creation AND during the activation phase
-        // (Pavel 2026-07-12 — matches the co-creation treatment); white
-        // otherwise.
-        coCreation || activationLimited ? 'bg-ink-50' : 'bg-white',
+        // ALWAYS the co-creation light-gray band (Pavel 2026-07-13 — one
+        // sidebar, one background everywhere).
+        'bg-ink-50',
         collapsedNow ? 'w-[68px]' : 'w-56',
       )}
     >
@@ -239,41 +241,59 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
         </div>
       )}
 
-      <nav className="space-y-1">
-        {nav.map(({ href, label, icon: Icon }) => {
-          const active =
-            pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-          // Messages unread badge: pink count pill expanded, pink dot folded.
-          const unreadBadge = href === '/messages' && messagesUnread > 0
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={collapsedNow ? label : undefined}
-              className={cn(
-                'flex items-center rounded-md text-sm transition-colors',
-                collapsedNow ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
-                active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
-              )}
-            >
-              <span className="relative shrink-0">
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {unreadBadge && collapsedNow && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-pink-500"
-                  />
-                )}
-              </span>
-              {!collapsedNow && <span>{label}</span>}
-              {unreadBadge && !collapsedNow && (
-                <span className="ml-auto rounded-full bg-pink-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                  {messagesUnread}
-                </span>
-              )}
-            </Link>
-          )
-        })}
+      <nav>
+        {navGroups.map((group, gi) => (
+          <div key={group.label ?? gi} className={cn(gi > 0 && 'mt-4')}>
+            {group.label &&
+              (collapsedNow ? (
+                <div aria-hidden="true" className="mx-3 mb-2 border-t border-ink-200" />
+              ) : (
+                <div className="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-[0.07em] text-ink-400">
+                  {group.label}
+                </div>
+              ))}
+            <div className="space-y-1">
+              {group.items.map(({ href, label, icon: Icon, activeMatch }) => {
+                // Tab-merged items stay lit on every one of their tab routes.
+                const active = activeMatch
+                  ? activeMatch.some((m) => pathname === m || pathname.startsWith(`${m}/`))
+                  : pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+                // Messages unread badge (Co-Creation Studio nav only now).
+                const unreadBadge = href === '/messages' && messagesUnread > 0
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    title={collapsedNow ? label : undefined}
+                    className={cn(
+                      'flex items-center rounded-md text-sm transition-colors',
+                      collapsedNow ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
+                      active
+                        ? 'bg-pink-50 font-medium text-pink-700'
+                        : 'text-ink-600 hover:bg-ink-100',
+                    )}
+                  >
+                    <span className="relative shrink-0">
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      {unreadBadge && collapsedNow && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-pink-500"
+                        />
+                      )}
+                    </span>
+                    {!collapsedNow && <span className="truncate">{label}</span>}
+                    {unreadBadge && !collapsedNow && (
+                      <span className="ml-auto rounded-full bg-pink-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                        {messagesUnread}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {restricted && !coCreation && !collapsedNow && (

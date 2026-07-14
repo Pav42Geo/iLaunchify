@@ -11,6 +11,9 @@ import { prisma, getActiveMarketCountries } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { CompanyProfileClient } from './CompanyProfileClient'
+import { CompanyTopband } from './CompanyTopband'
+import { computeProfileCompleteness } from '@/lib/profile-completeness'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Company profile — Settings' }
@@ -41,6 +44,7 @@ export default async function CompanyProfileSettingsPage() {
       bestForTags: true,
       profilePublishedAt: true,
       tier: true,
+      participationMode: true,
       services: {
         where: { type: { in: ['MANUFACTURING', 'COPACKING'] } },
         select: { disclosureLevel: true },
@@ -76,6 +80,24 @@ export default async function CompanyProfileSettingsPage() {
     },
   })
   if (!partner) return null
+
+  // Topband data (moved from the settings layout — Pavel 2026-07-13).
+  const [bandUser, verifiedCerts] = await Promise.all([
+    prisma.user.findUnique({ where: { id: user.id }, select: { stripeAccountStatus: true } }),
+    prisma.partnerCertificateInstance.count({
+      where: { partnerId: partner.id, status: 'VERIFIED' },
+    }),
+  ])
+  const completeness = computeProfileCompleteness({
+    hasLogo: Boolean(partner.logoUrl),
+    hasCover: Boolean(partner.coverImageUrl),
+    taglineLength: partner.tagline?.length ?? 0,
+    aboutLength: partner.about?.length ?? 0,
+    bestForCount: partner.bestForTags?.length ?? 0,
+    disclosureFull: partner.services.some((sv) => sv.disclosureLevel === 'FULL'),
+    published: Boolean(partner.profilePublishedAt),
+    verifiedCertCount: verifiedCerts,
+  })
 
   // Country options come from PLATFORM MARKETS (admin-managed): only ACTIVE
   // markets are offered — V1 is US-only, so the field renders fixed exactly
@@ -157,14 +179,24 @@ export default async function CompanyProfileSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          {roleWord} · Settings
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+      <CompanyTopband
+        companyName={partner.companyName}
+        legalName={partner.legalName}
+        tier={partner.tier as string}
+        logoUrl={partner.logoUrl}
+        participationMode={partner.participationMode as string}
+        payoutsActive={bandUser?.stripeAccountStatus === 'ACTIVE'}
+        profileLive={Boolean(partner.slug && partner.profilePublishedAt)}
+        pct={completeness.pct}
+        nextHint={completeness.nextHint}
+      />
+      <PageTabs group="company" />
+      {/* Slim header — the settings layout topband already carries identity chrome */}
+      <div>
+        <h1 className="font-display text-[19px] font-bold leading-tight text-ink-900">
           Company profile
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-0.5 max-w-2xl text-[13px] text-ink-600">
           Your official identity — powers your public front face and marketplace discovery. Profiles
           are shown only to eligible creators, and only when your disclosure level allows it.
         </p>

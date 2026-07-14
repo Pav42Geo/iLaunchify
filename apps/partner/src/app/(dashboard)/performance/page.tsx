@@ -16,6 +16,7 @@ import { requireUser } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
 import { PanelCard, PanelHeader, KpiStrip, StPill, type PillTone } from '@/components/panel-kit'
 import { serviceOwnedBy } from '@/lib/partner-context'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Performance — Partners' }
@@ -75,6 +76,7 @@ export default async function PerformancePage() {
     // Prototype #p-performance — no page hero (Pavel 2026-07-13); one panel
     // per service, honesty note as the page footer.
     <div className="space-y-6">
+      <PageTabs group="standing" />
       {latest.map(({ service, feature }) => {
         const f = (feature?.featuresJson ?? {}) as Features
         const score = f.prs ?? null

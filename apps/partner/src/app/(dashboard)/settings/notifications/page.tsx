@@ -9,6 +9,7 @@ import { getPreferenceMatrixView } from '@ilaunchify/notifications'
 import { PanelCard } from '@/components/panel-kit'
 import { CategoryPreferencesForm } from './CategoryPreferencesForm'
 import { serviceOwnedBy } from '@/lib/partner-context'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Notification preferences — Partner' }
@@ -30,6 +31,7 @@ export default async function NotificationPreferencesPage() {
 
   return (
     <div className="space-y-6">
+      <PageTabs group="preferences" />
       {/* Slim header — prototype panel chrome, no hero (Pavel 2026-07-13) */}
       <div>
         <h1 className="font-display text-[19px] font-bold leading-tight text-ink-900">

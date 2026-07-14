@@ -6,6 +6,7 @@
 import { MessageSquare } from 'lucide-react'
 import { LRow, PanelCard, StPill } from '@/components/panel-kit'
 import { FeedbackForm } from './FeedbackForm'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Give feedback' }
@@ -13,6 +14,7 @@ export const metadata = { title: 'Give feedback' }
 export default function FeedbackPage() {
   return (
     <div className="space-y-6">
+      <PageTabs group="preferences" />
       {/* Slim header — prototype panel chrome, no hero (Pavel 2026-07-13) */}
       <div>
         <h1 className="font-display text-[19px] font-bold leading-tight text-ink-900">

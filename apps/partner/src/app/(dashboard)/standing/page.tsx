@@ -12,6 +12,7 @@ import { PanelCard, PanelHeader, InfoBanner, StPill } from '@/components/panel-k
 import { loadStandingPage, type StandingView } from './data'
 import { ContestRatingButton } from './ContestRatingButton'
 import { StandingManualButton } from './StandingManual'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Your standing — Partners' }
@@ -46,6 +47,7 @@ export default async function StandingPage() {
 
   return (
     <div className="space-y-6">
+      <PageTabs group="standing" />
       {/* Merit & fee tier — the prototype's #p-merit panel, no page hero
           (Pavel 2026-07-13). */}
       <PanelCard>

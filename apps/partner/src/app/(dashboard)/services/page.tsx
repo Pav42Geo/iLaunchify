@@ -16,7 +16,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { ExternalLink, Factory, ListChecks, Package, Plus, Printer, Warehouse } from 'lucide-react'
+import { ExternalLink, Factory, ListChecks, Package, Plus, Printer, Tags, Warehouse } from 'lucide-react'
 import { PanelCard, PanelHeader, LRow, StPill, type PillTone } from '@/components/panel-kit'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { addService, type AddableServiceType } from './actions'
@@ -31,6 +31,13 @@ import {
 // redirects; the form + actions stay in place (products/new prefill imports them).
 import { ProductDefaultsForm } from '../settings/product-defaults/ProductDefaultsForm'
 import { getPartnerProductDefaults, type ProductDefaultsRow } from '../settings/product-defaults/actions'
+// Labeling & VAS folded in here (Pavel 2026-07-13) — /settings/labeling redirects.
+import {
+  ProducingServiceCard,
+  FcVasCard,
+  PrinterSampleCard,
+  type VasRowView,
+} from '../settings/labeling/LabelingSettingsForm'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Services — Partners' }
@@ -154,6 +161,16 @@ export default async function ServicesPage() {
   // 2026-07-13): they're service-level operating facts (facility, lead times,
   // MOQ), same family as capabilities. Producers only.
   const productDefaults = producingSvc ? await getPartnerProductDefaults(partner.id) : null
+
+  // Labeling & VAS accordion data — FC value-added rows per WAREHOUSE service.
+  const warehouseSvcIds = partner.services
+    .filter((sv) => (sv.type as string) === 'WAREHOUSE')
+    .map((sv) => sv.id)
+  const vasRows = warehouseSvcIds.length
+    ? await prisma.fcValueAddedService
+        .findMany({ where: { partnerServiceId: { in: warehouseSvcIds } }, orderBy: { jobType: 'asc' } })
+        .catch(() => [])
+    : []
 
   const storageVM: StorageTypedVM | null = producingSvc
     ? {
@@ -280,6 +297,79 @@ export default async function ServicesPage() {
             </details>
           )
         })}
+
+        {/* Labeling & value-added — folded from /settings/labeling (Pavel
+            2026-07-13): routing declarations, same family as capabilities. */}
+        <details id="labeling" className="group mb-2.5 last:mb-0">
+          <summary className="block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            <LRow
+              className="mb-0"
+              icon={<Tags />}
+              iconClassName="bg-pink-50 text-pink-700"
+              title="Labeling & value-added"
+              sub="Print sourcing, label application, sample capability, FC value-added services — the declarations that drive routing"
+              right={
+                <span className="rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors group-hover:bg-ink-50">
+                  {canEdit ? 'Edit' : 'View'}
+                </span>
+              }
+            />
+          </summary>
+          <div className="mt-2 space-y-4 rounded-xl border border-ink-200 bg-white p-4">
+            {!canEdit ? (
+              <p className="text-[13px] text-ink-500">
+                Labeling declarations become editable once your application is approved.
+              </p>
+            ) : (
+              <>
+                {partner.services
+                  .filter((sv) => ['MANUFACTURING', 'COPACKING'].includes(sv.type as string))
+                  .map((sv) => (
+                    <ProducingServiceCard
+                      key={sv.id}
+                      service={{
+                        id: sv.id,
+                        type: sv.type as string,
+                        labelingMode: sv.labelingMode,
+                        appliesLabels: sv.appliesLabels,
+                      }}
+                      label={
+                        (sv.type as string) === 'MANUFACTURING'
+                          ? 'Manufacturing — print sourcing & label application'
+                          : 'Co-packing — label application'
+                      }
+                    />
+                  ))}
+                {partner.services
+                  .filter((sv) => (sv.type as string) === 'LABEL_PRINTING')
+                  .map((sv) => (
+                    <PrinterSampleCard key={sv.id} serviceId={sv.id} initialSampleCapable={sv.sampleCapable} />
+                  ))}
+                {partner.services
+                  .filter((sv) => (sv.type as string) === 'WAREHOUSE')
+                  .map((sv) => (
+                    <FcVasCard
+                      key={sv.id}
+                      serviceId={sv.id}
+                      rows={vasRows
+                        .filter((v) => v.partnerServiceId === sv.id)
+                        .map(
+                          (v): VasRowView => ({
+                            jobType: v.jobType,
+                            labelMethods: v.labelMethods,
+                            feeCentsPerUnit: v.feeCentsPerUnit,
+                            minUnits: v.minUnits,
+                            leadTimeDays: v.leadTimeDays,
+                            notes: v.notes,
+                            status: v.status,
+                          }),
+                        )}
+                    />
+                  ))}
+              </>
+            )}
+          </div>
+        </details>
 
         {/* Storage at YOUR facility — typed columns on the producing service. */}
         {producingSvc && storageVM && (
