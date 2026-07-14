@@ -106,8 +106,14 @@ export async function seedMarketplaceFixtures(prisma: PrismaClient): Promise<voi
       where: { id: partner.id },
       // status ACTIVE so the routing gate (partner: { status: 'ACTIVE' }) admits
       // it — without this a manufacturer with an ACTIVE *service* still never
-      // routes.
-      data: { status: 'ACTIVE', ...(regionId ? { primaryRegionId: regionId } : {}) },
+      // routes. participationMode PUBLIC because the schema default is now
+      // INVITED_ONLY (Pavel 2026-07-13) and these fixtures must stay
+      // marketplace-visible + rotation-eligible.
+      data: {
+        status: 'ACTIVE',
+        participationMode: 'PUBLIC',
+        ...(regionId ? { primaryRegionId: regionId } : {}),
+      },
     })
     // Payouts enabled so the routing gate (stripeAccountStatus === 'ACTIVE') passes.
     await prisma.user.update({

@@ -952,8 +952,9 @@ enum PlanAudience {
 /// How a partner gets work (Pavel 2026-07-08). PUBLIC = discoverable in the
 /// marketplace + eligible for auto-rotation + nominatable. INVITED_ONLY = private
 /// operator: invisible in the marketplace and excluded from auto-rotation, works
-/// ONLY through direct nominations. Protects a small invited co-partner from the
-/// open-market firehose. Default PUBLIC; invited co-partners default INVITED_ONLY.
+/// ONLY through direct nominations. Default flipped 2026-07-13 (Pavel): EVERY
+/// partner starts INVITED_ONLY — going public is a deliberate, self-serve,
+/// clickwrap-gated opt-in on /settings/participation, never automatic.
 enum PartnerParticipationMode {
   PUBLIC
   INVITED_ONLY
@@ -967,7 +968,8 @@ model Partner {
   status                  PartnerStatus                 @default(DRAFT)
   // Market participation — how this partner gets work. See PartnerParticipationMode.
   // INVITED_ONLY = private operator (nomination-only, no rotation, no marketplace).
-  participationMode       PartnerParticipationMode      @default(PUBLIC)
+  // Default INVITED_ONLY (Pavel 2026-07-13): open market is opt-in, never automatic.
+  participationMode       PartnerParticipationMode      @default(INVITED_ONLY)
   // Public-operator clickwrap acknowledgment (Pavel 2026-07-08). Recorded when a
   // partner switches to PUBLIC: they accept the Public Operator Terms (a section of
   // the signed partner agreement) + confirm current capacity. Evidentiary trail for

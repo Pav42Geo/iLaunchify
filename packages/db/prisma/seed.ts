@@ -309,6 +309,8 @@ async function main() {
           companyName: 'Acme Foods',
           legalName: 'Acme Foods LLC',
           status: 'ACTIVE',
+          // Demo partner stays in the open market (default is now INVITED_ONLY).
+          participationMode: 'PUBLIC',
           country: 'US',
           state: 'CA',
           city: 'San Jose',
@@ -382,6 +384,8 @@ async function main() {
           companyName: 'Bayview Packing',
           legalName: 'Bayview Packing Co.',
           status: 'ACTIVE',
+          // Demo partner stays in the open market (default is now INVITED_ONLY).
+          participationMode: 'PUBLIC',
           country: 'US',
           state: 'OR',
           city: 'Portland',
@@ -440,6 +444,8 @@ async function main() {
           companyName: 'Beacon Label Co.',
           legalName: 'Beacon Label Co. Inc.',
           status: 'ACTIVE',
+          // Demo partner stays in the open market (default is now INVITED_ONLY).
+          participationMode: 'PUBLIC',
           country: 'US',
           state: 'NY',
           city: 'Brooklyn',
