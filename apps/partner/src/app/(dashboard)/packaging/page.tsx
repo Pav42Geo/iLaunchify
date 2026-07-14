@@ -71,6 +71,7 @@ export default async function PackagingListPage() {
 
   return (
     <div className="space-y-6">
+      <PageTabs group="packaging" />
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -240,6 +241,7 @@ function Section({
 }
 
 import type { PackagingTopology, PackagingStatus } from '@ilaunchify/db'
+import { PageTabs } from '@/components/PageTabs'
 
 type Row = {
   id: string

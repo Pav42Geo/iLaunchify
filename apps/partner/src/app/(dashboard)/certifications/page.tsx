@@ -19,6 +19,7 @@ import { CertSearchInput } from './CertSearchInput'
 import { RenewCertButton } from './RenewCertButton'
 import { DownloadCertButton } from './DownloadCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Certifications — iLaunchify Partners' }
@@ -118,6 +119,7 @@ export default async function CertificationsPage({
 
   return (
     <div className="space-y-6">
+      <PageTabs group="company" />
       {instances.length === 0 ? (
         <PanelCard className="px-6 py-12 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">

@@ -19,6 +19,7 @@ import {
   ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react'
+import { PageTabs } from '@/components/PageTabs'
 import {
   countInbound,
   getOwnedWarehouseServiceIds,
@@ -66,6 +67,7 @@ export default async function InboundPage({
 
   return (
     <div className="space-y-6">
+      <PageTabs group="orders" />
       {/* Hero band + KPI strip */}
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">

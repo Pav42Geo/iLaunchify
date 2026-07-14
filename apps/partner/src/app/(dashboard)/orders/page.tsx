@@ -28,6 +28,7 @@ import { OrderRowActions } from './OrderRowActions'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { serviceOwnedBy } from '@/lib/partner-context'
 import { getPartnerRoleWord } from '@/lib/partner-role'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Orders — Partners' }
@@ -132,6 +133,9 @@ export default async function OrdersPage({
 
   return (
     <div className="space-y-6">
+      {/* FC partners work Receiving → Stock → Shipping as tabs of Orders
+          (Pavel 2026-07-14); everyone else sees the plain dispatch inbox. */}
+      {services.some((s) => (s.type as string) === 'WAREHOUSE') && <PageTabs group="orders" />}
       {/* Cream hero + KPI strip */}
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">

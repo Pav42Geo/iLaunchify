@@ -22,6 +22,7 @@ import {
   type SubstrateOption,
 } from './PrintSpecForm'
 import { getPartnerRoleWord } from '@/lib/partner-role'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Prepress output — iLaunchify Partners' }
@@ -99,6 +100,7 @@ export default async function PrintSpecPage({
   if (services.length === 0) {
     return (
       <div className="space-y-6">
+        <PageTabs group="packaging" />
         {header}
         <section className="rounded-2xl border border-ink-200 bg-white px-6 py-12 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">

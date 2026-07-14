@@ -17,6 +17,7 @@ import { requireUser } from '@ilaunchify/auth'
 import { ReleaseRowActions } from './ReleaseRowActions'
 import { countOutbound, loadOutboundRows, type OutboundTab } from './outbound-data'
 import { serviceOwnedBy } from '@/lib/partner-context'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Outbound — Partners' }
@@ -59,6 +60,7 @@ export default async function OutboundPage({
 
   return (
     <div className="space-y-6">
+      <PageTabs group="orders" />
       {/* Hero band + KPI strip */}
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">

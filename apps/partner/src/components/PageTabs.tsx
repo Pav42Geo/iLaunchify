@@ -10,9 +10,31 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@ilaunchify/ui'
 
 const TAB_SETS = {
+  // Deep merges (Pavel 2026-07-14): FC queues under Orders, Accessories under
+  // Products, Prepress under Packaging, Certifications under Company,
+  // Co-partners under Services, Storage billing under Payments.
+  orders: [
+    { href: '/orders', label: 'Dispatches' },
+    { href: '/inbound', label: 'Inbound' },
+    { href: '/inventory', label: 'Inventory' },
+    { href: '/outbound', label: 'Outbound' },
+  ],
+  products: [
+    { href: '/products', label: 'Products' },
+    { href: '/accessories', label: 'Accessories' },
+  ],
+  packaging: [
+    { href: '/packaging', label: 'Packaging' },
+    { href: '/print-spec', label: 'Prepress output' },
+  ],
   company: [
     { href: '/settings/company', label: 'Profile' },
     { href: '/profile', label: 'Front face (preview)' },
+    { href: '/certifications', label: 'Certifications' },
+  ],
+  services: [
+    { href: '/services', label: 'Services' },
+    { href: '/co-partners', label: 'Co-partners' },
   ],
   standing: [
     { href: '/standing', label: 'Merit & fee tier' },
@@ -26,6 +48,7 @@ const TAB_SETS = {
     { href: '/payments', label: 'Payouts' },
     { href: '/settings/billing', label: 'Billing' },
     { href: '/settings/tax-documents', label: 'Tax documents' },
+    { href: '/billing', label: 'Storage billing' },
   ],
   preferences: [
     { href: '/settings/notifications', label: 'Notifications' },
@@ -35,11 +58,21 @@ const TAB_SETS = {
 
 export type PageTabGroup = keyof typeof TAB_SETS
 
-export function PageTabs({ group }: { group: PageTabGroup }) {
+export function PageTabs({
+  group,
+  hidden = [],
+}: {
+  group: PageTabGroup
+  /** Role-conditional tabs — hrefs to omit (e.g. '/billing' for non-FC partners). */
+  hidden?: string[]
+}) {
   const pathname = usePathname()
+  const tabs = TAB_SETS[group].filter((t) => !hidden.includes(t.href))
+  // A single remaining tab is no tab bar at all.
+  if (tabs.length < 2) return null
   return (
     <div className="flex gap-0 overflow-x-auto border-b border-ink-200">
-      {TAB_SETS[group].map((t) => {
+      {tabs.map((t) => {
         const active = pathname === t.href || pathname.startsWith(`${t.href}/`)
         return (
           <Link

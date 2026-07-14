@@ -61,7 +61,7 @@ export default async function PaymentsPage({
   if (!access) return null
   const partner = await prisma.partner.findUnique({
     where: { id: access.partnerId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, services: { select: { type: true } } },
   })
   if (!partner) return null
   const founderUserId = partner.userId
@@ -108,7 +108,12 @@ export default async function PaymentsPage({
 
   return (
     <div className="space-y-6">
-      <PageTabs group="payments" />
+      <PageTabs
+        group="payments"
+        hidden={
+          partner.services.some((sv) => (sv.type as string) === 'WAREHOUSE') ? [] : ['/billing']
+        }
+      />
       {/* Slim header — prototype panel chrome, no hero (Pavel 2026-07-13) */}
       <div>
         <div className="flex flex-wrap items-start justify-between gap-3">

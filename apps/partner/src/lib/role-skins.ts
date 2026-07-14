@@ -19,19 +19,12 @@ import {
   BarChart3,
   DollarSign,
   Box,
-  Award,
   Package,
-  Gift,
   Printer,
-  PackageOpen,
-  Boxes,
-  Send,
-  Receipt,
   Zap,
   Gauge,
   Megaphone,
   Medal,
-  Handshake,
   Rocket,
   Lightbulb,
   Landmark,
@@ -91,28 +84,38 @@ const NAV_STANDING: PartnerNavItem = {
   // Tab-merged (Pavel 2026-07-13): Merit & fee tier · Performance.
   activeMatch: ['/standing', '/performance'],
 }
-const NAV_INBOUND: PartnerNavItem = { href: '/inbound', label: 'Inbound', icon: PackageOpen }
-const NAV_INVENTORY: PartnerNavItem = { href: '/inventory', label: 'Inventory', icon: Boxes }
-const NAV_OUTBOUND: PartnerNavItem = { href: '/outbound', label: 'Outbound', icon: Send }
-const NAV_BILLING: PartnerNavItem = { href: '/billing', label: 'Storage billing', icon: Receipt }
 const NAV_ON_DEMAND: PartnerNavItem = { href: '/on-demand', label: 'On-demand', icon: Zap }
-const NAV_PRODUCTS: PartnerNavItem = { href: '/products', label: 'Products', icon: Package }
-const NAV_SERVICES: PartnerNavItem = { href: '/services', label: 'Services', icon: Wrench }
-const NAV_PACKAGING: PartnerNavItem = { href: '/packaging', label: 'Packaging', icon: Box }
-const NAV_PRINT_SPEC: PartnerNavItem = { href: '/print-spec', label: 'Prepress output', icon: Printer }
+const NAV_PRODUCTS: PartnerNavItem = {
+  href: '/products',
+  label: 'Products',
+  icon: Package,
+  // Tab-merged (Pavel 2026-07-14): Products · Accessories.
+  activeMatch: ['/products', '/accessories'],
+}
+const NAV_SERVICES: PartnerNavItem = {
+  href: '/services',
+  label: 'Services',
+  icon: Wrench,
+  // Tab-merged (Pavel 2026-07-14): Services · Co-partners.
+  activeMatch: ['/services', '/co-partners'],
+}
+const NAV_PACKAGING: PartnerNavItem = {
+  href: '/packaging',
+  label: 'Packaging',
+  icon: Box,
+  // Tab-merged (Pavel 2026-07-14): Packaging · Prepress output.
+  activeMatch: ['/packaging', '/print-spec'],
+}
 const NAV_CAPABILITY: PartnerNavItem = { href: '/capability-requests', label: 'Capability requests', icon: Megaphone }
-const NAV_ACCESSORIES: PartnerNavItem = { href: '/accessories', label: 'Accessories', icon: Gift }
-const NAV_CERTIFICATIONS: PartnerNavItem = { href: '/certifications', label: 'Certifications', icon: Award }
 const NAV_PAYMENTS: PartnerNavItem = {
   href: '/payments',
   label: 'Payments',
   icon: DollarSign,
   // Tab-merged (Pavel 2026-07-13): Payouts · Billing · Tax documents.
-  activeMatch: ['/payments', '/settings/billing', '/settings/tax-documents'],
+  activeMatch: ['/payments', '/settings/billing', '/settings/tax-documents', '/billing'],
 }
 // NAV_SETTINGS retired (Pavel 2026-07-13) — the Settings hub + rail merged
 // into this ONE sidebar; /settings redirects to /settings/company.
-const NAV_COPARTNERS: PartnerNavItem = { href: '/co-partners', label: 'Co-partners', icon: Handshake }
 // Co-creation Opportunity Pool (CO_CREATION_MARKETPLACE_SPEC §10) — matched
 // creator briefs + Express Interest. Manufacturing-only, commercial (terms/
 // pricing) → org-admin.
@@ -130,7 +133,7 @@ const NAV_COMPANY: PartnerNavItem = {
   href: '/settings/company',
   label: 'Company profile',
   icon: Landmark,
-  activeMatch: ['/settings/company', '/profile'],
+  activeMatch: ['/settings/company', '/profile', '/certifications'],
 }
 const NAV_LOGISTICS: PartnerNavItem = {
   href: '/settings/fulfillment',
@@ -210,10 +213,19 @@ export function roleNavGroupsFor(
   // P3 §2 role scoping: non-admin members get the OPERATIONAL surfaces of
   // their services; commercial + catalog surfaces are org-admin only.
 
+  // DEEP MERGES (Pavel 2026-07-14, 13-row target): FC queues live as tabs of
+  // Orders, Accessories under Products, Prepress under Packaging,
+  // Certifications under Company profile, Co-partners under Services,
+  // Storage billing under Payments. activeMatch keeps rows lit on every tab.
+
   // Top cluster — the everyday surfaces.
-  const top: PartnerNavItem[] = [NAV_DASHBOARD, NAV_ORDERS]
+  const top: PartnerNavItem[] = [
+    NAV_DASHBOARD,
+    fulfillment
+      ? { ...NAV_ORDERS, activeMatch: ['/orders', '/inbound', '/inventory', '/outbound'] }
+      : NAV_ORDERS,
+  ]
   if (producing && isOrgAdmin) top.push(NAV_PRODUCTS) // Pavel: Products top-level
-  if (fulfillment) top.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
 
   const work: PartnerNavItem[] = []
   if (isOrgAdmin) {
@@ -232,19 +244,17 @@ export function roleNavGroupsFor(
 
   const catalog: PartnerNavItem[] = []
   if (isOrgAdmin) {
-    if (producing) catalog.push(NAV_PACKAGING)
-    if (prepress) catalog.push(NAV_PRINT_SPEC)
+    // Packaging carries Prepress output as a tab — so it shows for every
+    // prepress-capable role (producers, co-packers, printers).
+    if (prepress) catalog.push(NAV_PACKAGING)
     // PS-8c — claimable capability RFQs → pure printers only.
     if (purePrinter) catalog.push(NAV_CAPABILITY)
-    if (producing) catalog.push(NAV_ACCESSORIES)
   }
 
   const business: PartnerNavItem[] = []
   if (isOrgAdmin) {
-    business.push(NAV_COMPANY, NAV_SERVICES, NAV_CERTIFICATIONS)
+    business.push(NAV_COMPANY, NAV_SERVICES)
     if (producing) business.push(NAV_STANDING)
-    // Co-partners (D7) — dark until counsel clears nomination.
-    if (producing && opts?.showCoPartners) business.push(NAV_COPARTNERS)
   } else {
     // Members keep the operational reliability view (Risk Center M3).
     business.push(NAV_PERFORMANCE)
@@ -254,11 +264,7 @@ export function roleNavGroupsFor(
   if (isOrgAdmin) operations.push(NAV_LOGISTICS, NAV_MARKET)
 
   const account: PartnerNavItem[] = []
-  if (isOrgAdmin) {
-    account.push(NAV_PAYMENTS)
-    if (fulfillment) account.push(NAV_BILLING)
-    account.push(NAV_TEAM)
-  }
+  if (isOrgAdmin) account.push(NAV_PAYMENTS, NAV_TEAM)
   account.push(NAV_PREFERENCES) // every member can tune notifications/feedback
 
   const groups: PartnerNavGroup[] = [

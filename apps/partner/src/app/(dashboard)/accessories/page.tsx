@@ -14,6 +14,7 @@ import { Button, KpiWidget } from '@ilaunchify/ui'
 import { Plus, Gift, Clock3, CheckCircle2, Archive } from 'lucide-react'
 import { AccessoryRowActions } from './AccessoryRowActions'
 import { getPartnerRoleWord } from '@/lib/partner-role'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Accessories — iLaunchify Partners' }
@@ -75,6 +76,7 @@ export default async function AccessoriesListPage() {
 
   return (
     <div className="space-y-6">
+      <PageTabs group="products" />
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

@@ -37,6 +37,7 @@ import { LiveToggle } from './LiveToggle'
 import { ProductsGetStarted } from './ProductsGetStarted'
 import { ProductImportButton } from './import/ProductImportButton'
 import { getPartnerRoleWord } from '@/lib/partner-role'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Products — iLaunchify Partners' }
@@ -240,6 +241,7 @@ export default async function ProductsListPage({
 
   return (
     <div className="space-y-6">
+      <PageTabs group="products" />
       {/* Hero — cream band + KPI strip (partner-v2 chrome) */}
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">

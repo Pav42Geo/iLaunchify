@@ -16,6 +16,7 @@ import { requireUser } from '@ilaunchify/auth'
 import { SERVICE_TYPE_LABEL, type PartnerServiceType } from '@/lib/role-skins'
 import { loadInventory, loadFefoLots } from './inventory-data'
 import { serviceOwnedBy } from '@/lib/partner-context'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Inventory — Partners' }
@@ -59,6 +60,7 @@ export default async function InventoryPage({
 
   return (
     <div className="space-y-6">
+      <PageTabs group="orders" />
       {/* Hero band + KPI strip */}
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">

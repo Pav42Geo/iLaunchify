@@ -8,6 +8,7 @@ import { requireUser } from '@ilaunchify/auth'
 import { CoPartnersClient, type CoPartnerRow } from './CoPartnersClient'
 import { listMyNominations } from './actions'
 import { getPartnerRoleWord } from '@/lib/partner-role'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Co-partners — Manufacturing' }
@@ -42,6 +43,7 @@ export default async function CoPartnersPage() {
   if (!enabled) {
     return (
       <div className="space-y-6">
+        <PageTabs group="services" />
         {Hero}
         <div className="rounded-2xl border border-ink-200 bg-white p-8 text-center">
           <p className="text-[14px] font-semibold text-ink-800">Co-partners is coming soon</p>
@@ -72,6 +74,7 @@ export default async function CoPartnersPage() {
 
   return (
     <div className="space-y-6">
+      <PageTabs group="services" />
       {Hero}
       <CoPartnersClient nominations={rows} nominatableLegs={nominatableLegs} />
     </div>

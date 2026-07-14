@@ -14,7 +14,7 @@
 // Pre-approval partners get the read-only humanized readout. Real data only —
 // empty fields render empty (no invented defaults).
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, isNominationEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { ExternalLink, Factory, ListChecks, Package, Plus, Printer, Tags, Warehouse } from 'lucide-react'
 import { PanelCard, PanelHeader, LRow, StPill, type PillTone } from '@/components/panel-kit'
@@ -32,6 +32,7 @@ import {
 import { ProductDefaultsForm } from '../settings/product-defaults/ProductDefaultsForm'
 import { getPartnerProductDefaults, type ProductDefaultsRow } from '../settings/product-defaults/actions'
 // Labeling & VAS folded in here (Pavel 2026-07-13) — /settings/labeling redirects.
+import { PageTabs } from '@/components/PageTabs'
 import {
   ProducingServiceCard,
   FcVasCard,
@@ -136,6 +137,7 @@ export default async function ServicesPage() {
   })
   if (!partner) return null
 
+  const nominationOn = await isNominationEnabled().catch(() => false)
   const canEdit = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
   // WAREHOUSE is NOT self-serve — the FC network is admin-contracted
   // (Pavel 2026-07-13). Producers offer "storage at your facility" instead.
@@ -190,6 +192,7 @@ export default async function ServicesPage() {
 
   return (
     <div className="space-y-6">
+      <PageTabs group="services" hidden={nominationOn ? [] : ['/co-partners']} />
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           {roleWord} · Services

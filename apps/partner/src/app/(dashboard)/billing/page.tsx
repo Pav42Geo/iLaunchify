@@ -16,6 +16,7 @@ import { cn, formatCentsOrDash } from '@ilaunchify/ui'
 import { prisma } from '@ilaunchify/db'
 import { requireUser, requirePartnerAdminAccess } from '@ilaunchify/auth'
 import { computeStorageAccrual, type StorageFeeSnapshot } from '@ilaunchify/shipping'
+import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Storage billing — Partners' }
@@ -129,6 +130,7 @@ export default async function BillingPage() {
 
   return (
     <div className="space-y-6">
+      <PageTabs group="payments" />
       <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
           Fulfillment Center · Billing
