@@ -8,7 +8,6 @@ import { prisma } from '@ilaunchify/db'
 import { getPreferenceMatrixView } from '@ilaunchify/notifications'
 import { PanelCard } from '@/components/panel-kit'
 import { CategoryPreferencesForm } from './CategoryPreferencesForm'
-import { rolePrefix } from '@/lib/role-skins'
 import { serviceOwnedBy } from '@/lib/partner-context'
 
 export const dynamic = 'force-dynamic'
@@ -31,14 +30,12 @@ export default async function NotificationPreferencesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          {rolePrefix(serviceTypes)} · Settings · Notifications
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
+      {/* Slim header — prototype panel chrome, no hero (Pavel 2026-07-13) */}
+      <div>
+        <h1 className="font-display text-[19px] font-bold leading-tight text-ink-900">
           Notification preferences
         </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+        <p className="mt-0.5 max-w-2xl text-[13px] text-ink-600">
           Notifications are grouped — turning a group off silences every event in it, on that
           channel. Unsubscribing from an email&apos;s footer does the same thing for its group.
           Required groups (account, billing, cancellation outcomes) can&apos;t be turned off.

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Go-live celebration — white celebrate-card (token build)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink-50:#F7F7F8;--ink-100:#EFEFF1;--ink-200:#E3E3E7;--ink-300:#C9C9D0;--ink-400:#9B9BA6;
+  --ink-500:#71717C;--ink-600:#52525B;--ink-700:#3F3F46;--ink-900:#18181A;
+  --pink-50:#FFF0F4;--pink-100:#FFDCE6;--pink-200:#FFB8CC;--pink-500:#FF2E63;--pink-700:#C40E44;
+  --r-2xl:20px;
+  --font-body:'Inter',system-ui,sans-serif;--font-display:'Bricolage Grotesque',sans-serif;--font-serif:'Fraunces',serif;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font-body);background:var(--ink-50);min-height:100vh}
+
+/* Fake dashboard behind the overlay, just for context */
+.fake{padding:28px;filter:blur(1px);opacity:.9}
+.fake .band{background:#fff;border:1px solid var(--ink-200);border-radius:16px;height:84px;margin-bottom:16px}
+.fake .row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.fake .card{background:#fff;border:1px solid var(--ink-200);border-radius:16px;height:130px}
+.fake .wide{background:#fff;border:1px solid var(--ink-200);border-radius:16px;height:260px;margin-top:16px}
+
+/* ===== The overlay + card (what ActiveWelcomeModal.tsx renders) ===== */
+.celebrate{position:fixed;inset:0;background:rgba(24,24,26,.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;animation:fade .3s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.celebrate-card{position:relative;overflow:hidden;width:100%;max-width:440px;background:#fff;border:1px solid var(--pink-200);border-radius:var(--r-2xl);padding:34px;text-align:center;box-shadow:0 24px 64px rgba(24,24,26,.28)}
+.celebrate-card::after{content:"";position:absolute;inset:0;background:radial-gradient(80% 80% at 50% -10%,var(--pink-100),transparent 60%);pointer-events:none}
+.close{position:absolute;right:12px;top:12px;z-index:2;border:0;background:none;color:var(--ink-400);cursor:pointer;border-radius:8px;padding:4px;line-height:0}
+.close:hover{background:var(--ink-100);color:var(--ink-700)}
+.rocket{position:relative;z-index:2;width:76px;height:76px;margin:0 auto;border-radius:20px;background:var(--pink-500);color:#fff;display:grid;place-items:center;animation:pop .45s ease-out}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.rocket svg{width:38px;height:38px}
+.celebrate-card h2{position:relative;z-index:2;margin-top:20px;font-family:var(--font-display);font-weight:800;font-size:24px;letter-spacing:-.01em;color:var(--ink-900)}
+.celebrate-card h2 .serif-em{font-family:var(--font-serif);font-style:italic;font-weight:600;color:var(--pink-700)}
+.celebrate-card p{position:relative;z-index:2;margin:8px auto 0;max-width:340px;color:var(--ink-600);font-size:13.5px;line-height:1.6}
+.cbtns{position:relative;z-index:2;margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;font-family:var(--font-body);cursor:pointer;transition:.15s}
+.btn-out{background:#fff;border:1px solid var(--ink-300);color:var(--ink-900)}
+.btn-out:hover{background:var(--ink-50)}
+.btn-dark{background:var(--ink-900);border:1px solid var(--ink-900);color:#fff}
+.btn-dark:hover{opacity:.88}
+.proto-note{position:fixed;left:16px;bottom:14px;z-index:10;background:#fff;border:1px solid var(--ink-200);border-radius:12px;padding:9px 13px;font-size:11.5px;color:var(--ink-500);max-width:430px}
+.proto-note b{color:var(--ink-700)}
+</style>
+</head>
+<body>
+
+<!-- context: white post-activation dashboard -->
+<div class="fake">
+  <div class="band"></div>
+  <div class="row"><div class="card"></div><div class="card"></div><div class="card"></div><div class="card"></div></div>
+  <div class="wide"></div>
+</div>
+
+<div class="celebrate">
+  <div class="celebrate-card">
+    <button class="close" aria-label="Close"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    <div class="rocket"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5L3 21l4.5-1.5M14 4s4 1 6 3 3 6 3 6l-8 8-6-2-2-6z"/><circle cx="15" cy="9" r="1.5"/></svg></div>
+    <h2>You&rsquo;re <span class="serif-em">live</span>, Acme Foods.</h2>
+    <p>Creators can now route production orders to you. You&rsquo;ll get an email and an in-app notification whenever a dispatch needs your acceptance &mdash; payouts land via Stripe about 2 business days after each shipment.</p>
+    <div class="cbtns">
+      <button class="btn btn-out">Review my services</button>
+      <button class="btn btn-dark">See my orders <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="proto-note"><b>Go-live celebration, white token build</b> — the activation prototype's celebrate-card translated to the post-activation white chrome: pink rocket tile (pop-in), Fraunces italic accent, black pill CTA. Shows ONCE: status ACTIVE + every service live + <code>activeWelcomeSeen</code> unset.</div>
+
+</body>
+</html>
