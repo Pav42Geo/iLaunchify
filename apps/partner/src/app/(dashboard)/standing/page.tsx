@@ -39,6 +39,10 @@ export default async function StandingPage() {
   const data = await loadStandingPage()
   // All services share the partner-level badge — the ladder highlights it.
   const currentBadge = data.services[0]?.currentBadge ?? null
+  // Active fee grace/grant (MM-7) — partner-level in practice. Surfaced at the
+  // LADDER, not just in the snapshot card: a NEW partner (no snapshot yet) is
+  // exactly who the welcome offer applies to.
+  const promo = data.services.find((s) => s.promo)?.promo ?? null
 
   return (
     <div className="space-y-6">
@@ -61,10 +65,13 @@ export default async function StandingPage() {
           }
         />
 
-        {/* Fee ladder (.fee-ladder / .fee-step) */}
+        {/* Fee ladder (.fee-ladder / .fee-step). While a welcome offer / grant
+            is active, the "you" step shows the PROMO rate you actually pay and
+            the badge rate it temporarily replaces. */}
         <div className="grid gap-2.5 sm:grid-cols-3">
           {data.feeLadder.map((f) => {
             const isYou = currentBadge === f.badge
+            const promoHere = isYou && promo && promo.feePct !== f.pct
             return (
               <div
                 key={f.badge}
@@ -74,12 +81,34 @@ export default async function StandingPage() {
                   {f.label}
                   {isYou && ' · you'}
                 </p>
-                <p className="mt-[3px] font-display text-[22px] font-bold tabular-nums leading-none text-ink-900">{f.pct}</p>
-                <p className="mt-1.5 text-[11px] leading-snug text-ink-500">{f.blurb}</p>
+                {promoHere ? (
+                  <p className="mt-[3px] font-display text-[22px] font-bold tabular-nums leading-none text-ink-900">
+                    <span className="mr-1.5 text-[14px] font-semibold text-ink-400 line-through">{f.pct}</span>
+                    {promo.feePct}
+                  </p>
+                ) : (
+                  <p className="mt-[3px] font-display text-[22px] font-bold tabular-nums leading-none text-ink-900">{f.pct}</p>
+                )}
+                <p className="mt-1.5 text-[11px] leading-snug text-ink-500">
+                  {promoHere
+                    ? `${promo.source === 'GLOBAL_GRACE' ? 'Welcome offer' : 'Fee grant'} through ${new Date(promo.endsAt).toLocaleDateString()}`
+                    : f.blurb}
+                </p>
               </div>
             )
           })}
         </div>
+
+        {/* Welcome-offer banner — visible even before the first merit snapshot
+            (new partners are exactly who this applies to). */}
+        {promo && (
+          <InfoBanner tone="ok" icon={<Star />} className="mb-0 mt-4">
+            {promo.source === 'GLOBAL_GRACE' ? 'Welcome offer' : 'Fee grant'} active — you pay{' '}
+            <b className="font-semibold">{promo.feePct}</b> on every order through{' '}
+            {new Date(promo.endsAt).toLocaleDateString()}. After that, your badge sets your fee — earn
+            Trusted or Premier before it ends to keep it low.
+          </InfoBanner>
+        )}
         {!data.live && (
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-500">
             The merit engine is running in preview — nothing is withheld from your payouts today. Your
@@ -216,16 +245,13 @@ function ServiceStanding({
             </InfoBanner>
           )}
 
-          {s.promo && (
-            <div className="mt-4 rounded-xl border border-pink-200 bg-pink-50 px-4 py-2.5">
-              <p className="text-[12.5px] font-semibold text-pink-800">
-                🎉 Fee grace active — you&rsquo;re at {s.promo.feePct} platform fee
-                {s.promo.source === 'GLOBAL_GRACE' ? ' (welcome offer)' : ''} through {new Date(s.promo.endsAt).toLocaleDateString()}.
-              </p>
-            </div>
-          )}
+          {/* Promo/grace is surfaced at the fee ladder (partner-level) — here
+              just the resolved numbers. */}
           <p className="mt-4 text-[12px] text-ink-500">
             Fee today: <strong className="text-ink-700">{s.feeNowPct}</strong>
+            {s.promo && (
+              <> ({s.promo.source === 'GLOBAL_GRACE' ? 'welcome offer' : 'fee grant'} through {new Date(s.promo.endsAt).toLocaleDateString()})</>
+            )}
             {!s.promo && s.feeProjectedPct !== s.feeNowPct && (
               <> · at {s.projectedBadge}: <strong className="text-pink-700">{s.feeProjectedPct}</strong></>
             )}
