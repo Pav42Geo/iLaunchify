@@ -2,7 +2,6 @@ import Link from 'next/link'
 import {
   ArrowRight,
   Building2,
-  Image as ImageIcon,
   Wallet,
   CreditCard,
   Bell,
@@ -130,13 +129,7 @@ export default async function SettingsPage() {
           cta="Edit company profile"
           description="Your official identity — logo, tagline, bio, best-for tags, and label disclosure. Powers your public front face and marketplace discovery."
         />
-        <SettingCard
-          icon={<ImageIcon className="h-[18px] w-[18px]" aria-hidden="true" />}
-          title="Portfolio"
-          href="/settings/portfolio"
-          cta="Manage portfolio"
-          description="Showcase past runs as tiles on your public profile's Recent work grid — add, reorder, publish or hide."
-        />
+        {/* Portfolio card removed (Pavel 2026-07-13). */}
       </Section>
 
       {/* Payments & plans */}

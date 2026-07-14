@@ -13,7 +13,6 @@ export interface CompletenessInput {
   bestForCount: number
   disclosureFull: boolean
   published: boolean
-  publishedPortfolioCount: number
   verifiedCertCount: number
 }
 
@@ -29,20 +28,17 @@ interface Rule {
   hint: string
 }
 
+// Portfolio removed from the program (Pavel 2026-07-13) — its 15 points were
+// redistributed to About / Publish / Certifications so weights still sum 100.
 const RULES: Rule[] = [
   { weight: 10, earned: (i) => (i.hasLogo ? 1 : 0), hint: 'Upload your company logo' },
   { weight: 5, earned: (i) => (i.hasCover ? 1 : 0), hint: 'Add a cover image' },
   { weight: 10, earned: (i) => (i.taglineLength > 0 ? 1 : 0), hint: 'Write your tagline' },
-  { weight: 15, earned: (i) => (i.aboutLength >= 80 ? 1 : i.aboutLength > 0 ? 0.5 : 0), hint: 'Write your About section' },
+  { weight: 20, earned: (i) => (i.aboutLength >= 80 ? 1 : i.aboutLength > 0 ? 0.5 : 0), hint: 'Write your About section' },
   { weight: 10, earned: (i) => Math.min(1, i.bestForCount / 3), hint: 'Add best-for tags' },
   { weight: 10, earned: (i) => (i.disclosureFull ? 1 : 0), hint: 'Set disclosure to Full "Manufactured by"' },
-  { weight: 15, earned: (i) => (i.published ? 1 : 0), hint: 'Publish your public profile' },
-  {
-    weight: 15,
-    earned: (i) => Math.min(1, i.publishedPortfolioCount / 3),
-    hint: 'Publish 3 portfolio items',
-  },
-  { weight: 10, earned: (i) => (i.verifiedCertCount > 0 ? 1 : 0), hint: 'Get a certification verified' },
+  { weight: 20, earned: (i) => (i.published ? 1 : 0), hint: 'Publish your public profile' },
+  { weight: 15, earned: (i) => (i.verifiedCertCount > 0 ? 1 : 0), hint: 'Get a certification verified' },
 ]
 
 export function computeProfileCompleteness(input: CompletenessInput): Completeness {

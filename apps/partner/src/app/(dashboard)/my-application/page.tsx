@@ -414,7 +414,7 @@ export default async function MyApplicationPage() {
                   <b className="mb-0.5 block text-[11px] uppercase tracking-[0.04em] text-ink-500">
                     Live surface
                   </b>
-                  Your tagline, bio, logo and portfolio are edited in{' '}
+                  Your tagline, bio and logo are edited in{' '}
                   <Link href="/settings/company" className="font-semibold underline underline-offset-2">
                     Settings → Company profile
                   </Link>{' '}

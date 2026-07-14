@@ -70,6 +70,8 @@ interface PartnerSidebarProps {
   briefPoolEnabled?: boolean
   /** ACTIVE but not yet live on every service → show the limited setup nav. */
   activationLimited?: boolean
+  /** Threads (rooms + DMs) with unread messages — badge on the Messages item. */
+  messagesUnread?: number
 }
 
 function statusBadge(status: PartnerStatus): {
@@ -99,7 +101,7 @@ const STORAGE_KEY = 'ilf-partner-sidebar-collapsed'
 // Still fully togglable — once expanded, the choice persists here.
 const CC_STORAGE_KEY = 'ilf-partner-cocreation-sidebar-collapsed'
 
-export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled, activationLimited }: PartnerSidebarProps) {
+export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled, activationLimited, messagesUnread = 0 }: PartnerSidebarProps) {
   const pathname = usePathname()
   // Inside the Co-Creation Studio the sidebar shows ONLY the tool's nav
   // (Pavel 2026-07-11) — regardless of role skin.
@@ -110,7 +112,16 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
       ? RESTRICTED_NAV
       : activationLimited
         ? LIMITED_ACTIVATION_NAV
-        : roleNavFor(serviceTypes ?? [], { isOrgAdmin, showCoPartners, copackBriefPool, briefPoolEnabled })
+        : // Full menu renders only once activation is COMPLETE (mid-activation
+          // partners get LIMITED_ACTIVATION_NAV above) — so Activation Setup
+          // never appears in it (Pavel 2026-07-13).
+          roleNavFor(serviceTypes ?? [], {
+            isOrgAdmin,
+            showCoPartners,
+            copackBriefPool,
+            briefPoolEnabled,
+            activationComplete: true,
+          })
   const badge = statusBadge(status)
 
   const [collapsed, setCollapsed] = useState(false)
@@ -232,6 +243,8 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
         {nav.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+          // Messages unread badge: pink count pill expanded, pink dot folded.
+          const unreadBadge = href === '/messages' && messagesUnread > 0
           return (
             <Link
               key={href}
@@ -243,8 +256,21 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
                 active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
               )}
             >
-              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="relative shrink-0">
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {unreadBadge && collapsedNow && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-pink-500"
+                  />
+                )}
+              </span>
               {!collapsedNow && <span>{label}</span>}
+              {unreadBadge && !collapsedNow && (
+                <span className="ml-auto rounded-full bg-pink-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                  {messagesUnread}
+                </span>
+              )}
             </Link>
           )
         })}

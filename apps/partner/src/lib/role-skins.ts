@@ -115,6 +115,12 @@ export function roleNavFor(
     copackBriefPool?: boolean
     /** Co-creation module kick-off switch — false hides Opportunities for everyone. */
     briefPoolEnabled?: boolean
+    /**
+     * Every service live (Pavel 2026-07-13): once the partner is fully
+     * activated the Activation Setup entry disappears from the sidebar —
+     * /activation stays reachable by URL for reference, but isn't navigation.
+     */
+    activationComplete?: boolean
   } = {},
 ): PartnerNavItem[] {
   const isOrgAdmin = opts.isOrgAdmin ?? true // founders/back-compat default
@@ -140,8 +146,9 @@ export function roleNavFor(
   if (producing || has('COPACKING')) nav.push(NAV_MESSAGES)
   if (fulfillment) nav.push(NAV_INBOUND, NAV_INVENTORY, NAV_OUTBOUND)
   if (isOrgAdmin) {
-    // Post-approval setup surface — the union of every service's activation track.
-    nav.push(NAV_ACTIVATION)
+    // Post-approval setup surface — the union of every service's activation
+    // track. Hidden once everything is live (Pavel 2026-07-13).
+    if (!opts.activationComplete) nav.push(NAV_ACTIVATION)
     if (producing) nav.push(NAV_STANDING)
     // Co-creation briefs (Pavel 2026-07-10, admin-choosable poolAccessPolicy):
     // manufacturers always; co-packers unless the admin set MFG_ONLY (layout

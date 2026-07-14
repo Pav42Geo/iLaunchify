@@ -18,7 +18,6 @@ import {
   Eye,
   FileText,
   Globe,
-  Image as ImageIcon,
   LayoutGrid,
   LineChart,
   MessageSquareHeart,
@@ -56,7 +55,7 @@ const GROUPS = (b: RailBadges) => [
         icon: ShieldCheck,
         warn: b.certsNeedAttention > 0 ? b.certsNeedAttention : undefined,
       },
-      { label: 'Portfolio', href: '/settings/portfolio', icon: ImageIcon },
+      // Portfolio removed (Pavel 2026-07-13).
     ],
   },
   {

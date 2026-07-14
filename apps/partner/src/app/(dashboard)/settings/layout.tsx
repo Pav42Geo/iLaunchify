@@ -37,9 +37,8 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   if (!partner) return <>{children}</>
 
   const soon = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-  const [dbUser, portfolioPublished, verifiedCerts, expiringCerts, teamCount] = await Promise.all([
+  const [dbUser, verifiedCerts, expiringCerts, teamCount] = await Promise.all([
     prisma.user.findUnique({ where: { id: user.id }, select: { stripeAccountStatus: true } }),
-    prisma.partnerPortfolioItem.count({ where: { partnerId: partner.id, published: true } }),
     prisma.partnerCertificateInstance.count({
       where: { partnerId: partner.id, status: 'VERIFIED' },
     }),
@@ -57,7 +56,6 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     bestForCount: partner.bestForTags?.length ?? 0,
     disclosureFull: partner.services.some((s) => s.disclosureLevel === 'FULL'),
     published: Boolean(partner.profilePublishedAt),
-    publishedPortfolioCount: portfolioPublished,
     verifiedCertCount: verifiedCerts,
   })
 

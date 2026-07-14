@@ -280,7 +280,9 @@ export function PartnerFrontFace({ profile }: { profile: PartnerProfileVM }) {
 
       {/* ================= TABS ================= */}
       <div className="sticky top-0 z-20 flex gap-1 overflow-x-auto border-b border-ink-200 bg-white px-6 sm:px-[34px]">
-        {TABS.map((t) => (
+        {/* Portfolio was removed from the partner program (Pavel 2026-07-13):
+            the tab renders only for legacy partners that still HAVE items. */}
+        {TABS.filter((t) => t.key !== 'portfolio' || p.portfolio.length > 0).map((t) => (
           <button
             key={t.key}
             type="button"
