@@ -42,22 +42,8 @@ export default async function StandingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">Partner · Standing</p>
-            <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">Your standing &amp; badge</h1>
-            <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-600">
-              Your badge is earned from four things — Craft, Reliability, Contribution, and Standing —
-              not a single rating. A higher badge lowers your platform fee. Everyone starts at Verified;
-              thin history never counts against you.
-            </p>
-          </div>
-          <StandingManualButton />
-        </div>
-      </div>
-
-      {/* Merit & fee tier — the prototype's #p-merit panel. */}
+      {/* Merit & fee tier — the prototype's #p-merit panel, no page hero
+          (Pavel 2026-07-13). */}
       <PanelCard>
         <PanelHeader
           title="Merit & fee tier"
@@ -68,9 +54,10 @@ export default async function StandingPage() {
             </>
           }
           aside={
-            !data.live ? (
-              <StPill tone="warn">Preview — currently {data.baseFeePct} for everyone</StPill>
-            ) : undefined
+            <div className="flex flex-none items-center gap-2.5">
+              {!data.live && <StPill tone="warn">Preview — no fee is withheld yet</StPill>}
+              <StandingManualButton />
+            </div>
           }
         />
 
@@ -95,8 +82,9 @@ export default async function StandingPage() {
         </div>
         {!data.live && (
           <p className="mt-3 text-[11.5px] leading-relaxed text-ink-500">
-            The merit engine is running in preview. Your badge below shows where you&rsquo;re headed; fees
-            don&rsquo;t change until the platform turns tiered pricing on.
+            The merit engine is running in preview — nothing is withheld from your payouts today. Your
+            badge below shows where you&rsquo;re headed; the tier fee starts only when the platform turns
+            badge economics on.
           </p>
         )}
       </PanelCard>

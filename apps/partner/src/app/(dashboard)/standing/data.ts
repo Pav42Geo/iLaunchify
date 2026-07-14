@@ -4,7 +4,7 @@
 // ratings they can contest. Read-only + honest: while the engine runs in shadow
 // the badge is a PROJECTION (labeled as such), and thin history never penalizes.
 
-import { prisma, getOrderSettings } from '@ilaunchify/db'
+import { prisma } from '@ilaunchify/db'
 import { requireUser, getPartnerAccess } from '@ilaunchify/auth'
 import {
   DEFAULT_MERIT_POLICY,
@@ -56,7 +56,6 @@ export interface StandingView {
 
 export interface StandingPage {
   live: boolean // MeritPolicy.enabled — badge economics active vs. preview
-  baseFeePct: string
   /** Merit-score thresholds per badge (from MeritPolicy) — display only. */
   thresholds: { trusted: number; premier: number }
   feeLadder: { badge: MeritBadge; label: string; pct: string; blurb: string }[]
@@ -100,7 +99,11 @@ export async function loadStandingPage(): Promise<StandingPage> {
       }
     : DEFAULT_MERIT_POLICY
   const live = policyRow?.enabled ?? false
-  const baseFeeBps = (await getOrderSettings().catch(() => null))?.productionFeeBps ?? 500
+  // FEE RECONCILIATION (2026-07-09): the merit fee is a WITHHOLD from the
+  // manufacturer's payout, 0 while the engine is in shadow — the retired flat
+  // OrderSettings.productionFeeBps must NOT surface here as a "base fee".
+  // base = 0 makes the old resolver equivalent to resolveManufacturerMeritFeeBps.
+  const baseFeeBps = 0
 
   // MM-7 — global fee-grace policy.
   const grace = {
@@ -117,7 +120,7 @@ export async function loadStandingPage(): Promise<StandingPage> {
     { badge: 'PREMIER', label: 'Premier', pct: feeBpsToPct(policy.feeBpsByBadge.PREMIER), blurb: 'Top standing — zero platform fee.' },
   ]
 
-  const empty: StandingPage = { live, baseFeePct: feeBpsToPct(baseFeeBps), thresholds: policy.thresholds, feeLadder, services: [], ratings: [], hasManufacturing: false }
+  const empty: StandingPage = { live, thresholds: policy.thresholds, feeLadder, services: [], ratings: [], hasManufacturing: false }
   if (!access || access.serviceIds.length === 0) return empty
 
   // Merit is manufacturing-only (the sweep filters MANUFACTURING).
@@ -191,7 +194,6 @@ export async function loadStandingPage(): Promise<StandingPage> {
 
   return {
     live,
-    baseFeePct: feeBpsToPct(baseFeeBps),
     thresholds: policy.thresholds,
     feeLadder,
     services: views,
