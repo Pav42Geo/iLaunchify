@@ -18,7 +18,6 @@ import { CertificationsClient } from './CertificationsClient'
 import { RenewCertButton } from './RenewCertButton'
 import { DownloadCertButton } from './DownloadCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
-import { getPartnerRoleWord } from '@/lib/partner-role'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Certifications — iLaunchify Partners' }
@@ -29,7 +28,6 @@ export default async function CertificationsPage({
   searchParams: Promise<{ renew?: string; claim?: string }>
 }) {
   const { renew: renewId, claim: claimTypeId } = await searchParams
-  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -109,19 +107,6 @@ export default async function CertificationsPage({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          {roleWord} · Certifications
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Certifications
-        </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          Industry certs you carry (NSF, USDA Organic, cGMP, Kosher, etc.). Upload the original
-          PDF — only iLaunchify admin sees it. Verified certs show as branded badges publicly.
-        </p>
-      </div>
-
       {instances.length === 0 ? (
         <PanelCard className="px-6 py-12 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
@@ -135,7 +120,11 @@ export default async function CertificationsPage({
         </PanelCard>
       ) : (
         <PanelCard>
-          <PanelHeader title="Your certifications" />
+          {/* Prototype #p-certs panel-h — no page hero (Pavel 2026-07-13). */}
+          <PanelHeader
+            title="Certifications"
+            desc="Your certificates gate marketplace eligibility & unlock profile badges. The PDF stays private to iLaunchify admin — only the branded badge shows publicly."
+          />
 
           {nextRenewal && (
             <InfoBanner tone="info" icon={<Info aria-hidden="true" />}>
