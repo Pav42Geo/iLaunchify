@@ -23,8 +23,18 @@ interface CertTypeOption {
 // Unified selector (Pavel 2026-07-09): the same CertificatePicker used at
 // application + onboarding. Single-select here — one PDF is claimed per cert, so
 // picking a type opens its claim form.
-export function CertificationsClient({ availableTypes }: { availableTypes: CertPickerOption[] }) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+export function CertificationsClient({
+  availableTypes,
+  initialSelectedTypeId = null,
+}: {
+  availableTypes: CertPickerOption[]
+  // Preselects a type (e.g. ?claim=<typeId> from the "Declared during
+  // onboarding" upload-proof prompts) so the claim form opens immediately.
+  initialSelectedTypeId?: string | null
+}) {
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    initialSelectedTypeId ? [initialSelectedTypeId] : [],
+  )
   const selected = availableTypes.find((t) => t.id === (selectedIds[0] ?? null)) ?? null
 
   return (

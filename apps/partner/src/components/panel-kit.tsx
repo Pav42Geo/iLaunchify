@@ -39,12 +39,14 @@ export function PanelHeader({
 export function PanelCard({
   className,
   children,
+  id,
 }: {
   className?: string
   children: React.ReactNode
+  id?: string
 }) {
   return (
-    <div className={cn('rounded-2xl border border-ink-200 bg-white p-6 shadow-sm', className)}>
+    <div id={id} className={cn('rounded-2xl border border-ink-200 bg-white p-6 shadow-sm', className)}>
       {children}
     </div>
   )

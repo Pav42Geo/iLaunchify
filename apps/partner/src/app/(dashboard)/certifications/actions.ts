@@ -15,7 +15,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { uploadFile, deleteFile, certPdfKey } from '@ilaunchify/storage'
+import { uploadFile, deleteFile, certPdfKey, getSignedReadUrl } from '@ilaunchify/storage'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 import { CERT_UPLOAD_CONSENT_VERSION } from './consent'
@@ -313,17 +313,18 @@ export async function updateCertificate(input: {
   expiryDate: string
   notes: string | null
 }): Promise<Result> {
-  const { partner, error } = await requirePartner()
+  const { user, partner, error } = await requirePartner()
   if (error) return { ok: false, error }
 
   const instance = await prisma.partnerCertificateInstance.findUnique({
     where: { id: input.id },
-    select: { partnerId: true, status: true },
+    select: { partnerId: true, status: true, certificateType: { select: { name: true } } },
   })
   if (!instance) return { ok: false, error: 'Certificate not found.' }
   if (instance.partnerId !== partner.id) return { ok: false, error: 'Not your certificate.' }
   if (!input.expiryDate) return { ok: false, error: 'Expiry date is required.' }
 
+  const kickedBack = instance.status === 'VERIFIED'
   await prisma.partnerCertificateInstance.update({
     where: { id: input.id },
     data: {
@@ -333,12 +334,68 @@ export async function updateCertificate(input: {
       expiryDate: new Date(input.expiryDate),
       notes: input.notes?.trim() || null,
       // Editing a previously-verified cert kicks it back to review.
-      ...(instance.status === 'VERIFIED' ? { status: 'PENDING_REVIEW' as const } : {}),
+      ...(kickedBack ? { status: 'PENDING_REVIEW' as const } : {}),
+    },
+  })
+
+  await logAuditAs(user, {
+    entityType: 'PartnerCertificateInstance',
+    entityId: input.id,
+    action: 'CERT_INSTANCE_UPDATE',
+    fromValue: instance.status,
+    toValue: kickedBack ? 'PENDING_REVIEW' : instance.status,
+    payload: {
+      partnerId: partner.id,
+      certificateType: instance.certificateType.name,
+      expiryDate: input.expiryDate,
     },
   })
 
   revalidatePath('/certifications')
   return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// DOWNLOAD own cert PDF — the file is the partner's own upload (privacy model
+// keeps it off PUBLIC surfaces; the owner can always retrieve it). Signed 5-min
+// URL, ownership-checked, audited — same pattern as Company verification docs.
+// -----------------------------------------------------------------------------
+
+export async function getCertPdfUrl(
+  instanceId: string,
+): Promise<{ ok: true; url: string; filename: string } | { ok: false; error: string }> {
+  const { user, partner, error } = await requirePartner()
+  if (error) return { ok: false, error }
+
+  const instance = await prisma.partnerCertificateInstance.findUnique({
+    where: { id: instanceId },
+    select: { partnerId: true, pdfFileId: true, certificateType: { select: { name: true } } },
+  })
+  if (!instance) return { ok: false, error: 'Certificate not found.' }
+  if (instance.partnerId !== partner.id) return { ok: false, error: 'Not your certificate.' }
+
+  const file = await prisma.partnerFile.findUnique({
+    where: { id: instance.pdfFileId },
+    select: { id: true, r2Key: true, originalFilename: true },
+  })
+  if (!file) return { ok: false, error: 'No file on record for this certificate.' }
+
+  try {
+    const url = await getSignedReadUrl(file.r2Key, { expiresInSeconds: 300 })
+    await logAuditAs(user, {
+      entityType: 'PartnerFile',
+      entityId: file.id,
+      action: 'FILE_DOWNLOAD_URL_ISSUED',
+      payload: {
+        partnerId: partner.id,
+        certificateType: instance.certificateType.name,
+        filename: file.originalFilename,
+      },
+    })
+    return { ok: true, url, filename: file.originalFilename }
+  } catch (err) {
+    return { ok: false, error: `Could not sign the download: ${(err as Error).message}` }
+  }
 }
 
 // -----------------------------------------------------------------------------

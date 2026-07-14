@@ -16,6 +16,7 @@ import { ShieldCheck, AlertCircle, Clock, Info, Plus } from 'lucide-react'
 import { InfoBanner, KpiStrip, PanelCard, PanelHeader, StPill } from '@/components/panel-kit'
 import { CertificationsClient } from './CertificationsClient'
 import { RenewCertButton } from './RenewCertButton'
+import { DownloadCertButton } from './DownloadCertButton'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 
@@ -25,14 +26,14 @@ export const metadata = { title: 'Certifications — iLaunchify Partners' }
 export default async function CertificationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ renew?: string }>
+  searchParams: Promise<{ renew?: string; claim?: string }>
 }) {
-  const { renew: renewId } = await searchParams
+  const { renew: renewId, claim: claimTypeId } = await searchParams
   const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    select: { id: true },
+    select: { id: true, onboardingProgress: true },
   })
   if (!partner) return null
 
@@ -72,6 +73,17 @@ export default async function CertificationsPage({
     description: t.description,
     thumbnailUrl: t.thumbnailFileId ? (availableBadgeUrls.get(t.thumbnailFileId) ?? null) : null,
   }))
+
+  // Onboarding declarations → proof prompts. During onboarding the partner
+  // DECLARED which cert types they carry (onboardingProgress.declaredCertTypeIds,
+  // no PDF yet — "you'll upload the PDF for each after approval"). This is where
+  // that promise is kept: every declared type without a claimed instance gets an
+  // upload prompt that preselects it in the claim form below.
+  const progress = (partner.onboardingProgress as Record<string, unknown> | null) ?? {}
+  const declaredIds = Array.isArray(progress.declaredCertTypeIds)
+    ? (progress.declaredCertTypeIds as string[])
+    : []
+  const declaredPending = availableTypes.filter((t) => declaredIds.includes(t.id))
 
   const verified = instances.filter((i) => i.status === 'VERIFIED')
   const pending = instances.filter((i) => i.status === 'PENDING_REVIEW')
@@ -152,8 +164,42 @@ export default async function CertificationsPage({
         </PanelCard>
       )}
 
+      {/* Declared during onboarding, proof still missing — keeps the onboarding
+          promise ("you'll upload the PDF for each after approval"). */}
+      {declaredPending.length > 0 && (
+        <PanelCard>
+          <PanelHeader
+            title="Declared during onboarding"
+            desc="You told us you carry these — upload the certificate PDF so admin can verify and unlock the public badge."
+          />
+          {declaredPending.map((t) => (
+            <div
+              key={t.id}
+              className="mb-2.5 flex flex-wrap items-center gap-3.5 rounded-xl border border-warning-100 bg-warning-50/40 px-4 py-[15px] last:mb-0"
+            >
+              <span className="grid h-10 w-10 flex-none place-items-center rounded-[10px] bg-warning-50 text-warning-500">
+                <Clock className="h-[19px] w-[19px]" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[14px] font-semibold text-ink-900">{t.name}</div>
+                <div className="text-[12px] text-ink-500">Declared in onboarding · proof not uploaded yet</div>
+              </div>
+              <div className="ml-auto flex flex-none items-center gap-3">
+                <StPill tone="warn">PROOF NEEDED</StPill>
+                <Link
+                  href={`/certifications?claim=${t.id}#add-cert`}
+                  className="inline-flex items-center rounded-full bg-pink-500 px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600"
+                >
+                  Upload proof
+                </Link>
+              </div>
+            </div>
+          ))}
+        </PanelCard>
+      )}
+
       {/* Claim / Add new cert */}
-      <PanelCard>
+      <PanelCard id="add-cert">
         <PanelHeader
           title="Add a certification"
           desc={
@@ -175,7 +221,14 @@ export default async function CertificationsPage({
             </>
           }
         />
-        {availableTypes.length > 0 && <CertificationsClient availableTypes={availableTypeOptions} />}
+        {availableTypes.length > 0 && (
+          <CertificationsClient
+            availableTypes={availableTypeOptions}
+            initialSelectedTypeId={
+              claimTypeId && availableTypes.some((t) => t.id === claimTypeId) ? claimTypeId : null
+            }
+          />
+        )}
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-ink-100 pt-4">
           <p className="text-[13px] text-ink-500">Carry a certification that isn&apos;t listed?</p>
           <Link
@@ -280,6 +333,7 @@ function CertRow({
         ) : (
           <StPill tone="danger">EXPIRED</StPill>
         )}
+        <DownloadCertButton instanceId={inst.id} />
       </div>
       {/* Direct flex-wrap child: renders as an inline pill trigger when closed,
           and as a w-full form that wraps onto its own full-width line when open. */}

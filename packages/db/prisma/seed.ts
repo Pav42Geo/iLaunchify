@@ -340,6 +340,35 @@ async function main() {
     include: { partner: { include: { services: true } } },
   })
 
+  // Declared-but-unproven certs for the sample manufacturer — exercises the
+  // /certifications "Declared during onboarding" upload-proof section. Uses
+  // REAL CertificateType ids from the admin library (seed-certificate-types);
+  // skipped when the library is empty. Idempotent: only fills when unset.
+  if (manufUser.partner) {
+    const existingProgress =
+      (manufUser.partner.onboardingProgress as Record<string, unknown> | null) ?? {}
+    if (!Array.isArray(existingProgress.declaredCertTypeIds)) {
+      const declarable = await prisma.certificateType.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true },
+        orderBy: { name: 'asc' },
+        take: 2,
+      })
+      if (declarable.length > 0) {
+        await prisma.partner.update({
+          where: { id: manufUser.partner.id },
+          data: {
+            onboardingProgress: {
+              ...existingProgress,
+              declaredCertTypeIds: declarable.map((c) => c.id),
+              declaredCertsUpdatedAt: new Date().toISOString(),
+            },
+          },
+        })
+      }
+    }
+  }
+
   // --- Sample co-packer (offers both copacking + manufacturing) ---
   await prisma.user.upsert({
     where: { email: 'sample-copacker@ilaunchify.dev' },
