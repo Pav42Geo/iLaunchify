@@ -1,24 +1,20 @@
-// Partner services — per-service accordion editors, the real port of
-// design/partner-services-prototype-tokens.html (Pavel 2026-07-13).
-//
-// Each service opens a PURPOSE-BUILT editor (no generic shared form):
-//   MANUFACTURING → domains / formulation+samples / runs+capacity (capabilities
-//     JSON, merged — unknown keys always survive), PLUS a separate
-//     "Storage at your facility" card for the TYPED offersStorage columns
-//     (HOLD_AT_MANUFACTURER destination — explicitly NOT an FC).
-//   COPACKING     → containers / fills / supply model / lines+runs.
-//   LABEL_PRINTING→ specs + appliesLabels; substrates & die-lines link to
-//     their real stores in Packaging (counts shown from the DB).
-//   WAREHOUSE     → the 3PL/FC service — summary card linking to its dedicated
-//     editors (Settings → Storage / Fulfillment / Shipping); never edited here.
-// Pre-approval partners get the read-only humanized readout. Real data only —
-// empty fields render empty (no invented defaults).
+// Partner Services — WORKSPACE v2 (Pavel 2026-07-14,
+// design/partner-services-workspace-tokens.html). Accordions are GONE:
+//   ① service switcher CARDS (status + "Prepress not set" warning on the face)
+//   ② pill SECTION TABS for the selected service (warning dot on unfinished)
+//   ③ ONE flat, fully-visible form per section.
+// URL-driven: ?svc=<serviceId>&sec=<section> — shareable, back-button-safe.
+// All editors are the existing ones (ManufacturingEditor, StorageEditor,
+// ProductDefaultsForm, labeling cards, PrepressSection) — data layer unchanged.
+// Storage / Product defaults ride the PRODUCING service (mfr first, else
+// co-packer); WAREHOUSE shows a read-only overview linking to its real editors.
 
+import Link from 'next/link'
 import { prisma, isNominationEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { ExternalLink, Factory, ListChecks, Package, Plus, Printer, Tags, Warehouse } from 'lucide-react'
-import { PanelCard, PanelHeader, LRow, StPill, type PillTone } from '@/components/panel-kit'
-import { getPartnerRoleWord } from '@/lib/partner-role'
+import { cn } from '@ilaunchify/ui'
+import { ExternalLink, Factory, Package, Plus, Printer, Warehouse } from 'lucide-react'
+import { StPill, type PillTone } from '@/components/panel-kit'
 import { addService, type AddableServiceType } from './actions'
 import {
   ManufacturingEditor,
@@ -27,20 +23,17 @@ import {
   StorageEditor,
   type StorageTypedVM,
 } from './ServiceEditors'
-// Product defaults live HERE now (Pavel 2026-07-13) — the old settings page
-// redirects; the form + actions stay in place (products/new prefill imports them).
 import { ProductDefaultsForm } from '../settings/product-defaults/ProductDefaultsForm'
-import { getPartnerProductDefaults, type ProductDefaultsRow } from '../settings/product-defaults/actions'
-// Labeling & VAS folded in here (Pavel 2026-07-13) — /settings/labeling redirects.
-import { PageTabs } from '@/components/PageTabs'
+import { getPartnerProductDefaults } from '../settings/product-defaults/actions'
 import {
   ProducingServiceCard,
   FcVasCard,
   PrinterSampleCard,
   type VasRowView,
 } from '../settings/labeling/LabelingSettingsForm'
-// Prepress delivery folded in per service (IA reorg, Pavel 2026-07-14).
 import { PrepressSection } from '../print-spec/PrepressSection'
+import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Services — Partners' }
@@ -61,15 +54,15 @@ const SERVICE_STATUS: Record<string, { tone: PillTone; label: string }> = {
 function serviceIcon(type: string) {
   switch (type) {
     case 'MANUFACTURING':
-      return <Factory />
+      return <Factory className="h-4 w-4" />
     case 'COPACKING':
-      return <Package />
+      return <Package className="h-4 w-4" />
     case 'LABEL_PRINTING':
-      return <Printer />
+      return <Printer className="h-4 w-4" />
     case 'WAREHOUSE':
-      return <Warehouse />
+      return <Warehouse className="h-4 w-4" />
     default:
-      return <Factory />
+      return <Factory className="h-4 w-4" />
   }
 }
 
@@ -79,56 +72,23 @@ function humanize(v: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-/** One-line REAL summary per service — only values that exist, ' · ' joined. */
-function capabilitySummary(s: { capabilities: unknown; storageClasses: string[] }): string | null {
-  const caps = (s.capabilities ?? {}) as Record<string, unknown>
-  const strArr = (k: string): string[] =>
-    Array.isArray(caps[k]) ? (caps[k] as unknown[]).filter((x): x is string => typeof x === 'string') : []
-  const int = (k: string): number | null =>
-    typeof caps[k] === 'number' && Number.isFinite(caps[k]) ? (caps[k] as number) : null
+type SectionKey = 'capabilities' | 'storage' | 'defaults' | 'labeling' | 'prepress' | 'overview'
 
-  const parts: string[] = []
-  const cats = [...strArr('categories'), ...strArr('containerFormats'), ...strArr('processes')]
-  parts.push(...cats.slice(0, 3).map(humanize))
-  parts.push(...strArr('fillTypes').slice(0, 2).map(humanize))
-  const moqMin = int('moqMin')
-  if (moqMin !== null) parts.push(`MOQ ${moqMin.toLocaleString()}`)
-  const leadStock = int('leadTimeStockDays')
-  const leadCustom = int('leadTimeCustomDays')
-  const leadFlat = int('leadTimeDays')
-  if (leadStock !== null && leadCustom !== null) parts.push(`lead ${leadStock}–${leadCustom}d`)
-  else if (leadFlat !== null) parts.push(`lead ${leadFlat}d`)
-  return parts.length > 0 ? parts.join(' · ') : null
+const SECTION_LABEL: Record<SectionKey, string> = {
+  capabilities: 'Capabilities',
+  storage: 'Storage at facility',
+  defaults: 'Product defaults',
+  labeling: 'Labeling & VAS',
+  prepress: 'Prepress delivery',
+  overview: 'Overview',
 }
 
-/** Real product-defaults summary — only values that exist; honest empty state. */
-function productDefaultsSummary(d: ProductDefaultsRow | null): string {
-  if (!d) return 'Not set — every new product starts blank'
-  const parts: string[] = []
-  if (d.leadTimeRepeatDays != null) parts.push(`repeat ${d.leadTimeRepeatDays}d`)
-  if (d.leadTimeFirstRunDays != null) parts.push(`first run ${d.leadTimeFirstRunDays}d`)
-  if (d.moqMin != null) parts.push(`MOQ ${d.moqMin.toLocaleString()}${d.moqMax != null ? `–${d.moqMax.toLocaleString()}` : ''}`)
-  if (d.monthlyCapacity != null) parts.push(`${d.monthlyCapacity.toLocaleString()}/mo capacity`)
-  const head = parts.length ? parts.join(' · ') : 'Saved — open to review'
-  return `${head} · pre-fills every new product`
-}
-
-/** Real storage summary from the TYPED columns. */
-function storageSummary(s: StorageTypedVM): string {
-  if (!s.offersStorage) return 'Not offered — creators can’t hold stock at your facility'
-  const parts: string[] = []
-  if (s.storageClasses.length) parts.push(s.storageClasses.map(humanize).join(' + '))
-  if (s.maxDwellDays != null) parts.push(`${s.maxDwellDays}-day max dwell`)
-  if (s.storageRateCents != null && s.storageBillingUnit)
-    parts.push(
-      `$${(s.storageRateCents / 100).toFixed(2)}/${s.storageBillingUnit === 'PALLET_MONTH' ? 'pallet-mo' : 'cu ft-mo'}`,
-    )
-  if (s.onDemandEnabled) parts.push('ships on demand')
-  return parts.length ? parts.join(' · ') : 'Enabled — set classes, dwell & billing'
-}
-
-export default async function ServicesPage() {
-  const roleWord = await getPartnerRoleWord()
+export default async function ServicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ svc?: string; sec?: string }>
+}) {
+  const sp = await searchParams
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -141,13 +101,16 @@ export default async function ServicesPage() {
 
   const nominationOn = await isNominationEnabled().catch(() => false)
   const canEdit = partner.status === 'ACTIVE' || partner.status === 'INTEGRATION_ENHANCED'
-  // WAREHOUSE is NOT self-serve — the FC network is admin-contracted
-  // (Pavel 2026-07-13). Producers offer "storage at your facility" instead.
+  // WAREHOUSE is NOT self-serve — the FC network is admin-contracted (Pavel 2026-07-13).
   const missingTypes = (
     ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING'] as AddableServiceType[]
   ).filter((t) => !partner.services.some((s) => (s.type as string) === t))
 
-  // Real substrate / die-line counts for the print card.
+  // Producing service carries Storage + Product defaults (mfr first, else co-packer).
+  const producingSvc =
+    partner.services.find((s) => (s.type as string) === 'MANUFACTURING') ??
+    partner.services.find((s) => (s.type as string) === 'COPACKING')
+
   const printSvc = partner.services.find((s) => (s.type as string) === 'LABEL_PRINTING')
   const [substrateCount, dielineCount] = printSvc
     ? await Promise.all([
@@ -156,17 +119,8 @@ export default async function ServicesPage() {
       ])
     : [0, 0]
 
-  // "Storage at your facility" attaches to the producing service (mfr first,
-  // else co-packer) — the typed offersStorage columns. NEVER the WAREHOUSE row.
-  const producingSvc =
-    partner.services.find((s) => (s.type as string) === 'MANUFACTURING') ??
-    partner.services.find((s) => (s.type as string) === 'COPACKING')
-  // Product defaults moved here from /settings/product-defaults (Pavel
-  // 2026-07-13): they're service-level operating facts (facility, lead times,
-  // MOQ), same family as capabilities. Producers only.
   const productDefaults = producingSvc ? await getPartnerProductDefaults(partner.id) : null
 
-  // Labeling & VAS accordion data — FC value-added rows per WAREHOUSE service.
   const warehouseSvcIds = partner.services
     .filter((sv) => (sv.type as string) === 'WAREHOUSE')
     .map((sv) => sv.id)
@@ -175,6 +129,42 @@ export default async function ServicesPage() {
         .findMany({ where: { partnerServiceId: { in: warehouseSvcIds } }, orderBy: { jobType: 'asc' } })
         .catch(() => [])
     : []
+
+  // Prepress-spec presence — an empty spec silently breaks the automatic export
+  // pipeline, so cards + tabs warn until it's saved (Pavel 2026-07-14).
+  const prepressIds = partner.services
+    .filter((sv) => ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING'].includes(sv.type as string))
+    .map((sv) => sv.id)
+  const specRows = prepressIds.length
+    ? await prisma.partnerPrintOutputSpec
+        .findMany({ where: { partnerServiceId: { in: prepressIds } }, select: { partnerServiceId: true } })
+        .catch(() => [])
+    : []
+  const hasPrepressSpec = new Set(specRows.map((r) => r.partnerServiceId))
+
+  // ---- selection (URL-driven) ----
+  const ordered = [...partner.services].sort((a, b) => {
+    const rank = (t: string) =>
+      ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE'].indexOf(t)
+    return rank(a.type as string) - rank(b.type as string)
+  })
+  const selected = ordered.find((s) => s.id === sp.svc) ?? ordered[0] ?? null
+
+  function sectionsFor(svc: NonNullable<typeof selected>): SectionKey[] {
+    const type = svc.type as string
+    if (type === 'WAREHOUSE') return ['overview']
+    const secs: SectionKey[] = ['capabilities']
+    if (producingSvc && svc.id === producingSvc.id) secs.push('storage', 'defaults')
+    if (type === 'MANUFACTURING' || type === 'COPACKING' || type === 'LABEL_PRINTING')
+      secs.push('labeling')
+    secs.push('prepress')
+    return secs
+  }
+
+  const sections = selected ? sectionsFor(selected) : []
+  const sec: SectionKey = sections.includes(sp.sec as SectionKey)
+    ? (sp.sec as SectionKey)
+    : (sections[0] ?? 'capabilities')
 
   const storageVM: StorageTypedVM | null = producingSvc
     ? {
@@ -192,307 +182,328 @@ export default async function ServicesPage() {
       }
     : null
 
+  const sectionWarns = (svc: NonNullable<typeof selected>, k: SectionKey): boolean =>
+    k === 'prepress' && canEdit && !hasPrepressSpec.has(svc.id)
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PageTabs group="services" hidden={nominationOn ? [] : ['/co-partners']} />
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          {roleWord} · Services
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Your services
-        </h1>
-        <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-          One card per service, each with its own editor. Everything here routes itself — matching,
-          checkout ETA, capacity gates, print eligibility, and the hold-at-manufacturer destination
-          all read these profiles directly.
-        </p>
-      </div>
 
-      <PanelCard>
-        <PanelHeader
-          title="Capabilities & services"
-          desc={
-            canEdit
-              ? 'Every service you offer, with its live capability profile.'
-              : 'Read-only while your application is under review — changes go through My Application.'
-          }
-        />
+      <ListTitleRow
+        title="Services"
+        sub="Pick a service, then work through its sections — every form is flat and fully visible."
+      />
 
-        {partner.services.map((s) => {
+      {/* ① service switcher cards */}
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        {ordered.map((s) => {
           const type = s.type as string
           const status = SERVICE_STATUS[s.status] ?? { tone: 'muted' as PillTone, label: s.status }
-          const summary = capabilitySummary({
-            capabilities: s.capabilities,
-            storageClasses: s.storageClasses ?? [],
-          })
-          const caps = (s.capabilities ?? {}) as Record<string, unknown>
-
-          // WAREHOUSE = the 3PL/FC service — managed in its dedicated pages.
-          if (type === 'WAREHOUSE') {
-            return (
-              <div key={s.id} className="mb-2.5 last:mb-0">
-                <LRow
-                  icon={serviceIcon(type)}
-                  iconClassName="bg-pink-50 text-pink-700"
-                  title={SERVICE_LABEL[type]}
-                  sub={
-                    summary
-                      ? `${summary} · 3PL fulfillment — managed in Settings`
-                      : '3PL fulfillment — managed in Settings'
-                  }
-                  right={
-                    <>
-                      <StPill tone={status.tone}>{status.label}</StPill>
-                      <a
-                        href="/settings/storage"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
-                      >
-                        Storage <ExternalLink className="h-3 w-3" />
-                      </a>
-                      <a
-                        href="/settings/fulfillment"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
-                      >
-                        Fulfillment <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </>
-                  }
-                />
-              </div>
-            )
-          }
-
+          const on = selected?.id === s.id
           return (
-            <details key={s.id} className="group mb-2.5 last:mb-0" open={type === 'MANUFACTURING'}>
-              <summary className="block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                <LRow
-                  className="mb-0"
-                  icon={serviceIcon(type)}
-                  iconClassName="bg-pink-50 text-pink-700"
-                  title={SERVICE_LABEL[type] ?? type}
-                  sub={summary ?? 'No capability details yet — open to fill them in'}
-                  right={
-                    <>
-                      <StPill tone={status.tone}>{status.label}</StPill>
-                      <span className="rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors group-hover:bg-ink-50">
-                        {canEdit ? 'Edit' : 'View'}
-                      </span>
-                    </>
-                  }
-                />
-              </summary>
-              <div className="mt-2 rounded-xl border border-ink-200 bg-white p-4">
-                {!canEdit ? (
-                  <CapabilityReadout capabilities={s.capabilities} />
-                ) : type === 'MANUFACTURING' ? (
-                  <ManufacturingEditor serviceId={s.id} capabilities={caps} />
-                ) : type === 'COPACKING' ? (
-                  <CopackEditor serviceId={s.id} capabilities={caps} />
-                ) : (
-                  <PrintEditor
-                    serviceId={s.id}
-                    capabilities={caps}
-                    appliesLabels={s.appliesLabels}
-                    substrateCount={substrateCount}
-                    dielineCount={dielineCount}
-                  />
-                )}
-                {/* Prepress delivery — was /print-spec (IA reorg, Pavel 2026-07-14). */}
-                {canEdit && (
-                  <details className="mt-4 border-t border-ink-100 pt-3">
-                    <summary className="cursor-pointer list-none text-[13px] font-semibold text-ink-700 hover:text-ink-900 [&::-webkit-details-marker]:hidden">
-                      Prepress delivery — file format, color, bleed, dieline handoff ▸
-                    </summary>
-                    <div className="mt-3">
-                      <PrepressSection serviceId={s.id} />
-                    </div>
-                  </details>
+            <Link
+              key={s.id}
+              href={`/services?svc=${s.id}`}
+              className={cn(
+                'rounded-[14px] border-[1.5px] p-3.5 transition-colors',
+                on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-400',
+              )}
+            >
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={cn(
+                    'grid h-8 w-8 flex-none place-items-center rounded-[9px] text-pink-700',
+                    on ? 'bg-white' : 'bg-pink-50',
+                  )}
+                >
+                  {serviceIcon(type)}
+                </span>
+                <span className="text-[13px] font-bold text-ink-900">
+                  {SERVICE_LABEL[type] ?? type}
+                </span>
+              </div>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                <StPill tone={status.tone}>{status.label}</StPill>
+                {type !== 'WAREHOUSE' && canEdit && !hasPrepressSpec.has(s.id) && (
+                  <StPill tone="warn">Prepress not set</StPill>
                 )}
               </div>
-            </details>
+            </Link>
           )
         })}
-
-        {/* Labeling & value-added — folded from /settings/labeling (Pavel
-            2026-07-13): routing declarations, same family as capabilities. */}
-        <details id="labeling" className="group mb-2.5 last:mb-0">
-          <summary className="block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-            <LRow
-              className="mb-0"
-              icon={<Tags />}
-              iconClassName="bg-pink-50 text-pink-700"
-              title="Labeling & value-added"
-              sub="Print sourcing, label application, sample capability, FC value-added services — the declarations that drive routing"
-              right={
-                <span className="rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors group-hover:bg-ink-50">
-                  {canEdit ? 'Edit' : 'View'}
-                </span>
-              }
-            />
-          </summary>
-          <div className="mt-2 space-y-4 rounded-xl border border-ink-200 bg-white p-4">
-            {!canEdit ? (
-              <p className="text-[13px] text-ink-500">
-                Labeling declarations become editable once your application is approved.
-              </p>
-            ) : (
-              <>
-                {partner.services
-                  .filter((sv) => ['MANUFACTURING', 'COPACKING'].includes(sv.type as string))
-                  .map((sv) => (
-                    <ProducingServiceCard
-                      key={sv.id}
-                      service={{
-                        id: sv.id,
-                        type: sv.type as string,
-                        labelingMode: sv.labelingMode,
-                        appliesLabels: sv.appliesLabels,
-                      }}
-                      label={
-                        (sv.type as string) === 'MANUFACTURING'
-                          ? 'Manufacturing — print sourcing & label application'
-                          : 'Co-packing — label application'
-                      }
-                    />
-                  ))}
-                {partner.services
-                  .filter((sv) => (sv.type as string) === 'LABEL_PRINTING')
-                  .map((sv) => (
-                    <PrinterSampleCard key={sv.id} serviceId={sv.id} initialSampleCapable={sv.sampleCapable} />
-                  ))}
-                {partner.services
-                  .filter((sv) => (sv.type as string) === 'WAREHOUSE')
-                  .map((sv) => (
-                    <FcVasCard
-                      key={sv.id}
-                      serviceId={sv.id}
-                      rows={vasRows
-                        .filter((v) => v.partnerServiceId === sv.id)
-                        .map(
-                          (v): VasRowView => ({
-                            jobType: v.jobType,
-                            labelMethods: v.labelMethods,
-                            feeCentsPerUnit: v.feeCentsPerUnit,
-                            minUnits: v.minUnits,
-                            leadTimeDays: v.leadTimeDays,
-                            notes: v.notes,
-                            status: v.status,
-                          }),
-                        )}
-                    />
-                  ))}
-              </>
-            )}
-          </div>
-        </details>
-
-        {/* Storage at YOUR facility — typed columns on the producing service. */}
-        {producingSvc && storageVM && (
-          <details className="group mb-2.5 last:mb-0">
-            <summary className="block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-              <LRow
-                className="mb-0"
-                icon={<Warehouse />}
-                iconClassName="bg-pink-50 text-pink-700"
-                title="Storage at your facility"
-                sub={storageSummary(storageVM)}
-                right={
-                  <>
-                    <StPill tone={storageVM.offersStorage ? 'ok' : 'muted'}>
-                      {storageVM.offersStorage ? 'Offered' : 'Off'}
-                    </StPill>
-                    <span className="rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors group-hover:bg-ink-50">
-                      {canEdit ? 'Edit' : 'View'}
-                    </span>
-                  </>
-                }
-              />
-            </summary>
-            <div className="mt-2 rounded-xl border border-ink-200 bg-white p-4">
-              {canEdit ? (
-                <StorageEditor serviceId={producingSvc.id} initial={storageVM} />
-              ) : (
-                <p className="text-[13px] text-ink-500">
-                  Storage offering becomes editable once your application is approved.
-                </p>
-              )}
-            </div>
-          </details>
-        )}
-
-        {/* Product defaults — prefill for every NEW product (Pavel 2026-07-13:
-            page retired; the editor lives here with the other operating facts). */}
-        {producingSvc && (
-          <details id="product-defaults" className="group mb-2.5 last:mb-0">
-            <summary className="block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-              <LRow
-                className="mb-0"
-                icon={<ListChecks />}
-                iconClassName="bg-pink-50 text-pink-700"
-                title="Product defaults"
-                sub={productDefaultsSummary(productDefaults)}
-                right={
-                  <>
-                    <StPill tone={productDefaults?.applyToNewProducts ? 'ok' : 'muted'}>
-                      {productDefaults ? (productDefaults.applyToNewProducts ? 'Applied' : 'Saved · off') : 'Not set'}
-                    </StPill>
-                    <span className="rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors group-hover:bg-ink-50">
-                      {canEdit ? 'Edit' : 'View'}
-                    </span>
-                  </>
-                }
-              />
-            </summary>
-            <div className="mt-2 rounded-xl border border-ink-200 bg-white p-4">
-              {canEdit ? (
-                <ProductDefaultsForm facilities={partner.facilities} initial={productDefaults} />
-              ) : (
-                <p className="text-[13px] text-ink-500">
-                  Product defaults become editable once your application is approved.
-                </p>
-              )}
-            </div>
-          </details>
-        )}
-
-        {partner.services.length === 0 && (
-          <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-[13px] text-ink-500">
-            No services yet — add the first one below.
-          </p>
-        )}
-
         {canEdit && missingTypes.length > 0 && (
-          <div className="mt-4 border-t border-ink-100 pt-4">
-            <div className="mb-2 text-[12px] font-semibold text-ink-700">Add a service</div>
-            <div className="flex flex-wrap gap-2">
+          <div className="grid min-h-[74px] place-items-center rounded-[14px] border-[1.5px] border-dashed border-ink-300 bg-white/60 p-3">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
               {missingTypes.map((t) => (
                 <form key={t} action={addService.bind(null, t)}>
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-pink-500 px-3.5 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-pink-600"
+                    className="inline-flex items-center gap-1 rounded-full border border-ink-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-pink-500 hover:text-pink-700"
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    {SERVICE_LABEL[t]}
+                    <Plus className="h-3 w-3" /> {SERVICE_LABEL[t]}
                   </button>
                 </form>
               ))}
             </div>
-            <p className="mt-2 text-[11px] text-ink-500">
-              New services start as Draft — fill in the capability profile here, then complete the
-              service&rsquo;s Activation Setup track to go live for routing. Interested in joining
-              the Fulfillment Center network as a 3PL? That&rsquo;s a separately contracted
-              program —{' '}
-              <a href="/help" className="font-semibold underline underline-offset-2">
-                talk to us
-              </a>
-              .
-            </p>
           </div>
         )}
-      </PanelCard>
+      </div>
+
+      {partner.services.length === 0 && (
+        <p className="rounded-xl border border-dashed border-ink-300 px-4 py-6 text-center text-[13px] text-ink-500">
+          No services yet — add the first one above.
+        </p>
+      )}
+
+      {selected && (
+        <>
+          {/* ② section pill-tabs (warning dot on unfinished) */}
+          {sections.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              {sections.map((k) => (
+                <Link
+                  key={k}
+                  href={`/services?svc=${selected.id}&sec=${k}`}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[12.5px] font-semibold transition-colors',
+                    sec === k
+                      ? 'border-ink-900 bg-ink-900 text-white'
+                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400',
+                  )}
+                >
+                  {SECTION_LABEL[k]}
+                  {sectionWarns(selected, k) && (
+                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-warning-500" />
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* ③ ONE flat panel — the selected section, fully visible */}
+          <div className="rounded-2xl border border-ink-200 bg-white p-6">
+            <SectionPanel
+              sec={sec}
+              svc={selected}
+              canEdit={canEdit}
+              storageVM={storageVM}
+              facilities={partner.facilities}
+              productDefaults={productDefaults}
+              vasRows={vasRows}
+              substrateCount={substrateCount}
+              dielineCount={dielineCount}
+            />
+          </div>
+        </>
+      )}
     </div>
   )
+}
+
+// -----------------------------------------------------------------------------
+// Section panel — renders the EXISTING editor for (service, section).
+// -----------------------------------------------------------------------------
+
+function SectionHeader({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="mb-4">
+      <h2 className="font-display text-[15px] font-bold text-ink-900">{title}</h2>
+      <p className="mt-0.5 text-[12px] text-ink-500">{desc}</p>
+    </div>
+  )
+}
+
+async function SectionPanel({
+  sec,
+  svc,
+  canEdit,
+  storageVM,
+  facilities,
+  productDefaults,
+  vasRows,
+  substrateCount,
+  dielineCount,
+}: {
+  sec: SectionKey
+  svc: {
+    id: string
+    type: string
+    status: string
+    capabilities: unknown
+    appliesLabels: boolean
+    labelingMode: string
+    sampleCapable: boolean
+  }
+  canEdit: boolean
+  storageVM: StorageTypedVM | null
+  facilities: { id: string; name: string }[]
+  productDefaults: Awaited<ReturnType<typeof getPartnerProductDefaults>>
+  vasRows: Array<{
+    partnerServiceId: string
+    jobType: string
+    labelMethods: string[]
+    feeCentsPerUnit: number
+    minUnits: number
+    leadTimeDays: number
+    notes: string | null
+    status: string
+  }>
+  substrateCount: number
+  dielineCount: number
+}) {
+  const type = svc.type
+  const caps = (svc.capabilities ?? {}) as Record<string, unknown>
+
+  if (type === 'WAREHOUSE') {
+    return (
+      <>
+        <SectionHeader
+          title="Fulfillment Center (3PL)"
+          desc="Contracted network service — configured through its dedicated operational surfaces."
+        />
+        <div className="flex flex-wrap gap-2">
+          <a
+            href="/settings/fulfillment"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
+          >
+            Receiving & availability <ExternalLink className="h-3 w-3" />
+          </a>
+          <a
+            href="/settings/shipping"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
+          >
+            Carrier & shipping <ExternalLink className="h-3 w-3" />
+          </a>
+          <a
+            href="/billing"
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
+          >
+            Storage billing <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+        {canEdit && (
+          <div className="mt-5 border-t border-ink-100 pt-4">
+            <SectionHeader
+              title="Value-added services"
+              desc="Kitting, labeling and finishing work you offer on stored stock — admin-verified before going live."
+            />
+            <FcVasCard
+              serviceId={svc.id}
+              rows={vasRows
+                .filter((v) => v.partnerServiceId === svc.id)
+                .map(
+                  (v): VasRowView => ({
+                    jobType: v.jobType,
+                    labelMethods: v.labelMethods,
+                    feeCentsPerUnit: v.feeCentsPerUnit,
+                    minUnits: v.minUnits,
+                    leadTimeDays: v.leadTimeDays,
+                    notes: v.notes,
+                    status: v.status,
+                  }),
+                )}
+            />
+          </div>
+        )}
+      </>
+    )
+  }
+
+  if (!canEdit && sec !== 'capabilities') {
+    return (
+      <p className="text-[13px] text-ink-500">
+        This section becomes editable once your application is approved.
+      </p>
+    )
+  }
+
+  switch (sec) {
+    case 'capabilities':
+      return (
+        <>
+          <SectionHeader
+            title="Capabilities"
+            desc="What this service can do — drives matching, checkout ETA, capacity gates and print eligibility."
+          />
+          {!canEdit ? (
+            <CapabilityReadout capabilities={svc.capabilities} />
+          ) : type === 'MANUFACTURING' ? (
+            <ManufacturingEditor serviceId={svc.id} capabilities={caps} />
+          ) : type === 'COPACKING' ? (
+            <CopackEditor serviceId={svc.id} capabilities={caps} />
+          ) : (
+            <PrintEditor
+              serviceId={svc.id}
+              capabilities={caps}
+              appliesLabels={svc.appliesLabels}
+              substrateCount={substrateCount}
+              dielineCount={dielineCount}
+            />
+          )}
+        </>
+      )
+    case 'storage':
+      return (
+        <>
+          <SectionHeader
+            title="Storage at your facility"
+            desc="Hold finished goods at YOUR plant (hold-at-manufacturer — explicitly not a fulfillment center) and optionally ship on demand."
+          />
+          {storageVM && <StorageEditor serviceId={svc.id} initial={storageVM} />}
+        </>
+      )
+    case 'defaults':
+      return (
+        <>
+          <SectionHeader
+            title="Product defaults"
+            desc="Pre-fills every new product — a teammate only edits what changes per product."
+          />
+          <ProductDefaultsForm facilities={facilities} initial={productDefaults} />
+        </>
+      )
+    case 'labeling':
+      return (
+        <>
+          <SectionHeader
+            title="Labeling & value-added"
+            desc="Print sourcing, label application and sample capability — the declarations that drive routing."
+          />
+          <div className="space-y-4">
+            {(type === 'MANUFACTURING' || type === 'COPACKING') && (
+              <ProducingServiceCard
+                service={{
+                  id: svc.id,
+                  type,
+                  labelingMode: svc.labelingMode,
+                  appliesLabels: svc.appliesLabels,
+                }}
+                label={
+                  type === 'MANUFACTURING'
+                    ? 'Manufacturing — print sourcing & label application'
+                    : 'Co-packing — label application'
+                }
+              />
+            )}
+            {type === 'LABEL_PRINTING' && (
+              <PrinterSampleCard serviceId={svc.id} initialSampleCapable={svc.sampleCapable} />
+            )}
+          </div>
+        </>
+      )
+    case 'prepress':
+      return (
+        <>
+          <SectionHeader
+            title="Prepress delivery"
+            desc="How the Studio prepares export files for THIS service — the platform builds every bundle to exactly these parameters."
+          />
+          <PrepressSection serviceId={svc.id} />
+        </>
+      )
+    default:
+      return null
+  }
 }
 
 /** Read-only capability display (pre-approval) — humanized rows, never raw JSON. */

@@ -4,5 +4,5 @@
 import { redirect } from 'next/navigation'
 
 export default function MovedLabelingPage() {
-  redirect('/services#labeling')
+  redirect('/services?sec=labeling')
 }

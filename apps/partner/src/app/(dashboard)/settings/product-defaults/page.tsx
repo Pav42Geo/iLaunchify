@@ -5,5 +5,5 @@
 import { redirect } from 'next/navigation'
 
 export default function MovedProductDefaultsPage() {
-  redirect('/services#product-defaults')
+  redirect('/services?sec=defaults')
 }
