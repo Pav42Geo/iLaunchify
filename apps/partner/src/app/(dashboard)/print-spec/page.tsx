@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requirePartnerActor } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
-import { ArrowLeft, Printer } from 'lucide-react'
+import { Printer } from 'lucide-react'
 import type {
   ColorSpace,
   DielineDelivery,
@@ -21,8 +21,8 @@ import {
   type PrintSpecInitial,
   type SubstrateOption,
 } from './PrintSpecForm'
-import { getPartnerRoleWord } from '@/lib/partner-role'
 import { PageTabs } from '@/components/PageTabs'
+import { ListTitleRow } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Prepress output — iLaunchify Partners' }
@@ -66,7 +66,6 @@ export default async function PrintSpecPage({
 }: {
   searchParams: Promise<{ serviceId?: string }>
 }) {
-  const roleWord = await getPartnerRoleWord()
   const actor = await requirePartnerActor()
   if (!actor.ok) return null
 
@@ -76,25 +75,13 @@ export default async function PrintSpecPage({
     orderBy: { createdAt: 'asc' },
   })
 
+  // Modern list chrome (Pavel 2026-07-14) — same slim title row as the other
+  // operational pages; the Packaging tab bar above already provides the way back.
   const header = (
-    <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-      <Link
-        href="/packaging"
-        className="inline-flex items-center gap-1 rounded text-[12px] font-medium text-ink-500 transition-colors hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Packaging catalog
-      </Link>
-      <p className="mt-2 text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-        {roleWord} · Prepress
-      </p>
-      <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-        Prepress output
-      </h1>
-      <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
-        Your prepress export preferences for each service — file format, color management,
-        resolution, bleed, dieline delivery, and the manifest format used to build export bundles.
-      </p>
-    </div>
+    <ListTitleRow
+      title="Prepress output"
+      sub="Your prepress export preferences per service — file format, color management, resolution, bleed, dieline delivery, and the export-bundle manifest format."
+    />
   )
 
   if (services.length === 0) {
