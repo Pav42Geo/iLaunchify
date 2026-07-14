@@ -72,21 +72,9 @@ export default async function PerformancePage() {
   )
 
   return (
+    // Prototype #p-performance — no page hero (Pavel 2026-07-13); one panel
+    // per service, honesty note as the page footer.
     <div className="space-y-6">
-      <div className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-ink-700">
-          Partner · Performance
-        </p>
-        <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink-900">
-          Reliability score
-        </h1>
-        <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-600">
-          Recomputed nightly from your real delivery history. Nothing here penalizes you automatically —
-          it shows exactly what buyers experience, and exactly where to improve. New services start
-          neutral; thin history never lowers a score.
-        </p>
-      </div>
-
       {latest.map(({ service, feature }) => {
         const f = (feature?.featuresJson ?? {}) as Features
         const score = f.prs ?? null
@@ -193,9 +181,11 @@ export default async function PerformancePage() {
       })}
 
       <p className="text-[12px] leading-relaxed text-ink-400">
-        Scores use only components with real data (missing history is excluded, never counted as zero).
-        Weights are platform-wide and identical for every partner. Questions or corrections — contact
-        support with your order references.
+        Recomputed nightly from your real delivery history — nothing here penalizes you automatically;
+        it shows exactly what buyers experience and where to improve. Scores use only components with
+        real data (missing history is excluded, never counted as zero). Weights are platform-wide and
+        identical for every partner. Questions or corrections — contact support with your order
+        references.
       </p>
     </div>
   )
