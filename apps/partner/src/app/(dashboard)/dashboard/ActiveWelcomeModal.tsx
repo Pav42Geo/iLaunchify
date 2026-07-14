@@ -83,12 +83,14 @@ export function ActiveWelcomeModal({ companyName }: { companyName: string }) {
           >
             Review my services
           </button>
+          {/* Pavel 2026-07-13: a just-live partner has NO orders yet — the
+              primary simply lands them on their (fresh) dashboard. */}
           <button
             type="button"
-            onClick={() => dismiss('/orders')}
+            onClick={() => dismiss()}
             className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
           >
-            See my orders <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            Take me to my dashboard <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>

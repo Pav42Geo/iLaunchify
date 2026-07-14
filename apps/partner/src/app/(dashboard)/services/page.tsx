@@ -16,7 +16,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { ExternalLink, Factory, Package, Plus, Printer, Warehouse } from 'lucide-react'
+import { ExternalLink, Factory, ListChecks, Package, Plus, Printer, Warehouse } from 'lucide-react'
 import { PanelCard, PanelHeader, LRow, StPill, type PillTone } from '@/components/panel-kit'
 import { getPartnerRoleWord } from '@/lib/partner-role'
 import { addService, type AddableServiceType } from './actions'
@@ -27,6 +27,10 @@ import {
   StorageEditor,
   type StorageTypedVM,
 } from './ServiceEditors'
+// Product defaults live HERE now (Pavel 2026-07-13) — the old settings page
+// redirects; the form + actions stay in place (products/new prefill imports them).
+import { ProductDefaultsForm } from '../settings/product-defaults/ProductDefaultsForm'
+import { getPartnerProductDefaults, type ProductDefaultsRow } from '../settings/product-defaults/actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Services — Partners' }
@@ -87,6 +91,18 @@ function capabilitySummary(s: { capabilities: unknown; storageClasses: string[] 
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
+/** Real product-defaults summary — only values that exist; honest empty state. */
+function productDefaultsSummary(d: ProductDefaultsRow | null): string {
+  if (!d) return 'Not set — every new product starts blank'
+  const parts: string[] = []
+  if (d.leadTimeRepeatDays != null) parts.push(`repeat ${d.leadTimeRepeatDays}d`)
+  if (d.leadTimeFirstRunDays != null) parts.push(`first run ${d.leadTimeFirstRunDays}d`)
+  if (d.moqMin != null) parts.push(`MOQ ${d.moqMin.toLocaleString()}${d.moqMax != null ? `–${d.moqMax.toLocaleString()}` : ''}`)
+  if (d.monthlyCapacity != null) parts.push(`${d.monthlyCapacity.toLocaleString()}/mo capacity`)
+  const head = parts.length ? parts.join(' · ') : 'Saved — open to review'
+  return `${head} · pre-fills every new product`
+}
+
 /** Real storage summary from the TYPED columns. */
 function storageSummary(s: StorageTypedVM): string {
   if (!s.offersStorage) return 'Not offered — creators can’t hold stock at your facility'
@@ -106,7 +122,10 @@ export default async function ServicesPage() {
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
-    include: { services: true },
+    include: {
+      services: true,
+      facilities: { select: { id: true, name: true }, orderBy: { isDefault: 'desc' } },
+    },
   })
   if (!partner) return null
 
@@ -131,6 +150,11 @@ export default async function ServicesPage() {
   const producingSvc =
     partner.services.find((s) => (s.type as string) === 'MANUFACTURING') ??
     partner.services.find((s) => (s.type as string) === 'COPACKING')
+  // Product defaults moved here from /settings/product-defaults (Pavel
+  // 2026-07-13): they're service-level operating facts (facility, lead times,
+  // MOQ), same family as capabilities. Producers only.
+  const productDefaults = producingSvc ? await getPartnerProductDefaults(partner.id) : null
+
   const storageVM: StorageTypedVM | null = producingSvc
     ? {
         offersStorage: producingSvc.offersStorage,
@@ -285,6 +309,41 @@ export default async function ServicesPage() {
               ) : (
                 <p className="text-[13px] text-ink-500">
                   Storage offering becomes editable once your application is approved.
+                </p>
+              )}
+            </div>
+          </details>
+        )}
+
+        {/* Product defaults — prefill for every NEW product (Pavel 2026-07-13:
+            page retired; the editor lives here with the other operating facts). */}
+        {producingSvc && (
+          <details id="product-defaults" className="group mb-2.5 last:mb-0">
+            <summary className="block cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <LRow
+                className="mb-0"
+                icon={<ListChecks />}
+                iconClassName="bg-pink-50 text-pink-700"
+                title="Product defaults"
+                sub={productDefaultsSummary(productDefaults)}
+                right={
+                  <>
+                    <StPill tone={productDefaults?.applyToNewProducts ? 'ok' : 'muted'}>
+                      {productDefaults ? (productDefaults.applyToNewProducts ? 'Applied' : 'Saved · off') : 'Not set'}
+                    </StPill>
+                    <span className="rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 transition-colors group-hover:bg-ink-50">
+                      {canEdit ? 'Edit' : 'View'}
+                    </span>
+                  </>
+                }
+              />
+            </summary>
+            <div className="mt-2 rounded-xl border border-ink-200 bg-white p-4">
+              {canEdit ? (
+                <ProductDefaultsForm facilities={partner.facilities} initial={productDefaults} />
+              ) : (
+                <p className="text-[13px] text-ink-500">
+                  Product defaults become editable once your application is approved.
                 </p>
               )}
             </div>

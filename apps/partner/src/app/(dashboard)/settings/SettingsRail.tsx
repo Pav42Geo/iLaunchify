@@ -22,7 +22,6 @@ import {
   LineChart,
   MessageSquareHeart,
   Package,
-  Route,
   ShieldCheck,
   SlidersHorizontal,
   Star,
@@ -74,7 +73,7 @@ const GROUPS = (b: RailBadges) => [
       // /settings/storage redirects there — Pavel 2026-07-13).
       { label: 'Storage at your facility', href: '/services', icon: Warehouse },
       { label: 'Market participation', href: '/settings/participation', icon: Globe },
-      { label: 'Product defaults', href: '/settings/product-defaults', icon: Route },
+      // Product defaults → /services accordion (page retired, Pavel 2026-07-13).
       { label: 'Labeling', href: '/settings/labeling', icon: Tags },
     ],
   },
