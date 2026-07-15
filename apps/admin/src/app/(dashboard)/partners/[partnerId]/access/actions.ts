@@ -46,11 +46,23 @@ export async function setPartnerAccessOverride(input: {
         create: { partnerId, lever, state, value, reason, setById: admin.id },
       })
     }
+
+    // Reconciliation (Pavel 2026-07-14): the console PRINT_ROTATION lever is the
+    // single control that drives the existing PartnerService.excludeFromAutoRotation
+    // flag the routing engine reads. DENY = out of the rotation pool; ALLOW/INHERIT
+    // = back in. (Follow-up: retire the per-service toggle on /routing-rotation.)
+    if (lever === 'PRINT_ROTATION') {
+      await prisma.partnerService.updateMany({
+        where: { partnerId, type: 'LABEL_PRINTING' },
+        data: { excludeFromAutoRotation: state === 'DENY' },
+      })
+    }
+
     await logAuditAs(admin, {
       entityType: 'PartnerAccessOverride',
       entityId: partnerId,
       action: 'PARTNER_ACCESS_OVERRIDE_SET',
-      payload: { lever, state, value, reason },
+      payload: { lever, state, value, reason, rotationExcluded: lever === 'PRINT_ROTATION' ? state === 'DENY' : undefined },
     })
     revalidatePath(`/partners/${partnerId}/access`)
     return { ok: true }

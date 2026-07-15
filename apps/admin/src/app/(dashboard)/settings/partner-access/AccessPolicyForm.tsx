@@ -167,7 +167,10 @@ export function AccessPolicyForm({ initial }: { initial: PartnerAccessPolicyValu
         <Row title="Discoverable in marketplace" desc="Listed in search.">
           <Switch checked={v.defaultDiscoverable} onChange={toggle('defaultDiscoverable')} aria-label="Discoverable default" />
         </Row>
-        <Row title="Print rotation" desc="Default off — opt-in per pure printer.">
+        <Row
+          title="Print rotation"
+          desc="Public pure printers are in the rotation pool by default. Restrict a specific printer with a per-partner DENY on their Access tab (drives excludeFromAutoRotation) — this default is not a gate."
+        >
           <Switch checked={v.defaultPrintRotation} onChange={toggle('defaultPrintRotation')} aria-label="Print rotation default" />
         </Row>
         <Row title="Sample order intake" desc="Accept samples.">

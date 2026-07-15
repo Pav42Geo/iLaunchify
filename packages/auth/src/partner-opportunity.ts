@@ -99,7 +99,12 @@ function leverDefault(lever: PartnerAccessLever, policy: AccessPolicy): boolean 
     case 'DISCOVERABILITY':
       return policy.defaultDiscoverable
     case 'PRINT_ROTATION':
-      return policy.defaultPrintRotation
+      // Reconciled with the rotation engine (Pavel 2026-07-14): a public PURE
+      // printer is in the pool BY DEFAULT (the prerequisite gates pure-printer +
+      // active). Default ON so admin only SUBTRACTS via DENY — which the override
+      // action mirrors onto the existing PartnerService.excludeFromAutoRotation
+      // flag the routing engine reads. policy.defaultPrintRotation is vestigial.
+      return true
     case 'SAMPLE_INTAKE':
       return policy.defaultSampleIntake
     case 'NAMED_REVIEWS':
