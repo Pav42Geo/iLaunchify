@@ -100,6 +100,18 @@ Use the `marketplace-taxonomy-guardian` subagent before adding any new taxonomy 
 - **RETIRED:** the flat 5% `OrderSettings.productionFeeBps` as the creator-fee source (column kept, deprecated). A `check:invariants` rule now warns on any new hardcoded platform-fee constant outside `@ilaunchify/plans`.
 - Full model + ready-to-apply patches: `docs/FEE_MODEL_RECONCILIATION_SPEC_2026-07-09.md` (+ `FEE_CREATOR_CHECKOUT_PATCH` / `FEE_SHIPDISPATCH_MERIT_PATCH`). Origin: `AUDIT_2026-07-09_CONSISTENCY.md`.
 
+## Public partner profile / Front Face (LOCKED 2026-07-15, do not re-derive)
+
+The public **Front Face** (`/partners/[slug]`) is the manufacturer's public "Manufactured by [X]" identity. Eligibility is narrow and non-negotiable:
+
+- **Only open-market MANUFACTURING or COPACKING partners** with a FULL-disclosure nameable service and published content get one. `participationMode=PUBLIC` is REQUIRED.
+- **Private / invited-only partners get NO public profile** (route `notFound`; PDP shows name without a link, or generic "Manufacturer"). Invited-only means a private operator (curated cohort, or a co-partner nominated `PRIVATE_TO_INVITER`) that is invisible to the open market, so a public marketing page would contradict it.
+- **Pure printers (LABEL_PRINTING) and warehouses (WAREHOUSE) NEVER get a Front Face** (only MFR/COPACK are nameable; printers keep PDP provider cards).
+- **This is NOT tied to rotation.** Manufacturing is OWNER-PINNED and manufacturers/co-packers are never rotated. Only printers rotate (marketplace print rotation); warehouses use a separate FC-selection cycle (product temp-class / location / capacity). So "open market" for a manufacturer means discoverable + nominatable, never "in a rotation lottery."
+- **Admin governs live/offline on top** via the Partner Access console `PUBLIC_PROFILE` lever (master `publicProfilesEnabled` + per-partner DENY, default ON so admin only SUBTRACTS). When admin turns it off, the partner stops seeing it on their own `/profile` page too.
+
+SSOT: resolver `@ilaunchify/auth` `resolvePartnerOpportunity('PUBLIC_PROFILE', …)` + reader `@ilaunchify/db` `getPartnerProfile`. Do not add a partner self-serve "go-live" toggle, and do not decouple the profile from `participationMode` (that was tried and reverted). See `.claude/memory/ilaunchify-public-partner-profile-disclosure.md` + `ilaunchify-partner-access-console.md`.
+
 ## Gotchas
 
 1. **Legacy FOD frontend squats port 3000** — Pavel's Mac runs an old `ilaunchify-frontend` Docker container on 3000. ANY localhost:3000 weirdness → check `docker ps | grep frontend` FIRST.
