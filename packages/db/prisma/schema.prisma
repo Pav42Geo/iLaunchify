@@ -1338,6 +1338,12 @@ model PartnerService {
   activationCompletedAt            DateTime?
   // Capability shape varies by type; validated via Zod per-type
   capabilities                     Json
+  /// PS-9-0 (PRINT_PROVIDER_SELECTION §11.2): commercial ORDER-VALUE floor, which binds
+  /// INDEPENDENTLY of any unit MOQ. Real converters that advertise "no minimum quantity"
+  /// still enforce one: Blue Label "our minimum order amount is typically around $200";
+  /// Sttark "no MOQs ... but our minimum order cost is around $260". A unit-only model
+  /// would let a creator build a $40 order no partner will accept. NULL = not declared.
+  minOrderValueCents               Int?
   // Disclosure preference per service (per docs/USER_ROLES.md decision 2026-05-18)
   disclosureLevel                  DisclosureLevel                   @default(ANONYMOUS)
   // Print-provider specifics: which die-cuts this service supports
@@ -2870,6 +2876,13 @@ model PartnerPrintOutputSpec {
   tacLimitPct           Int             @default(300)
   spotColorsAccepted    Boolean         @default(true)
   spotColorLibrary      PmsBook         @default(COATED)
+  /// PS-9-0 (§11.2 D2, color-process depth): `spotColorsAccepted` alone is too coarse
+  /// to match a design's real ink demands. NULL maxSpotColors = not declared (permissive,
+  /// same discipline as the other undeclared capability fields). Note flexo 7-color ECG
+  /// weakens the "more colors favors digital" rule of thumb, so these are CAPABILITY
+  /// filters (filter 10), never pricing heuristics.
+  maxSpotColors         Int?
+  whiteInk              Boolean         @default(false)
   specialChannelNaming  Json            @default("{}") // {white, varnish, foil}
   minDpi                Int             @default(300)
   bleedMm               Decimal         @default(3.0) @db.Decimal(5, 2)
@@ -3268,6 +3281,11 @@ model OrderSettings {
   fcDistanceWeightPct     Int @default(15) // origin→node distance proxy
   fcSlaWeightPct          Int @default(15)
   fcCapacityWeightPct     Int @default(15) // load-leveling (node utilization)
+  /// PS-9-0 (PRINT_PROVIDER_SELECTION §11.9): print OVERAGE / spoilage allowance, %.
+  /// Presses run extra to cover fill-line spoilage, so printed pieces exceed product
+  /// units. Feeds printQty = ceil(productQty * piecesPerUnit * (1 + pct/100)).
+  /// Admin-tunable; industry norm is roughly 5-10%.
+  printOveragePct          Int @default(5)
   fcBalancingWeightPct     Int @default(10) @map("fcRotationWeightPct") // spread pressure (recent assignment share)
   fcStorageMatchWeightPct Int @default(10) // prefer exact storage-class match
   fcBalancingBandPct       Int @default(5) @map("fcRotationBandPct") // spread inside this % of best score
@@ -6794,6 +6812,9 @@ model PartnerPackagingOffering {
   partnerService PartnerService       @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
   packagingType  PackagingType        @relation(fields: [packagingTypeId], references: [id])
   components     PackagingComponent[] // back-relation — components that selected this offering
+  // PS-9-0: per-PROCESS run+price segments. Supersedes the scalar moq/maxRunQty/
+  // pricingTiers above as the eligibility + pricing source (§11.2).
+  priceCurves    PartnerOfferingPriceCurve[]
   // C9 Phase 1 — typed dieline relation (was a soft FK). SetNull: offering
   // survives if the dieline is removed.
   dieline        PackagingDieline?    @relation(fields: [dielineId], references: [id], onDelete: SetNull)
@@ -6812,6 +6833,45 @@ model PartnerPackagingOffering {
   // on CockroachDB and it still forces one price shape per row.
   @@unique([partnerServiceId, packagingTypeId, decorationMethod])
   @@index([packagingTypeId, status])
+}
+
+/// PS-9-0 (PRINT_PROVIDER_SELECTION §11.2): a per-PROCESS run+price segment for one
+/// offering, shaped to CIP4 PrintTalk 2.2 §4.1 (Price/Additional). MOQ is a property
+/// of the PRINT PROCESS, not the printer: a converter with digital + flexo declares one
+/// offering and TWO curves, so it can serve a 100-unit job (digital) AND a 50,000-unit
+/// job (flexo). This is what unblocks the offering unique-key constraint without
+/// touching it.
+///
+/// One row encodes FOUR things at once:
+///   baseQty             = @BaseAmount : the minimum orderable quantity (the real MOQ)
+///   basePriceCents      = @BasePrice  : price AT baseQty, setup/plates already amortized in
+///   incrementQty        = @Amount     : the increment AND the allowed order lattice
+///   incrementPriceCents = @Price      : price of one increment (the marginal rate)
+/// Multiple rows per (offering, printProcess) = a piecewise curve.
+/// Normative price formula (PrintTalk §4.1):
+///   price(AMT) = basePriceCents + (AMT - baseQty) * incrementPriceCents / incrementQty
+/// Unit price is DERIVED, never stored (CIP4 deprecated @UnitPrice for this reason).
+model PartnerOfferingPriceCurve {
+  id                  String       @id @default(uuid())
+  offeringId          String
+  printProcess        PrintProcess // the press this segment runs on
+  baseQty             Int // @BaseAmount: minimum orderable qty for this segment
+  basePriceCents      Int // @BasePrice: price AT baseQty (setup included)
+  incrementQty        Int          @default(1) // @Amount: increment + allowed order lattice
+  incrementPriceCents Int // @Price: price of that increment
+  maxQty              Int? // segment ceiling; NULL = "and up"
+  /// Real published minimums are often approximate ("~20 rolls", "typically around
+  /// $200"). TRUE = printer is ELIGIBLE but the price is indicative: route to a quote,
+  /// never auto-bind the computed price.
+  quoteRequired       Boolean      @default(false)
+  status              OfferingStatus @default(ACTIVE)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  offering PartnerPackagingOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+
+  @@unique([offeringId, printProcess, baseQty])
+  @@index([offeringId, printProcess])
 }
 
 // -----------------------------------------------------------------------------
@@ -6934,6 +6994,13 @@ model PackagingComponent {
 
   tier PackagingTier // PRIMARY | SECONDARY | TERTIARY
   role ComponentRole // CONTAINER | CARTON | CLOSURE | SEAL | INSERT | LABEL | SHIPPER
+
+  /// PS-9-0 (PRINT_PROVIDER_SELECTION §11.9): how many of THIS printed piece one
+  /// finished product consumes (a product can need a carton + inner label + tamper
+  /// seal). Print pieces are NOT 1:1 with product units, so the print run is
+  ///   printQty = ceil(productQty * piecesPerUnit * (1 + OrderSettings.printOveragePct/100))
+  /// and THAT is what a printer's MOQ is checked against, never the raw order qty.
+  piecesPerUnit Int @default(1)
 
   // What it is — admin-curated PackagingType (330ml can, 6-pack carton)
   packagingTypeId String

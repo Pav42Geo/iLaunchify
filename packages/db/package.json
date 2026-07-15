@@ -15,6 +15,7 @@
     "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts",
     "backfill:facilities": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-facilities.ts",
     "backfill:dieline-svg": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-dieline-normalized-svg.ts",
+    "backfill:price-curves": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-offering-price-curves.ts",
     "seed:sample-orders": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-sample-orders.ts",
     "seed:subscription-plans": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-subscription-plans.ts",
     "seed:domain-ingredients": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-domain-ingredients.ts",
