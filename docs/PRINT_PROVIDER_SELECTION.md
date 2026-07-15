@@ -649,3 +649,140 @@ one migration), PS-2 cards on top, PS-3 binding next, PS-4 auto-ranking last onc
 Rationale: auto-ranking without real ratings would be ranking noise; capability filtering must
 precede any card rendering; cards + manual selection deliver creator value immediately and START
 generating the rating volume PS-4 needs.
+
+## §11 Capability-constrained rotation (added 2026-07-15, Pavel)
+
+**Goal:** only a printer that can ACTUALLY produce a specific product's package / label / die-line
+is eligible to rotate for it. This amends §5 (auto-routing), §7 (capability model), and §10
+(coverage / RFQ).
+
+**Decisions (Pavel 2026-07-15):**
+- **D1: rotation is a FIRST-CLASS path.** Products routinely leave the print leg OPEN for rotation;
+  the config-time offering pin (`PackagingComponent.partnerOfferingId`) becomes OPTIONAL, not the
+  norm. Capability-filtered rotation is therefore load-bearing, not a legacy fallback.
+- **D2: hard filters = the core §7.3 set PLUS finishes/accent decorations PLUS color-process depth.**
+  A printer failing ANY is excluded from the pool (rating never rescues, same discipline as §7.3).
+- **D3: zero eligible printers = BLOCK PUBLISH + fire the Capability RFQ (§10).** A product cannot
+  publish without live print coverage; the already-built PS-8b RFQ recruits a capable printer. Ties
+  into the coverage guard (no UNRESOLVED).
+
+### 11.1 The core finding and the seam
+
+`eligiblePrintProviders(product, component, qty)` (the §7.3 engine) ALREADY EXISTS, is pure, and is
+unit-tested in `packages/orders/src/print-eligibility.ts`. It is NOT called in the live routing
+path. Today `findRouting` builds its rotation pool at `routing.ts:356-415` with only a coarse
+filter: `dieCutSupport: { some: { dieCutTemplateId } }` + `moqMin` + ops/blackout + public-pool.
+It ignores offering existence, `maxRunQty`, `foodContactSafe`, `substrateIds`, the print envelope,
+finishes, and color depth. So a printer with the right die-cut shape but wrong run size / inks /
+substrate / finish can currently win rotation.
+
+**The seam is narrow and additive:** replace the pool builder at `routing.ts:356-415` with a call
+to `eligiblePrintProviders`, then feed the survivors into the EXISTING rotation lottery
+(`rotatePrintShop` -> `selectRotatingProvider`) exactly as `rotationEligible` does today. Sticky,
+new-provider ramp, split modes, and `isPublicPrintPoolEligible` all stay untouched. Two glue
+resolvers are the only new building blocks (11.4).
+
+### 11.2 How a PRINTER declares capability (answers "how printers say what they can print")
+
+Mostly exists on `PartnerPackagingOffering` (`service x packagingType x decorationMethod`):
+`printProcess`, `moq` / `maxRunQty`, `foodContactSafe`, print envelope
+(`min/maxPrintWidth/HeightMm`), bound `dieline`; plus service-level `PartnerServiceSubstrate`,
+`PartnerServiceDieCut`, finishes via `PartnerFinish` (`service x finishType`), and prepress
+`PartnerPrintOutputSpec` (`colorSpace`, `spotColorsAccepted`, `spotColorLibrary`, DPI, bleed).
+
+Additions needed:
+- **`substrateIds` picker in the offering editor.** The field exists in schema + engine but has NO
+  UI input (`OfferingForm.tsx`). Add it so a BOPP-only printer can decline a paper-label job.
+- **Color-process depth (D2).** Add `maxSpotColors Int?` and `whiteInk Boolean` (and optionally an
+  `ogv`/extended-gamut flag) to `PartnerPrintOutputSpec`; `spotColorsAccepted` alone is too coarse.
+- **Finishes are already declarable** via `PartnerFinish`; no new model, just wire them into the
+  engine (11.4, filter 9).
+- **Retire the dead "Print specs" JSON** (`ServiceEditors.tsx` service-level processes/colors/
+  finishes/maxArea): nothing reads it, so it lies to partners. Fold anything real into the offering
+  + output spec, then remove the input.
+- **Capability wizard (§7.2.7):** wrap the offering editor in a guided "what can you print?" flow so
+  declarations are complete on day one; an incomplete capability row makes the service non-listable.
+
+### 11.3 How a MANUFACTURER declares the requirement (answers "how they specify the product")
+
+Exists structurally: per product the `PackagingComponent` carries `packagingType`,
+`decorationMethod`, resolved `dieline`; `PackagingType` carries `containerCategory` + food-contact
+signals; `AccentDecoration` (`component x decorationMethod`, optional `partnerFinishId`) carries
+required finishes; the design (Studio) carries the actual color demands (spot count, white ink,
+placed-asset DPI).
+
+Gap: nothing assembles these into the `PrintJobRequirements` the engine consumes. That resolver is
+the missing manufacturer-side glue (11.4). No new author-time UI is required for the core; the
+manufacturer already sets packaging type, decoration, dieline, and finishes in the packaging
+builder. The only NEW author-side demand is COLOR: the design's spot-color count / white-ink need
+must be extractable (Studio = Code's zone) to feed filter 10.
+
+### 11.4 How they MATCH (answers "how they match to printer capabilities")
+
+Two pure glue resolvers in `@ilaunchify/orders`, then extend the engine:
+1. **`resolvePrintJobRequirements(component)` -> `PrintJobRequirements`**: from `PackagingComponent`
+   + `PackagingType.containerCategory` + `PackagingDieline` dims + labeling-type -> food-contact +
+   `AccentDecoration[]` -> required finishes + design -> color demands.
+2. **`loadPrintProviderCandidates(requirements)` -> `PrintProviderCandidate[]`**: assemble each
+   pure-printer's ACTIVE offering for the `(packagingType x decorationMethod)`, its
+   `PartnerServiceSubstrate` ids, `PartnerFinish` set, and `PartnerPrintOutputSpec`.
+3. **Extend `eligiblePrintProviders`** with two new HARD filters (per D2), keeping the fail-reason
+   discipline:
+   - **Filter 9 (finishes):** every `AccentDecoration.decorationMethod` / finishType the component
+     needs is in the printer's `PartnerFinish` set. Fail reason `MISSING_FINISH`.
+   - **Filter 10 (color depth):** the design's spot-color count <= printer `maxSpotColors`, and if
+     the design needs white ink the printer's `whiteInk = true`; spot demands respect
+     `spotColorsAccepted`. Fail reason `COLOR_UNSUPPORTED`.
+
+`eligiblePrintProviders` then returns the eligible set; `findRouting` feeds it into rotation. The
+engine stays a hard binary filter; rating still ranks only survivors.
+
+### 11.5 First-class rotation implications (D1)
+
+- The offering pin (`partnerOfferingId`) becomes an OPTIONAL creator/manufacturer choice, not the
+  default. When absent, rotation over the capable pool is the primary selection path.
+- `findRouting` precedence stays: nomination -> creator pin -> chosen offering -> **capability-
+  filtered rotation** (now the main branch, no longer gated on legacy `Template.dieCutTemplateId`).
+- The requirements resolver must work off the NEW `PackagingComponent` model, not the legacy
+  `Template.dieCutTemplateId`, so newly-built (componentized) products reach rotation correctly.
+
+### 11.6 Zero-match handling (D3)
+
+- `printCoverage(templateId)` (§10.1) MUST use the FULL `eligiblePrintProviders` engine, not its
+  current lighter filter (`print-coverage.ts:106-129` only overlaps packagingType). Coverage =
+  count of DISTINCT pure-printers passing ALL hard filters (incl. 9 + 10).
+- Coverage 0 -> the product cannot publish (Studio guard §10.3 + coverage guard, no UNRESOLVED),
+  and the Capability RFQ (PS-8b `broadcastCapabilityRequestsForTemplate`) fires to recruit a
+  capable printer. On a claim, `COVERAGE_RESTORED` re-lists the product (already built).
+- Owner-self-label (§4) remains the deliberate binding for non-food domains with no separate
+  printer; it is NOT the public rotation pool and is unaffected.
+
+### 11.7 Build phases (PS-9)
+
+- **PS-9a (core wiring):** `resolvePrintJobRequirements` + `loadPrintProviderCandidates`; wire
+  `eligiblePrintProviders` into the `findRouting` rotation pool (replace `routing.ts:356-415`);
+  pure-suite pins. No schema. This alone delivers "only capable printers rotate" for the existing
+  8 filters.
+- **PS-9b (finishes + color, D2):** filters 9 + 10; add `maxSpotColors`/`whiteInk` to
+  `PartnerPrintOutputSpec` (additive migration); finish-match reads existing `PartnerFinish` /
+  `AccentDecoration`. Studio must expose the design's color demands (Code coordination).
+- **PS-9c (declaration UX):** `substrateIds` offering picker; retire the dead service-level "Print
+  specs" JSON; capability wizard (§7.2.7) + non-listable-until-complete gate.
+- **PS-9d (coverage + zero-match, D3):** point `printCoverage` at the full engine; publish gate +
+  Capability RFQ on coverage 0 (reuse PS-8b/§10). Denormalized coverage cache already exists.
+- **PS-9e (telemetry, §7.2.8):** aggregate CAPABILITY declines by which filter failed, into the
+  admin scorecard, so gaps get fixed not just rerouted.
+
+### 11.8 Risks / edge cases
+
+- **Pool collapse on strict filters.** First-class rotation + 10 hard filters can empty pools for
+  niche jobs; D3 (RFQ) is the pressure valve, but watch coverage metrics as filters tighten. Ship
+  PS-9a first and measure before adding 9 + 10.
+- **Color demands depend on Studio.** Filter 10 is only as good as the design-demand extraction;
+  until Studio emits spot-count / white-ink, filter 10 is permissive (undeclared = pass), same as
+  today's preflight filter 7.
+- **Legacy vs componentized products.** The requirements resolver targets `PackagingComponent`;
+  legacy `Template.dieCutTemplateId`-only products keep the coarse path until backfilled.
+- **Do not double-count main-role.** Filter 0 (`isPublicPrintPoolEligible`) already bars
+  MFR/COPACK from the public pool; keep it as the first gate so owner-self and nomination bindings
+  are never swept into rotation.
