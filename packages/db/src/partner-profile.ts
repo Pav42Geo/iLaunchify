@@ -125,10 +125,10 @@ export async function getPartnerProfile(
   })
   if (!partner) return null
   if (partner.status !== 'ACTIVE') return null
-  // Decoupled from participationMode / "Open market" (Pavel 2026-07-15): the Front
-  // Face is separate from open-market operations. Live = ACTIVE + published content
-  // + a FULL-disclosure nameable service; the admin PUBLIC_PROFILE lever (applied by
-  // the caller) is the live/offline authority. INVITED_ONLY partners still get a page.
+  // Open-market only: private / invited-only partners get NO public profile (Pavel
+  // 2026-07-15). The Front Face is a facet of being a PUBLIC operator; the admin
+  // PUBLIC_PROFILE lever (applied by the caller) governs live/offline on top.
+  if (partner.participationMode !== 'PUBLIC') return null
   if (!partner.profilePublishedAt || !partner.slug) return null
 
   const nameable = partner.services.filter(

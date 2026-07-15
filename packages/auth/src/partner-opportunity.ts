@@ -85,11 +85,11 @@ function masterBlock(lever: PartnerAccessLever, policy: AccessPolicy): string | 
 function leverDefault(lever: PartnerAccessLever, policy: AccessPolicy): boolean {
   switch (lever) {
     case 'PUBLIC_PROFILE':
-      // ADMIN-GOVERNED, live-by-default (Pavel 2026-07-15): a profile is live once
-      // the partner is eligible (ACTIVE + FULL-disclosure nameable service + content
-      // published). The partner has NO self-serve go-live switch. Default ON so the
-      // admin only ever SUBTRACTS: a per-partner DENY, or the platform master switch
-      // (publicProfilesEnabled). Decoupled from participationMode / "Open market".
+      // Live-by-default once ELIGIBLE (open-market PUBLIC manufacturer/co-packer with
+      // FULL disclosure + published content); the prerequisites below enforce that.
+      // The admin only ever SUBTRACTS: a per-partner DENY or the platform master
+      // switch (publicProfilesEnabled). No partner self-serve "go-live" toggle beyond
+      // choosing to be an open-market operator. (Pavel 2026-07-15.)
       return true
     case 'PROFILE_SHARING':
       return policy.defaultProfileSharing
@@ -123,17 +123,25 @@ function leverDefault(lever: PartnerAccessLever, policy: AccessPolicy): boolean 
 /** Hard prerequisite reason (subtract-only) for a lever, or null when met. */
 function prerequisiteBlock(lever: PartnerAccessLever, facts: PartnerFacts): string | null {
   const active = facts.status === 'ACTIVE'
-  // DECOUPLED from participationMode (Pavel 2026-07-15): the public Front Face is
-  // its OWN thing, separate from "Open market" (participationMode = discoverability
-  // + rotation, a different operational switch). A profile is live when the partner
-  // is ACTIVE, a nameable service is FULL-disclosure, and content is published; the
-  // admin PUBLIC_PROFILE lever (master + per-partner DENY) is the only live/offline
-  // authority. Being INVITED_ONLY does NOT hide the profile.
-  const publicLive = active && facts.profilePublished && facts.hasFullDisclosureNameable
+  // The public Front Face is a facet of being an OPEN-MARKET (PUBLIC) operator, and
+  // ONLY for manufacturers/co-packers with FULL disclosure (nameable). Private /
+  // invited-only partners get NO public profile (that is the point of being private,
+  // e.g. a co-partner nominated privately to one manufacturer). This is NOT tied to
+  // rotation: manufacturers/co-packers are owner-pinned and never rotated (only
+  // printers + FCs rotate). The admin PUBLIC_PROFILE lever (master + per-partner
+  // DENY) governs live/offline on top; default ON so admin only SUBTRACTS. (Pavel
+  // 2026-07-15, correcting the brief decouple.)
+  const publicLive =
+    active &&
+    facts.participationMode === 'PUBLIC' &&
+    facts.profilePublished &&
+    facts.hasFullDisclosureNameable
 
   switch (lever) {
     case 'PUBLIC_PROFILE':
       if (!active) return 'Partner is not ACTIVE'
+      if (facts.participationMode !== 'PUBLIC')
+        return 'Invited-only (private): a public profile requires open-market participation'
       if (!facts.profilePublished) return 'Profile not published'
       if (!facts.hasFullDisclosureNameable) return 'No ACTIVE service with FULL disclosure'
       return null

@@ -180,9 +180,11 @@ export async function getManufacturerIdentity(
     if (svc.disclosureLevel !== 'FULL') return null // partner's own opt-in wins
     if (p.status !== 'ACTIVE') return null
     const badge = p.tier === 'TRUSTED' || p.tier === 'PREMIER' ? p.tier : null
-    // Front Face is decoupled from participationMode / "Open market" (Pavel 2026-07-15):
-    // the name links to the profile whenever it is published, regardless of open-market.
-    const profileLive = Boolean(p.slug) && Boolean(p.profilePublishedAt)
+    // The name links to the profile only for open-market (PUBLIC) manufacturers with a
+    // published profile; private / invited-only partners have no public page (the name
+    // still shows to paid viewers, just without a link). (Pavel 2026-07-15.)
+    const profileLive =
+      p.participationMode === 'PUBLIC' && Boolean(p.slug) && Boolean(p.profilePublishedAt)
     return { name: p.companyName, href: profileLive ? `/partners/${p.slug}` : null, badge }
   } catch {
     return null // pre-push client / any read error → anonymous badge

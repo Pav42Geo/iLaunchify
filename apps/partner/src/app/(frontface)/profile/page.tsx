@@ -56,6 +56,7 @@ export default async function PartnerProfilePreviewPage() {
     select: {
       id: true,
       slug: true,
+      participationMode: true,
       profilePublishedAt: true,
       services: {
         where: { type: { in: ['MANUFACTURING', 'COPACKING'] } },
@@ -124,8 +125,9 @@ export default async function PartnerProfilePreviewPage() {
   const profile = partner.slug ? await getPartnerProfile(partner.slug) : null
 
   if (!profile) {
-    // Not live yet: say exactly why, with the fix per gate. (No "Open market"
-    // row: the Front Face is decoupled from participationMode.)
+    // Not live yet: say exactly why, with the fix per gate. A public Front Face is
+    // for open-market (PUBLIC) manufacturers/co-packers only; private/invited-only
+    // partners have no public profile (Pavel 2026-07-15).
     const checks: { ok: boolean; label: string; fix: string; href: string }[] = [
       {
         ok: partner.services.length > 0,
@@ -138,6 +140,12 @@ export default async function PartnerProfilePreviewPage() {
         label: 'Disclosure set to Full "Manufactured by"',
         fix: 'Set it in Settings → Company profile',
         href: '/settings/company',
+      },
+      {
+        ok: partner.participationMode === 'PUBLIC',
+        label: 'Open-market (public) participation',
+        fix: 'Private/invited-only partners have no public profile. Switch in Settings → Market participation',
+        href: '/settings/participation',
       },
       {
         ok: Boolean(partner.profilePublishedAt && partner.slug),
