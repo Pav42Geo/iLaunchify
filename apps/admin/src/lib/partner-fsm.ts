@@ -20,7 +20,11 @@
 // docs/PARTNER_ONBOARDING.md §3 has the full FSM diagram.
 
 import type { PartnerStatus } from '@ilaunchify/db'
-import { PARTNER_ALLOWED_TRANSITIONS } from '@ilaunchify/orders'
+// Deep import (not the '@ilaunchify/orders' barrel) — this module is reached from
+// the CLIENT PartnerActions.tsx, and the barrel transitively pulls room-service →
+// @ilaunchify/notifications → node:crypto (breaks the client bundle in dev). This
+// file is pure (transitions constant only). Same pattern as '@ilaunchify/support/ticket-fsm'.
+import { PARTNER_ALLOWED_TRANSITIONS } from '@ilaunchify/orders/partner-fsm'
 
 /**
  * Whitelist of partner-status transitions admin may drive.
