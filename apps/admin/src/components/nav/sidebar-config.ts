@@ -103,6 +103,7 @@ export type BadgeKey =
   | 'disputes.pending'
   | 'cancellations.pending'
   | 'categoryReview.pending'
+  | 'partnerAccess.pending'
   | 'inbox.total'
 
 export type SidebarBadges = Partial<Record<BadgeKey, number>>
@@ -169,6 +170,9 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Partner verification', icon: ShieldCheck, href: '/partners', badgeKey: 'partners.pending' },
         // D4 RAMP — new partners' first-3-dispatch confirmations (PARTNER_ROLE_ACCOUNTS §4.3)
         { kind: 'item', label: 'Partner ramp', icon: BadgeCheck, href: '/partners/ramp', capability: 'partners:approve' },
+        // Access requests — partners asking to unlock a locked opportunity lever
+        // (PARTNER_ACCESS_ADMIN_CONTROLS §request-queue). Approve = ALLOW override.
+        { kind: 'item', label: 'Access requests', icon: SlidersHorizontal, href: '/settings/partner-access?tab=requests', badgeKey: 'partnerAccess.pending', capability: 'partners:approve' },
         // — Catalog & product review —
         { kind: 'item', label: 'Product approvals', icon: Package, href: '/products?tab=new', badgeKey: 'products.pending' },
         { kind: 'item', label: 'Print coverage', icon: PackageX, href: '/print-coverage', capability: 'reviews:write' },

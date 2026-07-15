@@ -8,7 +8,7 @@
 // for readability.
 
 import 'server-only'
-import { prisma } from '@ilaunchify/db'
+import { prisma, countPendingPartnerAccessRequests } from '@ilaunchify/db'
 import type { SidebarBadges } from './sidebar-config'
 
 export async function loadSidebarBadges(): Promise<SidebarBadges> {
@@ -21,6 +21,7 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     disputesPending,
     cancellationsPending,
     categoryReviewPending,
+    partnerAccessPending,
   ] = await Promise.all([
     // Leads = Partners in DRAFT or INVITED (Phase-A legacy statuses still in
     // use by leads page). Mirrors the existing /admin/leads query so the
@@ -72,6 +73,8 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     ).productTemplate
       .count({ where: { needsCategoryReview: true } })
       .catch(() => 0),
+    // Partner Access requests awaiting approval (cast-guarded + fail-soft in the reader).
+    countPendingPartnerAccessRequests(),
   ])
 
   return {
@@ -83,6 +86,7 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
     'disputes.pending': disputesPending,
     'cancellations.pending': cancellationsPending,
     'categoryReview.pending': categoryReviewPending,
+    'partnerAccess.pending': partnerAccessPending,
     'inbox.total':
       leadsPending +
       partnersPending +
@@ -90,6 +94,7 @@ export async function loadSidebarBadges(): Promise<SidebarBadges> {
       ingredientsPending +
       certsPending +
       disputesPending +
-      cancellationsPending,
+      cancellationsPending +
+      partnerAccessPending,
   }
 }

@@ -1,4 +1,4 @@
-// Admin — Partner Access & Opportunity console.
+// Admin: Partner Access & Opportunity console.
 // docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.md (Policy tab) + the legacy
 // private↔public signup-mode toggle (docs/PARTNER_ONBOARDING_STRATEGY_2026-07.md
 // §7), now folded in as a section of the Policy tab. Two tabs: Policy | Partners
@@ -6,18 +6,25 @@
 
 import Link from 'next/link'
 import { requireCapability } from '@ilaunchify/auth'
-import { getPartnerAccessMode, getPartnerAccessPolicy } from '@ilaunchify/db'
+import {
+  getPartnerAccessMode,
+  getPartnerAccessPolicy,
+  listPartnerAccessRequests,
+} from '@ilaunchify/db'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { setPartnerAccessMode } from '../partner-access-actions'
 import { AccessPolicyForm } from './AccessPolicyForm'
 import { PartnersAccessTable } from './PartnersAccessTable'
+import { RequestsQueue } from './RequestsQueue'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Partner Access — Admin' }
+export const metadata = { title: 'Partner Access (Admin)' }
 
+type TabKey = 'policy' | 'partners' | 'requests'
 const TABS = [
   { key: 'policy', label: 'Policy' },
   { key: 'partners', label: 'Partners' },
+  { key: 'requests', label: 'Requests' },
 ] as const
 
 export default async function PartnerAccessPage({
@@ -27,9 +34,14 @@ export default async function PartnerAccessPage({
 }) {
   await requireCapability('platform:admin')
   const { tab: rawTab, page: rawPage } = await searchParams
-  const tab = rawTab === 'partners' ? 'partners' : 'policy'
+  const tab: TabKey =
+    rawTab === 'partners' ? 'partners' : rawTab === 'requests' ? 'requests' : 'policy'
   const pageNum = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1)
-  const [mode, policy] = await Promise.all([getPartnerAccessMode(), getPartnerAccessPolicy()])
+  const [mode, policy, requests] = await Promise.all([
+    getPartnerAccessMode(),
+    getPartnerAccessPolicy(),
+    tab === 'requests' ? listPartnerAccessRequests({ take: 100 }) : Promise.resolve([]),
+  ])
   const isPrivate = mode === 'PRIVATE'
 
   return (
@@ -73,7 +85,7 @@ export default async function PartnerAccessPage({
                     : 'border-success-200 bg-success-50 text-success-800')
                 }
               >
-                {isPrivate ? '🔒 Private — invite-only' : '🌐 Public — open signup'}
+                {isPrivate ? '🔒 Private (invite-only)' : '🌐 Public (open signup)'}
               </span>
             </div>
             <p className="mt-3 max-w-2xl text-[13px] text-ink-600">
@@ -116,8 +128,10 @@ export default async function PartnerAccessPage({
           {/* Global access & opportunity policy */}
           <AccessPolicyForm initial={policy} />
         </div>
-      ) : (
+      ) : tab === 'partners' ? (
         <PartnersAccessTable policy={policy} page={pageNum} />
+      ) : (
+        <RequestsQueue rows={requests} />
       )}
     </div>
   )
