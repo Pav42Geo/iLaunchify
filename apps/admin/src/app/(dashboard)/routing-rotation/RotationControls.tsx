@@ -10,13 +10,12 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   runPrintRotationPreview,
-  runFcRotationPreview,
+  runFcSelectionPreview,
   saveRotationPolicy,
   saveManufacturerWeights,
   saveDispatchLifecycle,
   saveFcWeights,
   saveFcLearningPolicy,
-  setExcludeFromAutoRotation,
   type PolicyContext,
   type PrintPreviewResult,
   type FcPreviewResult,
@@ -141,7 +140,7 @@ export function RotationControls({
           <FcPreviewPanel products={products} />
           <FcWeightsEditor initial={fcWeights} />
           <FcLearningEditor initial={fcLearning} />
-          <FcAwardsTable providers={fcProviders} />
+          <FcSelectionTable providers={fcProviders} />
         </div>
       )}
 
@@ -624,7 +623,7 @@ function FcPreviewPanel({ products }: { products: Array<{ id: string; name: stri
   function run() {
     if (!productId) return void toast.error('Pick a product.')
     startRunning(async () => {
-      const res = await runFcRotationPreview({ productId })
+      const res = await runFcSelectionPreview({ productId })
       if (!res.ok) return void toast.error(res.error)
       setResult(res.data)
     })
@@ -633,11 +632,11 @@ function FcPreviewPanel({ products }: { products: Array<{ id: string; name: stri
   return (
     <section className="rounded-2xl border border-ink-200 bg-white p-5">
       <h2 className="font-display text-[15px] font-semibold text-ink-900">
-        Dry-run preview — which FC wins the next {result?.runs ?? 100} orders?
+        Dry-run preview: which FC is selected for the next {result?.runs ?? 100} orders?
       </h2>
       <p className="mt-1 text-[12.5px] text-ink-600">
-        Runs the exact production FC engine (score → policy/band) from the product&rsquo;s
-        manufacturer origin. No awards are written.
+        Runs the exact production FC engine (score, then balancing band) from the product&rsquo;s
+        manufacturer origin. No assignments are written.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <div className="min-w-[240px] flex-1">
@@ -668,7 +667,7 @@ function FcPreviewPanel({ products }: { products: Array<{ id: string; name: stri
         <div className="mt-4">
           {!result.policyEnabled && (
             <p className="mb-2 rounded-xl border border-warning-300 bg-warning-100/50 px-3.5 py-2 text-[12.5px] text-warning-700">
-              FC rotation engine is OFF — the split below is the V1.5 weighted band.
+              FC selection balancing is OFF; the split below is the V1.5 weighted band.
             </p>
           )}
           <table className="w-full text-[13px]">
@@ -707,70 +706,40 @@ function FcPreviewPanel({ products }: { products: Array<{ id: string; name: stri
 }
 
 // ---------------------------------------------------------------------------
-// FC awards table (90d) + per-node kill switch — parity with the printer table.
+// FC assignments table (90d) — read-only. Fulfillment is a best-FIT SELECTION
+// (temp class / location / capacity), NOT a fair-share rotation like printers,
+// so there is no per-node "exclude from rotation" kill switch. To pull a
+// facility, Pause the service or set a blackout window (both honored by the
+// selector). (Pavel 2026-07-15.)
 // ---------------------------------------------------------------------------
 
-function FcAwardsTable({ providers }: { providers: ProviderRow[] }) {
-  const [rows, setRows] = useState(providers)
-  const [isPending, startTransition] = useTransition()
-
-  function toggle(row: ProviderRow) {
-    startTransition(async () => {
-      const res = await setExcludeFromAutoRotation({
-        partnerServiceId: row.partnerServiceId,
-        exclude: !row.excluded,
-      })
-      if (!res.ok) return void toast.error(res.error)
-      setRows((prev) =>
-        prev.map((r) =>
-          r.partnerServiceId === row.partnerServiceId ? { ...r, excluded: !row.excluded } : r,
-        ),
-      )
-      toast.success(
-        !row.excluded
-          ? `${row.companyName} removed from auto-rotation (manual routing still works).`
-          : `${row.companyName} reinstated.`,
-      )
-    })
-  }
-
+function FcSelectionTable({ providers }: { providers: ProviderRow[] }) {
   return (
     <section className="rounded-2xl border border-ink-200 bg-white p-5">
       <h2 className="font-display text-[15px] font-semibold text-ink-900">
-        Fulfillment centers — awards (90 days)
+        Fulfillment centers: assignments (90 days)
       </h2>
-      {rows.length === 0 ? (
+      <p className="mt-1 text-[12px] text-ink-500">
+        FCs are <strong>selected</strong> per order by fit (product temp class, location, capacity),
+        not rotated. To take a facility out of selection, pause its service or set a blackout window.
+      </p>
+      {providers.length === 0 ? (
         <p className="mt-2 text-[13px] text-ink-500">No active fulfillment centers yet.</p>
       ) : (
         <table className="mt-3 w-full text-[13px]">
           <thead>
             <tr className="border-b border-ink-100 text-left text-[11px] uppercase tracking-wide text-ink-500">
               <th className="py-2 pr-3 font-semibold">Fulfillment center</th>
-              <th className="py-2 pr-3 font-semibold">Awards · 90d</th>
-              <th className="py-2 pr-3 font-semibold">Actual share</th>
-              <th className="py-2 pr-3 font-semibold">Auto-rotation</th>
+              <th className="py-2 pr-3 font-semibold">Assignments · 90d</th>
+              <th className="py-2 pr-3 font-semibold">Share</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {providers.map((r) => (
               <tr key={r.partnerServiceId} className="border-b border-ink-50">
                 <td className="py-2 pr-3 font-medium text-ink-900">{r.companyName}</td>
                 <td className="py-2 pr-3 tabular-nums">{r.awards90d}</td>
                 <td className="py-2 pr-3 tabular-nums">{r.sharePct}%</td>
-                <td className="py-2 pr-3">
-                  <button
-                    onClick={() => toggle(r)}
-                    disabled={isPending}
-                    aria-pressed={r.excluded}
-                    className={`rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60 ${
-                      r.excluded
-                        ? 'bg-danger-100 text-danger-700 hover:bg-danger-100/70'
-                        : 'bg-success-100 text-success-700 hover:bg-success-100/70'
-                    }`}
-                  >
-                    {r.excluded ? 'Excluded — reinstate' : 'In pool — exclude'}
-                  </button>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -781,8 +750,9 @@ function FcAwardsTable({ providers }: { providers: ProviderRow[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// SR-4 — FC rotation policy (WAREHOUSE row). Pool/mode/new-node over score rank;
-// rating-only knobs (floor / location bias / sticky) don't apply to FCs.
+// SR-4: FC selection-balancing policy (WAREHOUSE row). An OPTIONAL fair-spread
+// layer (pool/mode/new-node) on top of best-fit score rank, NOT printer-style
+// rotation. Rating-only knobs (floor / location bias / sticky) do not apply to FCs.
 // ---------------------------------------------------------------------------
 
 function FcPolicyEditor({ initial }: { initial: RotationPolicyView }) {
@@ -806,7 +776,7 @@ function FcPolicyEditor({ initial }: { initial: RotationPolicyView }) {
       const res = await saveRotationPolicy({ ...p, slotSharesPct: shares })
       if (!res.ok) return void toast.error(res.error)
       toast.success(
-        `FC rotation saved${p.enabled ? ' — engine LIVE.' : ' (engine off — band tiebreak).'}`,
+        `FC selection saved${p.enabled ? ' (balancing LIVE).' : ' (balancing off, band tiebreak).'}`,
       )
     })
   }
@@ -817,11 +787,13 @@ function FcPolicyEditor({ initial }: { initial: RotationPolicyView }) {
   return (
     <section className="rounded-2xl border border-ink-200 bg-white p-5">
       <h2 className="font-display text-[15px] font-semibold text-ink-900">
-        FC rotation policy (SR-4)
+        FC selection policy (SR-4)
       </h2>
       <p className="mt-1 text-[12.5px] text-ink-600">
-        Layers pool / split-mode / new-node exposure on the FC scorer. Off = the V1.5 indifference
-        band (least-recently-awarded) stays authoritative. Ranks by score, not rating.
+        An optional <strong>balancing</strong> layer (pool / split-mode / new-node exposure) on top
+        of the best-fit FC scorer. This is NOT printer-style rotation: FCs are selected by fit
+        (temp class, location, capacity). Off = the V1.5 indifference band (least-recently-assigned)
+        stays authoritative. Ranks by score, not rating.
       </p>
 
       <label className="mt-4 flex items-start gap-2.5 rounded-xl border border-ink-200 bg-ink-50/40 p-3.5">
@@ -833,7 +805,7 @@ function FcPolicyEditor({ initial }: { initial: RotationPolicyView }) {
         />
         <span>
           <span className="block text-[13.5px] font-semibold text-ink-900">
-            Rotation engine enabled for fulfillment centers
+            Selection balancing enabled for fulfillment centers
           </span>
           <span className="block text-[12px] text-ink-500">
             Off = band tiebreak. Hard eligibility filters (storage class, hazmat, capacity,
@@ -920,7 +892,7 @@ function FcPolicyEditor({ initial }: { initial: RotationPolicyView }) {
               className={inputCls}
             />
             <span className="text-[11.5px] text-ink-500">
-              of awards divert to under-exposed FCs (new while under{' '}
+              of assignments divert to under-exposed FCs (new while under{' '}
               <input
                 type="number"
                 min={0}
@@ -941,7 +913,7 @@ function FcPolicyEditor({ initial }: { initial: RotationPolicyView }) {
           disabled={isSaving}
           className="rounded-full bg-ink-900 px-5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60"
         >
-          {isSaving ? 'Saving…' : 'Save FC rotation'}
+          {isSaving ? 'Saving…' : 'Save FC selection'}
         </button>
       </div>
     </section>
@@ -1089,7 +1061,7 @@ function FcWeightsEditor({
     ['distance', 'Distance', 'Manufacturer → FC proximity', true],
     ['sla', 'SLA', 'No per-node SLA data yet — auto-drops from the mix', false],
     ['capacity', 'Capacity', 'Receiving headroom vs. order size', true],
-    ['rotation', 'Rotation fairness', 'Least-recently-awarded within the band', true],
+    ['rotation', 'Balancing (share pressure)', 'Least-recently-assigned within the band', true],
     ['storageMatch', 'Storage match', 'Temp/hazmat class fit', true],
   ]
 
@@ -1302,19 +1274,19 @@ function PreviewPanel({ products }: { products: Array<{ id: string; name: string
 // ---------------------------------------------------------------------------
 // Provider pool + awards (read-only rotation status)
 //
-// The printer rotation flag (excludeFromAutoRotation) is now owned SOLELY by the
-// Partner Access console (PRINT_ROTATION lever → per-partner ALLOW/DENY). This
+// The printer rotation flag (excludeFromAutoRotation) is owned SOLELY by the
+// Partner Access console (PRINT_ROTATION lever, per-partner ALLOW/DENY). This
 // table READS the effective state and deep-links to the partner's Access tab to
-// change it — it no longer writes the flag (retired the per-service toggle so
-// there is one control, no last-write-wins race). FC rotation is unaffected
-// (FcAwardsTable keeps its toggle; the console does not govern warehouses).
+// change it; it never writes the flag (one control, no last-write-wins race).
+// Fulfillment centers are a separate concept: SELECTED by fit, never rotated, so
+// FcSelectionTable is read-only and has no kill switch.
 // ---------------------------------------------------------------------------
 
 function ProvidersTable({ providers }: { providers: ProviderRow[] }) {
   return (
     <section className="rounded-2xl border border-ink-200 bg-white p-5">
       <h2 className="font-display text-[15px] font-semibold text-ink-900">
-        Print providers — awards (90 days)
+        Print providers: awards (90 days)
       </h2>
       <p className="mt-1 text-[12px] text-ink-500">
         Rotation eligibility is managed per partner in{' '}

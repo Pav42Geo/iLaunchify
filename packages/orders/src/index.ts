@@ -285,7 +285,7 @@ export type {
   RotationContext,
   RotationDecision,
 } from './rotation'
-export { loadRotationPolicy, policyInputOf, loadFcRotationPolicy } from './routing'
+export { loadRotationPolicy, policyInputOf, loadFcSelectionPolicy } from './routing'
 // SR-2.2 — sample print-leg resolver + verdict loop support.
 export { resolveSamplePrintLeg } from './sample-print'
 export type { SamplePrintLeg } from './sample-print'
@@ -399,7 +399,7 @@ export {
 } from './fc-selector'
 export type { FcCandidate, FcSelectionInput, FcRanked } from './fc-selector'
 export { scoreAndSelectFc, buildScoredAwardPayload, applyFulfillmentPreference, resolveFulfillmentPreference } from './fc-scorer'
-export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry, FcRotationPolicy, FulfillmentPreference, AwardAfeContribution } from './fc-scorer'
+export type { FcScoringWeights, FcScoringContext, FcScoreResult, FcScored, FcAwardHistoryEntry, FcSelectionPolicy, FulfillmentPreference, AwardAfeContribution } from './fc-scorer'
 export { isPublicFcPoolEligible, PUBLIC_FC_PARTNER_FILTER } from './fc-pool'
 export {
   classifyFcOverride,

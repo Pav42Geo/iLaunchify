@@ -95,12 +95,14 @@ function ManualBody() {
         </p>
       </Section>
 
-      <Section title="Rotation policy — the core controls (Print & FC)">
+      <Section title="Print rotation & FC selection balancing (the core controls)">
         <p>
-          A rotation policy decides how auto-routed work is spread across eligible partners. It is{' '}
-          <strong>off by default</strong> — off means the legacy behavior (printers: first eligible;
-          FCs: the weighted-score band). Turn it on per tab and, for printers, per{' '}
-          <strong>context</strong>.
+          These are two different ideas. <strong>Printers rotate</strong>: a rotation policy spreads
+          interchangeable print work fairly across eligible providers. <strong>FCs are selected</strong>{' '}
+          by fit (temp class, location, capacity), not rotated; the FC tab only adds an optional{' '}
+          <strong>balancing</strong> band to spread among near-equal facilities. Both are{' '}
+          <strong>off by default</strong> (printers: first eligible; FCs: the weighted-score band).
+          Turn it on per tab and, for printers, per <strong>context</strong>.
         </p>
         <ul className="ml-4 list-disc space-y-1.5">
           <li>
@@ -168,21 +170,21 @@ function ManualBody() {
         </p>
       </Section>
 
-      <Section title="Awards tables + kill switch">
+      <Section title="History tables">
         <p>
-          Each tab&rsquo;s awards table shows the last 90 days of auto-awards per partner and their
-          actual share, so you can see where work is really going vs. what you configured.
+          Each tab&rsquo;s table shows the last 90 days per partner and their actual share, so you can
+          see where work is really going vs. what you configured.
         </p>
         <p className="mt-2">
-          <strong>Print providers:</strong> rotation eligibility is read-only here. Manage it per
-          partner in <strong>Partner Access</strong> (Print rotation lever) so there is a single
+          <strong>Print providers</strong> (awards): rotation eligibility is read-only here. Manage it
+          per partner in <strong>Partner Access</strong> (Print rotation lever) so there is a single
           control; excluding a printer removes it from <em>auto</em>-rotation while manual and pinned
           picks still work.
         </p>
         <p className="mt-2">
-          <strong>Fulfillment centers:</strong> the per-node kill switch (&ldquo;In pool /
-          exclude&rdquo;) still lives on this page, since warehouse rotation is not governed by
-          Partner Access. Use it as an ops pressure valve, then reinstate.
+          <strong>Fulfillment centers</strong> (assignments): read-only. FCs are <em>selected</em> per
+          order by fit, not rotated, so there is no kill switch. To take a facility out of selection,
+          pause its service or set a blackout window (both honored by the selector).
         </p>
       </Section>
 
@@ -209,7 +211,7 @@ function ManualBody() {
       <Section title="Glossary">
         <p>
           <strong>Pool</strong> — the top-N candidates eligible to win. <strong>Band</strong> — a
-          score window within which FCs rotate as near-ties. <strong>Bayesian rating</strong> — a
+          score window within which FCs are balanced as near-ties. <strong>Bayesian rating</strong>: a
           rating smoothed toward a prior so a partner with 2 reviews isn&rsquo;t treated like one
           with 200. <strong>Cold-start</strong> — giving new partners seeded exposure so they can
           earn ratings/awards. <strong>Pinned</strong> — a creator&rsquo;s explicit choice; bypasses

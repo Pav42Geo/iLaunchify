@@ -28,7 +28,7 @@ Cross-app links require `marketingUrl()` / `creatorUrl()` / `partnerUrl()` helpe
 - `packages/payments` — Stripe Connect + Subscriptions
 - `packages/marketplace` — `suggestNiches()` engine + `recordNicheAssignment()`
 - `packages/notifications` — dispatcher + Resend
-- `packages/orders` — order routing + manifest generation + FC selection (fc-selector V1 nearest, fc-scorer V1.5 weighted + rotation band)
+- `packages/orders` — order routing + manifest generation + FC selection (fc-selector V1 nearest, fc-scorer V1.5 weighted + balancing band)
 - `packages/shipping` — logistics substrate (built 2026-07-02): shipment classifier, carrier eligibility + rate shop, EasyPost gateway (DI'd http — tests network-free), dispatch doc gates, receiving checklists, cold-pack + storage-accrual math, channel-inbound gates. Prisma-free by design; pure suites run in run-vitest-suites.mjs.
 - `services/compliance` — FDA rule packs + label validator (Python/FastAPI service: nutrition calculation, compliance rule evaluation, label PDF rendering) · `packages/compliance-client` — typed TS client to it
 
@@ -111,6 +111,12 @@ The public **Front Face** (`/partners/[slug]`) is the manufacturer's public "Man
 - **Admin governs live/offline on top** via the Partner Access console `PUBLIC_PROFILE` lever (master `publicProfilesEnabled` + per-partner DENY, default ON so admin only SUBTRACTS). When admin turns it off, the partner stops seeing it on their own `/profile` page too.
 
 SSOT: resolver `@ilaunchify/auth` `resolvePartnerOpportunity('PUBLIC_PROFILE', …)` + reader `@ilaunchify/db` `getPartnerProfile`. Do not add a partner self-serve "go-live" toggle, and do not decouple the profile from `participationMode` (that was tried and reverted). See `.claude/memory/ilaunchify-public-partner-profile-disclosure.md` + `ilaunchify-partner-access-console.md`.
+
+## Print rotation ≠ FC selection (LOCKED 2026-07-15, distinct concepts, distinct words)
+
+- **Printers ROTATE.** A fair-share lottery across an interchangeable pool (top-N, split modes, new-provider ramp, sticky). Controlled by `PartnerService.excludeFromAutoRotation`, whose SOLE writer is the Partner Access `PRINT_ROTATION` lever. `PrintAwardLog` records awards.
+- **Manufacturers / co-packers are OWNER-PINNED** to `ProductTemplate.manufacturerServiceId` — never rotated, never shopped. The Manufacturers tab only arbitrates multi-manufacturer templates.
+- **Warehouses / FCs are SELECTED per order by FIT** (temp-class / hazmat / location / capacity / SLA / cost), with an OPTIONAL "balancing" band to spread among near-equal facilities. This is NOT rotation. FCs have **NO kill switch** — to pull one, Pause its service or set a blackout window (both honored by the selector). Do NOT reintroduce an FC `excludeFromAutoRotation` toggle, and do NOT call FC selection "rotation" in code or UI. Use *selection / assignment / balancing*.
 
 ## Gotchas
 

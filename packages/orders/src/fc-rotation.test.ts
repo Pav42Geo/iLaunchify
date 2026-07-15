@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { FcCandidate, FcSelectionInput } from './fc-selector'
 import { scoreAndSelectFc } from './fc-scorer'
-import type { FcScoringContext, FcScoringWeights, FcRotationPolicy } from './fc-scorer'
+import type { FcScoringContext, FcScoringWeights, FcSelectionPolicy } from './fc-scorer'
 
 const weights: FcScoringWeights = {
   costWeightPct: 35,
@@ -37,7 +37,7 @@ const input: FcSelectionInput = {
   originLat: 41.88, originLng: -87.63, originState: 'IL',
 }
 
-function policy(over: Partial<FcRotationPolicy> = {}): FcRotationPolicy {
+function policy(over: Partial<FcSelectionPolicy> = {}): FcSelectionPolicy {
   return {
     enabled: true,
     poolSize: 2,
@@ -50,7 +50,7 @@ function policy(over: Partial<FcRotationPolicy> = {}): FcRotationPolicy {
 }
 
 const ctx = (
-  p: FcRotationPolicy | undefined,
+  p: FcSelectionPolicy | undefined,
   history: FcScoringContext['history'] = {},
   roll = 0,
 ): FcScoringContext => ({

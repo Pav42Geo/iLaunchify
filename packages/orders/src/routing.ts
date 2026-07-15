@@ -26,7 +26,7 @@ import {
   type RotationCandidate,
   type RotationPolicyInput,
 } from './rotation'
-import type { FcRotationPolicy } from './fc-scorer'
+import type { FcSelectionPolicy } from './fc-scorer'
 
 // Re-exported for back-compat: estimateDispatchCosts now lives in the pure planner.
 export { estimateDispatchCosts } from './dispatch-planner'
@@ -500,9 +500,9 @@ export function policyInputOf(
  * (rating-specific knobs drop; new-provider → new-node). Always returns a value;
  * `enabled:false` (no row / disabled) makes the FC scorer keep its band behavior.
  */
-export async function loadFcRotationPolicy(
+export async function loadFcSelectionPolicy(
   context: 'DEFAULT' | 'SAMPLE' | 'REPLENISHMENT' = 'DEFAULT',
-): Promise<FcRotationPolicy> {
+): Promise<FcSelectionPolicy> {
   const p = policyInputOf(await loadRotationPolicy('WAREHOUSE', context))
   return {
     enabled: p.enabled,

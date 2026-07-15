@@ -16,7 +16,7 @@ import {
   loadRotationPolicy,
   policyInputOf,
   scoreAndSelectFc,
-  loadFcRotationPolicy,
+  loadFcSelectionPolicy,
   type RotationCandidate,
   type RotationPolicyInput,
   type FcCandidate,
@@ -114,46 +114,11 @@ export async function saveRotationPolicy(input: RotationPolicyView): Promise<Res
   return { ok: true, data: null }
 }
 
-/** Per-provider kill switch: out of the AUTO pool, manual/pinned untouched.
- *
- * FC/WAREHOUSE rotation ONLY. Pure-printer (LABEL_PRINTING) rotation is owned
- * solely by the Partner Access console (PRINT_ROTATION lever); this action
- * refuses printers so there is exactly one writer for the printer flag and no
- * last-write-wins race with the console. */
-export async function setExcludeFromAutoRotation(input: {
-  partnerServiceId: string
-  exclude: boolean
-}): Promise<Result<null>> {
-  const gate = await requireCapability('routing:admin')
-  const svc = await prisma.partnerService.findUnique({
-    where: { id: input.partnerServiceId },
-    select: {
-      id: true,
-      type: true,
-      excludeFromAutoRotation: true,
-      partner: { select: { companyName: true } },
-    },
-  })
-  if (!svc) return { ok: false, error: 'Service not found' }
-  if (svc.type === 'LABEL_PRINTING') {
-    return {
-      ok: false,
-      error: 'Printer rotation is managed in Partner Access (Print rotation lever), not here.',
-    }
-  }
-  await prisma.partnerService.update({
-    where: { id: svc.id },
-    data: { excludeFromAutoRotation: input.exclude },
-  })
-  await logAuditAs(gate, {
-    entityType: 'PartnerService',
-    entityId: svc.id,
-    action: input.exclude ? 'AUTO_ROTATION_EXCLUDED' : 'AUTO_ROTATION_REINSTATED',
-    payload: { companyName: svc.partner.companyName },
-  })
-  revalidatePath('/routing-rotation')
-  return { ok: true, data: null }
-}
+// NOTE: the per-provider "exclude from auto-rotation" action was REMOVED here
+// (Pavel 2026-07-15). Printer rotation is owned solely by the Partner Access
+// console (PRINT_ROTATION lever). Fulfillment centers are SELECTED per order by
+// fit (temp class / location / capacity), never rotated, so they have no such
+// kill switch: to pull an FC, Pause its service or set a blackout window.
 
 // ---------------------------------------------------------------------------
 // Dry-run preview — print leg
@@ -497,7 +462,7 @@ export interface FcPreviewResult {
   note?: string
 }
 
-export async function runFcRotationPreview(input: {
+export async function runFcSelectionPreview(input: {
   productId: string
   runs?: number
 }): Promise<Result<FcPreviewResult>> {
@@ -588,7 +553,7 @@ export async function runFcRotationPreview(input: {
     history[a.partnerServiceId] = h
   }
 
-  const rotationPolicy = await loadFcRotationPolicy()
+  const rotationPolicy = await loadFcSelectionPolicy()
 
   const selectionInput = {
     storageClass: 'AMBIENT' as const, // representative — real orders derive per SKU

@@ -72,7 +72,7 @@ export interface FcAwardHistoryEntry {
  * rating). Absent or `enabled:false` → the V1.5 band behavior is unchanged, so
  * this is a no-op until an admin flips it on.
  */
-export interface FcRotationPolicy {
+export interface FcSelectionPolicy {
   enabled: boolean
   poolSize: number // top-N by score
   mode: 'EQUAL' | 'RANDOM' | 'WEIGHTED_EXACT' | 'BEST_ONLY'
@@ -87,7 +87,7 @@ export interface FcScoringContext {
   history: Record<string, FcAwardHistoryEntry>
   totalRecentAwards: number
   /** SR-4 rotation policy (WAREHOUSE row). Omitted/disabled → band behavior. */
-  rotationPolicy?: FcRotationPolicy
+  rotationPolicy?: FcSelectionPolicy
   /** Injectable roll for deterministic tests + the preview simulator. */
   roll?: () => number
 }
@@ -193,7 +193,7 @@ export function scoreAndSelectFc(
 
   // SR-4 — admin rotation policy replaces the band tiebreak when enabled.
   if (ctx.rotationPolicy?.enabled) {
-    return selectFcWithRotation(eligibleScored, scored, ctx, ctx.rotationPolicy, best)
+    return selectFcWithBalancing(eligibleScored, scored, ctx, ctx.rotationPolicy, best)
   }
 
   // Phase 3 — rotation inside the indifference band: least-recently-awarded wins.
@@ -222,11 +222,11 @@ type EligibleScored = FcScored & { score: number }
  * Mirrors the printer rotation semantics: new-node diversion → top-N pool →
  * EQUAL (least-recently-awarded) / RANDOM / WEIGHTED_EXACT / BEST_ONLY.
  */
-function selectFcWithRotation(
+function selectFcWithBalancing(
   eligibleScored: EligibleScored[],
   scored: FcScored[],
   ctx: FcScoringContext,
-  policy: FcRotationPolicy,
+  policy: FcSelectionPolicy,
   best: EligibleScored,
 ): FcScoreResult {
   const roll = ctx.roll ?? Math.random
