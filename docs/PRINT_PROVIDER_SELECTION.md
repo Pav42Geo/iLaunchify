@@ -786,3 +786,64 @@ engine stays a hard binary filter; rating still ranks only survivors.
 - **Do not double-count main-role.** Filter 0 (`isPublicPrintPoolEligible`) already bars
   MFR/COPACK from the public pool; keep it as the first gate so owner-self and nomination bindings
   are never swept into rotation.
+
+### 11.9 MOQ compatibility: print pieces vs product pieces (added 2026-07-15, Pavel)
+
+**The problem.** Today filter 3 (`print-eligibility.ts:143-145`) compares the printer's `moq` /
+`maxRunQty` against `job.quantity` = the PRODUCT order quantity, assuming 1 label = 1 product unit.
+Real CPG breaks that assumption three ways: (a) a product can consume more than one printed piece
+(box + inner label + tamper seal), (b) presses run OVERAGE (5-10% extra to cover fill-line
+spoilage), and (c) print MOQ is press-driven (digital from ~50, offset from thousands) and diverges
+from the fill-line MOQ (`ProductDefaults.moqMin`, default 500). So the print run needed is NOT the
+order size, and the two MOQs are genuinely independent.
+
+**Decision (D4, Pavel 2026-07-15): raise the order minimum.** When the needed print quantity is
+below every capable printer's MOQ, we do NOT overprint by default. Instead we compute a single
+**effective minimum order quantity** for the product (the binding constraint across all legs) and
+surface / enforce it at checkout, so the creator sees "minimum for this product is X units" up
+front instead of hitting a mid-order failure. Overprint-and-store (a label buffer drawn down over
+reorders) is the natural V2 extension (ties to the pooling/buffer moat) and is explicitly DEFERRED;
+scrap-the-surplus overprint is rejected (wasteful).
+
+**Decision: model the real print quantity now.** Add:
+- `PackagingComponent.piecesPerUnit Int @default(1)` — how many of THIS printed piece a single
+  finished product consumes.
+- An `overagePct` default (platform setting, optionally per domain / packaging type; industry
+  norm 5-10%). Printed pieces provision spoilage; the manufacturer's fill leg EXPECTS the extra.
+
+**Derived quantities (pure, in the §11.4 requirements resolver):**
+```
+printQty(component)      = ceil( productQty * piecesPerUnit_c * (1 + overagePct) )
+```
+Filter 3 compares `printQty(component)` (NOT the raw product qty) to the printer's `moq` /
+`maxRunQty`, per label SKU. This alone makes capability-rotation correctly EXCLUDE printers whose
+floor is too high, and drives the coverage/RFQ path (D3) when none fit.
+
+**Effective order window (surfaced + enforced at checkout):**
+```
+minProductQtyForPrinter(c, p) = ceil( p.moq / (piecesPerUnit_c * (1 + overagePct)) )
+minProductQtyForComponent(c)  = min over CAPABLE printers p of minProductQtyForPrinter(c, p)
+effectiveMinOrderQty          = max( manufacturingMOQ,
+                                     max over components c of minProductQtyForComponent(c) )
+effectiveMaxOrderQty          = min( manufacturingMax,
+                                     min over components c of
+                                       floor( bestPrinterMaxRun_c / (piecesPerUnit_c*(1+overage)) ) )
+```
+The creator's quantity must fall in `[effectiveMinOrderQty, effectiveMaxOrderQty]`. Below the min:
+block with a clear "raise to X" message (the binding leg named). Above the max: only offset-class
+printers qualify (filter 3 already excludes low-max shops); if none, coverage/RFQ (D3).
+
+**Variety packs / multi-component.** Each distinct label is its own print SKU with its own
+`printQty` (pack count times that flavor's fill share) and its own MOQ check; the WORST-ratio SKU
+sets the binding `effectiveMinOrderQty`. Reuses the existing multi-flavor lead-time pattern
+(`resolveMultiFlavorLeadDays`).
+
+**Where it plugs in.** The requirements resolver (§11.4.1) emits `printQty` per component; filter 3
+consumes it; a small `resolveEffectiveOrderWindow(product)` (pure) computes the min/max for the
+product-detail configurator + checkout gate. Additive schema only (`piecesPerUnit`, an `overagePct`
+setting). Folds into **PS-9a** as its MOQ sub-phase; no new migration beyond the two fields.
+
+**Edge cases.** Overage labels not consumed in production are spoilage buffer in v1 (no inventory),
+which sets up the V2 label-buffer cleanly. A per-component printer that fits the shape but not the
+`printQty` window is simply excluded by filter 3 (no special case). Manufacturing MOQ can still be
+the binding constraint, in which case print MOQ is moot and the effective min is the fill floor.
