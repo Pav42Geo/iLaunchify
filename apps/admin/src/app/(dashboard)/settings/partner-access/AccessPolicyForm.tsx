@@ -101,7 +101,10 @@ export function AccessPolicyForm({ initial }: { initial: PartnerAccessPolicyValu
         <p className="mb-3 mt-1 text-[12.5px] text-ink-500">
           Group A defaults new partners inherit.
         </p>
-        <Row title="Default profile visibility" desc="New partners start at…">
+        <Row
+          title="New-partner visibility default"
+          desc="Seeds a brand-new partner's own choice. Partners who publish control their own visibility — this does NOT gate them; use a per-partner DENY to restrict for cause."
+        >
           <select
             className={selectCls}
             value={v.defaultProfileVisibility}

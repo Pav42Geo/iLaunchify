@@ -43,13 +43,22 @@ const publicMfr: PartnerFacts = {
   assert(r.effective === false && r.source === 'master', 'master beats ALLOW')
 }
 
-// override ALLOW turns a default-off lever on
+// PUBLIC_PROFILE is PARTNER-controlled: on by default once the partner opted in
+// (prerequisites met); admin can only restrict (DENY / master-off).
 {
-  const dflt = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, publicMfr)
-  assert(dflt.effective === false && dflt.source === 'default', 'PUBLIC_PROFILE default off (invited)')
-  const allow: AccessOverride = { lever: 'PUBLIC_PROFILE', state: 'ALLOW' }
-  const r = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, publicMfr, allow)
-  assert(r.effective === true && r.source === 'override', 'ALLOW turns it on')
+  const on = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, publicMfr)
+  assert(on.effective === true && on.source === 'default', 'public profile on by partner opt-in')
+
+  const deny: AccessOverride = { lever: 'PUBLIC_PROFILE', state: 'DENY' }
+  const restricted = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, publicMfr, deny)
+  assert(restricted.effective === false && restricted.source === 'override', 'admin DENY restricts')
+
+  const notPublished: PartnerFacts = { ...publicMfr, profilePublished: false }
+  const blocked = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, notPublished)
+  assert(
+    blocked.effective === false && blocked.source === 'prerequisite',
+    'blocked until the partner publishes',
+  )
 }
 
 // override DENY forces a default-on lever off

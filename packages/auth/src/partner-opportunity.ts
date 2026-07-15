@@ -85,7 +85,13 @@ function masterBlock(lever: PartnerAccessLever, policy: AccessPolicy): string | 
 function leverDefault(lever: PartnerAccessLever, policy: AccessPolicy): boolean {
   switch (lever) {
     case 'PUBLIC_PROFILE':
-      return policy.defaultProfileVisibility === 'public'
+      // PARTNER-CONTROLLED (Pavel 2026-07-14): the partner's own opt-in — the
+      // PUBLIC + published + FULL-disclosure prerequisites — decides visibility.
+      // Default ON so the admin only ever SUBTRACTS (per-partner DENY for cause,
+      // or the platform master switch). Admin never has to "approve" a partner.
+      // policy.defaultProfileVisibility seeds a NEW partner's participation choice,
+      // it does NOT gate an already-published partner here.
+      return true
     case 'PROFILE_SHARING':
       return policy.defaultProfileSharing
     case 'BRIEF_INTAKE':
