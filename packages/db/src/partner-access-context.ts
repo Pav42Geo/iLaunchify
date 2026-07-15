@@ -32,8 +32,21 @@ export interface PartnerAccessContext {
 export async function getPartnerAccessContext(
   partnerId: string,
 ): Promise<PartnerAccessContext | null> {
+  return loadPartnerAccessContext({ id: partnerId })
+}
+
+/** Same context, keyed by the public slug (used by the marketing profile route). */
+export async function getPartnerAccessContextBySlug(
+  slug: string,
+): Promise<PartnerAccessContext | null> {
+  return loadPartnerAccessContext({ slug })
+}
+
+async function loadPartnerAccessContext(
+  where: { id: string } | { slug: string },
+): Promise<PartnerAccessContext | null> {
   const partner = await prisma.partner.findUnique({
-    where: { id: partnerId },
+    where,
     select: {
       id: true,
       companyName: true,
@@ -63,7 +76,7 @@ export async function getPartnerAccessContext(
     }
   ).partnerAccessOverride
     .findMany({
-      where: { partnerId },
+      where: { partnerId: partner.id },
       select: { lever: true, state: true, value: true, reason: true, expiresAt: true },
     })
     .catch(() => [] as PartnerAccessOverrideRow[])

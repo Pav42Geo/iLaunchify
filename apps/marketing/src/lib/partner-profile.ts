@@ -15,8 +15,18 @@
 //
 // All reads are fail-soft (pre-db:push clients render the anonymous badge).
 
-import { prisma } from '@ilaunchify/db'
-import { hasTier, normalizeTier, type TierKey } from '@ilaunchify/auth'
+import { getPartnerAccessContextBySlug, getPartnerAccessPolicy, prisma } from '@ilaunchify/db'
+import {
+  hasTier,
+  normalizeTier,
+  resolveNamedReviewsAudience,
+  resolvePartnerOpportunity,
+  type AccessLeverState,
+  type AccessOverride,
+  type AccessPolicy,
+  type PartnerFacts,
+  type TierKey,
+} from '@ilaunchify/auth'
 
 export interface PartnerProfileGate {
   enabled: boolean
@@ -40,6 +50,71 @@ export async function getPartnerProfileGate(): Promise<PartnerProfileGate> {
 /** Can this viewer tier see partner names/profiles at all? */
 export function canViewPartnerProfiles(viewerTier: TierKey, gate: PartnerProfileGate): boolean {
   return gate.enabled && hasTier(viewerTier, gate.minCreatorTier)
+}
+
+// ---------------------------------------------------------------------------
+// Resolver-driven access (Partner Access console) — the levers now GOVERN the
+// public profile. docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.md.
+//   • PUBLIC_PROFILE lever   → whether the page renders at all (master switch,
+//     per-partner override, and the PUBLIC+published+FULL prerequisites)
+//   • NAMED_REVIEWS audience → whether real client names show (paid/any/anon)
+//   • PROFILE_SHARING lever  → whether the Share control appears (paid only)
+// ---------------------------------------------------------------------------
+
+export interface ProfileAccess {
+  /** PUBLIC_PROFILE lever effective — the profile route renders (else notFound). */
+  visible: boolean
+  /** Reviews show real client names (audience gate met for this viewer). */
+  named: boolean
+  /** Show the Share control (paid viewer + PROFILE_SHARING lever on). */
+  canShare: boolean
+}
+
+export async function resolvePartnerProfileAccess(args: {
+  slug: string
+  viewerTier: TierKey
+  isAuthenticated: boolean
+}): Promise<ProfileAccess> {
+  const [policy, ctx] = await Promise.all([
+    getPartnerAccessPolicy(),
+    getPartnerAccessContextBySlug(args.slug),
+  ])
+  if (!ctx) return { visible: false, named: false, canShare: false }
+
+  const facts: PartnerFacts = {
+    status: ctx.status,
+    participationMode: ctx.participationMode === 'PUBLIC' ? 'PUBLIC' : 'INVITED_ONLY',
+    profilePublished: ctx.profilePublished,
+    hasFullDisclosureNameable: ctx.hasFullDisclosureNameable,
+    isPurePrinter: ctx.isPurePrinter,
+    onboardingComplete: ctx.onboardingComplete,
+  }
+  const override = (lever: AccessOverride['lever']): AccessOverride | null => {
+    const r = ctx.overrides.find((o) => o.lever === lever)
+    return r
+      ? { lever, state: r.state as AccessLeverState, value: r.value, expiresAt: r.expiresAt }
+      : null
+  }
+
+  const visible = resolvePartnerOpportunity(
+    'PUBLIC_PROFILE',
+    policy as AccessPolicy,
+    facts,
+    override('PUBLIC_PROFILE'),
+  ).effective
+  const sharingOn = resolvePartnerOpportunity(
+    'PROFILE_SHARING',
+    policy as AccessPolicy,
+    facts,
+    override('PROFILE_SHARING'),
+  ).effective
+
+  const audience = resolveNamedReviewsAudience(policy as AccessPolicy, override('NAMED_REVIEWS'))
+  const isPaid = hasTier(args.viewerTier, normalizeTier(policy.minCreatorTierForIdentity))
+  const named =
+    audience === 'anonymous' ? false : audience === 'any' ? args.isAuthenticated : isPaid
+
+  return { visible, named, canShare: named && isPaid && sharingOn }
 }
 
 const NAMEABLE_SERVICE_TYPES = ['MANUFACTURING', 'COPACKING'] as const

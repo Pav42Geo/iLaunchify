@@ -19,21 +19,21 @@ import { notFound } from 'next/navigation'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { getMarketingSession } from '@/lib/session'
 import { getCreatorTier } from '@ilaunchify/auth'
-import {
-  canViewPartnerProfiles,
-  getPartnerProfile,
-  getPartnerProfileGate,
-} from '@/lib/partner-profile'
+import { getPartnerProfile, resolvePartnerProfileAccess } from '@/lib/partner-profile'
 import { PartnerFrontFace } from '@ilaunchify/ui'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const gate = await getPartnerProfileGate()
-  // Name appears in metadata ONLY for PUBLIC opt-in partners (the reader gates on
-  // PUBLIC + published + FULL disclosure). Non-public partners never leak.
-  if (!gate.enabled) return { title: 'Partner profile — iLaunchify' }
+  // Name appears in metadata ONLY when the PUBLIC_PROFILE lever is effective
+  // (master switch + partner opt-in + override). Non-public partners never leak.
+  const { visible } = await resolvePartnerProfileAccess({
+    slug,
+    viewerTier: 'maker',
+    isAuthenticated: false,
+  })
+  if (!visible) return { title: 'Partner profile — iLaunchify' }
   const profile = await getPartnerProfile(slug).catch(() => null)
   if (!profile) return { title: 'Partner profile — iLaunchify' }
   return { title: `${profile.companyName} — iLaunchify`, description: profile.tagline ?? undefined }
@@ -52,18 +52,17 @@ export default async function PartnerProfilePage({
     session?.brands.map((b) => ({ id: b.id, name: b.name, colorHex: '#FF2E63' })) ?? []
   const activeBrandId = session?.activeBrandId ?? ''
 
-  const gate = await getPartnerProfileGate()
-  if (!gate.enabled) notFound()
-
-  // Public opt-in model (PUBLIC_PARTNER_PROFILE_SPEC 2026-07-14): the reader gates
-  // on PUBLIC + published + FULL disclosure, so ANY viewer (incl. logged-out /
-  // Maker) may see a public partner's SCRUBBED profile — no products, no prices,
-  // reviews client-anonymized. Named reviews + the Share action require a PAID
-  // viewer (tier ≥ the admin minCreatorTier dial). Non-public partners → notFound.
+  // Partner Access console governs everything now (PARTNER_ACCESS_ADMIN_CONTROLS):
+  //   visible  — PUBLIC_PROFILE lever (master switch + partner opt-in + override +
+  //              the PUBLIC/published/FULL prerequisites). Not visible → notFound.
+  //   named    — NAMED_REVIEWS audience vs viewer tier (paid/any/anonymous).
+  //   canShare — PROFILE_SHARING lever, paid viewers only.
+  // Any viewer (logged-out / Maker) may see a visible partner's SCRUBBED profile.
   const viewerTier = session?.user?.id ? await getCreatorTier(session.user.id) : 'maker'
-  const isPaid = isAuthenticated && canViewPartnerProfiles(viewerTier, gate)
+  const access = await resolvePartnerProfileAccess({ slug, viewerTier, isAuthenticated })
+  if (!access.visible) notFound()
 
-  const profile = await getPartnerProfile(slug, { isPaid })
+  const profile = await getPartnerProfile(slug, { isPaid: access.named })
   if (!profile) notFound()
 
   return (
@@ -75,7 +74,7 @@ export default async function PartnerProfilePage({
         activeBrandId={activeBrandId}
       />
       <div className="mx-auto max-w-[1300px] px-5 py-6">
-        <PartnerFrontFace profile={profile} canShare={isPaid} />
+        <PartnerFrontFace profile={profile} canShare={access.canShare} />
       </div>
     </>
   )

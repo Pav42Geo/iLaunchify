@@ -119,6 +119,7 @@ export {
 } from './partner-access-policy'
 export {
   getPartnerAccessContext,
+  getPartnerAccessContextBySlug,
   type PartnerAccessContext,
   type PartnerAccessOverrideRow,
 } from './partner-access-context'
