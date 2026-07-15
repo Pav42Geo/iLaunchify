@@ -15,10 +15,11 @@
 // No "Request a quote"/"Message" CTAs in this slice (Pavel 2026-07-12) — those
 // wire to the co-creation Brief flow in a follow-up.
 
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { MarketplaceHeader } from '@/components/MarketplaceHeader'
 import { getMarketingSession } from '@/lib/session'
 import { getCreatorTier } from '@ilaunchify/auth'
+import { resolveHistoricalSlug } from '@ilaunchify/db'
 import { getPartnerProfile, resolvePartnerProfileAccess } from '@/lib/partner-profile'
 import { PartnerFrontFace } from '@ilaunchify/ui'
 
@@ -45,6 +46,12 @@ export default async function PartnerProfilePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+
+  // Rename redirects (URL format #1): if this is a partner's OLD slug, 301 to the
+  // current one so shared links never break.
+  const currentSlug = await resolveHistoricalSlug(slug)
+  if (currentSlug) permanentRedirect(`/partners/${currentSlug}`)
+
   const session = await getMarketingSession()
   const isAuthenticated = Boolean(session?.user)
   const headerUser = session?.user ? { name: session.user.name, email: session.user.email } : null

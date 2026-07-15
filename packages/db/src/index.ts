@@ -120,9 +120,12 @@ export {
 export {
   getPartnerAccessContext,
   getPartnerAccessContextBySlug,
+  listPartnerAccessContexts,
+  getPartnerAccessCounts,
   type PartnerAccessContext,
   type PartnerAccessOverrideRow,
 } from './partner-access-context'
+export { resolveHistoricalSlug, recordSlugChange } from './partner-slug'
 export { getCannedReplies, type CannedReplyRow } from './canned-replies'
 export {
   getAnalyticsSettings,

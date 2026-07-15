@@ -10,6 +10,7 @@ import { getPartnerAccessMode, getPartnerAccessPolicy } from '@ilaunchify/db'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { setPartnerAccessMode } from '../partner-access-actions'
 import { AccessPolicyForm } from './AccessPolicyForm'
+import { PartnersAccessTable } from './PartnersAccessTable'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Partner Access — Admin' }
@@ -22,11 +23,12 @@ const TABS = [
 export default async function PartnerAccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; page?: string }>
 }) {
   await requireCapability('platform:admin')
-  const { tab: rawTab } = await searchParams
+  const { tab: rawTab, page: rawPage } = await searchParams
   const tab = rawTab === 'partners' ? 'partners' : 'policy'
+  const pageNum = Math.max(1, Number.parseInt(rawPage ?? '1', 10) || 1)
   const [mode, policy] = await Promise.all([getPartnerAccessMode(), getPartnerAccessPolicy()])
   const isPrivate = mode === 'PRIVATE'
 
@@ -115,14 +117,7 @@ export default async function PartnerAccessPage({
           <AccessPolicyForm initial={policy} />
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-ink-300 bg-ink-50 p-8 text-center">
-          <div className="font-display text-[15px] font-bold text-ink-900">Partner access list</div>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-500">
-            The bulk table of every partner with each lever’s effective state (with filters + bulk
-            actions) is the next build step. Per-partner controls already live on each partner’s
-            detail page → Access &amp; Opportunities tab.
-          </p>
-        </div>
+        <PartnersAccessTable policy={policy} page={pageNum} />
       )}
     </div>
   )
