@@ -172,7 +172,7 @@ const PRIMARY: SidebarRegion = {
         { kind: 'item', label: 'Partner ramp', icon: BadgeCheck, href: '/partners/ramp', capability: 'partners:approve' },
         // Access requests — partners asking to unlock a locked opportunity lever
         // (PARTNER_ACCESS_ADMIN_CONTROLS §request-queue). Approve = ALLOW override.
-        { kind: 'item', label: 'Access requests', icon: SlidersHorizontal, href: '/settings/partner-access?tab=requests', badgeKey: 'partnerAccess.pending', capability: 'partners:approve' },
+        { kind: 'item', label: 'Access requests', icon: SlidersHorizontal, href: '/settings/partner-access?tab=requests', badgeKey: 'partnerAccess.pending', capability: 'platform:admin' },
         // — Catalog & product review —
         { kind: 'item', label: 'Product approvals', icon: Package, href: '/products?tab=new', badgeKey: 'products.pending' },
         { kind: 'item', label: 'Print coverage', icon: PackageX, href: '/print-coverage', capability: 'reviews:write' },

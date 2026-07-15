@@ -1,4 +1,4 @@
-// Admin — per-partner Access & Opportunities (sub-route of the partner detail,
+// Admin: per-partner Access & Opportunities (sub-route of the partner detail,
 // mirrors the /verification sub-route pattern). Resolves every lever through the
 // pure resolver (@ilaunchify/auth) and renders the tri-state controls.
 // docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.md.
@@ -20,7 +20,7 @@ import { LEVERS } from './lever-meta'
 import { PartnerAccessControls, type LeverRow } from './PartnerAccessControls'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Partner access — Admin' }
+export const metadata = { title: 'Partner access (Admin)' }
 
 export default async function PartnerAccessTabPage({
   params,

@@ -69,7 +69,7 @@ export function AccessPolicyForm({ initial }: { initial: PartnerAccessPolicyValu
           Master switches
         </div>
         <p className="mb-3 mt-1 text-[12.5px] text-ink-500">
-          Platform-wide kill switches. Off wins over any per-partner “Allow” — a hard stop.
+          Platform-wide kill switches. Off wins over any per-partner “Allow” (a hard stop).
         </p>
         <Row
           title="Public partner profiles"
@@ -93,7 +93,7 @@ export function AccessPolicyForm({ initial }: { initial: PartnerAccessPolicyValu
         </Row>
       </div>
 
-      {/* Group A — identity & disclosure defaults */}
+      {/* Group A: identity & disclosure defaults */}
       <div className="rounded-2xl border border-ink-200 bg-white p-5">
         <div className="font-display text-[15px] font-bold text-ink-900">
           Identity &amp; disclosure defaults
@@ -103,7 +103,7 @@ export function AccessPolicyForm({ initial }: { initial: PartnerAccessPolicyValu
         </p>
         <Row
           title="New-partner visibility default"
-          desc="Seeds a brand-new partner's own choice. Partners who publish control their own visibility — this does NOT gate them; use a per-partner DENY to restrict for cause."
+          desc="Seeds a brand-new partner's own choice. Partners who publish control their own visibility; this does NOT gate them. Use a per-partner DENY to restrict for cause."
         >
           <select
             className={selectCls}
@@ -155,7 +155,7 @@ export function AccessPolicyForm({ initial }: { initial: PartnerAccessPolicyValu
         </Row>
       </div>
 
-      {/* Group B — marketplace opportunity defaults */}
+      {/* Group B: marketplace opportunity defaults */}
       <div className="rounded-2xl border border-ink-200 bg-white p-5">
         <div className="font-display text-[15px] font-bold text-ink-900">
           Marketplace opportunity defaults
@@ -169,7 +169,7 @@ export function AccessPolicyForm({ initial }: { initial: PartnerAccessPolicyValu
         </Row>
         <Row
           title="Print rotation"
-          desc="Public pure printers are in the rotation pool by default. Restrict a specific printer with a per-partner DENY on their Access tab (drives excludeFromAutoRotation) — this default is not a gate."
+          desc="Public pure printers are in the rotation pool by default. Restrict a specific printer with a per-partner DENY on their Access tab (drives excludeFromAutoRotation). This default is not a gate."
         >
           <Switch checked={v.defaultPrintRotation} onChange={toggle('defaultPrintRotation')} aria-label="Print rotation default" />
         </Row>

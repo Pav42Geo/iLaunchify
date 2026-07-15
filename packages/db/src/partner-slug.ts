@@ -31,6 +31,12 @@ export async function resolveHistoricalSlug(oldSlug: string): Promise<string | n
  * Record a slug the partner is moving AWAY from, so its old links keep working.
  * Call this from the rename/publish flow BEFORE writing the new Partner.slug.
  * Idempotent (upsert on the unique slug). Fail-soft.
+ *
+ * NOTE (2026-07-14): intentionally uncalled today. Partner.slug is generated ONCE
+ * on first publish (settings/company/actions.ts) and there is no rename UI yet, so
+ * PartnerSlugHistory stays empty and resolveHistoricalSlug is a no-op by design.
+ * The redirect activates the day a slug-rename flow ships: that flow MUST call this
+ * with the previous slug before writing the new one. Do not remove this as "dead."
  */
 export async function recordSlugChange(partnerId: string, previousSlug: string): Promise<void> {
   if (!previousSlug) return

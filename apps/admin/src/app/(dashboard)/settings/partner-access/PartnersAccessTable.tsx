@@ -1,4 +1,4 @@
-// Bulk Access list (Partners tab) — every partner × key lever effective-state,
+// Bulk Access list (Partners tab): every partner × key lever effective-state,
 // resolver-driven. design/partner-access-admin-prototype.html → "Access list".
 // Server component: batched read + resolve; row actions deep-link to the partner
 // Access tab (never inline-mutate). docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.
@@ -154,7 +154,7 @@ export async function PartnersAccessTable({
                     <td className="px-3 py-2.5">
                       <div className="font-semibold text-ink-900">{ctx.companyName}</div>
                       <div className="text-[11px] text-ink-500">
-                        {ctx.serviceTypes.join(' · ') || '—'}
+                        {ctx.serviceTypes.join(' · ') || 'No services'}
                       </div>
                     </td>
                     <td className="px-3 py-2.5">

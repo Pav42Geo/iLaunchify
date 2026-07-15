@@ -1002,7 +1002,7 @@ export function renderTemplate<E extends NotificationEvent>(
       const d = data as TemplateData['PARTNER_ACCESS_REQUEST_APPROVED']
       return {
         title: `${d.leverLabel} unlocked`,
-        body: `Good news: your request for ${d.leverLabel} was approved. It is now active on your account.`,
+        body: `Good news: your request for ${d.leverLabel} was approved. Check your settings to see it apply.`,
         link: '/settings/participation',
       }
     }
