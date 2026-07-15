@@ -1413,7 +1413,7 @@ model PartnerService {
   ratingDims                       Json? // { quality: {mean, n}, … } per-dimension aggregates
   // Logistics L0 back-relations
   storageAgreements                StorageAgreement[]
-  fcAwards                         FcAwardLog[]
+  fcAssignments                         FcAssignmentLog[]
   // Smart Rotation Engine (SR-1) — print-leg award history + ops kill switch:
   // excluded services stay fully orderable via manual/pinned picks but never
   // enter the auto-rotation pool.
@@ -1798,7 +1798,7 @@ model RotationPolicy {
   @@unique([serviceType, context])
 }
 
-/// Every auto-rotation award on the print leg — mirror of FcAwardLog. The full
+/// Every auto-rotation award on the print leg — mirror of FcAssignmentLog. The full
 /// decision (candidates + ratings + pool + mode + roll + winner) makes actual
 /// award shares measurable in the Routing & Rotation analytics tab.
 model PrintAwardLog {
@@ -3268,9 +3268,9 @@ model OrderSettings {
   fcDistanceWeightPct     Int @default(15) // origin→node distance proxy
   fcSlaWeightPct          Int @default(15)
   fcCapacityWeightPct     Int @default(15) // load-leveling (node utilization)
-  fcRotationWeightPct     Int @default(10) // fairness pressure (recent award share)
+  fcBalancingWeightPct     Int @default(10) @map("fcRotationWeightPct") // spread pressure (recent assignment share)
   fcStorageMatchWeightPct Int @default(10) // prefer exact storage-class match
-  fcRotationBandPct       Int @default(5) // round-robin inside this % of best score
+  fcBalancingBandPct       Int @default(5) @map("fcRotationBandPct") // spread inside this % of best score
   // AFE P2 — learned behavior layer (docs/FC_SELECTION_STRATEGY_BRIEF_2026-07-09.md).
   // Shadow-inert until admin flips fcLearningEnabled. Bounded + admin-capped.
   fcLearningEnabled          Boolean @default(false) // kill switch
@@ -9536,7 +9536,7 @@ model ChannelInboundPlan {
 
 /// FC-selection decision log (§5 Phase 3): rotation fairness memory + award
 /// explainability for partners ("why did NJ get this order?").
-model FcAwardLog {
+model FcAssignmentLog {
   id               String         @id @default(cuid())
   partnerServiceId String
   orderId          String // soft FK
@@ -9546,6 +9546,10 @@ model FcAwardLog {
   partnerService   PartnerService @relation(fields: [partnerServiceId], references: [id])
 
   @@index([partnerServiceId, awardedAt])
+  // Physical table kept as "FcAwardLog" so `db push` is a no-op (zero data risk).
+  // To physically rename: ALTER TABLE "FcAwardLog" RENAME TO "FcAssignmentLog";
+  // then drop this @@map. (Pavel 2026-07-15.)
+  @@map("FcAwardLog")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

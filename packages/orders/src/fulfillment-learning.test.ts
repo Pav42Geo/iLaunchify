@@ -11,9 +11,9 @@ const base: FcScoringWeights = {
   distanceWeightPct: 30,
   slaWeightPct: 10,
   capacityWeightPct: 10,
-  rotationWeightPct: 10,
+  balancingWeightPct: 10,
   storageMatchWeightPct: 20,
-  rotationBandPct: 5,
+  balancingBandPct: 5,
 }
 const on = { enabled: true, minEvents: 3, maxAdjustmentPct: 20 }
 
@@ -65,7 +65,7 @@ describe('AFE P2 — applyLearnedFulfillmentSignal', () => {
     expect(w.costWeightPct).toBeGreaterThan(base.costWeightPct)
     expect(w.distanceWeightPct).toBeLessThan(base.distanceWeightPct)
     expect(w.capacityWeightPct).toBe(base.capacityWeightPct)
-    expect(w.rotationWeightPct).toBe(base.rotationWeightPct)
+    expect(w.balancingWeightPct).toBe(base.balancingWeightPct)
     expect(w.storageMatchWeightPct).toBe(base.storageMatchWeightPct)
   })
   it('SPEED lean raises distance/SLA, lowers cost', () => {

@@ -60,7 +60,7 @@ export default async function RoutingRotationPage() {
   await requireCapability('routing:admin')
 
   const since90 = new Date(Date.now() - 90 * 86_400_000)
-  const [policies, printers, awards, settings, products, orderSettings, fcAwardsRaw, warehouses] =
+  const [policies, printers, awards, settings, products, orderSettings, fcAssignmentsRaw, warehouses] =
     await Promise.all([
     prisma.rotationPolicy.findMany(),
     prisma.partnerService.findMany({
@@ -93,9 +93,9 @@ export default async function RoutingRotationPage() {
           fcDistanceWeightPct: true,
           fcSlaWeightPct: true,
           fcCapacityWeightPct: true,
-          fcRotationWeightPct: true,
+          fcBalancingWeightPct: true,
           fcStorageMatchWeightPct: true,
-          fcRotationBandPct: true,
+          fcBalancingBandPct: true,
           fcLearningEnabled: true,
           fcLearningMinEvents: true,
           fcLearningMaxAdjustmentPct: true,
@@ -112,7 +112,7 @@ export default async function RoutingRotationPage() {
     // OrderSettings the engine already reads (match weights + lifecycle timers).
     getOrderSettings(),
     // SR-4 — FC awards (90d) + the active warehouse pool for the FC awards table.
-    prisma.fcAwardLog.findMany({
+    prisma.fcAssignmentLog.findMany({
       where: { awardedAt: { gte: since90 } },
       select: { partnerServiceId: true },
       take: 2000,
@@ -161,11 +161,11 @@ export default async function RoutingRotationPage() {
   }))
 
   // SR-4 — FC award shares (90d) for the FC awards table.
-  const fcAwardsByService = new Map<string, number>()
-  for (const a of fcAwardsRaw) {
-    fcAwardsByService.set(a.partnerServiceId, (fcAwardsByService.get(a.partnerServiceId) ?? 0) + 1)
+  const fcAssignmentsByService = new Map<string, number>()
+  for (const a of fcAssignmentsRaw) {
+    fcAssignmentsByService.set(a.partnerServiceId, (fcAssignmentsByService.get(a.partnerServiceId) ?? 0) + 1)
   }
-  const totalFcAwards = fcAwardsRaw.length
+  const totalFcAwards = fcAssignmentsRaw.length
   const fcProviderRows: ProviderRow[] = warehouses.map((s) => ({
     partnerServiceId: s.id,
     partnerId: s.partnerId,
@@ -175,8 +175,8 @@ export default async function RoutingRotationPage() {
     ratingCount: 0,
     sampleCapable: false,
     excluded: s.excludeFromAutoRotation,
-    awards90d: fcAwardsByService.get(s.id) ?? 0,
-    sharePct: totalFcAwards > 0 ? Math.round(((fcAwardsByService.get(s.id) ?? 0) / totalFcAwards) * 100) : 0,
+    awards90d: fcAssignmentsByService.get(s.id) ?? 0,
+    sharePct: totalFcAwards > 0 ? Math.round(((fcAssignmentsByService.get(s.id) ?? 0) / totalFcAwards) * 100) : 0,
   }))
 
   // Dedupe seed products by name (routing-preview precedent).
@@ -226,9 +226,9 @@ export default async function RoutingRotationPage() {
           distance: settings?.fcDistanceWeightPct ?? 15,
           sla: settings?.fcSlaWeightPct ?? 15,
           capacity: settings?.fcCapacityWeightPct ?? 15,
-          rotation: settings?.fcRotationWeightPct ?? 10,
+          rotation: settings?.fcBalancingWeightPct ?? 10,
           storageMatch: settings?.fcStorageMatchWeightPct ?? 10,
-          bandPct: settings?.fcRotationBandPct ?? 5,
+          bandPct: settings?.fcBalancingBandPct ?? 5,
         }}
         fcLearning={{
           enabled: settings?.fcLearningEnabled ?? false,

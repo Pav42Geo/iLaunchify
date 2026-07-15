@@ -356,9 +356,9 @@ export interface FcWeightsInput {
   fcDistanceWeightPct: number
   fcSlaWeightPct: number
   fcCapacityWeightPct: number
-  fcRotationWeightPct: number
+  fcBalancingWeightPct: number
   fcStorageMatchWeightPct: number
-  fcRotationBandPct: number
+  fcBalancingBandPct: number
 }
 
 /** FC scorer weights + indifference band — consumed live by checkout FC
@@ -373,9 +373,9 @@ export async function saveFcWeights(input: FcWeightsInput): Promise<Result<null>
     fcDistanceWeightPct: clamp(input.fcDistanceWeightPct, 0, 100),
     fcSlaWeightPct: clamp(input.fcSlaWeightPct, 0, 100),
     fcCapacityWeightPct: clamp(input.fcCapacityWeightPct, 0, 100),
-    fcRotationWeightPct: clamp(input.fcRotationWeightPct, 0, 100),
+    fcBalancingWeightPct: clamp(input.fcBalancingWeightPct, 0, 100),
     fcStorageMatchWeightPct: clamp(input.fcStorageMatchWeightPct, 0, 100),
-    fcRotationBandPct: clamp(input.fcRotationBandPct, 0, 100),
+    fcBalancingBandPct: clamp(input.fcBalancingBandPct, 0, 100),
     updatedById: gate.id,
   }
   await prisma.orderSettings.upsert({
@@ -523,8 +523,8 @@ export async function runFcSelectionPreview(input: {
       where: { id: 'default' },
       select: {
         fcCostWeightPct: true, fcDistanceWeightPct: true, fcSlaWeightPct: true,
-        fcCapacityWeightPct: true, fcRotationWeightPct: true, fcStorageMatchWeightPct: true,
-        fcRotationBandPct: true,
+        fcCapacityWeightPct: true, fcBalancingWeightPct: true, fcStorageMatchWeightPct: true,
+        fcBalancingBandPct: true,
       },
     })
     .catch(() => null)
@@ -533,13 +533,13 @@ export async function runFcSelectionPreview(input: {
     distanceWeightPct: settings?.fcDistanceWeightPct ?? 15,
     slaWeightPct: settings?.fcSlaWeightPct ?? 15,
     capacityWeightPct: settings?.fcCapacityWeightPct ?? 15,
-    rotationWeightPct: settings?.fcRotationWeightPct ?? 10,
+    balancingWeightPct: settings?.fcBalancingWeightPct ?? 10,
     storageMatchWeightPct: settings?.fcStorageMatchWeightPct ?? 10,
-    rotationBandPct: settings?.fcRotationBandPct ?? 5,
+    balancingBandPct: settings?.fcBalancingBandPct ?? 5,
   }
 
   const since90 = new Date(Date.now() - 90 * 86_400_000)
-  const awardRows = await prisma.fcAwardLog.findMany({
+  const awardRows = await prisma.fcAssignmentLog.findMany({
     where: { partnerServiceId: { in: candidates.map((c) => c.partnerServiceId) }, awardedAt: { gte: since90 } },
     select: { partnerServiceId: true, awardedAt: true },
   })

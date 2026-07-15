@@ -32,7 +32,7 @@ import {
   resolveDestinationOptions,
   recommendDestination,
   scoreAndSelectFc,
-  loadFcRotationPolicy,
+  loadFcSelectionPolicy,
   applyFulfillmentPreference,
   applyLearnedFulfillmentSignal,
   resolveFulfillmentPreference,
@@ -371,7 +371,7 @@ export async function listDestinationOptions(
     const [weights, awardHistory, fcRotationPolicy] = await Promise.all([
       readFcScoringWeights(),
       readFcAwardHistory(candidates.map((c) => c.partnerServiceId)),
-      loadFcRotationPolicy(),
+      loadFcSelectionPolicy(),
     ])
     // AFE P1 — tilt the admin weights toward the creator's fulfillment preference
     // (per-product override wins over the account default). Only re-ranks eligible
@@ -613,9 +613,9 @@ const FC_WEIGHT_DEFAULTS: FcScoringWeights = {
   distanceWeightPct: 15,
   slaWeightPct: 15,
   capacityWeightPct: 15,
-  rotationWeightPct: 10,
+  balancingWeightPct: 10,
   storageMatchWeightPct: 10,
-  rotationBandPct: 5,
+  balancingBandPct: 5,
 }
 
 /** OrderSettings.fc*WeightPct aren't surfaced by getOrderSettings() yet — read
@@ -629,9 +629,9 @@ async function readFcScoringWeights(): Promise<FcScoringWeights> {
         fcDistanceWeightPct: true,
         fcSlaWeightPct: true,
         fcCapacityWeightPct: true,
-        fcRotationWeightPct: true,
+        fcBalancingWeightPct: true,
         fcStorageMatchWeightPct: true,
-        fcRotationBandPct: true,
+        fcBalancingBandPct: true,
       },
     })
     .catch(() => null)
@@ -640,16 +640,16 @@ async function readFcScoringWeights(): Promise<FcScoringWeights> {
     distanceWeightPct: row?.fcDistanceWeightPct ?? FC_WEIGHT_DEFAULTS.distanceWeightPct,
     slaWeightPct: row?.fcSlaWeightPct ?? FC_WEIGHT_DEFAULTS.slaWeightPct,
     capacityWeightPct: row?.fcCapacityWeightPct ?? FC_WEIGHT_DEFAULTS.capacityWeightPct,
-    rotationWeightPct: row?.fcRotationWeightPct ?? FC_WEIGHT_DEFAULTS.rotationWeightPct,
+    balancingWeightPct: row?.fcBalancingWeightPct ?? FC_WEIGHT_DEFAULTS.balancingWeightPct,
     storageMatchWeightPct:
       row?.fcStorageMatchWeightPct ?? FC_WEIGHT_DEFAULTS.storageMatchWeightPct,
-    rotationBandPct: row?.fcRotationBandPct ?? FC_WEIGHT_DEFAULTS.rotationBandPct,
+    balancingBandPct: row?.fcBalancingBandPct ?? FC_WEIGHT_DEFAULTS.balancingBandPct,
   }
 }
 
 const FC_AWARD_HISTORY_DAYS = 90
 
-/** FcAwardLog rows for the candidate nodes over the last 90 days, grouped into
+/** FcAssignmentLog rows for the candidate nodes over the last 90 days, grouped into
  *  the scorer's {awardCount, lastAwardedAt} shape. Best-effort: an empty
  *  history just means the rotation dimension renormalizes away. */
 async function readFcAwardHistory(
@@ -657,7 +657,7 @@ async function readFcAwardHistory(
 ): Promise<{ history: Record<string, FcAwardHistoryEntry>; totalRecentAwards: number }> {
   if (partnerServiceIds.length === 0) return { history: {}, totalRecentAwards: 0 }
   const since = new Date(Date.now() - FC_AWARD_HISTORY_DAYS * 24 * 60 * 60 * 1000)
-  const rows = await prisma.fcAwardLog
+  const rows = await prisma.fcAssignmentLog
     .groupBy({
       by: ['partnerServiceId'],
       where: { partnerServiceId: { in: partnerServiceIds }, awardedAt: { gte: since } },

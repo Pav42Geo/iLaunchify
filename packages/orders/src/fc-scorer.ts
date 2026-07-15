@@ -2,7 +2,7 @@
 // Weighted scoring + round-robin inside the indifference band. Activates when
 // ≥3 nodes pass Phase-1 eligibility (below that, nearest-eligible V1 wins).
 // PURE: weights come from OrderSettings (admin-tunable), award history from
-// FcAwardLog counts — callers fetch both. Weights renormalize over the
+// FcAssignmentLog counts — callers fetch both. Weights renormalize over the
 // dimensions that have data (the partner-matcher pattern).
 
 import { rankFulfillmentCenters } from './fc-selector'
@@ -15,9 +15,9 @@ export interface FcScoringWeights {
   distanceWeightPct: number
   slaWeightPct: number // no per-node SLA data yet — auto-drops via renormalization
   capacityWeightPct: number
-  rotationWeightPct: number
+  balancingWeightPct: number
   storageMatchWeightPct: number
-  rotationBandPct: number // indifference band, % of best score
+  balancingBandPct: number // indifference band, % of best score
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +83,7 @@ export interface FcSelectionPolicy {
 
 export interface FcScoringContext {
   weights: FcScoringWeights
-  /** partnerServiceId → history (from FcAwardLog, e.g. last 90 days). */
+  /** partnerServiceId → history (from FcAssignmentLog, e.g. last 90 days). */
   history: Record<string, FcAwardHistoryEntry>
   totalRecentAwards: number
   /** SR-4 rotation policy (WAREHOUSE row). Omitted/disabled → band behavior. */
@@ -146,7 +146,7 @@ export function scoreAndSelectFc(
     { key: 'distance', weight: w.distanceWeightPct, available: distanceAvailable },
     { key: 'sla', weight: w.slaWeightPct, available: false },
     { key: 'capacity', weight: w.capacityWeightPct, available: capacityAvailable },
-    { key: 'rotation', weight: w.rotationWeightPct, available: ctx.totalRecentAwards > 0 },
+    { key: 'rotation', weight: w.balancingWeightPct, available: ctx.totalRecentAwards > 0 },
     { key: 'storageMatch', weight: w.storageMatchWeightPct, available: true },
   ]
   const totalWeight = dims.filter((d) => d.available).reduce((s, d) => s + d.weight, 0)
@@ -197,7 +197,7 @@ export function scoreAndSelectFc(
   }
 
   // Phase 3 — rotation inside the indifference band: least-recently-awarded wins.
-  const bandCeiling = best.score * (1 + Math.max(0, w.rotationBandPct) / 100)
+  const bandCeiling = best.score * (1 + Math.max(0, w.balancingBandPct) / 100)
   const band = eligibleScored.filter((s) => s.score <= bandCeiling || s.score === best.score)
   band.sort((a, b) => {
     const aLast = ctx.history[a.ranked.candidate.partnerServiceId]?.lastAwardedAt?.getTime() ?? 0
@@ -298,7 +298,7 @@ export interface AwardAfeContribution {
   learnedAdjustmentPct: number
 }
 
-/** FcAwardLog.scoreJson payload for scored selections (extends the V1 shape). The
+/** FcAssignmentLog.scoreJson payload for scored selections (extends the V1 shape). The
  *  optional `afe` block records what the Adaptive Fulfillment Engine contributed
  *  to this pick, so admin can see the declared + learned tilt per award. */
 export function buildScoredAwardPayload(result: FcScoreResult, afe?: AwardAfeContribution) {

@@ -12,9 +12,9 @@ describe('Adaptive Fulfillment Engine — preference resolution + weight tilt', 
     distanceWeightPct: 30,
     slaWeightPct: 10,
     capacityWeightPct: 10,
-    rotationWeightPct: 10,
+    balancingWeightPct: 10,
     storageMatchWeightPct: 20,
-    rotationBandPct: 5,
+    balancingBandPct: 5,
   }
 
   it('resolve: product override wins over account default', () => {
@@ -42,9 +42,9 @@ describe('Adaptive Fulfillment Engine — preference resolution + weight tilt', 
   it('never touches hard-filter-adjacent weights (capacity, rotation, storage-match)', () => {
     const w = applyFulfillmentPreference(base, 'COST')
     expect(w.capacityWeightPct).toBe(base.capacityWeightPct)
-    expect(w.rotationWeightPct).toBe(base.rotationWeightPct)
+    expect(w.balancingWeightPct).toBe(base.balancingWeightPct)
     expect(w.storageMatchWeightPct).toBe(base.storageMatchWeightPct)
-    expect(w.rotationBandPct).toBe(base.rotationBandPct)
+    expect(w.balancingBandPct).toBe(base.balancingBandPct)
   })
 })
 
@@ -68,9 +68,9 @@ const weights: FcScoringWeights = {
   distanceWeightPct: 15,
   slaWeightPct: 15,
   capacityWeightPct: 15,
-  rotationWeightPct: 10,
+  balancingWeightPct: 10,
   storageMatchWeightPct: 10,
-  rotationBandPct: 5,
+  balancingBandPct: 5,
 }
 
 const fc = (id: string, lat: number, lng: number, over: Partial<FcCandidate> = {}): FcCandidate => ({

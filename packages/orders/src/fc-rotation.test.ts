@@ -8,9 +8,9 @@ const weights: FcScoringWeights = {
   distanceWeightPct: 15,
   slaWeightPct: 15,
   capacityWeightPct: 15,
-  rotationWeightPct: 10,
+  balancingWeightPct: 10,
   storageMatchWeightPct: 10,
-  rotationBandPct: 5,
+  balancingBandPct: 5,
 }
 
 const fc = (id: string, lat: number, lng: number, over: Partial<FcCandidate> = {}): FcCandidate => ({

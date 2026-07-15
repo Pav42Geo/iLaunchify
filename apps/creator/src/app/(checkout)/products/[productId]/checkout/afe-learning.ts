@@ -26,9 +26,9 @@ const NEUTRAL_FC_DEFAULTS: FcScoringWeights = {
   distanceWeightPct: 15,
   slaWeightPct: 15,
   capacityWeightPct: 15,
-  rotationWeightPct: 10,
+  balancingWeightPct: 10,
   storageMatchWeightPct: 10,
-  rotationBandPct: 5,
+  balancingBandPct: 5,
 }
 
 export async function loadLearnedFulfillmentAdjustment(userId: string): Promise<LearnedAdjustment> {
@@ -93,9 +93,9 @@ export async function recordFcOverrideSignal(input: {
             fcDistanceWeightPct: true,
             fcSlaWeightPct: true,
             fcCapacityWeightPct: true,
-            fcRotationWeightPct: true,
+            fcBalancingWeightPct: true,
             fcStorageMatchWeightPct: true,
-            fcRotationBandPct: true,
+            fcBalancingBandPct: true,
           },
         })
         .catch(() => null),
@@ -138,9 +138,9 @@ export async function recordFcOverrideSignal(input: {
           distanceWeightPct: weightRow.fcDistanceWeightPct,
           slaWeightPct: weightRow.fcSlaWeightPct,
           capacityWeightPct: weightRow.fcCapacityWeightPct,
-          rotationWeightPct: weightRow.fcRotationWeightPct,
+          balancingWeightPct: weightRow.fcBalancingWeightPct,
           storageMatchWeightPct: weightRow.fcStorageMatchWeightPct,
-          rotationBandPct: weightRow.fcRotationBandPct,
+          balancingBandPct: weightRow.fcBalancingBandPct,
         }
       : NEUTRAL_FC_DEFAULTS
 

@@ -7,7 +7,7 @@
 //     RECOMPUTED server-side (rankWarehousesForOrder — never trust the client);
 //     ineligible picks need an explicit confirm flag + reason. Blocked once any
 //     dispatch has goods moving (SHIPPED/IN_TRANSIT/DELIVERED). Writes an
-//     FcAwardLog row (override-tagged) + AuditLog 'FC_OVERRIDDEN'.
+//     FcAssignmentLog row (override-tagged) + AuditLog 'FC_OVERRIDDEN'.
 //   • closeStorageAgreement — close a HOLD_AT_MANUFACTURER agreement. Free when
 //     unitsRemaining = 0; otherwise confirm + reason. AuditLog
 //     'STORAGE_AGREEMENT_CLOSED'. Billing execution stays gated behind the
@@ -118,7 +118,7 @@ export async function overrideFulfillmentCenter({
         shipToCountry: target.partner.country,
       },
     }),
-    prisma.fcAwardLog.create({
+    prisma.fcAssignmentLog.create({
       data: {
         partnerServiceId: target.id,
         orderId,

@@ -235,9 +235,9 @@ export default async function AdminOrderDetail({ params }: PageProps) {
   // storage agreements carry their frozen fee snapshot for the accrual math.
   const isWarehouseOrder = order.shipToType === 'WAREHOUSE_PARTNER'
   const isHoldOrder = order.shipToType === 'HOLD_AT_MANUFACTURER'
-  const [fcAwardLog, fcRanking, storageAgreements] = await Promise.all([
+  const [fcAssignmentLog, fcRanking, storageAgreements] = await Promise.all([
     isWarehouseOrder
-      ? prisma.fcAwardLog.findFirst({
+      ? prisma.fcAssignmentLog.findFirst({
           where: { orderId },
           orderBy: { awardedAt: 'desc' },
           select: { id: true, partnerServiceId: true, scoreJson: true, awardedAt: true },
@@ -405,7 +405,7 @@ export default async function AdminOrderDetail({ params }: PageProps) {
               currentPartnerName={order.shipToPartnerService?.partner.companyName ?? null}
               currentCity={order.shipToCity}
               currentState={order.shipToState}
-              awardLog={fcAwardLog}
+              awardLog={fcAssignmentLog}
               ranking={fcRanking}
               goodsMoving={goodsMoving}
             />
@@ -886,7 +886,7 @@ function NotesCard({ notes }: { notes: string }) {
 // L1.2b — LOGISTICS CARDS (docs/LOGISTICS_AND_FULFILLMENT.md §5 + §9 + L8)
 // =============================================================================
 
-/** FcAwardLog.scoreJson, parsed defensively (shape owned by buildAwardLogPayload;
+/** FcAssignmentLog.scoreJson, parsed defensively (shape owned by buildAwardLogPayload;
  *  override rows add {override, reason, adminId}). Legacy/foreign JSON → null. */
 interface AwardScore {
   algorithm: string | null
@@ -994,7 +994,7 @@ function FulfillmentRoutingCard({
         </Row>
       </dl>
 
-      {/* Decision rationale — the latest FcAwardLog rendered candidate-by-candidate. */}
+      {/* Decision rationale — the latest FcAssignmentLog rendered candidate-by-candidate. */}
       <div className="mt-3">
         <p className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">
           <FileText className="h-3 w-3" aria-hidden="true" />

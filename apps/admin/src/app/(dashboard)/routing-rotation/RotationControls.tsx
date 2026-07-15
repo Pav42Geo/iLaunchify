@@ -1043,9 +1043,9 @@ function FcWeightsEditor({
         fcDistanceWeightPct: w.distance,
         fcSlaWeightPct: w.sla,
         fcCapacityWeightPct: w.capacity,
-        fcRotationWeightPct: w.rotation,
+        fcBalancingWeightPct: w.rotation,
         fcStorageMatchWeightPct: w.storageMatch,
-        fcRotationBandPct: w.bandPct,
+        fcBalancingBandPct: w.bandPct,
       })
       if (!res.ok) return void toast.error(res.error)
       toast.success('FC scorer weights saved — live at checkout.')

@@ -37,7 +37,7 @@ import {
   type FlavorExtra,
   resolveDestinationOptions,
   scoreAndSelectFc,
-  loadFcRotationPolicy,
+  loadFcSelectionPolicy,
   buildScoredAwardPayload,
   applyFulfillmentPreference,
   applyLearnedFulfillmentSignal,
@@ -1080,11 +1080,11 @@ export async function placeOrderFromCheckoutDraft(
   })
 
   // --- 11.aa L1b — FC award trail + StorageAgreement audit --------------------
-  //          FcAwardLog needs the real orderId, so it lands post-commit.
+  //          FcAssignmentLog needs the real orderId, so it lands post-commit.
   //          Best-effort: the explainability trail must never fail an
   //          already-created order.
   if (shipTo.data.fcAward) {
-    await prisma.fcAwardLog
+    await prisma.fcAssignmentLog
       .create({
         data: {
           partnerServiceId: shipTo.data.fcAward.partnerServiceId,
@@ -1418,7 +1418,7 @@ interface ShipToResolved {
   }
   /** L4a — scored FC award (V1.5 weighted band; the scorer itself falls back
    *  to V1 nearest-eligible below 3 eligible nodes — `algorithm` in the payload
-   *  records which ran). Written to FcAwardLog post-commit. */
+   *  records which ran). Written to FcAssignmentLog post-commit. */
   fcAward?: {
     partnerServiceId: string
     scoreJson: ReturnType<typeof buildScoredAwardPayload>
@@ -1476,7 +1476,7 @@ async function resolveShipTo({
       // indifference band (docs/LOGISTICS_AND_FULFILLMENT.md §5). The scorer
       // internally falls back to V1 nearest-eligible below 3 eligible nodes;
       // scoreJson.algorithm records which path ran. Weights are admin-tunable
-      // on the OrderSettings singleton; FcAwardLog history (last 90 days)
+      // on the OrderSettings singleton; FcAssignmentLog history (last 90 days)
       // feeds the rotation-fairness dimension. Cold classes stay admin-gated
       // (L1 lock) and are re-checked server-side here.
       const storageClass = template?.storageClass ?? 'AMBIENT'
@@ -1533,7 +1533,7 @@ async function resolveShipTo({
       const [weights, awardHistory, fcRotationPolicy, prefProduct, prefProfile] = await Promise.all([
         readFcScoringWeights(),
         readFcAwardHistory(candidates.map((c) => c.partnerServiceId)),
-        loadFcRotationPolicy(),
+        loadFcSelectionPolicy(),
         // AFE — per-product override + account-wide default (resolved below).
         prisma.product.findUnique({ where: { id: productId }, select: { fulfillmentPreferenceOverride: true } }),
         prisma.creatorProfile.findUnique({ where: { userId: user.id }, select: { fulfillmentPreference: true } }),
@@ -1932,9 +1932,9 @@ const FC_WEIGHT_DEFAULTS: FcScoringWeights = {
   distanceWeightPct: 15,
   slaWeightPct: 15,
   capacityWeightPct: 15,
-  rotationWeightPct: 10,
+  balancingWeightPct: 10,
   storageMatchWeightPct: 10,
-  rotationBandPct: 5,
+  balancingBandPct: 5,
 }
 
 /** OrderSettings.fc*WeightPct aren't surfaced by getOrderSettings() yet — read
@@ -1948,9 +1948,9 @@ async function readFcScoringWeights(): Promise<FcScoringWeights> {
         fcDistanceWeightPct: true,
         fcSlaWeightPct: true,
         fcCapacityWeightPct: true,
-        fcRotationWeightPct: true,
+        fcBalancingWeightPct: true,
         fcStorageMatchWeightPct: true,
-        fcRotationBandPct: true,
+        fcBalancingBandPct: true,
       },
     })
     .catch(() => null)
@@ -1959,16 +1959,16 @@ async function readFcScoringWeights(): Promise<FcScoringWeights> {
     distanceWeightPct: row?.fcDistanceWeightPct ?? FC_WEIGHT_DEFAULTS.distanceWeightPct,
     slaWeightPct: row?.fcSlaWeightPct ?? FC_WEIGHT_DEFAULTS.slaWeightPct,
     capacityWeightPct: row?.fcCapacityWeightPct ?? FC_WEIGHT_DEFAULTS.capacityWeightPct,
-    rotationWeightPct: row?.fcRotationWeightPct ?? FC_WEIGHT_DEFAULTS.rotationWeightPct,
+    balancingWeightPct: row?.fcBalancingWeightPct ?? FC_WEIGHT_DEFAULTS.balancingWeightPct,
     storageMatchWeightPct:
       row?.fcStorageMatchWeightPct ?? FC_WEIGHT_DEFAULTS.storageMatchWeightPct,
-    rotationBandPct: row?.fcRotationBandPct ?? FC_WEIGHT_DEFAULTS.rotationBandPct,
+    balancingBandPct: row?.fcBalancingBandPct ?? FC_WEIGHT_DEFAULTS.balancingBandPct,
   }
 }
 
 const FC_AWARD_HISTORY_DAYS = 90
 
-/** FcAwardLog rows for the candidate nodes over the last 90 days, grouped into
+/** FcAssignmentLog rows for the candidate nodes over the last 90 days, grouped into
  *  the scorer's {awardCount, lastAwardedAt} shape. Best-effort: an empty
  *  history just means the rotation dimension renormalizes away. */
 async function readFcAwardHistory(
@@ -1976,7 +1976,7 @@ async function readFcAwardHistory(
 ): Promise<{ history: Record<string, FcAwardHistoryEntry>; totalRecentAwards: number }> {
   if (partnerServiceIds.length === 0) return { history: {}, totalRecentAwards: 0 }
   const since = new Date(Date.now() - FC_AWARD_HISTORY_DAYS * 24 * 60 * 60 * 1000)
-  const rows = await prisma.fcAwardLog
+  const rows = await prisma.fcAssignmentLog
     .groupBy({
       by: ['partnerServiceId'],
       where: { partnerServiceId: { in: partnerServiceIds }, awardedAt: { gte: since } },

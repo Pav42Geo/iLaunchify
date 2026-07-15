@@ -4,7 +4,7 @@
 // ≥3 nodes are eligible per storage class (weights already live in OrderSettings).
 //
 // PURE ranking here; the prisma wrapper lives in the caller (apps) or the
-// thin helper below. Every award is logged to FcAwardLog for explainability.
+// thin helper below. Every award is logged to FcAssignmentLog for explainability.
 
 export interface FcCandidate {
   partnerServiceId: string
@@ -114,7 +114,7 @@ export function selectNearestEligibleFc(
   return { winner, ranked }
 }
 
-/** FcAwardLog.scoreJson payload — keep the shape stable (admin reads it). */
+/** FcAssignmentLog.scoreJson payload — keep the shape stable (admin reads it). */
 export function buildAwardLogPayload(result: { winner: FcRanked | null; ranked: FcRanked[] }) {
   return {
     algorithm: 'V1_NEAREST_ELIGIBLE',
