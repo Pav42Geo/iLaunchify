@@ -6798,6 +6798,18 @@ model PartnerPackagingOffering {
   // survives if the dieline is removed.
   dieline        PackagingDieline?    @relation(fields: [dielineId], references: [id], onDelete: SetNull)
 
+  // SCHEMA CHANGE LOGGED 2026-07-15 (PRINT_PROVIDER_SELECTION §11.2 / §11.7 PS-9-0).
+  // BLOCKER: this unique key + `printProcess` as a plain field means a converter
+  // CANNOT declare digital AND flexo for the same packagingType+decoration. Industry
+  // research (2026-07-15) is unambiguous: MOQ is a property of the PRINT PROCESS, not
+  // the printer, and multi-technology converters serve a 100-unit job (digital) and a
+  // 50,000-unit job (flexo) from the same shop. FIX (additive, does NOT touch this key):
+  // per-process run+price segments move to a `PartnerOfferingPriceCurve` child table
+  // (CIP4 PrintTalk 2.2 §4.1 shaped: baseQty/basePriceCents/incrementQty/incrementPriceCents),
+  // after which `moq` / `maxRunQty` / `pricingTiers` above are DEPRECATED as the
+  // eligibility source (kept + derived for display; no column drops). Do NOT "fix" this
+  // by adding printProcess to the unique key: nullable columns admit duplicate NULL rows
+  // on CockroachDB and it still forces one price shape per row.
   @@unique([partnerServiceId, packagingTypeId, decorationMethod])
   @@index([packagingTypeId, status])
 }

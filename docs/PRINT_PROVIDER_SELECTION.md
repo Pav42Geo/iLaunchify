@@ -682,26 +682,108 @@ to `eligiblePrintProviders`, then feed the survivors into the EXISTING rotation 
 new-provider ramp, split modes, and `isPublicPrintPoolEligible` all stay untouched. Two glue
 resolvers are the only new building blocks (11.4).
 
-### 11.2 How a PRINTER declares capability (answers "how printers say what they can print")
+### 11.2 How a PRINTER declares capability (REWRITTEN 2026-07-15 after industry research)
 
-Mostly exists on `PartnerPackagingOffering` (`service x packagingType x decorationMethod`):
-`printProcess`, `moq` / `maxRunQty`, `foodContactSafe`, print envelope
-(`min/maxPrintWidth/HeightMm`), bound `dieline`; plus service-level `PartnerServiceSubstrate`,
-`PartnerServiceDieCut`, finishes via `PartnerFinish` (`service x finishType`), and prepress
-`PartnerPrintOutputSpec` (`colorSpace`, `spotColorsAccepted`, `spotColorLibrary`, DPI, bleed).
+**Research verdict (sources at the end of 11.2): MOQ is a property of the PRINT PROCESS, not of
+the printing company.** Multi-technology converters are normal (digital was 21.6% of global label
+market value in 2024, Smithers), and they route a job to a press by run length. Resource Label
+Group publishes the model outright: "there exists a value crossover point. Flexo is the better
+choice for larger label orders, where the cost of plates and setup can be justified; digital is
+better for all runs under that threshold", plus the warning "if all you have is a hammer,
+everything looks like a nail. The company making this argument only has digital (or flexographic)
+presses, not both." Tango Packaging (roto + flexo + digital in house) states the ordering: gravure
+carriers "have a larger startup cost which makes for higher MOQs"; digital "requires lower minimum
+quantities than other methods." **So ONE converter legitimately serves both a 100-unit job
+(digital) and a 50,000-unit job (flexo). A single scalar MOQ per printer is the wrong shape and
+would wrongly exclude them.**
 
-Additions needed:
+**BLOCKER (schema change required).** `PartnerPackagingOffering` is
+`@@unique([partnerServiceId, packagingTypeId, decorationMethod])` with `printProcess` as a mere
+nullable FIELD. A converter therefore CANNOT declare digital AND flexo for the same
+packaging-type + decoration. This must change before per-process declaration is possible. Chosen
+fix (additive, keeps the existing unique key): move the quantity/price band OFF the offering into
+a per-process CHILD table (below). Rejected alternative: adding `printProcess` to the unique key
+(nullable columns in a unique key let duplicate NULL rows through on CockroachDB, and it would
+still force one price shape per row).
+
+**The declaration model: a PrintTalk-shaped price curve per process.** The industry already has a
+standard for exactly this, and it is NOT a min/max envelope. CIP4 **PrintTalk 2.2 §4.1** models a
+quote as `Price` + `Additional[]`, where one row carries `@BaseAmount` (minimum orderable qty),
+`@BasePrice` (price AT that qty, setup included), `@Amount` (the increment AND the allowed order
+lattice) and `@Price` (price of that increment), with the normative formula
+`price(AMT) = BasePrice + (AMT - BaseAmount) * Price / Amount`. Multiple rows give a piecewise
+curve. CIP4 **deprecated `@UnitPrice`** because unit price is derived from the curve. The standard
+also handles "this press only runs specific quantities" (quantity as a lattice, not an interval),
+which matches real practice (Sticker Mule: "enter any multiple of 10").
+
+New child model (additive):
+```prisma
+/// PrintTalk 2.2 §4.1 (Price/Additional) shaped run+price segment, PER PROCESS.
+/// One row encodes: minimum run (baseQty), the setup-amortized anchor
+/// (basePriceCents), the marginal rate (incrementPriceCents/incrementQty) and the
+/// order lattice (incrementQty). Multiple rows per (offering, process) = piecewise.
+model PartnerOfferingPriceCurve {
+  id                  String       @id @default(uuid())
+  offeringId          String
+  printProcess        PrintProcess              // the press this segment runs on
+  baseQty             Int                       // @BaseAmount: minimum orderable qty
+  basePriceCents      Int                       // @BasePrice: price AT baseQty (setup included)
+  incrementQty        Int          @default(1)  // @Amount: increment + allowed order lattice
+  incrementPriceCents Int                       // @Price: price per increment
+  maxQty              Int?                      // segment ceiling; NULL = "and up"
+  quoteRequired       Boolean      @default(false) // real minimums are fuzzy: force a quote
+  offering PartnerPackagingOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  @@unique([offeringId, printProcess, baseQty])
+  @@index([offeringId, printProcess])
+}
+```
+The offering keeps the PHYSICAL/compliance capability it already models (packagingType x
+decorationMethod, dieline, print envelope, `foodContactSafe`, `substrateIds`); only the
+quantity+price economics move to the curve. Offering-level `moq` / `maxRunQty` / `pricingTiers`
+become DERIVED for display (effective min = `min(baseQty)` across the offering's curves) and are
+deprecated as the eligibility source.
+
+**The dollar floor (new, and it binds independently of units).** The two real converters that
+advertise "no minimum" both enforce an order-VALUE floor: Blue Label Packaging: "We do not have a
+minimum label quantity, but our minimum order amount is typically around $200." Sttark: "We have
+no MOQs ... but our minimum order cost is around $260." A unit-only model would let a creator build
+a $40 label order no partner will accept. Add `PartnerService.minOrderValueCents Int?` (service
+level, matching how converters state it; `PartnerCommercialTerms` is an acceptable alternative
+home).
+
+**Do NOT build a press-physics model.** JDF 1.x DID model device capabilities (speeds, color
+limits, media size limits). CIP4's own CTO, Rainer Prosi: "Unfortunately it has not been widely
+implemented and therefore plug & play integration remains an illusive goal." **XJDF 2.x deleted
+it.** Partners will not honestly populate makeready-cost and run-speed fields. Ask only for what
+they will commercially commit to: the quantity-to-price curve. Press metadata (`printProcess`
+name, speeds) stays display-only and unvalidated.
+
+**Remaining declaration gaps (unchanged from the original 11.2):**
 - **`substrateIds` picker in the offering editor.** The field exists in schema + engine but has NO
   UI input (`OfferingForm.tsx`). Add it so a BOPP-only printer can decline a paper-label job.
-- **Color-process depth (D2).** Add `maxSpotColors Int?` and `whiteInk Boolean` (and optionally an
-  `ogv`/extended-gamut flag) to `PartnerPrintOutputSpec`; `spotColorsAccepted` alone is too coarse.
+- **Color-process depth (D2).** Add `maxSpotColors Int?` and `whiteInk Boolean` (optionally an
+  extended-gamut/OGV flag) to `PartnerPrintOutputSpec`; `spotColorsAccepted` alone is too coarse.
+  Note flexo 7-color ECG weakens the "more colors favors digital" effect, so this is a capability
+  filter, not a pricing heuristic.
 - **Finishes are already declarable** via `PartnerFinish`; no new model, just wire them into the
-  engine (11.4, filter 9).
+  engine (11.4, filter 9). Real MOQs vary by finish (PackMojo: "For Pantone colors and any custom
+  add-ons (e.g. foil stamping, spot UV, embossing, debossing), the MOQ will vary"), which the
+  per-process curve + finish filter together express.
 - **Retire the dead "Print specs" JSON** (`ServiceEditors.tsx` service-level processes/colors/
-  finishes/maxArea): nothing reads it, so it lies to partners. Fold anything real into the offering
-  + output spec, then remove the input.
-- **Capability wizard (§7.2.7):** wrap the offering editor in a guided "what can you print?" flow so
-  declarations are complete on day one; an incomplete capability row makes the service non-listable.
+  finishes/maxArea): nothing reads it, so it lies to partners.
+- **Capability wizard (§7.2.7):** guided "what can you print?" flow, now per process: for each press
+  you own, declare its curve. Incomplete capability = service not listable.
+
+**Sources (2026-07-15 research).** Resource Label Group flexo-vs-digital; Tango Packaging shrink
+sleeve processes; Blue Label Packaging FAQ; Sttark FAQ; PackMojo MOQ matrix; OnlineLabels custom
+printing (roll MOQ 100, "~20 rolls (1in cores)" i.e. minimums are approximate); Sticker Mule
+(50/design, multiples of 10); Midwest Label (shrink sleeve MOQ 500, "higher than our standard
+labels ... due to the machinery"); CIP4 PrintTalk Specification 2.2 §3.13/§4.1; Rainer Prosi,
+"XJDF - The evolution of JDF" (CIP4); Smithers digital share via Domino/Label & Narrow Web.
+**Explicitly rejected as sources:** the widely-repeated "digital MOQ 250 / flexo 500, break-even
+2,000-5,000 labels" figures trace to AI-generated SEO content farms whose own plate costs
+contradict each other ($50-500 per color) and which fail arithmetic against the linear-foot
+figures from trade press. Do not hardcode them.
 
 ### 11.3 How a MANUFACTURER declares the requirement (answers "how they specify the product")
 
@@ -759,10 +841,25 @@ engine stays a hard binary filter; rating still ranks only survivors.
 
 ### 11.7 Build phases (PS-9)
 
-- **PS-9a (core wiring):** `resolvePrintJobRequirements` + `loadPrintProviderCandidates`; wire
+- **PS-9-0 (schema, additive, one migration). REQUIRED FIRST, resolves the 11.2 blocker:**
+  - NEW `PartnerOfferingPriceCurve` (per-process PrintTalk-shaped run+price segments). **This is the
+    fix for the unique-key blocker:** `PartnerPackagingOffering`'s
+    `@@unique([partnerServiceId, packagingTypeId, decorationMethod])` stays UNCHANGED (no
+    destructive edit); per-process economics hang off the child instead. A converter with digital +
+    flexo now declares one offering and two (or more) curves.
+  - NEW `PartnerService.minOrderValueCents Int?` (the dollar floor).
+  - NEW `PackagingComponent.piecesPerUnit Int @default(1)` + an `overagePct` platform setting.
+  - NEW `PartnerPrintOutputSpec.maxSpotColors Int?` + `whiteInk Boolean` (feeds filter 10).
+  - **Backfill:** one curve row per existing ACTIVE offering, seeded from its current
+    `moq` -> `baseQty`, `maxRunQty` -> `maxQty`, `printProcess` -> `printProcess` (default DIGITAL
+    when undeclared), and `pricingTiers` -> `basePriceCents`/`incrementPriceCents`. Offering-level
+    `moq`/`maxRunQty`/`pricingTiers` are then DEPRECATED as the eligibility source (kept, derived
+    for display) per the additive rule: no column drops.
+- **PS-9a (core wiring):** `resolvePrintJobRequirements` + `loadPrintProviderCandidates`; make
+  filter 3 curve-based (11.9) instead of scalar `moq <= qty <= maxRunQty`; wire
   `eligiblePrintProviders` into the `findRouting` rotation pool (replace `routing.ts:356-415`);
-  pure-suite pins. No schema. This alone delivers "only capable printers rotate" for the existing
-  8 filters.
+  `resolveEffectiveOrderWindow` + checkout gate; pure-suite pins. This delivers "only capable
+  printers rotate" plus the correct per-process MOQ behavior.
 - **PS-9b (finishes + color, D2):** filters 9 + 10; add `maxSpotColors`/`whiteInk` to
   `PartnerPrintOutputSpec` (additive migration); finish-match reads existing `PartnerFinish` /
   `AccentDecoration`. Studio must expose the design's color demands (Code coordination).
@@ -789,61 +886,105 @@ engine stays a hard binary filter; rating still ranks only survivors.
 
 ### 11.9 MOQ compatibility: print pieces vs product pieces (added 2026-07-15, Pavel)
 
-**The problem.** Today filter 3 (`print-eligibility.ts:143-145`) compares the printer's `moq` /
-`maxRunQty` against `job.quantity` = the PRODUCT order quantity, assuming 1 label = 1 product unit.
-Real CPG breaks that assumption three ways: (a) a product can consume more than one printed piece
-(box + inner label + tamper seal), (b) presses run OVERAGE (5-10% extra to cover fill-line
-spoilage), and (c) print MOQ is press-driven (digital from ~50, offset from thousands) and diverges
-from the fill-line MOQ (`ProductDefaults.moqMin`, default 500). So the print run needed is NOT the
-order size, and the two MOQs are genuinely independent.
+**The problem, in three layers.**
+1. **The quantities are not the same number.** Filter 3 (`print-eligibility.ts:143-145`) compares
+   the printer's `moq` / `maxRunQty` against `job.quantity` = the PRODUCT order quantity, assuming
+   1 label = 1 product unit. Real CPG breaks that: a product can consume more than one printed
+   piece (box + inner label + tamper seal), and presses run OVERAGE (spoilage allowance).
+2. **The MOQ is per PROCESS, not per printer** (see 11.2). A converter with digital + flexo has a
+   LOW floor (digital) and a HIGH ceiling (flexo) at the same time. Comparing a job to one scalar
+   MOQ would wrongly exclude exactly the converters we most want.
+3. **The floor is often DOLLARS, not units.** Blue Label and Sttark both advertise "no MOQ" while
+   enforcing a ~$200-260 minimum ORDER VALUE. A unit-only model lets a creator build a $40 order
+   nobody will accept.
 
 **Decision (D4, Pavel 2026-07-15): raise the order minimum.** When the needed print quantity is
-below every capable printer's MOQ, we do NOT overprint by default. Instead we compute a single
-**effective minimum order quantity** for the product (the binding constraint across all legs) and
-surface / enforce it at checkout, so the creator sees "minimum for this product is X units" up
-front instead of hitting a mid-order failure. Overprint-and-store (a label buffer drawn down over
-reorders) is the natural V2 extension (ties to the pooling/buffer moat) and is explicitly DEFERRED;
-scrap-the-surplus overprint is rejected (wasteful).
+below what any capable printer/process can run, we do NOT overprint by default. We compute a single
+**effective order window** for the product and surface / enforce it at checkout, so the creator sees
+"minimum for this product is X units" up front instead of a mid-order failure. Overprint-and-store
+(a label buffer drawn down over reorders) is the natural V2 extension (ties to the pooling/buffer
+moat) and is explicitly DEFERRED; scrap-the-surplus overprint is rejected (wasteful).
+**Research note:** with per-process declaration the floor is usually LOW (a digital press, or the
+dollar floor) rather than thousands, so D4 rarely bites. It is a guardrail, not a gate.
 
 **Decision: model the real print quantity now.** Add:
-- `PackagingComponent.piecesPerUnit Int @default(1)` — how many of THIS printed piece a single
+- `PackagingComponent.piecesPerUnit Int @default(1)`: how many of THIS printed piece a single
   finished product consumes.
-- An `overagePct` default (platform setting, optionally per domain / packaging type; industry
-  norm 5-10%). Printed pieces provision spoilage; the manufacturer's fill leg EXPECTS the extra.
+- An `overagePct` default (platform setting, optionally per domain / packaging type). Printed pieces
+  provision fill-line spoilage; the manufacturer's leg EXPECTS the extra.
 
-**Derived quantities (pure, in the §11.4 requirements resolver):**
+**Derived quantity (pure, in the §11.4 requirements resolver):**
 ```
-printQty(component)      = ceil( productQty * piecesPerUnit_c * (1 + overagePct) )
+printQty(component) = ceil( productQty * piecesPerUnit_c * (1 + overagePct) )
 ```
-Filter 3 compares `printQty(component)` (NOT the raw product qty) to the printer's `moq` /
-`maxRunQty`, per label SKU. This alone makes capability-rotation correctly EXCLUDE printers whose
-floor is too high, and drives the coverage/RFQ path (D3) when none fit.
+Filter 3 consumes `printQty(component)`, NOT the raw product qty, per label SKU.
+
+**Feasibility is now curve-based, not envelope-based.** For a component c and printer p, p is
+feasible iff ANY of p's processes has a curve segment covering `printQty(c)`:
+```
+feasible(p, c) = EXISTS curve k in p.curves(offering for c) such that
+                   printQty(c) >= k.baseQty
+                   AND (k.maxQty IS NULL OR printQty(c) <= k.maxQty)
+                   AND (printQty(c) - k.baseQty) MOD k.incrementQty == 0   // order lattice
+price(p, c)    = min over feasible segments k of
+                   k.basePriceCents + (printQty(c) - k.baseQty) * k.incrementPriceCents / k.incrementQty
+```
+Then the ORDER-level dollar floor binds separately:
+`sum of price(p, c) over the printer's components >= p.service.minOrderValueCents`.
+A `quoteRequired` segment marks the printer eligible but price-indicative (route to a quote, do not
+auto-bind a price).
 
 **Effective order window (surfaced + enforced at checkout):**
 ```
-minProductQtyForPrinter(c, p) = ceil( p.moq / (piecesPerUnit_c * (1 + overagePct)) )
-minProductQtyForComponent(c)  = min over CAPABLE printers p of minProductQtyForPrinter(c, p)
-effectiveMinOrderQty          = max( manufacturingMOQ,
-                                     max over components c of minProductQtyForComponent(c) )
-effectiveMaxOrderQty          = min( manufacturingMax,
-                                     min over components c of
-                                       floor( bestPrinterMaxRun_c / (piecesPerUnit_c*(1+overage)) ) )
+minProductQtyForCurve(c, k) = ceil( k.baseQty / (piecesPerUnit_c * (1 + overagePct)) )
+minProductQtyForComponent(c) = min over CAPABLE printers p, over p's curve segments k,
+                                 of minProductQtyForCurve(c, k)          // the cheapest FLOOR wins
+effectiveMinOrderQty = max( manufacturingMOQ,
+                            max over components c of minProductQtyForComponent(c),
+                            qty needed to clear the binding minOrderValueCents )
+effectiveMaxOrderQty = min( manufacturingMax,
+                            max over components c of the HIGHEST reachable maxQty
+                              / (piecesPerUnit_c * (1 + overagePct)) )    // best process, not worst
 ```
-The creator's quantity must fall in `[effectiveMinOrderQty, effectiveMaxOrderQty]`. Below the min:
-block with a clear "raise to X" message (the binding leg named). Above the max: only offset-class
-printers qualify (filter 3 already excludes low-max shops); if none, coverage/RFQ (D3).
+Note the asymmetry: the min takes the LOWEST floor across all processes (digital rescues small
+runs) and the max takes the HIGHEST ceiling (flexo/offset rescues big runs). That is the whole
+point of per-process declaration. Below the min: block with a clear "raise to X" and name the
+binding constraint (fill MOQ vs print floor vs order value). Above the max: only long-run processes
+qualify; if none, coverage/RFQ (D3).
+
+**Crossover is EMERGENT, never hardcoded.** This is how real print MIS works (Label Academy:
+estimating software must "prepare crossover costs between two or more presses"; Cerm's UI is
+"choice of presses, based upon capabilities ... and cost"; a Label Traxx worked example puts a real
+crossover at **24,140 labels**, i.e. 3-8x the popular rule of thumb). So: hard capability filter
+first, then evaluate each feasible process's curve at `printQty`, then take the cheapest. Do NOT
+write a `if qty < 5000 use digital` rule. Domino is explicit that the crossover "is not fixed;
+rather, it is continuously shifting to reflect changing customer demands and press availability from
+day to day and job to job." This mirrors the locked FC-selector idiom (hard filters, then score).
+
+**Units: converters think in LINEAR FEET.** Primeflex: "Any run that is under 1,000 feet of material
+we consider a short run. So if the label is big enough, it may be a few hundred, but if it's a small
+label it very well may be a few thousand labels." Credible trade break-evens are quoted in feet
+(Apex: ~11,000 ft; Bobst/Mouvent: digital cost-effective to 26,000 ft; Omet: in-line flexo economical
+down to ~1,200 m), and they OVERLAP, which is why a scalar unit threshold cannot be right. V1 keeps
+the curve in UNITS (what partners quote and creators buy) but the resolver SHOULD derive
+`linearFeet = printQty * dielineHeight * (1 / numberUp)` from `PackagingDieline` dims for display,
+partner-facing sanity checks, and future per-foot curves.
 
 **Variety packs / multi-component.** Each distinct label is its own print SKU with its own
-`printQty` (pack count times that flavor's fill share) and its own MOQ check; the WORST-ratio SKU
-sets the binding `effectiveMinOrderQty`. Reuses the existing multi-flavor lead-time pattern
+`printQty` (pack count times that flavor's fill share) and its own feasibility check; the
+WORST-ratio SKU sets the binding `effectiveMinOrderQty`. Reuses the multi-flavor pattern
 (`resolveMultiFlavorLeadDays`).
 
 **Where it plugs in.** The requirements resolver (§11.4.1) emits `printQty` per component; filter 3
-consumes it; a small `resolveEffectiveOrderWindow(product)` (pure) computes the min/max for the
-product-detail configurator + checkout gate. Additive schema only (`piecesPerUnit`, an `overagePct`
-setting). Folds into **PS-9a** as its MOQ sub-phase; no new migration beyond the two fields.
+becomes the curve-feasibility check above; `resolveEffectiveOrderWindow(product)` (pure) computes
+the min/max + binding reason for the configurator + checkout gate. Schema: `piecesPerUnit`,
+`overagePct` setting, `PartnerOfferingPriceCurve` (11.2), `PartnerService.minOrderValueCents`. All
+additive.
 
-**Edge cases.** Overage labels not consumed in production are spoilage buffer in v1 (no inventory),
-which sets up the V2 label-buffer cleanly. A per-component printer that fits the shape but not the
-`printQty` window is simply excluded by filter 3 (no special case). Manufacturing MOQ can still be
-the binding constraint, in which case print MOQ is moot and the effective min is the fill floor.
+**Edge cases.** Overage labels not consumed are spoilage buffer in v1 (no inventory), which sets up
+the V2 label-buffer cleanly. Manufacturing MOQ can still be the binding constraint, in which case
+the print floor is moot. Repeat SKUs amortize plate cost over re-runs (Thomas-Emans: "well over 70
+percent of short-run jobs are, in fact, long-run jobs broken down into multiple smaller batches"),
+so a recurring product's true crossover is lower than a one-off's; V1 ignores this, V2 could weight
+annualized volume per unchanged artwork. Published minimums are often approximate ("~20 rolls",
+"typically around $200"), which is what `quoteRequired` is for.
