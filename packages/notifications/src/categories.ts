@@ -211,6 +211,10 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   MANUFACTURER_TEMPLATE_PAUSED: 'orders',
   // MM-7 — fee grace/promo started (positive change to their platform fee).
   MANUFACTURER_FEE_GRANT_STARTED: 'billing',
+  // Partner Access & Opportunity requests — access-status notices (non-opt-outable).
+  PARTNER_ACCESS_REQUEST_SUBMITTED: 'account',
+  PARTNER_ACCESS_REQUEST_APPROVED: 'account',
+  PARTNER_ACCESS_REQUEST_DECLINED: 'account',
 }
 
 export function categoryForEvent(event: NotificationEvent): NotificationCategorySlug {

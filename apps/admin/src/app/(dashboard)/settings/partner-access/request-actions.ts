@@ -13,8 +13,10 @@ import { prisma } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import type { PartnerAccessLever } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { dispatchNotification } from '@ilaunchify/notifications'
 import { revalidatePath } from 'next/cache'
 import { setPartnerAccessOverride } from '../../partners/[partnerId]/access/actions'
+import { LEVERS } from '../../partners/[partnerId]/access/lever-meta'
 
 type Result = { ok: true } | { ok: false; error: string }
 
@@ -71,6 +73,24 @@ export async function decidePartnerAccessRequest(input: {
       action: decision === 'APPROVE' ? 'PARTNER_ACCESS_REQUEST_APPROVED' : 'PARTNER_ACCESS_REQUEST_DENIED',
       payload: { partnerId: req.partnerId, lever: req.lever, requested: req.requested },
     })
+
+    // Tell the partner the outcome (in-app + email). Best-effort; never throws.
+    const owner = await prisma.partner.findUnique({
+      where: { id: req.partnerId },
+      select: { userId: true },
+    })
+    if (owner?.userId) {
+      const leverLabel = LEVERS.find((l) => l.lever === req.lever)?.label ?? req.lever
+      await dispatchNotification({
+        userId: owner.userId,
+        event:
+          decision === 'APPROVE'
+            ? 'PARTNER_ACCESS_REQUEST_APPROVED'
+            : 'PARTNER_ACCESS_REQUEST_DECLINED',
+        audience: 'partner',
+        data: { leverLabel },
+      })
+    }
 
     revalidatePath('/settings/partner-access')
     return { ok: true }

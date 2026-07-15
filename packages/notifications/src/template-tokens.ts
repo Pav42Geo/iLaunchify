@@ -152,6 +152,9 @@ export const EVENT_TOKEN_PALETTE: {
   COVERAGE_RESTORED: ['productName', 'role', 'href'],
   MANUFACTURER_TEMPLATE_PAUSED: ['productName', 'reason', 'href'],
   MANUFACTURER_FEE_GRANT_STARTED: ['feePct', 'endsAt', 'global', 'href'],
+  PARTNER_ACCESS_REQUEST_SUBMITTED: ['companyName', 'leverLabel', 'partnerId'],
+  PARTNER_ACCESS_REQUEST_APPROVED: ['leverLabel'],
+  PARTNER_ACCESS_REQUEST_DECLINED: ['leverLabel'],
 }
 
 /** Tokens the admin can insert for one event (the editor's palette). */

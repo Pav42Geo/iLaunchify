@@ -5123,6 +5123,10 @@ enum NotificationEvent {
   // Shared Design Workspace C7 (2026-07-13) — internal designer⇄creator loop
   DESIGN_REVIEW_REQUESTED // designer marked the design "ready" → notify creator
   DESIGN_REVIEW_DECISION // creator approved / requested changes → notify designer
+  // Partner Access & Opportunity requests (docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.md)
+  PARTNER_ACCESS_REQUEST_SUBMITTED // partner asked to unlock an opportunity → admins
+  PARTNER_ACCESS_REQUEST_APPROVED // admin approved the request → partner
+  PARTNER_ACCESS_REQUEST_DECLINED // admin denied the request → partner
 }
 
 // One row per delivered (or queued) notification, per channel. EMAIL and IN_APP

@@ -18,6 +18,7 @@ const FIXED: Record<string, unknown> = {
   partnerEmail: 'ops@acmefoods.example',
   partnerId: 'ptr_sample12345678',
   sectionType: 'FOOD_SAFETY',
+  leverLabel: 'Print rotation',
   type: 'PRODUCT',
   dispatchType: 'PRODUCT',
   status: 'ON_HOLD',

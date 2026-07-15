@@ -226,6 +226,10 @@ export interface TemplateData {
     global: boolean // true = welcome/global grace, false = hand-picked grant
     href: string
   }
+  // Partner Access & Opportunity requests (docs/PARTNER_ACCESS_ADMIN_CONTROLS_2026-07-14.md)
+  PARTNER_ACCESS_REQUEST_SUBMITTED: { companyName: string; leverLabel: string; partnerId: string }
+  PARTNER_ACCESS_REQUEST_APPROVED: { leverLabel: string }
+  PARTNER_ACCESS_REQUEST_DECLINED: { leverLabel: string }
 }
 
 function fmtSection(sectionType: string): string {
@@ -984,6 +988,30 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `You're at ${d.feePct} platform fee${d.feePct === '0%' ? ' — on us' : ''}`,
         body: `${d.global ? 'Welcome! As a new manufacturer you' : 'You'}'ve been placed on a ${d.feePct} platform fee through ${fmtDate(d.endsAt)}. Your badge is unaffected — this is a fee grace on top of your standing. No action needed.`,
         link: d.href,
+      }
+    }
+    case 'PARTNER_ACCESS_REQUEST_SUBMITTED': {
+      const d = data as TemplateData['PARTNER_ACCESS_REQUEST_SUBMITTED']
+      return {
+        title: `${d.companyName} requested ${d.leverLabel}`,
+        body: `A partner asked to unlock ${d.leverLabel}. Review it in Access requests.`,
+        link: '/settings/partner-access?tab=requests',
+      }
+    }
+    case 'PARTNER_ACCESS_REQUEST_APPROVED': {
+      const d = data as TemplateData['PARTNER_ACCESS_REQUEST_APPROVED']
+      return {
+        title: `${d.leverLabel} unlocked`,
+        body: `Good news: your request for ${d.leverLabel} was approved. It is now active on your account.`,
+        link: '/settings/participation',
+      }
+    }
+    case 'PARTNER_ACCESS_REQUEST_DECLINED': {
+      const d = data as TemplateData['PARTNER_ACCESS_REQUEST_DECLINED']
+      return {
+        title: `Update on your ${d.leverLabel} request`,
+        body: `Your request for ${d.leverLabel} was not approved this time. Reach out to our team if you have questions.`,
+        link: '/settings/participation',
       }
     }
     default:

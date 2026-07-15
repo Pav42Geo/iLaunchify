@@ -95,6 +95,9 @@ export const REQUIRED_PAYLOAD_KEYS: {
   COVERAGE_RESTORED: ['productName', 'href'],
   MANUFACTURER_TEMPLATE_PAUSED: ['productName', 'reason', 'href'],
   MANUFACTURER_FEE_GRANT_STARTED: ['feePct', 'endsAt', 'href'],
+  PARTNER_ACCESS_REQUEST_SUBMITTED: ['companyName', 'leverLabel', 'partnerId'],
+  PARTNER_ACCESS_REQUEST_APPROVED: ['leverLabel'],
+  PARTNER_ACCESS_REQUEST_DECLINED: ['leverLabel'],
 }
 
 /**
