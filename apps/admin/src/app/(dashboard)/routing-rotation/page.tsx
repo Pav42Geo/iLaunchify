@@ -67,6 +67,7 @@ export default async function RoutingRotationPage() {
       where: { type: 'LABEL_PRINTING', status: 'ACTIVE', partner: { status: 'ACTIVE' } },
       select: {
         id: true,
+        partnerId: true,
         ratingMean: true,
         ratingBayesian: true,
         ratingCount: true,
@@ -118,7 +119,7 @@ export default async function RoutingRotationPage() {
     }),
     prisma.partnerService.findMany({
       where: { type: 'WAREHOUSE', status: 'ACTIVE', partner: { status: 'ACTIVE' } },
-      select: { id: true, excludeFromAutoRotation: true, partner: { select: { companyName: true } } },
+      select: { id: true, partnerId: true, excludeFromAutoRotation: true, partner: { select: { companyName: true } } },
       orderBy: { partner: { companyName: 'asc' } },
     }),
   ])
@@ -148,6 +149,7 @@ export default async function RoutingRotationPage() {
 
   const providerRows: ProviderRow[] = printers.map((s) => ({
     partnerServiceId: s.id,
+    partnerId: s.partnerId,
     companyName: s.partner.companyName,
     ratingMean: s.ratingMean === null ? null : Number(s.ratingMean),
     ratingBayesian: s.ratingBayesian === null ? null : Number(s.ratingBayesian),
@@ -166,6 +168,7 @@ export default async function RoutingRotationPage() {
   const totalFcAwards = fcAwardsRaw.length
   const fcProviderRows: ProviderRow[] = warehouses.map((s) => ({
     partnerServiceId: s.id,
+    partnerId: s.partnerId,
     companyName: s.partner.companyName,
     ratingMean: null,
     ratingBayesian: null,

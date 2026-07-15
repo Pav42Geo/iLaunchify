@@ -171,10 +171,18 @@ function ManualBody() {
       <Section title="Awards tables + kill switch">
         <p>
           Each tab&rsquo;s awards table shows the last 90 days of auto-awards per partner and their
-          actual share — this is how you see where work is really going vs. what you configured. The{' '}
-          <strong>kill switch</strong> (&ldquo;In pool — exclude&rdquo;) removes a partner from{' '}
-          <em>auto</em>-rotation without deactivating them: manual and pinned picks still work. Use
-          it as an ops pressure valve, then reinstate.
+          actual share, so you can see where work is really going vs. what you configured.
+        </p>
+        <p className="mt-2">
+          <strong>Print providers:</strong> rotation eligibility is read-only here. Manage it per
+          partner in <strong>Partner Access</strong> (Print rotation lever) so there is a single
+          control; excluding a printer removes it from <em>auto</em>-rotation while manual and pinned
+          picks still work.
+        </p>
+        <p className="mt-2">
+          <strong>Fulfillment centers:</strong> the per-node kill switch (&ldquo;In pool /
+          exclude&rdquo;) still lives on this page, since warehouse rotation is not governed by
+          Partner Access. Use it as an ops pressure valve, then reinstate.
         </p>
       </Section>
 
@@ -193,7 +201,7 @@ function ManualBody() {
           <li>Leave rotation <strong>off</strong> and confirm the awards tables look sane.</li>
           <li>Set the weights/pool/mode you want, then run the <strong>preview</strong> and read the projected split.</li>
           <li>Enable for <strong>Samples</strong> first (cheapest place for mistakes), watch a week of awards.</li>
-          <li>Then enable <strong>Production</strong>. Use the kill switch if a partner needs to pause.</li>
+          <li>Then enable <strong>Production</strong>. To pause a partner: printers via <strong>Partner Access</strong>, FCs via the kill switch here.</li>
           <li>Adjust and re-preview anytime — changes are audited and take effect on the next order.</li>
         </ol>
       </Section>

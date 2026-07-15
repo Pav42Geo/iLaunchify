@@ -6,6 +6,7 @@
 // simulator shows is what checkout does.
 
 import { useState, useTransition, type ReactNode } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   runPrintRotationPreview,
@@ -36,6 +37,7 @@ export interface DispatchLifecycle {
 
 export interface ProviderRow {
   partnerServiceId: string
+  partnerId: string
   companyName: string
   ratingMean: number | null
   ratingBayesian: number | null
@@ -1298,42 +1300,30 @@ function PreviewPanel({ products }: { products: Array<{ id: string; name: string
 }
 
 // ---------------------------------------------------------------------------
-// Provider pool + awards + kill switch
+// Provider pool + awards (read-only rotation status)
+//
+// The printer rotation flag (excludeFromAutoRotation) is now owned SOLELY by the
+// Partner Access console (PRINT_ROTATION lever → per-partner ALLOW/DENY). This
+// table READS the effective state and deep-links to the partner's Access tab to
+// change it — it no longer writes the flag (retired the per-service toggle so
+// there is one control, no last-write-wins race). FC rotation is unaffected
+// (FcAwardsTable keeps its toggle; the console does not govern warehouses).
 // ---------------------------------------------------------------------------
 
 function ProvidersTable({ providers }: { providers: ProviderRow[] }) {
-  const [rows, setRows] = useState(providers)
-  const [isPending, startTransition] = useTransition()
-
-  function toggle(row: ProviderRow) {
-    startTransition(async () => {
-      const res = await setExcludeFromAutoRotation({
-        partnerServiceId: row.partnerServiceId,
-        exclude: !row.excluded,
-      })
-      if (!res.ok) {
-        toast.error(res.error)
-        return
-      }
-      setRows((prev) =>
-        prev.map((r) =>
-          r.partnerServiceId === row.partnerServiceId ? { ...r, excluded: !row.excluded } : r,
-        ),
-      )
-      toast.success(
-        !row.excluded
-          ? `${row.companyName} removed from auto-rotation (manual + pinned picks still work).`
-          : `${row.companyName} reinstated to auto-rotation.`,
-      )
-    })
-  }
-
   return (
     <section className="rounded-2xl border border-ink-200 bg-white p-5">
       <h2 className="font-display text-[15px] font-semibold text-ink-900">
         Print providers — awards (90 days)
       </h2>
-      {rows.length === 0 ? (
+      <p className="mt-1 text-[12px] text-ink-500">
+        Rotation eligibility is managed per partner in{' '}
+        <Link href="/settings/partner-access?tab=partners" className="font-semibold text-pink-700 hover:underline">
+          Partner Access
+        </Link>{' '}
+        (Print rotation lever). This table is read-only.
+      </p>
+      {providers.length === 0 ? (
         <p className="mt-2 text-[13px] text-ink-500">No active print providers yet.</p>
       ) : (
         <table className="mt-3 w-full text-[13px]">
@@ -1348,7 +1338,7 @@ function ProvidersTable({ providers }: { providers: ProviderRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {providers.map((r) => (
               <tr key={r.partnerServiceId} className="border-b border-ink-50">
                 <td className="py-2 pr-3 font-medium text-ink-900">{r.companyName}</td>
                 <td className="py-2 pr-3 text-ink-700">
@@ -1358,20 +1348,23 @@ function ProvidersTable({ providers }: { providers: ProviderRow[] }) {
                 </td>
                 <td className="py-2 pr-3 tabular-nums">{r.awards90d}</td>
                 <td className="py-2 pr-3 tabular-nums">{r.sharePct}%</td>
-                <td className="py-2 pr-3">{r.sampleCapable ? 'Yes' : '—'}</td>
+                <td className="py-2 pr-3">{r.sampleCapable ? 'Yes' : 'No'}</td>
                 <td className="py-2 pr-3">
-                  <button
-                    onClick={() => toggle(r)}
-                    disabled={isPending}
-                    aria-pressed={r.excluded}
-                    className={`rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60 ${
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
                       r.excluded
-                        ? 'bg-danger-100 text-danger-700 hover:bg-danger-100/70'
-                        : 'bg-success-100 text-success-700 hover:bg-success-100/70'
+                        ? 'bg-danger-100 text-danger-700'
+                        : 'bg-success-100 text-success-700'
                     }`}
                   >
-                    {r.excluded ? 'Excluded — reinstate' : 'In pool — exclude'}
-                  </button>
+                    {r.excluded ? 'Excluded' : 'In pool'}
+                  </span>
+                  <Link
+                    href={`/partners/${r.partnerId}/access`}
+                    className="ml-2 text-[11.5px] font-semibold text-pink-700 hover:underline"
+                  >
+                    Manage
+                  </Link>
                 </td>
               </tr>
             ))}

@@ -114,7 +114,12 @@ export async function saveRotationPolicy(input: RotationPolicyView): Promise<Res
   return { ok: true, data: null }
 }
 
-/** Per-provider kill switch — out of the AUTO pool, manual/pinned untouched. */
+/** Per-provider kill switch: out of the AUTO pool, manual/pinned untouched.
+ *
+ * FC/WAREHOUSE rotation ONLY. Pure-printer (LABEL_PRINTING) rotation is owned
+ * solely by the Partner Access console (PRINT_ROTATION lever); this action
+ * refuses printers so there is exactly one writer for the printer flag and no
+ * last-write-wins race with the console. */
 export async function setExcludeFromAutoRotation(input: {
   partnerServiceId: string
   exclude: boolean
@@ -122,9 +127,20 @@ export async function setExcludeFromAutoRotation(input: {
   const gate = await requireCapability('routing:admin')
   const svc = await prisma.partnerService.findUnique({
     where: { id: input.partnerServiceId },
-    select: { id: true, excludeFromAutoRotation: true, partner: { select: { companyName: true } } },
+    select: {
+      id: true,
+      type: true,
+      excludeFromAutoRotation: true,
+      partner: { select: { companyName: true } },
+    },
   })
   if (!svc) return { ok: false, error: 'Service not found' }
+  if (svc.type === 'LABEL_PRINTING') {
+    return {
+      ok: false,
+      error: 'Printer rotation is managed in Partner Access (Print rotation lever), not here.',
+    }
+  }
   await prisma.partnerService.update({
     where: { id: svc.id },
     data: { excludeFromAutoRotation: input.exclude },
