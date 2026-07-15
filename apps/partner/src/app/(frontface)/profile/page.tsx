@@ -1,11 +1,15 @@
-// Partner — your public profile (Front Face) PREVIEW.
-// design/partner-profile-prototype-v2.html SCREEN: FRONT FACE · Pavel 2026-07-12.
+// Partner: your public profile (Front Face) PREVIEW.
+// design/partner-profile-frontface-v2.html · Pavel 2026-07-12/15.
+//
+// Renders on a CLEAN page (partner header, no sidebar; see the (frontface)
+// group layout) reachable from the header nav, so the partner sees their front
+// face standalone, the way a creator would.
 //
 // Why this page exists: the creator-facing route (marketing /partners/[slug])
 // is gated by CREATOR subscription tier, so a partner can never pass it to see
 // their own profile. This renders the exact same shared PartnerFrontFace
-// component with the same @ilaunchify/db reader — what you see here is
-// byte-for-byte what an eligible creator sees.
+// component with the same @ilaunchify/db reader, byte-for-byte what an eligible
+// creator sees.
 //
 // States:
 //   published + gates pass → preview banner + the live Front Face
@@ -14,16 +18,13 @@
 import { prisma, getPartnerProfile } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { PartnerFrontFace } from '@ilaunchify/ui'
-import { Check, Eye, ExternalLink, Rocket } from 'lucide-react'
+import { Check, Eye, ExternalLink, Rocket, ArrowLeft } from 'lucide-react'
 import { marketingUrl } from '@/lib/marketing-url'
-import { getPartnerRoleWord } from '@/lib/partner-role'
-import { PageTabs } from '@/components/PageTabs'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Public profile — Partner' }
+export const metadata = { title: 'Public profile (Partner)' }
 
 export default async function PartnerProfilePreviewPage() {
-  const roleWord = await getPartnerRoleWord()
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
@@ -43,7 +44,7 @@ export default async function PartnerProfilePreviewPage() {
   const profile = partner.slug ? await getPartnerProfile(partner.slug) : null
 
   if (!profile) {
-    // Not live yet — say exactly why, with the fix per gate.
+    // Not live yet: say exactly why, with the fix per gate.
     const checks: { ok: boolean; label: string; fix: string; href: string }[] = [
       {
         ok: partner.services.length > 0,
@@ -72,14 +73,12 @@ export default async function PartnerProfilePreviewPage() {
     ]
     return (
       <div className="space-y-6">
-        <PageTabs group="company" />
-        {/* Slim header — prototype panel chrome, no hero (Pavel 2026-07-13) */}
         <div>
           <h1 className="font-display text-[19px] font-bold leading-tight text-ink-900">
             Your front face isn&rsquo;t live yet
           </h1>
           <p className="mt-0.5 max-w-2xl text-[13px] text-ink-600">
-            When every check below passes, eligible creators can open your public profile — and
+            When every check below passes, eligible creators can open your public profile, and
             product pages name you as the manufacturer.
           </p>
         </div>
@@ -122,7 +121,7 @@ export default async function PartnerProfilePreviewPage() {
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-info-100 bg-info-50 px-4 py-3">
         <Eye className="h-4 w-4 flex-none text-info-500" />
         <div className="text-[13px] text-info-800">
-          <b>Preview</b> — this is exactly what eligible creators see at your public profile.
+          <b>Preview:</b> this is exactly what eligible creators see at your public profile.
         </div>
         <a
           href={marketingUrl(`/partners/${profile.slug}`)}
@@ -136,6 +135,16 @@ export default async function PartnerProfilePreviewPage() {
       </div>
 
       <PartnerFrontFace profile={profile} />
+
+      <div className="pt-1">
+        <a
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-500 hover:text-ink-900"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to dashboard
+        </a>
+      </div>
     </div>
   )
 }

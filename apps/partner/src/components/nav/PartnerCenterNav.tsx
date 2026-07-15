@@ -14,13 +14,13 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Store, Wand2 } from 'lucide-react'
+import { Home, Store, Globe, Wand2 } from 'lucide-react'
 import { cn } from '@ilaunchify/ui'
 import { marketingUrl } from '@/lib/marketing-url'
 import { isCoCreationPath } from './CoCreationTopbarSlots'
 
 interface TabDef {
-  key: 'home' | 'marketplace' | 'cocreation'
+  key: 'home' | 'profile' | 'marketplace' | 'cocreation'
   label: string
   href: string
   external: boolean
@@ -39,6 +39,15 @@ export function PartnerCenterNav({ poolEligible = false }: { poolEligible?: bool
       external: false,
       isActive: (p) => p === '/dashboard' || p === '/',
       Icon: Home,
+    },
+    {
+      // Your public Front Face: the clean, sidebar-less page a creator sees.
+      key: 'profile',
+      label: 'Public profile',
+      href: '/profile',
+      external: false,
+      isActive: (p) => p.startsWith('/profile'),
+      Icon: Globe,
     },
     {
       key: 'marketplace',
