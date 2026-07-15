@@ -143,8 +143,12 @@ export async function getManufacturerIdentity(
 ): Promise<ManufacturerIdentity | null> {
   if (!isAuthenticated) return null
   try {
-    const gate = await getPartnerProfileGate()
-    if (!canViewPartnerProfiles(viewerTier, gate)) return null
+    // Governed by the Partner Access console (absorbed the legacy PartnerProfileSetting,
+    // 2026-07-14): master switch + the "identity in context" tier dial decide whether
+    // this viewer sees the manufacturer NAME + link at all.
+    const policy = await getPartnerAccessPolicy()
+    if (!policy.publicProfilesEnabled) return null
+    if (!hasTier(viewerTier, normalizeTier(policy.minCreatorTierForIdentity))) return null
 
     const t = await prisma.productTemplate.findUnique({
       where: { slug: templateSlug },

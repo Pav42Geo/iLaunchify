@@ -291,10 +291,10 @@ const PRIMARY: SidebarRegion = {
         // labeled "Risk Center".
         { kind: 'item', label: 'Risk Center', icon: ShieldAlert, href: '/risk/detectors', capability: 'risk:admin' },
         { kind: 'item', label: 'Support Policy', icon: LifeBuoy, href: '/settings/support-policy', capability: 'tickets:admin' },
+        // Partner Access & Opportunity console — global policy + bulk list. Absorbed
+        // the retired "Partner Profiles" gate (PartnerProfileSetting → PartnerAccessPolicy,
+        // 2026-07-14); /settings/partner-profiles now permanent-redirects here.
         { kind: 'item', label: 'Partner Access', icon: Globe, href: '/settings/partner-access', capability: 'platform:admin' },
-        // Front Face visibility gate (Pavel 2026-07-12) — which creator tiers see
-        // manufacturer names + public /partners/[slug] profiles.
-        { kind: 'item', label: 'Partner Profiles', icon: BadgeCheck, href: '/settings/partner-profiles', capability: 'platform:admin' },
         { kind: 'item', label: 'Partner Agreements', icon: ScrollText, href: '/settings/agreements', capability: 'platform:admin' },
         { kind: 'item', label: 'Legal', icon: Scale, href: '/settings/legal', capability: 'platform:admin' },
         { kind: 'item', label: 'Partner Nomination', icon: Route, href: '/settings/nomination', capability: 'platform:admin' },
