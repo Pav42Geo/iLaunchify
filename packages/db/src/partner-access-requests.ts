@@ -85,6 +85,23 @@ export async function listPartnerAccessRequests({
   }
 }
 
+/** All requests for ONE partner (partner-facing surface), newest first. */
+export async function listPartnerAccessRequestsByPartner(
+  partnerId: string,
+): Promise<PartnerAccessRequestRow[]> {
+  try {
+    const rows = await requestModel().findMany({
+      where: { partnerId },
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      take: 100,
+      include: { partner: { select: { companyName: true, slug: true } } },
+    })
+    return rows.map(shape)
+  } catch {
+    return []
+  }
+}
+
 /** Count of PENDING requests: the Inbox pink-pill badge. Fail-soft to 0. */
 export async function countPendingPartnerAccessRequests(): Promise<number> {
   try {

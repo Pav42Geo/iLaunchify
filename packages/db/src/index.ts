@@ -128,6 +128,7 @@ export {
 export { resolveHistoricalSlug, recordSlugChange } from './partner-slug'
 export {
   listPartnerAccessRequests,
+  listPartnerAccessRequestsByPartner,
   countPendingPartnerAccessRequests,
   getPartnerAccessRequest,
   type PartnerAccessRequestRow,
