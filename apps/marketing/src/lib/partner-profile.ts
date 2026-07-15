@@ -10,8 +10,9 @@
 //      keep their existing PDP provider cards — never this surface)
 //   4. that service's disclosureLevel is FULL (the partner's own opt-in;
 //      ANONYMOUS/CITY_STATE partners are never named)
-//   5. partner is ACTIVE, participationMode PUBLIC, and has published a profile
-//      (slug + profilePublishedAt) — for the profile route itself.
+//   5. partner is ACTIVE and has published a profile (slug + profilePublishedAt),
+//      for the profile route itself. Decoupled from participationMode / "Open
+//      market" (Pavel 2026-07-15); admin PUBLIC_PROFILE lever governs live/offline.
 //
 // All reads are fail-soft (pre-db:push clients render the anonymous badge).
 
@@ -179,8 +180,9 @@ export async function getManufacturerIdentity(
     if (svc.disclosureLevel !== 'FULL') return null // partner's own opt-in wins
     if (p.status !== 'ACTIVE') return null
     const badge = p.tier === 'TRUSTED' || p.tier === 'PREMIER' ? p.tier : null
-    const profileLive =
-      p.participationMode === 'PUBLIC' && Boolean(p.slug) && Boolean(p.profilePublishedAt)
+    // Front Face is decoupled from participationMode / "Open market" (Pavel 2026-07-15):
+    // the name links to the profile whenever it is published, regardless of open-market.
+    const profileLive = Boolean(p.slug) && Boolean(p.profilePublishedAt)
     return { name: p.companyName, href: profileLive ? `/partners/${p.slug}` : null, badge }
   } catch {
     return null // pre-push client / any read error → anonymous badge

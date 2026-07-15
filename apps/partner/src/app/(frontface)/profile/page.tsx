@@ -2,36 +2,60 @@
 // design/partner-profile-frontface-v2.html · Pavel 2026-07-12/15.
 //
 // Renders on a CLEAN page (partner header, no sidebar; see the (frontface)
-// group layout) reachable from the header nav, so the partner sees their front
+// group layout), reachable from the header nav, so the partner sees their front
 // face standalone, the way a creator would.
 //
-// Why this page exists: the creator-facing route (marketing /partners/[slug])
-// is gated by CREATOR subscription tier, so a partner can never pass it to see
-// their own profile. This renders the exact same shared PartnerFrontFace
-// component with the same @ilaunchify/db reader, byte-for-byte what an eligible
-// creator sees.
-//
-// States:
-//   published + gates pass → preview banner + the live Front Face
-//   unpublished / not eligible → checklist of what's missing, with deep links.
+// Governance (Pavel 2026-07-15): the Front Face is DECOUPLED from "Open market"
+// (participationMode). A partner does NOT self-serve going live. Liveness is:
+// eligible (ACTIVE + FULL-disclosure nameable service + published content), and
+// the admin PUBLIC_PROFILE lever (master switch + per-partner DENY) is the only
+// live/offline authority. States:
+//   admin turned it off        → "your profile is off" panel
+//   eligible + published + on  → preview banner + the live Front Face
+//   not eligible / unpublished → checklist of what's missing, with deep links.
 
-import { prisma, getPartnerProfile } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import {
+  prisma,
+  getPartnerProfile,
+  getPartnerAccessContext,
+  getPartnerAccessPolicy,
+} from '@ilaunchify/db'
+import {
+  requireUser,
+  resolvePartnerOpportunity,
+  type AccessPolicy,
+  type PartnerFacts,
+  type AccessOverride,
+  type AccessLeverState,
+} from '@ilaunchify/auth'
 import { PartnerFrontFace } from '@ilaunchify/ui'
-import { Check, Eye, ExternalLink, Rocket, ArrowLeft } from 'lucide-react'
+import { Check, Eye, EyeOff, ExternalLink, Rocket, ArrowLeft } from 'lucide-react'
 import { marketingUrl } from '@/lib/marketing-url'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Public profile (Partner)' }
+
+function BackLink() {
+  return (
+    <div className="pt-1">
+      <a
+        href="/dashboard"
+        className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-500 hover:text-ink-900"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to dashboard
+      </a>
+    </div>
+  )
+}
 
 export default async function PartnerProfilePreviewPage() {
   const user = await requireUser()
   const partner = await prisma.partner.findUnique({
     where: { userId: user.id },
     select: {
+      id: true,
       slug: true,
-      status: true,
-      participationMode: true,
       profilePublishedAt: true,
       services: {
         where: { type: { in: ['MANUFACTURING', 'COPACKING'] } },
@@ -41,10 +65,67 @@ export default async function PartnerProfilePreviewPage() {
   })
   if (!partner) return null
 
+  // Resolve the admin PUBLIC_PROFILE lever. When the admin has turned it off
+  // (master switch OR per-partner DENY), the partner must stop seeing their
+  // profile here (Pavel 2026-07-15). Fail-soft: if the access context is
+  // unavailable (pre-db:push), fall back to the structural checks below.
+  const [ctx, policy] = await Promise.all([
+    getPartnerAccessContext(partner.id),
+    getPartnerAccessPolicy(),
+  ])
+  let adminOff = false
+  if (ctx) {
+    const facts: PartnerFacts = {
+      status: ctx.status,
+      participationMode: ctx.participationMode === 'PUBLIC' ? 'PUBLIC' : 'INVITED_ONLY',
+      profilePublished: ctx.profilePublished,
+      hasFullDisclosureNameable: ctx.hasFullDisclosureNameable,
+      isPurePrinter: ctx.isPurePrinter,
+      onboardingComplete: ctx.onboardingComplete,
+    }
+    const ov = ctx.overrides.find((o) => o.lever === 'PUBLIC_PROFILE')
+    const override: AccessOverride | null = ov
+      ? {
+          lever: 'PUBLIC_PROFILE',
+          state: ov.state as AccessLeverState,
+          value: ov.value,
+          expiresAt: ov.expiresAt,
+        }
+      : null
+    const res = resolvePartnerOpportunity('PUBLIC_PROFILE', policy as AccessPolicy, facts, override)
+    // "Off" specifically means the ADMIN pulled it (master or an override DENY),
+    // not that the partner hasn't met a structural prerequisite yet.
+    adminOff = !res.effective && (res.source === 'master' || res.source === 'override')
+  }
+
+  if (adminOff) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-3.5 rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+          <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-ink-100 text-ink-500">
+            <EyeOff className="h-4.5 w-4.5" />
+          </span>
+          <div>
+            <h1 className="font-display text-[18px] font-bold leading-tight text-ink-900">
+              Your public profile is turned off
+            </h1>
+            <p className="mt-1 max-w-2xl text-[13px] text-ink-600">
+              The iLaunchify team has your public profile offline right now, so it isn&rsquo;t
+              visible to creators and your content pages won&rsquo;t link to it. This is managed by
+              our team. Reach out to support if you have any questions.
+            </p>
+          </div>
+        </div>
+        <BackLink />
+      </div>
+    )
+  }
+
   const profile = partner.slug ? await getPartnerProfile(partner.slug) : null
 
   if (!profile) {
-    // Not live yet: say exactly why, with the fix per gate.
+    // Not live yet: say exactly why, with the fix per gate. (No "Open market"
+    // row: the Front Face is decoupled from participationMode.)
     const checks: { ok: boolean; label: string; fix: string; href: string }[] = [
       {
         ok: partner.services.length > 0,
@@ -59,14 +140,8 @@ export default async function PartnerProfilePreviewPage() {
         href: '/settings/company',
       },
       {
-        ok: partner.participationMode === 'PUBLIC',
-        label: 'Market participation is Public',
-        fix: 'Switch in Settings → Market participation',
-        href: '/settings/participation',
-      },
-      {
         ok: Boolean(partner.profilePublishedAt && partner.slug),
-        label: 'Profile published',
+        label: 'Profile content published',
         fix: 'Publish from Settings → Company profile',
         href: '/settings/company',
       },
@@ -111,6 +186,7 @@ export default async function PartnerProfilePreviewPage() {
             </div>
           ))}
         </div>
+        <BackLink />
       </div>
     )
   }
@@ -136,15 +212,7 @@ export default async function PartnerProfilePreviewPage() {
 
       <PartnerFrontFace profile={profile} />
 
-      <div className="pt-1">
-        <a
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-500 hover:text-ink-900"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to dashboard
-        </a>
-      </div>
+      <BackLink />
     </div>
   )
 }

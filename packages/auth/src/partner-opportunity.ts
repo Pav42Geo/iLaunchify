@@ -85,12 +85,11 @@ function masterBlock(lever: PartnerAccessLever, policy: AccessPolicy): string | 
 function leverDefault(lever: PartnerAccessLever, policy: AccessPolicy): boolean {
   switch (lever) {
     case 'PUBLIC_PROFILE':
-      // PARTNER-CONTROLLED (Pavel 2026-07-14): the partner's own opt-in — the
-      // PUBLIC + published + FULL-disclosure prerequisites — decides visibility.
-      // Default ON so the admin only ever SUBTRACTS (per-partner DENY for cause,
-      // or the platform master switch). Admin never has to "approve" a partner.
-      // policy.defaultProfileVisibility seeds a NEW partner's participation choice,
-      // it does NOT gate an already-published partner here.
+      // ADMIN-GOVERNED, live-by-default (Pavel 2026-07-15): a profile is live once
+      // the partner is eligible (ACTIVE + FULL-disclosure nameable service + content
+      // published). The partner has NO self-serve go-live switch. Default ON so the
+      // admin only ever SUBTRACTS: a per-partner DENY, or the platform master switch
+      // (publicProfilesEnabled). Decoupled from participationMode / "Open market".
       return true
     case 'PROFILE_SHARING':
       return policy.defaultProfileSharing
@@ -124,16 +123,17 @@ function leverDefault(lever: PartnerAccessLever, policy: AccessPolicy): boolean 
 /** Hard prerequisite reason (subtract-only) for a lever, or null when met. */
 function prerequisiteBlock(lever: PartnerAccessLever, facts: PartnerFacts): string | null {
   const active = facts.status === 'ACTIVE'
-  const publicLive =
-    active &&
-    facts.participationMode === 'PUBLIC' &&
-    facts.profilePublished &&
-    facts.hasFullDisclosureNameable
+  // DECOUPLED from participationMode (Pavel 2026-07-15): the public Front Face is
+  // its OWN thing, separate from "Open market" (participationMode = discoverability
+  // + rotation, a different operational switch). A profile is live when the partner
+  // is ACTIVE, a nameable service is FULL-disclosure, and content is published; the
+  // admin PUBLIC_PROFILE lever (master + per-partner DENY) is the only live/offline
+  // authority. Being INVITED_ONLY does NOT hide the profile.
+  const publicLive = active && facts.profilePublished && facts.hasFullDisclosureNameable
 
   switch (lever) {
     case 'PUBLIC_PROFILE':
       if (!active) return 'Partner is not ACTIVE'
-      if (facts.participationMode !== 'PUBLIC') return 'Partner has not opted into PUBLIC mode'
       if (!facts.profilePublished) return 'Profile not published'
       if (!facts.hasFullDisclosureNameable) return 'No ACTIVE service with FULL disclosure'
       return null
@@ -170,7 +170,7 @@ function overrideLive(override: AccessOverride | null | undefined, now: Date): b
 /**
  * Resolve one lever for a partner. Order: master → override → default →
  * prerequisite (subtract-only). Returns the effective boolean, the winning
- * source, and — when forced off — a human blockedReason for the admin UI.
+ * source, and (when forced off) a human blockedReason for the admin UI.
  */
 export function resolvePartnerOpportunity(
   lever: PartnerAccessLever,

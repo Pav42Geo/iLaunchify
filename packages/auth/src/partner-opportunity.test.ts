@@ -43,11 +43,12 @@ const publicMfr: PartnerFacts = {
   assert(r.effective === false && r.source === 'master', 'master beats ALLOW')
 }
 
-// PUBLIC_PROFILE is PARTNER-controlled: on by default once the partner opted in
-// (prerequisites met); admin can only restrict (DENY / master-off).
+// PUBLIC_PROFILE is ADMIN-governed, live-by-default: on once the partner is
+// eligible (published + FULL-disclosure nameable service); admin can only
+// restrict (DENY / master-off). Decoupled from participationMode.
 {
   const on = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, publicMfr)
-  assert(on.effective === true && on.source === 'default', 'public profile on by partner opt-in')
+  assert(on.effective === true && on.source === 'default', 'public profile on when eligible')
 
   const deny: AccessOverride = { lever: 'PUBLIC_PROFILE', state: 'DENY' }
   const restricted = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, publicMfr, deny)
@@ -57,7 +58,16 @@ const publicMfr: PartnerFacts = {
   const blocked = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, notPublished)
   assert(
     blocked.effective === false && blocked.source === 'prerequisite',
-    'blocked until the partner publishes',
+    'blocked until content is published',
+  )
+
+  // Decoupled from "Open market" (Pavel 2026-07-15): an INVITED_ONLY partner that
+  // is eligible + published still has a live public profile.
+  const invitedOnly: PartnerFacts = { ...publicMfr, participationMode: 'INVITED_ONLY' }
+  const stillLive = resolvePartnerOpportunity('PUBLIC_PROFILE', policy, invitedOnly)
+  assert(
+    stillLive.effective === true,
+    'invited-only does not hide the profile (decoupled from participationMode)',
   )
 }
 
@@ -95,10 +105,11 @@ const publicMfr: PartnerFacts = {
   assert(r.effective === true && r.source === 'override', 'rotation ok for pure printer')
 }
 
-// sharing blocked when the public profile is not live
+// sharing blocked when the public profile is not live (not published here; the
+// live signal no longer includes participationMode)
 {
-  const notPublic: PartnerFacts = { ...publicMfr, participationMode: 'INVITED_ONLY' }
-  const r = resolvePartnerOpportunity('PROFILE_SHARING', policy, notPublic)
+  const notLive: PartnerFacts = { ...publicMfr, profilePublished: false }
+  const r = resolvePartnerOpportunity('PROFILE_SHARING', policy, notLive)
   assert(r.effective === false && r.source === 'prerequisite', 'no share without live public profile')
 }
 
