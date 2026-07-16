@@ -5,6 +5,14 @@ rotation). §11 answers "WHICH printers may run this job"; this doc answers "WHA
 declared that, and where does the money land." Origin: a full code trace on 2026-07-15 found that a
 printer's declared price reaches NEITHER the creator's charge NOR the printer's payout.
 
+**UX contract:** `design/print-service-builder-prototype.html` (the Print Service Builder, mirroring
+the manufacturer's Add Product builder: Basics -> Your presses -> What you can print -> Finishes &
+prepress -> Pricing -> Review & publish). Its Step 5 runs the real PrintTalk maths live: with a
+digital curve (100 @ $45.00 + $0.35/unit, max 20k) and a flexo curve (2,500 @ $3,300.00 + $0.08/unit,
+max 250k) the crossover lands at **11,444 pieces**, which is DERIVED from the two curves and happens
+to match the trade-press break-even (Apex: ~11,000 linear ft). Nobody typed 11,444. That is the whole
+argument for per-process pricing in one interaction. §3.5 is the gap list that prototype surfaced.
+
 ## §0 Decisions (Pavel 2026-07-15)
 
 - **D-P0: the estimate/charge divergence is a P0 correctness fix, done FIRST and standalone**, before
@@ -136,6 +144,76 @@ today write IDs only (`onboarding/actions.ts:259-277`, `ServiceEditors.tsx`), an
 evaluator. Per-partner substrate cost must OVERRIDE the platform `Substrate.baseUnitCostCents` that
 checkout uses today.
 
+### 3.5 Gaps found while prototyping the Service Builder (added 2026-07-15)
+
+Building `design/print-service-builder-prototype.html` surfaced nine things the four D-P1 buckets do
+not cover. Ordered by monetization impact. All are additive.
+
+**3.5.1 Tooling + repeat runs (the biggest gap).** Plates and dies are made ONCE and KEPT. Charging a
+repeat customer full setup again prices out the stickiest revenue there is; not charging it on run
+one is a straight loss. The trade press is blunt about the stakes: "well over 70 percent of short-run
+jobs are, in fact, long-run jobs broken down into multiple smaller batches" (Thomas-Emans, L&L), and
+"the cost of flexo plates is amortized the more times the same job is re-run." So repeats ARE the
+business.
+- `PartnerOfferingTooling`-ish fields: `dieToolingCents` (one-time per SHAPE, reused on repeats),
+  `platePerColorCents` (one-time per ARTWORK, flexo).
+- A repeat rule: when the artwork + die are unchanged, setup is waived / discounted. Requires
+  identifying "same artwork" (a design/version hash on the component or dieline) and a record of what
+  tooling already exists for that (product, printer) pair.
+- This is also the honest V2 hook: amortized tooling is what makes the buffer/pooling moat real.
+
+**3.5.2 MOQ is per DESIGN, not per order.** PackMojo: "500 units per design." Sticker Mule: "the
+minimum order quantity of our custom labels is 50 units per design." A 6-flavour variety pack is SIX
+print runs, each clearing its own floor. §11.9 already computes `printQty` per label SKU; this makes
+the *declaration* explicit: `minimumAppliesPer: DESIGN | ORDER` on the curve/service, defaulting to
+DESIGN (the industry norm). Without it a 6-flavour pack silently looks feasible at 1/6 of the real
+run.
+
+**3.5.3 Finished format: roll / core / rewind (unmodelled, and a real MOQ driver).** OnlineLabels
+publishes minimums **in rolls, varying by core diameter** ("100 sheets, ~20 rolls (1in cores), or ~12
+rolls (3in cores)"). Two shops with identical piece-MOQs are NOT interchangeable if one cannot wind a
+3in core. Needs: `deliveryFormat` (ROLL | SHEET | FAN_FOLD), `coreSizes[]`, `rewindDirections[]`,
+`maxLabelsPerRoll`, `maxRollDiameterMm`, `splicesAllowedPerRoll`. These are BOTH capability filters
+(§11 hard gates) and price/packing drivers.
+
+**3.5.4 Rush / expedite.** The most reliable margin line in print and there is no field for it:
+`rushLeadTimeDays`, `rushUpliftPct`, `rushCapacityPerWeek`. Capacity matters as much as price: a rush
+promise without a cap oversells the press. Applies to the print subtotal.
+
+**3.5.5 Prepress / proofing fees.** Converters bill these routinely; we cannot charge a cent:
+`artFixFeeCents` (per job, when files fail preflight), `pantoneMatchFeeCents` (per spot colour
+matched), `hardProofFeeCents` (soft proof free, press proof by quote). These pair naturally with the
+§7.3 filter-7 design preflight: the same check that FAILS a file can PRICE fixing it.
+
+**3.5.6 Overs / unders policy.** The industry norm is +/-10% with the ACTUAL shipped quantity billed.
+This changes what "500 units" even means, so it belongs in the declaration, not in fine print:
+`oversUndersPolicy: EXACT | PLUS_MINUS_PCT`, `oversUndersPct`. Interacts with §11.9's `printOveragePct`
+(that is OUR spoilage provisioning; this is THEIR shipping/billing tolerance). Keep them distinct.
+
+**3.5.7 Order lattice.** Quantity is a lattice, not a range: PrintTalk models it
+(`@Amount` = "the allowed increments of ordered amounts"), and Sticker Mule enforces it in the wild
+("enter any multiple of 10"). `PartnerOfferingPriceCurve.incrementQty` ALREADY carries this; what is
+missing is that the checkout quantity picker must SNAP to it and the evaluator must reject
+off-lattice quantities rather than silently interpolating.
+
+**3.5.8 Versioning / variable data.** Digital's actual superpower and a real line item:
+`additionalVersionCents` (per extra design in the same run). Also the lever behind 3.5.1: versioning
+plus repeats is where digital beats flexo regardless of raw run length.
+
+**3.5.9 Price validity.** `effectiveFrom` / `validUntil` on the curve so a printer can raise prices
+without rewriting history, and so a stale curve can be flagged rather than silently trusted.
+PrintTalk has `Quotation/@Expires` + `@Estimate` (binding vs non-binding) for exactly this. Pairs
+with the §5 snapshot rule: the ORDER keeps the curve it was priced on.
+
+**Two design rules (not fields) from the same pass:**
+- **Rush capacity is a promise, not a price.** Declare it or the press gets oversold.
+- **Incomplete capability = not listable** (§7.2.7's discipline). A half-declared service should fail
+  LOUDLY at publish rather than quietly lose jobs it would have won.
+
+**Deliberately NOT added: a "we choose the press" toggle.** Domino's argument is that converters route
+by press AVAILABILITY day to day, not by a fixed rule. If we ever let them express that, it belongs as
+CAPACITY (3.5.4's shape), never as a pricing rule, and never as a hardcoded crossover.
+
 ## §4 The evaluator (pure, the heart of it)
 
 New pure module beside `print-eligibility.ts` (sibling concept: eligibility FILTERS, pricing
@@ -236,9 +314,18 @@ architecture.
 - **PP-2 (finishes):** `PartnerFinish` partner editor (the write path) + evaluator modes + feed
   §11 filter 9.
 - **PP-3 (floor + quote):** `minOrderValueCents` in the service editor; shortfall reporting;
-  `quoteRequired` routes to the §10 RFQ rail.
+  `quoteRequired` routes to the §10 RFQ rail; **order lattice** (3.5.7) snapping in the qty picker +
+  evaluator rejection of off-lattice quantities.
 - **PP-4 (surcharges):** wire die-cut surcharge + per-partner substrate cost (override the platform
   cost); editors that today write IDs only.
+- **PP-6 (tooling + repeats, 3.5.1), the highest-value addition:** `dieToolingCents` /
+  `platePerColorCents`, an artwork identity for "same job", a record of tooling already made per
+  (product, printer), and the repeat rule (setup waived/discounted). Do this EARLY: it is where the
+  retention economics live, and 70%+ of "short runs" are repeats.
+- **PP-7 (declaration completeness, 3.5.2-3.5.6, 3.5.8-3.5.9):** `minimumAppliesPer` (DESIGN default);
+  finished format (roll/core/rewind, ALSO §11 hard filters); rush (lead/uplift/capacity); prepress
+  fees (art-fix / Pantone / hard proof); overs-unders policy; `additionalVersionCents`;
+  `effectiveFrom` / `validUntil`. Mostly additive fields + the Service Builder steps that carry them.
 - **PP-5 (admin hybrid, D-P2):** `TemplatePrinterOverride` + resolver + hard-gate guard + admin
   panel + audit.
 
