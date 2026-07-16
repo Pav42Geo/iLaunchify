@@ -118,9 +118,51 @@ divergence cannot recur.
 PP-0 changes NO prices by itself (except where the summary was lying). It is the foundation the rest
 lands on.
 
-### 2.1 PP-0 build status (2026-07-15)
+### 2.0 PP-0 IS DONE AND FLIPPED (2026-07-16)
 
-**BUILT (charge unchanged, shadow only):**
+**`placeOrder` charges `computeOrderPricing`.** The `Math.max(costBuildup, dispatchSubtotal,
+packPrice)` reconcile is retired, the shadow is deleted (the pricer IS the charge, so a shadow of
+itself would be a tautology), and every quote surface resolves through the same function:
+
+| Surface | Prices via | Fee via |
+|---|---|---|
+| Marketplace PDP (`ProductDetailConfigurator`) | `computeOrderPricing` | `resolveCreatorFeeBps` |
+| Configurator (`ConfiguratorClient`) | `composeQuote` + `creatorFeeCents` | `resolveCreatorFeeBps` |
+| Checkout estimate (`estimateProductionCost`) | `computeOrderPricing` | `resolveCreatorFeeBps` |
+| **The charge (`placeOrder`)** | **`computeOrderPricing`** | `resolveCreatorFeeBps` |
+| Sample (`createSampleOrder`) | `computeOrderPricing` | `resolveCreatorFeeBps` |
+| Channel reorders (`route-actions`) | own subtotal + `creatorFeeCents` | `resolveCreatorFeeBps` |
+
+**Fee tables: 3 -> 1.** `PlatformFeeConfig.baseRateBp` evicted, `OrderSettings.productionFeeBps`
+retired, `OrderSettings.samplePlatformFeeBps` retired (PP-0d). One raw `lookupFeeRate` remains, at
+`partner/products/new/build-actions.ts:27`: a partner-side PREVIEW of creator prices, not a charge.
+Display drift, not a money bug.
+
+**What the flip changed, measured exhaustively by `pnpm pp0:delta`** (a shadow needs traffic; this
+platform is pre-revenue, so the matrix replaced it: real data would be a sample, the matrix is
+complete):
+- **Decoration + component upgrades are now charged.** Shown in the summary, never billed. `+$1,322.50`
+  on a typical Maker cart. This is the fix.
+- **Pack orders price on PACK_PRICE, not `max(...)`.** Normally identical. On a template mispriced
+  BELOW our buildup the creator now pays the price they agreed to (`-$851` in the isolated row), and
+  `costFloorBreach` reports the shortfall to ops instead of silently taxing the creator for a pricing
+  mistake that is not theirs.
+- **The dispatch arm was UNCONDITIONALLY dead.** `productionUnitCents = 8 + substrate + packaging +
+  finish`, so the 8c label anchor means the unit is ALWAYS >= 8, and `dispatch = 0.38 x unit x qty`
+  can never reach `unit x qty`. There is no zero-cost product. Verified over 144 shapes. (An earlier
+  draft of this doc said it "only won for a zero-cost product": wrong, and the report found it.)
+
+**REMAINING (honestly named):**
+1. **The estimate has no pack input**, so it prices COST_BUILDUP while the charge prices PACK_PRICE.
+   On a pack order the creator is quoted the buildup and charged the pack price. Pinned as a FACT in
+   `estimate-charge-parity.test.ts`; the fix is to thread the pack selection into
+   `estimateProductionCost`, NOT to make the charge use the buildup.
+2. Two meanings of "on-demand" (make-to-order vs ship-from-stock) share one word in a money path.
+3. `build-actions.ts:27`, above.
+
+### 2.1 PP-0 build log (2026-07-15, superseded by 2.0 above)
+
+**BUILT (at the time: charge unchanged, shadow only):**
 
 - `@ilaunchify/plans` `computeOrderPricing` + `pricingDelta`: the ONE pure pricer. Encodes the LOCKED
   fee-base rule. Pinned in `order-pricing.test.ts`, incl. an **arbitrage guard** proving a fat SETUP
