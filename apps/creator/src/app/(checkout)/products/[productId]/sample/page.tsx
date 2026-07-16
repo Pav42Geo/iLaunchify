@@ -7,7 +7,10 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { prisma, getSampleSettings } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier } from '@ilaunchify/auth'
+// PP-0d: resolve the creator's tier rate server-side and hand the client the bps
+// + bounds, so the display cannot compute a different fee than the charge.
+import { resolveCreatorFeeBps, resolveCreatorFeeBounds } from '@ilaunchify/plans'
 import { SampleCheckout } from './SampleCheckout'
 import type { SampleOption } from '@/lib/sample-quote'
 
@@ -17,6 +20,16 @@ export default async function SampleCheckoutPage({ params }: { params: Promise<{
   const { productId } = await params
   const user = await requireUser()
   const settings = await getSampleSettings()
+
+  // PP-0d (Pavel 2026-07-16): a sample carries the creator's SUBSCRIPTION-TIER
+  // rate, same as any other order. Resolved here, server-side, through the ONE
+  // fee SSOT, and handed down as bps + bounds so SampleCheckout renders exactly
+  // what createSampleOrder will charge. settings.samplePlatformFeeBps is
+  // DEPRECATED as the fee source (it was a third fee table, defaulted to 0, and
+  // ignored the creator's tier).
+  const creatorTier = await getCreatorTier(user.id)
+  const { feeBps: platformFeeBps } = await resolveCreatorFeeBps(creatorTier)
+  const platformFeeBounds = await resolveCreatorFeeBounds(creatorTier)
 
   const product = await prisma.product.findFirst({
     where: { id: productId, brand: { creatorProfile: { userId: user.id } } },
@@ -97,7 +110,8 @@ export default async function SampleCheckoutPage({ params }: { params: Promise<{
             isMultiFlavor={flavorNames.length > 1}
             defaultShipTo={last ?? null}
             sampleShippingCents={settings.sampleFlatShippingCents}
-            samplePlatformFeeBps={settings.samplePlatformFeeBps}
+            platformFeeBps={platformFeeBps}
+            platformFeeBounds={platformFeeBounds}
             brandedRequiresDieline={settings.brandedRequiresDieline}
           />
         )}

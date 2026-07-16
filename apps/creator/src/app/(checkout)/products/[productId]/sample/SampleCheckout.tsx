@@ -9,6 +9,9 @@ import * as React from 'react'
 import { toast } from 'sonner'
 import { Beaker, Package, Lock, Minus, Plus, Check } from 'lucide-react'
 import { Checkbox } from '@ilaunchify/ui'
+// PP-0d: client-safe money subpath. NOT '@ilaunchify/plans' (that barrel
+// re-exports the server-only lookups module, which imports prisma).
+import { creatorFeeCents, type FeeRuleBounds } from '@ilaunchify/plans/math'
 import { quoteSample, hasSamplerSet, formatCents, type SampleOption, type SampleMode } from '@/lib/sample-quote'
 import { createSampleOrder } from '../checkout/sample-actions'
 
@@ -40,11 +43,17 @@ interface Props {
   isMultiFlavor: boolean
   defaultShipTo: ShipToDefaults | null
   sampleShippingCents: number
-  samplePlatformFeeBps: number
+  /** PP-0d: the creator's SUBSCRIPTION-TIER rate in bps (1500/1200/800), resolved
+      server-side through the fee SSOT. Replaces the old samplePlatformFeeBps, a
+      third fee table that defaulted to 0 and ignored the creator's tier. */
+  platformFeeBps: number
+  /** The FeeRule's flat/min/max. Dropping these is how a quote and a charge
+      diverge on a cart that hits a floor or a cap. */
+  platformFeeBounds: FeeRuleBounds
   brandedRequiresDieline: boolean
 }
 
-export function SampleCheckout({ productId, productName, options, flavorNames, isMultiFlavor, defaultShipTo, sampleShippingCents, samplePlatformFeeBps, brandedRequiresDieline }: Props) {
+export function SampleCheckout({ productId, productName, options, flavorNames, isMultiFlavor, defaultShipTo, sampleShippingCents, platformFeeBps, platformFeeBounds, brandedRequiresDieline }: Props) {
   const kinds = options.map((o) => o.kind)
   const [activeKind, setActiveKind] = React.useState(() => (kinds.includes('UNBRANDED') ? 'UNBRANDED' : kinds[0]!) as 'UNBRANDED' | 'BRANDED')
   const opt = options.find((o) => o.kind === activeKind)!
@@ -76,7 +85,12 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
   const brandedLocked = activeKind === 'BRANDED' && brandedRequiresDieline
   const needsAck = activeKind === 'BRANDED' && !brandedLocked
   const addressComplete = !!(contactName.trim() && addressLine1.trim() && city.trim() && postalCode.trim())
-  const sampleFeeCents = Math.floor((quote.subtotalCents * samplePlatformFeeBps) / 10000)
+  // PP-0d: the SAME function the charge calls (sample-actions.ts), via the
+  // client-safe subpath. This was `Math.floor(subtotal * bps / 10000)`, an
+  // expression hand-copied between this file and the server action, which is the
+  // shape every divergence in this codebase has taken. It also floored where the
+  // charge now rounds, and ignored the FeeRule bounds.
+  const sampleFeeCents = creatorFeeCents(quote.subtotalCents, platformFeeBps, platformFeeBounds)
   const totalCents = quote.subtotalCents + sampleShippingCents + sampleFeeCents
   const canPay = !pending && !brandedLocked && quote.unitCount > 0 && quote.errors.length === 0 && addressComplete && (!needsAck || brandedAck)
 

@@ -46,7 +46,7 @@ export function SampleSettingsForm({ initial }: { initial: SampleSettingsValues 
         <Field label="Flat sample shipping (¢)" hint={formatCentsOrDash(v.sampleFlatShippingCents)}>
           <input className={NUM} type="number" min={0} value={v.sampleFlatShippingCents} onChange={(e) => set('sampleFlatShippingCents', Math.max(0, parseInt(e.target.value, 10) || 0))} />
         </Field>
-        <Field label="Sample platform fee (bps)" hint={`${(v.samplePlatformFeeBps / 100).toFixed(2)}% of the sample subtotal · 0 = no fee`}>
+        <Field label="Sample platform fee (bps) · DEPRECATED" hint={`Not used. Samples carry the creator's tier rate (Maker 15% / Builder 12% / Agency 8%), like every other order. Edit it in Tiers & Plans. Pavel 2026-07-16.`}>
           <input className={NUM} type="number" min={0} max={10000} value={v.samplePlatformFeeBps} onChange={(e) => set('samplePlatformFeeBps', Math.max(0, Math.min(10000, parseInt(e.target.value, 10) || 0)))} />
         </Field>
       </Section>

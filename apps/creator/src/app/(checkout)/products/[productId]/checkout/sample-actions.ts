@@ -1,6 +1,6 @@
 'use server'
 
-// createSampleOrder — places a pre-production SAMPLE order (Pavel 2026-06-10).
+// createSampleOrder: places a pre-production SAMPLE order (Pavel 2026-06-10).
 //
 // Attachment model (LOCKED): the creator must already own a Product (under their
 // brand, created from a catalog template). The action takes that productId,
@@ -15,7 +15,14 @@
 // until the sample-policy migration lands on the client.
 
 import { prisma, getSampleSettings } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier } from '@ilaunchify/auth'
+// PP-0d: the fee SSOT + the one pricer. A sample is not a different KIND of
+// order, it is a small one, so it resolves the same tier rate as everything else.
+import {
+  resolveCreatorFeeBps,
+  resolveCreatorFeeBounds,
+  computeOrderPricing,
+} from '@ilaunchify/plans'
 import { createCheckoutSession } from '@ilaunchify/payments'
 import { logAuditAs } from '@ilaunchify/audit'
 import { quoteSample, createOrderWithNumber, resolveSamplePrintLeg, effectivePrintSourcing, type SampleSelection, type SampleOption } from '@ilaunchify/orders'
@@ -105,7 +112,7 @@ export async function createSampleOrder(
     return { ok: false, error: `${input.kind === 'BRANDED' ? 'Branded' : 'Unbranded'} samples aren't offered for this product.` }
   }
 
-  // Branded produces the creator's actual artwork — require the not-for-resale
+  // Branded produces the creator's actual artwork: require the not-for-resale
   // acknowledgment server-side (the client gates too, but this is the real gate).
   if (input.kind === 'BRANDED' && !input.acknowledgedNotForResale) {
     return { ok: false, error: 'Please confirm the not-for-resale acknowledgment to order a branded sample.' }
@@ -134,7 +141,7 @@ export async function createSampleOrder(
   if (quote.errors.length) return { ok: false, error: quote.errors[0]! }
   if (quote.subtotalCents <= 0) return { ok: false, error: 'Sample total must be greater than zero.' }
 
-  // --- 4. Abuse cap — sample orders per creator per template per window -------
+  // --- 4. Abuse cap: sample orders per creator per template per window -------
   if (opt.maxPerCreatorPerPeriod != null) {
     const since = new Date(Date.now() - settings.abuseWindowDays * 86_400_000)
     const prior = await (prisma as unknown as {
@@ -160,16 +167,47 @@ export async function createSampleOrder(
     return { ok: false, error: 'Enter a complete shipping address.' }
   }
 
+  // PP-0d (Pavel 2026-07-16): "add tier rate for sample orders too, this is not
+  // different than any other order."
+  //
+  // A sample now resolves the creator's SUBSCRIPTION-TIER rate (15/12/8) through
+  // the same SSOT as every other charge, and prices through the same function.
+  // Three things this retires:
+  //   1. OrderSettings.samplePlatformFeeBps as the sample fee SOURCE. It was a
+  //      THIRD fee table (alongside FeeRule and the evicted PlatformFeeConfig),
+  //      it DEFAULTED TO 0, and it ignored creator tier entirely: an Agency
+  //      creator paid the same sample fee as a Maker. Column kept, deprecated.
+  //   2. Math.floor. Every other path rounds (creatorFeeCents), and the audit
+  //      found exactly this floor-vs-round drift between surfaces.
+  //   3. The hand-copied expression in SampleCheckout.tsx, which had to be kept
+  //      in sync with this one by hand. Both now call creatorFeeCents.
+  //
+  // NOTE this is a real PRICE CHANGE, not a refactor: samples charged 0% by
+  // default and now carry the tier rate. The sample is still paid IN FULL at
+  // order time and still mints a SampleCredit toward the first production run
+  // (that model already matched Pavel's "real sample prices which the creator
+  // pays when he orders it" and is untouched).
   const shippingCents = settings.sampleFlatShippingCents
-  const platformFeeCents = Math.floor((quote.subtotalCents * settings.samplePlatformFeeBps) / 10000)
-  const totalCents = quote.subtotalCents + shippingCents + platformFeeCents
+  const creatorTier = await getCreatorTier(user.id)
+  const { feeBps } = await resolveCreatorFeeBps(creatorTier)
+  const feeBounds = await resolveCreatorFeeBounds(creatorTier)
+  const priced = computeOrderPricing({
+    // The sample's production subtotal: partner-set, creator-paid, so it is the
+    // fee base. Shipping rides outside it exactly as on a production order.
+    production: [{ kind: 'PRODUCT', label: 'Sample', cents: quote.subtotalCents }],
+    shippingCents,
+    feeBps,
+    feeBounds,
+  })
+  const platformFeeCents = priced.platformFeeCents
+  const totalCents = priced.totalCents
 
-  // --- 5b. SR-2.2 — BRANDED sample print leg. A branded sample of an
+  // --- 5b. SR-2.2: BRANDED sample print leg. A branded sample of an
   //         externally-printed product must exercise the EXACT printer who'd
   //         produce the bulk run (pinned pick → SAMPLE-context rotation among
   //         sampleCapable printers, sample-rejection exclusions applied).
   //         Null = manufacturer improvises (IN_HOUSE, or no printer resolvable)
-  //         — recorded honestly in internalNotes.
+  //        : recorded honestly in internalNotes.
   let samplePrintLeg: Awaited<ReturnType<typeof resolveSamplePrintLeg>> = null
   if (input.kind === 'BRANDED' && tpl?.manufacturerServiceId) {
     const mfr = await prisma.partnerService
@@ -204,7 +242,7 @@ export async function createSampleOrder(
       taxCents: 0,
       totalCents,
       manufacturerServiceId: tpl?.manufacturerServiceId ?? null,
-      // SR-2.2 — the printer this branded sample exercises (verdict subject +
+      // SR-2.2: the printer this branded sample exercises (verdict subject +
       // sticky-continuity anchor). Null = manufacturer improvises the label.
       printProviderServiceId: samplePrintLeg?.partnerServiceId ?? null,
       shipToType: 'CREATOR_ADDRESS',
@@ -234,7 +272,7 @@ export async function createSampleOrder(
     } as never,
   }))
 
-  // SR-2.2 — rotation picked the sample's printer: persist the decision.
+  // SR-2.2: rotation picked the sample's printer: persist the decision.
   if (samplePrintLeg?.awardPayload) {
     await prisma.printAwardLog
       .create({
@@ -266,7 +304,7 @@ export async function createSampleOrder(
     },
   })
 
-  // --- 7. Stripe Checkout Session — the webhook mints the credit on PAID ------
+  // --- 7. Stripe Checkout Session: the webhook mints the credit on PAID ------
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   const successUrl = `${baseUrl}/products/${product.id}/checkout/success?session_id={CHECKOUT_SESSION_ID}`
   const cancelUrl = `${baseUrl}/products/${product.id}`
