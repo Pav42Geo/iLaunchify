@@ -1,7 +1,34 @@
 // Stripe Checkout Session creation — used by apps/creator when a creator
 // places a production order (the creator pays iLaunchify for the batch).
-// Per docs/PAYMENTS.md: separate charges + transfers pattern with platform
-// application fee withheld; partner Transfers queued at dispatch ship time.
+//
+// ─── HOW THE PLATFORM FEE IS ACTUALLY TAKEN (read before touching this) ──────
+// docs/PAYMENTS.md Decision 3 chose **separate charges + transfers**:
+//   1. The creator pays the PLATFORM's own Stripe account. 100% lands here.
+//   2. We hold it and transfer OUT to the manufacturer / printer / creator at
+//      fulfillment milestones (packages/payments/transfer-execute.ts).
+//   3. **The platform fee is simply what we never transfer out.**
+//
+// So there is NOTHING to tell Stripe about the fee, and until 2026-07-16 this
+// call did anyway:
+//
+//     payment_intent_data: { application_fee_amount: params.applicationFeeCents }
+//
+// `application_fee_amount` is ONLY legal when the charge is made ON BEHALF OF a
+// connected account (a Stripe-Account header, transfer_data, or on_behalf_of).
+// This session is created on the platform account with none of those, so Stripe
+// REJECTED EVERY CHARGE. createCheckoutSession threw, cart-actions.ts caught it,
+// flipped the order PENDING_PAYMENT -> CANCELLED, and told the creator
+// "Couldn't reach Stripe": so it read as an outage, not a bug. No test covered
+// this file, which is why it survived.
+//
+// The fee is NOT lost by removing it: we record it ourselves on
+// `Charge.applicationFeeCents` ("platform's cut, withheld at charge time"), and
+// refund-plan.ts reads that. It is our bookkeeping, not Stripe's.
+//
+// DO NOT "fix" this by adding transfer_data.destination: that converts us to
+// DESTINATION charges, which support exactly ONE destination, and our orders pay
+// two-to-three parties. That is the documented reason destination charges were
+// rejected (PAYMENTS.md Decision 3).
 //
 // NOTE 2026-05-19: this file's prior caller (apps/storefront consumer checkout)
 // was removed. The fields below still apply (orderId, brand, creator, amount)
@@ -43,15 +70,30 @@ export async function createCheckoutSession(params: {
       quantity: item.quantity,
     })),
     payment_intent_data: {
-      application_fee_amount: params.applicationFeeCents,
+      // NO application_fee_amount. See the header: separate charges + transfers
+      // means the fee is what we do not transfer out, and setting it here made
+      // Stripe reject every charge. params.applicationFeeCents is still recorded
+      // on Charge.applicationFeeCents by the caller.
       statement_descriptor_suffix: statementSuffix,
       metadata: {
         ilaunchify_order_id: params.orderId,
         ilaunchify_brand_id: params.brandId,
         ilaunchify_creator_id: params.creatorId,
+        // Kept as metadata so the intended platform cut is visible in the Stripe
+        // dashboard next to the charge, for reconciliation. Informational only:
+        // Stripe does nothing with it.
+        ilaunchify_platform_fee_cents: String(params.applicationFeeCents),
       },
     },
-    automatic_tax: { enabled: true },
+    // GATED OFF by default (2026-07-16). Two reasons:
+    //   1. It hard-errors unless Stripe Tax is activated with an origin address,
+    //      which reads exactly like the application_fee bug above.
+    //   2. placeOrder records `taxCents: 0` (tax is G5, unbuilt). If Stripe added
+    //      tax at checkout, the creator would pay MORE than order.totalCents —
+    //      a fresh quote-vs-charge divergence, which is the bug class this whole
+    //      money path was just cleaned up to eliminate.
+    // Turn on with STRIPE_AUTOMATIC_TAX=true once tax is computed on our side too.
+    automatic_tax: { enabled: process.env.STRIPE_AUTOMATIC_TAX === 'true' },
     metadata: {
       ilaunchify_order_id: params.orderId,
       ilaunchify_brand_id: params.brandId,
