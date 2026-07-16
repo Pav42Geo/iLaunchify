@@ -1398,6 +1398,18 @@ model PartnerService {
   packFeeCents                     Int?
   canShipParcel                    Boolean                           @default(false) // co-mans often do freight only — the usual ON_DEMAND disqualifier
   maxDwellDays                     Int? // partner aging policy for stored stock
+  // MEANING B of the three "on-demand"s: SHIP-FROM-STOCK. Nothing is PRODUCED here;
+  // the partner picks/packs a parcel out of stock already sitting at their facility.
+  // Distinct from FulfillmentMode.ON_DEMAND (A1, a manufacturing capability) and
+  // ChannelListingMode.ON_DEMAND (A2, a per-listing gate), which are both
+  // make-to-order. Full map: docs/ON_DEMAND_DISAMBIGUATION_2026-07-16.md.
+  //
+  // A rename to `parcelPickPackEnabled` (via @map, keeping this DB column) was
+  // ATTEMPTED and REVERTED 2026-07-16: the generated Prisma client goes stale on a
+  // field rename, so the tree does not compile until `pnpm db:generate` runs, and
+  // this field gates StorageAgreement.mode (whether pick/pack fees accrue). Not
+  // worth handing over an uncompilable money path for a cosmetic win. Do it when
+  // something else already forces a db:push + db:generate on this table.
   onDemandEnabled                  Boolean                           @default(false) // ship-on-demand offered (supplement-manufacturer practice)
   fcCertifications                 String[] // FDA_REGISTERED / GMP / SQF / GFSI — hard FC-eligibility filters
   weeklyPalletCapacity             Int? // receiving capacity for FC selection Phase 1
