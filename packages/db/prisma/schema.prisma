@@ -5733,8 +5733,12 @@ enum ChannelProductLinkStatus {
 // New models follow the uuid() + soft-FK conventions (AiDesignGeneration style).
 // =============================================================================
 
+// A2 of three "on-demand" meanings (docs/ON_DEMAND_DISAMBIGUATION_2026-07-16.md).
+// A per-listing GATE. NOTE: this is a DIFFERENT AXIS from FulfillmentMode.ON_DEMAND
+// (A1, the manufacturer's capability) - nothing checks A1 when granting A2 - and the
+// OPPOSITE of StorageMode.ON_DEMAND (B, ship-from-stock).
 enum ChannelListingMode {
-  ON_DEMAND // consumer order → production order (per-order auto-billing, LOCKED #1)
+  ON_DEMAND // consumer order → production order (per-order auto-billing, LOCKED #1). Rename target: MADE_TO_ORDER
   BULK // sells from delivered stock (InventoryPool)
 }
 
@@ -6782,9 +6786,15 @@ enum OfferingStatus {
 // Spec: docs/builds/_V1_DECORATION_METHODS.md
 // -----------------------------------------------------------------------------
 
+// "ON_DEMAND" NAMES THREE DIFFERENT BUSINESSES IN THIS SCHEMA. See
+// docs/ON_DEMAND_DISAMBIGUATION_2026-07-16.md before touching any of them.
+// THIS one (A1) = MAKE-TO-ORDER as a MANUFACTURING CAPABILITY: "we produce small /
+// no-MOQ batches". A PRICING dimension (selects a band set + MOQ). Distinct from
+// ChannelListingMode.ON_DEMAND (A2, a per-listing gate) and the OPPOSITE of
+// StorageMode.ON_DEMAND (B, ship a parcel from stock already made).
 enum FulfillmentMode {
   BULK_PRODUCTION
-  ON_DEMAND
+  ON_DEMAND // rename target: MADE_TO_ORDER (needs ALTER TYPE; column is inside a @@unique)
   BOTH
 }
 
@@ -9253,8 +9263,12 @@ enum CarrierAccountType {
   PLATFORM_BROKER // reefer/FTL broker account (Loadsmart) — V2, gated
 }
 
+// B of three "on-demand" meanings (docs/ON_DEMAND_DISAMBIGUATION_2026-07-16.md).
+// THE OPPOSITE BUSINESS from A1/A2: nothing is PRODUCED here. Stock already exists at
+// the partner's facility and they pick/pack a parcel out of it. The money is
+// pickFeeCents + packFeeCents, never a production subtotal.
 enum StorageMode {
-  ON_DEMAND // partner picks/packs a parcel per end-channel order (supplement practice)
+  ON_DEMAND // partner picks/packs a parcel per end-channel order (supplement practice). Rename target: PICK_PACK_PARCEL
   STOCK_RELEASE // pallet-granularity releases to creator / FC / channel
 }
 

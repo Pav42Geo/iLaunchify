@@ -1750,8 +1750,6 @@ async function resolveShipTo({
       manufacturer: svc
         ? {
             offersStorage: svc.offersStorage,
-            onDemandEnabled: svc.onDemandEnabled,
-            canShipParcel: svc.canShipParcel,
             // A gated-off cold class reads as "cannot store this temperature
             // class" — same construction listDestinationOptions uses.
             storageClasses: classEnabled

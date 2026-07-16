@@ -4,6 +4,33 @@
 // connections) and this module decides which of the 4 destination types are
 // offered and why not — so the UI never shows a card the server would reject,
 // and the server action re-runs the same check (server-enforced, like domains).
+//
+// ─── "ON-DEMAND" MEANS THREE DIFFERENT THINGS HERE. READ THIS FIRST. ─────────
+// They are three distinct businesses that happen to share one English phrase.
+// Do NOT merge them, and do NOT assume a value from one is comparable to another:
+//
+//   1. MAKE-TO-ORDER, as a MANUFACTURING CAPABILITY.
+//      `FulfillmentMode.ON_DEMAND` (schema.prisma:6785). "We produce small / no-MOQ
+//      batches." A PRICING dimension: it selects a different band set
+//      (ProductTemplatePricingTier.fulfillmentMode, inside a @@unique) and a
+//      different MOQ. Backed by a real Postgres enum (migration 20260605160000).
+//
+//   2. MAKE-TO-ORDER, as a CHANNEL LISTING MODE.
+//      `ChannelListingMode.ON_DEMAND` (schema.prisma:5736) + `OnDemandEnablement`.
+//      "A consumer order on Shopify triggers a production order to the pinned
+//      manufacturer." A per-listing GATE. Docs: CHANNEL_MANAGEMENT_SPEC §15-17.
+//      NOTE 1 and 2 are BOTH "make-to-order" in prose but are different AXES:
+//      nothing checks the capability (1) when granting the listing gate (2).
+//
+//   3. SHIP-FROM-STOCK, the opposite business.
+//      `StorageMode.ON_DEMAND` (schema.prisma:9256) + `PartnerService.onDemandEnabled`.
+//      "The partner picks/packs a parcel out of stock ALREADY MADE and sitting at
+//      their facility." Nothing is produced. The money is pickFeeCents +
+//      packFeeCents, not a production subtotal. Docs: LOGISTICS_AND_FULFILLMENT §4.
+//
+// This file deals in (1)/(3)-adjacent territory, so `FulfillmentOrderType` below
+// spells its make-to-order member MADE_TO_ORDER rather than ON_DEMAND. See
+// docs/ON_DEMAND_DISAMBIGUATION_2026-07-16.md for the full map + rename plan.
 
 export type DestinationType =
   | 'CREATOR_ADDRESS'
@@ -19,12 +46,24 @@ export interface DestinationProductInput {
 
 export interface ManufacturerStorageInput {
   offersStorage: boolean
-  onDemandEnabled: boolean
-  canShipParcel: boolean
   storageClasses: string[]
   maxDwellDays: number | null
   /** Product shelf life (days) if known — HOLD requires shelf life ≥ dwell policy. */
   productShelfLifeDays?: number | null
+  // REMOVED 2026-07-16: `onDemandEnabled` + `canShipParcel`. They were DECLARED
+  // here and read NOWHERE (the HOLD gate below reads only offersStorage,
+  // storageClasses, maxDwellDays, productShelfLifeDays), while two callers loaded
+  // them from the DB and dutifully passed them in.
+  //
+  // Deleting them is the point, not tidiness. "on-demand" means THREE different
+  // things in this codebase (see the header block above), and this file contained
+  // TWO of them 84 lines apart: `onDemandEnabled` (SHIP-from-stock) up here, and
+  // `FulfillmentOrderType`'s make-to-order member down there. A dead field that
+  // READS like HOLD eligibility depends on ship-on-demand capability is exactly
+  // what the next person "wires up" - with a coin-flip chance of wiring the wrong
+  // meaning into a money gate. The real ship-on-demand read lives where it belongs,
+  // in cart-actions.ts (`svc.onDemandEnabled && svc.canShipParcel` gating
+  // StorageAgreement.mode) and in shipping/storage-offering-rules.ts (guard 4).
 }
 
 export interface DestinationContext {
@@ -103,7 +142,15 @@ export function resolveDestinationOptions(ctx: DestinationContext): DestinationO
 // The FC NODE pick (which center) is a separate step: the fc-scorer.
 // ---------------------------------------------------------------------------
 
-export type FulfillmentOrderType = 'BULK' | 'SAMPLE' | 'ON_DEMAND'
+/**
+ * What KIND of order is asking for a destination.
+ *
+ * `MADE_TO_ORDER` was `ON_DEMAND` until 2026-07-16. Renamed because this file also
+ * carried `onDemandEnabled` (SHIP-from-stock, the opposite business) 84 lines above
+ * it, and "on-demand" already names three distinct things in this codebase (header).
+ * TS-only, never persisted, so the rename is free: take the free ones.
+ */
+export type FulfillmentOrderType = 'BULK' | 'SAMPLE' | 'MADE_TO_ORDER'
 
 export interface DestinationRecommendation {
   /** The recommended default type, or null when fulfillment doesn't apply. */

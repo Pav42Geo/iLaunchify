@@ -450,8 +450,6 @@ export async function listDestinationOptions(
     manufacturer: m
       ? {
           offersStorage: m.offersStorage,
-          onDemandEnabled: m.onDemandEnabled,
-          canShipParcel: m.canShipParcel,
           // A gated-off cold class reads as "cannot store this temperature
           // class" — same server-enforced outcome the Pay action reproduces.
           storageClasses: classEnabled

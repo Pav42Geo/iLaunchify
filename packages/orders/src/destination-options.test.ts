@@ -31,7 +31,7 @@ describe('recommendDestination — AFE Level-1 default (order-type gated)', () =
     expect(recommendDestination(all, { orderType: 'SAMPLE' }).type).toBeNull()
   })
   it('on-demand: no fulfillment center (Level-0 gate)', () => {
-    expect(recommendDestination(all, { orderType: 'ON_DEMAND' }).type).toBeNull()
+    expect(recommendDestination(all, { orderType: 'MADE_TO_ORDER' }).type).toBeNull()
   })
   it('no order type given → treated as bulk', () => {
     expect(recommendDestination(all).type).toBe('WAREHOUSE_PARTNER')
@@ -47,8 +47,6 @@ const base: DestinationContext = {
   product: { storageClass: 'AMBIENT', hazmatClass: 'NONE', domain: 'DIETARY_SUPPLEMENT' },
   manufacturer: {
     offersStorage: true,
-    onDemandEnabled: true,
-    canShipParcel: true,
     storageClasses: ['AMBIENT', 'PROTECT_HEAT'],
     maxDwellDays: 180,
     productShelfLifeDays: 720,
