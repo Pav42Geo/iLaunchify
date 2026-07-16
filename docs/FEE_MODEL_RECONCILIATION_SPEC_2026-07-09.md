@@ -184,7 +184,9 @@ Start `warn`, burn to zero, flip to CI `--strict` (matches the existing pattern)
 1. **Fee base.** Today the creator fee base is `productionTotalCents + fcLabelingCents + shippingCents`. The `FeeRule` event is named `production_order_subtotal`, which argues the base should be the **production subtotal only** (exclude shipping, maybe FC labeling). *Recommend: production subtotal (+ FC labeling), exclude shipping.* Confirm — it moves the number.
 2. **Fallback when a creator has no plan rule.** *Recommend: 15% (Maker), never 5%.* Confirm.
 3. **Merit snapshot timing.** Freeze the manufacturer badge at **routing** (recommended) vs **checkout** vs **ship**. Only matters once the engine is enabled. Confirm.
-4. **Merit only eats the manufacturer leg**, not printer/packer/FC — assumed from "eats the manufacturer." Confirm no merit on non-PRODUCT legs.
+4. ~~**Merit only eats the manufacturer leg**, not printer/packer/FC, assumed from "eats the manufacturer." Confirm no merit on non-PRODUCT legs.~~ **CONFIRMED 2026-07-15 (Pavel). No merit on non-PRODUCT legs, by decision.** The reason is now written down: the instrument must match the SELECTION model. Merit prices a *choice*, and the manufacturer is the only leg the creator chooses and pins. A printer is rotated on rating, an FC is selected on fit, and a co-pack leg is auto-derived from the graph, so none of them has a decision for a badge to inform. The gate at `routing.ts:858` is therefore load-bearing and correct: **do not "fix" it.** Merit also moves from `Partner.tier` (org) to `PartnerService.meritTier` (MANUFACTURING only, nullable, null = not judged), because one org badge must not price two crafts. See `docs/SERVICE_SYMMETRY_AND_MERIT_2026-07-15.md` §1-2.
+
+**All four flags in this section are now closed** (#1 fee base = the LOCKED FEE-BASE RULE in CLAUDE.md, 2026-07-15; #2 fallback = 15% Maker; #3 snapshot at routing; #4 above).
 
 ## 7 · Sequencing, safety & two-agent handoff
 

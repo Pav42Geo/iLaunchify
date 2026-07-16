@@ -197,21 +197,105 @@ unless Pavel says otherwise.
 **CP-7 (deferred) - Role skin.** Work-order view, component readiness, lot/COA, quality hold, yield
 (`PARTNER_ROLE_ACCOUNTS.md:44,111-120,219`). D6 put co-pack skins in P2.
 
+**CP-8 - Merit on the co-pack leg. WONTFIX (Pavel 2026-07-15).** A co-pack leg is auto-derived, not chosen, so there is no decision for a badge to inform. See §7.
+
 ---
 
-## §6 Open decisions for Pavel
+## §6 Decisions (ALL DECIDED 2026-07-15, Pavel)
 
-1. **C1: real co-pack pricing, or keep the 7%?** (blocking everything)
-2. **Operation menu vs single blended rate.** The menu is honest and quotes accurately; a single
-   `feeCentsPerUnit` is one column and ships in a day. The menu is recommended, because a variety pack
-   and a single-flavour fill are not the same job and one number cannot price both.
-3. **Does the creator see a co-pack line, or is it folded into one "Production" number?**
-   `PRODUCTION_ORCHESTRATION.md:354` forbids operational nouns in creator copy ("MOQ", "co-packer",
-   "supplier"), and :458 forbids disclosing any graph node's identity. **Recommendation: fold it into
-   Production in the UI, keep it a distinct line in the data.** The fee base needs it itemized; the
-   creator does not need the word "co-packer".
-4. **Changeover: derived or typed?** Prototype derives it from line rate x changeover hours and lets
-   the partner override. Deriving teaches them their own economics; overriding respects that they know
+1. **C1: REAL co-pack pricing.** DECIDED: real, partner-authored. The 7% is a percentage of the
+   *creator's unit price*, which has no relationship to the labour consumed. The prototype's own maths
+   shows why it cannot work: true cost per unit swings **10x** (300 units $0.5333, 90,000 units
+   $0.0532) while a flat 7% of the creator's price tracks none of it. It overpays long runs and starves
+   short ones. Worse, it **fights the orchestration thesis**: the MOQ-decomposition play
+   (`PRODUCTION_ORCHESTRATION.md:131`) needs co-packers to accept exactly the short, changeover-heavy
+   variety runs that 7% of a small order cannot fund, so a rational co-packer declines them. And
+   because it is not a real price, nothing downstream can exist: no merit withhold (you cannot withhold
+   a percentage of a fiction), no fee-base line, no quote. This closes `MULTI_COMPONENT_DISPATCH.md` C1.
+2. **Operation menu, not a single blended rate.** DECIDED. A variety pack and a single-flavour fill are
+   not the same job; one number cannot price both.
+3. **Fold into "Production" in the UI, distinct line in the data.** DECIDED.
+   `PRODUCTION_ORCHESTRATION.md:354` forbids operational nouns in creator copy, `:458` forbids
+   disclosing any graph node. The fee base needs it itemized; the creator never needs the word
+   "co-packer". So `PriceLine.kind = 'COPACKING'` exists in `PricingInput.production` and is SUMMED
+   into the Production row for display.
+4. **Changeover: derived, with override.** DECIDED. Derive from line rate x changeover hours, let the
+   partner override. Deriving teaches them their own economics; the override respects that they know
    their business.
-5. **`ServiceType.ACCESSORY` does not exist** but `schema.prisma:854` claims it does. Fix the comment
-   or add the type.
+5. **`ServiceType.ACCESSORY`: fix the comment.** DECIDED (comment, not a new type). Accessories already
+   hang off an existing service via `AccessoryOffering.partnerServiceId`; adding a 5th ServiceType
+   would break `@@unique([partnerId, type])` semantics for no gain. FIXED at `schema.prisma:854`.
+
+## §7 Merit on the co-pack leg (Pavel 2026-07-15)
+
+**The gate is an unconfirmed assumption, not a decision.** `FEE_MODEL_RECONCILIATION_SPEC_2026-07-09.md`
+§6.4, under "Open policy flags (confirm before/while building)": *"Merit only eats the manufacturer
+leg, not printer/packer/FC - **assumed** from 'eats the manufacturer.' **Confirm** no merit on
+non-PRODUCT legs."* Flags #1 (the fee base), #2 and #3 are closed. **#4 was never closed.** The gate at
+`routing.ts:858` (`if (row.type !== 'PRODUCT') return { ...row, meritFeeBps: 0, meritFeeCents: 0 }`) is
+that assumption, coded.
+
+**Nothing structural enforces manufacturer-only.** Verified:
+- `manufacturer-merit-fee.ts:28` takes a bare `serviceId: string | null`. **No type check.** Pass it a
+  COPACKING service id and it resolves that partner's badge.
+- `production-fee-resolver.ts:45` reads `Partner.tier`, which every partner org has. No type filter.
+- `MeritPolicy` (`schema.prisma:1636`) is a **singleton with no service-type scoping**. Fees are keyed
+  by BADGE, and badge is a property of `Partner`, not of a service.
+- `OrderDispatch.meritFeeBps/meritFeeCents` are **per-leg columns that already exist on COPACKING
+  rows** and are simply written 0. `Transfer.meritFeeCents` + `transfer-execute.ts:141` are type-blind.
+- `merit.ts` / `merit-fee.ts` contain **zero** references to MANUFACTURING. Every `MeritSignals` input
+  (rating, on-time, accept rate, defects, orders, months, units, GMV) is meaningful for a co-packer.
+- `PartnerRating.role` already includes `COPACKER` (`schema.prisma:5423`) and feeds the same
+  `ratingBayesian` the craft pillar reads. **The badge's input signal already exists for co-packers.**
+
+**The real reason it was zeroed: there was nothing real to withhold from.** A co-pack leg's cost is
+`Math.floor(total * 0.07)`, a fiction. Withholding 4.5% of a made-up number is meaningless. **That is a
+perfectly good reason in 2026-07 and no reason at all once CP-3 lands a real price.**
+
+**DECIDED 2026-07-15 (Pavel): NO. Merit does NOT apply to the co-pack leg. CP-8 is WONTFIX.**
+The analysis below is retained because it is what produced the decision, and because it records why
+the structural argument ("nothing blocks it") is not the same as a reason to do it.
+
+**The reason, which is now the general rule:** the instrument must match the SELECTION model. Merit
+prices a *choice*, and a co-pack leg is not chosen: it is auto-derived from a CARTON/SHIPPER in the
+graph (`dispatch-planner.ts:137-153`). There is no decision for a badge to inform, so there is nothing
+for merit to do. Co-packers still pay the platform through the creator tier fee once CP-3 puts their
+price in the fee base. See `docs/SERVICE_SYMMETRY_AND_MERIT_2026-07-15.md` §1.
+
+**(Superseded analysis follows.)** Merit COULD apply structurally, but was BLOCKED on service-scoped
+standing:
+
+`Partner.tier` is **ORG-level, one column** (`schema.prisma:1027`), shared across all four of that
+org's services. And the merit sweep only ever scores manufacturing:
+- `apps/admin/src/lib/merit-worker.ts:90` sweeps `where: { type: 'MANUFACTURING' }` and writes
+  org-level (`:186` updates `Partner.tier`).
+- `packages/orders/src/merit-signals.ts:45` counts `type: 'PRODUCT'` dispatches only.
+- `apps/partner/.../standing/data.ts:126` filters `type: 'MANUFACTURING'`, justified by the comment
+  "the sweep filters MANUFACTURING" - **the code cites the other code. Nobody cites a decision.**
+
+So today a co-packer-only partner reads `VERIFIED` forever: not judged, never computed. **Un-gating
+`routing.ts:858` right now would charge co-packers 4.5% on a badge earned entirely on manufacturing
+work (or on no work at all).** That is the actual blocker, and it is a good one.
+
+**Good news:** `PartnerMeritSnapshot` is **already keyed by `partnerServiceId`** (`schema.prisma:1711`;
+its "soft FK -> MANUFACTURING" is a comment, not a constraint). The snapshot layer can already express
+per-service standing. Only the assignment target (`Partner.tier`) cannot.
+
+**Sequence (CP-8, after CP-3):**
+1. CP-3 lands a real co-pack price (nothing below is meaningful before this).
+2. Merit sweep scores COPACKING dispatches: widen `merit-worker.ts:90` and `merit-signals.ts:45`.
+3. Service-scoped standing: the badge must live per-service, not per-org. `PartnerMeritSnapshot`
+   already is; the write target is not. **This is the one schema decision.**
+4. THEN delete `if (row.type !== 'PRODUCT')` (one line) and let the resolver run on
+   `row.partnerServiceId`. It already accepts any service id.
+5. Rename the surfaces: "Manufacturer standing" (`merit/page.tsx:15`) becomes partner standing.
+
+**The open product question, which is Pavel's, not architecture's:** should ONE org-level badge price
+TWO crafts? A Premier manufacturer who is a mediocre co-packer would get 0% on both. Recommendation:
+**per-service standing.** Craft is service-specific, the snapshot table already assumes it, and a
+partner running all four services is exactly the case the tier model must not smear.
+
+Note the ladder itself (4.5/2.5/0) was tuned to manufacturer economics
+(`MANUFACTURER_MERIT_ENGINE.md:249` benchmarks Printify). Whether it is right for a fill-and-close
+operation is untested and should be a separate `MeritPolicy` band, which the singleton cannot express
+today.

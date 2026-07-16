@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Partner: Manufacturing Service Builder (Prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;--pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;
+  --neon-500:#B5FF3D;--neon-600:#9EE61F;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;--ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-500:#B45309;--warning-700:#7C360A;
+  --danger-50:#FBE8E7;--danger-100:#F6C9C7;--danger-500:#C2362F;--danger-700:#87211E;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-500:#1F5BA8;--info-700:#163E72;
+  --bg-hero:#FFFFFF;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;--font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);--shadow-lg:0 12px 28px rgba(24,24,26,.12);
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font-family:inherit}
+button{cursor:pointer;border:none;background:none}
+.disp{font-family:var(--font-display)}
+.shell{max-width:1180px;margin:0 auto;padding:18px 18px 120px}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:16px;position:sticky;top:10px;z-index:80}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:15px}
+.brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800}
+.brand small{font-weight:500;color:var(--ink-500);font-size:12px}
+.saved{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-500);font-weight:500}
+.saved .dot{width:7px;height:7px;border-radius:50%;background:var(--success-500)}
+
+/* stepper */
+.stepper{display:flex;gap:0;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-2xl);padding:6px;margin-bottom:16px;overflow-x:auto}
+.stp{flex:1;min-width:150px;text-align:left;padding:10px 12px;border-radius:var(--r-lg);transition:all .18s var(--ease);position:relative}
+.stp .n{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400)}
+.stp .n i{width:18px;height:18px;border-radius:50%;background:var(--ink-100);color:var(--ink-500);display:grid;place-items:center;font-size:10px;font-style:normal;font-weight:700;flex:none}
+.stp .t{font-weight:700;font-size:13.5px;margin-top:5px;color:var(--ink-700)}
+.stp .d{font-size:11.5px;color:var(--ink-400);margin-top:1px}
+.stp:hover{background:var(--ink-50)}
+.stp.on{background:var(--ink-900)}
+.stp.on .t{color:#fff}.stp.on .d{color:var(--ink-400)}.stp.on .n{color:var(--pink-300)}
+.stp.on .n i{background:var(--pink-500);color:#fff}
+.stp.done .n i{background:var(--success-500);color:#fff}
+
+/* hero */
+.hero{background:var(--bg-hero);border:1px solid var(--ink-200);border-radius:var(--r-2xl);padding:20px 22px;margin-bottom:14px}
+.hero .ey{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--pink-700)}
+.hero h1{font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:-.02em;margin-top:5px}
+.hero p{color:var(--ink-500);font-size:13.5px;margin-top:4px;max-width:780px}
+
+.view{display:none;animation:fade .3s var(--ease)}
+.view.show{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:none;transform:none}}
+
+/* cards */
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:18px 20px;margin-bottom:12px}
+.card h2{font-family:var(--font-display);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h2 .tag{font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:var(--r-pill);background:var(--pink-50);color:var(--pink-700)}
+.card h2 .tag.new{background:var(--neon-500);color:var(--ink-900)}
+.card > p.sub{color:var(--ink-500);font-size:12.5px;margin-top:3px;margin-bottom:14px;max-width:760px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.f{display:block}
+.f label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-600);margin-bottom:5px}
+.f input,.f select{width:100%;height:38px;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:0 11px;font-size:13.5px;color:var(--ink-900);background:#fff}
+.f input:focus,.f select:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.14)}
+.f .hint{font-size:11.5px;color:var(--ink-400);margin-top:4px}
+.row{display:flex;gap:10px;align-items:flex-end}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1px solid var(--ink-300);background:#fff;border-radius:var(--r-pill);padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--ink-600);transition:all .15s}
+.chip:hover{border-color:var(--ink-400)}
+.chip.on{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+.chip.on.pk{background:var(--pink-500);border-color:var(--pink-500)}
+.chip.dis{opacity:.4;cursor:not-allowed;text-decoration:line-through}
+
+/* press cards */
+.press{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:10px;background:var(--ink-50)}
+.press.on{background:#fff;border-color:var(--pink-200);box-shadow:0 0 0 3px rgba(255,46,99,.07)}
+.press-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.press-h .nm{font-weight:700;font-size:14px;font-family:var(--font-display)}
+.press-h .bd{font-size:11.5px;color:var(--ink-500);font-weight:600;background:#fff;border:1px solid var(--ink-200);padding:2px 8px;border-radius:var(--r-pill)}
+.press-h .rm{margin-left:auto;font-size:11.5px;color:var(--danger-500);font-weight:600}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-500);padding:8px 8px 8px 0;border-bottom:1px solid var(--ink-200)}
+td{padding:9px 8px 9px 0;border-bottom:1px solid var(--ink-100);vertical-align:middle}
+td input{height:34px;border:1px solid var(--ink-300);border-radius:var(--r-sm);padding:0 8px;font-size:13px;width:100%}
+td input:focus{outline:none;border-color:var(--pink-500)}
+tr:last-child td{border-bottom:none}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:13px;border-radius:var(--r-pill);padding:0 16px;height:38px;transition:all .16s}
+.btn.sm{height:32px;font-size:12px;padding:0 12px}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{background:#000}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn-out:hover{background:var(--ink-50)}
+.btn-ghost{color:var(--ink-600)}.btn-ghost:hover{background:var(--ink-100)}
+
+/* callouts */
+.callout{border-radius:var(--r-lg);padding:12px 14px;font-size:12.5px;line-height:1.6;display:flex;gap:10px;margin-top:12px}
+.callout .ic{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.co-info{background:var(--info-50);border:1px solid var(--info-100);color:var(--info-700)}.co-info .ic{background:var(--info-500)}
+.co-warn{background:var(--warning-50);border:1px solid var(--warning-100);color:var(--warning-700)}.co-warn .ic{background:var(--warning-500)}
+.co-ok{background:var(--success-50);border:1px solid var(--success-100);color:var(--success-700)}.co-ok .ic{background:var(--success-500)}
+
+/* simulator */
+.sim{background:var(--ink-900);border-radius:var(--r-xl);padding:20px;color:#fff}
+.sim h3{font-family:var(--font-display);font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sim h3 .lz{background:var(--neon-500);color:var(--ink-900);font-family:var(--font-sans);font-size:10px;font-weight:800;padding:2px 7px;border-radius:var(--r-pill);letter-spacing:.04em}
+.sim p{color:var(--ink-400);font-size:12.5px;margin-top:3px}
+.sim-ctl{display:flex;gap:12px;align-items:flex-end;margin:14px 0}
+.sim-ctl label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-400);margin-bottom:5px}
+.sim-ctl input{height:38px;border-radius:var(--r-md);border:1px solid var(--ink-700);background:var(--ink-800);color:#fff;padding:0 11px;font-size:14px;font-weight:600;width:130px}
+.sim-ctl input:focus{outline:none;border-color:var(--neon-500)}
+.sim-out{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.so{background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:12px 14px}
+.so.win{border-color:var(--neon-500);background:rgba(181,255,61,.09)}
+.so.out{opacity:.45}
+.so .p{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-400);display:flex;align-items:center;gap:6px}
+.so.win .p{color:var(--neon-500)}
+.so .v{font-family:var(--font-display);font-size:20px;font-weight:800;margin-top:5px}
+.so .u{font-size:11.5px;color:var(--ink-400);margin-top:2px}
+.so .why{font-size:11px;color:var(--warning-500);margin-top:5px;font-weight:600}
+.xover{margin-top:12px;background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:11px 14px;font-size:12.5px;color:var(--ink-300)}
+.xover b{color:var(--neon-500)}
+.chart{margin-top:12px;background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:10px}
+
+/* review */
+.checks .ck{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--ink-100)}
+.checks .ck:last-child{border-bottom:none}
+.checks .bx{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.bx.ok{background:var(--success-500)}.bx.no{background:var(--ink-300)}
+.checks .lb{font-weight:600;font-size:13.5px}
+.checks .hp{font-size:11.5px;color:var(--ink-500)}
+.checks .go{margin-left:auto}
+
+/* footer */
+.foot{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-top:1px solid var(--ink-200);padding:12px 0;z-index:90}
+.foot-in{max-width:1180px;margin:0 auto;padding:0 18px;display:flex;align-items:center;gap:12px}
+.foot .pg{font-size:12.5px;color:var(--ink-500);font-weight:600}
+.foot .sp{margin-left:auto;display:flex;gap:8px}
+.note{font-size:12px;color:var(--ink-500);padding:0 4px;margin-bottom:14px;line-height:1.6}
+.note b{color:var(--ink-700)}
+
+/* manufacturing additions */
+.batch{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:10px;background:var(--ink-50)}
+.batch.on{background:#fff;border-color:var(--pink-200);box-shadow:0 0 0 3px rgba(255,46,99,.07)}
+.batch-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.batch-h .nm{font-weight:700;font-size:14px;font-family:var(--font-display)}
+.batch-h .meta{margin-left:auto;font-size:11.5px;color:var(--ink-500);font-weight:600}
+.tog{width:38px;height:22px;border-radius:var(--r-pill);background:var(--ink-300);position:relative;transition:.18s;flex:none;display:inline-block}
+.tog.on{background:var(--pink-500)}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.18s}
+.tog.on::after{transform:translateX(16px)}
+.lat{display:flex;gap:4px;margin-top:12px;flex-wrap:wrap}
+.lat i{font-style:normal;font-size:10.5px;font-weight:700;padding:4px 8px;border-radius:var(--r-pill);background:var(--ink-800);color:var(--ink-400);border:1px solid var(--ink-700)}
+.lat i.hit{background:var(--neon-500);color:var(--ink-900);border-color:var(--neon-500)}
+.lat i.over{background:var(--warning-500);color:#fff;border-color:var(--warning-500)}
+.sim-out.three{grid-template-columns:1fr 1fr 1fr}
+.dflt{display:grid;grid-template-columns:1fr 120px 1fr;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--ink-100)}
+.dflt:last-child{border-bottom:none}
+.dflt .dn{font-weight:600;font-size:13px}
+.dflt .dd{font-size:11.5px;color:var(--ink-400);margin-top:2px}
+.dflt input{height:34px;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:0 9px;font-size:13px;width:100%;background:#fff}
+.dflt input:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.14)}
+.dflt .fl{font-size:11.5px;color:var(--ink-500)}
+.badge-c{display:flex;align-items:center;gap:14px;background:var(--ink-900);border-radius:var(--r-xl);padding:18px 20px}
+.badge-c .bg{width:56px;height:56px;border-radius:50%;background:var(--neon-500);display:grid;place-items:center;font-size:22px;flex:none}
+.badge-c .bt{font-family:var(--font-display);font-weight:800;font-size:18px;color:#fff}
+.badge-c .bs{font-size:12.5px;color:var(--ink-400);margin-top:2px;max-width:560px;line-height:1.5}
+.badge-c .bf{margin-left:auto;text-align:right;flex:none}
+.badge-c .bf .v{font-family:var(--font-display);font-weight:800;font-size:26px;color:var(--neon-500)}
+.badge-c .bf .l{font-size:10.5px;color:var(--ink-400);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.svc{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.svc-c{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px;background:#fff;text-align:center}
+.svc-c.on{border-color:var(--pink-300);background:var(--pink-50)}
+.svc-c .ic{font-size:18px}
+.svc-c .t{font-weight:700;font-size:12.5px;margin-top:5px;font-family:var(--font-display)}
+.svc-c .s{font-size:10.5px;color:var(--ink-500);margin-top:3px;line-height:1.4}
+.svc-c .b{margin-top:7px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:var(--r-pill);display:inline-block}
+.b.yes{background:var(--success-50);color:var(--success-700)}
+.b.no{background:var(--ink-100);color:var(--ink-500)}
+.b.merit{background:var(--neon-500);color:var(--ink-900)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="bar">
+    <div class="brand"><span class="sq">iL</span> iLaunchify <small>· Partner</small></div>
+    <div class="saved"><span class="dot"></span> Draft saved 9s ago</div>
+  </div>
+
+  <div class="stepper" id="stepper">
+    <button class="stp on" data-v="0"><span class="n"><i>1</i> Basics</span><span class="t">Service basics</span><span class="d">Who you are, your floor</span></button>
+    <button class="stp" data-v="1"><span class="n"><i>2</i> Batches</span><span class="t">Your batches</span><span class="d">Where your MOQ comes from</span></button>
+    <button class="stp" data-v="2"><span class="n"><i>3</i> Scope</span><span class="t">What you make</span><span class="d">Categories, formats, fills</span></button>
+    <button class="stp" data-v="3"><span class="n"><i>4</i> Defaults</span><span class="t">Commercial defaults</span><span class="d">What flows into every product</span></button>
+    <button class="stp" data-v="4"><span class="n"><i>5</i> Floors</span><span class="t">Floors &amp; live check</span><span class="d">The lattice, the overrun</span></button>
+    <button class="stp" data-v="5"><span class="n"><i>6</i> Publish</span><span class="t">Review &amp; standing</span><span class="d">Your badge lives here</span></button>
+  </div>
+
+  <!-- ══ 0 · BASICS ══ -->
+  <section class="view show" data-view="0">
+    <div class="hero">
+      <div class="ey">Manufacturing service</div>
+      <h1>Service basics</h1>
+      <p>You make the formula. This builder captures your <b>floor</b> and your <b>defaults</b>, not your prices: a formula's price is product-specific, so it belongs on the product. Everything here flows into every product you build, so you set it once instead of retyping it into each one.</p>
+    </div>
+
+    <div class="note">
+      <b>How this differs from the print and co-pack builders, on purpose.</b> A printer sells a piece, so they price a curve. A co-packer sells operations, so they price a menu. <b>You sell a formula</b>, and no two formulas cost the same, so your prices live on your products. What lives HERE is what every product inherits: your batch physics, your hard filters, your commercial defaults, and your standing.
+    </div>
+
+    <div class="card">
+      <h2>Identity</h2>
+      <div class="grid2">
+        <div class="f"><label>Service name</label><input value="Cascade Nutrition · Blending &amp; Fill" /><div class="hint">Internal. Creators see your Front Face, not this.</div></div>
+        <div class="f"><label>Facility</label><select><option>Vancouver, WA · 140,000 sq ft</option><option>+ Add a facility</option></select></div>
+      </div>
+      <div class="grid3" style="margin-top:14px">
+        <div class="f"><label>Lead time, stock formula (days)</label><input type="number" value="18" /></div>
+        <div class="f"><label>Lead time, custom formula (days)</label><input type="number" value="45" /><div class="hint">Includes R&amp;D + first-article.</div></div>
+        <div class="f"><label>Minimum order value</label><input id="mov" value="$2,500" /><div class="hint">Binds even when the unit count clears every MOQ.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 1 · BATCHES ══ -->
+  <section class="view" data-view="1">
+    <div class="hero">
+      <div class="ey">Step 2</div>
+      <h1>Your batches</h1>
+      <p>The batch is the unit of truth on a blending floor, the way a press is in a print shop and a line is on a co-pack floor. <b>You cannot make half a batch.</b> That single fact is where your MOQ comes from, and it is why orders have to land on multiples.</p>
+    </div>
+
+    <div class="note">
+      <b>Do not type an MOQ.</b> Your minimum is not a number you choose, it is a number your kettle chooses. Declare the batch honestly and the floor falls out, along with the <b>lattice</b>: the multiples an order must land on. Type a round number instead and you will either quote jobs you lose money on, or turn away jobs you could have taken.
+    </div>
+
+    <div class="card">
+      <h2>Batch configurations <span class="tag">2 active</span></h2>
+
+      <div class="batch on">
+        <div class="batch-h"><span class="tog on"></span><span class="nm">Ribbon blender · 500 kg</span><span class="meta">powders · dry blend</span></div>
+        <div class="grid3">
+          <div class="f"><label>Units per batch</label><input id="b1_sz" type="number" value="1000" /><div class="hint">500 kg at 500 g/unit.</div></div>
+          <div class="f"><label>Batch time (hours)</label><input id="b1_hr" type="number" value="3" step="0.5" /></div>
+          <div class="f"><label>Loaded rate ($ / hour)</label><input id="b1_rt" value="$310" /></div>
+        </div>
+        <div class="grid3" style="margin-top:12px">
+          <div class="f"><label>Changeover (hours)</label><input id="b1_co" type="number" value="2.5" step="0.5" /><div class="hint">Full wet clean between formulas.</div></div>
+          <div class="f"><label>Max batches / run</label><input id="b1_mx" type="number" value="40" /></div>
+          <div class="f"><label>Allergen segregation</label><select><option>Segregated · nut-free</option><option>Shared, validated clean</option><option>Dedicated suite</option></select></div>
+        </div>
+      </div>
+
+      <div class="batch on">
+        <div class="batch-h"><span class="tog on"></span><span class="nm">Pilot blender · 50 kg</span><span class="meta">sampling · first-article</span></div>
+        <div class="grid3">
+          <div class="f"><label>Units per batch</label><input id="b2_sz" type="number" value="100" /></div>
+          <div class="f"><label>Batch time (hours)</label><input id="b2_hr" type="number" value="1.5" step="0.5" /></div>
+          <div class="f"><label>Loaded rate ($ / hour)</label><input id="b2_rt" value="$240" /></div>
+        </div>
+        <div class="grid3" style="margin-top:12px">
+          <div class="f"><label>Changeover (hours)</label><input id="b2_co" type="number" value="1" step="0.5" /></div>
+          <div class="f"><label>Max batches / run</label><input id="b2_mx" type="number" value="6" /></div>
+          <div class="f"><label>Allergen segregation</label><select><option>Shared, validated clean</option><option>Segregated · nut-free</option></select></div>
+        </div>
+      </div>
+
+      <button class="btn gh" style="margin-top:4px">+ Add a batch configuration</button>
+    </div>
+  </section>
+
+  <!-- ══ 2 · SCOPE ══ -->
+  <section class="view" data-view="2">
+    <div class="hero">
+      <div class="ey">Step 3</div>
+      <h1>What you make</h1>
+      <p>Hard filters. Routing will never send you a formula you cannot run, and a creator will never see you for one. Say no freely: a narrow honest scope wins more work than a wide hopeful one.</p>
+    </div>
+
+    <div class="card">
+      <h2>Categories</h2>
+      <p class="sub">The regulated domains you are set up for. Each carries its own label law.</p>
+      <div class="chips">
+        <button class="chip on pk">Food</button><button class="chip on pk">Supplement</button>
+        <button class="chip on pk">Functional beverage</button><button class="chip">Pet</button><button class="chip">Cosmetic</button>
+      </div>
+      <h2 style="margin-top:18px">Fill types</h2>
+      <div class="chips">
+        <button class="chip on pk">Powder</button><button class="chip on pk">Dry blend</button><button class="chip on pk">Capsule</button>
+        <button class="chip on pk">Tablet</button><button class="chip">Softgel</button><button class="chip">Liquid · thin</button><button class="chip">Gummy</button>
+      </div>
+      <h2 style="margin-top:18px">Container formats</h2>
+      <div class="chips">
+        <button class="chip on pk">Tub</button><button class="chip on pk">Bottle · HDPE</button><button class="chip on pk">Stand-up pouch</button>
+        <button class="chip on pk">Sachet</button><button class="chip">Stick pack</button><button class="chip">Jar · glass</button>
+      </div>
+      <h2 style="margin-top:18px">Certifications</h2>
+      <p class="sub">Admin verifies each one. A false claim here is a platform loss, so they stay pending until proven.</p>
+      <div class="chips">
+        <button class="chip on">cGMP</button><button class="chip on">FDA registered</button><button class="chip on">NSF</button>
+        <button class="chip on">USDA Organic</button><button class="chip">Kosher</button><button class="chip">Halal</button><button class="chip">Non-GMO Project</button>
+      </div>
+    </div>
+  </section>
+  <!-- ══ 3 · DEFAULTS ══ -->
+  <section class="view" data-view="3">
+    <div class="hero">
+      <div class="ey">Step 4</div>
+      <h1>Commercial defaults</h1>
+      <p>Set once here, inherited by every product you build. Override any of them on an individual product when that product genuinely differs. This is the retyping you never have to do again.</p>
+    </div>
+
+    <div class="note">
+      <b>Every line below is partner-set and creator-paid</b>, so it sits inside the production subtotal and carries the platform fee like your unit price does. It is not a side charge, it is not hidden from the creator, and none of it is shaved off your payout. Anything you leave at zero simply is not charged.
+    </div>
+
+    <div class="card">
+      <h2>Defaults inherited by every product <span class="tag new">New</span></h2>
+
+      <div class="dflt"><div><div class="dn">Tooling / first-article</div><div class="dd">One-off per new formula: scale-up, first-article, retains.</div></div>
+        <div><input value="$850" /></div><div class="fl">Charged once, on the first run of a formula.</div></div>
+
+      <div class="dflt"><div><div class="dn">Changeover / setup</div><div class="dd">Per run, whatever the quantity.</div></div>
+        <div><input id="co_fee" value="$775" /></div><div class="fl mono" id="co_derived"></div></div>
+
+      <div class="dflt"><div><div class="dn">R&amp;D / formulation</div><div class="dd">Custom formula development. Quoted, not auto-charged.</div></div>
+        <div><input value="$2,400" /></div><div class="fl">Only on custom-formula products.</div></div>
+
+      <div class="dflt"><div><div class="dn">Rush uplift</div><div class="dd">Applied to the production subtotal.</div></div>
+        <div><input value="18%" /></div><div class="fl">Cuts stock lead time to 9 days. Max 2 rush runs / week.</div></div>
+
+      <div class="dflt"><div><div class="dn">Repeat-run discount</div><div class="dd">Same formula inside 120 days: no re-qualification, no first-article.</div></div>
+        <div><input value="40%" /></div><div class="fl">Applied to changeover, not to units.</div></div>
+
+      <div class="dflt"><div><div class="dn">Overrun policy</div><div class="dd">A batch makes what a batch makes. Who owns the remainder?</div></div>
+        <div><input id="over_pct" value="100%" /></div><div class="fl">Share of overrun units the creator pays for. 100% = they buy the full batch. <b>See step 5.</b></div></div>
+    </div>
+  </section>
+
+  <!-- ══ 4 · FLOORS + LIVE CHECK ══ -->
+  <section class="view" data-view="4">
+    <div class="hero">
+      <div class="ey">Step 5</div>
+      <h1>Floors &amp; live check</h1>
+      <p>Your MOQ and your order lattice are <b>derived</b>, not typed. Here is what they are, and what routing will do with them.</p>
+    </div>
+
+    <div class="card" style="background:var(--ink-900);border-color:var(--ink-800)">
+      <h3 style="font-family:var(--font-display);font-weight:700;font-size:15px;color:#fff">Live check <span style="font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--ink-400);letter-spacing:.04em;text-transform:uppercase;margin-left:6px">what routing will actually do</span></h3>
+      <p style="color:var(--ink-400);font-size:12.5px;margin-top:4px">Type a quantity. This runs the same maths the engine runs.</p>
+
+      <div class="sim-ctl">
+        <div><label>Order quantity (units)</label><input id="q" type="number" value="800" /></div>
+        <div><label>Unit price you quote</label><input id="up" value="$4.20" /></div>
+        <div style="align-self:center;color:var(--ink-400);font-size:12px;padding-bottom:4px">try 60 · 800 · 2,600 · 24,000</div>
+      </div>
+
+      <div class="sim-out three">
+        <div class="so" id="so_1"><div class="p">Ribbon · 1,000/batch</div><div class="v" id="v_1">&mdash;</div><div class="u" id="u_1"></div><div class="why" id="w_1"></div></div>
+        <div class="so" id="so_2"><div class="p">Pilot · 100/batch</div><div class="v" id="v_2">&mdash;</div><div class="u" id="u_2"></div><div class="why" id="w_2"></div></div>
+        <div class="so" id="so_t"><div class="p">Derived floor</div><div class="v" id="v_t">&mdash;</div><div class="u" id="u_t"></div><div class="why" id="w_t"></div></div>
+      </div>
+
+      <div class="xover" id="xo"></div>
+
+      <div class="xover" id="latbox" style="margin-top:12px">
+        <div style="font-weight:700;color:#fff;margin-bottom:5px">Your order lattice</div>
+        <div style="font-size:12px;color:var(--ink-400);margin-bottom:2px">An order can only land on a batch multiple. Green is reachable, amber is what your quantity rounds up to.</div>
+        <div class="lat" id="lat"></div>
+        <div id="latnote" style="margin-top:9px;font-size:12.5px;color:var(--ink-300)"></div>
+      </div>
+
+      <div class="chart"><svg id="chart" viewBox="0 0 700 200" style="width:100%;height:200px"></svg></div>
+    </div>
+  </section>
+
+  <!-- ══ 5 · REVIEW + STANDING ══ -->
+  <section class="view" data-view="5">
+    <div class="hero">
+      <div class="ey">Step 6</div>
+      <h1>Review &amp; standing</h1>
+      <p>What you declared, and the badge it earns.</p>
+    </div>
+
+    <div class="card">
+      <h2>Your standing <span class="tag new">Merit</span></h2>
+      <p class="sub">Your badge is <b>earned, never bought</b>, and it belongs to THIS service: it is manufacturing standing, judged on manufacturing work. It sets the merit fee withheld from your payout.</p>
+      <div class="badge-c">
+        <div class="bg">&#9733;</div>
+        <div>
+          <div class="bt">Trusted</div>
+          <div class="bs">Judged on your PRODUCT legs only: rating, on-time rate, accept rate, defects per 100, months active. Sustain 30 days above the Premier threshold and the fee goes to zero.</div>
+        </div>
+        <div class="bf"><div class="v">2.5%</div><div class="l">merit fee</div></div>
+      </div>
+      <div class="note" style="margin-top:14px;margin-bottom:0">
+        <b>Merit is a manufacturing instrument, and only a manufacturing instrument.</b> It judges the leg where the creator picked you and pinned you. Your other services are not judged by it and never will be, because they are not chosen the same way: a printer is rotated on rating, a fulfillment center is selected on fit, a co-pack leg is derived from the graph. Each service earns its work by the rule that matches how it is chosen. You will not see a co-packing badge here, and that is deliberate.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Completeness</h2>
+      <div class="checks">
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">Batch physics declared</span><br /><span class="hp">2 configurations. Your MOQ and lattice derive from them.</span></span></div>
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">Scope is a hard filter</span><br /><span class="hp">3 categories · 4 fills · 4 formats. Formulas outside this never reach you.</span></span></div>
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">Commercial defaults set</span><br /><span class="hp">Tooling, changeover, rush, repeat-run, overrun. Every new product inherits them.</span></span></div>
+        <div class="ck"><span class="bx no">!</span><span><span class="lb">4 certifications pending verification</span><br /><span class="hp">cGMP, FDA, NSF, USDA Organic claimed. They stay unfilterable until admin verifies the evidence.</span><span class="go"><button class="btn gh sm">Upload</button></span></span></div>
+        <div class="ck"><span class="bx no">!</span><span><span class="lb">No products published</span><br /><span class="hp">Defaults inherit into products, but the price lives on the product. Build one.</span><span class="go"><button class="btn pk sm">New product</button></span></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>You also run <span class="tag">Service composition</span></h2>
+      <p class="sub">One login, one company, separate services. Each is chosen by a different rule, so each is judged by a different instrument.</p>
+      <div class="svc">
+        <div class="svc-c on"><div class="ic">&#127981;</div><div class="t">Manufacturing</div><div class="s">Owner-pinned by the creator. Never rotated.</div><span class="b merit">Merit · Trusted</span></div>
+        <div class="svc-c on"><div class="ic">&#128230;</div><div class="t">Co-packing</div><div class="s">Legs auto-derived from the graph. Nothing to select, so nothing to rank.</div><span class="b no">Not judged</span></div>
+        <div class="svc-c on"><div class="ic">&#128438;</div><div class="t">Label printing</div><div class="s">Prints your own routed jobs. Excluded from the public pool because you manufacture.</div><span class="b no">Rating only</span></div>
+        <div class="svc-c"><div class="ic">&#127970;</div><div class="t">Warehouse</div><div class="s">Selected per order by fit: temp class, location, capacity.</div><span class="b no">Not offered</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="foot"><div class="foot-in">
+  <span class="pg" id="pg">Step 1 of 6</span>
+  <div class="sp"><button class="btn gh" id="back">Back</button><button class="btn pk" id="next">Continue</button></div>
+</div></div>
+<script>
+const $=id=>document.getElementById(id);
+const num=el=>parseFloat((typeof el==='string'?$(el).value:el.value).replace(/[^0-9.]/g,''))||0;
+
+let v=0;
+const views=[...document.querySelectorAll('.view')], stps=[...document.querySelectorAll('.stp')];
+function paint(){
+  views.forEach((s,i)=>s.classList.toggle('show',i===v));
+  stps.forEach((s,i)=>{s.classList.toggle('on',i===v);s.classList.toggle('done',i<v)});
+  $('pg').textContent=`Step ${v+1} of ${views.length}`;
+  $('next').textContent=v===views.length-1?'Publish service':'Continue';
+  $('back').style.visibility=v===0?'hidden':'visible';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+stps.forEach((s,i)=>s.addEventListener('click',()=>{v=i;paint()}));
+$('next').addEventListener('click',()=>{if(v<views.length-1){v++;paint()}});
+$('back').addEventListener('click',()=>{if(v>0){v--;paint()}});
+document.querySelectorAll('.tog').forEach(t=>t.addEventListener('click',()=>{
+  t.classList.toggle('on');
+  const b=t.closest('.batch'); if(b) b.classList.toggle('on',t.classList.contains('on'));
+  recalc();
+}));
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+  c.classList.toggle('on'); c.classList.toggle('pk',c.classList.contains('on'));
+}));
+
+/* ── the maths ───────────────────────────────────────────────────────────────
+   You cannot make half a batch. So:
+     batches  = ceil(qty / batchSize)          <- integer, always rounds UP
+     produced = batches x batchSize            <- what the kettle actually makes
+     overrun  = produced - qty                 <- the remainder somebody owns
+     cost     = batches x (changeover + batchHours) x rate
+   MOQ is therefore NOT a number the partner picks: it is batchSize (one batch),
+   and the LATTICE is every multiple of it. This is the same shape as the print
+   builder's incrementQty (CIP4 @Amount = "the increment AND the order lattice"). */
+function bat(sz,hr,rt,co,mx){return{sz:num(sz),hr:num(hr),rt:num(rt)*100,co:num(co),mx:num(mx)}}
+function run(B,q){
+  if(B.sz<=0) return null;
+  const batches=Math.ceil(q/B.sz);
+  if(batches<1||batches>B.mx) return null;
+  const produced=batches*B.sz;
+  const cost=batches*(B.co+B.hr)*B.rt;
+  return {batches,produced,overrun:produced-q,cost};
+}
+const fmt=c=>'$'+(c/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const f0=c=>'$'+Math.round(c/100).toLocaleString();
+
+function recalc(){
+  const B1=bat('b1_sz','b1_hr','b1_rt','b1_co','b1_mx'), B2=bat('b2_sz','b2_hr','b2_rt','b2_co','b2_mx');
+  const on1=document.querySelectorAll('.batch')[0].classList.contains('on');
+  const on2=document.querySelectorAll('.batch')[1].classList.contains('on');
+  $('co_derived').textContent=`Ribbon: ${B1.co}h changeover x ${fmt(B1.rt)}/h = ${fmt(B1.co*B1.rt)}`;
+
+  const q=parseInt($('q').value)||0, unit=num('up')*100, overPct=num('over_pct')/100;
+  const r1=on1?run(B1,q):null, r2=on2?run(B2,q):null;
+
+  const show=(k,B,r)=>{
+    if(!r){ $('v_'+k).innerHTML='&mdash;'; $('u_'+k).textContent='';
+      $('w_'+k).textContent = B.sz<=0?'no batch size':`needs more than its ${B.mx}-batch ceiling`;
+      $('so_'+k).className='so out'; return; }
+    $('v_'+k).textContent=f0(r.cost);
+    $('u_'+k).textContent=`${r.batches} batch${r.batches>1?'es':''} -> ${r.produced.toLocaleString()} units`;
+    $('w_'+k).textContent=r.overrun>0?`${r.overrun.toLocaleString()} units of overrun`:'';
+    $('so_'+k).className='so';
+  };
+  show('1',B1,r1); show('2',B2,r2);
+
+  /* pick the config that wastes least, then costs least */
+  const cands=[['1',B1,r1],['2',B2,r2]].filter(c=>c[2]);
+  cands.sort((a,b)=> (a[2].overrun-b[2].overrun) || (a[2].cost-b[2].cost));
+  const win=cands[0];
+  if(win) $('so_'+win[0]).className='so win';
+
+  /* the derived floor: the SMALLEST batch you actually run */
+  const sizes=[on1?B1.sz:0, on2?B2.sz:0].filter(s=>s>0);
+  const moq=sizes.length?Math.min(...sizes):0;
+  $('v_t').textContent=moq?moq.toLocaleString():'--';
+  $('u_t').textContent=moq?'units · derived, not typed':'';
+  $('w_t').textContent=moq&&q<moq?`this order is below it`:'';
+  $('so_t').className='so'+(moq&&q>=moq?' win':' out');
+
+  let msg;
+  if(!win) msg='No batch configuration on your floor can make this quantity.';
+  else{
+    const W=win[2], B=win[1];
+    const billed=q+Math.round(W.overrun*overPct);
+    msg=`Your kettle makes <b>${W.produced.toLocaleString()}</b> units in ${W.batches} batch${W.batches>1?'es':''}. `;
+    if(W.overrun>0){
+      msg+=`The order asked for ${q.toLocaleString()}, so <b>${W.overrun.toLocaleString()} units</b> exist that nobody ordered. At your ${Math.round(overPct*100)}% overrun policy the creator is billed for <b>${billed.toLocaleString()}</b> units (${f0(billed*unit)}). `;
+      msg+= overPct>=1 ? `They buy the full batch, which is the industry norm and the honest default: you did not choose to make the extra.` : `You absorb ${(W.overrun-Math.round(W.overrun*overPct)).toLocaleString()} units, ${f0((W.overrun-Math.round(W.overrun*overPct))*unit)} of stock you cannot sell.`;
+    } else msg+=`It lands exactly on a batch multiple, so there is no overrun and nobody argues about the remainder.`;
+  }
+  const mov=num('mov')*100;
+  if(win){ const rev=(q+Math.round(win[2].overrun*overPct))*unit;
+    if(mov>0&&rev<mov) msg+=` <b>This job is under your ${f0(mov)} order-value floor</b>, so routing would not offer it to you.`; }
+  $('xo').innerHTML=msg;
+
+  lattice(win?win[1]:null,q);
+  chart(B1,B2,on1,on2,q);
+}
+
+function lattice(B,q){
+  if(!B||B.sz<=0){$('lat').innerHTML='';$('latnote').textContent='';return}
+  const need=Math.ceil(q/B.sz);
+  let h='';
+  for(let i=1;i<=Math.min(B.mx,10);i++){
+    const u=i*B.sz;
+    const cls = u===q ? 'hit' : (i===need&&u!==q ? 'over' : '');
+    h+=`<i class="${cls}">${u.toLocaleString()}</i>`;
+  }
+  if(B.mx>10) h+=`<i>...</i>`;
+  $('lat').innerHTML=h;
+  const snapped=need*B.sz;
+  $('latnote').innerHTML = snapped===q
+    ? `<b>${q.toLocaleString()}</b> is already on the lattice. Nothing to round.`
+    : `<b>${q.toLocaleString()}</b> is not on the lattice, so it rounds up to <b>${snapped.toLocaleString()}</b>. Routing should quote the lattice quantity, not the asked quantity: that is the honest number and it is the one your floor will actually produce.`;
+}
+
+function chart(B1,B2,on1,on2,q){
+  const W=700,H=200,PADL=8,PADB=22;
+  const maxQ=Math.max((on1?B1.sz:0)*6, (on2?B2.sz:0)*6, q*1.6, 100);
+  const pu=(B,qq)=>{const r=run(B,qq);return r==null?null:r.cost/qq};
+  const cand=[on1?pu(B1,Math.max(1,Math.round(maxQ*0.02))):null,on2?pu(B2,Math.max(1,Math.round(maxQ*0.02))):null].filter(x=>x!=null);
+  const maxP=(Math.max(...cand)||1);
+  const X=v=>PADL+(v/maxQ)*(W-PADL-10), Y=v=>H-PADB-(Math.min(v,maxP)/maxP)*(H-PADB-16);
+  /* the sawtooth: per-unit cost DROPS across a batch then JUMPS when a new batch opens */
+  const saw=(B,col)=>{const a=[];for(let i=1;i<=240;i++){const qq=Math.round((i/240)*maxQ);if(qq<1)continue;const pv=pu(B,qq);if(pv!=null)a.push(`${a.length?'L':'M'}${X(qq).toFixed(1)},${Y(pv).toFixed(1)}`)}return a.length?`<path d="${a.join(' ')}" fill="none" stroke="${col}" stroke-width="2"/>`:''};
+  let marks='';
+  if(on1) for(let i=1;i*B1.sz<=maxQ&&i<=10;i++) marks+=`<line x1="${X(i*B1.sz)}" y1="16" x2="${X(i*B1.sz)}" y2="${H-PADB}" stroke="#33343C" stroke-width="1" stroke-dasharray="2 4"/>`;
+  if(q>0&&q<maxQ) marks+=`<line x1="${X(q)}" y1="14" x2="${X(q)}" y2="${H-PADB}" stroke="#FF2E63" stroke-width="1.5"/><text x="${X(q)+6}" y="${H-PADB-6}" fill="#FF7FA8" font-size="10" font-weight="700">your qty</text>`;
+  $('chart').innerHTML=`<rect width="${W}" height="${H}" fill="none"/>
+    <line x1="${PADL}" y1="${H-PADB}" x2="${W-10}" y2="${H-PADB}" stroke="#33343C"/>
+    ${marks}${on1?saw(B1,'#7FB3FF'):''}${on2?saw(B2,'#FFB3CC'):''}
+    <text x="${PADL}" y="${H-6}" fill="#6B6D78" font-size="10">0</text>
+    <text x="${W-56}" y="${H-6}" fill="#6B6D78" font-size="10">${Math.round(maxQ).toLocaleString()} units</text>
+    <text x="${PADL+4}" y="24" fill="#6B6D78" font-size="10">cost / unit &#8212; note the sawtooth: it JUMPS each time a new batch opens</text>
+    <text x="${W-170}" y="42" fill="#7FB3FF" font-size="10" font-weight="700">&#9644; ribbon</text>
+    <text x="${W-96}" y="42" fill="#FFB3CC" font-size="10" font-weight="700">&#9644; pilot</text>`;
+}
+
+['q','up','over_pct','mov','b1_sz','b1_hr','b1_rt','b1_co','b1_mx','b2_sz','b2_hr','b2_rt','b2_co','b2_mx']
+  .forEach(id=>$(id).addEventListener('input',recalc));
+paint();recalc();
+</script>
+</body>
+</html>

@@ -851,8 +851,17 @@ enum SubscriptionTier {
 // "Production partner tiers". Naming locked. Ordered low → high so the
 // same rank-comparison pattern (hasTier()) works for partner gates.
 // Applies to every PartnerService.type (MANUFACTURING / LABEL_PRINTING /
-// COPACKING / WAREHOUSE / ACCESSORY) — the ladder is uniform; the
-// per-type promotion criteria differ and are encoded outside the enum.
+// COPACKING / WAREHOUSE): the ladder is uniform; the per-type promotion
+// criteria differ and are encoded outside the enum.
+// NOT a ServiceType: ACCESSORY (fixed 2026-07-15, Pavel decision 5). Accessories
+// hang off an EXISTING service via AccessoryOffering.partnerServiceId; a 5th
+// ServiceType would break @@unique([partnerId, type]) semantics for no gain.
+// REALITY CHECK (2026-07-15): "applies to every type" is the INTENT, not the
+// behavior. tier lives on Partner (the ORG, one column), and the merit sweep
+// only scores MANUFACTURING (admin/src/lib/merit-worker.ts:90) off PRODUCT
+// dispatches (orders/src/merit-signals.ts:45), so a COPACKING- or
+// WAREHOUSE-only partner reads VERIFIED forever: never judged, never computed.
+// Service-scoped standing is CP-8 (docs/COPACK_SERVICE_SPEC_2026-07-15.md §7).
 enum PartnerTier {
   VERIFIED
   TRUSTED
