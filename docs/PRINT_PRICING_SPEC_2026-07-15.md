@@ -24,6 +24,22 @@ argument for per-process pricing in one interaction. §3.5 is the gap list that 
   force-include may NEVER bypass a hard compliance gate (food-contact). Rotation pool =
   `engine-eligible - admin-blocked + admin-forced`. Matches the locked "admin only subtracts" idiom
   (Partner Access console) and nomination's governed override.
+- **D-P3: the award strategy is an ADMIN FEATURE DECISION, and fairness stays the default.**
+  Whether price influences WHICH eligible printer wins is not hardcoded: admin picks the strategy.
+  **This switch already exists** and needs no new concept: `RotationPolicy.mode`
+  (`RotationMode` enum) is already admin-editable per `(serviceType x context)` at
+  `/routing-rotation`, and already defaults to `EQUAL`:
+  - `EQUAL` = least-recently-awarded round-robin = **fair-share. The default (Pavel 2026-07-15).**
+  - `BEST_ONLY` = rating winner-take-all.
+  - `WEIGHTED_EXACT` / `RANDOM` = exact rank shares / uniform.
+  - **ADD `LOWEST_COST`** (new): cheapest evaluated quote wins. Only meaningful once PP-1 makes
+    prices real, so it ships with/after PP-1 (phase PP-8). Optionally `BEST_VALUE` (rating x price
+    blend) later, if data says the extremes are both wrong.
+  Because the policy is context-scoped, admin can run fair-share for bulk production while trying
+  `LOWEST_COST` on SAMPLE runs (the cheap place to experiment). Rationale for the fairness default:
+  price-blind rotation protects the supply side from a race to the bottom; real print MIS picks the
+  cheapest surviving press, so `LOWEST_COST` is the industry-native behavior and must be AVAILABLE,
+  just not imposed.
 
 ## §1 Current state (traced in code 2026-07-15, this is the problem statement)
 
@@ -311,6 +327,13 @@ architecture.
   `resolveCreatorFeeBps`; estimate-vs-charge pins.
 - **PP-1 (the core):** the pure evaluator + partner curve UI; wire into charge + payout + summary;
   snapshot onto the dispatch. Deletes the 8c anchor and the 8% payout.
+- **PP-6 (tooling + repeats, 3.5.1). MOVED UP, runs with/right after PP-1 (Pavel 2026-07-15):**
+  `dieToolingCents` / `platePerColorCents`, an artwork identity for "same job", a record of tooling
+  already made per (product, printer), and the repeat rule (setup waived/discounted). **Why it cannot
+  wait:** PP-1 makes declared setup real, so shipping PP-1 WITHOUT PP-6 means every reorder re-pays
+  plates that already exist. We would be pricing the stickiest revenue on the platform away, and
+  70%+ of "short runs" are repeats. PP-1 and PP-6 are one economic idea split across two phases;
+  treat PP-6 as PP-1's completion, not a follow-up.
 - **PP-2 (finishes):** `PartnerFinish` partner editor (the write path) + evaluator modes + feed
   §11 filter 9.
 - **PP-3 (floor + quote):** `minOrderValueCents` in the service editor; shortfall reporting;
@@ -318,19 +341,20 @@ architecture.
   evaluator rejection of off-lattice quantities.
 - **PP-4 (surcharges):** wire die-cut surcharge + per-partner substrate cost (override the platform
   cost); editors that today write IDs only.
-- **PP-6 (tooling + repeats, 3.5.1), the highest-value addition:** `dieToolingCents` /
-  `platePerColorCents`, an artwork identity for "same job", a record of tooling already made per
-  (product, printer), and the repeat rule (setup waived/discounted). Do this EARLY: it is where the
-  retention economics live, and 70%+ of "short runs" are repeats.
 - **PP-7 (declaration completeness, 3.5.2-3.5.6, 3.5.8-3.5.9):** `minimumAppliesPer` (DESIGN default);
   finished format (roll/core/rewind, ALSO §11 hard filters); rush (lead/uplift/capacity); prepress
   fees (art-fix / Pantone / hard proof); overs-unders policy; `additionalVersionCents`;
   `effectiveFrom` / `validUntil`. Mostly additive fields + the Service Builder steps that carry them.
+- **PP-8 (award strategy, D-P3):** add `LOWEST_COST` to the `RotationMode` enum + the pure engine +
+  the existing `/routing-rotation` mode dropdown (+ its MODE_HELP copy). NO new admin surface: the
+  policy is already per `(serviceType x context)` and already defaults to `EQUAL`. Ships with/after
+  PP-1 (needs real prices). Keep the new-provider ramp + rating floor ON when it is used.
 - **PP-5 (admin hybrid, D-P2):** `TemplatePrinterOverride` + resolver + hard-gate guard + admin
   panel + audit.
 
 Sequencing note: PP-0 before everything (it is the regression guard). PP-1 depends on PS-9-0's schema
-(`db:push` + backfill). PP-5 depends on §11 PS-9a (there must be an engine-eligible set to override).
+(`db:push` + backfill). **PP-6 rides with PP-1** (above). PP-8 depends on PP-1 (no prices, no
+cheapest). PP-5 depends on §11 PS-9a (there must be an engine-eligible set to override).
 
 ## §8 Risks / open questions
 
@@ -340,11 +364,13 @@ Sequencing note: PP-0 before everything (it is the regression guard). PP-1 depen
 - **Partners must populate curves or nothing prices.** The PS-9-0 backfill seeds one curve per
   offering (`quoteRequired=true` where no tiers exist), so the floor is "quote", never "$0". Watch
   the undeclared-process count from the backfill.
-- **OPEN: does price influence WHICH eligible printer wins?** Today rotation is fair-share by rating
-  and ignores price. Real MIS picks the cheapest surviving press. Options: (a) keep rotation
-  price-blind (fairness), (b) let price break ties inside a band, (c) cheapest-wins. Not decided;
-  affects the marketplace's character (fair-share vs race-to-the-bottom). Recommend (a) for v1 and
-  revisit with data.
+- **RESOLVED (was: does price influence WHICH eligible printer wins?).** See **D-P3**: it is an admin
+  feature decision, not a hardcoded rule. `RotationPolicy.mode` already carries the switch and already
+  defaults to `EQUAL` (fair-share); PP-8 adds `LOWEST_COST`. The marketplace-character question
+  (fair-share vs race to the bottom) therefore becomes a dial admin can turn per context, and can be
+  tried on SAMPLE runs before bulk. Watch for the failure mode: if `LOWEST_COST` is ever switched on
+  globally, the new-provider ramp and rating floor are the only things protecting supply quality, so
+  they must not be disabled at the same time.
 - **Manufacturer parity.** `ProductTemplateFee` (`PER_UNIT | PER_SKU_ONE_TIME | PER_ORDER` +
   `waivedAboveQty`) has a `saveFees` action but NO UI renders it (`build-actions.ts:1436`). The same
   "declared but unreachable" disease. Worth folding into PP-1/PP-2 so both sides of the order price
