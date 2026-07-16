@@ -41,7 +41,7 @@ export type {
   CreatorTierPricing,
 } from './lookups'
 
-// Creator platform-fee SSOT (FEE_MODEL_RECONCILIATION_SPEC_2026-07-09) — the creator
+// Creator platform-fee SSOT (FEE_MODEL_RECONCILIATION_SPEC_2026-07-09): the creator
 // pays their subscription-tier rate (15/12/8%); every charge path resolves it here.
 export {
   resolveCreatorFeeBps,
@@ -64,6 +64,14 @@ export type { PricedOrder, PriceLine, PricingInput } from './order-pricing'
 // Pure: callers pass the PackagingComponent rows they already loaded.
 export { priceComponents, pickTierPriceCents, COMPONENT_PRICING_SELECT } from './component-pricing'
 export type { ComponentRow, ComponentPricing } from './component-pricing'
+
+// PP-0: the DECLARED goods basis, replacing the Math.max reconcile. `resolveGoods`
+// says which number an order prices on; `composeProductionLines` is the single
+// composer, which is what makes "each add-on exactly once" structural rather than
+// asserted. `costFloorBreach` keeps partner COST out of the creator's PRICE: it
+// reports an under-funded order, it never raises the bill.
+export { resolveGoods, composeProductionLines, costFloorBreach } from './goods-basis'
+export type { GoodsBasis, ResolvedGoods, GoodsBasisInput, ProductionComposition } from './goods-basis'
 
 export {
   SUBSCRIPTION_DISCOUNT_LADDER,

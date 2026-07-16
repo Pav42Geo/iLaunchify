@@ -140,13 +140,52 @@ lands on.
 - **Shadow in `placeOrder`:** computes the unified price alongside the live one and logs
   `[PP-0 shadow] ... delta=N (P%) UNDER-charging ...`. **The charge is untouched.**
 
-**THE OPEN QUESTION, to answer from the shadow before flipping:**
-`productionTotalCents` is `Math.max(productionSubtotalCents, dispatchSubtotal, packPricedSubtotalCents)`.
-`packPricedSubtotalCents` comes from the variety-pack per-flavor pricing basis, a DIFFERENT basis. If
-that basis already embeds decoration, folding decoration in would **double-count on pack orders**
-while correctly fixing an undercharge on non-pack orders. The shadow separates the two cases: watch
-whether pack-priced orders report a materially larger delta than non-pack ones. Do not flip until
-that is answered.
+### 2.2 The pack double-count question: ANSWERED (2026-07-15), and the max is gone
+
+**Question:** `productionTotalCents` was `Math.max(costBuildup, dispatchSubtotal, packPricedSubtotal)`.
+If the pack basis already embedded decoration, folding decoration in would double-count on pack orders.
+
+**Answer: it cannot.** Decoration and component upgrades are priced from `PartnerPackagingOffering`
+/ `PackagingComponentVariant`, set by the DECORATOR partner and chosen by the CREATOR per launch. The
+pack price is `ProductTemplateVariant.pricePerPackCents` / `FlavorPreset.unitPriceCents`, authored by
+the MANUFACTURER on the template before any creator picked anything. Different model, different party,
+different time: a template price authored earlier cannot embed a decoration chosen later, and a
+*surcharge* is additive over a base by definition.
+
+**But the max was the real defect,** because it made that question unanswerable by reading the code:
+it maxed three incommensurable numbers (two COST estimates and one list PRICE), so
+`productionTotalCents` had no stable meaning, and partner COST leaked into creator PRICE.
+
+**Replaced by a declared basis (`@ilaunchify/plans` `goods-basis.ts`):**
+
+```
+goods          = isPackOrder ? packPricedSubtotal : (label + packaging) x qty   // resolveGoods
+productionSub  = goods + finishes + decoration + components                     // composeProductionLines
+feeBase        = productionSub + fcLabeling
+```
+
+`composeProductionLines` is the single composer, which is what makes "each add-on exactly once"
+structural rather than asserted. Finishes moved OUT of the buildup and into the add-ons: they are
+creator-picked, so they are basis-independent (non-pack parity is pinned to the cent).
+
+**Two defects the max was hiding, both now fixed / recorded:**
+
+1. **The dispatch arm was DEAD.** `dispatchSubtotal` = 0.38 x (`productionUnitCents` x qty) (30% mfr
+   + 8% printer), while `costBuildup` IS `productionUnitCents` x qty + finishSetup. 38% of X cannot
+   exceed X, so the arm never won for any product with a nonzero unit cost. It only won for a
+   zero-cost product, where it invented a charge from nothing.
+2. **The comment contradicted the code.** It claimed the platform absorbed any gap; the code did
+   `grossTotalCents = productionTotalCents + ...`, so the CREATOR paid the max. Harmless only because
+   the arm was dead. When V1.5 makes dispatch real ("real per-component pricing"), that arm would go
+   live and silently bill creators partner COST instead of the price they agreed to. **Cost and price
+   must never share an expression.** The legitimate kernel (never fund below partner cost) survives as
+   `costFloorBreach`, which REPORTS a shortfall for ops and adds nothing to any total. Pinned.
+
+**SCHEMA LANDMINE (unfixed, worth a cleanup):** four incompatible `pricingTiers` JSON shapes exist for
+the same concept, all untyped Json: `{minQty, perUnitCents}` (PartnerFinish), `{minQty,
+pricePerUnitCents}` (PartnerPackagingOffering), `{quantity, pricePerUnit}` (AccessoryOffering),
+`{minQuantity, unitPriceCents}` (ProductTemplatePackaging). Any one read with a neighbor's key prices
+silently to 0 without throwing.
 
 **REMAINING:** point the PDP + configurator at `computeOrderPricing` (they are still independent), a
 matrix pin asserting `estimate.totalCents === charge.totalCents`, then the flip.

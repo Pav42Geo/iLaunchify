@@ -62,6 +62,9 @@ import {
   creatorFeeCents,
   computeOrderPricing,
   pricingDelta,
+  resolveGoods,
+  composeProductionLines,
+  costFloorBreach,
   priceComponents,
   COMPONENT_PRICING_SELECT,
 } from '@ilaunchify/plans'
@@ -737,12 +740,23 @@ export async function placeOrderFromCheckoutDraft(
   // positive delta = we are UNDER-charging today (dropped lines + the tier fee on
   // them). Fail-soft: shadow math must never break a real order.
   try {
+    // The DECLARED basis, replacing Math.max. A pack order prices on the price the
+    // creator agreed to; a legacy non-pack order prices on the catalog buildup.
+    // Note goods excludes finishes: they are creator-picked, so they are an add-on
+    // under BOTH bases and are composed exactly once below (packPrice never
+    // contains them either, since it is authored per pack SIZE on the template).
+    const shadowGoods = resolveGoods({
+      isPackOrder: packPersist != null,
+      packPricedSubtotalCents,
+      costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
+    })
     const shadow = computeOrderPricing({
-      production: [
-        { kind: 'PRODUCT', label: 'Production', cents: productionTotalCents },
-        { kind: 'DECORATION', label: 'Decoration', cents: shadowDecorationCents },
-        { kind: 'COMPONENTS', label: 'Component upgrades', cents: shadowComponentsCents },
-      ],
+      production: composeProductionLines({
+        goods: shadowGoods,
+        finishesCents: finishUnitCents * qty + finishSetupCents,
+        decorationCents: shadowDecorationCents,
+        componentsCents: shadowComponentsCents,
+      }),
       fcLabelingCents,
       shippingCents,
       taxCents: 0, // not implemented yet (G5); never in the fee base regardless
@@ -753,11 +767,23 @@ export async function placeOrderFromCheckoutDraft(
     if (delta.deltaCents !== 0) {
       console.info(
         `[PP-0 shadow] order=pending creator=${user.id} tier=${creatorTier} ` +
+          `basis=${shadowGoods.basis} goods=${shadowGoods.goodsCents} ` +
           `live=${grossTotalCents} unified=${shadow.totalCents} ` +
           `delta=${delta.deltaCents} (${delta.deltaPct}%) ` +
           `${delta.underCharging ? 'UNDER-charging' : 'over-charging'} ` +
           `decoration=${shadowDecorationCents} components=${shadowComponentsCents} ` +
           `feeBase live=${feeBase} unified=${shadow.feeBaseCents}`,
+      )
+    }
+    // The legitimate kernel of the old max, kept as a REPORT. If a template is
+    // mispriced below partner cost, ops needs to know, but the creator must not be
+    // silently billed a cost they never agreed to. This adds nothing to any total.
+    const breach = costFloorBreach(shadow.productionSubtotalCents, dispatchSubtotal)
+    if (breach) {
+      console.warn(
+        `[PP-0 cost-floor] creator=${user.id} basis=${shadowGoods.basis} ` +
+          `production=${breach.productionSubtotalCents} partnerCost=${breach.partnerCostCents} ` +
+          `shortfall=${breach.shortfallCents} (reported only, charge unaffected)`,
       )
     }
   } catch (err) {
