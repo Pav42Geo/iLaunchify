@@ -52,6 +52,19 @@ export {
 } from './creator-fee'
 export type { CreatorFee, CreatorFeeSource, CreatorTier, FeeRuleBounds } from './creator-fee'
 
+// PP-0: the ONE order-pricing function (docs/PRINT_PRICING_SPEC_2026-07-15.md §2).
+// Every price surface (PDP, configurator, checkout estimate, OrderSummary, placeOrder)
+// must resolve through this, or they diverge again. Encodes the LOCKED fee-base rule:
+// a component is in the base IFF a partner/creator sets its price AND keeps proceeds.
+export { computeOrderPricing, pricingDelta } from './order-pricing'
+export type { PricedOrder, PriceLine, PricingInput } from './order-pricing'
+
+// PP-0: decoration + component-upgrade money. Lives here (not in the checkout
+// route) because it computes FEE-BASE MEMBERS, so it belongs with the fee base.
+// Pure: callers pass the PackagingComponent rows they already loaded.
+export { priceComponents, pickTierPriceCents, COMPONENT_PRICING_SELECT } from './component-pricing'
+export type { ComponentRow, ComponentPricing } from './component-pricing'
+
 export {
   SUBSCRIPTION_DISCOUNT_LADDER,
   getMaxDiscountBp,

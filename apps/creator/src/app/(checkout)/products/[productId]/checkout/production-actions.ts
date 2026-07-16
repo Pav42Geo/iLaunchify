@@ -21,7 +21,13 @@ import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 // PP-0: the ONE platform-fee SSOT (CLAUDE.md fee model). The estimate MUST resolve
 // the fee through the same path the charge does, or the two diverge by tier.
-import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
+import {
+  resolveCreatorFeeBps,
+  resolveCreatorFeeBounds,
+  creatorFeeCents,
+  priceComponents,
+  COMPONENT_PRICING_SELECT,
+} from '@ilaunchify/plans'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -528,46 +534,17 @@ export async function estimateProductionCost(
   // avoid double counting.
   const components = await prisma.packagingComponent.findMany({
     where: { productId: input.productId },
-    select: {
-      id: true,
-      tier: true,
-      role: true,
-      unitsPerParent: true,
-      partnerOfferingId: true,
-      decorationMethod: true,
-      selectedVariant: { select: { baseSurchargePerUnit: true } },
-      partnerOffering: { select: { pricingTiers: true } },
-    },
+    select: COMPONENT_PRICING_SELECT,
   })
 
-  // Pick the priced primary container: PRIMARY tier, CONTAINER role, with an
-  // offering link. (At most one per launch from the picker.)
-  const primaryContainer = components.find(
-    (c) =>
-      c.tier === 'PRIMARY' &&
-      c.role === 'CONTAINER' &&
-      c.partnerOfferingId != null &&
-      c.partnerOffering != null,
+  // PP-0: the decoration + component-surcharge math moved to ./component-pricing
+  // so the REAL charge in cart-actions.ts can run the identical derivation. It
+  // previously lived inline here, in a 'use server' file nothing could import,
+  // which is why the charge path silently omitted both lines.
+  const { decorationMethod, decorationUnitCents, componentsUnitCents } = priceComponents(
+    components,
+    qty,
   )
-
-  let decorationMethod: string | null = null
-  let decorationUnitCents = 0
-  if (primaryContainer?.partnerOffering) {
-    decorationMethod = primaryContainer.decorationMethod ?? null
-    decorationUnitCents = pickTierPriceCents(
-      primaryContainer.partnerOffering.pricingTiers,
-      qty,
-    )
-  }
-
-  let componentsUnitCents = 0
-  for (const c of components) {
-    // Skip the offering-priced primary — its cost is decorationUnitCents.
-    if (primaryContainer && c.id === primaryContainer.id) continue
-    if (!c.selectedVariant) continue
-    const surchargeCents = Math.round(Number(c.selectedVariant.baseSurchargePerUnit) * 100)
-    componentsUnitCents += surchargeCents * (c.unitsPerParent || 1)
-  }
 
   const perUnitCents =
     labelUnitCents +
@@ -608,35 +585,9 @@ export async function estimateProductionCost(
   }
 }
 
-// -----------------------------------------------------------------------------
-// pickTierPriceCents — C8.2 tiered decoration pricing.
-//
-// pricingTiers is a Json column shaped [{minQty, pricePerUnitCents}]. Pick the
-// tier whose minQty is the largest value <= quantity (volume break). Falls back
-// to the lowest tier when the quantity is below every breakpoint. Returns 0
-// when the tiers array is empty / malformed.
-// -----------------------------------------------------------------------------
-
-interface PricingTier {
-  minQty: number
-  pricePerUnitCents: number
-}
-
-function pickTierPriceCents(raw: unknown, quantity: number): number {
-  if (!Array.isArray(raw) || raw.length === 0) return 0
-  const tiers = (raw as PricingTier[])
-    .filter(
-      (t) =>
-        typeof t?.minQty === 'number' &&
-        typeof t?.pricePerUnitCents === 'number',
-    )
-    .sort((a, b) => a.minQty - b.minQty)
-  if (tiers.length === 0) return 0
-  let chosen = tiers[0]!
-  for (const t of tiers) {
-    if (t.minQty <= quantity) chosen = t
-    else break
-  }
-  return chosen.pricePerUnitCents
-}
+// PP-0: pickTierPriceCents + the decoration/component-surcharge math moved to
+// ./component-pricing (see priceComponents), which this file and cart-actions.ts
+// both import, so the estimate and the real charge share ONE copy. It cannot be
+// re-exported from here: 'use server' files may only export async functions,
+// which is precisely what kept the charge path from reusing it before.
 

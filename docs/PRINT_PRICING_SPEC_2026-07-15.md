@@ -118,6 +118,39 @@ divergence cannot recur.
 PP-0 changes NO prices by itself (except where the summary was lying). It is the foundation the rest
 lands on.
 
+### 2.1 PP-0 build status (2026-07-15)
+
+**BUILT (charge unchanged, shadow only):**
+
+- `@ilaunchify/plans` `computeOrderPricing` + `pricingDelta`: the ONE pure pricer. Encodes the LOCKED
+  fee-base rule. Pinned in `order-pricing.test.ts`, incl. an **arbitrage guard** proving a fat SETUP
+  fee inside `production` cannot shrink the take rate.
+- `@ilaunchify/plans` `priceComponents` + `pickTierPriceCents` + `COMPONENT_PRICING_SELECT`: the
+  decoration + component-upgrade derivation, **extracted** from `estimateProductionCost`. It lived
+  inline in a `'use server'` file, so nothing could import it, which is the mechanical reason the
+  charge path omitted both lines rather than disagreeing about them. It now lives with the fee base
+  (it computes fee-base members) and both the estimate and the charge call it. Pinned in
+  `component-pricing.test.ts`.
+- **Fee SSOT collapsed:** `production-actions.ts` + `cart-actions.ts` both resolve via
+  `resolveCreatorFeeBps`. `PlatformFeeConfig.baseRateBp` is out of the estimate path. (Builder/Agency
+  were shown 15% and charged 12%/8%.)
+- **Subscription illusion killed:** `OrderSummary` no longer subtracts a day-1 discount that
+  `placeOrder` never applied. It now reads `Future runs save X% (from run 2)`, which is what the
+  charge actually does.
+- **Shadow in `placeOrder`:** computes the unified price alongside the live one and logs
+  `[PP-0 shadow] ... delta=N (P%) UNDER-charging ...`. **The charge is untouched.**
+
+**THE OPEN QUESTION, to answer from the shadow before flipping:**
+`productionTotalCents` is `Math.max(productionSubtotalCents, dispatchSubtotal, packPricedSubtotalCents)`.
+`packPricedSubtotalCents` comes from the variety-pack per-flavor pricing basis, a DIFFERENT basis. If
+that basis already embeds decoration, folding decoration in would **double-count on pack orders**
+while correctly fixing an undercharge on non-pack orders. The shadow separates the two cases: watch
+whether pack-priced orders report a materially larger delta than non-pack ones. Do not flip until
+that is answered.
+
+**REMAINING:** point the PDP + configurator at `computeOrderPricing` (they are still independent), a
+matrix pin asserting `estimate.totalCents === charge.totalCents`, then the flip.
+
 ## §3 The declaration model (D-P1: what a printer declares)
 
 ### 3.1 Per-process price curves (PS-9-0 schema BUILT, needs UI + evaluator)

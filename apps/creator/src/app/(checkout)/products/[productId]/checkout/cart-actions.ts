@@ -56,7 +56,15 @@ import {
   broadcastCapabilityRequestsForTemplate,
 } from '@ilaunchify/orders'
 import { loadLearnedFulfillmentAdjustment, recordFcOverrideSignal } from './afe-learning'
-import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
+import {
+  resolveCreatorFeeBps,
+  resolveCreatorFeeBounds,
+  creatorFeeCents,
+  computeOrderPricing,
+  pricingDelta,
+  priceComponents,
+  COMPONENT_PRICING_SELECT,
+} from '@ilaunchify/plans'
 import {
   createCheckoutSession,
   createProductionSubscription,
@@ -591,7 +599,7 @@ export async function placeOrderFromCheckoutDraft(
   //        from the typed catalogs (G3 standardisation). Real partner pricing
   //        replaces this when the partner-side editors light up (Phase F2 +
   //        G3.1).
-  const [substrate, packaging, finishApps] = await Promise.all([
+  const [substrate, packaging, finishApps, componentRows] = await Promise.all([
     prisma.substrate.findUnique({ where: { slug: state.production.substrateSlug } }),
     prisma.packagingMaterial.findUnique({
       where: { slug: state.production.packagingMaterialSlug },
@@ -602,6 +610,13 @@ export async function placeOrderFromCheckoutDraft(
           select: { basePriceCents: true, perUnitPriceCents: true },
         })
       : Promise.resolve([] as Array<{ basePriceCents: number; perUnitPriceCents: number }>),
+    // PP-0 shadow: load the rows the estimate prices Decoration + Component
+    // upgrades from. Read-only here — the charge below is unchanged until the
+    // logged delta is reviewed.
+    prisma.packagingComponent.findMany({
+      where: { productId: product.id },
+      select: COMPONENT_PRICING_SELECT,
+    }),
   ])
 
   // Anchor label-printing baseline mirrors estimateProductionCost in the
@@ -616,6 +631,15 @@ export async function placeOrderFromCheckoutDraft(
   }
   const productionUnitCents = labelUnitCents + packagingUnitCents + finishUnitCents
   const productionSubtotalCents = productionUnitCents * qty + finishSetupCents
+
+  // PP-0 shadow inputs: the two lines the charge omits today. Computed via the
+  // SAME helper the estimate uses (./component-pricing), so the delta below is
+  // the real gap and not a reimplementation of it. NOT yet added to
+  // productionUnitCents: that is the flip, and it waits on Pavel reading the delta.
+  const { decorationUnitCents: shadowDecorationUnit, componentsUnitCents: shadowComponentsUnit } =
+    priceComponents(componentRows, qty)
+  const shadowDecorationCents = shadowDecorationUnit * qty
+  const shadowComponentsCents = shadowComponentsUnit * qty
 
   // Cost-basis estimate for partner transfers (@ilaunchify/orders
   // returns a per-dispatch breakdown — V1 reuses to keep the manifest
@@ -701,6 +725,44 @@ export async function placeOrderFromCheckoutDraft(
   const platformFeeCents = creatorFeeCents(feeBase, feeBps, feeBounds)
   const grossTotalCents =
     productionTotalCents + fcLabelingCents + shippingCents + platformFeeCents
+
+  // ─── PP-0 SHADOW (docs/PRINT_PRICING_SPEC_2026-07-15.md §2) ──────────────────
+  // The charge above is UNCHANGED. This computes what the unified pricer WOULD
+  // charge and records the delta, so the impact is measurable before we flip.
+  //
+  // The known gap: `productionUnitCents` (line ~617) omits decorationUnitCents and
+  // componentsUnitCents, which the creator IS shown in OrderSummary. Per the LOCKED
+  // fee-base rule (CLAUDE.md, Pavel 2026-07-15) both are partner-set + creator-paid,
+  // so they belong in the production subtotal AND therefore in the fee base. A
+  // positive delta = we are UNDER-charging today (dropped lines + the tier fee on
+  // them). Fail-soft: shadow math must never break a real order.
+  try {
+    const shadow = computeOrderPricing({
+      production: [
+        { kind: 'PRODUCT', label: 'Production', cents: productionTotalCents },
+        { kind: 'DECORATION', label: 'Decoration', cents: shadowDecorationCents },
+        { kind: 'COMPONENTS', label: 'Component upgrades', cents: shadowComponentsCents },
+      ],
+      fcLabelingCents,
+      shippingCents,
+      taxCents: 0, // not implemented yet (G5); never in the fee base regardless
+      feeBps,
+      feeBounds,
+    })
+    const delta = pricingDelta(shadow, grossTotalCents)
+    if (delta.deltaCents !== 0) {
+      console.info(
+        `[PP-0 shadow] order=pending creator=${user.id} tier=${creatorTier} ` +
+          `live=${grossTotalCents} unified=${shadow.totalCents} ` +
+          `delta=${delta.deltaCents} (${delta.deltaPct}%) ` +
+          `${delta.underCharging ? 'UNDER-charging' : 'over-charging'} ` +
+          `decoration=${shadowDecorationCents} components=${shadowComponentsCents} ` +
+          `feeBase live=${feeBase} unified=${shadow.feeBaseCents}`,
+      )
+    }
+  } catch (err) {
+    console.warn(`[PP-0 shadow] skipped: ${(err as Error).message}`)
+  }
 
   // --- 7b. Sample credit (Pavel 2026-06-10) — a paid sample mints credit toward
   //         the creator's first production order. Decision: platform-funded +
@@ -1545,7 +1607,7 @@ async function resolveShipTo({
         prefProduct?.fulfillmentPreferenceOverride ?? null,
         prefProfile?.fulfillmentPreference ?? null,
       )
-      // AFE P2 — learned tilt on top of the declared preference (shadow-inert
+      // AFE P2: learned tilt on top of the declared preference (shadow-inert
       // unless admin-enabled). MUST mirror fulfillment-actions so shown == paid.
       const learnedAdj = await loadLearnedFulfillmentAdjustment(user.id)
       const selection = scoreAndSelectFc(
