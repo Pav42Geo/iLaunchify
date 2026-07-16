@@ -63,21 +63,25 @@ export function OrderSummary({
   // Step 2, the right-rail surfaces both a savings line and a
   // confirmation readout so the choice stays visible into Step 3.
   const subAccepted = state.subscription?.offerAccepted === true
-  // Per Pavel 2026-05-30 — the subscription savings appears as a
-  // negative line item in the breakdown and the Builder/platform fee
-  // line recalculates against the discounted subtotal. Discount is
-  // basis points (e.g. 800 = 8%), applied to the pre-ship subtotal.
+  // PP-0 (PRINT_PRICING_SPEC §2, Pavel 2026-07-15): the subscription discount
+  // applies to RECURRING RUNS ONLY, never to this day-1 order: placeOrder charges
+  // grossTotalCents undiscounted and applies discountBp to `perRunUnitCents`
+  // (cart-actions.ts "Recurring runs use the GROSS total"). The earlier
+  // 2026-05-30 model showed it as a negative line item against THIS order, which
+  // the charge never implemented, so the creator was shown a discount they did not
+  // get. The discount is REAL, it just starts on run 2. We now say exactly that
+  // and never subtract it from the day-1 total. Supersedes the 2026-05-30 note.
   const subscriptionDiscountBp =
     subAccepted ? state.subscription?.discountBp ?? 0 : 0
-  const subscriptionSavingsCents =
+  // Informational only: what each FUTURE run saves. Never enters this order's math.
+  const subscriptionPerRunSavingsCents =
     hasEstimate && subscriptionDiscountBp > 0
       ? Math.round(
           (estimate.totalBeforeShippingAndTaxCents * subscriptionDiscountBp) /
             10_000,
         )
       : 0
-  const subtotalAfterSavingsCents =
-    (estimate?.totalBeforeShippingAndTaxCents ?? 0) - subscriptionSavingsCents
+  const subtotalAfterSavingsCents = estimate?.totalBeforeShippingAndTaxCents ?? 0
   // PS-3c — FC labeling is billed per PHYSICAL unit (packs × units-per-pack).
   const physicalUnits = qty * (state.production.pack?.unitsPerPack ?? 1)
   const fcLabelingCents =
@@ -168,10 +172,10 @@ export function OrderSummary({
           value={hasEstimate ? formatCents(estimate.platformFeeCents) : '$—.——'}
           dimmed={!hasEstimate}
         />
-        {subAccepted && subscriptionSavingsCents > 0 && (
+        {subAccepted && subscriptionPerRunSavingsCents > 0 && (
           <Row
-            label={`Subscription savings (${(subscriptionDiscountBp / 100).toFixed(0)}%)`}
-            value={`−${formatCents(subscriptionSavingsCents)}`}
+            label={`Future runs save ${(subscriptionDiscountBp / 100).toFixed(0)}% (from run 2)`}
+            value={`${formatCents(subscriptionPerRunSavingsCents)} / run`}
             tone="savings"
           />
         )}
