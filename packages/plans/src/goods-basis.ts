@@ -27,11 +27,25 @@
 
 import type { PricingInput } from './order-pricing'
 
-/** Which number the goods line prices on. Snapshot this onto the order. */
+/**
+ * Which number the goods line prices on. Snapshot this onto the order.
+ *
+ * There are exactly TWO, and both are authored by a partner through the platform.
+ * That is not a coincidence, it is the rule (LOCKED, Pavel 2026-07-16): "kill
+ * hardcoded prices because this is something that we cannot decide as an
+ * operator/admin, that price should be added by any of the co-packers/
+ * manufacturers through the platform when they formulate their price."
+ *
+ * COST_BUILDUP was the third member until 2026-07-16 and it FAILED that rule: it
+ * was `8c + Substrate.baseUnitCostCents + PackagingMaterial.baseUnitCostCents`,
+ * i.e. a literal we typed plus an admin catalog, never the manufacturer's price.
+ * It billed ~54c/unit for products quoted at $4-$5/unit. It is gone. When there is
+ * no partner-authored price, `resolveGoods` returns null and the caller must
+ * REFUSE, because there is no honest number to charge.
+ */
 export type GoodsBasis =
   | 'PACK_PRICE' // the creator-agreed pack price (ProductTemplateVariant / FlavorPreset)
-  | 'TIER_PRICE' // the manufacturer's volume band (ProductTemplatePricingTier) - the DEFAULT for non-pack
-  | 'COST_BUILDUP' // FALLBACK ONLY: our catalog buildup, for a template with no tiers
+  | 'TIER_PRICE' // the manufacturer's volume band (ProductTemplatePricingTier)
 
 export interface ResolvedGoods {
   goodsCents: number
@@ -46,45 +60,46 @@ export interface GoodsBasisInput {
   /**
    * NON-PACK: the manufacturer's volume band x qty (`tierGoodsCents`, from
    * ProductTemplatePricingTier). THE number the PDP quotes, so THE number we bill.
-   * null = this template has no tiers, which falls back to the buildup below.
+   * null/omitted = no manufacturer authored a band for this product, which (absent
+   * a pack price) means there is no price at all and resolveGoods returns null.
    */
   tierGoodsCents?: number | null
-  /**
-   * FALLBACK ONLY: catalog buildup for the BASE goods, (labelUnit + packagingUnit) x qty.
-   *
-   * This was the non-pack DEFAULT until 2026-07-16 and it was catastrophically
-   * wrong: it is a synthetic CATALOG estimate (8c anchor + seeded substrate/packaging
-   * at 0-9c), not the manufacturer's price. A 500-unit run quoted $3,076 on the PDP
-   * billed $310 - 89.9% of the quote uncollected - and the manufacturer's payout was
-   * planned off the same tiny number. It now applies ONLY when a template has no
-   * pricing tiers at all, which is a data gap the partner must fill, not a price.
-   *
-   * Finishes are deliberately NOT in here. They are creator-picked at checkout, so
-   * they are an add-on under EVERY basis and are composed once, below.
-   */
-  costBuildupGoodsCents: number
 }
 
 /**
- * Resolve the goods line by DECLARED basis (never by max).
+ * Resolve the goods line by DECLARED basis (never by max, and never by invention).
  *
  * The order of preference IS the argument:
- *   1. PACK_PRICE   - a pack order prices on the price the creator agreed to.
- *   2. TIER_PRICE   - a non-pack order prices on the manufacturer's volume band,
- *                     which is exactly what the PDP quoted them.
- *   3. COST_BUILDUP - only when the template has NO tiers. A fallback, not a price.
+ *   1. PACK_PRICE - a pack order prices on the price the creator agreed to.
+ *   2. TIER_PRICE - a non-pack order prices on the manufacturer's volume band,
+ *                   which is exactly what the PDP quoted them.
+ *   3. null       - NO partner authored a price for this product. There is no
+ *                   third basis. The caller must refuse.
+ *
+ * RETURNING NULL IS THE POINT. This used to fall back to a catalog buildup, which
+ * meant a product nobody had priced still produced a number, and that number went
+ * on a real invoice (~54c/unit against $4-5/unit quotes). A missing price is not a
+ * cheap price. The null forces every caller through tsc to say what happens, and
+ * the honest answer is "we cannot sell this yet".
+ *
+ * Known populations that land here TODAY (both real, both must refuse):
+ *   - a PUBLISHED ProductTemplate with zero ProductTemplatePricingTier rows (no
+ *     publish gate requires them),
+ *   - a co-created product, which is TEMPLATE-LESS by design
+ *     (packages/orders/src/recipe-materialize.ts) and whose price is supposed to
+ *     come from the collaboration room's agreed terms.
  *
  * Charging a creator more than they agreed (which the retired Math.max could do) is
  * not a legitimate remedy for a mispriced template; see costFloorBreach.
  */
-export function resolveGoods(input: GoodsBasisInput): ResolvedGoods {
+export function resolveGoods(input: GoodsBasisInput): ResolvedGoods | null {
   if (input.isPackOrder) {
     return { goodsCents: Math.max(0, Math.round(input.packPricedSubtotalCents)), basis: 'PACK_PRICE' }
   }
   if (input.tierGoodsCents != null) {
     return { goodsCents: Math.max(0, Math.round(input.tierGoodsCents)), basis: 'TIER_PRICE' }
   }
-  return { goodsCents: Math.max(0, Math.round(input.costBuildupGoodsCents)), basis: 'COST_BUILDUP' }
+  return null
 }
 
 export interface ProductionComposition {

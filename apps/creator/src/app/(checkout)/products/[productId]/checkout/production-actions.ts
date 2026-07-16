@@ -607,14 +607,20 @@ export async function estimateProductionCost(
   // purpose: moving one without the other is how the pack basis diverged above.
   const tierGoods = await resolveTierGoodsCents(product?.productTemplateId ?? null, qty)
 
+  // Refuse on the SAME condition the charge refuses on. If the estimate invented a
+  // number here, the creator would configure a whole order against a price that
+  // placeOrder then rejects: the quote-vs-charge gap, wearing an error message.
+  const goods = resolveGoods({ isPackOrder, packPricedSubtotalCents, tierGoodsCents: tierGoods })
+  if (!goods) {
+    return {
+      ok: false,
+      error: 'This product has no published price from its manufacturer yet.',
+    }
+  }
+
   const priced = computeOrderPricing({
     production: composeProductionLines({
-      goods: resolveGoods({
-        isPackOrder,
-        packPricedSubtotalCents,
-        tierGoodsCents: tierGoods,
-        costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
-      }),
+      goods,
       finishesCents: finishUnitCents * qty + setupCents,
       decorationCents: decorationUnitCents * qty,
       componentsCents: componentsUnitCents * qty,

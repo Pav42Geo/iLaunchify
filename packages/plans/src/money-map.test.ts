@@ -196,27 +196,27 @@ const TAX = 7_00
 }
 
 // ── RULE 8: the basis is DECLARED, and add-ons are basis-independent ───────
-// A pack order prices on the price the creator agreed to; a legacy non-pack order
-// prices on the catalog buildup. Replaced Math.max(costBuildup, dispatch, packPrice),
+// A pack order prices on the price the creator agreed to; a non-pack order prices
+// on the manufacturer's BAND. Replaced Math.max(costBuildup, dispatch, packPrice),
 // which maxed two COSTS against one PRICE and so had no stable meaning.
 {
   const addOns = { finishesCents: 5_00, decorationCents: 20_00, componentsCents: 10_00 }
   const pack = computeOrderPricing({
     production: composeProductionLines({
-      goods: resolveGoods({ isPackOrder: true, packPricedSubtotalCents: 100_00, costBuildupGoodsCents: 60_00 }),
+      goods: resolveGoods({ isPackOrder: true, packPricedSubtotalCents: 100_00, tierGoodsCents: 60_00 })!,
       ...addOns,
     }),
     feeBps: 1500,
   })
   const nonPack = computeOrderPricing({
     production: composeProductionLines({
-      goods: resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0, costBuildupGoodsCents: 60_00 }),
+      goods: resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0, tierGoodsCents: 60_00 })!,
       ...addOns,
     }),
     feeBps: 1500,
   })
   assert(pack.productionSubtotalCents === 135_00, 'PACK: 100 agreed + 35 of add-ons')
-  assert(nonPack.productionSubtotalCents === 95_00, 'NON-PACK: 60 buildup + the SAME 35 of add-ons')
+  assert(nonPack.productionSubtotalCents === 95_00, 'NON-PACK: 60 band + the SAME 35 of add-ons')
   assert(
     pack.productionSubtotalCents - nonPack.productionSubtotalCents === 40_00,
     'the bases differ by the GOODS alone: an add-on costs the same either way',

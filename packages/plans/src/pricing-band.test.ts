@@ -49,7 +49,7 @@ eq(pickPricingBandIndex([null], 500), null, 'only a null band = no match')
 
 // ── 3. Empty bands return null, NOT 0 ─────────────────────────────────────────
 // This is the whole reason tierGoodsCents is nullable. A silent 0 here would have
-// billed a free order; null makes the caller declare the COST_BUILDUP fallback.
+// billed a free order; null makes the caller refuse instead of inventing one.
 eq(pickPricingBand([], 500), null, 'no bands = null')
 eq(tierGoodsCents([], 500), null, 'no bands = null goods, never 0')
 
@@ -77,8 +77,7 @@ eq(tierGoodsCents([], 500), null, 'no bands = null goods, never 0')
     isPackOrder: false,
     packPricedSubtotalCents: 0,
     tierGoodsCents: tierGoodsCents(BANDS, QTY),
-    costBuildupGoodsCents: 8 * QTY, // the 8c label anchor: what it used to charge
-  })
+  })!
   eq(goods.basis, 'TIER_PRICE', 'a non-pack order prices on the band, not the buildup')
   const chargeTotal = computeOrderPricing({
     production: [{ kind: 'PRODUCT', label: 'Production', cents: goods.goodsCents }],
@@ -92,44 +91,37 @@ eq(tierGoodsCents([], 500), null, 'no bands = null goods, never 0')
   // believing it was small: the old buildup arm.
   const oldTotal = 8 * QTY + creatorFeeCents(8 * QTY, FEE_BPS)
   eq(oldTotal, 4_600, 'the retired buildup charged $46.00 for a $3,076.25 quote')
+  // ...and the buildup basis no longer EXISTS, so it cannot come back by default.
+  eq(resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0 }), null, 'no band = no price at all')
 }
 
 // ── 5. PACK_PRICE still wins over the band ────────────────────────────────────
 // A pack order prices on the price the creator agreed to. The band must not
 // out-rank it, or threading tiers in would have quietly repriced every pack order.
 {
-  const goods = resolveGoods({
-    isPackOrder: true,
-    packPricedSubtotalCents: 12_000,
-    tierGoodsCents: 999_999,
-    costBuildupGoodsCents: 1,
-  })
+  const goods = resolveGoods({ isPackOrder: true, packPricedSubtotalCents: 12_000, tierGoodsCents: 999_999 })!
   eq(goods.basis, 'PACK_PRICE', 'pack orders ignore the band')
   eq(goods.goodsCents, 12_000, 'pack orders charge the agreed pack price')
 }
 
-// ── 6. COST_BUILDUP survives ONLY as the no-tiers fallback ────────────────────
+// ── 6. NO TIERS = NO PRICE = NO SALE (COST_BUILDUP deleted 2026-07-16) ────────
+// The buildup was `8c + Substrate + PackagingMaterial`: our literal plus an admin
+// catalog, never a manufacturer's price. It billed ~54c/unit on products quoted at
+// $4-5/unit. A missing price is not a cheap price.
 {
-  const goods = resolveGoods({
-    isPackOrder: false,
-    packPricedSubtotalCents: 0,
-    tierGoodsCents: null, // template has no tiers = a data gap, not a price
-    costBuildupGoodsCents: 4_000,
-  })
-  eq(goods.basis, 'COST_BUILDUP', 'no tiers falls back to the buildup')
-  eq(goods.goodsCents, 4_000, 'and prices on it')
+  eq(
+    resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0, tierGoodsCents: null }),
+    null,
+    'no tiers = null, so the caller MUST refuse',
+  )
+  eq(resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0 }), null, 'omitted band = null too')
 }
 
 // A tierGoods of 0 is a REAL price (a free band), not "missing". Only null is
 // missing. If this ever flips to falsy-checking, a $0 band silently bills the
-// buildup instead.
+// buildup instead. (There is no buildup any more, but the reasoning stands.)
 {
-  const goods = resolveGoods({
-    isPackOrder: false,
-    packPricedSubtotalCents: 0,
-    tierGoodsCents: 0,
-    costBuildupGoodsCents: 4_000,
-  })
+  const goods = resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0, tierGoodsCents: 0 })!
   eq(goods.basis, 'TIER_PRICE', 'tierGoods=0 is a price, not a missing value')
   eq(goods.goodsCents, 0, 'and it is honoured')
 }

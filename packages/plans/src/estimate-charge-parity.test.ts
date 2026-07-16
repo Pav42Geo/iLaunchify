@@ -57,13 +57,21 @@ function legacyEstimateSubtotal(c: Cart): number {
 
 /** What BOTH surfaces now build. If the two ever pass different shapes, pin 2 dies. */
 function priceCart(c: Cart, over: { isPackOrder?: boolean; packPricedSubtotalCents?: number } = {}) {
+  // The non-pack basis is now the manufacturer's BAND (COST_BUILDUP is deleted;
+  // it was our literal + admin catalog, never a partner price). The cart's
+  // label+packaging figure stands in for that band here: what this file pins is
+  // that the estimate and the charge compose the SAME shape, not where the number
+  // comes from. PDP === charge is pinned in pricing-band.test.ts, which is the
+  // equality this file could never see.
+  const goods = resolveGoods({
+    isPackOrder: over.isPackOrder ?? false,
+    packPricedSubtotalCents: over.packPricedSubtotalCents ?? 0,
+    tierGoodsCents: over.isPackOrder ? null : (c.labelUnitCents + c.packagingUnitCents) * c.qty,
+  })
+  if (!goods) throw new Error('[estimate-charge-parity] expected a basis')
   return computeOrderPricing({
     production: composeProductionLines({
-      goods: resolveGoods({
-        isPackOrder: over.isPackOrder ?? false,
-        packPricedSubtotalCents: over.packPricedSubtotalCents ?? 0,
-        costBuildupGoodsCents: (c.labelUnitCents + c.packagingUnitCents) * c.qty,
-      }),
+      goods,
       finishesCents: c.finishUnitCents * c.qty + c.setupCents,
       decorationCents: c.decorationUnitCents * c.qty,
       componentsCents: c.componentsUnitCents * c.qty,

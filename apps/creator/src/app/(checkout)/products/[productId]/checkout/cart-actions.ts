@@ -682,11 +682,28 @@ export async function placeOrderFromCheckoutDraft(
     packPricedSubtotalCents,
     // The band the PDP showed. Same picker, same order, same number.
     tierGoodsCents: tierGoods,
-    // FALLBACK ONLY (template with no tiers). Goods = label + packaging. Finishes
-    // are creator-picked, so they are an add-on under EVERY basis (a pack price is
-    // authored per pack SIZE, before any creator picks a finish).
-    costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
   })
+  // NO PARTNER PRICE, NO SALE (Pavel's rule, 2026-07-16). This used to fall back to
+  // `(labelUnitCents + packagingUnitCents) * qty`: the 8c literal on line 620 plus
+  // the admin substrate/packaging catalog, i.e. ~54c/unit that NO manufacturer ever
+  // authored. It went on real invoices. A missing price is not a cheap price, so we
+  // refuse rather than invent one.
+  //
+  // Two real populations reach here, and both SHOULD be refused today:
+  //   - a PUBLISHED template with zero pricing tiers (nothing gates that yet),
+  //   - a co-created product, template-less by design, whose price belongs to the
+  //     collaboration room's agreed terms and does not exist as a charge yet.
+  if (!goods) {
+    console.error(
+      `[PP-0 no-price] REFUSED order: product=${productId} template=${product.productTemplateId ?? 'NONE'} ` +
+        `qty=${qty} pack=${packPersist != null}. No ProductTemplatePricingTier and no pack price.`,
+    )
+    return {
+      ok: false,
+      error:
+        'This product has no published price from its manufacturer yet, so it cannot be ordered. Please contact support.',
+    }
+  }
   const productionLines = composeProductionLines({
     goods,
     finishesCents: finishUnitCents * qty + finishSetupCents,

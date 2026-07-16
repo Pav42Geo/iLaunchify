@@ -1,5 +1,5 @@
 import { prisma, getOrderSettings } from '@ilaunchify/db'
-import { buildSamplePricingRows, applyFlavorChangeover, type PricingTierRow, type PackBuilderFlavor } from '@ilaunchify/ui'
+import { applyFlavorChangeover, type PricingTierRow, type PackBuilderFlavor } from '@ilaunchify/ui'
 // PP-0c: the fee SSOT. This file used lookupFeeRate directly, which was the last
 // pricing path still reading the raw FeeRule table instead of resolving through
 // @ilaunchify/plans. See docs/FEE_MODEL_RECONCILIATION_SPEC §6.
@@ -380,18 +380,27 @@ async function readFlavorImages(
 /**
  * Server helper — real per-unit pricing for a ProductTemplate, by quantity band.
  *
- * Reads ProductTemplatePricingTier (the partner/admin-curated volume bands) and
- * maps them to the display shape. Per MARKETPLACE_MANAGEMENT_PLAN §4 step 1,
- * falls through to the synthetic buildSamplePricingRows() ONLY when the template
- * has no real tiers — which today also covers fixture-only demo templates that
- * aren't in the DB yet (the marketplace detail page is still fixture-driven).
+ * Reads ProductTemplatePricingTier (the partner-authored volume bands) and maps
+ * them to the display shape.
+ *
+ * RETURNS [] WHEN THE TEMPLATE HAS NO TIERS. It used to return
+ * buildSamplePricingRows(fallbackBasePrice), which INVENTED the entire volume curve
+ * from multipliers we chose (base x 2.5/1.85/1.65/1.5/1.35/1.2/1.05). Deleted
+ * 2026-07-16 under the LOCKED rule (Pavel): a price is authored by a partner
+ * through the platform, never by us. That fallback quoted `priceFloor x 1.35 x qty`
+ * on the PDP while placeOrder billed a ~54c/unit catalog buildup: the same 86-90%
+ * hole Blocker 2 closed, one level up, and no publish gate stops a template from
+ * getting there.
+ *
+ * An empty return means "no partner has priced this", and every caller must render
+ * that as ABSENCE, never as $0 and never as a guess. `placeOrder` and the checkout
+ * estimate refuse on exactly the same condition (`resolveGoods` -> null).
  *
  * One price per band per the LOCKED model (§6): the band sets the unit price;
  * a creator's Builder/Agency tier discounts the platform fee, not this cost.
  */
 export async function getPricingTierRows(
   slug: string,
-  fallbackBasePrice: number,
   /**
    * D5 — the number of DISTINCT flavors in the configured pack. Default 1 (a
    * single-flavor order), which is a no-op for the changeover increment. The
@@ -418,7 +427,8 @@ export async function getPricingTierRows(
   })
 
   const tiers = template?.pricingTiers ?? []
-  if (tiers.length === 0) return buildSamplePricingRows(fallbackBasePrice)
+  // No partner-authored bands = no price. See the header: we do not invent one.
+  if (tiers.length === 0) return []
 
   const flavorCount = opts?.flavorCount ?? 1
   // Only pay for the settings read when the changeover increment can actually
@@ -471,15 +481,17 @@ export interface CreatorPricingMatrix {
 export async function getCreatorPricingMatrix(
   slug: string,
   viewerTier: TierKey,
-  fallbackBasePrice: number,
 ): Promise<CreatorPricingMatrix> {
   // PP-0c: the fee resolves through the ONE SSOT (resolveCreatorFeeBps), the same
   // call the estimate, the charge, the configurator and samples all make. This was
   // the LAST lookupFeeRate pricing path, i.e. the last surviving piece of the
   // "three paths, two tables" fee violation the audit found.
   //
-  // Base = manufacturer unit cost per band (real DB tiers, or synthetic fallback).
-  const baseRows = await getPricingTierRows(slug, fallbackBasePrice)
+  // Base = manufacturer unit cost per band. REAL DB tiers or nothing: the
+  // `fallbackBasePrice` param is gone with the synthetic curve it fed (2026-07-16).
+  // An empty `rows` means no partner has priced this template, and the caller must
+  // render that as absence.
+  const baseRows = await getPricingTierRows(slug)
 
   const { feeBps } = await resolveCreatorFeeBps(viewerTier)
   const feeBounds = await resolveCreatorFeeBounds(viewerTier)

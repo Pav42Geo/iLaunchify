@@ -41,20 +41,32 @@ export interface PricingTierRow {
 }
 
 /**
- * Generates a plausible quantity-band table scaled around a base price.
- * Synthetic fallback — used only when a ProductTemplate has no real
- * ProductTemplatePricingTier rows yet (see getPricingTierRows). One price per
- * band per the locked model; creator-tier differences are fee-side, not here.
+ * ─── buildSamplePricingRows() WAS HERE. DO NOT BRING IT BACK. ────────────────
+ *
+ * It generated "a plausible quantity-band table scaled around a base price":
+ *
+ *     base x 2.5 (sample) / 1.85 (50+) / 1.65 (100+) / 1.5 (250+)
+ *          / 1.35 (500+) / 1.2 (1,000+) / 1.05 (2,500+)
+ *
+ * DELETED 2026-07-16 under the LOCKED rule (Pavel): "kill hardcoded prices because
+ * this is something that we cannot decide as an operator/admin, that price should
+ * be added by any of the co-packers/manufacturers through the platform when they
+ * formulate their price." Every multiplier above was ours. No manufacturer ever
+ * agreed to sell at 1.35x anything.
+ *
+ * It was not merely cosmetic. `getPricingTierRows` fell through to it whenever a
+ * ProductTemplate had no ProductTemplatePricingTier rows, and NO publish gate
+ * required any. So a real, buyable template quoted `priceFloor x 1.35 x qty` on the
+ * PDP while placeOrder billed a ~54c/unit catalog buildup: the same 86-90%
+ * quote-vs-charge hole that Blocker 2 had just closed one level down. "Plausible"
+ * is precisely the problem: a number that looks right is never questioned.
+ *
+ * The replacement is ABSENCE. getPricingTierRows returns []; the PDP renders
+ * "Pricing not published yet" and hides the launch + sample CTAs; the checkout
+ * estimate and placeOrder both refuse (@ilaunchify/plans resolveGoods -> null).
+ * A product nobody has priced cannot be sold. That is the whole point.
+ *
+ * If you need a demo catalog with prices, SEED them
+ * (packages/db/prisma/seed-pricing-bridge.ts already does): seeded rows are real
+ * DB rows a partner could have authored, and they flow through the real path.
  */
-export function buildSamplePricingRows(basePrice: number): PricingTierRow[] {
-  const cents = (mul: number): number => Math.round(basePrice * mul * 100)
-  return [
-    { band: 'Sample', bandMin: null, perUnitCents: cents(2.5) },
-    { band: '50 – 99', bandMin: 50, perUnitCents: cents(1.85) },
-    { band: '100 – 249', bandMin: 100, perUnitCents: cents(1.65) },
-    { band: '250 – 499', bandMin: 250, perUnitCents: cents(1.5) },
-    { band: '500 – 999', bandMin: 500, perUnitCents: cents(1.35) },
-    { band: '1,000 – 2,499', bandMin: 1000, perUnitCents: cents(1.2) },
-    { band: '2,500+', bandMin: 2500, perUnitCents: cents(1.05) },
-  ]
-}

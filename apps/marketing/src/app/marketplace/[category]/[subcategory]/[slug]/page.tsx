@@ -175,11 +175,7 @@ export default async function ProductDetailPage({
     isAuthenticated,
   )
 
-  const pricingMatrix = await getCreatorPricingMatrix(
-    template.slug,
-    viewerTier,
-    template.pricePerUnit,
-  )
+  const pricingMatrix = await getCreatorPricingMatrix(template.slug, viewerTier)
   const pricingRows = pricingMatrix.rows
   // Per-tier fee % for the modal's Maker/Builder/Agency columns.
   const feePctByTier = await getCreatorFeePcts()

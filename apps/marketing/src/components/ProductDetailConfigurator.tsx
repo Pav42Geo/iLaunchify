@@ -360,8 +360,23 @@ export function ProductDetailConfigurator({
   // unchanged here: `?? 0` is the same below-MOQ fallback to the first band that the
   // inline filter had.
   const matchedRow = React.useMemo(() => {
+    // NULL WHEN NO PARTNER PRICED THIS (2026-07-16). `rows` is now empty for a
+    // template with zero ProductTemplatePricingTier rows: getPricingTierRows used
+    // to hand back an INVENTED curve (buildSamplePricingRows, base x 1.35 etc.) and
+    // that fallback is gone. Without this guard the `!` below would be a lie and
+    // `matchedRow.manufacturerCents` would throw.
+    if (rows.length === 0) return null
     return rows[pickPricingBandIndex(rows.map((r) => r.bandMin), quantity) ?? 0]!
   }, [rows, quantity])
+
+  /**
+   * Can this product be quoted at all? False = no manufacturer has published a
+   * price. We show that as ABSENCE and block the launch CTA, rather than render
+   * $0.00 (a lie) or a guess (the bug we just deleted). `placeOrder` and the
+   * checkout estimate refuse on exactly the same condition (resolveGoods -> null),
+   * so the CTA cannot lead anywhere that would work anyway.
+   */
+  const hasPublishedPrice = matchedRow != null
 
   const currentTier = viewerTier
 
@@ -387,12 +402,15 @@ export function ProductDetailConfigurator({
   // GOODS = matchedRow.manufacturerCents, the PRE-FEE band price. Using
   // perUnitCents here would double-charge the platform fee (pricing.ts:481 =
   // manufacturerCents + platformFeeCents).
+  // 0 only when there is NO published price, in which case hasPublishedPrice is
+  // false and every derived figure below is suppressed rather than rendered.
   const goodsUnitCents =
-    matchedRow.manufacturerCents ??
+    matchedRow?.manufacturerCents ??
     // Unreachable via getCreatorPricingMatrix (it sets manufacturerCents on every
     // row). If a raw row ever arrives, treat the all-in as goods: that OVER-quotes
     // slightly, which is the safe direction, rather than under-quoting.
-    matchedRow.perUnitCents
+    matchedRow?.perUnitCents ??
+    0
   // NO PACKAGING DELTA. (Pavel 2026-07-16: "kill hardcoded prices ... that price
   // should be added by any of the co-packers/manufacturers through the platform
   // when they formulate their price".)
@@ -527,7 +545,7 @@ export function ProductDetailConfigurator({
     perFlavorEarningsRows.some((r) => r.costPerUnit > 0)
 
   const baseLeadTimeDays =
-    matchedRow.leadTimeDays ??
+    matchedRow?.leadTimeDays ??
     detail.packaging.find((p) => p.id === packagingId)?.leadTimeDays ??
     template.leadTimeDays
   // Effective lead — GLOBAL FLOOR (docs/PER_FLAVOR_RECIPES.md §4). For multi-flavor
@@ -753,7 +771,7 @@ export function ProductDetailConfigurator({
           </div>
         ) : (
           <div className="text-[11px] text-ink-500 tabular-nums">
-            min {template.minUnits} units · {matchedRow.band}
+            min {template.minUnits} units{matchedRow ? ` · ${matchedRow.band}` : ''}
           </div>
         )}
       </div>
@@ -782,7 +800,17 @@ export function ProductDetailConfigurator({
           </div>
         )}
 
-        {isMultiFlavor ? (
+        {!hasPublishedPrice ? (
+          /* NO PARTNER PRICE (2026-07-16). Absence, not $0.00 and not a guess: the
+             manufacturer has published no ProductTemplatePricingTier, so there is
+             no honest number to show. Checkout refuses on the same condition. */
+          <div className="text-[13px] font-semibold text-ink-500">
+            Pricing not published yet
+            <div className="mt-0.5 text-[11.5px] font-medium text-ink-400">
+              This manufacturer hasn&apos;t published pricing for this product.
+            </div>
+          </div>
+        ) : isMultiFlavor ? (
           /* Multi-flavor pack mode — headline = order TOTAL (packs × pack price),
              secondary = per-pack price. Strike-through shows the no-sub total. */
           <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
@@ -851,6 +879,18 @@ export function ProductDetailConfigurator({
           sample" on TOP (opens the SampleDrawer) and Launch BELOW
           (LaunchCtaCluster). */}
       <div className="flex flex-col gap-2">
+        {/* NO PRICE, NO ORDER — and that covers the SAMPLE too. A sample is not a
+            different KIND of order, just a small one (Pavel 2026-07-16): it prices
+            through the same computeOrderPricing and would hit the same
+            resolveGoods -> null refusal. Hidden rather than disabled because there
+            is nothing the creator can do here to fix it: the price has to come from
+            the manufacturer. A live button would only promise a failure. */}
+        {!hasPublishedPrice ? (
+          <div className="rounded-[10px] border border-ink-200 bg-ink-50 px-3 py-2.5 text-[12px] font-medium text-ink-600">
+            Not available to order yet.
+          </div>
+        ) : (
+        <>
         {onOpenSample && (
           <button
             type="button"
@@ -885,6 +925,8 @@ export function ProductDetailConfigurator({
               : null
           }
         />
+        </>
+        )}
       </div>
 
       {/* 7) Subscribe & save — One-time vs Subscribe radio rows mirroring the

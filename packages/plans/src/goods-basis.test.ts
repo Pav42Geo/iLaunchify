@@ -24,8 +24,11 @@ function priceOrder(isPackOrder: boolean, over: Partial<Record<'fin' | 'dec' | '
   const goods = resolveGoods({
     isPackOrder,
     packPricedSubtotalCents: isPackOrder ? GOODS_PACK : 0,
-    costBuildupGoodsCents: GOODS_BUILDUP,
+    // A non-pack order prices on the manufacturer's band. COST_BUILDUP is gone
+    // (2026-07-16): it was our 8c literal + admin catalog, never a partner price.
+    tierGoodsCents: isPackOrder ? null : GOODS_BUILDUP,
   })
+  if (!goods) throw new Error('[goods-basis] priceOrder: expected a partner-authored basis')
   return {
     goods,
     priced: computeOrderPricing({
@@ -46,7 +49,7 @@ function priceOrder(isPackOrder: boolean, over: Partial<Record<'fin' | 'dec' | '
   const nonPack = priceOrder(false)
 
   assert(pack.goods.basis === 'PACK_PRICE', 'a pack order prices on the agreed pack price')
-  assert(nonPack.goods.basis === 'COST_BUILDUP', 'a non-pack order prices on the catalog buildup')
+  assert(nonPack.goods.basis === 'TIER_PRICE', "a non-pack order prices on the manufacturer's band")
 
   // Exactly once, stated as arithmetic: the subtotal IS the sum of the parts.
   assert(
@@ -111,9 +114,10 @@ for (const isPack of [true, false]) {
   // A mispriced template: the agreed pack price sits BELOW our cost buildup.
   // The old Math.max silently charged the creator the buildup. The basis must
   // still be the price they agreed to.
-  const g = resolveGoods({ isPackOrder: true, packPricedSubtotalCents: 10_00, costBuildupGoodsCents: 99_00 })
-  assert(g.goodsCents === 10_00, 'a pack order NEVER silently charges above the agreed price')
-  assert(g.basis === 'PACK_PRICE', 'basis follows the order shape, not whichever number is bigger')
+  const g = resolveGoods({ isPackOrder: true, packPricedSubtotalCents: 10_00, tierGoodsCents: 99_00 })
+  assert(g != null, 'a pack order always has a basis')
+  assert(g!.goodsCents === 10_00, 'a pack order NEVER silently charges above the agreed price')
+  assert(g!.basis === 'PACK_PRICE', 'basis follows the order shape, not whichever number is bigger')
 }
 
 // ── the cost floor REPORTS, never charges ───────────────────────────────────
@@ -133,9 +137,18 @@ for (const isPack of [true, false]) {
 
 // ── guards ──────────────────────────────────────────────────────────────────
 {
-  assert(resolveGoods({ isPackOrder: true, packPricedSubtotalCents: -5, costBuildupGoodsCents: 0 }).goodsCents === 0, 'never negative')
+  assert(resolveGoods({ isPackOrder: true, packPricedSubtotalCents: -5 })!.goodsCents === 0, 'never negative')
+
+  // NO PARTNER PRICE -> null. Not 0, not a buildup, not a guess: the caller must
+  // refuse. This is the pin that stops the catalog-buildup fallback coming back.
+  assert(resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0 }) === null, 'no basis = null, never a number')
+  assert(
+    resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0, tierGoodsCents: null }) === null,
+    'an explicitly null band is still no price',
+  )
+
   const zero = composeProductionLines({
-    goods: { goodsCents: 0, basis: 'COST_BUILDUP' },
+    goods: { goodsCents: 0, basis: 'TIER_PRICE' },
     finishesCents: 0,
     decorationCents: 0,
     componentsCents: 0,
