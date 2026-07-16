@@ -152,13 +152,18 @@ complete):
   can never reach `unit x qty`. There is no zero-cost product. Verified over 144 shapes. (An earlier
   draft of this doc said it "only won for a zero-cost product": wrong, and the report found it.)
 
+**The pack basis is CLOSED (2026-07-16).** `estimateProductionCost` now takes the pack selection and
+resolves the basis through `resolvePackSubtotal` (`checkout/pack-pricing.ts`), the SAME call
+`placeOrder` makes. That helper exists because `readPackOrderInputs` + the pack-subtotal math lived
+inside `cart-actions.ts`, a `'use server'` file the estimate could not import: **the third time that
+exact shape caused a divergence** (decoration trapped in `'use server'`; `creatorFeeCents` trapped
+beside a prisma import; this). One deliberate difference remains, and it is a feature: the estimate
+passes `validateComposition: false` so a half-built pack shows a price instead of an error, while the
+charge validates. Parity pinned in `estimate-charge-parity.test.ts`.
+
 **REMAINING (honestly named):**
-1. **The estimate has no pack input**, so it prices COST_BUILDUP while the charge prices PACK_PRICE.
-   On a pack order the creator is quoted the buildup and charged the pack price. Pinned as a FACT in
-   `estimate-charge-parity.test.ts`; the fix is to thread the pack selection into
-   `estimateProductionCost`, NOT to make the charge use the buildup.
-2. Two meanings of "on-demand" (make-to-order vs ship-from-stock) share one word in a money path.
-3. `build-actions.ts:27`, above.
+1. Two meanings of "on-demand" (make-to-order vs ship-from-stock) share one word in a money path.
+2. `build-actions.ts:27`, above: a partner-side preview, display drift only.
 
 ### 2.1 PP-0 build log (2026-07-15, superseded by 2.0 above)
 

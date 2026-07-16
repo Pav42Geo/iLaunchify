@@ -21,6 +21,7 @@ import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 // PP-0: the ONE platform-fee SSOT (CLAUDE.md fee model). The estimate MUST resolve
 // the fee through the same path the charge does, or the two diverge by tier.
+import { resolvePackSubtotal, type PackSelectionInput } from './pack-pricing'
 import {
   resolveCreatorFeeBps,
   resolveCreatorFeeBounds,
@@ -47,6 +48,11 @@ async function authorize(productId: string) {
       id: true,
       category: true,
       variant: { select: { packingType: true } },
+      // Needed by estimateProductionCost to resolve the PACK basis through the same
+      // call placeOrder makes (2026-07-16). Without it the estimate priced every
+      // order on the catalog buildup while the charge priced packs on PACK_PRICE.
+      productTemplateId: true,
+      productTemplate: { select: { maxFlavorsPerPack: true } },
     },
   })
   if (!product) return { user, product: null, error: 'NOT_YOUR_PRODUCT' as const }
@@ -442,6 +448,16 @@ export interface EstimateInput {
   substrateSlug: string | null
   packagingMaterialSlug: string | null
   finishPartnerFinishIds: string[]
+  /**
+   * The creator's variety-pack selection, when there is one. THE FIX (2026-07-16):
+   * without this the estimate priced every order on the COST_BUILDUP basis while
+   * placeOrder priced a pack order on PACK_PRICE, so a pack creator was quoted our
+   * catalog buildup and charged the manufacturer's pack price. Both now resolve the
+   * basis from the same input, through the same function.
+   *
+   * Null / omitted = a legacy non-pack order, which genuinely prices on the buildup.
+   */
+  pack?: PackSelectionInput | null
 }
 
 export interface CostBreakdown {
@@ -477,7 +493,7 @@ export async function estimateProductionCost(
   // _product loaded by the auth guard; reserved for V1.5 per-category
   // cost overrides (e.g. food-safe packaging surcharge for FOOD products).
   // `user` is needed for the tier-resolved platform fee (PP-0, fee SSOT).
-  const { user, product: _product, error } = await authorize(input.productId)
+  const { user, product, error } = await authorize(input.productId)
   if (error || !user) return { ok: false, error: error ?? 'NOT_A_CREATOR' }
 
   const qty = Math.max(0, Math.floor(input.quantity || 0))
@@ -562,22 +578,34 @@ export async function estimateProductionCost(
   //     = perUnitCents*qty + setupCents        <- the old expression
   // Pinned in packages/plans/src/estimate-charge-parity.test.ts.
   //
-  // KNOWN REMAINING GAP (not introduced here, and the PP-0 shadow measures it):
-  // this estimate has no pack input, so it always prices on the COST_BUILDUP
-  // basis, while the charge prices a pack order on PACK_PRICE
-  // (resolveGoods in cart-actions.ts). For pack orders the two therefore still
-  // disagree, by exactly the gap between a manufacturer's list price and our
-  // catalog buildup. Closing that means threading the pack selection into the
-  // estimate; do NOT paper over it by making the charge use the buildup.
+  // THE PACK BASIS (fixed 2026-07-16): this used to have no pack input, so it always
+  // priced COST_BUILDUP while the charge priced a pack order on PACK_PRICE. The
+  // creator was quoted our catalog buildup and billed the manufacturer's pack price.
+  // Both now call resolvePackSubtotal + resolveGoods with the same selection.
   const creatorTier = await getCreatorTier(user.id)
   const { feeBps } = await resolveCreatorFeeBps(creatorTier)
   const feeBounds = await resolveCreatorFeeBounds(creatorTier)
 
+  // Resolve the pack basis through the SAME call placeOrder makes, so the quote and
+  // the charge cannot disagree about which number the goods line is.
+  // `validateComposition: false` is the one deliberate difference: the estimate is a
+  // live readout as the creator builds their pack, so a half-built pack must show a
+  // price rather than an error. The CHARGE validates (cart-actions passes true), and
+  // that is the right place for a gate.
+  const packQuote = await resolvePackSubtotal({
+    productTemplateId: product?.productTemplateId ?? null,
+    pack: input.pack,
+    maxFlavorsPerPack: product?.productTemplate?.maxFlavorsPerPack ?? null,
+    validateComposition: false,
+  })
+  const isPackOrder = packQuote.ok && packQuote.isPack
+  const packPricedSubtotalCents = packQuote.ok && packQuote.isPack ? packQuote.packPricedSubtotalCents : 0
+
   const priced = computeOrderPricing({
     production: composeProductionLines({
       goods: resolveGoods({
-        isPackOrder: false, // see KNOWN REMAINING GAP above
-        packPricedSubtotalCents: 0,
+        isPackOrder,
+        packPricedSubtotalCents,
         costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
       }),
       finishesCents: finishUnitCents * qty + setupCents,

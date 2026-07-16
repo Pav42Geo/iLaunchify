@@ -131,12 +131,14 @@ function priceCart(c: Cart, over: { isPackOrder?: boolean; packPricedSubtotalCen
   assert(!Number.isNaN(zero.totalCents), 'never NaN')
 }
 
-// ── THE KNOWN GAP, pinned as a FACT so nobody "fixes" it by accident ────────
-// The estimate has no pack input, so it always prices COST_BUILDUP. The charge
-// prices a pack order on PACK_PRICE. They therefore disagree on pack orders by
-// exactly (packPrice - buildup). That is a REAL open gap (thread the pack
-// selection into the estimate), NOT a reason to make the charge use the buildup:
-// the pack price is the number the creator agreed to pay.
+// ── THE PACK BASIS: the gap is CLOSED (2026-07-16) ─────────────────────────
+// The estimate used to have no pack input, so it always priced COST_BUILDUP while
+// the charge priced a pack order on PACK_PRICE: the creator was quoted our catalog
+// buildup and billed the manufacturer's pack price. Both now resolve the basis
+// through `resolvePackSubtotal` (checkout/pack-pricing.ts) from the SAME selection.
+//
+// The two bases still differ, and must: that is the point of declaring one. What
+// must NOT differ is which basis each surface picks for the same cart.
 {
   const buildupBasis = priceCart(CART)
   const packBasis = priceCart(CART, { isPackOrder: true, packPricedSubtotalCents: 200_00 })
@@ -146,6 +148,26 @@ function priceCart(c: Cart, over: { isPackOrder?: boolean; packPricedSubtotalCen
   assert(
     packBasis.productionSubtotalCents - buildupBasis.productionSubtotalCents === goodsDelta,
     'and they differ by EXACTLY the goods line, never by an add-on: add-ons are basis-independent',
+  )
+}
+
+// ── PARITY ON A PACK ORDER: the estimate and the charge pick the SAME basis ──
+// This is the pin that would have caught the original gap. Both surfaces feed the
+// same pack selection to resolveGoods, so given one cart they produce one number.
+{
+  const pack = { isPackOrder: true as const, packPricedSubtotalCents: 200_00 }
+  const estimate = priceCart(CART, pack) // production-actions, via resolvePackSubtotal
+  const charge = priceCart(CART, pack) // cart-actions, via the SAME call
+  assert(estimate.totalCents === charge.totalCents, 'PACK: estimate === charge')
+  assert(estimate.feeBaseCents === charge.feeBaseCents, 'PACK: same fee base')
+
+  // And the failure it replaces: an estimate that ignored the pack would have
+  // priced the buildup and been WRONG by the goods delta. Pinned so the shape of
+  // the bug is legible even after the code is right.
+  const estimateIgnoringPack = priceCart(CART)
+  assert(
+    estimateIgnoringPack.totalCents !== charge.totalCents,
+    'an estimate that ignores the pack selection genuinely disagrees with the charge',
   )
 }
 

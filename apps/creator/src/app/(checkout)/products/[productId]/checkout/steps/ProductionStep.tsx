@@ -150,6 +150,11 @@ export function ProductionStep({
           substrateSlug: state.substrateSlug,
           packagingMaterialSlug: state.packagingMaterialSlug,
           finishPartnerFinishIds: state.finishPartnerFinishIds,
+          // The pack selection decides the pricing BASIS (2026-07-16). Without it
+          // the estimate priced our catalog buildup while placeOrder charged the
+          // manufacturer's pack price, so a variety-pack creator was quoted one
+          // number and billed another. Null = a genuine non-pack order.
+          pack: state.pack,
         })
         if (result.ok) {
           setEstimate(result.data)
@@ -164,6 +169,11 @@ export function ProductionStep({
     state.substrateSlug,
     state.packagingMaterialSlug,
     state.finishPartnerFinishIds,
+    // The pack drives the pricing BASIS, so a re-compose (different flavors, a
+    // different pack size, a different pack count) must re-estimate. Without this
+    // the price would freeze at the first composition while the creator kept
+    // editing, which is its own quote-vs-charge lie.
+    state.pack,
     onEstimate,
   ])
 

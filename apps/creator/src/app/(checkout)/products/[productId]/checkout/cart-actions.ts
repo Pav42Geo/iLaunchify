@@ -56,6 +56,7 @@ import {
   broadcastCapabilityRequestsForTemplate,
 } from '@ilaunchify/orders'
 import { loadLearnedFulfillmentAdjustment, recordFcOverrideSignal } from './afe-learning'
+import { resolvePackSubtotal } from './pack-pricing'
 import {
   resolveCreatorFeeBps,
   resolveCreatorFeeBounds,
@@ -76,11 +77,7 @@ import { logAuditAs } from '@ilaunchify/audit'
 import { dispatchToPartnerService } from '@ilaunchify/notifications'
 import {
   validatePackSelection,
-  composePack,
-  packPriceCents,
-  orderTotalCents,
   type PricingBasis as PackPricingBasis,
-  type FlavorFillRule as PackFlavorFillRule,
 } from '@ilaunchify/ui'
 import type { CheckoutDraftState } from './types'
 import { checkProductRestrictions } from './restriction-actions'
@@ -318,28 +315,22 @@ export async function placeOrderFromCheckoutDraft(
   const packSel = state.production.pack
   if (packSel && packSel.packVariantId && packSel.packCount > 0) {
     // ── NEW pack model ────────────────────────────────────────────────────────
-    // Cast-guarded read of the chosen variant's pack columns + template rules +
-    // per-flavor prices (the generated client may not type them pre-migration).
-    const matrix = await readPackOrderInputs(product.productTemplateId, packSel.packVariantId)
-    const unitsPerPack = matrix.unitsPerPack ?? packSel.unitsPerPack
-    const choices = packSel.slots.map((s) => ({ flavorPresetId: s.flavorPresetId, units: s.units }))
-    const composed = composePack({ unitsPerPack }, choices, {
-      minFlavorsPerPack: matrix.minFlavors ?? 1,
+    // Resolved through ./pack-pricing, the SAME call estimateProductionCost makes.
+    // This math used to live inline here, in a 'use server' file the estimate could
+    // not import, so the estimate priced COST_BUILDUP while this priced PACK_PRICE
+    // and the creator was quoted one number and charged another.
+    const packQuote = await resolvePackSubtotal({
+      productTemplateId: product.productTemplateId,
+      pack: packSel,
       maxFlavorsPerPack: packRules?.maxFlavorsPerPack ?? null,
-      fillRule: (matrix.fillRule ?? 'CREATOR_CHOOSES') as PackFlavorFillRule,
+      validateComposition: true, // the charge enforces it; the estimate only reads a price
     })
-    if (!composed.ok) {
-      return { ok: false, error: composed.errors[0]?.message ?? 'Adjust your variety pack in step 2 before paying.' }
-    }
-    const basis: PackPricingBasis = (matrix.pricingBasis ?? 'PER_FLAVOR') as PackPricingBasis
-    const pricePerPack = packPriceCents(
-      basis,
-      { pricePerPackCents: matrix.pricePerPackCents ?? null },
-      composed.slots,
-      matrix.pool,
-    )
-    packPricedSubtotalCents = orderTotalCents(pricePerPack, packSel.packCount)
-    for (const p of matrix.pool) flavorPriceByPreset.set(p.flavorPresetId, p.unitPriceCents)
+    if (!packQuote.ok) return { ok: false, error: packQuote.error }
+    if (!packQuote.isPack) return { ok: false, error: 'Adjust your variety pack in step 2 before paying.' }
+
+    const { packPricedSubtotalCents: packSubtotal, pricePerPackCents: pricePerPack, unitsPerPack, basis } = packQuote
+    packPricedSubtotalCents = packSubtotal
+    for (const p of packQuote.pool) flavorPriceByPreset.set(p.flavorPresetId, p.unitPriceCents)
     packPersist = {
       packVariantId: packSel.packVariantId,
       packCount: packSel.packCount,
@@ -349,6 +340,7 @@ export async function placeOrderFromCheckoutDraft(
     }
 
     // Per-flavor ORDER total = packCount × that slot's per-pack units.
+    const composed = { slots: packQuote.slots }
     const presetIds = composed.slots.map((s) => s.flavorPresetId)
     const presets = await prisma.flavorPreset.findMany({
       where: { id: { in: presetIds } },
@@ -2191,70 +2183,6 @@ async function resolveFlavorDesignVersions(
   return out
 }
 
-/**
- * Cast-guarded read of the additive pack columns needed to PRICE + validate a
- * pack order at order time: the chosen variant's `unitsPerPack` + `pricePerPackCents`,
- * the template's `minFlavorsPerPack` / `flavorFillRule` / `pricingBasis`, and the
- * per-flavor `unitPriceCents` pool. Mirrors readPackModel in marketing/pricing.ts.
- * Returns empty defaults on any failure (pre-migration / missing columns) so the
- * caller falls back to the snapshot the client sent (packSel.unitsPerPack) and a
- * PER_FLAVOR default basis — the order still places.
- */
-async function readPackOrderInputs(
-  templateId: string | null,
-  variantId: string,
-): Promise<{
-  unitsPerPack: number | null
-  pricePerPackCents: number | null
-  minFlavors: number | null
-  fillRule: PackFlavorFillRule | null
-  pricingBasis: PackPricingBasis | null
-  pool: Array<{ flavorPresetId: string; unitPriceCents: number | null }>
-}> {
-  const empty = {
-    unitsPerPack: null,
-    pricePerPackCents: null,
-    minFlavors: null,
-    fillRule: null as PackFlavorFillRule | null,
-    pricingBasis: null as PackPricingBasis | null,
-    pool: [] as Array<{ flavorPresetId: string; unitPriceCents: number | null }>,
-  }
-  if (!templateId) return empty
-  try {
-    const t = await (prisma as unknown as {
-      productTemplate: {
-        findUnique: (a: unknown) => Promise<{
-          minFlavorsPerPack: number | null
-          flavorFillRule: PackFlavorFillRule | null
-          pricingBasis: PackPricingBasis | null
-          variants: Array<{ id: string; unitsPerPack: number | null; pricePerPackCents: number | null }>
-          flavorPresets: Array<{ id: string; unitPriceCents: number | null }>
-        } | null>
-      }
-    }).productTemplate.findUnique({
-      where: { id: templateId },
-      select: {
-        minFlavorsPerPack: true,
-        flavorFillRule: true,
-        pricingBasis: true,
-        variants: { select: { id: true, unitsPerPack: true, pricePerPackCents: true } },
-        flavorPresets: { where: { status: 'ACTIVE' }, select: { id: true, unitPriceCents: true } },
-      },
-    })
-    if (!t) return empty
-    const v = (t.variants ?? []).find((x) => x.id === variantId)
-    return {
-      unitsPerPack: v?.unitsPerPack ?? null,
-      pricePerPackCents: v?.pricePerPackCents ?? null,
-      minFlavors: t.minFlavorsPerPack ?? null,
-      fillRule: t.flavorFillRule ?? null,
-      pricingBasis: t.pricingBasis ?? null,
-      pool: (t.flavorPresets ?? []).map((f) => ({
-        flavorPresetId: f.id,
-        unitPriceCents: f.unitPriceCents ?? null,
-      })),
-    }
-  } catch {
-    return empty
-  }
-}
+// readPackOrderInputs moved to ./pack-pricing (2026-07-16) so the ESTIMATE can
+// import it too. A 'use server' file may only export async functions, which is
+// why the estimate could not share this and priced the wrong basis.
