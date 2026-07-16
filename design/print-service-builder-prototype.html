@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Partner: Print Service Builder (Prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;--pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;
+  --neon-500:#B5FF3D;--neon-600:#9EE61F;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;--ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-500:#B45309;--warning-700:#7C360A;
+  --danger-50:#FBE8E7;--danger-100:#F6C9C7;--danger-500:#C2362F;--danger-700:#87211E;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-500:#1F5BA8;--info-700:#163E72;
+  --bg-hero:#FFFFFF;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;--font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);--shadow-lg:0 12px 28px rgba(24,24,26,.12);
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font-family:inherit}
+button{cursor:pointer;border:none;background:none}
+.disp{font-family:var(--font-display)}
+.shell{max-width:1180px;margin:0 auto;padding:18px 18px 120px}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:16px;position:sticky;top:10px;z-index:80}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:15px}
+.brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800}
+.brand small{font-weight:500;color:var(--ink-500);font-size:12px}
+.saved{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-500);font-weight:500}
+.saved .dot{width:7px;height:7px;border-radius:50%;background:var(--success-500)}
+
+/* stepper */
+.stepper{display:flex;gap:0;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-2xl);padding:6px;margin-bottom:16px;overflow-x:auto}
+.stp{flex:1;min-width:150px;text-align:left;padding:10px 12px;border-radius:var(--r-lg);transition:all .18s var(--ease);position:relative}
+.stp .n{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400)}
+.stp .n i{width:18px;height:18px;border-radius:50%;background:var(--ink-100);color:var(--ink-500);display:grid;place-items:center;font-size:10px;font-style:normal;font-weight:700;flex:none}
+.stp .t{font-weight:700;font-size:13.5px;margin-top:5px;color:var(--ink-700)}
+.stp .d{font-size:11.5px;color:var(--ink-400);margin-top:1px}
+.stp:hover{background:var(--ink-50)}
+.stp.on{background:var(--ink-900)}
+.stp.on .t{color:#fff}.stp.on .d{color:var(--ink-400)}.stp.on .n{color:var(--pink-300)}
+.stp.on .n i{background:var(--pink-500);color:#fff}
+.stp.done .n i{background:var(--success-500);color:#fff}
+
+/* hero */
+.hero{background:var(--bg-hero);border:1px solid var(--ink-200);border-radius:var(--r-2xl);padding:20px 22px;margin-bottom:14px}
+.hero .ey{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--pink-700)}
+.hero h1{font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:-.02em;margin-top:5px}
+.hero p{color:var(--ink-500);font-size:13.5px;margin-top:4px;max-width:780px}
+
+.view{display:none;animation:fade .3s var(--ease)}
+.view.show{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:none;transform:none}}
+
+/* cards */
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:18px 20px;margin-bottom:12px}
+.card h2{font-family:var(--font-display);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h2 .tag{font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:var(--r-pill);background:var(--pink-50);color:var(--pink-700)}
+.card h2 .tag.new{background:var(--neon-500);color:var(--ink-900)}
+.card > p.sub{color:var(--ink-500);font-size:12.5px;margin-top:3px;margin-bottom:14px;max-width:760px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.f{display:block}
+.f label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-600);margin-bottom:5px}
+.f input,.f select{width:100%;height:38px;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:0 11px;font-size:13.5px;color:var(--ink-900);background:#fff}
+.f input:focus,.f select:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.14)}
+.f .hint{font-size:11.5px;color:var(--ink-400);margin-top:4px}
+.row{display:flex;gap:10px;align-items:flex-end}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1px solid var(--ink-300);background:#fff;border-radius:var(--r-pill);padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--ink-600);transition:all .15s}
+.chip:hover{border-color:var(--ink-400)}
+.chip.on{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+.chip.on.pk{background:var(--pink-500);border-color:var(--pink-500)}
+.chip.dis{opacity:.4;cursor:not-allowed;text-decoration:line-through}
+
+/* press cards */
+.press{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:10px;background:var(--ink-50)}
+.press.on{background:#fff;border-color:var(--pink-200);box-shadow:0 0 0 3px rgba(255,46,99,.07)}
+.press-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.press-h .nm{font-weight:700;font-size:14px;font-family:var(--font-display)}
+.press-h .bd{font-size:11.5px;color:var(--ink-500);font-weight:600;background:#fff;border:1px solid var(--ink-200);padding:2px 8px;border-radius:var(--r-pill)}
+.press-h .rm{margin-left:auto;font-size:11.5px;color:var(--danger-500);font-weight:600}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-500);padding:8px 8px 8px 0;border-bottom:1px solid var(--ink-200)}
+td{padding:9px 8px 9px 0;border-bottom:1px solid var(--ink-100);vertical-align:middle}
+td input{height:34px;border:1px solid var(--ink-300);border-radius:var(--r-sm);padding:0 8px;font-size:13px;width:100%}
+td input:focus{outline:none;border-color:var(--pink-500)}
+tr:last-child td{border-bottom:none}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:13px;border-radius:var(--r-pill);padding:0 16px;height:38px;transition:all .16s}
+.btn.sm{height:32px;font-size:12px;padding:0 12px}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{background:#000}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn-out:hover{background:var(--ink-50)}
+.btn-ghost{color:var(--ink-600)}.btn-ghost:hover{background:var(--ink-100)}
+
+/* callouts */
+.callout{border-radius:var(--r-lg);padding:12px 14px;font-size:12.5px;line-height:1.6;display:flex;gap:10px;margin-top:12px}
+.callout .ic{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.co-info{background:var(--info-50);border:1px solid var(--info-100);color:var(--info-700)}.co-info .ic{background:var(--info-500)}
+.co-warn{background:var(--warning-50);border:1px solid var(--warning-100);color:var(--warning-700)}.co-warn .ic{background:var(--warning-500)}
+.co-ok{background:var(--success-50);border:1px solid var(--success-100);color:var(--success-700)}.co-ok .ic{background:var(--success-500)}
+
+/* simulator */
+.sim{background:var(--ink-900);border-radius:var(--r-xl);padding:20px;color:#fff}
+.sim h3{font-family:var(--font-display);font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sim h3 .lz{background:var(--neon-500);color:var(--ink-900);font-family:var(--font-sans);font-size:10px;font-weight:800;padding:2px 7px;border-radius:var(--r-pill);letter-spacing:.04em}
+.sim p{color:var(--ink-400);font-size:12.5px;margin-top:3px}
+.sim-ctl{display:flex;gap:12px;align-items:flex-end;margin:14px 0}
+.sim-ctl label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-400);margin-bottom:5px}
+.sim-ctl input{height:38px;border-radius:var(--r-md);border:1px solid var(--ink-700);background:var(--ink-800);color:#fff;padding:0 11px;font-size:14px;font-weight:600;width:130px}
+.sim-ctl input:focus{outline:none;border-color:var(--neon-500)}
+.sim-out{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.so{background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:12px 14px}
+.so.win{border-color:var(--neon-500);background:rgba(181,255,61,.09)}
+.so.out{opacity:.45}
+.so .p{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-400);display:flex;align-items:center;gap:6px}
+.so.win .p{color:var(--neon-500)}
+.so .v{font-family:var(--font-display);font-size:20px;font-weight:800;margin-top:5px}
+.so .u{font-size:11.5px;color:var(--ink-400);margin-top:2px}
+.so .why{font-size:11px;color:var(--warning-500);margin-top:5px;font-weight:600}
+.xover{margin-top:12px;background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:11px 14px;font-size:12.5px;color:var(--ink-300)}
+.xover b{color:var(--neon-500)}
+.chart{margin-top:12px;background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:10px}
+
+/* review */
+.checks .ck{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--ink-100)}
+.checks .ck:last-child{border-bottom:none}
+.checks .bx{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.bx.ok{background:var(--success-500)}.bx.no{background:var(--ink-300)}
+.checks .lb{font-weight:600;font-size:13.5px}
+.checks .hp{font-size:11.5px;color:var(--ink-500)}
+.checks .go{margin-left:auto}
+
+/* footer */
+.foot{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-top:1px solid var(--ink-200);padding:12px 0;z-index:90}
+.foot-in{max-width:1180px;margin:0 auto;padding:0 18px;display:flex;align-items:center;gap:12px}
+.foot .pg{font-size:12.5px;color:var(--ink-500);font-weight:600}
+.foot .sp{margin-left:auto;display:flex;gap:8px}
+.note{font-size:12px;color:var(--ink-500);padding:0 4px;margin-bottom:14px;line-height:1.6}
+.note b{color:var(--ink-700)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="bar">
+    <div class="brand"><span class="sq">i</span>iLaunchify <small>· Partner</small></div>
+    <div class="saved"><span class="dot"></span>Saved just now</div>
+  </div>
+
+  <div class="note">
+    <b>Prototype: Print Service Builder.</b> Mirrors the manufacturer's Add Product builder (Basics → … → Cost &amp; pricing → Review).
+    This is the surface where a print provider shapes their whole service <b>and how they make money on it</b>.
+    Everything marked <span style="background:var(--neon-500);color:var(--ink-900);font-weight:700;padding:1px 5px;border-radius:4px;font-size:11px">NEW</span> does not exist in the product today.
+  </div>
+
+  <div class="stepper" id="stepper"></div>
+
+  <!-- 1 BASICS -->
+  <section class="view show" data-v="0">
+    <div class="hero">
+      <div class="ey">Step 1 of 6</div>
+      <h1>Service basics</h1>
+      <p>Who you are as a print provider. This is what creators see on your card and what routing uses to find you.</p>
+    </div>
+    <div class="card">
+      <h2>Identity</h2>
+      <p class="sub">Your print service is separate from your company profile. One company can run several services.</p>
+      <div class="grid2">
+        <div class="f"><label>Service name</label><input value="Narrow-web label printing" /><div class="hint">Shown on provider cards.</div></div>
+        <div class="f"><label>Facility</label><select><option>Columbus, OH (main plant)</option><option>Reno, NV (west)</option></select><div class="hint">Drives freight distance in routing.</div></div>
+      </div>
+      <div class="grid3" style="margin-top:14px">
+        <div class="f"><label>Standard lead time</label><input value="10" /><div class="hint">Business days, ex-proof.</div></div>
+        <div class="f"><label>Disclosure</label><select><option>Anonymous</option><option>City &amp; state</option><option>Full "Printed by"</option></select><div class="hint">Printers keep PDP provider cards.</div></div>
+        <div class="f"><label>Accepting work</label><select><option>Open to rotation</option><option>Paused</option></select></div>
+      </div>
+      <div class="callout co-info"><span class="ic">i</span><div><b>Rotation eligibility is computed, not claimed.</b> You enter the pool when your declarations below actually match a job (packaging type, decoration, substrate, run size, inks). Admin can restrict, never inflate.</div></div>
+    </div>
+    <div class="card">
+      <h2>Speed &amp; expediting <span class="tag new">New</span></h2>
+      <p class="sub">Rush is one of the most reliable margin lines in print, and today you have no way to charge for it.</p>
+      <div class="grid3">
+        <div class="f"><label>Rush lead time</label><input value="4" /><div class="hint">Business days.</div></div>
+        <div class="f"><label>Rush uplift %</label><input value="30" /><div class="hint">Applied to the print subtotal.</div></div>
+        <div class="f"><label>Rush capacity / week</label><input value="6" /><div class="hint">Jobs. Prevents overselling.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 PRESSES -->
+  <section class="view" data-v="1">
+    <div class="hero">
+      <div class="ey">Step 2 of 6</div>
+      <h1>Your presses</h1>
+      <p>This is the step that changes everything. Minimums belong to the <b>press</b>, not to you. Declare each press and the run band it serves, and one shop can take a 100-unit job and a 50,000-unit job.</p>
+    </div>
+    <div class="card">
+      <h2>Presses on your floor <span class="tag new">New</span></h2>
+      <p class="sub">Industry research (2026-07-15): digital was 21.6% of global label value in 2024 and most converters now run digital alongside flexo, routing each job by run length. A single MOQ per shop cannot express that.</p>
+
+      <div class="press on">
+        <div class="press-h"><span class="nm">Digital (HP Indigo 6900)</span><span class="bd">Short to mid run</span><button class="rm">Remove</button></div>
+        <div class="grid3">
+          <div class="f"><label>Process</label><select><option selected>Digital</option><option>Flexo</option><option>Offset</option><option>Gravure</option><option>Screen</option><option>LED UV</option><option>Letterpress</option></select></div>
+          <div class="f"><label>Max web width (mm)</label><input value="330" /></div>
+          <div class="f"><label>Max colors</label><input value="7" /></div>
+        </div>
+        <div class="grid3" style="margin-top:12px">
+          <div class="f"><label>Min run (pieces)</label><input value="100" /><div class="hint">Your true floor on this press.</div></div>
+          <div class="f"><label>Max run (pieces)</label><input value="20000" /><div class="hint">Beyond this it stops paying.</div></div>
+          <div class="f"><label>White ink</label><select><option>Yes</option><option>No</option></select><div class="hint">Needed for clear substrates.</div></div>
+        </div>
+      </div>
+
+      <div class="press on">
+        <div class="press-h"><span class="nm">Flexo (Mark Andy P5)</span><span class="bd">Long run</span><button class="rm">Remove</button></div>
+        <div class="grid3">
+          <div class="f"><label>Process</label><select><option>Digital</option><option selected>Flexo</option><option>Offset</option><option>Gravure</option><option>Screen</option></select></div>
+          <div class="f"><label>Max web width (mm)</label><input value="430" /></div>
+          <div class="f"><label>Max colors</label><input value="8" /></div>
+        </div>
+        <div class="grid3" style="margin-top:12px">
+          <div class="f"><label>Min run (pieces)</label><input value="2500" /><div class="hint">Plates + makeready must amortize.</div></div>
+          <div class="f"><label>Max run (pieces)</label><input value="250000" /></div>
+          <div class="f"><label>White ink</label><select><option>Yes</option><option>No</option></select></div>
+        </div>
+      </div>
+
+      <button class="btn btn-out sm" style="margin-top:6px">+ Add a press</button>
+      <div class="callout co-ok"><span class="ic">✓</span><div><b>With two presses declared you now serve 100 units and 50,000 units.</b> The engine picks the press per job and the crossover falls out of your own pricing (Step 5). We never hardcode "under 5k = digital".</div></div>
+    </div>
+  </section>
+
+  <!-- 3 CAPABILITY -->
+  <section class="view" data-v="2">
+    <div class="hero">
+      <div class="ey">Step 3 of 6</div>
+      <h1>What you can print</h1>
+      <p>The hard filters. A job that fails any of these never reaches you, and no rating or price can rescue it.</p>
+    </div>
+    <div class="card">
+      <h2>Formats &amp; decoration</h2>
+      <p class="sub">Only physically valid combinations are selectable (admin-curated compatibility matrix).</p>
+      <div class="f" style="margin-bottom:12px"><label>Packaging types</label>
+        <div class="chips">
+          <button class="chip on pk">PS label · roll</button><button class="chip on pk">Shrink sleeve</button><button class="chip">Folding carton</button>
+          <button class="chip">Flexible pouch</button><button class="chip dis">Direct-print can</button><button class="chip">Tag / hangtag</button>
+        </div>
+      </div>
+      <div class="f"><label>Decoration methods</label>
+        <div class="chips">
+          <button class="chip on pk">Pressure-sensitive</button><button class="chip on pk">Shrink sleeve</button><button class="chip">Direct print</button><button class="chip">In-mould</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Substrates <span class="tag new">New</span></h2>
+      <p class="sub">Declared in the schema today but with no input anywhere, so a BOPP-only shop can currently be handed a paper job.</p>
+      <div class="chips">
+        <button class="chip on pk">BOPP white</button><button class="chip on pk">BOPP clear</button><button class="chip on pk">Paper semi-gloss</button>
+        <button class="chip">Estate #8</button><button class="chip">PET</button><button class="chip">Direct thermal</button><button class="chip">Textured / felt</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Print envelope &amp; compliance</h2>
+      <div class="grid3">
+        <div class="f"><label>Min print W × H (mm)</label><input value="12 × 12" /></div>
+        <div class="f"><label>Max print W × H (mm)</label><input value="320 × 450" /><div class="hint">The die-line must fit the press.</div></div>
+        <div class="f"><label>Food-contact safe inks</label><select><option>Yes: low-migration</option><option>No</option></select><div class="hint">HARD gate. Never overridable.</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Finished format <span class="tag new">New</span></h2>
+      <p class="sub">Completely unmodelled today, and it is a real minimum driver: OnlineLabels quotes minimums in <b>rolls, varying by core size</b>. Two shops with the same MOQ in pieces are not interchangeable if one cannot wind a 3in core.</p>
+      <div class="grid3">
+        <div class="f"><label>Delivery format</label><select><option>Roll</option><option>Sheet</option><option>Fan-fold</option></select></div>
+        <div class="f"><label>Core sizes</label><select><option>1in, 3in</option><option>3in only</option></select></div>
+        <div class="f"><label>Rewind directions</label><select><option>All (1-8)</option><option>4 only</option></select></div>
+      </div>
+      <div class="grid3" style="margin-top:12px">
+        <div class="f"><label>Max labels / roll</label><input value="2500" /></div>
+        <div class="f"><label>Max roll diameter (mm)</label><input value="300" /></div>
+        <div class="f"><label>Splices allowed / roll</label><input value="1" /></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 FINISHES + PREPRESS -->
+  <section class="view" data-v="3">
+    <div class="hero">
+      <div class="ey">Step 4 of 6</div>
+      <h1>Finishes &amp; prepress</h1>
+      <p>Your premium lines. Finishes are modelled richly in the schema and are <b>structurally always $0 today</b> because nothing can write a row.</p>
+    </div>
+    <div class="card">
+      <h2>Finishes you offer <span class="tag new">New</span></h2>
+      <p class="sub">Each finish is both a capability (a job needing foil only routes to foil shops) and a price line.</p>
+      <table>
+        <thead><tr><th style="width:26%">Finish</th><th>Pricing mode</th><th>Setup</th><th>Per unit</th><th>Min qty</th><th>Max coverage</th></tr></thead>
+        <tbody>
+          <tr><td><b>Foil stamp: gold</b></td><td><select style="height:34px;width:100%;border:1px solid var(--ink-300);border-radius:6px"><option>Flat + per unit</option><option>Per area</option><option>Per object</option><option>Per color</option><option>Tiered</option></select></td><td><input value="$185.00" /></td><td><input value="$0.06" /></td><td><input value="1000" /></td><td><input value="30%" /></td></tr>
+          <tr><td><b>Spot UV gloss</b></td><td><select style="height:34px;width:100%;border:1px solid var(--ink-300);border-radius:6px"><option>Per area</option><option>Flat + per unit</option></select></td><td><input value="$120.00" /></td><td><input value="$0.03/sq in" /></td><td><input value="500" /></td><td><input value="60%" /></td></tr>
+          <tr><td><b>Emboss / deboss</b></td><td><select style="height:34px;width:100%;border:1px solid var(--ink-300);border-radius:6px"><option>Flat + per unit</option></select></td><td><input value="$240.00" /></td><td><input value="$0.05" /></td><td><input value="2500" /></td><td><input value="n/a" /></td></tr>
+        </tbody>
+      </table>
+      <button class="btn btn-out sm" style="margin-top:10px">+ Add finish</button>
+    </div>
+    <div class="card">
+      <h2>Prepress &amp; colour rules</h2>
+      <div class="grid3">
+        <div class="f"><label>File format</label><select><option>PDF/X-4</option><option>PDF/X-1a</option></select></div>
+        <div class="f"><label>Colour space</label><select><option>CMYK</option><option>CMYK + spot</option></select></div>
+        <div class="f"><label>Max spot colours <span style="color:var(--pink-700)">NEW</span></label><input value="3" /><div class="hint">"Accepts spots" alone is too coarse.</div></div>
+      </div>
+      <div class="grid3" style="margin-top:12px">
+        <div class="f"><label>Min DPI</label><input value="300" /></div>
+        <div class="f"><label>Bleed (mm)</label><input value="3" /></div>
+        <div class="f"><label>Total ink coverage %</label><input value="300" /></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Prepress &amp; proofing fees <span class="tag new">New</span></h2>
+      <p class="sub">Real converters bill for art fixing, colour matching and hard proofs. Today you cannot charge a cent for any of it.</p>
+      <div class="grid3">
+        <div class="f"><label>Art / file-fix fee</label><input value="$75.00" /><div class="hint">Per job, when files fail preflight.</div></div>
+        <div class="f"><label>Pantone match fee</label><input value="$45.00" /><div class="hint">Per spot colour matched.</div></div>
+        <div class="f"><label>Hard proof</label><input value="$60.00" /><div class="hint">Soft proof free; press proof by quote.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 PRICING -->
+  <section class="view" data-v="4">
+    <div class="hero">
+      <div class="ey">Step 5 of 6 · the money</div>
+      <h1>Pricing</h1>
+      <p>One price curve per press. Setup and plates are amortised into the anchor price, exactly like a real quote. The digital-vs-flexo crossover is then an <b>output</b> of your own numbers, never a rule we impose.</p>
+    </div>
+
+    <div class="card">
+      <h2>Price curve: Digital <span class="tag">HP Indigo 6900</span></h2>
+      <p class="sub">Read a row as: "from <b>this quantity</b>, the price is <b>this</b>, and each additional block costs <b>this</b>."</p>
+      <table>
+        <thead><tr><th>From qty</th><th>Price at that qty</th><th>Each additional</th><th>Costs</th><th>Up to</th><th>Quote only</th></tr></thead>
+        <tbody>
+          <tr><td><input id="d_bq" value="100" /></td><td><input id="d_bp" value="45.00" /></td><td><input value="1" /></td><td><input id="d_ip" value="0.35" /></td><td><input id="d_mx" value="20000" /></td><td><input type="checkbox" /></td></tr>
+        </tbody>
+      </table>
+      <button class="btn btn-out sm" style="margin-top:10px">+ Add band</button>
+      <div class="callout co-info"><span class="ic">i</span><div><b>Derived setup:</b> <span id="d_setup">$10.00</span>. We compute it from your anchor rather than asking twice (this is how the CIP4 PrintTalk quote standard models it).</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Price curve: Flexo <span class="tag">Mark Andy P5</span></h2>
+      <table>
+        <thead><tr><th>From qty</th><th>Price at that qty</th><th>Each additional</th><th>Costs</th><th>Up to</th><th>Quote only</th></tr></thead>
+        <tbody>
+          <tr><td><input id="f_bq" value="2500" /></td><td><input id="f_bp" value="3300.00" /></td><td><input value="1" /></td><td><input id="f_ip" value="0.08" /></td><td><input id="f_mx" value="250000" /></td><td><input type="checkbox" /></td></tr>
+        </tbody>
+      </table>
+      <button class="btn btn-out sm" style="margin-top:10px">+ Add band</button>
+      <div class="callout co-info"><span class="ic">i</span><div><b>Derived setup:</b> <span id="f_setup">$3,100.00</span>: your plates and makeready, amortised into the anchor.</div></div>
+    </div>
+
+    <div class="sim">
+      <h3>Live check <span class="lz">what routing will actually do</span></h3>
+      <p>Type a quantity. This runs the same maths the engine runs.</p>
+      <div class="sim-ctl">
+        <div><label>Order quantity (pieces)</label><input id="q" type="number" value="15000" /></div>
+        <div style="align-self:center;color:var(--ink-400);font-size:12px;padding-bottom:4px">try 500 · 5,000 · 15,000 · 50,000</div>
+      </div>
+      <div class="sim-out">
+        <div class="so" id="so_d"><div class="p">Digital</div><div class="v" id="v_d">&mdash;</div><div class="u" id="u_d"></div><div class="why" id="w_d"></div></div>
+        <div class="so" id="so_f"><div class="p">Flexo</div><div class="v" id="v_f">&mdash;</div><div class="u" id="u_f"></div><div class="why" id="w_f"></div></div>
+      </div>
+      <div class="xover" id="xo"></div>
+      <div class="chart"><svg id="chart" viewBox="0 0 700 200" style="width:100%;height:200px"></svg></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>Tooling &amp; repeat runs <span class="tag new">New</span></h2>
+      <p class="sub">The single biggest gap I found. Plates and dies are made once and <b>kept</b>. Charging a repeat customer full setup again is wrong, and not charging it on run one is a loss.</p>
+      <div class="grid3">
+        <div class="f"><label>Custom die / tooling</label><input value="$450.00" /><div class="hint">One-time per shape. Reused on repeats.</div></div>
+        <div class="f"><label>Plate charge / colour</label><input value="$95.00" /><div class="hint">Flexo. One-time per artwork.</div></div>
+        <div class="f"><label>Repeat-run discount</label><input value="Setup waived" /><div class="hint">Same artwork, plates exist.</div></div>
+      </div>
+      <div class="callout co-warn"><span class="ic">!</span><div><b>Why this matters more than it looks:</b> the trade press says <b>"well over 70% of short-run jobs are in fact long-run jobs broken into batches"</b>. If repeats re-pay setup, you are pricing your best, stickiest revenue out of the market.</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Order rules <span class="tag new">New</span></h2>
+      <div class="grid3">
+        <div class="f"><label>Minimum order value</label><input value="$200.00" /><div class="hint">Binds independently of piece count.</div></div>
+        <div class="f"><label>Minimum is per…</label><select><option>Design / version</option><option>Order</option></select><div class="hint">A 6-flavour pack is 6 designs.</div></div>
+        <div class="f"><label>Order in multiples of</label><input value="100" /><div class="hint">Quantities are a lattice, not a range.</div></div>
+      </div>
+      <div class="grid3" style="margin-top:12px">
+        <div class="f"><label>Overs / unders policy</label><select><option>±10%, bill actual shipped</option><option>Exact quantity</option></select><div class="hint">The industry norm.</div></div>
+        <div class="f"><label>Additional version / SKU</label><input value="$28.00" /><div class="hint">Digital's superpower. Per extra design in the run.</div></div>
+        <div class="f"><label>Price valid until</label><input value="2026-12-31" /><div class="hint">Raise prices without rewriting history.</div></div>
+      </div>
+      <div class="callout co-info"><span class="ic">i</span><div>Two real converters that advertise <b>"no minimum quantity"</b> both enforce an order-value floor (~$200 and ~$260). A piece-count-only model lets a creator build a $40 order nobody will accept.</div></div>
+    </div>
+  </section>
+
+  <!-- 6 REVIEW -->
+  <section class="view" data-v="5">
+    <div class="hero">
+      <div class="ey">Step 6 of 6</div>
+      <h1>Review &amp; publish</h1>
+      <p>What you unlock the moment this goes live.</p>
+    </div>
+    <div class="card">
+      <h2>Completeness</h2>
+      <div class="checks">
+        <div class="ck"><span class="bx ok">✓</span><div><div class="lb">At least one press with a run band</div><div class="hp">Digital 100–20,000 · Flexo 2,500–250,000</div></div></div>
+        <div class="ck"><span class="bx ok">✓</span><div><div class="lb">A price curve per press</div><div class="hp">Both presses priced. No quote-only gaps.</div></div></div>
+        <div class="ck"><span class="bx ok">✓</span><div><div class="lb">Substrates declared</div><div class="hp">3 selected</div></div></div>
+        <div class="ck"><span class="bx no">!</span><div><div class="lb">Finished format (core / rewind)</div><div class="hp">Not set: some jobs will skip you</div></div><button class="btn btn-out sm go">Fix</button></div>
+        <div class="ck"><span class="bx ok">✓</span><div><div class="lb">Prepress spec + food-contact</div><div class="hp">PDF/X-4 · low-migration inks</div></div></div>
+      </div>
+      <div class="callout co-warn"><span class="ic">!</span><div><b>Incomplete capability = not listable.</b> Same gate discipline as verification. Half-declared services quietly lose jobs instead of failing loudly.</div></div>
+    </div>
+    <div class="card">
+      <h2>What this unlocks</h2>
+      <div class="grid3">
+        <div style="background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-500)">Live products you match</div>
+          <div class="disp" style="font-size:26px;font-weight:800;margin-top:4px">34</div>
+          <div style="font-size:11.5px;color:var(--ink-500)">of 51 published products</div>
+        </div>
+        <div style="background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-500)">Run band covered</div>
+          <div class="disp" style="font-size:26px;font-weight:800;margin-top:4px">100 – 250k</div>
+          <div style="font-size:11.5px;color:var(--ink-500)">no gap between your presses</div>
+        </div>
+        <div style="background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-500)">Open capability requests</div>
+          <div class="disp" style="font-size:26px;font-weight:800;margin-top:4px">2</div>
+          <div style="font-size:11.5px;color:var(--ink-500)">you can claim now</div>
+        </div>
+      </div>
+      <div class="callout co-ok"><span class="ic">✓</span><div><b>Coverage is the point.</b> A product with zero capable printers cannot publish and fires a capability request. Your declarations here are literally what unblocks creators.</div></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="foot"><div class="foot-in">
+  <span class="pg" id="pg">Step 1 of 6</span>
+  <div class="sp">
+    <button class="btn btn-ghost" id="back">← Back</button>
+    <button class="btn btn-dark" id="next">Next: Your presses →</button>
+  </div>
+</div></div>
+
+<script>
+const STEPS=[
+ {t:'Basics',d:'Identity, facility, rush'},
+ {t:'Your presses',d:'Processes, run bands'},
+ {t:'What you can print',d:'Formats, substrates, envelope'},
+ {t:'Finishes & prepress',d:'Premium lines, colour rules'},
+ {t:'Pricing',d:'Curves, tooling, order rules'},
+ {t:'Review & publish',d:'Coverage & gates'},
+];
+let cur=0;
+const stepper=document.getElementById('stepper');
+function paint(){
+  stepper.innerHTML=STEPS.map((s,i)=>`<button class="stp ${i===cur?'on':''} ${i<cur?'done':''}" data-i="${i}">
+    <span class="n"><i>${i<cur?'✓':i+1}</i>Step ${i+1}</span>
+    <div class="t">${s.t}</div><div class="d">${s.d}</div></button>`).join('');
+  stepper.querySelectorAll('.stp').forEach(b=>b.onclick=()=>{cur=+b.dataset.i;paint()});
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('show',+v.dataset.v===cur));
+  document.getElementById('pg').textContent=`Step ${cur+1} of ${STEPS.length}`;
+  document.getElementById('next').textContent=cur===STEPS.length-1?'Publish service →':`Next: ${STEPS[cur+1].t} →`;
+  document.getElementById('back').style.visibility=cur===0?'hidden':'visible';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('next').onclick=()=>{if(cur<STEPS.length-1){cur++;paint()}};
+document.getElementById('back').onclick=()=>{if(cur>0){cur--;paint()}};
+
+/* ---- price curve maths: the PrintTalk formula ---- */
+const $=id=>document.getElementById(id);
+const num=id=>parseFloat($(id).value.replace(/[^0-9.]/g,''))||0;
+function press(bq,bp,ip,mx){return{bq:num(bq),bp:num(bp)*100,ip:num(ip)*100,mx:num(mx)}}
+function price(p,q){ // cents; null = this press cannot run it
+  if(q<p.bq||q>p.mx) return null;
+  return p.bp+(q-p.bq)*p.ip;
+}
+const fmt=c=>'$'+(c/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+function recalc(){
+  const D=press('d_bq','d_bp','d_ip','d_mx'), F=press('f_bq','f_bp','f_ip','f_mx');
+  // derived setup = anchor minus the marginal already inside it
+  $('d_setup').textContent=fmt(Math.max(0,D.bp-D.bq*D.ip));
+  $('f_setup').textContent=fmt(Math.max(0,F.bp-F.bq*F.ip));
+  const q=parseInt($('q').value)||0;
+  const pd=price(D,q), pf=price(F,q);
+  const set=(box,v,u,w,val,unit,why)=>{$(v).textContent=val;$(u).textContent=unit;$(w).textContent=why};
+  set(0,'v_d','u_d','w_d', pd==null?'&mdash;':fmt(pd), pd==null?'':fmt(pd/q)+' / unit', pd==null?(q<D.bq?`below its ${D.bq.toLocaleString()} minimum`:`above its ${D.mx.toLocaleString()} ceiling`):'');
+  set(0,'v_f','u_f','w_f', pf==null?'&mdash;':fmt(pf), pf==null?'':fmt(pf/q)+' / unit', pf==null?(q<F.bq?`below its ${F.bq.toLocaleString()} minimum`:`above its ${F.mx.toLocaleString()} ceiling`):'');
+  const win = pd!=null&&pf!=null ? (pd<=pf?'d':'f') : (pd!=null?'d':(pf!=null?'f':null));
+  $('so_d').className='so'+(win==='d'?' win':'')+(pd==null?' out':'');
+  $('so_f').className='so'+(win==='f'?' win':'')+(pf==null?' out':'');
+  // crossover: solve bp_d + (q-bq_d)*ip_d = bp_f + (q-bq_f)*ip_f
+  const dd=D.ip-F.ip, cc=(F.bp-F.bq*F.ip)-(D.bp-D.bq*D.ip);
+  const x = dd!==0 ? cc/dd : NaN;
+  let msg;
+  if(win===null) msg='No press on your floor can run this quantity. This job would route to another printer, or fire a capability request.';
+  else if(isFinite(x)&&x>0&&x>F.bq&&x<D.mx) msg=`Your crossover is <b>${Math.round(x).toLocaleString()} pieces</b>. Below it digital wins; above it flexo does. You did not set that number: it fell out of your own two curves.`;
+  else msg=`Only one press qualifies at this quantity, so there is no contest to resolve.`;
+  $('xo').innerHTML=msg;
+  chart(D,F,q,isFinite(x)?x:null);
+}
+function chart(D,F,q,x){
+  const W=700,H=200,PADL=8,PADB=22,maxQ=Math.max(D.mx,60000)*0.35;
+  const maxP=Math.max(price(D,Math.min(D.mx,maxQ))||0, price(F,Math.min(F.mx,maxQ))||0)*1.05||1;
+  const X=v=>PADL+(v/maxQ)*(W-PADL-10), Y=v=>H-PADB-(v/maxP)*(H-PADB-14);
+  const line=(p,col)=>{const a=[];for(let i=0;i<=60;i++){const qq=Math.round((i/60)*maxQ);const pv=price(p,qq);if(pv!=null)a.push(`${a.length?'L':'M'}${X(qq).toFixed(1)},${Y(pv).toFixed(1)}`)}return a.length?`<path d="${a.join(' ')}" fill="none" stroke="${col}" stroke-width="2.5" />`:''};
+  let marks='';
+  if(x&&x>0&&x<maxQ){const pv=price(D,Math.round(x));if(pv!=null)marks+=`<line x1="${X(x)}" y1="14" x2="${X(x)}" y2="${H-PADB}" stroke="#B5FF3D" stroke-width="1" stroke-dasharray="3 3"/><circle cx="${X(x)}" cy="${Y(pv)}" r="4" fill="#B5FF3D"/><text x="${X(x)+7}" y="26" fill="#B5FF3D" font-size="10" font-weight="700">crossover ${Math.round(x).toLocaleString()}</text>`}
+  if(q>0&&q<maxQ) marks+=`<line x1="${X(q)}" y1="14" x2="${X(q)}" y2="${H-PADB}" stroke="#FF2E63" stroke-width="1.5"/><text x="${X(q)+6}" y="${H-PADB-6}" fill="#FF7FA8" font-size="10" font-weight="700">your qty</text>`;
+  $('chart').innerHTML=`<rect width="${W}" height="${H}" fill="none"/>
+    <line x1="${PADL}" y1="${H-PADB}" x2="${W-10}" y2="${H-PADB}" stroke="#33343C"/>
+    ${line(D,'#7FB3FF')}${line(F,'#FFB3CC')}${marks}
+    <text x="${PADL}" y="${H-6}" fill="#6B6D78" font-size="10">0</text>
+    <text x="${W-40}" y="${H-6}" fill="#6B6D78" font-size="10">${Math.round(maxQ).toLocaleString()}</text>
+    <text x="${W-150}" y="24" fill="#7FB3FF" font-size="10" font-weight="700">&#9644; digital</text>
+    <text x="${W-80}" y="24" fill="#FFB3CC" font-size="10" font-weight="700">&#9644; flexo</text>`;
+}
+['q','d_bq','d_bp','d_ip','d_mx','f_bq','f_bp','f_ip','f_mx'].forEach(id=>$(id).addEventListener('input',recalc));
+paint();recalc();
+</script>
+</body>
+</html>
