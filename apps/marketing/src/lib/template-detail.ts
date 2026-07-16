@@ -7,6 +7,32 @@
  *
  * Replaced with Prisma queries once ProductTemplate schema gets the
  * detail-page fields (format, productionMethod, netWeight, etc.).
+ *
+ * ─── NO PRICES IN THIS FILE. EVER. (LOCKED, Pavel 2026-07-16) ────────────────
+ *
+ * THE RULE: a price is authored by a manufacturer or co-packer THROUGH THE
+ * PLATFORM, when they formulate their offer. It is never a literal in our source.
+ * We are the operator; we do not get to invent what a partner charges.
+ *
+ * WHAT HAPPENED: this file carried 17 hardcoded `priceDelta` literals (packaging
+ * +$0.60/+$1.20 per unit, ingredient swaps, add-ons). `findTemplateDetail` is a
+ * fixture map with exactly ONE real key, so EVERY other template fell through to
+ * GENERIC_DETAIL and silently inherited them. The PDP added the packaging delta
+ * to its quote; placeOrder never read it. A 500-unit run with "Glass jar" quoted
+ * +$600 and billed +$0. The ingredient/add-on deltas were shown to creators as
+ * "+$0.35/unit" and were pure invention.
+ *
+ * WHERE PRICES ACTUALLY LIVE (all partner-authored, all already charged):
+ *   - unit price by volume band ... ProductTemplatePricingTier.perUnitCostCents
+ *   - per-flavor delta ........... FlavorPreset.priceDeltaCents (partner
+ *                                  products/new builder writes it)
+ *   - packaging component upgrade  PackagingComponentVariant.baseSurchargePerUnit
+ *   - decoration ................. PartnerPackagingOffering tiers
+ * All are resolved by @ilaunchify/plans and billed by placeOrder. If the PDP needs
+ * to show a price, it reads one of those. Adding a number here instead re-opens a
+ * quote-vs-charge gap by construction, because nothing downstream can bill it.
+ *
+ * Enforced by scripts/check-invariants.mjs (no hardcoded price in a fixture).
  */
 
 import type {
@@ -78,7 +104,6 @@ const ADAPTOGEN: TemplateDetail = {
       name: 'Stand-up pouch (matte)',
       icon: '🛍️',
       leadTimeDays: 12,
-      priceDelta: 0,
       sizes: ['240g', '480g', '720g'],
     },
     {
@@ -86,7 +111,6 @@ const ADAPTOGEN: TemplateDetail = {
       name: 'Resealable pouch (gloss)',
       icon: '👜',
       leadTimeDays: 12,
-      priceDelta: 0.4,
       sizes: ['8 oz', '16 oz'],
     },
     {
@@ -94,7 +118,6 @@ const ADAPTOGEN: TemplateDetail = {
       name: 'Glass jar 250 mL',
       icon: '🫙',
       leadTimeDays: 18,
-      priceDelta: 1.2,
       sizes: ['250 mL', '500 mL'],
     },
     {
@@ -102,7 +125,6 @@ const ADAPTOGEN: TemplateDetail = {
       name: 'PET jar 8 oz',
       icon: '🥫',
       leadTimeDays: 14,
-      priceDelta: 0.6,
       sizes: ['8 oz', '12 oz'],
     },
     {
@@ -110,7 +132,6 @@ const ADAPTOGEN: TemplateDetail = {
       name: 'Single-serve sachets (30-pack)',
       icon: '✉️',
       leadTimeDays: 20,
-      priceDelta: 1.8,
       unavailable: true,
       sizes: ['Single serve', '30-pack'],
     },
@@ -131,7 +152,6 @@ const ADAPTOGEN: TemplateDetail = {
         {
           id: 'ashwagandha-sensoril',
           name: 'Ashwagandha (Sensoril®)',
-          priceDelta: 0.35,
           allergens: [],
         },
       ],
@@ -145,12 +165,10 @@ const ADAPTOGEN: TemplateDetail = {
         {
           id: 'reishi',
           name: 'Reishi mushroom extract',
-          priceDelta: -0.2,
         },
         {
           id: 'cordyceps',
           name: 'Cordyceps mushroom extract',
-          priceDelta: 0.1,
         },
       ],
     },
@@ -174,7 +192,6 @@ const ADAPTOGEN: TemplateDetail = {
         {
           id: 'mct-acacia',
           name: 'MCT (acacia-fiber base, allergen-free)',
-          priceDelta: 0.3,
           allergens: [],
         },
       ],
@@ -220,26 +237,22 @@ const ADAPTOGEN: TemplateDetail = {
       id: 'addon-collagen',
       name: 'Collagen peptides',
       description: 'Type I & III bovine collagen, 5 g/serving. Boosts protein content.',
-      priceDelta: 0.85,
       allergens: ['Bovine'],
     },
     {
       id: 'addon-electrolytes',
       name: 'Electrolyte blend',
       description: 'Sodium / potassium / magnesium in hydration-aligned ratios.',
-      priceDelta: 0.35,
     },
     {
       id: 'addon-probiotic',
       name: 'Spore-forming probiotic',
       description: '2 B CFU shelf-stable strain. No refrigeration required.',
-      priceDelta: 0.95,
     },
     {
       id: 'addon-d3',
       name: 'Vitamin D3',
       description: '1,000 IU per serving. Supports immunity claims.',
-      priceDelta: 0.15,
     },
   ],
   nutrition: {
@@ -343,8 +356,8 @@ const GENERIC_DETAIL: TemplateDetail = {
     // TODO follow-up: real per-package sizes need a ProductTemplateVariant↔Packaging
     // link (schema). Fixture-driven for the demo.
     { id: 'pouch', name: 'Stand-up pouch', icon: '🛍️', leadTimeDays: 12, sizes: ['240g', '480g'] },
-    { id: 'jar-pet', name: 'PET jar 8 oz', icon: '🥫', leadTimeDays: 14, priceDelta: 0.6, sizes: ['8 oz', '12 oz'] },
-    { id: 'jar-glass', name: 'Glass jar 250 mL', icon: '🫙', leadTimeDays: 18, priceDelta: 1.2, sizes: ['250 mL', '500 mL'] },
+    { id: 'jar-pet', name: 'PET jar 8 oz', icon: '🥫', leadTimeDays: 14, sizes: ['8 oz', '12 oz'] },
+    { id: 'jar-glass', name: 'Glass jar 250 mL', icon: '🫙', leadTimeDays: 18, sizes: ['250 mL', '500 mL'] },
   ],
   properties: [
     { label: 'Shelf life (18 months)', value: 75 },
@@ -364,13 +377,11 @@ const GENERIC_DETAIL: TemplateDetail = {
       id: 'addon-d3',
       name: 'Vitamin D3',
       description: '1,000 IU per serving.',
-      priceDelta: 0.15,
     },
     {
       id: 'addon-probiotic',
       name: 'Spore-forming probiotic',
       description: 'Shelf-stable, no refrigeration.',
-      priceDelta: 0.95,
     },
   ],
   // REBUILD R3 — generic fallback nutrition panel so the Customize rail's

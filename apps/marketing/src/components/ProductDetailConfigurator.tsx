@@ -393,14 +393,33 @@ export function ProductDetailConfigurator({
     // row). If a raw row ever arrives, treat the all-in as goods: that OVER-quotes
     // slightly, which is the safe direction, rather than under-quoting.
     matchedRow.perUnitCents
-  const packagingDeltaCents = Math.round(
-    (detail.packaging.find((p) => p.id === packagingId)?.priceDelta ?? 0) * 100,
-  )
-  // Per-flavor delta (single-flavor mode): the selected flavor's delta tracks the
-  // chosen card. Already in CENTS: the old code divided it by 100 to reach floats.
+  // NO PACKAGING DELTA. (Pavel 2026-07-16: "kill hardcoded prices ... that price
+  // should be added by any of the co-packers/manufacturers through the platform
+  // when they formulate their price".)
+  //
+  // This used to read `detail.packaging[].priceDelta` and add it per unit. That
+  // number came from findTemplateDetail() in lib/template-detail.ts: a HARDCODED
+  // fixture map with exactly ONE real key ('adaptogen-powder-blend'), so every
+  // other template fell through to GENERIC_DETAIL and inherited invented deltas
+  // (+$0.60/u PET jar, +$1.20/u glass jar). Nobody authored those. No DB column
+  // backs them. The charge never read them, so picking "Glass jar" quoted +$600 on
+  // a 500-unit run and billed +$0. Same species as the 0.85 size multiplier that
+  // was deleted from this same block: a demo number leaking into a live quote.
+  //
+  // It is NOT replaced by anything here, because the real thing already exists and
+  // is already charged: partner-authored PackagingComponentVariant surcharges +
+  // PartnerPackagingOffering decoration tiers, priced by @ilaunchify/plans
+  // priceComponents and billed by placeOrder as COMPONENTS / DECORATION lines. The
+  // fixture delta was a fake shadow of a real system. When the PDP should show a
+  // package upgrade price, it reads THAT, not a literal in a fixture file.
+  //
+  // Per-flavor delta STAYS: FlavorPreset.priceDeltaCents is a real column the
+  // manufacturer authors in the partner product builder (products/new
+  // build-actions.ts:971), which is exactly the source Pavel's rule names. Already
+  // in CENTS: the old code divided it by 100 to reach floats.
   const flavorDeltaCents = !isMultiFlavor ? (flavorPricing[flavorId]?.priceDeltaCents ?? 0) : 0
 
-  const unitGoodsCents = Math.max(0, goodsUnitCents + packagingDeltaCents + flavorDeltaCents)
+  const unitGoodsCents = Math.max(0, goodsUnitCents + flavorDeltaCents)
 
   // The same function the checkout estimate and placeOrder call.
   const priced = computeOrderPricing({
@@ -458,14 +477,11 @@ export function ProductDetailConfigurator({
     return onDemandRows[pickPricingBandIndex(onDemandRows.map((r) => r.bandMin), quantity) ?? 0]!
   }, [onDemandRows, quantity])
   // PP-0c: the fabricated size multiplier is gone here too (it had leaked into the
-  // on-demand price). On-demand rows are already all-in per-unit, so the deltas
-  // ride on top in cents.
+  // on-demand price). The fixture packaging delta had leaked here as well and is
+  // gone for the same reason (see the block above). On-demand rows are already
+  // all-in per-unit, so the real per-flavor delta rides on top in cents.
   const onDemandUnitCost =
-    onDemandRow != null
-      ? +(
-          (onDemandRow.perUnitCents + packagingDeltaCents + flavorDeltaCents) / 100
-        ).toFixed(2)
-      : null
+    onDemandRow != null ? +((onDemandRow.perUnitCents + flavorDeltaCents) / 100).toFixed(2) : null
   // The per-unit figure that downstream panels (earnings) should reflect. In
   // multi-flavor pack mode this is the effective per-unit (pack price / units).
   const activeUnitCost = isMultiFlavor
@@ -539,10 +555,10 @@ export function ProductDetailConfigurator({
   const flavorUnitPrice = React.useCallback(
     (id: string) => {
       const dCents = flavorPricing[id]?.priceDeltaCents ?? 0
-      const goods = Math.max(0, goodsUnitCents + packagingDeltaCents + dCents)
+      const goods = Math.max(0, goodsUnitCents + dCents)
       return +((goods + creatorFeeCents(goods, platformFeeBps)) / 100).toFixed(2)
     },
-    [flavorPricing, goodsUnitCents, packagingDeltaCents, platformFeeBps],
+    [flavorPricing, goodsUnitCents, platformFeeBps],
   )
 
   return (

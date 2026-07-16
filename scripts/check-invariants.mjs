@@ -575,7 +575,55 @@ function checkNoHandRolledBandMatcher() {
   return { name: 'No hand-rolled volume-band matcher (quote must equal charge)', level: 'warn', hits }
 }
 
+// =============================================================================
+// CHECK 16 - no hardcoded price in a marketing fixture (WARN)
+//
+// THE RULE (LOCKED, Pavel 2026-07-16): "kill hardcoded prices because this is
+// something that we cannot decide as an operator/admin, that price should be
+// added by any of the co-packers/manufacturers through the platform when they
+// formulate their price."
+//
+// WHY IT NEEDS A CHECKER AND NOT JUST A COMMENT: a price literal in a fixture is
+// unbillable BY CONSTRUCTION. Nothing downstream can charge it, because the
+// charge reads partner-authored DB rows. So the moment one appears in a quote,
+// quote != charge, silently, forever. This is the third time the pattern has bitten
+// (0.85 size multiplier, packaging priceDelta, ingredient/add-on deltas), and each
+// time it was invisible until someone diffed the quote against the till.
+//
+// Scope: marketing lib fixtures, which is where TemplateDetail-shaped demo data
+// lives. Seeds are exempt (they populate the DB, i.e. they BECOME partner data),
+// and so are the pins (they assert on numbers by definition).
+//
+// sample-templates.ts is EXEMPT FOR NOW, deliberately and temporarily. Its ~20
+// `pricePerUnit` literals are the whole-marketplace demo catalog, rendered only
+// when the DB has no published templates, so they do not price a real partner's
+// product. They are still literals and they still have to go, but they go with
+// the DECISION in task #16 (a template with no partner-authored ProductTemplate
+// PricingTier rows must not be quotable at all), not by being deleted out from
+// under the demo marketplace. Delete this exemption when #16 lands.
+// =============================================================================
+function checkNoHardcodedFixturePrice() {
+  const hits = []
+  const rx = /(priceDelta|priceCents|unitPrice|pricePerUnit|perUnitCost)\w*\s*:\s*-?\d+(\.\d+)?\s*[,}]/g
+  for (const f of collect(['apps/marketing/src/lib'], ['.ts', '.tsx'])) {
+    if (/\.test\.ts$/.test(f)) continue
+    if (/sample-templates\.ts$/.test(f)) continue // see the header: task #16 owns these
+    const src = read(f)
+    let m
+    while ((m = rx.exec(src)) !== null) {
+      // `: 0` is the harmless "no delta" default, not an invented price.
+      if (/:\s*0\s*[,}]/.test(m[0])) continue
+      const line = src.slice(0, m.index).split('\n').length
+      hits.push(
+        `${f}:${line}  hardcoded price \`${m[0].trim()}\` in a fixture: a partner authors prices through the platform, and nothing downstream can bill a literal`,
+      )
+    }
+  }
+  return { name: 'No hardcoded price in a marketing fixture (partners author prices)', level: 'warn', hits }
+}
+
 const CHECKS = [
+  checkNoHardcodedFixturePrice,
   checkNoHandRolledBandMatcher,
   checkEnablementScopedToManufacturer,
   checkStorageGuardsSSOT,
