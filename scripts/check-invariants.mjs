@@ -495,7 +495,51 @@ function checkStorageGuardsSSOT() {
   return { name: 'storage-offering guards via SSOT (L9 bands + cold-chain gate)', level: 'warn', hits }
 }
 
+// =============================================================================
+// CHECK 14 — an OnDemandEnablement lookup must be scoped to the MANUFACTURER (WARN)
+// docs/ON_DEMAND_DISAMBIGUATION_2026-07-16.md §4.1.
+//
+// OnDemandEnablement is "a manufacturer's standing agreement to accept on-demand
+// production orders for ONE creator product WITH THE APPROVED BRANDING"
+// (schema.prisma:5839), keyed @@unique([creatorUserId, productId,
+// manufacturerServiceId]). Resolving it on (creator, product) ALONE lets a re-pin
+// carry consent across manufacturers: pin to A, A approves, re-pin to B, and B's
+// gate opens on A's agreement for branding B never saw. That is a CONSENT bug.
+//
+// WHY A GREP AND NOT A TYPE: the channel models are unmigrated, so every access
+// goes through a cast-guard (`d('onDemandEnablement')`, `(prisma as unknown as
+// {...}).onDemandEnablement`). TypeScript is OFF at those sites by design, so it
+// cannot catch a missing where-key. A grep is the only guard available here.
+// =============================================================================
+function checkEnablementScopedToManufacturer() {
+  const hits = []
+  for (const f of collect(APPS.map((a) => `${a}/src`), ['.ts', '.tsx'])) {
+    const src = read(f)
+    if (!/onDemandEnablement/.test(src)) continue
+    // Find each read (findFirst/findMany/findUnique) and check the following
+    // ~400 chars (the where clause) mentions manufacturerServiceId.
+    // NOTE the `\??\.?` on BOTH sides of the method name. Both optional-chaining
+    // forms appear in this codebase and an earlier version of this regex silently
+    // MISSED the doubled one (`d('onDemandEnablement')?.findFirst?.({`), i.e. it
+    // reported clean while the bug sat there. A checker with a false negative is
+    // worse than no checker. Verified against both shapes:
+    //   (prisma as unknown as {...}).onDemandEnablement?.findFirst({ ... })
+    //   d('onDemandEnablement')?.findFirst?.({ ... })
+    const rx = /onDemandEnablement['"\)\]]*[\s\S]{0,80}?(findFirst|findMany|findUnique)\s*\??\.?\s*\(/g
+    let m
+    while ((m = rx.exec(src)) !== null) {
+      const window = src.slice(m.index, m.index + 500)
+      if (!/manufacturerServiceId/.test(window)) {
+        const line = src.slice(0, m.index).split('\n').length
+        hits.push(`${f}:${line}  OnDemandEnablement.${m[1]} without manufacturerServiceId — a re-pin would carry consent across manufacturers`)
+      }
+    }
+  }
+  return { name: 'OnDemandEnablement lookup scoped to the manufacturer (consent gate)', level: 'warn', hits }
+}
+
 const CHECKS = [
+  checkEnablementScopedToManufacturer,
   checkStorageGuardsSSOT,
   checkNoDbText,
   checkCrossAppLink,

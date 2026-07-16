@@ -139,32 +139,37 @@ the file header now mitigate. Do them when something else already forces a `db:p
 
 ## §4 Separate bugs found on the way (not naming issues)
 
-**1. `ingest.ts:153` resolves the enablement gate WITHOUT the manufacturer.** VERIFIED, and it is worse
-than "arbitrary pick": **it carries CONSENT across a re-pin.** `OnDemandEnablement` is documented as
-"a manufacturer's standing agreement to accept on-demand production orders for ONE creator product
-WITH THE APPROVED BRANDING" (`schema.prisma:5839`). Pin a product to manufacturer A, A approves
-(ENABLED), later re-pin to B: this lookup still finds A's row, so **B's gate opens on A's consent** for
-branding B never saw. That is a consent problem, not just a routing one.
+**1. The enablement gate ignored the manufacturer. FIXED (2026-07-16), and it was THREE sites, not one.**
 
-**NOT FIXED, deliberately (2026-07-16).** `ChannelVariantLink.productId` is a SOFT FK with no relation
-(`schema.prisma:5760`), so scoping the lookup needs a new batched query for each product's pinned
-`productTemplate.manufacturerServiceId` (the pattern `publish/actions.ts:327` already uses on the
-REQUEST side). That is a new query into a **cast-guarded** (13 sites in this file), currently-DARK
-channel path, unverifiable without running the app. Same risk shape as the rename in §3, and this one
-needs a re-pin to trigger at all. It DOES fail-closed (the existing `.catch(() => null)` yields status
-'NONE' = gate shut), so a mistake here breaks the feature rather than moving money wrongly.
-**Fix it when the channel path stops being dark** (it is gated on adapters + SP-API + `db:push`), and
-do it in the same change as the §3 renames since both wait on the same `db:generate`.
+`OnDemandEnablement` is "a manufacturer's standing agreement to accept on-demand production orders for
+ONE creator product WITH THE APPROVED BRANDING" (`schema.prisma:5839`), keyed
+`@@unique([creatorUserId, productId, manufacturerServiceId])`. Every read resolved it on
+`(creatorUserId, productId)` ALONE, so **a re-pin carried consent across manufacturers**: pin to A, A
+approves, re-pin to B, and B's gate opens on A's agreement for branding B never saw. A consent bug,
+not a routing one.
 
-Original finding:
-```ts
-?.findFirst?.({ where: { creatorUserId: user.id, productId: String(link.productId) }, select: { status: true } })
-```
-against `@@unique([creatorUserId, productId, manufacturerServiceId])` (`schema.prisma:5857`). If a
-product ever has enablements from two manufacturers, `findFirst` picks arbitrarily, so an **ENABLED row
-from manufacturer X can open the gate for manufacturer Y**. Not reachable while products are
-single-manufacturer (owner-pinned), which is why it has not bitten. Fix = include
-`manufacturerServiceId` in the where.
+| Site | What it gated | Fix |
+|---|---|---|
+| `channels/orders/ingest.ts` | per-line readiness on channel ingest | batch-load the pinned mfr (typed `Product -> productTemplate`), scope the where |
+| `publish/actions.ts:128` | the creator's publish-page gate + partnerNote | `manufacturerServiceId` was **already loaded one line above** and simply unused |
+| `publish/actions.ts:471` | **whether the listing goes LIVE** | added `productTemplate` to the select, scoped the where |
+
+All three now **fail closed**: no pinned manufacturer => no valid enablement => gate shut.
+
+**I initially declined to fix this and was wrong.** The reasoning was "cast-guarded + dark = don't
+touch", lumping it in with the §3 rename. But the two fail differently: the rename needed
+`db:generate` and could not compile; this needs **no schema change at all**, compiles, and the
+batch-load is fully typed. And the premise was backwards: **dark code is the CHEAPEST time to fix a
+bug** (no users, no data, no regression risk). Fixing it after the channel goes live is when it gets
+expensive.
+
+**Guarded by `check:invariants`** ("OnDemandEnablement lookup scoped to the manufacturer"), because
+TypeScript CANNOT protect this: every access is cast-guarded, so a missing where-key is invisible to
+the compiler. A grep is the only guard available. The check found sites 2 and 3 immediately, which is
+the whole argument for writing it. Its first regex had a **false negative** (it missed
+`d('onDemandEnablement')?.findFirst?.({` because optional-chaining appears on both sides of the method
+name) and was only caught by testing it in BOTH directions: remove the fix, confirm it fires; restore,
+confirm it passes.
 
 **2. `ProductDetailConfigurator.onDemandRows` is dead UI.** VERIFIED: it is declared (`:88`), threaded
 to `PricingTierModal` (`:812`), and **no external caller ever passes it**, so `hasOnDemand` (`:343`) is

@@ -142,6 +142,33 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
         }).catch(() => [])) ?? []
       const byExt = new Map(vlinks.map((v) => [String(v.externalVariantId), v]))
 
+      // 2b. The PINNED MANUFACTURER per product, batched. Needed because the
+      //     enablement gate below is per (creator, product, MANUFACTURER) and this
+      //     order's lines only carry productId (ChannelVariantLink.productId is a
+      //     SOFT FK, so it cannot be nest-selected above).
+      //
+      //     WHY IT MATTERS (2026-07-16): OnDemandEnablement is "a manufacturer's
+      //     standing agreement to accept on-demand production orders for ONE creator
+      //     product WITH THE APPROVED BRANDING" (schema.prisma:5839), keyed
+      //     @@unique([creatorUserId, productId, manufacturerServiceId]). Resolving it
+      //     WITHOUT the manufacturer meant a re-pin carried consent across: pin to A,
+      //     A approves, re-pin to B, and B's gate opened on A's agreement for branding
+      //     B never saw. That is a consent bug, not a routing one.
+      //
+      //     Typed query (Product + ProductTemplate are migrated), same shape the
+      //     REQUEST side uses at publish/actions.ts:324.
+      const productIds = [...new Set(vlinks.map((v) => String(v.productId)))]
+      const pinnedMfrByProduct = new Map<string, string | null>()
+      if (productIds.length > 0) {
+        const rows = await prisma.product
+          .findMany({
+            where: { id: { in: productIds } },
+            select: { id: true, productTemplate: { select: { manufacturerServiceId: true } } },
+          })
+          .catch(() => [])
+        for (const r of rows) pinnedMfrByProduct.set(r.id, r.productTemplate?.manufacturerServiceId ?? null)
+      }
+
       // 3. Readiness (pure) — both LOCKED gates. Spending cap wiring lands with
       //    C2.2 auto-billing; until then within-cap = true.
       const lines: OrderLineReadiness[] = await Promise.all(
@@ -150,9 +177,23 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
           if (!link) return { mapped: false, mode: 'ON_DEMAND' as const, quantity: l.quantity }
           const mode = ((link.channelProductLink as { mode?: string } | undefined)?.mode ?? 'ON_DEMAND') as 'ON_DEMAND' | 'BULK'
           if (mode === 'ON_DEMAND') {
-            const en = await d('onDemandEnablement')
-              ?.findFirst?.({ where: { creatorUserId: user.id, productId: String(link.productId) }, select: { status: true } })
-              .catch(() => null)
+            // Scoped to the product's PINNED manufacturer (see 2b). A product with no
+            // pinned manufacturer cannot have a valid enablement, so it resolves to
+            // 'NONE' and the gate stays SHUT: fail-closed, which is the safe direction
+            // for a consent gate.
+            const pinnedMfr = pinnedMfrByProduct.get(String(link.productId)) ?? null
+            const en = pinnedMfr
+              ? await d('onDemandEnablement')
+                  ?.findFirst?.({
+                    where: {
+                      creatorUserId: user.id,
+                      productId: String(link.productId),
+                      manufacturerServiceId: pinnedMfr,
+                    },
+                    select: { status: true },
+                  })
+                  .catch(() => null)
+              : null
             return {
               mapped: true,
               mode,

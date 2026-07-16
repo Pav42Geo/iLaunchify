@@ -121,13 +121,25 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
   if (!product) return null
 
   const manufacturerServiceId = product.productTemplate?.manufacturerServiceId ?? null
-  const enablement = await (
-    prisma as unknown as {
-      onDemandEnablement?: { findFirst: (a: unknown) => Promise<{ status: string; partnerNote: string | null } | null> }
-    }
-  ).onDemandEnablement
-    ?.findFirst({ where: { creatorUserId: user.id, productId }, select: { status: true, partnerNote: true } })
-    .catch(() => null)
+  // Scoped to the PINNED manufacturer (2026-07-16). OnDemandEnablement is keyed
+  // @@unique([creatorUserId, productId, manufacturerServiceId]) because it is ONE
+  // manufacturer's agreement to produce THIS branding. Without the third key a
+  // re-pin carries consent across: pin to A, A approves, re-pin to B, and B reads
+  // as ENABLED on A's agreement. `manufacturerServiceId` was already loaded on the
+  // line above and simply not used here.
+  // No pinned manufacturer => no valid enablement => null => the gate stays shut.
+  const enablement = manufacturerServiceId
+    ? await (
+        prisma as unknown as {
+          onDemandEnablement?: { findFirst: (a: unknown) => Promise<{ status: string; partnerNote: string | null } | null> }
+        }
+      ).onDemandEnablement
+        ?.findFirst({
+          where: { creatorUserId: user.id, productId, manufacturerServiceId },
+          select: { status: true, partnerNote: true },
+        })
+        .catch(() => null)
+    : null
 
   const [connections, links, flavors] = await Promise.all([
     prisma.channelConnection.findMany({
@@ -371,7 +383,16 @@ export async function pushListing(input: { productId: string; channelCode: strin
   const user = await requireUser()
   const product = await prisma.product.findFirst({
     where: { id: input.productId, brand: { creatorProfile: { userId: user.id } } },
-    select: { id: true, name: true, priceCents: true, productTemplateId: true },
+    // productTemplate.manufacturerServiceId (2026-07-16): the on-demand enablement
+    // gate below is per (creator, product, MANUFACTURER), so the pinned manufacturer
+    // has to be loaded to resolve it correctly.
+    select: {
+      id: true,
+      name: true,
+      priceCents: true,
+      productTemplateId: true,
+      productTemplate: { select: { manufacturerServiceId: true } },
+    },
   })
   const channel = await prisma.channel.findUnique({ where: { code: input.channelCode }, select: { id: true, code: true } })
   if (!product || !channel) return { ok: false, error: 'Product or channel not found.' }
@@ -466,13 +487,23 @@ export async function pushListing(input: { productId: string; channelCode: strin
     let live = false
     let gateNote: string | null = null
     if (mode === 'ON_DEMAND') {
-      const en = await (
-        prisma as unknown as { onDemandEnablement?: { findFirst: (a: unknown) => Promise<{ status: string } | null> } }
-      ).onDemandEnablement
-        ?.findFirst({ where: { creatorUserId: user.id, productId: product.id }, select: { status: true } })
-        .catch(() => null)
+      // Scoped to the PINNED manufacturer (2026-07-16). This decides whether the
+      // listing goes LIVE, so an unscoped read meant a re-pin could publish on the
+      // PREVIOUS manufacturer's consent, for branding the new one never approved.
+      // No pinned manufacturer => no valid enablement => not live: fail-closed.
+      const pinnedMfr = product.productTemplate?.manufacturerServiceId ?? null
+      const en = pinnedMfr
+        ? await (
+            prisma as unknown as { onDemandEnablement?: { findFirst: (a: unknown) => Promise<{ status: string } | null> } }
+          ).onDemandEnablement
+            ?.findFirst({
+              where: { creatorUserId: user.id, productId: product.id, manufacturerServiceId: pinnedMfr },
+              select: { status: true },
+            })
+            .catch(() => null)
+        : null
       live = en?.status === 'ENABLED'
-      if (!live) gateNote = 'Awaiting manufacturer on-demand enablement.'
+      if (!live) gateNote = pinnedMfr ? 'Awaiting manufacturer on-demand enablement.' : 'This product has no pinned manufacturer yet.'
     } else {
       const pool = await (
         prisma as unknown as {
