@@ -18,7 +18,10 @@
 //   from the chosen ship-to address).
 
 import { prisma, getOrderSettings } from '@ilaunchify/db'
-import { requireUser } from '@ilaunchify/auth'
+import { requireUser, getCreatorTier } from '@ilaunchify/auth'
+// PP-0: the ONE platform-fee SSOT (CLAUDE.md fee model). The estimate MUST resolve
+// the fee through the same path the charge does, or the two diverge by tier.
+import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -452,8 +455,9 @@ export interface CostBreakdown {
   setupCents: number
   // Order-level totals (cents).
   subtotalCents: number
-  // Platform fee derived from PlatformFeeConfig at the current effective
-  // window. baseRateBp + floorCents.
+  // Platform fee resolved through the ONE SSOT (@ilaunchify/plans
+  // resolveCreatorFeeBps) at the creator's SUBSCRIPTION TIER (Maker 15 / Builder 12
+  // / Agency 8), identical to the real charge. PP-0.
   platformFeeCents: number
   // Grand total before shipping + tax (those land in G4/G5).
   totalBeforeShippingAndTaxCents: number
@@ -464,8 +468,9 @@ export async function estimateProductionCost(
 ): Promise<Result<CostBreakdown>> {
   // _product loaded by the auth guard; reserved for V1.5 per-category
   // cost overrides (e.g. food-safe packaging surcharge for FOOD products).
-  const { product: _product, error } = await authorize(input.productId)
-  if (error) return { ok: false, error }
+  // `user` is needed for the tier-resolved platform fee (PP-0, fee SSOT).
+  const { user, product: _product, error } = await authorize(input.productId)
+  if (error || !user) return { ok: false, error: error ?? 'NOT_A_CREATOR' }
 
   const qty = Math.max(0, Math.floor(input.quantity || 0))
 
@@ -572,16 +577,18 @@ export async function estimateProductionCost(
     decorationUnitCents
   const subtotalCents = perUnitCents * qty + setupCents
 
-  // Platform fee — use the current effective PlatformFeeConfig row.
-  const feeConfig = await prisma.platformFeeConfig.findFirst({
-    where: { effectiveFrom: { lte: new Date() } },
-    orderBy: { effectiveFrom: 'desc' },
-    select: { baseRateBp: true, floorCents: true },
-  })
-  const baseRateBp = feeConfig?.baseRateBp ?? 1500
-  const floorCents = feeConfig?.floorCents ?? 100
-  const calcFee = Math.round((subtotalCents * baseRateBp) / 10000)
-  const platformFeeCents = Math.max(calcFee, qty > 0 ? floorCents : 0)
+  // PP-0 (PRINT_PRICING_SPEC §2): platform fee resolves through the ONE SSOT,
+  // `@ilaunchify/plans` resolveCreatorFeeBps, exactly like the real charge does
+  // (cart-actions.ts placeOrder). Previously this estimate read
+  // PlatformFeeConfig.baseRateBp (a flat 1500bp default that ignores the creator's
+  // tier), so a Builder (12%) or Agency (8%) creator was SHOWN 15% and then
+  // CHARGED 12%/8%. That is the CLAUDE.md fee-SSOT violation, and it made the
+  // estimate lie in the creator's favour-but-wrong direction. This changes only
+  // what is DISPLAYED; the charge already used the SSOT.
+  const creatorTier = await getCreatorTier(user.id)
+  const { feeBps } = await resolveCreatorFeeBps(creatorTier)
+  const feeBounds = await resolveCreatorFeeBounds(creatorTier)
+  const platformFeeCents = qty > 0 ? creatorFeeCents(subtotalCents, feeBps, feeBounds) : 0
 
   return {
     ok: true,
