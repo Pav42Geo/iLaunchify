@@ -22,7 +22,7 @@ import {
   getTierByRunCount,
   getMaxDiscountBp,
   formatDiscountPct,
-} from '@ilaunchify/plans'
+} from '@ilaunchify/plans/math'
 
 export interface SubscribeChoiceProps {
   /** Whether Subscribe & save is selected. */

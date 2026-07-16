@@ -33,7 +33,7 @@ import {
   getMaxDiscountBp,
   getTierByRunCount,
   formatDiscountPct,
-} from '@ilaunchify/plans'
+} from '@ilaunchify/plans/math'
 import type { SubscriptionState } from './types'
 
 const CADENCE_OPTIONS = [

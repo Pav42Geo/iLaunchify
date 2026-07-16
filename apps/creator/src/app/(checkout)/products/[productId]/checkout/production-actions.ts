@@ -24,7 +24,9 @@ import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 import {
   resolveCreatorFeeBps,
   resolveCreatorFeeBounds,
-  creatorFeeCents,
+  computeOrderPricing,
+  composeProductionLines,
+  resolveGoods,
   priceComponents,
   COMPONENT_PRICING_SELECT,
 } from '@ilaunchify/plans'
@@ -546,26 +548,48 @@ export async function estimateProductionCost(
     qty,
   )
 
-  const perUnitCents =
-    labelUnitCents +
-    packagingUnitCents +
-    finishUnitCents +
-    componentsUnitCents +
-    decorationUnitCents
-  const subtotalCents = perUnitCents * qty + setupCents
-
-  // PP-0 (PRINT_PRICING_SPEC §2): platform fee resolves through the ONE SSOT,
-  // `@ilaunchify/plans` resolveCreatorFeeBps, exactly like the real charge does
-  // (cart-actions.ts placeOrder). Previously this estimate read
-  // PlatformFeeConfig.baseRateBp (a flat 1500bp default that ignores the creator's
-  // tier), so a Builder (12%) or Agency (8%) creator was SHOWN 15% and then
-  // CHARGED 12%/8%. That is the CLAUDE.md fee-SSOT violation, and it made the
-  // estimate lie in the creator's favour-but-wrong direction. This changes only
-  // what is DISPLAYED; the charge already used the SSOT.
+  // PP-0a (docs/PRINT_PRICING_SPEC_2026-07-15.md §2): the estimate now prices
+  // through the SAME function as the charge, instead of running its own
+  // `perUnitCents * qty + setupCents`. Sharing the fee resolver and
+  // priceComponents (PP-0) made the two agree on their INPUTS; this makes them
+  // agree on the ARITHMETIC, which is the only thing that makes divergence
+  // structurally impossible rather than merely unlikely.
+  //
+  // NUMBER-IDENTICAL by construction, so this reprices nothing:
+  //   goods + finishes + decoration + components
+  //     = (label+packaging)*qty + (finish*qty + setup) + dec*qty + comp*qty
+  //     = (label+packaging+finish+dec+comp)*qty + setup
+  //     = perUnitCents*qty + setupCents        <- the old expression
+  // Pinned in packages/plans/src/estimate-charge-parity.test.ts.
+  //
+  // KNOWN REMAINING GAP (not introduced here, and the PP-0 shadow measures it):
+  // this estimate has no pack input, so it always prices on the COST_BUILDUP
+  // basis, while the charge prices a pack order on PACK_PRICE
+  // (resolveGoods in cart-actions.ts). For pack orders the two therefore still
+  // disagree, by exactly the gap between a manufacturer's list price and our
+  // catalog buildup. Closing that means threading the pack selection into the
+  // estimate; do NOT paper over it by making the charge use the buildup.
   const creatorTier = await getCreatorTier(user.id)
   const { feeBps } = await resolveCreatorFeeBps(creatorTier)
   const feeBounds = await resolveCreatorFeeBounds(creatorTier)
-  const platformFeeCents = qty > 0 ? creatorFeeCents(subtotalCents, feeBps, feeBounds) : 0
+
+  const priced = computeOrderPricing({
+    production: composeProductionLines({
+      goods: resolveGoods({
+        isPackOrder: false, // see KNOWN REMAINING GAP above
+        packPricedSubtotalCents: 0,
+        costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
+      }),
+      finishesCents: finishUnitCents * qty + setupCents,
+      decorationCents: decorationUnitCents * qty,
+      componentsCents: componentsUnitCents * qty,
+    }),
+    // Shipping + tax land at Checkout (G4/G5), and neither is ever in the fee base.
+    feeBps,
+    feeBounds,
+  })
+  const subtotalCents = priced.productionSubtotalCents
+  const platformFeeCents = qty > 0 ? priced.platformFeeCents : 0
 
   return {
     ok: true,

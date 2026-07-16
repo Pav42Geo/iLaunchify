@@ -33,7 +33,7 @@
 // + a fat setup fee and the take rate silently shrinks). Add such fees to
 // `PricingInput.production`, never as a sibling of it.
 
-import { creatorFeeCents, type FeeRuleBounds } from './creator-fee'
+import { creatorFeeCents, type FeeRuleBounds } from './creator-fee-math'
 
 /** A single creator-facing money line. `inFeeBase` is the rule, made visible. */
 export interface PriceLine {

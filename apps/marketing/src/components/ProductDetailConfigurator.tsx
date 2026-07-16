@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Info, Sparkles } from 'lucide-react'
-import { getTierByRunCount } from '@ilaunchify/plans'
+import { getTierByRunCount } from '@ilaunchify/plans/math'
 import {
   Button,
   PackagingPicker,

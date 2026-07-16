@@ -7,6 +7,9 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { resolveConfiguredSelection, calculateLabel, toPanelData } from '@ilaunchify/nutrition'
+// Client-safe money subpath (PP-0b). NOT '@ilaunchify/plans': that barrel
+// re-exports the server-only lookups module, which eagerly imports prisma.
+import { creatorFeeCents } from '@ilaunchify/plans/math'
 import { NutritionFactsRenderer, Checkbox, formatCents } from '@ilaunchify/ui'
 import { composeQuote, type QuoteValueDelta } from './quote'
 import type { ConfiguratorData, ConfiguratorAxis, ConfiguratorValue } from './configure-data'
@@ -121,8 +124,14 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
     }
   }, [flavor, selectedValues, data.baseRows, data.geometry])
 
-  // Tier-aware platform fee on the production subtotal + the creator's all-in total.
-  const platformFeeCents = Math.round((quote.subtotalCents * data.platformFeePercent) / 100)
+  // PP-0b: the fee is computed by the SAME function the charge uses
+  // (creatorFeeCents), imported from the client-safe '@ilaunchify/plans/math'
+  // subpath. It used to be `Math.round((subtotal * pct) / 100)` inline, which
+  // looks equivalent and is not: it silently ignored the FeeRule's flat/min/max
+  // bounds that placeOrder applies, so a cart hitting a floor or a cap was QUOTED
+  // unclamped and CHARGED clamped. Do not import '@ilaunchify/plans' (the barrel)
+  // here: it re-exports the server-only lookups module, which imports prisma.
+  const platformFeeCents = creatorFeeCents(quote.subtotalCents, data.platformFeeBps, data.platformFeeBounds)
   const allInCents = quote.subtotalCents + platformFeeCents
 
   function confirm() {

@@ -12,12 +12,13 @@
 
 import { prisma } from '@ilaunchify/db'
 import { getCreatorTier, type TierKey } from '@ilaunchify/auth'
-import { creatorTierToPlanCode, lookupFeeRate, FEE_EVENTS } from '@ilaunchify/plans'
+// PP-0b: the fee resolves through the ONE SSOT (resolveCreatorFeeBps), like the
+// estimate and the charge. This file previously used `lookupFeeRate` directly and
+// kept the rate as an integer PERCENT, which lost two things the charge applies:
+// the FeeRule's flat/min/max BOUNDS, and sub-percent precision (12.5% is not
+// representable as an integer percent, but is as 1250 bps).
+import { resolveCreatorFeeBps, resolveCreatorFeeBounds, type FeeRuleBounds } from '@ilaunchify/plans'
 import type { IngredientInput, RecipeRow, OptionOverlay } from '@ilaunchify/nutrition'
-
-// Fallback if the production-order fee rule isn't seeded — Maker headline rate
-// so we never under-quote the platform fee (matches apps/marketing pricing).
-const FALLBACK_FEE_PERCENT = 15
 
 export interface ConfiguratorValue {
   id: string
@@ -86,8 +87,13 @@ export interface ConfiguratorData {
   rules: ConfiguratorRule[]
   /** Creator's tier (drives the platform fee). */
   creatorTier: TierKey
-  /** Tier-aware platform-fee percent on the production subtotal (from lookupFeeRate). */
+  /** Display only: the tier rate as a percent, for the "Platform fee · maker · 15%" label. */
   platformFeePercent: number
+  /** THE MATH: tier rate in bps, resolved via the fee SSOT (1500/1200/800). */
+  platformFeeBps: number
+  /** THE MATH: the FeeRule's flat/min/max. Dropping these is why the quote could
+      differ from the charge on a cart that hits a floor or a cap. */
+  platformFeeBounds: FeeRuleBounds
 }
 
 type Nut = IngredientInput['per100g']
@@ -271,13 +277,14 @@ export async function loadConfiguratorData(
 
   const firstVariant = template.variants[0] ?? null
 
-  // Tier-aware platform fee (same source of truth as the marketplace matrix).
+  // PP-0b: tier-aware platform fee through the ONE SSOT, the same call the estimate
+  // and the charge make. The old comment here claimed "same source of truth as the
+  // marketplace matrix" and was accurate: that WAS the problem, because the
+  // marketplace matrix is the wrong SSOT (it uses lookupFeeRate and drops bounds).
   const creatorTier = await getCreatorTier(userId)
-  const feeRule = await lookupFeeRate(
-    creatorTierToPlanCode(creatorTier),
-    FEE_EVENTS.PRODUCTION_ORDER_SUBTOTAL,
-  )
-  const platformFeePercent = feeRule?.ratePercent ?? FALLBACK_FEE_PERCENT
+  const { feeBps: platformFeeBps } = await resolveCreatorFeeBps(creatorTier)
+  const platformFeeBounds = await resolveCreatorFeeBounds(creatorTier)
+  const platformFeePercent = platformFeeBps / 100 // display only
 
   return {
     product: { id: product.id, name: product.name },
@@ -312,6 +319,8 @@ export async function loadConfiguratorData(
     })),
     creatorTier,
     platformFeePercent,
+    platformFeeBps,
+    platformFeeBounds,
   }
 }
 
