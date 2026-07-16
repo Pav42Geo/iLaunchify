@@ -9,6 +9,12 @@
 import { prisma } from './index'
 
 export interface SampleSettingsValues {
+  /**
+   * RETIRED (Pavel 2026-07-16): "I meant to kill credit-back too."
+   * A sample is paid in full at order time and mints nothing. getSampleSettings
+   * FORCES this false, so the admin toggle and any DB row are both inert.
+   * Column + SampleCredit model + mint/apply helpers all kept (no drops).
+   */
   creditBackEnabled: boolean
   creditExpiryDays: number
   creditMaxCapCents: number | null
@@ -32,7 +38,7 @@ export interface SampleSettingsValues {
 }
 
 export const SAMPLE_SETTINGS_DEFAULTS: SampleSettingsValues = {
-  creditBackEnabled: true,
+  creditBackEnabled: false, // RETIRED 2026-07-16 (and forced false in getSampleSettings)
   creditExpiryDays: 90,
   creditMaxCapCents: null,
   sampleFlatShippingCents: 995,
@@ -54,8 +60,20 @@ export async function getSampleSettings(): Promise<SampleSettingsValues> {
         },
       })
       .catch(() => null)
-    return row ? { ...SAMPLE_SETTINGS_DEFAULTS, ...row } : SAMPLE_SETTINGS_DEFAULTS
+    const merged = row ? { ...SAMPLE_SETTINGS_DEFAULTS, ...row } : SAMPLE_SETTINGS_DEFAULTS
+    // CREDIT-BACK IS RETIRED (Pavel 2026-07-16). Forced off HERE rather than by
+    // flipping the default, because the DB row wins the spread above: a live
+    // deployment already has a SampleSettings row with creditBackEnabled=true, so
+    // a default flip would have silently changed nothing and credit would have
+    // kept minting. This is the one place both gates read from
+    // (payments/webhook-handlers.ts:271 mints, checkout/cart-actions.ts:805
+    // applies), so forcing it here kills both.
+    //
+    // Nothing is dropped: the column, the SampleCredit model, mintSampleCredit and
+    // applySampleCredit all stay, and existing credits keep their balances. Delete
+    // this one line to bring it back.
+    return { ...merged, creditBackEnabled: false }
   } catch {
-    return SAMPLE_SETTINGS_DEFAULTS
+    return { ...SAMPLE_SETTINGS_DEFAULTS, creditBackEnabled: false }
   }
 }

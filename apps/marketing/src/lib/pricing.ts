@@ -1,6 +1,14 @@
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { buildSamplePricingRows, applyFlavorChangeover, type PricingTierRow, type PackBuilderFlavor } from '@ilaunchify/ui'
-import { creatorTierToPlanCode, lookupFeeRate, FEE_EVENTS } from '@ilaunchify/plans'
+// PP-0c: the fee SSOT. This file used lookupFeeRate directly, which was the last
+// pricing path still reading the raw FeeRule table instead of resolving through
+// @ilaunchify/plans. See docs/FEE_MODEL_RECONCILIATION_SPEC §6.
+import {
+  resolveCreatorFeeBps,
+  resolveCreatorFeeBounds,
+  creatorFeeCents,
+  type FeeRuleBounds,
+} from '@ilaunchify/plans'
 import type { TierKey } from '@ilaunchify/auth'
 
 // D5 multi-flavor lead-time model now lives in @ilaunchify/ui (shared with the
@@ -445,56 +453,80 @@ function formatBand(minQty: number, maxQty: number | null): string {
 
 export interface CreatorPricingMatrix {
   rows: PricingTierRow[]
-  /** Platform-fee percent applied at the viewer's tier (from lookupFeeRate). */
+  /** Display only: the viewer's tier rate as a percent, for the band table. */
   feePercent: number
-  /** Tier the price was computed at (signed-out → 'maker'). */
+  /**
+   * PP-0c: THE MATH. The viewer's tier rate in bps (1500/1200/800), resolved via
+   * the ONE fee SSOT. The PDP prices with this, never with feePercent: an integer
+   * percent cannot express 12.5%, and it invites `x * pct / 100` inline.
+   */
+  feeBps: number
+  /** PP-0c: THE MATH. The FeeRule's flat/min/max, which the charge applies and
+      this page used to silently drop. */
+  feeBounds: FeeRuleBounds
+  /** Tier the price was computed at (signed-out -> 'maker'). */
   viewerTier: TierKey
 }
-
-// Fallback if the production-order fee rule isn't seeded for the plan — use the
-// Maker headline rate so we never under-quote the platform fee.
-const FALLBACK_FEE_PERCENT = 15
 
 export async function getCreatorPricingMatrix(
   slug: string,
   viewerTier: TierKey,
   fallbackBasePrice: number,
 ): Promise<CreatorPricingMatrix> {
+  // PP-0c: the fee resolves through the ONE SSOT (resolveCreatorFeeBps), the same
+  // call the estimate, the charge, the configurator and samples all make. This was
+  // the LAST lookupFeeRate pricing path, i.e. the last surviving piece of the
+  // "three paths, two tables" fee violation the audit found.
+  //
   // Base = manufacturer unit cost per band (real DB tiers, or synthetic fallback).
   const baseRows = await getPricingTierRows(slug, fallbackBasePrice)
 
-  const feeRule = await lookupFeeRate(
-    creatorTierToPlanCode(viewerTier),
-    FEE_EVENTS.PRODUCTION_ORDER_SUBTOTAL,
-  )
-  const feePercent = feeRule?.ratePercent ?? FALLBACK_FEE_PERCENT
+  const { feeBps } = await resolveCreatorFeeBps(viewerTier)
+  const feeBounds = await resolveCreatorFeeBounds(viewerTier)
+  const feePercent = feeBps / 100 // display only
 
   const rows: PricingTierRow[] = baseRows.map((r) => {
     const manufacturerCents = r.perUnitCents
-    const platformFeeCents = Math.round((manufacturerCents * feePercent) / 100)
+    // Per-unit fee for the BAND TABLE display. Note the band table shows a
+    // per-unit fee, so bounds (which are per-ORDER) deliberately do not apply
+    // here: the real, bounded fee is computed once on the whole order by
+    // computeOrderPricing. That is exactly why the PDP must not multiply this
+    // number by quantity to get a total (it used to).
+    const platformFeeCents = creatorFeeCents(manufacturerCents, feeBps)
     return {
       ...r,
       manufacturerCents,
       platformFeeCents,
       feePercent,
-      // All-in creator unit price (shipping excluded — estimated at checkout).
+      // All-in creator unit price for DISPLAY (shipping excluded, estimated at
+      // checkout). `manufacturerCents` is the pre-fee number, and it is the one
+      // the PDP prices from: feeding THIS field into computeOrderPricing would
+      // charge the platform fee twice.
       perUnitCents: manufacturerCents + platformFeeCents,
     }
   })
 
-  return { rows, feePercent, viewerTier }
+  return { rows, feePercent, feeBps, feeBounds, viewerTier }
 }
 
 /**
- * Platform-fee % for all three creator tiers — drives the per-tier columns in
- * the marketplace PricingTierModal. Same lookup source as the matrix above.
+ * Platform-fee % for all three creator tiers: drives the per-tier columns in the
+ * marketplace PricingTierModal. DISPLAY ONLY.
+ *
+ * PP-0c: now resolves through the same SSOT as the matrix above. It previously
+ * ran its own lookupFeeRate loop with its own fallback constant, so the band
+ * table could quote one rate while the same page's headline quoted another.
+ * (Two more verbatim copies of this loop exist: partner build-actions.ts:27 and
+ * the now-fixed configure-data.ts. build-actions is a partner-side PREVIEW of
+ * creator prices, not a charge, so it is a display drift risk rather than a money
+ * bug: worth folding in, not urgent.)
  */
 export async function getCreatorFeePcts(): Promise<{ maker: number; builder: number; agency: number }> {
-  const out = { maker: FALLBACK_FEE_PERCENT, builder: FALLBACK_FEE_PERCENT, agency: FALLBACK_FEE_PERCENT }
+  const out = { maker: 15, builder: 15, agency: 15 }
   await Promise.all(
     (['maker', 'builder', 'agency'] as const).map(async (t) => {
-      const r = await lookupFeeRate(creatorTierToPlanCode(t), FEE_EVENTS.PRODUCTION_ORDER_SUBTOTAL)
-      if (r?.ratePercent != null) out[t] = r.ratePercent
+      const { feeBps } = await resolveCreatorFeeBps(t)
+      out[t] = feeBps / 100
     }),
   )
   return out

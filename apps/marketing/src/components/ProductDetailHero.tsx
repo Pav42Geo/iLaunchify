@@ -5,6 +5,7 @@ import { productGradient, type ProductGradient } from '@ilaunchify/ui'
 import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
 import type { PricingTierRow, PackBuilderFlavor } from '@ilaunchify/ui'
+import type { FeeRuleBounds } from '@ilaunchify/plans/math'
 import type { SampleOption } from '@/lib/sample-quote'
 import { ProductDetailConfigurator } from './ProductDetailConfigurator'
 import { BusinessPromoCard } from './BusinessPromoCard'
@@ -45,6 +46,10 @@ export interface ProductDetailHeroProps {
   viewerTier?: 'maker' | 'builder' | 'agency'
   isAuthenticated?: boolean
   feePctByTier?: { maker: number; builder: number; agency: number }
+  /** PP-0c: tier rate (bps) + FeeRule bounds, resolved server-side via the fee
+      SSOT and forwarded to the configurator, which prices with them. */
+  platformFeeBps?: number
+  platformFeeBounds?: FeeRuleBounds
   flavorMode?: 'SINGLE' | 'MULTI'
   maxFlavorsPerPack?: number | null
   flavorPool?: PackBuilderFlavor[]
@@ -95,6 +100,8 @@ export function ProductDetailHero({
   viewerTier,
   isAuthenticated = false,
   feePctByTier,
+  platformFeeBps,
+  platformFeeBounds,
   flavorMode,
   maxFlavorsPerPack,
   flavorPool,
@@ -184,6 +191,8 @@ export function ProductDetailHero({
                 viewerTier={viewerTier}
                 isAuthenticated={isAuthenticated}
                 feePctByTier={feePctByTier}
+                platformFeeBps={platformFeeBps}
+                platformFeeBounds={platformFeeBounds}
                 flavorMode={flavorMode}
                 maxFlavorsPerPack={maxFlavorsPerPack}
                 flavorPool={flavorPool}

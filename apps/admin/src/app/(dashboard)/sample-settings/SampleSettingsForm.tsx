@@ -31,8 +31,8 @@ export function SampleSettingsForm({ initial }: { initial: SampleSettingsValues 
   return (
     <div className="space-y-5">
       {/* Credit-back */}
-      <Section icon={CreditCard} title="Credit-back" desc="When a sample is paid, mint credit toward the creator's first production order.">
-        <Toggle label="Credit-back enabled" hint="Off = creators just pay for samples, no credit." checked={v.creditBackEnabled} onChange={(b) => set('creditBackEnabled', b)} />
+      <Section icon={CreditCard} title="Credit-back · RETIRED" desc="Retired 2026-07-16 (Pavel): a sample is paid in full at order time and mints no credit. These knobs are inert: getSampleSettings forces credit-back off, so nothing here mints or applies credit. Existing credits keep their balances.">
+        <Toggle label="Credit-back enabled · inert" hint="Retired. Left in place so nothing is dropped; the code ignores it." checked={v.creditBackEnabled} onChange={(b) => set('creditBackEnabled', b)} />
         <Field label="Credit expiry (days)" hint="How long a minted credit stays usable.">
           <input className={NUM} type="number" min={1} value={v.creditExpiryDays} disabled={!v.creditBackEnabled} onChange={(e) => set('creditExpiryDays', Math.max(1, parseInt(e.target.value, 10) || 1))} />
         </Field>

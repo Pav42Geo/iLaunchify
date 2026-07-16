@@ -348,6 +348,8 @@ export default async function ProductDetailPage({
             viewerTier={viewerTier}
             isAuthenticated={isAuthenticated}
             feePctByTier={feePctByTier}
+            platformFeeBps={pricingMatrix.feeBps}
+            platformFeeBounds={pricingMatrix.feeBounds}
             flavorMode={packData.flavorMode}
             maxFlavorsPerPack={packData.maxFlavorsPerPack}
             flavorPool={packData.pool}

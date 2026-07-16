@@ -2,7 +2,14 @@
 
 import * as React from 'react'
 import { Info, Sparkles } from 'lucide-react'
-import { getTierByRunCount } from '@ilaunchify/plans/math'
+// PP-0c: the ONE pricer + the fee math, via the client-safe subpath. NOT
+// '@ilaunchify/plans' (that barrel re-exports the server-only lookups module).
+import {
+  getTierByRunCount,
+  computeOrderPricing,
+  creatorFeeCents,
+  type FeeRuleBounds,
+} from '@ilaunchify/plans/math'
 import {
   Button,
   PackagingPicker,
@@ -73,6 +80,11 @@ export interface ProductDetailConfiguratorProps {
   viewerTier?: 'maker' | 'builder' | 'agency'
   isAuthenticated?: boolean
   feePctByTier?: { maker: number; builder: number; agency: number }
+  /** PP-0c: the viewer's tier rate in bps, resolved server-side via the fee SSOT.
+      The PDP prices with this, never by multiplying a per-unit display fee. */
+  platformFeeBps?: number
+  /** PP-0c: the FeeRule's flat/min/max, which the charge applies. */
+  platformFeeBounds?: FeeRuleBounds
   onDemandRows?: PricingTierRow[]
   flavorMode?: 'SINGLE' | 'MULTI'
   maxFlavorsPerPack?: number | null
@@ -131,6 +143,10 @@ export function ProductDetailConfigurator({
   viewerTier = 'maker',
   isAuthenticated = false,
   feePctByTier,
+  // Default = the Maker headline rate, matching the server fallback: never
+  // under-quote the fee when the tier could not be resolved.
+  platformFeeBps = 1500,
+  platformFeeBounds,
   onDemandRows,
   flavorMode = 'SINGLE',
   maxFlavorsPerPack = null,
@@ -344,32 +360,61 @@ export function ProductDetailConfigurator({
 
   const currentTier = viewerTier
 
-  const packagingDelta =
-    detail.packaging.find((p) => p.id === packagingId)?.priceDelta ?? 0
+  // ─── PP-0c: the PDP prices through the ONE pricer, in CENTS ─────────────────
+  //
+  // This block previously worked in FLOAT DOLLARS with .toFixed(2) at four
+  // stages, and carried two things that existed nowhere else in the codebase:
+  //
+  //  1. A FABRICATED SIZE MARKUP. `sizeMultiplier = 1 + sizeIndex * 0.85`, where
+  //     sizeIndex was the size's POSITION IN THE DROPDOWN. Reorder the dropdown
+  //     and the price changed: a size-2 pick was QUOTED 2.7x and CHARGED 1x. No
+  //     counterpart in cart-actions, no DB column, no spec. Confirmed scaffolding
+  //     by Pavel 2026-07-16 and DELETED. When per-size pricing is real it comes
+  //     from ProductTemplateVariant.pricePerPackCents (a price on the size), never
+  //     from an index.
+  //
+  //  2. THE SUBSCRIPTION ILLUSION. The discount was applied to THIS order's
+  //     headline, but placeOrder charges the gross and applies discountBp to
+  //     `perRunUnitCents` (future runs). OrderSummary was fixed on 2026-07-15;
+  //     this page kept promising it. The discount is real, it just starts on run 2,
+  //     so we now say that instead of subtracting it.
+  //
+  // GOODS = matchedRow.manufacturerCents, the PRE-FEE band price. Using
+  // perUnitCents here would double-charge the platform fee (pricing.ts:481 =
+  // manufacturerCents + platformFeeCents).
+  const goodsUnitCents =
+    matchedRow.manufacturerCents ??
+    // Unreachable via getCreatorPricingMatrix (it sets manufacturerCents on every
+    // row). If a raw row ever arrives, treat the all-in as goods: that OVER-quotes
+    // slightly, which is the safe direction, rather than under-quoting.
+    matchedRow.perUnitCents
+  const packagingDeltaCents = Math.round(
+    (detail.packaging.find((p) => p.id === packagingId)?.priceDelta ?? 0) * 100,
+  )
+  // Per-flavor delta (single-flavor mode): the selected flavor's delta tracks the
+  // chosen card. Already in CENTS: the old code divided it by 100 to reach floats.
+  const flavorDeltaCents = !isMultiFlavor ? (flavorPricing[flavorId]?.priceDeltaCents ?? 0) : 0
 
-  const sizeIndex = Math.max(0, sizeOptions.indexOf(sizeKey))
-  const sizeMultiplier = 1 + sizeIndex * 0.85
+  const unitGoodsCents = Math.max(0, goodsUnitCents + packagingDeltaCents + flavorDeltaCents)
 
-  // Per-flavor delta (single-flavor mode) — the selected flavor's price delta
-  // adds to the per-unit landed cost so the price line tracks the chosen card.
-  const flavorDelta = !isMultiFlavor
-    ? (flavorPricing[flavorId]?.priceDeltaCents ?? 0) / 100
-    : 0
-
-  const baseCost = matchedRow.perUnitCents / 100
-  const landedCost = +(baseCost * sizeMultiplier + packagingDelta + flavorDelta).toFixed(2)
-
-  // Subscribe & save preview — applies the discount-ladder tier to the unit
-  // cost when the creator picks Subscribe. Open-ended tier (runCount = null).
+  // The same function the checkout estimate and placeOrder call.
+  const priced = computeOrderPricing({
+    production: [{ kind: 'PRODUCT', label: 'Production', cents: unitGoodsCents * quantity }],
+    feeBps: platformFeeBps,
+    feeBounds: platformFeeBounds,
+  })
+  // Informational only, never subtracted from THIS order (see #2 above).
   const subDiscountBp = subscribe ? getTierByRunCount(null).discountBp : 0
-  const previewUnitCost = subscribe
-    ? +((landedCost * (10_000 - subDiscountBp)) / 10_000).toFixed(2)
-    : landedCost
+  const perRunSavingsCents = subDiscountBp > 0 ? Math.round((priced.totalCents * subDiscountBp) / 10_000) : 0
+
+  // Kept in dollars for the existing display code below.
+  const landedCost = +((unitGoodsCents + creatorFeeCents(unitGoodsCents, platformFeeBps)) / 100).toFixed(2)
+  const previewUnitCost = landedCost
   // Grand total — the all-in amount the creator pays at checkout. This is the
   // headline figure on the PDP (Pavel 2026-06-29: must be transparent + the
   // most visible number, not hidden). Per-unit price is the supporting line.
-  const totalOrderCost = +(previewUnitCost * quantity).toFixed(2)
-  const totalWithoutSub = +(landedCost * quantity).toFixed(2)
+  const totalOrderCost = +(priced.totalCents / 100).toFixed(2)
+  const totalWithoutSub = totalOrderCost
 
   // ── Pack-based pricing (multi-flavor) — quantity = number of PACKS ──────────
   // Pack price by basis (PER_FLAVOR sums slot unit prices; PER_PACK = the size's
@@ -389,12 +434,13 @@ export function ProductDetailConfigurator({
     rawPackPriceCents > 0
       ? rawPackPriceCents
       : Math.round(landedCost * 100 * packUnitsPerPack)
-  // Subscribe discount applies to the pack price (open-ended ladder tier).
-  const packPriceWithSub = subscribe
-    ? Math.round((packPriceCentsEff * (10_000 - subDiscountBp)) / 10_000)
-    : packPriceCentsEff
+  // PP-0c: the subscription discount is NOT applied to this order. placeOrder
+  // charges the gross and applies discountBp to future runs only, so subtracting
+  // it here promised a discount the charge never gives. Same fix as OrderSummary
+  // (2026-07-15). The name is kept to keep this diff small; it no longer discounts.
+  const packPriceWithSub = packPriceCentsEff
   const packOrderTotalCents = orderTotalCents(packPriceWithSub, packCount)
-  const packOrderTotalCentsNoSub = orderTotalCents(packPriceCentsEff, packCount)
+  const packOrderTotalCentsNoSub = packOrderTotalCents
   const packTotalUnits = orderTotalUnits(packUnitsPerPack, packCount)
   // Effective per-unit cost for the earnings panel = pack price / units-per-pack.
   const packPerUnit = packUnitsPerPack > 0 ? +(packPriceWithSub / 100 / packUnitsPerPack).toFixed(2) : 0
@@ -407,9 +453,14 @@ export function ProductDetailConfigurator({
     const eligible = onDemandRows.filter((r) => r.bandMin !== null && r.bandMin <= quantity)
     return eligible.length > 0 ? eligible[eligible.length - 1]! : onDemandRows[0]!
   }, [onDemandRows, quantity])
+  // PP-0c: the fabricated size multiplier is gone here too (it had leaked into the
+  // on-demand price). On-demand rows are already all-in per-unit, so the deltas
+  // ride on top in cents.
   const onDemandUnitCost =
     onDemandRow != null
-      ? +(((onDemandRow.perUnitCents / 100) * sizeMultiplier + packagingDelta + flavorDelta).toFixed(2))
+      ? +(
+          (onDemandRow.perUnitCents + packagingDeltaCents + flavorDeltaCents) / 100
+        ).toFixed(2)
       : null
   // The per-unit figure that downstream panels (earnings) should reflect. In
   // multi-flavor pack mode this is the effective per-unit (pack price / units).
@@ -431,7 +482,9 @@ export function ProductDetailConfigurator({
   // per flavor IN the composed pack: its landed cost/unit (the PER_FLAVOR price ×
   // any subscribe discount) + how many units it contributes (weights the blend).
   // Falls back to the single EarningsCalculator otherwise.
-  const subDiscountFactor = subscribe ? (10_000 - subDiscountBp) / 10_000 : 1
+  // PP-0c: gross. The discount starts on run 2 (see above), so a per-flavor
+  // earnings row must not show a discounted cost for THIS order.
+  const subDiscountFactor = 1
   const perFlavorEarningsRows = React.useMemo(
     () =>
       composedPack.slots.map((s) => {
@@ -475,14 +528,17 @@ export function ProductDetailConfigurator({
     return applyFlavorChangeover(baseLeadTimeDays, flavorCount, changeoverDays) ?? baseLeadTimeDays
   }, [isMultiFlavor, standardLead, composedPack.slots, leadByFlavorId, changeoverDays, baseLeadTimeDays, flavorCount])
 
-  // Resulting per-unit price for a given flavor card (base band cost × size +
-  // packaging + that flavor's delta). Mirrors `landedCost` but flavor-specific.
+  // Resulting per-unit price for a given flavor card. Mirrors `landedCost` but
+  // flavor-specific. PP-0c: cents throughout, no fabricated size multiplier, and
+  // the fee resolves through creatorFeeCents so a flavor card cannot quote a rate
+  // the checkout does not charge.
   const flavorUnitPrice = React.useCallback(
     (id: string) => {
-      const d = (flavorPricing[id]?.priceDeltaCents ?? 0) / 100
-      return +(baseCost * sizeMultiplier + packagingDelta + d).toFixed(2)
+      const dCents = flavorPricing[id]?.priceDeltaCents ?? 0
+      const goods = Math.max(0, goodsUnitCents + packagingDeltaCents + dCents)
+      return +((goods + creatorFeeCents(goods, platformFeeBps)) / 100).toFixed(2)
     },
-    [flavorPricing, baseCost, sizeMultiplier, packagingDelta],
+    [flavorPricing, goodsUnitCents, packagingDeltaCents, platformFeeBps],
   )
 
   return (
@@ -714,9 +770,9 @@ export function ProductDetailConfigurator({
             <span className="ml-1.5 text-[15px] font-semibold text-ink-400">
               (${(packPriceWithSub / 100).toFixed(2)} / pack)
             </span>
-            {subscribe && packOrderTotalCentsNoSub !== packOrderTotalCents && (
-              <span className="ml-1.5 text-[13px] font-medium text-ink-400 line-through">
-                ${(packOrderTotalCentsNoSub / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {subscribe && perRunSavingsCents > 0 && (
+              <span className="ml-1.5 text-[12px] font-semibold text-success-700">
+                future runs save ${(perRunSavingsCents / 100).toFixed(2)} (from run 2)
               </span>
             )}
           </div>
@@ -732,9 +788,9 @@ export function ProductDetailConfigurator({
             <span className="ml-1.5 text-[15px] font-semibold text-ink-400">
               (${previewUnitCost.toFixed(2)} / unit)
             </span>
-            {subscribe && (
-              <span className="ml-1.5 text-[13px] font-medium text-ink-400 line-through">
-                ${totalWithoutSub.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {subscribe && perRunSavingsCents > 0 && (
+              <span className="ml-1.5 text-[12px] font-semibold text-success-700">
+                future runs save ${(perRunSavingsCents / 100).toFixed(2)} (from run 2)
               </span>
             )}
           </div>
