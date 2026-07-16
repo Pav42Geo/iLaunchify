@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Partner: Co-packer Service Builder (Prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;--pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;
+  --neon-500:#B5FF3D;--neon-600:#9EE61F;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;--ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-500:#B45309;--warning-700:#7C360A;
+  --danger-50:#FBE8E7;--danger-100:#F6C9C7;--danger-500:#C2362F;--danger-700:#87211E;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-500:#1F5BA8;--info-700:#163E72;
+  --bg-hero:#FFFFFF;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;--font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);--shadow-lg:0 12px 28px rgba(24,24,26,.12);
+  --ease:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font-family:inherit}
+button{cursor:pointer;border:none;background:none}
+.disp{font-family:var(--font-display)}
+.shell{max-width:1180px;margin:0 auto;padding:18px 18px 120px}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:8px 8px 8px 18px;box-shadow:var(--shadow-sm);margin-bottom:16px;position:sticky;top:10px;z-index:80}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:15px}
+.brand .sq{width:22px;height:22px;border-radius:6px;background:var(--pink-500);display:grid;place-items:center;color:#fff;font-size:12px;font-weight:800}
+.brand small{font-weight:500;color:var(--ink-500);font-size:12px}
+.saved{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-500);font-weight:500}
+.saved .dot{width:7px;height:7px;border-radius:50%;background:var(--success-500)}
+
+/* stepper */
+.stepper{display:flex;gap:0;background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-2xl);padding:6px;margin-bottom:16px;overflow-x:auto}
+.stp{flex:1;min-width:150px;text-align:left;padding:10px 12px;border-radius:var(--r-lg);transition:all .18s var(--ease);position:relative}
+.stp .n{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400)}
+.stp .n i{width:18px;height:18px;border-radius:50%;background:var(--ink-100);color:var(--ink-500);display:grid;place-items:center;font-size:10px;font-style:normal;font-weight:700;flex:none}
+.stp .t{font-weight:700;font-size:13.5px;margin-top:5px;color:var(--ink-700)}
+.stp .d{font-size:11.5px;color:var(--ink-400);margin-top:1px}
+.stp:hover{background:var(--ink-50)}
+.stp.on{background:var(--ink-900)}
+.stp.on .t{color:#fff}.stp.on .d{color:var(--ink-400)}.stp.on .n{color:var(--pink-300)}
+.stp.on .n i{background:var(--pink-500);color:#fff}
+.stp.done .n i{background:var(--success-500);color:#fff}
+
+/* hero */
+.hero{background:var(--bg-hero);border:1px solid var(--ink-200);border-radius:var(--r-2xl);padding:20px 22px;margin-bottom:14px}
+.hero .ey{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--pink-700)}
+.hero h1{font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:-.02em;margin-top:5px}
+.hero p{color:var(--ink-500);font-size:13.5px;margin-top:4px;max-width:780px}
+
+.view{display:none;animation:fade .3s var(--ease)}
+.view.show{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:none;transform:none}}
+
+/* cards */
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:18px 20px;margin-bottom:12px}
+.card h2{font-family:var(--font-display);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.card h2 .tag{font-family:var(--font-sans);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:var(--r-pill);background:var(--pink-50);color:var(--pink-700)}
+.card h2 .tag.new{background:var(--neon-500);color:var(--ink-900)}
+.card > p.sub{color:var(--ink-500);font-size:12.5px;margin-top:3px;margin-bottom:14px;max-width:760px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.f{display:block}
+.f label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-600);margin-bottom:5px}
+.f input,.f select{width:100%;height:38px;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:0 11px;font-size:13.5px;color:var(--ink-900);background:#fff}
+.f input:focus,.f select:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.14)}
+.f .hint{font-size:11.5px;color:var(--ink-400);margin-top:4px}
+.row{display:flex;gap:10px;align-items:flex-end}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1px solid var(--ink-300);background:#fff;border-radius:var(--r-pill);padding:7px 13px;font-size:12.5px;font-weight:600;color:var(--ink-600);transition:all .15s}
+.chip:hover{border-color:var(--ink-400)}
+.chip.on{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+.chip.on.pk{background:var(--pink-500);border-color:var(--pink-500)}
+.chip.dis{opacity:.4;cursor:not-allowed;text-decoration:line-through}
+
+/* press cards */
+.press{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:10px;background:var(--ink-50)}
+.press.on{background:#fff;border-color:var(--pink-200);box-shadow:0 0 0 3px rgba(255,46,99,.07)}
+.press-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.press-h .nm{font-weight:700;font-size:14px;font-family:var(--font-display)}
+.press-h .bd{font-size:11.5px;color:var(--ink-500);font-weight:600;background:#fff;border:1px solid var(--ink-200);padding:2px 8px;border-radius:var(--r-pill)}
+.press-h .rm{margin-left:auto;font-size:11.5px;color:var(--danger-500);font-weight:600}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-500);padding:8px 8px 8px 0;border-bottom:1px solid var(--ink-200)}
+td{padding:9px 8px 9px 0;border-bottom:1px solid var(--ink-100);vertical-align:middle}
+td input{height:34px;border:1px solid var(--ink-300);border-radius:var(--r-sm);padding:0 8px;font-size:13px;width:100%}
+td input:focus{outline:none;border-color:var(--pink-500)}
+tr:last-child td{border-bottom:none}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:13px;border-radius:var(--r-pill);padding:0 16px;height:38px;transition:all .16s}
+.btn.sm{height:32px;font-size:12px;padding:0 12px}
+.btn-dark{background:var(--ink-900);color:#fff}.btn-dark:hover{background:#000}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn-out:hover{background:var(--ink-50)}
+.btn-ghost{color:var(--ink-600)}.btn-ghost:hover{background:var(--ink-100)}
+
+/* callouts */
+.callout{border-radius:var(--r-lg);padding:12px 14px;font-size:12.5px;line-height:1.6;display:flex;gap:10px;margin-top:12px}
+.callout .ic{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.co-info{background:var(--info-50);border:1px solid var(--info-100);color:var(--info-700)}.co-info .ic{background:var(--info-500)}
+.co-warn{background:var(--warning-50);border:1px solid var(--warning-100);color:var(--warning-700)}.co-warn .ic{background:var(--warning-500)}
+.co-ok{background:var(--success-50);border:1px solid var(--success-100);color:var(--success-700)}.co-ok .ic{background:var(--success-500)}
+
+/* simulator */
+.sim{background:var(--ink-900);border-radius:var(--r-xl);padding:20px;color:#fff}
+.sim h3{font-family:var(--font-display);font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sim h3 .lz{background:var(--neon-500);color:var(--ink-900);font-family:var(--font-sans);font-size:10px;font-weight:800;padding:2px 7px;border-radius:var(--r-pill);letter-spacing:.04em}
+.sim p{color:var(--ink-400);font-size:12.5px;margin-top:3px}
+.sim-ctl{display:flex;gap:12px;align-items:flex-end;margin:14px 0}
+.sim-ctl label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-400);margin-bottom:5px}
+.sim-ctl input{height:38px;border-radius:var(--r-md);border:1px solid var(--ink-700);background:var(--ink-800);color:#fff;padding:0 11px;font-size:14px;font-weight:600;width:130px}
+.sim-ctl input:focus{outline:none;border-color:var(--neon-500)}
+.sim-out{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.so{background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:12px 14px}
+.so.win{border-color:var(--neon-500);background:rgba(181,255,61,.09)}
+.so.out{opacity:.45}
+.so .p{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-400);display:flex;align-items:center;gap:6px}
+.so.win .p{color:var(--neon-500)}
+.so .v{font-family:var(--font-display);font-size:20px;font-weight:800;margin-top:5px}
+.so .u{font-size:11.5px;color:var(--ink-400);margin-top:2px}
+.so .why{font-size:11px;color:var(--warning-500);margin-top:5px;font-weight:600}
+.xover{margin-top:12px;background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:11px 14px;font-size:12.5px;color:var(--ink-300)}
+.xover b{color:var(--neon-500)}
+.chart{margin-top:12px;background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-lg);padding:10px}
+
+/* review */
+.checks .ck{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--ink-100)}
+.checks .ck:last-child{border-bottom:none}
+.checks .bx{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.bx.ok{background:var(--success-500)}.bx.no{background:var(--ink-300)}
+.checks .lb{font-weight:600;font-size:13.5px}
+.checks .hp{font-size:11.5px;color:var(--ink-500)}
+.checks .go{margin-left:auto}
+
+/* footer */
+.foot{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-top:1px solid var(--ink-200);padding:12px 0;z-index:90}
+.foot-in{max-width:1180px;margin:0 auto;padding:0 18px;display:flex;align-items:center;gap:12px}
+.foot .pg{font-size:12.5px;color:var(--ink-500);font-weight:600}
+.foot .sp{margin-left:auto;display:flex;gap:8px}
+.note{font-size:12px;color:var(--ink-500);padding:0 4px;margin-bottom:14px;line-height:1.6}
+.note b{color:var(--ink-700)}
+
+/* co-pack additions */
+.line-c{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:10px;background:var(--ink-50)}
+.line-c.on{background:#fff;border-color:var(--pink-200);box-shadow:0 0 0 3px rgba(255,46,99,.07)}
+.line-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.line-h .nm{font-weight:700;font-size:14px;font-family:var(--font-display)}
+.line-h .meta{margin-left:auto;font-size:11.5px;color:var(--ink-500);font-weight:600}
+.op{display:grid;grid-template-columns:1fr 130px 150px 110px 40px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--ink-100)}
+.op:last-child{border-bottom:none}
+.op .onm{font-weight:600;font-size:13px}
+.op .odesc{font-size:11.5px;color:var(--ink-400);margin-top:2px}
+.op select,.op input{height:34px;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:0 9px;font-size:13px;width:100%;background:#fff}
+.op select:focus,.op input:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.14)}
+.op .tog{width:38px;height:22px;border-radius:var(--r-pill);background:var(--ink-300);position:relative;transition:.18s;flex:none}
+.op .tog.on{background:var(--pink-500)}
+.op .tog::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.18s}
+.op .tog.on::after{transform:translateX(16px)}
+.op.off{opacity:.45}
+.mono{font-variant-numeric:tabular-nums}
+.svc{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.svc-c{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:12px;background:#fff;text-align:center}
+.svc-c.on{border-color:var(--pink-300);background:var(--pink-50)}
+.svc-c .ic{font-size:18px}
+.svc-c .t{font-weight:700;font-size:12.5px;margin-top:5px;font-family:var(--font-display)}
+.svc-c .s{font-size:10.5px;color:var(--ink-500);margin-top:3px;line-height:1.4}
+.svc-c .b{margin-top:7px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:var(--r-pill);display:inline-block}
+.b.yes{background:var(--success-50);color:var(--success-700)}
+.b.no{background:var(--ink-100);color:var(--ink-500)}
+.sim-out.three{grid-template-columns:1fr 1fr 1fr}
+.feebar{display:flex;height:30px;border-radius:var(--r-md);overflow:hidden;margin-top:10px;border:1px solid var(--ink-700)}
+.feebar div{display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="bar">
+    <div class="brand"><span class="sq">iL</span> iLaunchify <small>· Partner</small></div>
+    <div class="saved"><span class="dot"></span> Draft saved 12s ago</div>
+  </div>
+
+  <div class="stepper" id="stepper">
+    <button class="stp on" data-v="0"><span class="n"><i>1</i> Basics</span><span class="t">Service basics</span><span class="d">Who you are, your floor</span></button>
+    <button class="stp" data-v="1"><span class="n"><i>2</i> Lines</span><span class="t">Your lines</span><span class="d">The physics you own</span></button>
+    <button class="stp" data-v="2"><span class="n"><i>3</i> Scope</span><span class="t">What you run</span><span class="d">Formats, packs, supply</span></button>
+    <button class="stp" data-v="3"><span class="n"><i>4</i> Ops</span><span class="t">Operations</span><span class="d">The menu you charge for</span></button>
+    <button class="stp" data-v="4"><span class="n"><i>5</i> Pricing</span><span class="t">Pricing</span><span class="d">Changeover + curves</span></button>
+    <button class="stp" data-v="5"><span class="n"><i>6</i> Publish</span><span class="t">Review &amp; publish</span><span class="d">What this unlocks</span></button>
+  </div>
+
+  <!-- ══ 0 · BASICS ══ -->
+  <section class="view show" data-view="0">
+    <div class="hero">
+      <div class="ey">Co-packing service</div>
+      <h1>Service basics</h1>
+      <p>You fill, assemble and pack other people's products. This builder captures what your floor can actually do, and what you charge to do it, so routing can quote you without a phone call.</p>
+    </div>
+
+    <div class="card">
+      <h2>Identity</h2>
+      <p class="sub">This is service-scoped. If you also manufacture or print, those are separate services with their own capabilities, on the same login.</p>
+      <div class="grid2">
+        <div class="f"><label>Service name</label><input value="Rialto Fill &amp; Pack · Line 2/3" /><div class="hint">Internal. Creators never see a co-packer's name.</div></div>
+        <div class="f"><label>Facility</label><select><option>Rialto, CA · 88,000 sq ft</option><option>+ Add a facility</option></select></div>
+      </div>
+      <div class="grid3" style="margin-top:14px">
+        <div class="f"><label>Base lead time (business days)</label><input type="number" value="12" /><div class="hint">From components on-hand to case-ready.</div></div>
+        <div class="f"><label>Minimum order value</label><input id="mov" value="$750" /><div class="hint">A commercial floor. Binds even when the unit count clears every MOQ.</div></div>
+        <div class="f"><label>Weekly capacity (units)</label><input type="number" value="240000" /></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Rush &amp; expediting <span class="tag new">Monetized</span></h2>
+      <p class="sub">Rush is partner-set and creator-paid, so it enters the production subtotal and carries the platform fee like any other line. Leave it off and rush jobs simply route elsewhere.</p>
+      <div class="grid3">
+        <div class="f"><label>Rush uplift</label><input value="22%" /><div class="hint">Applied to the co-pack subtotal.</div></div>
+        <div class="f"><label>Cuts lead time to</label><input type="number" value="5" /><div class="hint">business days</div></div>
+        <div class="f"><label>Max rush jobs / week</label><input type="number" value="2" /></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 1 · LINES ══ -->
+  <section class="view" data-view="1">
+    <div class="hero">
+      <div class="ey">Step 2</div>
+      <h1>Your lines</h1>
+      <p>A line is the unit of truth on a co-pack floor, the way a press is in a print shop. Speed and changeover live here, not on your price list. Declare the line once and every quote, MOQ and lead time falls out of it.</p>
+    </div>
+
+    <div class="note">
+      <b>Why this exists.</b> Your cost is dominated by <b>changeover</b>, not by running. A 4-hour changeover on 500 units is punishing; on 50,000 it disappears. That is the whole reason co-packers have minimums. Declare the changeover honestly and the engine derives your floor for you, instead of you guessing a round number and losing the jobs just under it.
+    </div>
+
+    <div class="card">
+      <h2>Lines on your floor <span class="tag">2 active</span></h2>
+
+      <div class="line-c on">
+        <div class="line-h"><span class="tog on"></span><span class="nm">Line 2 · Auger fill</span><span class="meta">powders · rigid + pouch</span></div>
+        <div class="grid3">
+          <div class="f"><label>Run speed (units / hour)</label><input id="l2_sp" type="number" value="3600" /></div>
+          <div class="f"><label>Changeover (hours)</label><input id="l2_co" type="number" value="4" step="0.5" /></div>
+          <div class="f"><label>Line rate ($ / hour)</label><input id="l2_rt" value="$165" /><div class="hint">Fully loaded: labour + line.</div></div>
+        </div>
+        <div class="grid3" style="margin-top:12px">
+          <div class="f"><label>Min run (units)</label><input id="l2_mn" type="number" value="1500" /></div>
+          <div class="f"><label>Max run (units)</label><input id="l2_mx" type="number" value="120000" /></div>
+          <div class="f"><label>Allergen class</label><select><option>Segregated · nut-free</option><option>Shared, cleaned between</option><option>Dedicated</option></select></div>
+        </div>
+      </div>
+
+      <div class="line-c on">
+        <div class="line-h"><span class="tog on"></span><span class="nm">Line 3 · Hand assembly / kitting</span><span class="meta">variety packs · displays</span></div>
+        <div class="grid3">
+          <div class="f"><label>Run speed (units / hour)</label><input id="l3_sp" type="number" value="900" /></div>
+          <div class="f"><label>Changeover (hours)</label><input id="l3_co" type="number" value="1" step="0.5" /></div>
+          <div class="f"><label>Line rate ($ / hour)</label><input id="l3_rt" value="$120" /></div>
+        </div>
+        <div class="grid3" style="margin-top:12px">
+          <div class="f"><label>Min run (units)</label><input id="l3_mn" type="number" value="100" /></div>
+          <div class="f"><label>Max run (units)</label><input id="l3_mx" type="number" value="25000" /></div>
+          <div class="f"><label>Allergen class</label><select><option>Shared, cleaned between</option><option>Segregated · nut-free</option></select></div>
+        </div>
+      </div>
+
+      <button class="btn gh" style="margin-top:4px">+ Add a line</button>
+    </div>
+  </section>
+  <!-- ══ 2 · SCOPE ══ -->
+  <section class="view" data-view="2">
+    <div class="hero">
+      <div class="ey">Step 3</div>
+      <h1>What you run</h1>
+      <p>Formats and fills are hard filters: routing will never send you a job you cannot physically run. Say no here freely. A narrow, honest scope wins more work than a wide, hopeful one.</p>
+    </div>
+
+    <div class="card">
+      <h2>Container formats</h2>
+      <p class="sub">What your lines can hold and index. Anything unticked is invisible to you.</p>
+      <div class="chips">
+        <button class="chip on pk">Rigid jar</button><button class="chip on pk">Rigid tub</button><button class="chip on pk">Stand-up pouch</button>
+        <button class="chip on pk">Flat pouch / sachet</button><button class="chip">Bottle · HDPE</button><button class="chip">Bottle · glass</button>
+        <button class="chip on pk">Carton / folding box</button><button class="chip">Stick pack</button><button class="chip">Can</button><button class="chip">Tube</button>
+      </div>
+      <h2 style="margin-top:18px">Fill types</h2>
+      <div class="chips">
+        <button class="chip on pk">Powder</button><button class="chip on pk">Granule</button><button class="chip on pk">Capsule / tablet</button>
+        <button class="chip">Liquid · thin</button><button class="chip">Liquid · viscous</button><button class="chip">Gummy</button><button class="chip">Dry blend</button>
+      </div>
+      <h2 style="margin-top:18px">Pack styles</h2>
+      <p class="sub">Variety and multipack are the styles that make routing emit a co-pack leg at all. Without a carton or shipper in the graph, there is no assembly step and no co-packer.</p>
+      <div class="chips">
+        <button class="chip on pk">Single unit</button><button class="chip on pk">Multipack (same flavour)</button>
+        <button class="chip on pk">Variety pack (mixed)</button><button class="chip on pk">Retail display / PDQ</button><button class="chip">Subscription box</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Supply model <span class="tag new">Routing-critical</span></h2>
+      <p class="sub">This one answer changes the shape of the whole order graph.</p>
+      <div class="grid2">
+        <div class="f"><label>Do you supply the container?</label>
+          <select><option>Fill only: components arrive from elsewhere</option><option>I supply the container</option><option>Either, creator's choice</option></select>
+          <div class="hint"><b>Fill only</b> means routing adds a separate packaging leg and ships components to you. That is normal, and it is why your inbound view matters.</div>
+        </div>
+        <div class="f"><label>Do you apply labels?</label>
+          <select><option>Yes: application is our trade</option><option>No: arrive pre-labelled</option></select>
+          <div class="hint">Saying yes is what lets us print labels digitally at low volume and apply them at your fill step, which is how a creator dodges a printer's 10,000-piece minimum entirely.</div>
+        </div>
+      </div>
+      <h2 style="margin-top:18px">Certifications</h2>
+      <div class="chips">
+        <button class="chip on">cGMP</button><button class="chip on">FDA registered</button><button class="chip on">SQF Level 2</button>
+        <button class="chip on">Organic handler</button><button class="chip">Kosher</button><button class="chip">Halal</button><button class="chip">NSF Sport</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 3 · OPERATIONS ══ -->
+  <section class="view" data-view="3">
+    <div class="hero">
+      <div class="ey">Step 4</div>
+      <h1>Operations</h1>
+      <p>A printer sells a thing. You sell a set of <b>operations</b> performed on someone else's things. Each one gets its own switch, its own unit and its own price. This menu is what you actually get paid for.</p>
+    </div>
+
+    <div class="note">
+      <b>Read this before you price.</b> Every operation you switch on is <b>partner-set and creator-paid</b>, so it sits inside the production subtotal and carries the platform fee, exactly like manufacturing or print. It is not a side charge and it is not hidden. Nothing here can be quietly moved outside the fee base to dodge the fee, and nothing here gets shaved off your payout.
+    </div>
+
+    <div class="card">
+      <h2>Your operation menu <span class="tag new">New</span></h2>
+      <p class="sub">Switch on only what you do. Unit matters: it is what the quantity multiplies.</p>
+
+      <div class="op"><div><div class="onm">Fill &amp; close</div><div class="odesc">The core operation. Meter, fill, cap, torque, induction seal.</div></div>
+        <div><span class="tog on"></span></div>
+        <div><select><option>Per unit</option><option>Per case</option><option>Per hour</option></select></div>
+        <div><input value="$0.34" /></div><div></div></div>
+
+      <div class="op"><div><div class="onm">Label application</div><div class="odesc">Pressure-sensitive apply at fill. The honey-problem step.</div></div>
+        <div><span class="tog on"></span></div>
+        <div><select><option>Per unit</option><option>Per case</option></select></div>
+        <div><input value="$0.11" /></div><div></div></div>
+
+      <div class="op"><div><div class="onm">Variety / kit assembly</div><div class="odesc">Mixed flavours into a parent carton. Priced per finished pack, not per unit.</div></div>
+        <div><span class="tog on"></span></div>
+        <div><select><option>Per pack</option><option>Per unit</option><option>Per hour</option></select></div>
+        <div><input value="$0.85" /></div><div></div></div>
+
+      <div class="op"><div><div class="onm">Insert placement</div><div class="odesc">Recipe card, scoop, sample, brand insert.</div></div>
+        <div><span class="tog on"></span></div>
+        <div><select><option>Per unit</option><option>Per pack</option></select></div>
+        <div><input value="$0.06" /></div><div></div></div>
+
+      <div class="op"><div><div class="onm">Shrink / bundle</div><div class="odesc">Multipack banding or full shrink.</div></div>
+        <div><span class="tog on"></span></div>
+        <div><select><option>Per pack</option><option>Per unit</option></select></div>
+        <div><input value="$0.19" /></div><div></div></div>
+
+      <div class="op"><div><div class="onm">Case pack &amp; palletize</div><div class="odesc">Into shippers, onto pallets, stretch wrapped.</div></div>
+        <div><span class="tog on"></span></div>
+        <div><select><option>Per case</option><option>Per pallet</option></select></div>
+        <div><input value="$1.40" /></div><div></div></div>
+
+      <div class="op off"><div><div class="onm">QC hold &amp; COA capture</div><div class="odesc">Retain samples, lot record, certificate of analysis.</div></div>
+        <div><span class="tog"></span></div>
+        <div><select><option>Per run</option></select></div>
+        <div><input value="$0.00" /></div><div></div></div>
+
+      <div class="op off"><div><div class="onm">Rework / hand sort</div><div class="odesc">Salvage a bad lot. Quoted, never auto-routed.</div></div>
+        <div><span class="tog"></span></div>
+        <div><select><option>Per hour</option></select></div>
+        <div><input value="$0.00" /></div><div></div></div>
+    </div>
+  </section>
+  <!-- ══ 4 · PRICING ══ -->
+  <section class="view" data-view="4">
+    <div class="hero">
+      <div class="ey">Step 5</div>
+      <h1>Pricing</h1>
+      <p>You already priced the operations. This step prices the thing operations cannot see: <b>the run itself</b>. Changeover is the number that decides which jobs are worth taking, and it is the number co-packers most often leave implicit.</p>
+    </div>
+
+    <div class="card">
+      <h2>Run charges</h2>
+      <p class="sub">Charged once per production run, whatever the quantity.</p>
+      <div class="grid3">
+        <div class="f"><label>Changeover / setup</label><input id="co_fee" value="$660" /><div class="hint mono" id="co_derived">Derived from Line 2: 4h × $165/h</div></div>
+        <div class="f"><label>Minimum run charge</label><input id="min_run" value="$450" /><div class="hint">The floor a short run cannot go under.</div></div>
+        <div class="f"><label>Repeat-run discount</label><input value="35%" /><div class="hint">Same SKU inside 90 days: no re-qualification.</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--ink-900);border-color:var(--ink-800)">
+      <h3 style="font-family:var(--font-display);font-weight:700;font-size:15px;color:#fff">Live check <span class="lz" style="font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--ink-400);letter-spacing:.04em;text-transform:uppercase;margin-left:6px">what routing will actually do</span></h3>
+      <p style="color:var(--ink-400);font-size:12.5px;margin-top:4px">Type a quantity. This runs the same maths the engine runs.</p>
+
+      <div class="sim-ctl">
+        <div><label>Order quantity (units)</label><input id="q" type="number" value="2400" /></div>
+        <div><label>Units per pack</label><input id="upp" type="number" value="12" /></div>
+        <div><label>Units per case</label><input id="upc" type="number" value="24" /></div>
+        <div style="align-self:center;color:var(--ink-400);font-size:12px;padding-bottom:4px">try 300 · 2,400 · 20,000 · 90,000</div>
+      </div>
+
+      <div class="sim-out three">
+        <div class="so" id="so_2"><div class="p">Line 2 · Auger</div><div class="v" id="v_2">&mdash;</div><div class="u" id="u_2"></div><div class="why" id="w_2"></div></div>
+        <div class="so" id="so_3"><div class="p">Line 3 · Hand</div><div class="v" id="v_3">&mdash;</div><div class="u" id="u_3"></div><div class="why" id="w_3"></div></div>
+        <div class="so" id="so_t"><div class="p">Your co-pack fee</div><div class="v" id="v_t">&mdash;</div><div class="u" id="u_t"></div><div class="why" id="w_t"></div></div>
+      </div>
+
+      <div class="xover" id="xo"></div>
+
+      <div class="chart"><svg id="chart" viewBox="0 0 700 200" style="width:100%;height:200px"></svg></div>
+
+      <div class="xover" id="feebox" style="margin-top:12px">
+        <div style="font-weight:700;color:#fff;margin-bottom:2px">Where your fee lands in the creator's bill</div>
+        <div class="feebar" id="feebar"></div>
+        <div id="feenote" style="margin-top:8px;font-size:12px;color:var(--ink-400)"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 5 · REVIEW ══ -->
+  <section class="view" data-view="5">
+    <div class="hero">
+      <div class="ey">Step 6</div>
+      <h1>Review &amp; publish</h1>
+      <p>What you have declared, and exactly what it turns on.</p>
+    </div>
+
+    <div class="card">
+      <h2>Completeness</h2>
+      <div class="checks">
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">Lines declared</span><br /><span class="hp">2 lines, speed + changeover + rate on both.</span></span></div>
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">Scope is a hard filter</span><br /><span class="hp">4 formats · 3 fills · 4 pack styles. Jobs outside this never reach you.</span></span></div>
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">Operation menu priced</span><br /><span class="hp">6 of 8 operations on. QC/COA and rework left off.</span></span></div>
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">Run charges set</span><br /><span class="hp">Changeover $660 · minimum run $450 · order-value floor $750.</span></span></div>
+        <div class="ck"><span class="bx no">!</span><span><span class="lb">Allergen segregation unproven</span><br /><span class="hp">Line 2 claims nut-free segregation. Upload the programme to make it a filter creators can trust.</span><span class="go"><button class="btn gh sm">Upload</button></span></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>You also run <span class="tag">Service composition</span></h2>
+      <p class="sub">One login, one company, separate services. Each carries its own capabilities, its own rating and its own rules. Here is what your mix does and does not unlock.</p>
+      <div class="svc">
+        <div class="svc-c on"><div class="ic">&#127981;</div><div class="t">Manufacturing</div><div class="s">Owner-pinned to your templates. Never rotated, never shopped.</div><span class="b yes">Active</span></div>
+        <div class="svc-c on"><div class="ic">&#128230;</div><div class="t">Co-packing</div><div class="s">Auto-derived legs when a carton or shipper is in the graph.</div><span class="b yes">This service</span></div>
+        <div class="svc-c on"><div class="ic">&#128438;</div><div class="t">Label printing</div><div class="s">Prints for your own routed jobs and for co-partners who nominate you.</div><span class="b no">Not in the public print pool</span></div>
+        <div class="svc-c"><div class="ic">&#127970;</div><div class="t">Warehouse</div><div class="s">Selected per order by fit: temp class, location, capacity.</div><span class="b no">Not offered</span></div>
+      </div>
+      <div class="note" style="margin-top:14px;margin-bottom:0">
+        <b>Why your press is not in the print rotation.</b> The public print pool is for pure print providers. Because you also run manufacturing and co-packing, your print service is excluded from the fair-share lottery by design, and that is a protection, not a demotion: it stops a full-service partner from vacuuming up rotation awards that keep independent printers alive. Your press still prints every label for jobs you already hold, and any co-partner can still nominate you directly.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>What this unlocks</h2>
+      <div class="checks">
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">Quoting without a phone call</span><br /><span class="hp">Routing prices your leg from your own curves, so a creator sees one number and one timeline.</span></span></div>
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">The MOQ-decomposition play</span><br /><span class="hp">Because you apply labels, a 500-unit run becomes blank stock + digitally printed labels applied at your fill step. The printer's 10,000-piece minimum never binds.</span></span></div>
+        <div class="ck"><span class="bx ok">&#10003;</span><span><span class="lb">A public Front Face</span><br /><span class="hp">Co-packers and manufacturers are nameable. Printers and warehouses are not. Admin governs live/offline.</span></span></div>
+        <div class="ck"><span class="bx no">!</span><span><span class="lb">Paid what you quoted</span><br /><span class="hp">Blocked on decision C1. Today every co-pack leg is paid a flat 7% of the creator's unit price, not your price. See the note below.</span></span></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>The honest gap, stated plainly.</b> Nothing you priced on this screen reaches an invoice yet. Co-packing has no offering model in the schema, no line in the creator's price, and no writer for the co-packer assignment. A co-pack leg today earns <code>Math.floor(total × 0.07)</code>, split evenly across legs. That is why this prototype exists: to make the decision concrete before it is coded.
+    </div>
+  </section>
+
+</div>
+
+<div class="foot"><div class="foot-in">
+  <span class="pg" id="pg">Step 1 of 6</span>
+  <div class="sp"><button class="btn gh" id="back">Back</button><button class="btn pk" id="next">Continue</button></div>
+</div></div>
+<script>
+const $=id=>document.getElementById(id);
+const num=el=>parseFloat((typeof el==='string'?$(el).value:el.value).replace(/[^0-9.]/g,''))||0;
+
+/* stepper */
+let v=0;
+const views=[...document.querySelectorAll('.view')], stps=[...document.querySelectorAll('.stp')];
+function paint(){
+  views.forEach((s,i)=>s.classList.toggle('show',i===v));
+  stps.forEach((s,i)=>{s.classList.toggle('on',i===v);s.classList.toggle('done',i<v)});
+  $('pg').textContent=`Step ${v+1} of ${views.length}`;
+  $('next').textContent=v===views.length-1?'Publish service':'Continue';
+  $('back').style.visibility=v===0?'hidden':'visible';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+stps.forEach((s,i)=>s.addEventListener('click',()=>{v=i;paint()}));
+$('next').addEventListener('click',()=>{if(v<views.length-1){v++;paint()}});
+$('back').addEventListener('click',()=>{if(v>0){v--;paint()}});
+
+/* toggles */
+document.querySelectorAll('.tog').forEach(t=>t.addEventListener('click',()=>{
+  t.classList.toggle('on');
+  const op=t.closest('.op'); if(op) op.classList.toggle('off',!t.classList.contains('on'));
+  const lc=t.closest('.line-c'); if(lc) lc.classList.toggle('on',t.classList.contains('on'));
+  recalc();
+}));
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+  if(c.classList.contains('dis'))return;
+  c.classList.toggle('on'); if(c.closest('.chips')) c.classList.toggle('pk',c.classList.contains('on'));
+}));
+
+/* ── the maths ───────────────────────────────────────────────────────────────
+   A co-pack line's cost is changeover + run time, both priced at the line rate.
+     runHours   = qty / speed
+     lineCost   = (changeoverHours + runHours) x rate
+   Per-unit cost therefore FALLS with quantity: that curve IS the MOQ argument.
+   The operation menu adds per-unit / per-pack / per-case fees on top, and the
+   whole thing is floored by the minimum run charge.                            */
+function line(sp,co,rt,mn,mx){return{sp:num(sp),co:num(co),rt:num(rt)*100,mn:num(mn),mx:num(mx)}}
+function lineCost(L,q){
+  if(q<L.mn||q>L.mx) return null;
+  return (L.co + q/L.sp) * L.rt;
+}
+/* per-unit operation fees, read live off the menu (cents) */
+function opFees(q,upp,upc){
+  const ops=[...document.querySelectorAll('.op')];
+  let cents=0;
+  ops.forEach(op=>{
+    if(!op.querySelector('.tog').classList.contains('on')) return;
+    const unit=op.querySelector('select').value, price=num(op.querySelector('input'))*100;
+    if(unit==='Per unit')       cents += price*q;
+    else if(unit==='Per pack')  cents += price*Math.ceil(q/Math.max(1,upp));
+    else if(unit==='Per case')  cents += price*Math.ceil(q/Math.max(1,upc));
+    else if(unit==='Per run')   cents += price;
+  });
+  return cents;
+}
+const fmt=c=>'$'+(c/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const f0=c=>'$'+Math.round(c/100).toLocaleString();
+
+function recalc(){
+  const L2=line('l2_sp','l2_co','l2_rt','l2_mn','l2_mx'), L3=line('l3_sp','l3_co','l3_rt','l3_mn','l3_mx');
+  $('co_derived').textContent=`Derived from Line 2: ${L2.co}h x ${fmt(L2.rt)}/h = ${fmt(L2.co*L2.rt)}`;
+
+  const q=parseInt($('q').value)||0, upp=parseInt($('upp').value)||1, upc=parseInt($('upc').value)||1;
+  const c2=lineCost(L2,q), c3=lineCost(L3,q);
+  const set=(box,val,unit,why)=>{$('v_'+box).innerHTML=val;$('u_'+box).textContent=unit;$('w_'+box).textContent=why};
+  const oob=(L)=>q<L.mn?`below its ${L.mn.toLocaleString()} minimum`:`above its ${L.mx.toLocaleString()} ceiling`;
+  set('2', c2==null?'&mdash;':fmt(c2), c2==null?'':fmt(c2/q)+' / unit', c2==null?oob(L2):'');
+  set('3', c3==null?'&mdash;':fmt(c3), c3==null?'':fmt(c3/q)+' / unit', c3==null?oob(L3):'');
+
+  const win = c2!=null&&c3!=null ? (c2<=c3?'2':'3') : (c2!=null?'2':(c3!=null?'3':null));
+  $('so_2').className='so'+(win==='2'?' win':'')+(c2==null?' out':'');
+  $('so_3').className='so'+(win==='3'?' win':'')+(c3==null?' out':'');
+
+  const runCost = win==='2'?c2:(win==='3'?c3:null);
+  const minRun=num('min_run')*100, mov=num('mov')*100;
+  const fees=opFees(q,upp,upc);
+  const raw = runCost==null?null:runCost+fees;
+  const total = raw==null?null:Math.max(raw,minRun);
+  set('t', total==null?'&mdash;':f0(total), total==null?'':(total/q/100).toFixed(3)+' / unit',
+      total==null?'no line can run this':(total===minRun&&raw<minRun?`minimum run charge applied (+${fmt(minRun-raw)})`:''));
+  $('so_t').className='so'+(total!=null?' win':' out');
+
+  /* the crossover: where hand assembly stops beating the auger line */
+  const dd=(L2.rt/L2.sp)-(L3.rt/L3.sp), cc=(L3.co*L3.rt)-(L2.co*L2.rt);
+  const x = dd!==0 ? cc/dd : NaN;
+  let msg;
+  if(win===null) msg='No line on your floor can run this quantity. The job routes to another co-packer, or the manufacturer self-assembles.';
+  else if(isFinite(x)&&x>0&&x>L3.mn&&x<L2.mx)
+    msg=`Your changeover crossover is <b>${Math.round(x).toLocaleString()} units</b>. Below it, hand assembly wins because the auger line's ${L2.co}h changeover cannot amortize. Above it, the auger line wins on speed. You did not set that number: it fell out of your own two lines.`;
+  else msg='Only one line qualifies at this quantity, so there is no contest to resolve.';
+  if(total!=null && mov>0 && total<mov) msg+=` <b>This job is under your ${f0(mov)} order-value floor</b>, so routing would not offer it to you at all.`;
+  $('xo').innerHTML=msg;
+
+  chart(L2,L3,q,isFinite(x)?x:null);
+  feebar(total,q);
+}
+
+/* Where the co-pack fee sits in the creator's bill. Illustrative goods/print
+   values; the point is the RULE: co-pack is partner-set + creator-paid, so it
+   is inside the production subtotal and inside the platform-fee base. */
+function feebar(total,q){
+  if(total==null){$('feebar').innerHTML='';$('feenote').textContent='No quote at this quantity.';return}
+  const goods=Math.round(q*0.62*100), print=Math.round(q*0.09*100);
+  const base=goods+print+total, fee=Math.round(base*0.12), ship=Math.round(base*0.14);
+  const grand=base+fee+ship;
+  const seg=[['Goods',goods,'#6B6D78'],['Print',print,'#7FB3FF'],['Co-pack',total,'#FF2E63'],['Platform fee 12%',fee,'#B5FF3D'],['Shipping',ship,'#33343C']];
+  $('feebar').innerHTML=seg.map(([n,c,col])=>{
+    const pct=(c/grand)*100; const dark=col==='#B5FF3D';
+    return `<div style="width:${pct}%;background:${col};${dark?'color:#18181A':''}" title="${n}: ${f0(c)}">${pct>9?n:''}</div>`;
+  }).join('');
+  $('feenote').innerHTML=`Your <b style="color:#FF2E63">${f0(total)}</b> co-pack fee is inside the production subtotal, so the creator's tier fee is charged on it like every other partner-set line. The platform fee comes off the <i>creator</i>, not out of your payout. Shipping sits outside the base: we quote it from the carrier and keep that margin, so nobody can shift a production price into freight to shrink the take rate.`;
+}
+
+function chart(L2,L3,q,x){
+  const W=700,H=200,PADL=8,PADB=22,maxQ=Math.max(L2.mx,30000)*0.32;
+  const pu=(L,qq)=>{const c=lineCost(L,qq);return c==null?null:c/qq};
+  const cand=[pu(L2,Math.max(L2.mn,1)),pu(L3,Math.max(L3.mn,1))].filter(v=>v!=null);
+  const maxP=(Math.max(...cand)||1)*1.05;
+  const X=v=>PADL+(v/maxQ)*(W-PADL-10), Y=v=>H-PADB-(Math.min(v,maxP)/maxP)*(H-PADB-14);
+  const line_=(L,col)=>{const a=[];for(let i=0;i<=90;i++){const qq=Math.round((i/90)*maxQ);if(qq<1)continue;const pv=pu(L,qq);if(pv!=null)a.push(`${a.length?'L':'M'}${X(qq).toFixed(1)},${Y(pv).toFixed(1)}`)}return a.length?`<path d="${a.join(' ')}" fill="none" stroke="${col}" stroke-width="2.5"/>`:''};
+  let marks='';
+  if(x&&x>0&&x<maxQ){const pv=pu(L2,Math.round(x))||pu(L3,Math.round(x));if(pv!=null)marks+=`<line x1="${X(x)}" y1="14" x2="${X(x)}" y2="${H-PADB}" stroke="#B5FF3D" stroke-width="1" stroke-dasharray="3 3"/><text x="${X(x)+7}" y="26" fill="#B5FF3D" font-size="10" font-weight="700">crossover ${Math.round(x).toLocaleString()}</text>`}
+  if(q>0&&q<maxQ) marks+=`<line x1="${X(q)}" y1="14" x2="${X(q)}" y2="${H-PADB}" stroke="#FF2E63" stroke-width="1.5"/><text x="${X(q)+6}" y="${H-PADB-6}" fill="#FF7FA8" font-size="10" font-weight="700">your qty</text>`;
+  $('chart').innerHTML=`<rect width="${W}" height="${H}" fill="none"/>
+    <line x1="${PADL}" y1="${H-PADB}" x2="${W-10}" y2="${H-PADB}" stroke="#33343C"/>
+    ${line_(L2,'#7FB3FF')}${line_(L3,'#FFB3CC')}${marks}
+    <text x="${PADL}" y="${H-6}" fill="#6B6D78" font-size="10">0</text>
+    <text x="${W-46}" y="${H-6}" fill="#6B6D78" font-size="10">${Math.round(maxQ).toLocaleString()} units</text>
+    <text x="${PADL+4}" y="24" fill="#6B6D78" font-size="10">cost / unit &#8595; as changeover amortizes</text>
+    <text x="${W-170}" y="40" fill="#7FB3FF" font-size="10" font-weight="700">&#9644; Line 2 auger</text>
+    <text x="${W-80}" y="40" fill="#FFB3CC" font-size="10" font-weight="700">&#9644; Line 3 hand</text>`;
+}
+
+['q','upp','upc','l2_sp','l2_co','l2_rt','l2_mn','l2_mx','l3_sp','l3_co','l3_rt','l3_mn','l3_mx','min_run','mov']
+  .forEach(id=>$(id).addEventListener('input',recalc));
+document.querySelectorAll('.op select,.op input').forEach(el=>el.addEventListener('input',recalc));
+paint();recalc();
+</script>
+</body>
+</html>
