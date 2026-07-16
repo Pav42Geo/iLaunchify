@@ -2,7 +2,7 @@
   "name": "ilaunchify",
   "version": "2.0.0",
   "private": true,
-  "description": "iLaunchify v2 — two-sided marketplace for creators, manufacturers, and print providers in US-compliant supplements + food & beverage.",
+  "description": "iLaunchify v2 \u2014 two-sided marketplace for creators, manufacturers, and print providers in US-compliant supplements + food & beverage.",
   "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": ">=20.11.0",
@@ -28,7 +28,8 @@
     "compliance:dev": "cd services/compliance && uvicorn app.main:app --reload",
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
-    "prepare": "husky"
+    "prepare": "husky",
+    "pp0:delta": "node scripts/pp0-delta-report.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",

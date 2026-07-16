@@ -61,7 +61,6 @@ import {
   resolveCreatorFeeBounds,
   creatorFeeCents,
   computeOrderPricing,
-  pricingDelta,
   resolveGoods,
   composeProductionLines,
   costFloorBreach,
@@ -613,9 +612,10 @@ export async function placeOrderFromCheckoutDraft(
           select: { basePriceCents: true, perUnitPriceCents: true },
         })
       : Promise.resolve([] as Array<{ basePriceCents: number; perUnitPriceCents: number }>),
-    // PP-0 shadow: load the rows the estimate prices Decoration + Component
-    // upgrades from. Read-only here — the charge below is unchanged until the
-    // logged delta is reviewed.
+    // The rows Decoration + Component upgrades price from. Both are CHARGED as of
+    // the PP-0 flip (2026-07-16): partner-set + creator-paid, so both belong in the
+    // production subtotal and therefore in the fee base. Priced via the same
+    // @ilaunchify/plans helper the estimate uses, so the two cannot disagree.
     prisma.packagingComponent.findMany({
       where: { productId: product.id },
       select: COMPONENT_PRICING_SELECT,
@@ -635,18 +635,17 @@ export async function placeOrderFromCheckoutDraft(
   const productionUnitCents = labelUnitCents + packagingUnitCents + finishUnitCents
   const productionSubtotalCents = productionUnitCents * qty + finishSetupCents
 
-  // PP-0 shadow inputs: the two lines the charge omits today. Computed via the
-  // SAME helper the estimate uses (./component-pricing), so the delta below is
-  // the real gap and not a reimplementation of it. NOT yet added to
-  // productionUnitCents: that is the flip, and it waits on Pavel reading the delta.
-  const { decorationUnitCents: shadowDecorationUnit, componentsUnitCents: shadowComponentsUnit } =
-    priceComponents(componentRows, qty)
-  const shadowDecorationCents = shadowDecorationUnit * qty
-  const shadowComponentsCents = shadowComponentsUnit * qty
+  // Decoration + component upgrades, via the SAME helper the estimate uses
+  // (@ilaunchify/plans priceComponents). Both are partner-set and creator-paid, so
+  // per the LOCKED fee-base rule both belong in the production subtotal and the fee
+  // base. Until 2026-07-16 the summary SHOWED them and this charge DROPPED them.
+  const { decorationUnitCents, componentsUnitCents } = priceComponents(componentRows, qty)
+  const decorationCents = decorationUnitCents * qty
+  const componentsCents = componentsUnitCents * qty
 
-  // Cost-basis estimate for partner transfers (@ilaunchify/orders
-  // returns a per-dispatch breakdown — V1 reuses to keep the manifest
-  // same cost basis the partner-side dispatch routing uses).
+  // Cost-basis estimate for partner transfers (@ilaunchify/orders returns a
+  // per-dispatch breakdown). This is a COST: it funds the partner legs. It is NOT
+  // a price input (see the reconcile note below).
   const referenceUnit = Math.max(1, Math.round(productionUnitCents))
   const dispatchCosts = estimateDispatchCosts({
     productId: product.id,
@@ -656,18 +655,45 @@ export async function placeOrderFromCheckoutDraft(
   const dispatchSubtotal =
     dispatchCosts.manufacturerCostCents + dispatchCosts.printProviderCostCents
 
-  // Reconcile — pick the higher of the candidates so partner cost is never under-
-  // funded. The wizard UI showed productionSubtotalCents; if dispatch math comes
-  // out higher we treat the gap as a 'platform absorbs' line (V1 simplification;
-  // V2 reconciles partner pricing properly). For a NEW pack-model order the
-  // creator-facing basis-aware pack price (packPricedSubtotalCents) is the amount
-  // the creator agreed to pay, so it also enters the reconcile — the booked
-  // subtotal is the max of all three, never below the priced pack total.
-  const productionTotalCents = Math.max(
-    productionSubtotalCents,
-    dispatchSubtotal,
+  // ─── PP-0 FLIP (2026-07-16): the charge now prices through the ONE function ──
+  //
+  // WAS: productionTotalCents = Math.max(productionSubtotal, dispatchSubtotal,
+  //      packPricedSubtotalCents), with decoration + components missing entirely.
+  //
+  // That max compared three INCOMMENSURABLE numbers (two COSTS and one list PRICE),
+  // so `productionTotalCents` had no stable meaning, and partner COST leaked into
+  // the creator's PRICE. Three findings retired it (docs/PRINT_PRICING_SPEC §2.2):
+  //
+  //   1. The dispatch arm was DEAD, unconditionally. dispatchSubtotal is 0.38 x
+  //      (productionUnitCents x qty), while productionSubtotal IS productionUnitCents
+  //      x qty + setup. Because labelUnitCents starts at the hardcoded 8c anchor,
+  //      the unit is ALWAYS >= 8, so 38% of it can never reach 100% of it. There is
+  //      no zero-cost product. Verified over 144 shapes by scripts/pp0-delta-report.mjs.
+  //   2. The comment claimed the platform absorbed any gap. It did not: the CREATOR
+  //      paid the max. Harmless only BECAUSE the arm was dead.
+  //   3. Cost and price must never share an expression. The legitimate kernel
+  //      ("never fund below partner cost") survives as costFloorBreach, which
+  //      REPORTS to ops and adds nothing to any bill.
+  //
+  // NOW: a DECLARED basis. A pack order prices on the price the creator agreed to;
+  // a legacy non-pack order prices on the catalog buildup. Add-ons are composed
+  // exactly once by the single composer, whatever the basis.
+  const goods = resolveGoods({
+    isPackOrder: packPersist != null,
     packPricedSubtotalCents,
-  )
+    // Goods = label + packaging ONLY. Finishes are creator-picked, so they are an
+    // add-on under BOTH bases (a pack price is authored per pack SIZE, before any
+    // creator picks a finish). Non-pack parity with the old buildup is pinned to
+    // the cent in estimate-charge-parity.test.ts.
+    costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
+  })
+  const productionLines = composeProductionLines({
+    goods,
+    finishesCents: finishUnitCents * qty + finishSetupCents,
+    decorationCents,
+    componentsCents,
+  })
+  const productionTotalCents = productionLines.reduce((s, l) => s + l.cents, 0)
 
   // Admin-tunable order policy (fees + shipping), resolved for THIS creator's tier
   // so scoped overrides (tier/market/region) take effect.
@@ -724,71 +750,41 @@ export async function placeOrderFromCheckoutDraft(
   //        labeling (a production service); shipping is NOT in the base (Pavel 2026-07-09).
   const { feeBps, source: platformFeeSource } = await resolveCreatorFeeBps(creatorTier)
   const feeBounds = await resolveCreatorFeeBounds(creatorTier)
-  const feeBase = productionTotalCents + fcLabelingCents
-  const platformFeeCents = creatorFeeCents(feeBase, feeBps, feeBounds)
-  const grossTotalCents =
-    productionTotalCents + fcLabelingCents + shippingCents + platformFeeCents
 
-  // ─── PP-0 SHADOW (docs/PRINT_PRICING_SPEC_2026-07-15.md §2) ──────────────────
-  // The charge above is UNCHANGED. This computes what the unified pricer WOULD
-  // charge and records the delta, so the impact is measurable before we flip.
-  //
-  // The known gap: `productionUnitCents` (line ~617) omits decorationUnitCents and
-  // componentsUnitCents, which the creator IS shown in OrderSummary. Per the LOCKED
-  // fee-base rule (CLAUDE.md, Pavel 2026-07-15) both are partner-set + creator-paid,
-  // so they belong in the production subtotal AND therefore in the fee base. A
-  // positive delta = we are UNDER-charging today (dropped lines + the tier fee on
-  // them). Fail-soft: shadow math must never break a real order.
-  try {
-    // The DECLARED basis, replacing Math.max. A pack order prices on the price the
-    // creator agreed to; a legacy non-pack order prices on the catalog buildup.
-    // Note goods excludes finishes: they are creator-picked, so they are an add-on
-    // under BOTH bases and are composed exactly once below (packPrice never
-    // contains them either, since it is authored per pack SIZE on the template).
-    const shadowGoods = resolveGoods({
-      isPackOrder: packPersist != null,
-      packPricedSubtotalCents,
-      costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
-    })
-    const shadow = computeOrderPricing({
-      production: composeProductionLines({
-        goods: shadowGoods,
-        finishesCents: finishUnitCents * qty + finishSetupCents,
-        decorationCents: shadowDecorationCents,
-        componentsCents: shadowComponentsCents,
-      }),
-      fcLabelingCents,
-      shippingCents,
-      taxCents: 0, // not implemented yet (G5); never in the fee base regardless
-      feeBps,
-      feeBounds,
-    })
-    const delta = pricingDelta(shadow, grossTotalCents)
-    if (delta.deltaCents !== 0) {
-      console.info(
-        `[PP-0 shadow] order=pending creator=${user.id} tier=${creatorTier} ` +
-          `basis=${shadowGoods.basis} goods=${shadowGoods.goodsCents} ` +
-          `live=${grossTotalCents} unified=${shadow.totalCents} ` +
-          `delta=${delta.deltaCents} (${delta.deltaPct}%) ` +
-          `${delta.underCharging ? 'UNDER-charging' : 'over-charging'} ` +
-          `decoration=${shadowDecorationCents} components=${shadowComponentsCents} ` +
-          `feeBase live=${feeBase} unified=${shadow.feeBaseCents}`,
-      )
-    }
-    // The legitimate kernel of the old max, kept as a REPORT. If a template is
-    // mispriced below partner cost, ops needs to know, but the creator must not be
-    // silently billed a cost they never agreed to. This adds nothing to any total.
-    const breach = costFloorBreach(shadow.productionSubtotalCents, dispatchSubtotal)
-    if (breach) {
-      console.warn(
-        `[PP-0 cost-floor] creator=${user.id} basis=${shadowGoods.basis} ` +
-          `production=${breach.productionSubtotalCents} partnerCost=${breach.partnerCostCents} ` +
-          `shortfall=${breach.shortfallCents} (reported only, charge unaffected)`,
-      )
-    }
-  } catch (err) {
-    console.warn(`[PP-0 shadow] skipped: ${(err as Error).message}`)
+  // PP-0 FLIP: the charge IS the pricer's output now. Every quote surface (the
+  // marketplace PDP, the configurator, the checkout estimate, the sample flow)
+  // calls this same function, so "what we showed" and "what we charge" are the
+  // same expression rather than two expressions that happen to agree.
+  const priced = computeOrderPricing({
+    production: productionLines,
+    fcLabelingCents,
+    shippingCents,
+    taxCents: 0, // G5; never in the fee base regardless
+    feeBps,
+    feeBounds,
+  })
+  const feeBase = priced.feeBaseCents
+  const platformFeeCents = priced.platformFeeCents
+  const grossTotalCents = priced.totalCents
+
+  // The legitimate kernel of the retired max, kept as a REPORT. If a template is
+  // priced below partner cost, ops needs to know, but the creator must not be
+  // silently billed a cost they never agreed to: they did not make the pricing
+  // mistake. This adds nothing to any total.
+  const breach = costFloorBreach(priced.productionSubtotalCents, dispatchSubtotal)
+  if (breach) {
+    console.warn(
+      `[PP-0 cost-floor] creator=${user.id} basis=${goods.basis} ` +
+        `production=${breach.productionSubtotalCents} partnerCost=${breach.partnerCostCents} ` +
+        `shortfall=${breach.shortfallCents} (reported only, charge unaffected)`,
+    )
   }
+
+  // (The PP-0 shadow that used to sit here is gone: it computed what the unified
+  //  pricer WOULD charge so the delta could be measured before flipping. The
+  //  pricer IS the charge now, so a shadow of itself would be a tautology. The
+  //  delta it existed to answer is in scripts/pp0-delta-report.mjs, which runs the
+  //  old expression against the new one over every cart shape: `pnpm pp0:delta`.)
 
   // --- 7b. Sample credit (Pavel 2026-06-10) — a paid sample mints credit toward
   //         the creator's first production order. Decision: platform-funded +
