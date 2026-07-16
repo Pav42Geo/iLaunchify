@@ -1,7 +1,8 @@
 # "On-demand" means THREE different things. Read this before touching any of them.
 
-**Status:** MAP + partial fix, 2026-07-16. The safe half is done; the risky half needs a Pavel
-decision + a `db:push`. Origin: `PRINT_PRICING_SPEC_2026-07-15.md` flagged "two meanings of on-demand
+**Status:** MAP + fix, 2026-07-16. The safe half is DONE. **The risky half was DECIDED, ATTEMPTED,
+and REVERTED** (§3): Pavel greenlit it, the attempt hit the stale-Prisma-client trap, and it was
+backed out rather than forced. That is the answer, not a deferral. Origin: `PRINT_PRICING_SPEC_2026-07-15.md` flagged "two meanings of on-demand
 share one word in a money path". A full trace found **three**, and the third is what makes a rename
 dangerous.
 
@@ -64,7 +65,37 @@ Fixed:
 
 ---
 
-## §3 NOT DONE: the risky renames (Pavel decision + `db:push`)
+## §3 REVERTED, empirically: the renames are NOT worth it yet
+
+**Pavel 2026-07-16: "let's do it if worth it" -> tried -> NOT worth it. Backed out.**
+
+The field rename (`PartnerService.onDemandEnabled` -> `parcelPickPackEnabled` via `@map`) looked like
+the safe one: every one of its ~20 call sites is TYPED (verified: no cast-guards on this field), and
+`@map` keeps the DB column so `db:push` is a no-op. It was renamed across 11 files and then:
+
+```
+error TS2353: Object literal may only specify known properties, and 'parcelPickPackEnabled'
+              does not exist in type 'PartnerServiceSelect<DefaultArgs>'
+error TS2551: Property 'partner' does not exist ... Did you mean 'partnerId'?
+```
+
+**Those are not bugs in the rename. They are the STALE PRISMA CLIENT** (CLAUDE.md's three-layer
+trap): the generated client does not learn a renamed field until `pnpm db:generate` runs. The
+`partner` errors are cascade damage: once one `select` key is unknown, Prisma's type inference
+collapses and unrelated properties light up too.
+
+**Why that settles it.** Shipping the rename means handing over a tree that **does not compile until
+someone runs a command**, on the field that gates `StorageAgreement.mode` (whether pick/pack fees
+accrue), in a repo where a second agent shares the working tree. Cosmetic win, uncompilable money
+path. No.
+
+**THE TRIGGER, written down so this is not re-litigated:** do the renames in the same change as a
+`db:push` + `db:generate` that is happening on these tables anyway. Then the client regenerates in the
+same breath and the compiler can actually verify the work.
+
+**Everything below is the still-valid PLAN for that moment.**
+
+### The proposal (unchanged)
 
 All three enums are **live Postgres types**. `FulfillmentMode` additionally has a real migration
 (`20260605160000_decoration_offerings`) and its column sits inside a `@@unique`
@@ -108,7 +139,24 @@ the file header now mitigate. Do them when something else already forces a `db:p
 
 ## §4 Separate bugs found on the way (not naming issues)
 
-**1. `ingest.ts:153` resolves the enablement gate WITHOUT the manufacturer.** VERIFIED:
+**1. `ingest.ts:153` resolves the enablement gate WITHOUT the manufacturer.** VERIFIED, and it is worse
+than "arbitrary pick": **it carries CONSENT across a re-pin.** `OnDemandEnablement` is documented as
+"a manufacturer's standing agreement to accept on-demand production orders for ONE creator product
+WITH THE APPROVED BRANDING" (`schema.prisma:5839`). Pin a product to manufacturer A, A approves
+(ENABLED), later re-pin to B: this lookup still finds A's row, so **B's gate opens on A's consent** for
+branding B never saw. That is a consent problem, not just a routing one.
+
+**NOT FIXED, deliberately (2026-07-16).** `ChannelVariantLink.productId` is a SOFT FK with no relation
+(`schema.prisma:5760`), so scoping the lookup needs a new batched query for each product's pinned
+`productTemplate.manufacturerServiceId` (the pattern `publish/actions.ts:327` already uses on the
+REQUEST side). That is a new query into a **cast-guarded** (13 sites in this file), currently-DARK
+channel path, unverifiable without running the app. Same risk shape as the rename in §3, and this one
+needs a re-pin to trigger at all. It DOES fail-closed (the existing `.catch(() => null)` yields status
+'NONE' = gate shut), so a mistake here breaks the feature rather than moving money wrongly.
+**Fix it when the channel path stops being dark** (it is gated on adapters + SP-API + `db:push`), and
+do it in the same change as the §3 renames since both wait on the same `db:generate`.
+
+Original finding:
 ```ts
 ?.findFirst?.({ where: { creatorUserId: user.id, productId: String(link.productId) }, select: { status: true } })
 ```
@@ -118,10 +166,14 @@ from manufacturer X can open the gate for manufacturer Y**. Not reachable while 
 single-manufacturer (owner-pinned), which is why it has not bitten. Fix = include
 `manufacturerServiceId` in the where.
 
-**2. `ProductDetailConfigurator.onDemandRows` is dead UI.** No caller passes it
-(`ProductDetailHero.tsx:187,:210` omits it), so `hasOnDemand` is always false and the Bulk/On-demand
-price toggle never renders. Same for `PricingTierModal.onDemandRows`. Either wire A1 pricing into the
-PDP or delete the props.
+**2. `ProductDetailConfigurator.onDemandRows` is dead UI.** VERIFIED: it is declared (`:88`), threaded
+to `PricingTierModal` (`:812`), and **no external caller ever passes it**, so `hasOnDemand` (`:343`) is
+permanently false and the Bulk/On-demand price toggle never renders.
+
+**LEFT IN PLACE, deliberately.** This is scaffolding for meaning A1 (a manufacturer's small-batch
+price bands), which is a real unbuilt feature, not a mistake. Deleting it would just have to be
+re-written. It is inert and it is now documented here. Wire it when A1 pricing reaches the PDP; the
+prop chain is already correct.
 
 **3. `docs/builds/on-demand-pricing-economics.md:137` references `Partner.onDemandMaxDailyCapacity`,
 which does not exist.** The shipped equivalent is `OnDemandEnablement.capacityPerDay`.
