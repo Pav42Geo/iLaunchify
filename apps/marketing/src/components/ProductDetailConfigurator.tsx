@@ -8,6 +8,7 @@ import {
   getTierByRunCount,
   computeOrderPricing,
   creatorFeeCents,
+  pickPricingBandIndex,
   type FeeRuleBounds,
 } from '@ilaunchify/plans/math'
 import {
@@ -353,9 +354,13 @@ export function ProductDetailConfigurator({
 
   // ----- Pricing math (unchanged from the original configurator) -----
   const rows = pricingRows
+  // The band this quantity prices on. Shared with the checkout charge via
+  // pickPricingBandIndex (Blocker 2, 2026-07-16) - until today placeOrder did not
+  // read the bands AT ALL, so this number was quoted and never billed. Behaviour is
+  // unchanged here: `?? 0` is the same below-MOQ fallback to the first band that the
+  // inline filter had.
   const matchedRow = React.useMemo(() => {
-    const eligible = rows.filter((r) => r.bandMin !== null && r.bandMin <= quantity)
-    return eligible.length > 0 ? eligible[eligible.length - 1]! : rows[0]!
+    return rows[pickPricingBandIndex(rows.map((r) => r.bandMin), quantity) ?? 0]!
   }, [rows, quantity])
 
   const currentTier = viewerTier
@@ -450,8 +455,7 @@ export function ProductDetailConfigurator({
   // (no MOQ), so in On-demand mode it becomes the headline figure.
   const onDemandRow = React.useMemo(() => {
     if (!onDemandRows || onDemandRows.length === 0) return null
-    const eligible = onDemandRows.filter((r) => r.bandMin !== null && r.bandMin <= quantity)
-    return eligible.length > 0 ? eligible[eligible.length - 1]! : onDemandRows[0]!
+    return onDemandRows[pickPricingBandIndex(onDemandRows.map((r) => r.bandMin), quantity) ?? 0]!
   }, [onDemandRows, quantity])
   // PP-0c: the fabricated size multiplier is gone here too (it had leaked into the
   // on-demand price). On-demand rows are already all-in per-unit, so the deltas

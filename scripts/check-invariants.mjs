@@ -538,7 +538,45 @@ function checkEnablementScopedToManufacturer() {
   return { name: 'OnDemandEnablement lookup scoped to the manufacturer (consent gate)', level: 'warn', hits }
 }
 
+// =============================================================================
+// CHECK 15 - no hand-rolled volume-band matcher (WARN)
+//
+// THE BUG THIS EXISTS TO PREVENT (Blocker 2, 2026-07-16): "which price band does
+// this quantity fall in" was hand-rolled in FOUR places, and placeOrder was not one
+// of them. It never read the bands at all, so a run the PDP quoted at $3,076 was
+// charged $310: 86-90% of the quote uncollected at every volume, on exactly the
+// non-pack single-SKU product our first manufacturer sells.
+//
+// The lesson is not "that one site was wrong", it is that the SAME loop copied N
+// times has no mechanism forcing the (N+1)th caller to copy it too. The kernel is
+// `pickPricingBandIndex` in @ilaunchify/plans. A new copy of this filter is how the
+// PDP and the till drift apart again.
+//
+// Matches the shape `<something>Min !== null && <something>Min <= <qty>`, which is
+// the tell for this specific comparison. `bandMin` (the @ilaunchify/ui row) and
+// `minQty` (the DB row) are both spellings that appeared in the wild.
+// =============================================================================
+function checkNoHandRolledBandMatcher() {
+  const hits = []
+  const rx = /(\w*(?:bandMin|minQty))\s*!==?\s*null\s*&&\s*\w*(?:\.)?(?:bandMin|minQty)\s*<=/g
+  const roots = [...APPS.map((a) => `${a}/src`), 'packages/ui/src', 'packages/plans/src']
+  for (const f of collect(roots, ['.ts', '.tsx'])) {
+    // The kernel itself, and the pins + docs that quote the old shape on purpose.
+    if (/packages[\\/]plans[\\/]src[\\/]pricing-band(\.test)?\.ts$/.test(f)) continue
+    const src = read(f)
+    let m
+    while ((m = rx.exec(src)) !== null) {
+      const line = src.slice(0, m.index).split('\n').length
+      hits.push(
+        `${f}:${line}  hand-rolled band matcher: use pickPricingBandIndex from @ilaunchify/plans, or the PDP and the charge drift`,
+      )
+    }
+  }
+  return { name: 'No hand-rolled volume-band matcher (quote must equal charge)', level: 'warn', hits }
+}
+
 const CHECKS = [
+  checkNoHandRolledBandMatcher,
   checkEnablementScopedToManufacturer,
   checkStorageGuardsSSOT,
   checkNoDbText,

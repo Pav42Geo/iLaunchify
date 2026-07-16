@@ -30,7 +30,8 @@ import type { PricingInput } from './order-pricing'
 /** Which number the goods line prices on. Snapshot this onto the order. */
 export type GoodsBasis =
   | 'PACK_PRICE' // the creator-agreed pack price (ProductTemplateVariant / FlavorPreset)
-  | 'COST_BUILDUP' // legacy non-pack: our catalog buildup (substrate + packaging)
+  | 'TIER_PRICE' // the manufacturer's volume band (ProductTemplatePricingTier) - the DEFAULT for non-pack
+  | 'COST_BUILDUP' // FALLBACK ONLY: our catalog buildup, for a template with no tiers
 
 export interface ResolvedGoods {
   goodsCents: number
@@ -43,10 +44,23 @@ export interface GoodsBasisInput {
   /** The creator-agreed pack price extended over packCount. 0 when not a pack order. */
   packPricedSubtotalCents: number
   /**
-   * Catalog buildup for the BASE goods ONLY: (labelUnit + packagingUnit) x qty.
+   * NON-PACK: the manufacturer's volume band x qty (`tierGoodsCents`, from
+   * ProductTemplatePricingTier). THE number the PDP quotes, so THE number we bill.
+   * null = this template has no tiers, which falls back to the buildup below.
+   */
+  tierGoodsCents?: number | null
+  /**
+   * FALLBACK ONLY: catalog buildup for the BASE goods, (labelUnit + packagingUnit) x qty.
+   *
+   * This was the non-pack DEFAULT until 2026-07-16 and it was catastrophically
+   * wrong: it is a synthetic CATALOG estimate (8c anchor + seeded substrate/packaging
+   * at 0-9c), not the manufacturer's price. A 500-unit run quoted $3,076 on the PDP
+   * billed $310 - 89.9% of the quote uncollected - and the manufacturer's payout was
+   * planned off the same tiny number. It now applies ONLY when a template has no
+   * pricing tiers at all, which is a data gap the partner must fill, not a price.
+   *
    * Finishes are deliberately NOT in here. They are creator-picked at checkout, so
-   * they are an add-on under BOTH bases and are composed once, below. Folding them
-   * into the buildup is what made them basis-dependent.
+   * they are an add-on under EVERY basis and are composed once, below.
    */
   costBuildupGoodsCents: number
 }
@@ -54,13 +68,21 @@ export interface GoodsBasisInput {
 /**
  * Resolve the goods line by DECLARED basis (never by max).
  *
- * Pack orders price on PACK_PRICE because that is the number the creator agreed to
- * pay. Charging them more than that (which the old max could do) is not a legitimate
- * remedy for a mispriced template; see costFloorBreach.
+ * The order of preference IS the argument:
+ *   1. PACK_PRICE   - a pack order prices on the price the creator agreed to.
+ *   2. TIER_PRICE   - a non-pack order prices on the manufacturer's volume band,
+ *                     which is exactly what the PDP quoted them.
+ *   3. COST_BUILDUP - only when the template has NO tiers. A fallback, not a price.
+ *
+ * Charging a creator more than they agreed (which the retired Math.max could do) is
+ * not a legitimate remedy for a mispriced template; see costFloorBreach.
  */
 export function resolveGoods(input: GoodsBasisInput): ResolvedGoods {
   if (input.isPackOrder) {
     return { goodsCents: Math.max(0, Math.round(input.packPricedSubtotalCents)), basis: 'PACK_PRICE' }
+  }
+  if (input.tierGoodsCents != null) {
+    return { goodsCents: Math.max(0, Math.round(input.tierGoodsCents)), basis: 'TIER_PRICE' }
   }
   return { goodsCents: Math.max(0, Math.round(input.costBuildupGoodsCents)), basis: 'COST_BUILDUP' }
 }

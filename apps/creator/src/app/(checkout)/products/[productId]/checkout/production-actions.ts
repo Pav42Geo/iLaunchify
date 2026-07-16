@@ -22,6 +22,7 @@ import { requireUser, getCreatorTier } from '@ilaunchify/auth'
 // PP-0: the ONE platform-fee SSOT (CLAUDE.md fee model). The estimate MUST resolve
 // the fee through the same path the charge does, or the two diverge by tier.
 import { resolvePackSubtotal, type PackSelectionInput } from './pack-pricing'
+import { resolveTierGoodsCents } from './tier-pricing'
 import {
   resolveCreatorFeeBps,
   resolveCreatorFeeBounds,
@@ -601,11 +602,17 @@ export async function estimateProductionCost(
   const isPackOrder = packQuote.ok && packQuote.isPack
   const packPricedSubtotalCents = packQuote.ok && packQuote.isPack ? packQuote.packPricedSubtotalCents : 0
 
+  // THE TIER BASIS (Blocker 2, 2026-07-16): same read, same picker, same number as
+  // the PDP and the charge. Threaded here in the SAME change as cart-actions on
+  // purpose: moving one without the other is how the pack basis diverged above.
+  const tierGoods = await resolveTierGoodsCents(product?.productTemplateId ?? null, qty)
+
   const priced = computeOrderPricing({
     production: composeProductionLines({
       goods: resolveGoods({
         isPackOrder,
         packPricedSubtotalCents,
+        tierGoodsCents: tierGoods,
         costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
       }),
       finishesCents: finishUnitCents * qty + setupCents,

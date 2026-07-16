@@ -57,6 +57,7 @@ import {
 } from '@ilaunchify/orders'
 import { loadLearnedFulfillmentAdjustment, recordFcOverrideSignal } from './afe-learning'
 import { resolvePackSubtotal } from './pack-pricing'
+import { resolveTierGoodsCents } from './tier-pricing'
 import {
   resolveCreatorFeeBps,
   resolveCreatorFeeBounds,
@@ -670,13 +671,20 @@ export async function placeOrderFromCheckoutDraft(
   // NOW: a DECLARED basis. A pack order prices on the price the creator agreed to;
   // a legacy non-pack order prices on the catalog buildup. Add-ons are composed
   // exactly once by the single composer, whatever the basis.
+  // BLOCKER 2 (2026-07-16): the non-pack goods basis. Until today this branch had
+  // NO read of `pricingTiers` at all, so a run the PDP quoted at $3,076 (500 x
+  // $5.35, the manufacturer's band) was charged $310 (8c label + 4c substrate +
+  // 42c packaging). 89.9% of the quote never collected, on exactly the single-SKU
+  // white-label product an N=1 full-service manufacturer sells.
+  const tierGoods = await resolveTierGoodsCents(product.productTemplateId, qty)
   const goods = resolveGoods({
     isPackOrder: packPersist != null,
     packPricedSubtotalCents,
-    // Goods = label + packaging ONLY. Finishes are creator-picked, so they are an
-    // add-on under BOTH bases (a pack price is authored per pack SIZE, before any
-    // creator picks a finish). Non-pack parity with the old buildup is pinned to
-    // the cent in estimate-charge-parity.test.ts.
+    // The band the PDP showed. Same picker, same order, same number.
+    tierGoodsCents: tierGoods,
+    // FALLBACK ONLY (template with no tiers). Goods = label + packaging. Finishes
+    // are creator-picked, so they are an add-on under EVERY basis (a pack price is
+    // authored per pack SIZE, before any creator picks a finish).
     costBuildupGoodsCents: (labelUnitCents + packagingUnitCents) * qty,
   })
   const productionLines = composeProductionLines({

@@ -71,6 +71,11 @@ export type { ComponentRow, ComponentPricing } from './component-pricing'
 // asserted. `costFloorBreach` keeps partner COST out of the creator's PRICE: it
 // reports an under-funded order, it never raises the bill.
 export { resolveGoods, composeProductionLines, costFloorBreach } from './goods-basis'
+// Blocker 2 (2026-07-16): the manufacturer's volume band. THE goods basis for a
+// non-pack order, and the number the PDP already quotes. placeOrder never read the
+// tiers at all, so it billed a catalog buildup ~90% below the quote.
+export { pickPricingBand, pickPricingBandIndex, tierGoodsCents } from './pricing-band'
+export type { PricingBandInput } from './pricing-band'
 export type { GoodsBasis, ResolvedGoods, GoodsBasisInput, ProductionComposition } from './goods-basis'
 
 export {
