@@ -22,16 +22,28 @@ import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
 
 // -----------------------------------------------------------------------------
-// Admin-approved rate bands — docs/LOGISTICS_AND_FULFILLMENT.md §10 L9:
+// DEAD ROUTE. `page.tsx` here is a bare redirect('/services') since 2026-07-13.
+//
+// THIS FILE'S RULES MOVED (FC-1, 2026-07-15) to @ilaunchify/shipping
+// `storage-offering-rules.ts`, pure + pinned. Do not edit them here: this action
+// is not reachable from any page.
+//
+// WHY IT MATTERS: when the route was superseded, this file kept COMPILING and kept
+// READING correctly, so nothing flagged that its four guards had stopped running.
+// The replacement editor (services/actions.ts) shipped without the L9 rate bands,
+// without the cold-chain class gate, without the offering-coherence checks, and
+// without the free-grace default. A partner could save $500/pallet/month and could
+// self-declare FROZEN storage, which is a HARD filter in destination selection.
+// The rules now live in a package so the next route swap cannot take them down.
+//
+// Admin-approved rate bands - docs/LOGISTICS_AND_FULFILLMENT.md §10 L9:
 // "Partner rates constrained to admin-approved bands" (research anchors:
-// co-packer pallets $12–20/mo ambient; Printful $0.70/cu ft/mo). Cents per
-// billing unit per month. Rates outside the band are rejected with a clear
-// message — an admin conversation, not a form fight.
+// co-packer pallets $12-20/mo ambient; Printful $0.70/cu ft/mo).
 // -----------------------------------------------------------------------------
 
 const STORAGE_RATE_BANDS: Record<StorageBillingUnit, { minCents: number; maxCents: number }> = {
-  PALLET_MONTH: { minCents: 500, maxCents: 15_000 }, // $5.00 – $150.00 / pallet / mo
-  CUFT_MONTH: { minCents: 30, maxCents: 300 }, // $0.30 – $3.00 / cu ft / mo
+  PALLET_MONTH: { minCents: 500, maxCents: 15_000 }, // $5.00 - $150.00 / pallet / mo
+  CUFT_MONTH: { minCents: 30, maxCents: 300 }, // $0.30 - $3.00 / cu ft / mo
 }
 
 /** Storage classes a partner can self-serve today. CHILLED/FROZEN are

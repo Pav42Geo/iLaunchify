@@ -4,17 +4,22 @@
 //   addService            — extend the offering (DRAFT → Activation track)
 //   saveCapabilities      — MERGE a patch into the service's capabilities JSON
 //                           (never replaces the object — unknown keys survive)
-//   saveStorageOffering   — the TYPED "storage at your facility" columns on a
+//   saveStorageOffering  : the TYPED "storage at your facility" columns on a
 //                           producing service (HOLD_AT_MANUFACTURER destination
 //                           — explicitly NOT the 3PL/FC WAREHOUSE service)
 //   setAppliesLabels      — typed appliesLabels flag on the print service
 // All ownership-fenced + audited; nothing writes invented defaults — only the
 // keys the partner actually set.
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, getLogisticsSettings } from '@ilaunchify/db'
 import type { Prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+// FC-1: the storage-offering guards. These were lost when settings/storage was
+// superseded (2026-07-13): that route held the ONLY copy of the L9 rate bands and
+// the cold-chain class gate, and this editor replaced it without them. They now
+// live in a pure, pinned module so a route can never take them down with it again.
+import { validateStorageOffering, DEFAULT_FREE_GRACE_DAYS } from '@ilaunchify/shipping'
 import { revalidatePath } from 'next/cache'
 
 // WAREHOUSE deliberately excluded (Pavel 2026-07-13): the FC network is a
@@ -115,8 +120,9 @@ export async function saveCapabilities(
   return { ok: true }
 }
 
-const STORAGE_CLASSES = ['AMBIENT', 'PROTECT_HEAT', 'CHILLED', 'FROZEN'] as const
-const BILLING_UNITS = ['PALLET_MONTH', 'CUFT_MONTH'] as const
+// FC-1: the local STORAGE_CLASSES / BILLING_UNITS copies are gone. Both now live
+// in @ilaunchify/shipping storage-offering-rules (pure + pinned), because a local
+// copy of a rule is exactly how the L9 bands and the cold-chain gate were lost.
 
 export interface StorageOfferingInput {
   offersStorage?: boolean
@@ -144,15 +150,35 @@ export async function saveStorageOffering(
   const user = await requireUser()
   const service = await ownService(user.id, serviceId)
   if (!service) return { ok: false, error: 'Service not found.' }
-  if (service.type === 'WAREHOUSE')
-    return { ok: false, error: 'FC storage is managed in Settings → Storage (3PL service).' }
+  if (service.type === 'WAREHOUSE') {
+    // The FC network is admin-contracted (Pavel 2026-07-13), so an FC does not
+    // self-serve its RATE. It does self-serve its OPERATIONS (receiving spec,
+    // blackouts) elsewhere. Do NOT point them at Settings -> Storage: that route
+    // is a redirect back to here, which made this a loop.
+    // See docs/FC_MONETIZATION_GAP_2026-07-15.md §3.
+    return {
+      ok: false,
+      error:
+        'Fulfillment-center storage rates are set by iLaunchify ops under your network contract, not here.',
+    }
+  }
+
+  // FC-1: validate BEFORE building the patch. The cold-chain class gate is the
+  // load-bearing one: storage class is a HARD filter in destination selection, so
+  // a self-declared FROZEN would make this facility eligible to hold frozen goods.
+  // getLogisticsSettings already merges DB rows over OFF-by-default and swallows a
+  // missing table, so it fails CLOSED on its own. Do not wrap it in a catch that
+  // returns {}: that would discard the defaults rather than add safety.
+  const gates = await getLogisticsSettings()
+  const enabledColdClasses = (['CHILLED', 'FROZEN'] as const).filter(
+    (c) => gates[`storage_class:${c}`] === true,
+  )
+  const check = validateStorageOffering(input, { enabledColdClasses })
+  if (!check.ok) return { ok: false, error: check.error }
 
   const data: Record<string, unknown> = {}
   if (typeof input.offersStorage === 'boolean') data.offersStorage = input.offersStorage
-  if (Array.isArray(input.storageClasses))
-    data.storageClasses = input.storageClasses.filter((c) =>
-      (STORAGE_CLASSES as readonly string[]).includes(c),
-    )
+  if (Array.isArray(input.storageClasses)) data.storageClasses = input.storageClasses
   const int = (v: number | null | undefined) =>
     v === null ? null : typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.round(v) : undefined
   if (input.maxDwellDays !== undefined) {
@@ -165,18 +191,20 @@ export async function saveStorageOffering(
   }
   if (input.storageFreeGraceDays !== undefined) {
     const v = int(input.storageFreeGraceDays)
-    if (v !== undefined) data.storageFreeGraceDays = v
+    // FC-1: restore the industry-norm grace default (LOGISTICS §4, ~10 business
+    // days free after production delivery). Also lost with settings/storage. A
+    // null grace bills from day one, which no co-packer actually does, so leaving
+    // it null quietly makes the partner look predatory on their own ledger.
+    if (v === null && input.offersStorage === true) data.storageFreeGraceDays = DEFAULT_FREE_GRACE_DAYS
+    else if (v !== undefined) data.storageFreeGraceDays = v
   }
   if (input.storageMinMonthlyCents !== undefined) {
     const v = int(input.storageMinMonthlyCents)
     if (v !== undefined) data.storageMinMonthlyCents = v
   }
+  // Already validated above; an unknown unit was rejected, so pass it through.
   if (input.storageBillingUnit !== undefined) {
-    data.storageBillingUnit =
-      input.storageBillingUnit &&
-      (BILLING_UNITS as readonly string[]).includes(input.storageBillingUnit)
-        ? input.storageBillingUnit
-        : null
+    data.storageBillingUnit = input.storageBillingUnit || null
   }
   if (typeof input.canShipParcel === 'boolean') data.canShipParcel = input.canShipParcel
   if (typeof input.onDemandEnabled === 'boolean') data.onDemandEnabled = input.onDemandEnabled

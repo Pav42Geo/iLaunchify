@@ -453,7 +453,50 @@ function checkCryptoPkgSideEffects() {
 }
 
 // =============================================================================
+// =============================================================================
+// CHECK 13: storage-offering guards must resolve through the SSOT  (WARN)
+// FC-1 (docs/FC_MONETIZATION_GAP_2026-07-15.md §2). The L9 rate bands and the
+// cold-chain class gate lived ONLY in settings/storage/actions.ts. When that
+// route became a redirect (2026-07-13) the file kept compiling and kept reading
+// correctly, so nothing surfaced that its guards had stopped running: the
+// replacement editor shipped without them, and a partner could save $500/pallet
+// /month or self-declare FROZEN (a HARD filter in destination selection).
+//
+// The failure mode was DELETION OF A CALLER, which no type-check or test catches.
+// So: any writer of storageRateCents / storageClasses must go through
+// validateStorageOffering from @ilaunchify/shipping. A fresh local band table or
+// class list is the exact shape of the regression.
+// =============================================================================
+function checkStorageGuardsSSOT() {
+  const hits = []
+  const files = collect(['apps'], ['.ts', '.tsx']).filter((f) => !/\.test\./.test(f))
+  for (const f of files) {
+    const src = read(f)
+    if (/settings\/storage\//.test(f)) continue // the dead route, documented in-file
+    if (/validateStorageOffering/.test(src)) continue // resolves through the SSOT: fine
+
+    // Signature A: a LOCAL rate-band table. This is the regression's exact shape
+    // and is worth flagging wherever it appears, writer or not.
+    if (/STORAGE_RATE_BANDS|PALLET_MONTH\s*:\s*\{\s*minCents/.test(src)) {
+      hits.push(`${f} — local rate-band table; call validateStorageOffering (@ilaunchify/shipping)`)
+      continue
+    }
+
+    // Signature B: an actual WRITE of the storage columns onto a PartnerService.
+    // Must be a prisma write, not a `select`/read: matching bare `storageRateCents`
+    // flags every reader (fc-data, cart-actions, the scorer) and a check that cries
+    // wolf gets ignored, which is how the guards were lost in the first place.
+    const isPartnerServiceWrite = /partnerService\s*\.\s*(update|updateMany|create|upsert)/.test(src)
+    const touchesStorageCols = /\bdata\.(storageRateCents|storageClasses|storageBillingUnit)\b/.test(src)
+    if (isPartnerServiceWrite && touchesStorageCols) {
+      hits.push(`${f} — writes PartnerService storage columns without validateStorageOffering (FC-1 guards bypassed)`)
+    }
+  }
+  return { name: 'storage-offering guards via SSOT (L9 bands + cold-chain gate)', level: 'warn', hits }
+}
+
 const CHECKS = [
+  checkStorageGuardsSSOT,
   checkNoDbText,
   checkCrossAppLink,
   checkMutationHasAudit,

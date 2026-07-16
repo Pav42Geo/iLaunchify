@@ -16,6 +16,9 @@ export * from './cold-pack'
 export * from './dispatch-doc-gate'
 export * from './receiving-checklist'
 export * from './storage-accrual'
+// FC-1: the storage-offering guards (L9 rate bands + the cold-chain class gate).
+// They live here, not in a route, because the last copy died with its route.
+export * from './storage-offering-rules'
 export * from './gateway'
 export * from './easypost-http'
 export * from './rate-shop'
