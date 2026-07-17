@@ -14,7 +14,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
-import { requireCapability, setCreatorTierWithAudit } from '@ilaunchify/auth'
+import { requireCapability } from '@ilaunchify/auth'
+// server-only: pulls @ilaunchify/orders (-> node:crypto). See auth/server.ts.
+import { setCreatorTierWithAudit } from '@ilaunchify/auth/server'
 import { logAuditAs } from '@ilaunchify/audit'
 import { invalidatePlansCache } from '@ilaunchify/plans'
 

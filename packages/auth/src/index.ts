@@ -82,7 +82,30 @@ export type { TierKey, BrandLimits, AdvancedBrandFeatures } from './tiers'
 
 // V1.5-T2 — single write path for CreatorProfile.subscriptionTier
 // (admin Tier Management + Stripe-webhook tier-flip handlers).
-export { setCreatorTierWithAudit } from './tier-writes'
+//
+// ─── THE VALUE EXPORT MOVED TO `@ilaunchify/auth/server` (2026-07-16) ────────
+//
+// `setCreatorTierWithAudit` imports @ilaunchify/orders, whose barrel now reaches
+// node:crypto (orders/index -> room-service -> @ilaunchify/notifications ->
+// feedback-token -> node:crypto). Re-exporting it HERE made the whole chain part
+// of the client bundle for anyone importing this barrel, and the Design Studio
+// canvas died on it:
+//
+//   Module build failed: UnhandledSchemeError: Reading from "node:crypto"
+//   ... CanvasLayoutShell.tsx  ('use client', imports hasTier/canRecolorTemplate)
+//
+// server.ts's own header predicted this exact failure ("a client component
+// importing a client-safe helper (e.g. a tier check) would drag node:crypto in
+// and fail the build") - tier-writes simply never got moved. Same disease as
+// @ilaunchify/plans -> /math: a barrel re-exporting server-only code, imported by
+// a client component that only wanted a pure helper.
+//
+// It was MASKED by the .next cache: the canvas route had not recompiled since
+// room-service.ts landed, so the build stayed green over a broken graph until a
+// cache wipe forced a fresh compile. A cached success is not a passing build.
+//
+// TYPES STAY: `import type` is erased at compile time and pulls in no runtime
+// graph, so type-only consumers need no change.
 export type {
   SetCreatorTierInput,
   SetCreatorTierResult,

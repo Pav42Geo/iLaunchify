@@ -13,7 +13,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import type { NotificationEvent, SubscriptionTier } from '@ilaunchify/db'
-import { setCreatorTierWithAudit } from '@ilaunchify/auth'
+import { setCreatorTierWithAudit } from '@ilaunchify/auth/server'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { stripe } from './client'
 

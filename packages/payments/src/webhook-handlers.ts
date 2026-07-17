@@ -23,7 +23,7 @@
 
 import { prisma, getSampleSettings, getOrderSettings } from '@ilaunchify/db'
 import { createDispatches, mintSampleCredit, createOrderWithNumber } from '@ilaunchify/orders'
-import { setCreatorTierWithAudit } from '@ilaunchify/auth'
+import { setCreatorTierWithAudit } from '@ilaunchify/auth/server'
 import { dispatchNotification } from '@ilaunchify/notifications'
 import { appLogger } from '@ilaunchify/logger'
 import type Stripe from 'stripe'

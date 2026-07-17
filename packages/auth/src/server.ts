@@ -15,3 +15,16 @@ export {
   LEGAL_CONSENT_TEXT_VERSION,
   type OutstandingLegalDoc,
 } from './legal-gate'
+
+// V1.5-T2 - the single write path for CreatorProfile.subscriptionTier (admin Tier
+// Management + the Stripe webhook tier-flip handlers).
+//
+// SERVER-ONLY, and it lives here for exactly the reason this file's header gives:
+// it imports @ilaunchify/orders, whose barrel reaches node:crypto via
+// room-service -> @ilaunchify/notifications -> feedback-token. While this sat in
+// ./index.ts, every client component importing a client-safe tier helper dragged
+// node:crypto into its bundle, and the Design Studio canvas failed to compile.
+//
+// Its TYPES stay exported from the barrel: `import type` is erased and carries no
+// runtime graph.
+export { setCreatorTierWithAudit } from './tier-writes'
