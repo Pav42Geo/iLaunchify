@@ -14,7 +14,7 @@ import { evaluateProductRestrictions } from '@ilaunchify/marketplace'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
-import { assertProductTemplateTransition } from '@ilaunchify/orders'
+import { assertProductTemplateTransition, templateIsPriced, NO_PRICE_PUBLISH_ERROR } from '@ilaunchify/orders'
 import { revalidatePath } from 'next/cache'
 
 type Result<T = void> =
@@ -683,6 +683,16 @@ export async function resumeProduct(productTemplateId: string): Promise<Result> 
 
   if (tpl.status !== 'PAUSED') {
     return { ok: false, error: 'Only paused products can be re-listed.' }
+  }
+
+  // PRICE GATE (task #16, 2026-07-16) — re-listing IS publishing, so it takes the
+  // same gate as admin approve. Tiers can be deleted while a product sits PAUSED,
+  // and without this a partner could walk an unpriced product straight back to
+  // live: the marketplace no longer invents a price for it (the PDP would say
+  // "Pricing not published yet") and checkout would refuse, so the listing would be
+  // a dead end. Pausing is never gated: taking a product DOWN is always allowed.
+  if (!(await templateIsPriced(productTemplateId))) {
+    return { ok: false, error: NO_PRICE_PUBLISH_ERROR }
   }
 
   assertProductTemplateTransition(tpl.status, 'PUBLISHED')

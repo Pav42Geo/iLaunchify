@@ -24,6 +24,11 @@ export {
   isProductTemplateTransitionAllowed,
   assertProductTemplateTransition,
 } from './product-template-fsm'
+
+// Task #16 (2026-07-16): the price gate, shared by all FOUR doors into PUBLISHED
+// (admin approve, admin resume, partner resume, capability-rfq auto-unpark).
+// Gating one door is theatre; tiers can be deleted while a template is PAUSED.
+export { templateIsPriced, NO_PRICE_PUBLISH_ERROR } from './template-price-gate'
 export {
   PARTNER_ALLOWED_TRANSITIONS,
   isPartnerTransitionAllowed,

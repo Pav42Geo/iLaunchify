@@ -21,6 +21,8 @@ import {
   recomputeTemplateCoverage,
   validateTemplateGraph,
   broadcastCapabilityRequestsForTemplate,
+  templateIsPriced,
+  NO_PRICE_PUBLISH_ERROR,
 } from '@ilaunchify/orders'
 import type { PhraseRequirement } from '@ilaunchify/db'
 import {
@@ -35,6 +37,54 @@ import type { ProductTemplateStatus } from '@ilaunchify/db'
 type Result =
   | { ok: true }
   | { ok: false; error: string }
+
+/**
+ * PRICE GATE (task #16, 2026-07-16) — nothing reaches PUBLISHED unpriced.
+ *
+ * A template with zero ProductTemplatePricingTier rows has no price anyone
+ * authored. The marketplace used to paper over that by INVENTING a band curve
+ * (buildSamplePricingRows: base x 1.35 at 500 units) while the till billed a
+ * ~54c/unit catalog buildup. Both are deleted under the LOCKED rule (Pavel): a
+ * price is authored by a partner through the platform, never by us. The PDP now
+ * renders "Pricing not published yet" and checkout refuses (resolveGoods -> null),
+ * so an unpriced listing is browsable-but-unbuyable. This stops it at the source.
+ *
+ * This is the ADMIN-side wrapper (it adds the audit row). The reader itself lives
+ * in @ilaunchify/orders because there are FOUR doors into PUBLISHED across three
+ * packages, and gating one is theatre:
+ *   1. approveProductTemplate            (this file)
+ *   2. setProductPaused(id, 'PUBLISHED') (this file, admin resume)
+ *   3. apps/partner resumeProduct        (the likeliest door of all)
+ *   4. packages/orders capability-rfq    (auto-unpark on coverage restored)
+ * Tiers can be removed while a template sits PAUSED, so every resume IS a publish.
+ *
+ * HARD block, unlike the fail-soft coverage gate: a broadcast hiccup should never
+ * hold a valid publish, but a missing price is not a hiccup, it is the product
+ * being unsellable.
+ *
+ * Returns an error Result to hand straight back, or null when the template is
+ * priced. Verified 2026-07-16: all 9 published templates already have tiers, so
+ * this blocks nothing today and keeps it that way.
+ */
+async function assertTemplateHasPrice(
+  productTemplateId: string,
+  fromStatus: string,
+  name: string,
+  admin: Parameters<typeof logAuditAs>[0],
+): Promise<Result | null> {
+  if (await templateIsPriced(productTemplateId)) return null
+  await logAuditAs(admin, {
+    entityType: 'ProductTemplate',
+    entityId: productTemplateId,
+    action: 'PRODUCT_TEMPLATE_PUBLISH_BLOCKED_NO_PRICE',
+    fromValue: fromStatus,
+    payload: { name },
+  })
+  return {
+    ok: false,
+    error: NO_PRICE_PUBLISH_ERROR,
+  }
+}
 
 // -----------------------------------------------------------------------------
 // APPROVE — promote to PUBLISHED. If status was PENDING_EDIT_REVIEW, also
@@ -66,6 +116,13 @@ export async function approveProductTemplate(productTemplateId: string): Promise
   ) {
     return { ok: false, error: `Cannot publish from ${tpl.status}.` }
   }
+
+  // PRICE GATE (task #16) — no partner price, no listing. See assertTemplateHasPrice.
+  // A HARD block, unlike the fail-soft coverage gate below: a broadcast hiccup
+  // shouldn't hold a valid publish, but a missing price is the product being
+  // unsellable, not a hiccup.
+  const priceGate = await assertTemplateHasPrice(productTemplateId, tpl.status, tpl.name, admin)
+  if (priceGate) return priceGate
 
   // §10.1 activation gate — a non-IN_HOUSE template cannot reach PUBLISHED with
   // print coverage 0. It parks in review; we auto-broadcast the capability RFQ so
@@ -314,6 +371,15 @@ export async function setProductPaused(
     (to === 'PUBLISHED' && tpl.status === 'PAUSED')
   if (!allowed) {
     return { ok: false, error: `Cannot transition ${tpl.status} -> ${to}.` }
+  }
+
+  // The SECOND door into PUBLISHED. Resume is a publish, so it takes the same price
+  // gate: tiers can be deleted while a template sits PAUSED, and without this the
+  // gate on approveProductTemplate would just be theatre. Pausing is never gated -
+  // taking an unpriced listing DOWN is always allowed.
+  if (to === 'PUBLISHED') {
+    const priceGate = await assertTemplateHasPrice(productTemplateId, tpl.status, tpl.name, admin)
+    if (priceGate) return priceGate
   }
 
   await prisma.productTemplate.update({

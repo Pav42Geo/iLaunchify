@@ -15,6 +15,7 @@
 
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
+import { templateIsPriced } from './template-price-gate'
 import {
   recomputeTemplateCoverage,
   buildCapabilityTuples,
@@ -264,6 +265,17 @@ export async function recoverTemplateCoverage(templateId: string): Promise<Cover
       select: { status: true, name: true },
     })
     if (tpl?.status !== 'PAUSED') return { recovered: true, unparked: false }
+
+    // PRICE GATE (task #16, 2026-07-16) — the FOURTH door into PUBLISHED, and the
+    // only automated one. Coverage returning says a printer can make it; it says
+    // nothing about anyone having priced it. If the tiers went away while this sat
+    // PAUSED, auto-unparking would put an unpriced product back on the marketplace
+    // with no human in the loop: the PDP would show "Pricing not published yet" and
+    // checkout would refuse. Coverage is recovered either way (that is real); we
+    // just leave it PAUSED for a human to price.
+    if (!(await templateIsPriced(templateId))) {
+      return { recovered: true, unparked: false }
+    }
 
     await prisma.productTemplate.update({
       where: { id: templateId },
