@@ -676,7 +676,17 @@ export async function placeOrderFromCheckoutDraft(
   // $5.35, the manufacturer's band) was charged $310 (8c label + 4c substrate +
   // 42c packaging). 89.9% of the quote never collected, on exactly the single-SKU
   // white-label product an N=1 full-service manufacturer sells.
-  const tierGoods = await resolveTierGoodsCents(product.productTemplateId, qty)
+  // BANDS COUNT UNITS, `qty` COUNTS PACKS on a pack order (see line ~493:
+  // `physicalUnits = qty * packUnitsPerPack`). Convert, or a 500x4 order asks the
+  // 500-UNIT band about 500 PACKS and lands two breaks too low (Blocker 5).
+  //
+  // Latent rather than live TODAY, because a pack order takes the PACK_PRICE branch
+  // and never reads tierGoods. That is exactly why it must be fixed now: the value
+  // is already wrong, it is merely unused, and the next person to touch resolveGoods
+  // inherits a loaded gun. The PDP does the identical conversion (bandUnits), and
+  // these two agreeing is the whole point of the day.
+  const bandUnits = qty * Math.max(1, packPersist?.packUnitsPerPack ?? 1)
+  const tierGoods = await resolveTierGoodsCents(product.productTemplateId, bandUnits)
   const goods = resolveGoods({
     isPackOrder: packPersist != null,
     packPricedSubtotalCents,

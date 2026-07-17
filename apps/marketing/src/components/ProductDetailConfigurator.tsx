@@ -9,6 +9,7 @@ import {
   computeOrderPricing,
   creatorFeeCents,
   pickPricingBandIndex,
+  bandUnitsForPackOrder,
   type FeeRuleBounds,
 } from '@ilaunchify/plans/math'
 import {
@@ -354,11 +355,26 @@ export function ProductDetailConfigurator({
 
   // ----- Pricing math (unchanged from the original configurator) -----
   const rows = pricingRows
-  // The band this quantity prices on. Shared with the checkout charge via
+
+  /**
+   * THE UNITS THIS ORDER IS, which is not always the number in the quantity box.
+   *
+   * In pack mode that input is labelled "Packs" and `quantity` counts PACKS, but
+   * ProductTemplatePricingTier.minQty counts UNITS (LOCKED, Pavel 2026-07-16 —
+   * `perUnitCostCents` sits beside it, and one row cannot mix scales).
+   *
+   * BLOCKER 5: this conversion did not exist. 500 packs of 4 went into the matcher
+   * as "500", matched the 500-UNIT band, and quoted $6.15/unit on a 2,000-unit
+   * order that had earned the 1,000-band's $5.29. $12,300 instead of $10,580:
+   * ~$1,720 OVER, with the creator denied the volume break. Exactly the disease of
+   * Blocker 2 (a quantity handed to something on a different scale), opposite sign.
+   */
+  const bandUnits = isMultiFlavor ? bandUnitsForPackOrder(quantity, packUnitsPerPack) : quantity
+
+  // The band those UNITS price on. Shared with the checkout charge via
   // pickPricingBandIndex (Blocker 2, 2026-07-16) - until today placeOrder did not
-  // read the bands AT ALL, so this number was quoted and never billed. Behaviour is
-  // unchanged here: `?? 0` is the same below-MOQ fallback to the first band that the
-  // inline filter had.
+  // read the bands AT ALL, so this number was quoted and never billed. `?? 0` is
+  // the same below-MOQ fallback to the first band that the inline filter had.
   const matchedRow = React.useMemo(() => {
     // NULL WHEN NO PARTNER PRICED THIS (2026-07-16). `rows` is now empty for a
     // template with zero ProductTemplatePricingTier rows: getPricingTierRows used
@@ -366,8 +382,8 @@ export function ProductDetailConfigurator({
     // that fallback is gone. Without this guard the `!` below would be a lie and
     // `matchedRow.manufacturerCents` would throw.
     if (rows.length === 0) return null
-    return rows[pickPricingBandIndex(rows.map((r) => r.bandMin), quantity) ?? 0]!
-  }, [rows, quantity])
+    return rows[pickPricingBandIndex(rows.map((r) => r.bandMin), bandUnits) ?? 0]!
+  }, [rows, bandUnits])
 
   /**
    * Can this product be quoted at all? False = no manufacturer has published a
@@ -492,8 +508,12 @@ export function ProductDetailConfigurator({
   // (no MOQ), so in On-demand mode it becomes the headline figure.
   const onDemandRow = React.useMemo(() => {
     if (!onDemandRows || onDemandRows.length === 0) return null
-    return onDemandRows[pickPricingBandIndex(onDemandRows.map((r) => r.bandMin), quantity) ?? 0]!
-  }, [onDemandRows, quantity])
+    // bandUnits, not quantity: on-demand bands are per-UNIT bounds exactly like the
+    // bulk ones, so a pack order has to convert here too (Blocker 5). This arm is
+    // usually hidden in pack mode, which is precisely why it would have been the
+    // one left behind.
+    return onDemandRows[pickPricingBandIndex(onDemandRows.map((r) => r.bandMin), bandUnits) ?? 0]!
+  }, [onDemandRows, bandUnits])
   // PP-0c: the fabricated size multiplier is gone here too (it had leaked into the
   // on-demand price). The fixture packaging delta had leaked here as well and is
   // gone for the same reason (see the block above). On-demand rows are already

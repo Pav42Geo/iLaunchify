@@ -605,7 +605,11 @@ export async function estimateProductionCost(
   // THE TIER BASIS (Blocker 2, 2026-07-16): same read, same picker, same number as
   // the PDP and the charge. Threaded here in the SAME change as cart-actions on
   // purpose: moving one without the other is how the pack basis diverged above.
-  const tierGoods = await resolveTierGoodsCents(product?.productTemplateId ?? null, qty)
+  // Bands count UNITS; on a pack order `qty` counts PACKS. Same conversion the PDP
+  // and placeOrder make (Blocker 5) - if these three ever disagree about the scale,
+  // the quote and the charge disagree about the price, which is the whole bug class.
+  const bandUnits = qty * Math.max(1, input.pack?.unitsPerPack ?? 1)
+  const tierGoods = await resolveTierGoodsCents(product?.productTemplateId ?? null, bandUnits)
 
   // Refuse on the SAME condition the charge refuses on. If the estimate invented a
   // number here, the creator would configure a whole order against a price that

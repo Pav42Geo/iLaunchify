@@ -9,7 +9,12 @@
 //
 // Throw-based (no vitest import) - run by scripts/run-vitest-suites.mjs.
 
-import { pickPricingBand, pickPricingBandIndex, tierGoodsCents } from './pricing-band'
+import {
+  pickPricingBand,
+  pickPricingBandIndex,
+  tierGoodsCents,
+  bandUnitsForPackOrder,
+} from './pricing-band'
 import { resolveGoods } from './goods-basis'
 import { computeOrderPricing } from './order-pricing'
 import { creatorFeeCents } from './creator-fee-math'
@@ -124,6 +129,48 @@ eq(tierGoodsCents([], 500), null, 'no bands = null goods, never 0')
   const goods = resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0, tierGoodsCents: 0 })!
   eq(goods.basis, 'TIER_PRICE', 'tierGoods=0 is a price, not a missing value')
   eq(goods.goodsCents, 0, 'and it is honoured')
+}
+
+// ── 7. BLOCKER 5: bands count UNITS, and a pack order must convert ────────────
+// Reproduces the exact order in Pavel's screenshot (starter-hot-sauce, 2026-07-16),
+// which is how this was found: not by reading, not by a pin, but by a human looking
+// at a real PDP. 500 packs of 4 went into the matcher as "500", matched the
+// 500-UNIT band, and quoted a 2,000-unit order at the 500-unit price.
+{
+  const HOT_SAUCE = [
+    { minQty: 500, perUnitCents: 535 },
+    { minQty: 1000, perUnitCents: 460 },
+    { minQty: 5000, perUnitCents: 395 },
+  ]
+  const PACKS = 500
+  const UNITS_PER_PACK = 4
+  const FEE_BPS = 1500
+
+  const units = bandUnitsForPackOrder(PACKS, UNITS_PER_PACK)
+  eq(units, 2_000, '500 packs of 4 is 2,000 units')
+
+  // THE FIX: ask about units, get the 1,000-band.
+  eq(pickPricingBand(HOT_SAUCE, units)?.perUnitCents, 460, '2,000 units earns the 1,000-band')
+
+  // THE BUG: ask about packs, get the 500-band. Kept as an executable record of
+  // what wrong looks like, so nobody "simplifies" the conversion away.
+  eq(pickPricingBand(HOT_SAUCE, PACKS)?.perUnitCents, 535, 'asking with PACKS lands two breaks too low')
+
+  const priceOf = (unitCents: number) =>
+    computeOrderPricing({
+      production: [{ kind: 'PRODUCT', label: 'Production', cents: unitCents * units }],
+      feeBps: FEE_BPS,
+    }).totalCents
+
+  eq(priceOf(460), 1_058_000, 'correct: 2,000 x $4.60 + 15% = $10,580.00')
+  eq(priceOf(535), 1_230_500, 'the screenshot: 2,000 x $5.35 + 15% = $12,300.00')
+  // The creator was overcharged this much, and denied the break they had earned.
+  eq(priceOf(535) - priceOf(460), 172_500, 'the bug overcharged $1,725.00 on ONE order')
+
+  // A non-pack order is unaffected: unitsPerPack = 1 is the identity.
+  eq(bandUnitsForPackOrder(2_000, 1), 2_000, 'non-pack passes straight through')
+  // Defensive: a 0/absent unitsPerPack must not annihilate the order to band-0.
+  eq(bandUnitsForPackOrder(500, 0), 500, 'unitsPerPack 0 is treated as 1, never as zero units')
 }
 
 console.log('[pricing-band] OK - PDP quote === charge across bands, fallbacks, pack + no-tier')

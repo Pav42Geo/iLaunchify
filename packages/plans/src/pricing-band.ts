@@ -59,14 +59,43 @@ export interface PricingBandInput {
  */
 export function pickPricingBandIndex(
   bandMins: readonly (number | null | undefined)[],
-  quantity: number,
+  /**
+   * TOTAL UNITS. **NOT PACKS.** (LOCKED, Pavel 2026-07-16.)
+   *
+   * A 4-pack order of 500 packs is 2,000 units and belongs in the 1,000-unit
+   * band. Callers pricing a pack order MUST convert first: `packCount *
+   * unitsPerPack`. Use `bandUnitsForPackOrder` below rather than doing the
+   * multiply inline, so the conversion is named at every call site.
+   *
+   * THIS PARAMETER USED TO BE CALLED `quantity`, AND THAT WAS THE BUG. The PDP
+   * labels its input "Packs" in pack mode and passed it straight in. "Quantity"
+   * is true of both scales, so nothing looked wrong at the call site: a creator
+   * buying 2,000 units got quoted the 500-unit price ($12,300 vs $10,580, ~$1,720
+   * over) and lost the volume break they had earned. The name was the bug's
+   * hiding place, so the name is now the fix.
+   */
+  totalUnits: number,
 ): number | null {
   let found: number | null = null
   for (let i = 0; i < bandMins.length; i++) {
     const min = bandMins[i]
-    if (min !== null && min !== undefined && min <= quantity) found = i
+    if (min !== null && min !== undefined && min <= totalUnits) found = i
   }
   return found
+}
+
+/**
+ * Convert a pack order to the UNITS its band is priced in.
+ *
+ * Exists to be a NAME rather than a multiply. `pickPricingBandIndex(packCount *
+ * unitsPerPack)` inline is correct today and silently wrong the moment someone
+ * copies the call and drops the `*`. A named conversion is a question the next
+ * reader has to answer ("units of what?"), where a bare `quantity` is not.
+ *
+ * Non-pack orders pass their unit count straight through (unitsPerPack = 1).
+ */
+export function bandUnitsForPackOrder(packCount: number, unitsPerPack: number): number {
+  return Math.max(0, Math.floor(packCount)) * Math.max(1, Math.floor(unitsPerPack))
 }
 
 /**
@@ -80,10 +109,11 @@ export function pickPricingBandIndex(
  */
 export function pickPricingBand(
   bands: readonly PricingBandInput[],
-  quantity: number,
+  /** TOTAL UNITS, not packs. See pickPricingBandIndex. */
+  totalUnits: number,
 ): PricingBandInput | null {
   if (bands.length === 0) return null
-  const idx = pickPricingBandIndex(bands.map((b) => b.minQty), quantity)
+  const idx = pickPricingBandIndex(bands.map((b) => b.minQty), totalUnits)
   return bands[idx ?? 0]!
 }
 
@@ -97,9 +127,10 @@ export function pickPricingBand(
  */
 export function tierGoodsCents(
   bands: readonly PricingBandInput[],
-  quantity: number,
+  /** TOTAL UNITS: both the band lookup AND the multiply are per-unit. */
+  totalUnits: number,
 ): number | null {
-  const band = pickPricingBand(bands, quantity)
+  const band = pickPricingBand(bands, totalUnits)
   if (!band) return null
-  return Math.max(0, Math.round(band.perUnitCents) * Math.max(0, Math.floor(quantity)))
+  return Math.max(0, Math.round(band.perUnitCents) * Math.max(0, Math.floor(totalUnits)))
 }

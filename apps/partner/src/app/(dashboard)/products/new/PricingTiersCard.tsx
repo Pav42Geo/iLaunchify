@@ -89,10 +89,26 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
         <button className={tab === 'ON_DEMAND' ? 'pt on' : 'pt'} onClick={() => setTab('ON_DEMAND')}>On-demand</button>
       </div>
 
+      {/* SAY THE UNIT (Blocker 5, 2026-07-16). These columns read "Min qty" and
+          "Your cost ($)" and never said of WHAT. Neither did the schema, nor the
+          matcher. So each end guessed: the PDP asked the bands about PACKS while
+          they were authored in UNITS, and a creator buying 2,000 units was quoted
+          the 500-unit price ($12,300 vs $10,580). The ambiguity STARTS on this
+          screen, so the fix starts here too: a manufacturer authoring a 4-pack
+          needs to know whether 500 means bottles or boxes. */}
+      <p className="tiny muted" style={{ marginTop: 8 }}>
+        Quantities are in <strong>UNITS</strong>, never packs. For a 4-pack, an order of 500 packs
+        counts as 2,000 units. Cost and floor are <strong>per unit</strong>.
+      </p>
+
       <table style={{ marginTop: 10 }}>
         <thead>
           <tr>
-            <th>Min qty</th><th>Max qty</th><th>Your cost ($)</th><th>Floor ($)</th><th>Lead</th>
+            <th>Min qty <span className="tiny muted" style={{ fontWeight: 400 }}>units</span></th>
+            <th>Max qty <span className="tiny muted" style={{ fontWeight: 400 }}>units</span></th>
+            <th>Your cost <span className="tiny muted" style={{ fontWeight: 400 }}>$ / unit</span></th>
+            <th>Floor <span className="tiny muted" style={{ fontWeight: 400 }}>$ / unit</span></th>
+            <th>Lead</th>
             <th>Maker <span className="tiny muted" style={{ fontWeight: 400 }}>{fee.maker}%</span></th>
             <th>Builder <span className="tiny muted" style={{ fontWeight: 400 }}>{fee.builder}%</span></th>
             <th>Agency <span className="tiny muted" style={{ fontWeight: 400 }}>{fee.agency}%</span></th>

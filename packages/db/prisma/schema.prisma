@@ -7430,9 +7430,27 @@ model ProductTemplatePricingTier {
   // BOTH carries rows for both modes. Additive — existing rows default to bulk.
   fulfillmentMode   FulfillmentMode @default(BULK_PRODUCTION)
   sortOrder         Int             @default(0)
-  minQty            Int // inclusive lower bound
-  maxQty            Int? // inclusive upper bound; NULL = "and up"
-  perUnitCostCents  Int // current list per-unit price at this tier
+  // ─── THESE BOUNDS COUNT **UNITS**. NEVER PACKS. (LOCKED, Pavel 2026-07-16) ───
+  //
+  // A 4-pack order of 500 packs is 2,000 UNITS and matches the 1,000-unit band,
+  // NOT the 500 band. The caller converts (packCount x unitsPerPack) BEFORE
+  // asking; see @ilaunchify/plans pickPricingBandIndex.
+  //
+  // WHY THIS COMMENT EXISTS: it used to read "inclusive lower bound" and stopped
+  // there. Lower bound OF WHAT was never stated here, never stated in the partner
+  // UI ("Min qty"), and never stated at the matcher. So each end guessed: the seed
+  // assumed units, the PDP passed packs. A creator buying 2,000 units was quoted
+  // the 500-unit price: $12,300 instead of $10,580, ~$1,720 OVER, and they were
+  // denied the volume break they had earned. Found only by looking at a real PDP.
+  //
+  // WHY UNITS AND NOT PACKS: `perUnitCostCents` sits two lines below. One row
+  // cannot coherently say "order 500 PACKS -> $5.35 PER UNIT"; that mixes two
+  // scales in one sentence. The threshold must be in the same currency as the
+  // price beside it. Production economics agree: the line fills 2,000 bottles
+  // whether they are cartoned in fours or sixes, so the discount is per unit.
+  minQty            Int // inclusive lower bound, in UNITS (not packs)
+  maxQty            Int? // inclusive upper bound, in UNITS; NULL = "and up"
+  perUnitCostCents  Int // current list price PER UNIT at this tier
   perUnitFloorCents Int // hard floor — promos/discounts cannot dip below
   leadTimeDays      Int? // optional override; falls through to packaging.leadTimeDays
   notes             String?
