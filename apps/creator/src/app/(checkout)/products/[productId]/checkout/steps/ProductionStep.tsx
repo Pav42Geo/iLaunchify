@@ -100,6 +100,23 @@ export function ProductionStep({
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [moqFloor, setMoqFloor] = useState(FALLBACK_MOQ)
   const [estimate, setEstimate] = useState<CostBreakdown | null>(null)
+  /**
+   * Why the estimate refused, when it did. null = no refusal.
+   *
+   * FOUND BY THE FIRST LIVE RUN (2026-07-16), and nothing else could have found
+   * it. The effect below did `if (result.ok) { setEstimate(...) }` with NO else,
+   * so a refusal was swallowed in total silence: no price, no reason, no error.
+   * That `if` was harmless for as long as the estimate never really failed. Then
+   * task #16 made it REFUSE whenever no partner has priced the product
+   * (resolveGoods -> null), and a dormant gap became a dead end the creator cannot
+   * even diagnose. Pavel hit it within a minute of opening a real checkout.
+   *
+   * The lesson worth keeping: "no price" is a legitimate ANSWER now, so every
+   * surface that asks for a price must be able to render that answer. A refusal
+   * you cannot see is worse than the wrong price it replaced, because at least a
+   * wrong number tells you something is happening.
+   */
+  const [estimateError, setEstimateError] = useState<string | null>(null)
   const [isEstimating, startEstimating] = useTransition()
 
   // Load catalogs on mount so we can render human names for the chosen
@@ -158,7 +175,16 @@ export function ProductionStep({
         })
         if (result.ok) {
           setEstimate(result.data)
+          setEstimateError(null)
           onEstimate?.(result.data)
+        } else {
+          // Surface it. Do NOT keep a stale estimate on screen next to an error:
+          // a price that no longer holds is exactly the quote-vs-charge lie this
+          // whole cleanup existed to kill.
+          setEstimate(null)
+          setEstimateError(result.error)
+          // eslint-disable-next-line no-console
+          console.error('[checkout estimate] refused:', result.error)
         }
       })
     }, 220)
@@ -441,6 +467,14 @@ export function ProductionStep({
               {qty > 0 && estimate && perUnitCents > 0 && (
                 <p className="text-[11px] text-ink-500">
                   {formatCents(perUnitCents)} / unit + platform fee
+                </p>
+              )}
+              {/* WHY THE PRICE IS MISSING. Without this the creator gets a bare
+                  '$—.——' and no way to tell a refusal from a bug: which is exactly
+                  what Pavel hit on the first live checkout (2026-07-16). */}
+              {estimateError && !isEstimating && (
+                <p className="mt-1 max-w-[220px] text-[11px] font-medium text-danger-700">
+                  {estimateError}
                 </p>
               )}
             </div>
