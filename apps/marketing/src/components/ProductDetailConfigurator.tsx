@@ -704,7 +704,15 @@ export function ProductDetailConfigurator({
       {/* 3) Packaging — selecting a package drives the size options (below) and
           the hero image (when per-package image data exists). */}
       <PackagingPicker
-        options={detail.packaging}
+        // NO priceDelta on screen (Pavel's rule, same as the killed size multiplier
+        // and the deleted quote delta). Found live on 2026-07-18: the picker still
+        // rendered "+$0.40/unit" from the SEEDED marketingDetail JSON - a surcharge
+        // nobody authored and nothing charges (the quote delta was removed in the
+        // no-hardcoded-prices work). CHECK 16 missed it because it took a detour
+        // through the DB, which the seed exemption doesn't scan. Real packaging-
+        // upgrade pricing is PackagingComponentVariant, charged as a COMPONENTS line;
+        // the PDP does not price packaging. Task #22 wires the real container model.
+        options={detail.packaging.map((p) => ({ ...p, priceDelta: undefined }))}
         value={packagingId}
         onChange={(id) => {
           setPackagingId(id)
