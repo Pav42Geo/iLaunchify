@@ -128,7 +128,8 @@ import { AiCreateDrawer } from './drawers/AiCreateDrawer'
 import { TemplateAuthorSaveDialog } from '../../../../studio/TemplateAuthorSaveDialog'
 import { saveAsBrandTemplate } from './brand-actions'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
-import type { StudioFinish } from './page'
+import { MaterialDrawer } from './drawers/MaterialDrawer'
+import type { StudioFinish, StudioMaterial } from './page'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
 import { ElementsDrawer } from './drawers/ElementsDrawer'
 import { PhrasesDrawer } from './drawers/PhrasesDrawer'
@@ -163,6 +164,7 @@ import {
   Eye,
   Download,
   Wand2,
+  Scroll,
   X,
   Lock,
   BookmarkPlus,
@@ -252,6 +254,9 @@ interface Props {
    * Empty unless partnerOffersFinishes is true.
    */
   finishes?: StudioFinish[]
+  /** F3b — ACTIVE label-stock + packaging-material catalogs for the Material drawer. */
+  substrates?: StudioMaterial[]
+  packagingMaterials?: StudioMaterial[]
   /**
    * Product-picture Details modal (docs/CREATOR_PRODUCT_PICTURE_MODAL.md, slice 2) —
    * per-flavor SoI + FINAL recipe for the SELECTED flavors, the single-product recipe,
@@ -375,6 +380,7 @@ type ToolKey =
   | 'qrcode'
   | 'barcode'
   | 'layers'
+  | 'material'
   | 'finishes'
   | 'components'
   | 'phrases'
@@ -404,6 +410,10 @@ const TOOLS: Array<{
   // Clipart / Background / Patterns into one grouped menu.
   { key: 'elements', label: 'Elements', icon: Shapes, v1: true },
   { key: 'components', label: 'Components', icon: Boxes, v1: true },
+  // F3b (2026-07-17) — label stock + packaging material. The creator MUST set both
+  // before checkout (placeOrder requires them); this is the only place that writes
+  // them. See drawers/MaterialDrawer.tsx + material-actions.ts.
+  { key: 'material', label: 'Material', icon: Scroll, v1: true },
   // 'phrases' merged into the Label tool as "Label & Compliance" (2026-07-04) — no rail entry.
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
@@ -434,6 +444,8 @@ export function CanvasLayoutShell({
   partnerOffersFinishes = false,
   aiGeneratorEnabled = true,
   finishes = [],
+  substrates = [],
+  packagingMaterials = [],
   pictureFlavors = [],
   pictureBaseRecipe = null,
   labelTopology,
@@ -1432,6 +1444,8 @@ export function CanvasLayoutShell({
               creatorTier={creatorTier}
               onSaveAsTemplate={onSaveTemplateClick}
               finishes={finishes}
+              substrates={substrates}
+              packagingMaterials={packagingMaterials}
               pictureFlavors={pictureFlavors}
               pictureBaseRecipe={pictureBaseRecipe}
               labelTopology={labelTopology}
@@ -2082,6 +2096,8 @@ function ToolDrawer({
   creatorTier,
   onSaveAsTemplate,
   finishes,
+  substrates,
+  packagingMaterials,
   pictureFlavors,
   pictureBaseRecipe,
   labelTopology,
@@ -2135,6 +2151,9 @@ function ToolDrawer({
   creatorTier: TierKey
   onSaveAsTemplate: () => void
   finishes: StudioFinish[]
+  // F3b — ACTIVE material catalogs for the Material drawer. Serialisable, may be [].
+  substrates: StudioMaterial[]
+  packagingMaterials: StudioMaterial[]
   pictureFlavors: Array<{ flavorPresetId: string; statementOfIdentity: string | null; recipe: PictureRecipe | null }>
   pictureBaseRecipe: PictureRecipe | null
   labelTopology?: 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'
@@ -2177,6 +2196,7 @@ function ToolDrawer({
     qrcode: 'QR Code',
     barcode: 'Barcode',
     layers: 'Layers',
+    material: 'Material',
     finishes: 'Finishes',
     components: 'Components',
     phrases: 'Mandatory phrases',
@@ -2383,6 +2403,13 @@ function ToolDrawer({
           />
         )}
         {tool === 'layers' && <LayersDrawer canvas={canvas} />}
+        {tool === 'material' && (
+          <MaterialDrawer
+            productId={productId}
+            substrates={substrates}
+            packagingMaterials={packagingMaterials}
+          />
+        )}
         {tool === 'finishes' && <FinishesDrawer finishes={finishes} />}
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
         {tool !== 'product' &&
@@ -2395,6 +2422,7 @@ function ToolDrawer({
           tool !== 'qrcode' &&
           tool !== 'barcode' &&
           tool !== 'layers' &&
+          tool !== 'material' &&
           tool !== 'finishes' &&
           tool !== 'components' &&
           tool !== 'phrases' && <ComingSoonStub label={titles[tool]} />}

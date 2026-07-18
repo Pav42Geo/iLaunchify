@@ -29,6 +29,7 @@ import {
   computeOrderPricing,
   composeProductionLines,
   resolveGoods,
+  type PriceLine,
   priceComponents,
   COMPONENT_PRICING_SELECT,
 } from '@ilaunchify/plans'
@@ -479,6 +480,22 @@ export interface CostBreakdown {
   // Setup fees that don't scale with quantity (cents).
   setupCents: number
   // Order-level totals (cents).
+  /**
+   * THE PRICED LINES, straight from computeOrderPricing. Sum(cents) === subtotal.
+   *
+   * ADDED 2026-07-16, found by Pavel on a live Step 2. The summary was rendering
+   * `labelUnitCents * qty` ($80 = the retired 8c anchor x 1000) beside a total of
+   * $5,290 built from the manufacturer's band. $80 + $690 fee = $770, and $4,520
+   * of a real order was simply unexplained on screen. The total was RIGHT; the
+   * explanation of it was the ghost of the bug we deleted.
+   *
+   * The fields below (labelUnitCents / packagingUnitCents / finishUnitCents) are
+   * the old catalog buildup. They are NOT the price any more and must never be
+   * summed into one: they survive only as material/spec detail. Anything claiming
+   * to break down the money renders THESE lines, so the breakdown is a projection
+   * of the one pricer instead of a second opinion about it.
+   */
+  productionLines: PriceLine[]
   subtotalCents: number
   // Platform fee resolved through the ONE SSOT (@ilaunchify/plans
   // resolveCreatorFeeBps) at the creator's SUBSCRIPTION TIER (Maker 15 / Builder 12
@@ -647,6 +664,7 @@ export async function estimateProductionCost(
       decorationMethod,
       decorationUnitCents,
       setupCents,
+      productionLines: priced.lineItems.filter((l) => l.kind !== 'PLATFORM_FEE' && l.kind !== 'SHIPPING' && l.kind !== 'TAX'),
       subtotalCents,
       platformFeeCents,
       totalBeforeShippingAndTaxCents: subtotalCents + platformFeeCents,

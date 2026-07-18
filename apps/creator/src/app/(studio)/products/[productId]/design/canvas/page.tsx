@@ -50,6 +50,16 @@ export const dynamic = 'force-dynamic'
 // partner's ProductTemplateFinish allow-list. Read-only: no object-apply, no
 // substrate hard-filter (F3b). Degrades to [] on any error.
 
+/** Serializable material option handed to the (client) Material drawer (F3b). */
+export interface StudioMaterial {
+  slug: string
+  name: string
+  /** Short catalog descriptor for the option subtitle. */
+  description: string
+  /** STANDARD | RECYCLED | ... — surfaces as an eco chip when not STANDARD. */
+  sustainabilityTier: string
+}
+
 /** Serializable finish row handed to the (client) Finishes drawer. */
 export interface StudioFinish {
   partnerFinishId: string
@@ -115,6 +125,37 @@ function buildFinishPricingSummary(f: {
  * Load the finishes a product template offers, for the DISPLAY-ONLY Studio
  * drawer (F3a). Degrades to [] on any error.
  */
+// F3b — the ACTIVE label-stock + packaging-material catalogs the creator picks
+// from in the Studio Material drawer. Mirrors loadStudioFinishes: server-side,
+// serialisable, degrades to [] on error. NOT price-bearing (Blocker 2/4): these
+// are production specs for the manifest, not cost inputs.
+async function loadStudioMaterials(): Promise<{ substrates: StudioMaterial[]; packagingMaterials: StudioMaterial[] }> {
+  try {
+    const [subs, packs] = await Promise.all([
+      prisma.substrate.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
+        select: { slug: true, name: true, description: true, sustainabilityTier: true },
+      }),
+      prisma.packagingMaterial.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: [{ topology: 'asc' }, { name: 'asc' }],
+        select: { slug: true, name: true, description: true, sustainabilityTier: true },
+      }),
+    ])
+    const map = (r: { slug: string; name: string; description: string; sustainabilityTier: string }) => ({
+      slug: r.slug,
+      name: r.name,
+      description: r.description,
+      sustainabilityTier: String(r.sustainabilityTier),
+    })
+    return { substrates: subs.map(map), packagingMaterials: packs.map(map) }
+  } catch (err) {
+    console.error('[loadStudioMaterials] failed:', err)
+    return { substrates: [], packagingMaterials: [] }
+  }
+}
+
 async function loadStudioFinishes(productTemplateId: string | null): Promise<StudioFinish[]> {
   if (!productTemplateId) return []
   try {
@@ -516,6 +557,11 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   const studioFinishes = await loadStudioFinishes(product.productTemplate?.id ?? null)
   const partnerOffersFinishes = studioFinishes.length > 0
 
+  // F3b — the label-stock + packaging-material catalogs the creator picks from in
+  // the Material drawer. placeOrder requires both; this is the only surface that
+  // writes them, so an empty catalog here means the creator cannot check out.
+  const studioMaterials = await loadStudioMaterials()
+
   // Platform-wide AI generator kill switch (admin → AI Generator settings). When
   // off, the AI Templator is hidden from the Studio rail. Defaults to true if the
   // settings row is missing, so the generator is never accidentally dark.
@@ -600,6 +646,8 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       partnerOffersFinishes={partnerOffersFinishes}
       aiGeneratorEnabled={aiGeneratorEnabled}
       finishes={studioFinishes}
+      substrates={studioMaterials.substrates}
+      packagingMaterials={studioMaterials.packagingMaterials}
       pictureFlavors={pictureFlavors}
       pictureBaseRecipe={pictureBaseRecipe}
       labelTopology={labelTopology}

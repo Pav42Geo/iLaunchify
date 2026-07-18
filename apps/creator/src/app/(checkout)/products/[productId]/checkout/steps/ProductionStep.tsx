@@ -214,10 +214,23 @@ export function ProductionStep({
 
   const studioHref = `/products/${productId}/design/canvas`
   const qty = state.quantity ?? 0
+  /**
+   * The REAL per-unit: the production subtotal divided by the units it covers.
+   *
+   * This used to be `labelUnitCents + packagingUnitCents + finishUnitCents`, i.e.
+   * the RETIRED catalog buildup. On a live Step 2 it rendered "$0.08 / unit"
+   * directly beneath a $5,290.00 line total for 1,000 units ($5.29/unit): the 8c
+   * label anchor, still on screen, long after it stopped being the price. Same
+   * corpse as the Order Summary's "$80.00" line, in a second place. (2026-07-16.)
+   *
+   * DERIVED FROM subtotalCents, never re-added from parts. Those three fields are
+   * material/spec detail now, not money: summing them produces a number that
+   * belongs to no basis at all.
+   */
   const perUnitCents =
-    (estimate?.labelUnitCents ?? 0) +
-    (estimate?.packagingUnitCents ?? 0) +
-    (estimate?.finishUnitCents ?? 0)
+    estimate && estimate.quantity > 0
+      ? Math.round(estimate.subtotalCents / estimate.quantity)
+      : 0
   const lineTotalCents = estimate?.totalBeforeShippingAndTaxCents ?? 0
 
   function clampQty(n: number): number {

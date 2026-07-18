@@ -109,15 +109,36 @@ export function OrderSummary({
       </h3>
 
       <dl className="space-y-2 text-sm">
-        <Row
-          label={`Label printing${qty ? ` × ${qty}` : ''}`}
-          value={
-            hasEstimate
-              ? formatCents(estimate.labelUnitCents * estimate.quantity)
-              : '$—.——'
-          }
-          dimmed={!hasEstimate}
-        />
+        {/* THE PRICED LINES, not a second opinion about them (2026-07-16).
+
+            These rows used to be `labelUnitCents * qty`, `packagingUnitCents * qty`
+            and the finishes buildup: the RETIRED catalog decomposition. Once the
+            goods basis became the manufacturer's band, they stopped summing to the
+            total they sat under. Pavel opened a real Step 2 and saw:
+
+              Label printing x 1000   $80.00     <- 8c anchor x 1000
+              Platform fee           $690.00
+              Before ship + tax    $5,290.00     <- the band ($4.60 x 1000 + 15%)
+
+            $80 + $690 = $770. $4,520 of a real order was unexplained on screen.
+            The TOTAL was right; the explanation was the ghost of the deleted bug.
+
+            So the breakdown now renders computeOrderPricing's OWN lineItems. It
+            cannot drift from the total again, because it IS the total's parts:
+            sum(productionLines) === subtotalCents by construction. Same move as
+            everything else in this cleanup - one source, projected, never
+            re-derived. */}
+        {hasEstimate ? (
+          estimate.productionLines.map((line, i) => (
+            <Row
+              key={`${line.kind}-${i}`}
+              label={line.kind === 'PRODUCT' && qty ? `${line.label} × ${qty}` : line.label}
+              value={formatCents(line.cents)}
+            />
+          ))
+        ) : (
+          <Row label={`Production${qty ? ` × ${qty}` : ''}`} value="$—.——" dimmed />
+        )}
         {pinnedPrintProvider && (
           <div className="-mt-1 pl-0.5 text-[11.5px] text-ink-500">
             Printed by{' '}
@@ -127,46 +148,11 @@ export function OrderSummary({
             — your pick
           </div>
         )}
-        <Row
-          label={`Packaging${qty ? ` × ${qty}` : ''}`}
-          value={
-            hasEstimate
-              ? formatCents(estimate.packagingUnitCents * estimate.quantity)
-              : '$—.——'
-          }
-          dimmed={!hasEstimate || !state.production.packagingMaterialSlug}
-        />
-        <Row
-          label={`Finishes${
-            state.production.finishPartnerFinishIds.length
-              ? ` (${state.production.finishPartnerFinishIds.length})`
-              : ''
-          }`}
-          value={
-            hasEstimate
-              ? formatCents(
-                  estimate.finishUnitCents * estimate.quantity + estimate.setupCents,
-                )
-              : '$—.——'
-          }
-          dimmed={state.production.finishPartnerFinishIds.length === 0}
-        />
-        {hasEstimate && estimate.decorationUnitCents > 0 && (
-          <Row
-            label={`Decoration${
-              estimate.decorationMethod
-                ? ` (${formatDecorationMethod(estimate.decorationMethod)})`
-                : ''
-            }${qty ? ` × ${qty}` : ''}`}
-            value={formatCents(estimate.decorationUnitCents * estimate.quantity)}
-          />
-        )}
-        {hasEstimate && estimate.componentsUnitCents > 0 && (
-          <Row
-            label={`Component upgrades${qty ? ` × ${qty}` : ''}`}
-            value={formatCents(estimate.componentsUnitCents * estimate.quantity)}
-          />
-        )}
+        {/* The Decoration and "Component upgrades" rows lived here and are GONE:
+            composeProductionLines already emits DECORATION and COMPONENTS, so the
+            map above renders them. Keeping these would have double-counted them on
+            screen (never in the charge, but a summary that adds up wrong is how
+            nobody notices when it adds up wrong for a real reason). */}
         <Row
           label="Platform fee"
           value={hasEstimate ? formatCents(estimate.platformFeeCents) : '$—.——'}
@@ -262,9 +248,6 @@ function Row({
   )
 }
 
-// C8.2 — turn a DecorationMethod enum value (DIRECT_PRINT) into a readable
-// label ("Direct print") for the Order Summary line.
-function formatDecorationMethod(method: string): string {
-  const lower = method.replace(/_/g, ' ').toLowerCase()
-  return lower.charAt(0).toUpperCase() + lower.slice(1)
-}
+// (C8.2's formatDecorationMethod lived here. Dead since the summary started
+// rendering computeOrderPricing's own lineItems, whose DECORATION line already
+// carries a human label from composeProductionLines.)

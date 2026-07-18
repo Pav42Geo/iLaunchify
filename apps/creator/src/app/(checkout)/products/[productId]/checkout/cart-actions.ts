@@ -271,9 +271,14 @@ export async function placeOrderFromCheckoutDraft(
     return { ok: false, error: 'Pick a quantity in step 2 before paying.' }
   }
   if (!state.production.substrateSlug || !state.production.packagingMaterialSlug) {
+    // These are set in the Studio's Material drawer (F3b), NOT here: checkout's
+    // "step 2" is a read-only spec readout. The old message sent creators to a
+    // picker that does not exist, which is why every order stalled here. See
+    // (studio)/.../material-actions.ts.
     return {
       ok: false,
-      error: 'Pick a substrate and packaging material in step 2 before paying.',
+      error:
+        'Set your label stock and packaging material in the Design Studio (Material tab) before placing your order.',
     }
   }
   if (!state.fulfillment.shipToType) {
