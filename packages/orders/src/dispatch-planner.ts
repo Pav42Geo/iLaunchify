@@ -80,10 +80,21 @@ export function isLive(
 }
 
 /**
- * Estimate dispatch costs from the order economics. V1 uses naive percentages —
- * manufacturer 30%, printer 8%, co-packer 7% (the co-pack slice only lands when
- * there's an assembly leg). V1.5+ pulls real per-component pricing from the partner
- * profile (docs/MULTI_COMPONENT_DISPATCH.md C1).
+ * PLACEHOLDER estimate for a DISTINCT printer / co-packer's carve-out only.
+ *
+ * NARROWED 2026-07-18 (Pavel "fix the split"). This used to decide the
+ * MANUFACTURER's payout at 30% of the creator's price - which underpaid partners
+ * and handed the platform a 62% production spread nobody authored. It no longer
+ * touches the manufacturer: deriveItemDispatch gives the manufacturer the
+ * REMAINDER (production minus distinct-partner carve-outs), so the legs sum to
+ * production and the platform keeps only its fee + merit.
+ *
+ * The 8% / 7% here are still fabricated ratios, kept ONLY as a stopgap for a
+ * SEPARATE printer/co-packer until they author a real price (CP-1..CP-3, parked).
+ * Under the N=1 model (one manufacturer self-fulfils every leg) NONE of these are
+ * used: every leg is the manufacturer, so the whole production flows to PRODUCT.
+ * `manufacturerCostCents` is retained for back-compat callers but is no longer the
+ * manufacturer's dispatch cost.
  */
 export function estimateDispatchCosts(params: {
   productId: string
@@ -152,14 +163,65 @@ export function deriveItemDispatch(params: {
   }
   const assemblyLegs = [...assemblyLegMap.values()]
 
-  const costs = estimateDispatchCosts({
+  // ── PAYOUT ALLOCATION (Pavel 2026-07-18: "fix the split") ────────────────────
+  //
+  // The manufacturer receives their AUTHORED band price (the whole production),
+  // NOT a fabricated 30%. The platform's revenue is the creator fee + merit
+  // withholding ONLY - there is NO hidden production spread. So the dispatch legs
+  // MUST sum to the production the creator paid.
+  //
+  // A live order (ILF-260718-AYCS9) exposed the old model: Acme priced at $4,600,
+  // did all the work, and would have been paid $1,748 (38%) while the platform
+  // pocketed $2,852 (62%) from a 30/8/7 ratio nobody authored - the payout-side
+  // twin of the Blocker-2 buildup, underpaying partners instead of undercharging
+  // creators.
+  //
+  // Allocation:
+  //   - A print/copack leg that is a DISTINCT partner (serviceId != the
+  //     manufacturer's) is carved out and the manufacturer's leg reduces by that
+  //     much, so the sum is preserved. Its AUTHORED price is N>1 work (CP-1..CP-3,
+  //     parked, no authored data yet), so it is still ESTIMATED here and FLAGGED -
+  //     but the manufacturer now gets the REMAINDER, never 30%.
+  //   - A print/copack leg that resolves to the MANUFACTURER itself (N=1 self-
+  //     fulfilment, the current model) is INCLUDED in the band: its leg cost is 0
+  //     and the whole production flows to the PRODUCT leg.
+  //
+  // INVARIANT (pinned in dispatch-planner.test.ts): sum(leg.costCents) ===
+  // productionCents. The manufacturer absorbs no rounding drift because each
+  // carve-out is subtracted at exactly the per-leg amount it pays out.
+  const productionCents = Math.max(0, Math.round(item.unitPriceCents) * Math.max(0, Math.floor(item.quantity)))
+
+  // DISTINCT = a leg paid out to a DIFFERENT partner org than the manufacturer,
+  // keyed on userId (the Transfer payee), NOT serviceId. A manufacturer that
+  // self-labels through its own LABEL_PRINTING service is the SAME payee, so its
+  // work is already inside the band it authored: carve nothing. Only a leg that
+  // routes money to another company reduces the manufacturer's payout. The real
+  // N=1 order (both legs -> Acme's userId) carves nothing and Acme gets it all.
+  const mfrUserId = routing.manufacturingUserId
+  const isDistinct = (userId: string) => userId !== mfrUserId
+
+  // estimateDispatchCosts is now ONLY a placeholder for a SEPARATE printer/co-packer
+  // until they author a price (CP-1..CP-3, parked); it no longer decides the
+  // manufacturer's payout.
+  const est = estimateDispatchCosts({
     productId: item.productId,
     quantity: item.quantity,
     unitPriceCents: item.unitPriceCents,
   })
-  const perPrintCostCents = Math.floor(costs.printProviderCostCents / printLegs.length)
-  const perAssemblyCostCents =
-    assemblyLegs.length > 0 ? Math.floor(costs.coPackerCostCents / assemblyLegs.length) : 0
+  const distinctPrintLegs = printLegs.filter((l) => isDistinct(l.userId))
+  const distinctAssemblyLegs = assemblyLegs.filter((l) => isDistinct(l.userId))
+  const perDistinctPrintCents = distinctPrintLegs.length
+    ? Math.floor(est.printProviderCostCents / distinctPrintLegs.length)
+    : 0
+  const perDistinctAssemblyCents = distinctAssemblyLegs.length
+    ? Math.floor(est.coPackerCostCents / distinctAssemblyLegs.length)
+    : 0
+  const printCarveoutCents = perDistinctPrintCents * distinctPrintLegs.length
+  const assemblyCarveoutCents = perDistinctAssemblyCents * distinctAssemblyLegs.length
+
+  const manufacturerCostCents = Math.max(0, productionCents - printCarveoutCents - assemblyCarveoutCents)
+  const printLegCost = (userId: string) => (isDistinct(userId) ? perDistinctPrintCents : 0)
+  const assemblyLegCost = (userId: string) => (isDistinct(userId) ? perDistinctAssemblyCents : 0)
 
   const rows: DispatchRow[] = [
     {
@@ -169,7 +231,7 @@ export function deriveItemDispatch(params: {
       partnerServiceId: routing.manufacturingServiceId,
       status: 'PENDING_ACCEPT',
       acceptDeadlineAt,
-      costCents: costs.manufacturerCostCents,
+      costCents: manufacturerCostCents,
     },
     ...printLegs.map((leg) => ({
       orderId,
@@ -178,7 +240,7 @@ export function deriveItemDispatch(params: {
       partnerServiceId: leg.serviceId,
       status: 'PENDING_ACCEPT' as const,
       acceptDeadlineAt,
-      costCents: perPrintCostCents,
+      costCents: printLegCost(leg.userId),
     })),
     ...assemblyLegs.map((leg) => ({
       orderId,
@@ -187,7 +249,7 @@ export function deriveItemDispatch(params: {
       partnerServiceId: leg.serviceId,
       status: 'PENDING_ACCEPT' as const,
       acceptDeadlineAt,
-      costCents: perAssemblyCostCents,
+      costCents: assemblyLegCost(leg.userId),
     })),
   ]
 

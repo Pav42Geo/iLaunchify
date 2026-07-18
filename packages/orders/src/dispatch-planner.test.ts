@@ -103,16 +103,23 @@ describe('deriveItemDispatch — simple product (no components)', () => {
   it('emits exactly one PRODUCT + one LABEL dispatch, no COPACKING', () => {
     expect(p.rows.map((r) => r.type)).toEqual(['PRODUCT', 'LABEL'])
   })
-  it('pins PRODUCT to the owner manufacturer with the 30% slice', () => {
+  it('pays the manufacturer the REMAINDER after distinct-partner carve-outs, not 30%', () => {
+    // Payout fix (2026-07-18): production = 10*1000 = 10,000. The label leg here is
+    // 'own-label-user' — a DISTINCT payee from 'mfg-user' — so it carves out 800
+    // (8% placeholder) and the manufacturer gets the remaining 9,200. NOT 3,000.
     const product = p.rows.find((r) => r.type === 'PRODUCT')!
     expect(product.partnerServiceId).toBe('mfg-svc')
-    expect(product.costCents).toBe(3000)
+    expect(product.costCents).toBe(9200)
   })
-  it('self-labels via the routing label service with the full 8% slice', () => {
+  it('carves the distinct self-label payee at the 8% placeholder', () => {
     const label = p.rows.find((r) => r.type === 'LABEL')!
     expect(label.partnerServiceId).toBe('own-label-svc')
     expect(label.costCents).toBe(800)
     expect(p.primaryPrintServiceId).toBe('own-label-svc')
+  })
+  it('INVARIANT: dispatch legs sum to the production (no platform spread)', () => {
+    const sum = p.rows.reduce((a, r) => a + r.costCents, 0)
+    expect(sum).toBe(10_000) // == item.unitPriceCents * item.quantity
   })
   it('reports the manufacturer user and no assembly', () => {
     expect(p.manufacturerUserId).toBe('mfg-user')
@@ -215,9 +222,16 @@ describe('deriveItemDispatch — full variety pack (the integration case)', () =
   })
 
   it('every dispatch carries the correct cost slice', () => {
-    expect(p.rows.find((r) => r.type === 'PRODUCT')!.costCents).toBe(3000)
+    // Payout fix (2026-07-18): the manufacturer gets the REMAINDER after the two
+    // distinct printers (800) and the distinct co-packer (700) carve out, i.e.
+    // 10,000 - 800 - 700 = 8,500. It used to be a flat 30% (3,000), which underpaid
+    // the manufacturer and let the platform keep the spread.
+    expect(p.rows.find((r) => r.type === 'PRODUCT')!.costCents).toBe(8500)
     expect(p.rows.filter((r) => r.type === 'LABEL').map((r) => r.costCents)).toEqual([400, 400])
     expect(p.rows.find((r) => r.type === 'COPACKING')!.costCents).toBe(700)
+  })
+  it('INVARIANT: even the full multi-partner graph sums to production (10,000)', () => {
+    expect(p.rows.reduce((a, r) => a + r.costCents, 0)).toBe(10_000)
   })
 
   it('reports deduped print + assembly users and the primary printer', () => {
