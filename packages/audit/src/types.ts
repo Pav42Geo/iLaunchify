@@ -256,6 +256,9 @@ export const AUDIT_ACTIONS = [
   'PACKAGING_SUBMIT_REVIEW',
   'PACKAGING_REVIEW_APPROVE',
   'PACKAGING_REVIEW_REJECT',
+  // Creator picks the decoration method in the Studio (#22) — pins the offering
+  // onto the product's PRIMARY container (charge + printer payout read it).
+  'PRODUCT_DECORATION_SET',
   // §7 marketplace filter attributes set by the partner builder (format /
   // process / allergen-free claims / markets).
   'MARKETPLACE_ATTRIBUTES_SET',

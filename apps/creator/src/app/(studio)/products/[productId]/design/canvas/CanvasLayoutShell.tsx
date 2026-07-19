@@ -129,6 +129,7 @@ import { TemplateAuthorSaveDialog } from '../../../../studio/TemplateAuthorSaveD
 import { saveAsBrandTemplate } from './brand-actions'
 import { FinishesDrawer } from './drawers/FinishesDrawer'
 import { MaterialDrawer } from './drawers/MaterialDrawer'
+import { DecorationDrawer } from './drawers/DecorationDrawer'
 import type { StudioFinish, StudioMaterial } from './page'
 import { ComponentsDrawer } from './drawers/ComponentsDrawer'
 import { ElementsDrawer } from './drawers/ElementsDrawer'
@@ -146,6 +147,7 @@ import {
   QrCode,
   Barcode,
   Layers,
+  Stamp,
   Boxes,
   LayoutTemplate,
   ScrollText,
@@ -381,6 +383,7 @@ type ToolKey =
   | 'barcode'
   | 'layers'
   | 'material'
+  | 'decoration'
   | 'finishes'
   | 'components'
   | 'phrases'
@@ -414,6 +417,11 @@ const TOOLS: Array<{
   // before checkout (placeOrder requires them); this is the only place that writes
   // them. See drawers/MaterialDrawer.tsx + material-actions.ts.
   { key: 'material', label: 'Material', icon: Scroll, v1: true },
+  // #22 (2026-07-19) — decoration method (how the container is finished). The
+  // creator picks the CONTAINER on the PDP, the DECORATION here beside the die-line;
+  // the pick pins the offering onto the PRIMARY container (charge + printer payout).
+  // See drawers/DecorationDrawer.tsx + decoration-actions.ts.
+  { key: 'decoration', label: 'Decoration', icon: Stamp, v1: true },
   // 'phrases' merged into the Label tool as "Label & Compliance" (2026-07-04) — no rail entry.
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
@@ -2197,6 +2205,7 @@ function ToolDrawer({
     barcode: 'Barcode',
     layers: 'Layers',
     material: 'Material',
+    decoration: 'Decoration',
     finishes: 'Finishes',
     components: 'Components',
     phrases: 'Mandatory phrases',
@@ -2410,6 +2419,7 @@ function ToolDrawer({
             packagingMaterials={packagingMaterials}
           />
         )}
+        {tool === 'decoration' && <DecorationDrawer productId={productId} />}
         {tool === 'finishes' && <FinishesDrawer finishes={finishes} />}
         {tool === 'components' && <ComponentsDrawer productId={productId} />}
         {tool !== 'product' &&
