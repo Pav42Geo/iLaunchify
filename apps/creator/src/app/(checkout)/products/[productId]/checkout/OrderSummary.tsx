@@ -108,6 +108,12 @@ export function OrderSummary({
         Order summary
       </h3>
 
+      {/* #29b (Pavel 2026-07-19): only render the priced breakdown once there is a
+          real estimate. Before a quantity is picked (the Review Design step) there
+          is nothing to summarize, so show ONE explanatory line instead of a column
+          of empty $—.—— rows. */}
+      {hasEstimate ? (
+        <>
       <dl className="space-y-2 text-sm">
         {/* THE PRICED LINES, not a second opinion about them (2026-07-16).
 
@@ -213,10 +219,14 @@ export function OrderSummary({
       <p className="mt-3 text-[11px] text-ink-500">
         {hasShipping && shipping.leadTimeBusinessDays > 0
           ? `Lead time: ~${shipping.leadTimeBusinessDays} business days. Tax calculates at Checkout.`
-          : hasEstimate
-            ? 'Pick a ship-to at Checkout to add shipping. Tax calculates there too.'
-            : 'Live cost lights up once you pick a quantity in step 2.'}
+          : 'Pick a ship-to at Checkout to add shipping. Tax calculates there too.'}
       </p>
+        </>
+      ) : (
+        <p className="text-[12.5px] leading-relaxed text-ink-500">
+          Live cost lights up once you pick a quantity in step 2.
+        </p>
+      )}
       </div>
     </div>
   )

@@ -14,7 +14,6 @@ import {
 } from '@ilaunchify/plans/math'
 import {
   Button,
-  PackagingPicker,
   VarietyPackBuilder,
   EarningsCalculator,
   PerFlavorEarnings,
@@ -705,54 +704,14 @@ export function ProductDetailConfigurator({
         )
       )}
 
-      {/* 3) Packaging — selecting a package drives the size options (below) and
-          the hero image (when per-package image data exists). */}
-      <PackagingPicker
-        // NO priceDelta on screen (Pavel's rule, same as the killed size multiplier
-        // and the deleted quote delta). Found live on 2026-07-18: the picker still
-        // rendered "+$0.40/unit" from the SEEDED marketingDetail JSON - a surcharge
-        // nobody authored and nothing charges (the quote delta was removed in the
-        // no-hardcoded-prices work). CHECK 16 missed it because it took a detour
-        // through the DB, which the seed exemption doesn't scan. Real packaging-
-        // upgrade pricing is PackagingComponentVariant, charged as a COMPONENTS line;
-        // the PDP does not price packaging. Task #22 wires the real container model.
-        options={detail.packaging.map((p) => ({ ...p, priceDelta: undefined }))}
-        value={packagingId}
-        onChange={(id) => {
-          setPackagingId(id)
-          onPackagingChange?.(id)
-        }}
-      />
-
-      {/* 4) Size — DRIVEN BY THE SELECTED PACKAGE (its `sizes` win; otherwise
-          the product-level sizeChart). The clamp effect resets the selected
-          size when the package changes. */}
-      {sizeOptions.length > 1 && (
-        <div className="flex flex-col gap-1.5">
-          <div className="text-[12px] font-semibold text-ink-700">Size</div>
-          <div className="flex flex-wrap gap-2">
-            {sizeOptions.map((s) => {
-              const isActive = s === sizeKey
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSizeKey(s)}
-                  aria-pressed={isActive}
-                  className={
-                    'rounded-[9px] border px-3 py-1.5 text-[13px] transition-[border-color,color] cursor-pointer ' +
-                    (isActive
-                      ? 'border-ink-900 font-semibold text-ink-900'
-                      : 'border-ink-200 text-ink-700 hover:border-ink-400')
-                  }
-                >
-                  {s}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      {/* #29 (Pavel 2026-07-19): the fixture Packaging picker (20-sachet carton /
+          Eco refill / Travel tin) and Size picker (240g / 480g) are REMOVED. They
+          came from detail.packaging / detail.sizeChart (marketingDetail JSON), not
+          the real variant model, so they selected nothing real: the container is
+          fixed by the variant and materialised at launch (keystone), and it already
+          shows in the Format key-attribute. `packagingId` / `sizeKey` keep their
+          defaults for the launch payload. When real per-variant sizes/containers
+          exist, a variant-backed picker replaces this, never a fixture list. */}
 
       {/* 5) Quantity — in multi-flavor pack mode this is the number of PACKS
           (step 1, MOQ in packs); otherwise units (step 50). */}
