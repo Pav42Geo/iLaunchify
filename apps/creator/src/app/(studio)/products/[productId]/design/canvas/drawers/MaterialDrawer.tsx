@@ -78,27 +78,26 @@ function OptionRow({
 export function MaterialDrawer({
   productId,
   substrates,
-  packagingMaterials,
 }: {
   productId: string
   substrates: StudioMaterial[]
-  packagingMaterials: StudioMaterial[]
+  // #38 (2026-07-19): `packagingMaterials` is still passed by the shell but no longer
+  // used. PACKAGING moved to the PDP (the container offering IS the packaging), so
+  // the Studio Material drawer is LABEL STOCK only. The unscoped platform material
+  // list that showed "Aluminum Bottle" on a sachet is gone.
+  packagingMaterials?: StudioMaterial[]
 }) {
   const [substrateSlug, setSubstrateSlug] = React.useState<string | null>(null)
-  const [packagingSlug, setPackagingSlug] = React.useState<string | null>(null)
   const [loaded, setLoaded] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [savedAt, setSavedAt] = React.useState<number | null>(null)
 
-  // Hydrate the current pins from the shared checkout draft on mount.
+  // Hydrate the current label-stock pin from the shared checkout draft on mount.
   React.useEffect(() => {
     let alive = true
     getDesignMaterials(productId).then((r) => {
       if (!alive) return
-      if (r.ok) {
-        setSubstrateSlug(r.substrateSlug ?? null)
-        setPackagingSlug(r.packagingMaterialSlug ?? null)
-      }
+      if (r.ok) setSubstrateSlug(r.substrateSlug ?? null)
       setLoaded(true)
     })
     return () => {
@@ -106,44 +105,32 @@ export function MaterialDrawer({
     }
   }, [productId])
 
-  // Persist on every change. Toggling a selected row OFF clears it (null), which
-  // is a legitimate state - checkout will block again and point back here.
-  const persist = React.useCallback(
-    async (nextSub: string | null, nextPack: string | null) => {
+  // Persist on every change. Toggling a selected row OFF clears it (null). Packaging
+  // material is retired here, so we always write it null: the PDP container is the
+  // packaging now, and placeOrder no longer requires packagingMaterialSlug (#38).
+  const pickSubstrate = React.useCallback(
+    async (slug: string) => {
+      const next = substrateSlug === slug ? null : slug
+      setSubstrateSlug(next)
       setSaving(true)
-      const r = await setDesignMaterials({
-        productId,
-        substrateSlug: nextSub,
-        packagingMaterialSlug: nextPack,
-      })
+      const r = await setDesignMaterials({ productId, substrateSlug: next, packagingMaterialSlug: null })
       setSaving(false)
       if (r.ok) setSavedAt(Date.now())
     },
-    [productId],
+    [productId, substrateSlug],
   )
 
-  const pickSubstrate = (slug: string) => {
-    const next = substrateSlug === slug ? null : slug
-    setSubstrateSlug(next)
-    void persist(next, packagingSlug)
-  }
-  const pickPackaging = (slug: string) => {
-    const next = packagingSlug === slug ? null : slug
-    setPackagingSlug(next)
-    void persist(substrateSlug, next)
-  }
+  const picked = !!substrateSlug
 
-  const bothPicked = !!substrateSlug && !!packagingSlug
-
-  if (substrates.length === 0 && packagingMaterials.length === 0) {
+  if (substrates.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-ink-200 bg-ink-50/60 p-4">
         <div className="flex items-start gap-2.5">
           <Layers className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
           <div>
-            <div className="text-[12.5px] font-bold text-ink-900">No materials available</div>
+            <div className="text-[12.5px] font-bold text-ink-900">No label stocks available</div>
             <p className="mt-1 text-[11.5px] leading-[1.5] text-ink-600">
-              The material catalog is empty. This is admin-seeded data &mdash; contact
+              The label-stock catalog is empty. This is admin-seeded data, contact
               iLaunchify support if you expected options here.
             </p>
           </div>
@@ -157,51 +144,27 @@ export function MaterialDrawer({
       <div>
         <div className="flex items-center gap-1.5">
           <Layers className="h-4 w-4 text-ink-700" />
-          <h3 className="text-[13px] font-semibold text-ink-900">Label &amp; packaging material</h3>
+          <h3 className="text-[13px] font-semibold text-ink-900">Label stock</h3>
         </div>
         <p className="mt-1 text-[11.5px] leading-[1.5] text-ink-600">
-          What your label prints on and what your packaging is made of. This is a
-          production spec, not a cost &mdash; your price comes from the volume tier.
-          Both are required before you can place your order.
+          What your label prints on. A production spec, not a cost: your price comes
+          from the volume tier. Packaging is chosen on the product page.
         </p>
       </div>
 
       <div className="space-y-2">
         <div className={sectionLabel}>Label stock</div>
-        {substrates.length === 0 ? (
-          <p className="text-[11.5px] text-ink-500">No label stocks published.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {substrates.map((s) => (
-              <OptionRow
-                key={s.slug}
-                opt={s}
-                selected={substrateSlug === s.slug}
-                onPick={() => pickSubstrate(s.slug)}
-                disabled={!loaded || saving}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className={sectionLabel}>Packaging material</div>
-        {packagingMaterials.length === 0 ? (
-          <p className="text-[11.5px] text-ink-500">No packaging materials published.</p>
-        ) : (
-          <div className="space-y-1.5">
-            {packagingMaterials.map((p) => (
-              <OptionRow
-                key={p.slug}
-                opt={p}
-                selected={packagingSlug === p.slug}
-                onPick={() => pickPackaging(p.slug)}
-                disabled={!loaded || saving}
-              />
-            ))}
-          </div>
-        )}
+        <div className="space-y-1.5">
+          {substrates.map((s) => (
+            <OptionRow
+              key={s.slug}
+              opt={s}
+              selected={substrateSlug === s.slug}
+              onPick={() => pickSubstrate(s.slug)}
+              disabled={!loaded || saving}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="flex items-center gap-1.5 border-t border-ink-100 pt-3 text-[11.5px]">
@@ -210,14 +173,14 @@ export function MaterialDrawer({
             <Loader2 className="h-3 w-3 animate-spin text-ink-500" />
             <span className="text-ink-500">Saving&hellip;</span>
           </>
-        ) : bothPicked ? (
+        ) : picked ? (
           <>
             <Check className="h-3.5 w-3.5 text-success-600" strokeWidth={3} />
-            <span className="font-medium text-success-700">Materials set &mdash; you can check out.</span>
+            <span className="font-medium text-success-700">Label stock set.</span>
           </>
         ) : (
           <span className="font-medium text-ink-500">
-            {savedAt ? 'Saved. ' : ''}Pick a label stock and a packaging material to continue to checkout.
+            {savedAt ? 'Saved. ' : ''}Pick a label stock to continue to checkout.
           </span>
         )}
       </div>

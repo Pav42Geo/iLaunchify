@@ -270,15 +270,15 @@ export async function placeOrderFromCheckoutDraft(
   if (qty <= 0) {
     return { ok: false, error: 'Pick a quantity in step 2 before paying.' }
   }
-  if (!state.production.substrateSlug || !state.production.packagingMaterialSlug) {
-    // These are set in the Studio's Material drawer (F3b), NOT here: checkout's
-    // "step 2" is a read-only spec readout. The old message sent creators to a
-    // picker that does not exist, which is why every order stalled here. See
-    // (studio)/.../material-actions.ts.
+  if (!state.production.substrateSlug) {
+    // Label stock (substrate) is set in the Studio's Material drawer. #38 (2026-07-19):
+    // PACKAGING moved to the PDP — the chosen container offering IS the packaging and
+    // is materialised as the PRIMARY component — so packagingMaterialSlug is no longer
+    // required here (it was the flat, unscoped PackagingMaterial catalog). Only the
+    // label stock still gates the order.
     return {
       ok: false,
-      error:
-        'Set your label stock and packaging material in the Design Studio (Material tab) before placing your order.',
+      error: 'Set your label stock in the Design Studio (Material tab) before placing your order.',
     }
   }
   if (!state.fulfillment.shipToType) {
@@ -601,9 +601,13 @@ export async function placeOrderFromCheckoutDraft(
   //        G3.1).
   const [substrate, packaging, finishApps, componentRows] = await Promise.all([
     prisma.substrate.findUnique({ where: { slug: state.production.substrateSlug } }),
-    prisma.packagingMaterial.findUnique({
-      where: { slug: state.production.packagingMaterialSlug },
-    }),
+    // #38 — packagingMaterialSlug is optional now (packaging is the PDP container).
+    // Only look it up when present; null -> packagingUnitCents 0, which affects only
+    // the dispatch COST estimate + floor reporting, never the creator's charge (that
+    // is `goods`, the band/pack price via resolveGoods).
+    state.production.packagingMaterialSlug
+      ? prisma.packagingMaterial.findUnique({ where: { slug: state.production.packagingMaterialSlug } })
+      : Promise.resolve(null),
     state.production.finishPartnerFinishIds.length
       ? prisma.partnerFinish.findMany({
           where: { id: { in: state.production.finishPartnerFinishIds } },
