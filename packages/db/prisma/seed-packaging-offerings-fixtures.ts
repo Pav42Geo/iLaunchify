@@ -21,7 +21,11 @@ function mapContainerToTypeSlug(fmt: string): string {
   if (f.includes('sachet')) return 'sachet-5g'
   if (f.includes('stick')) return 'stick-pack-3g'
   if (f.includes('tube')) return 'ldpe-tube-100ml'
-  if (f.includes('pouch')) return 'standup-pouch-12oz'
+  if (f.includes('pouch')) {
+    // Size-accurate (#22, 2026-07-18): a 200 g pouch is not a 12 oz pouch.
+    if (f.includes('200 g') || f.includes('200g')) return 'standup-pouch-200g'
+    return 'standup-pouch-12oz'
+  }
   if (f.includes('tub')) return 'pet-jar-32oz-wide-mouth'
   if (f.includes('jar')) return 'glass-jar-16oz'
   if (f.includes('carton')) return 'folding-carton-small'
@@ -30,6 +34,10 @@ function mapContainerToTypeSlug(fmt: string): string {
     if (f.includes('capsule') || f.includes('count') || f.includes('-ct') || f.includes(' ct')) {
       return 'capsule-bottle-100ct'
     }
+    // Size-accurate (#22): map to the REAL container so the label + Studio dieline
+    // dimensions match, instead of collapsing every bottle to a 12 oz.
+    if (f.includes('30 ml') || f.includes('30ml')) return 'glass-dropper-30ml'
+    if (f.includes('5 oz') || f.includes('5oz')) return 'glass-bottle-5oz-woozy'
     return 'glass-bottle-12oz'
   }
   return 'folding-carton-small'
