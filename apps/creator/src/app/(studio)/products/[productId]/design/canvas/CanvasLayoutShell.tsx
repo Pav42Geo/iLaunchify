@@ -254,9 +254,8 @@ interface Props {
    * Empty unless partnerOffersFinishes is true.
    */
   finishes?: StudioFinish[]
-  /** F3b — ACTIVE label-stock + packaging-material catalogs for the Material drawer. */
+  /** F3b — ACTIVE label-stock (substrate) catalog for the Material drawer. */
   substrates?: StudioMaterial[]
-  packagingMaterials?: StudioMaterial[]
   /**
    * Product-picture Details modal (docs/CREATOR_PRODUCT_PICTURE_MODAL.md, slice 2) —
    * per-flavor SoI + FINAL recipe for the SELECTED flavors, the single-product recipe,
@@ -416,7 +415,7 @@ const TOOLS: Array<{
   { key: 'material', label: 'Material', icon: Scroll, v1: true },
   // #39 (2026-07-19): the 'decoration' rail entry was retired. Decoration is now a PDP
   // choice (packaging determines it — see ilaunchify-packaging-picked-on-pdp), so the
-  // Studio no longer picks it. DecorationDrawer + decoration-actions kept as dead code.
+  // Studio no longer picks it (DecorationDrawer + decoration-actions were removed).
   // 'phrases' merged into the Label tool as "Label & Compliance" (2026-07-04) — no rail entry.
   { key: 'qrcode', label: 'QR Code', icon: QrCode, v1: true },
   { key: 'barcode', label: 'Barcode', icon: Barcode, v1: true },
@@ -448,7 +447,6 @@ export function CanvasLayoutShell({
   aiGeneratorEnabled = true,
   finishes = [],
   substrates = [],
-  packagingMaterials = [],
   pictureFlavors = [],
   pictureBaseRecipe = null,
   labelTopology,
@@ -1448,7 +1446,6 @@ export function CanvasLayoutShell({
               onSaveAsTemplate={onSaveTemplateClick}
               finishes={finishes}
               substrates={substrates}
-              packagingMaterials={packagingMaterials}
               pictureFlavors={pictureFlavors}
               pictureBaseRecipe={pictureBaseRecipe}
               labelTopology={labelTopology}
@@ -2100,7 +2097,6 @@ function ToolDrawer({
   onSaveAsTemplate,
   finishes,
   substrates,
-  packagingMaterials,
   pictureFlavors,
   pictureBaseRecipe,
   labelTopology,
@@ -2156,7 +2152,6 @@ function ToolDrawer({
   finishes: StudioFinish[]
   // F3b — ACTIVE material catalogs for the Material drawer. Serialisable, may be [].
   substrates: StudioMaterial[]
-  packagingMaterials: StudioMaterial[]
   pictureFlavors: Array<{ flavorPresetId: string; statementOfIdentity: string | null; recipe: PictureRecipe | null }>
   pictureBaseRecipe: PictureRecipe | null
   labelTopology?: 'SINGLE' | 'AGGREGATE' | 'PER_FLAVOR'
@@ -2410,7 +2405,6 @@ function ToolDrawer({
           <MaterialDrawer
             productId={productId}
             substrates={substrates}
-            packagingMaterials={packagingMaterials}
           />
         )}
         {tool === 'finishes' && <FinishesDrawer finishes={finishes} />}

@@ -129,30 +129,25 @@ function buildFinishPricingSummary(f: {
 // from in the Studio Material drawer. Mirrors loadStudioFinishes: server-side,
 // serialisable, degrades to [] on error. NOT price-bearing (Blocker 2/4): these
 // are production specs for the manifest, not cost inputs.
-async function loadStudioMaterials(): Promise<{ substrates: StudioMaterial[]; packagingMaterials: StudioMaterial[] }> {
+// #39 cleanup: packaging material is retired (packaging is a PDP choice now), so the
+// Studio loads only the label-stock (substrate) catalog.
+async function loadStudioMaterials(): Promise<{ substrates: StudioMaterial[] }> {
   try {
-    const [subs, packs] = await Promise.all([
-      prisma.substrate.findMany({
-        where: { status: 'ACTIVE' },
-        orderBy: [{ category: 'asc' }, { name: 'asc' }],
-        select: { slug: true, name: true, description: true, sustainabilityTier: true },
-      }),
-      prisma.packagingMaterial.findMany({
-        where: { status: 'ACTIVE' },
-        orderBy: [{ topology: 'asc' }, { name: 'asc' }],
-        select: { slug: true, name: true, description: true, sustainabilityTier: true },
-      }),
-    ])
+    const subs = await prisma.substrate.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      select: { slug: true, name: true, description: true, sustainabilityTier: true },
+    })
     const map = (r: { slug: string; name: string; description: string; sustainabilityTier: string }) => ({
       slug: r.slug,
       name: r.name,
       description: r.description,
       sustainabilityTier: String(r.sustainabilityTier),
     })
-    return { substrates: subs.map(map), packagingMaterials: packs.map(map) }
+    return { substrates: subs.map(map) }
   } catch (err) {
     console.error('[loadStudioMaterials] failed:', err)
-    return { substrates: [], packagingMaterials: [] }
+    return { substrates: [] }
   }
 }
 
@@ -647,7 +642,6 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       aiGeneratorEnabled={aiGeneratorEnabled}
       finishes={studioFinishes}
       substrates={studioMaterials.substrates}
-      packagingMaterials={studioMaterials.packagingMaterials}
       pictureFlavors={pictureFlavors}
       pictureBaseRecipe={pictureBaseRecipe}
       labelTopology={labelTopology}

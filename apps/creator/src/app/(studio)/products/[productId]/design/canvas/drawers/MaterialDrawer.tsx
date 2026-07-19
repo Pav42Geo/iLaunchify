@@ -93,12 +93,10 @@ export function MaterialDrawer({
   substrates,
 }: {
   productId: string
+  // #38 (2026-07-19): LABEL STOCK only. PACKAGING moved to the PDP (the container
+  // offering IS the packaging), so the unscoped platform packaging-material list that
+  // showed "Aluminum Bottle" on a sachet is gone (the packagingMaterials prop retired).
   substrates: StudioMaterial[]
-  // #38 (2026-07-19): `packagingMaterials` is still passed by the shell but no longer
-  // used. PACKAGING moved to the PDP (the container offering IS the packaging), so
-  // the Studio Material drawer is LABEL STOCK only. The unscoped platform material
-  // list that showed "Aluminum Bottle" on a sachet is gone.
-  packagingMaterials?: StudioMaterial[]
 }) {
   const [substrateSlug, setSubstrateSlug] = React.useState<string | null>(null)
   const [loaded, setLoaded] = React.useState(false)
