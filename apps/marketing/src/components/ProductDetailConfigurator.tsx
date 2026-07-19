@@ -201,20 +201,24 @@ export function ProductDetailConfigurator({
   const effFillRule = fillRule ?? 'CREATOR_CHOOSES'
   const effMinFlavors = Math.max(1, minFlavors ?? 1)
 
-  const resolvedPackSizes: PackSize[] = React.useMemo(() => {
-    if (packSizes.length > 0) {
-      return packSizes.map((s) => ({
+  // #35 (2026-07-19): NO fabricated fallback pack. This used to synthesize a size of
+  // `maxFlavorsPerPack ?? 6` units when the manufacturer authored none — an invented
+  // number of the same species we killed everywhere else (the 0.85 multiplier, the
+  // +$0.40 packaging delta). A variety product with no authored pack size is
+  // incomplete: resolvePackMode sees offeredSizes 0 → SINGLE_UNIT, so it renders as
+  // single-flavor rather than a pack built on a fake size. Real pack sizes come from
+  // the manufacturer's authored ProductTemplateVariant.unitsPerPack.
+  const resolvedPackSizes: PackSize[] = React.useMemo(
+    () =>
+      packSizes.map((s) => ({
         id: s.variantId,
         unitsPerPack: s.unitsPerPack,
         label: s.label,
         pricePerPackCents: s.pricePerPackCents,
         moqPacks: s.moqPacks,
-      }))
-    }
-    // Fallback single size — derive units/pack from the flavor cap, default 6.
-    const units = Math.max(1, maxFlavorsPerPack ?? 6)
-    return [{ id: 'fallback', unitsPerPack: units, label: `${units}-pack`, pricePerPackCents: null, moqPacks: null }]
-  }, [packSizes, maxFlavorsPerPack])
+      })),
+    [packSizes],
+  )
 
   const packPool: PoolFlavor[] = React.useMemo(
     () =>
@@ -939,6 +943,14 @@ export function ProductDetailConfigurator({
           isAuthenticated={isAuthenticated}
           decorationMethod={null}
           partnerOfferingId={null}
+          // #35 — require a COMPLETE pack before the Studio. An incomplete pack
+          // can't thread through (launch seeds nothing), so checkout would re-open
+          // it and placeOrder would refuse. Block launch until the pack is filled.
+          disabledReason={
+            isMultiFlavor && !(composedPack.ok && packCount > 0)
+              ? `Finish your pack: fill all ${packUnitsPerPack} units and pick your flavors to launch.`
+              : null
+          }
           pack={
             isMultiFlavor && selectedPackSize && composedPack.ok && packCount > 0
               ? {

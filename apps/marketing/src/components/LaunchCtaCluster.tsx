@@ -42,6 +42,11 @@ interface Props {
     packCount: number
     slots: Array<{ flavorPresetId: string; units: number }>
   } | null
+  /** #35 — when set, the launch is BLOCKED and this reason shows under the CTA.
+   *  Used to require a COMPLETE pack composition before the Studio, so the pack
+   *  always threads through fully and checkout can lock it read-only (never
+   *  re-open the pick). Null = ready to launch. */
+  disabledReason?: string | null
 }
 
 export function LaunchCtaCluster({
@@ -54,6 +59,7 @@ export function LaunchCtaCluster({
   decorationMethod = null,
   partnerOfferingId = null,
   pack = null,
+  disabledReason = null,
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -124,11 +130,16 @@ export function LaunchCtaCluster({
           size="md"
           className="w-full"
           onClick={onLaunchClick}
-          disabled={isPending}
+          disabled={isPending || !!disabledReason}
         >
           {isPending ? 'Setting up your design…' : 'Launch this product'}
         </Button>
       </div>
+      {/* #35 — pack not complete yet: say what's missing instead of launching an
+          incomplete pack that checkout can't lock and placeOrder would refuse. */}
+      {disabledReason && !isPending && (
+        <p className="text-[12px] font-medium text-ink-600">{disabledReason}</p>
+      )}
       {error && (
         <p className="text-[12px] font-medium text-pink-700">{error}</p>
       )}
