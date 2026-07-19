@@ -270,12 +270,18 @@ export async function placeOrderFromCheckoutDraft(
   if (qty <= 0) {
     return { ok: false, error: 'Pick a quantity in step 2 before paying.' }
   }
-  if (!state.production.substrateSlug) {
-    // Label stock (substrate) is set in the Studio's Material drawer. #38 (2026-07-19):
-    // PACKAGING moved to the PDP — the chosen container offering IS the packaging and
-    // is materialised as the PRIMARY component — so packagingMaterialSlug is no longer
-    // required here (it was the flat, unscoped PackagingMaterial catalog). Only the
-    // label stock still gates the order.
+  // #30 (2026-07-19): label stock (substrate) is required ONLY for a PRESSURE-SENSITIVE
+  // LABEL. Every other decoration (direct print, shrink sleeve, in-mold, ...) prints on
+  // the container directly, so there is no label stock to set — requiring one would
+  // strand a direct-print order. Read the PDP-picked decoration off the PRIMARY container.
+  // #38: packagingMaterialSlug is no longer required at all (the container IS the packaging).
+  const primaryContainer = await prisma.packagingComponent.findFirst({
+    where: { productId: product.id, tier: 'PRIMARY', role: 'CONTAINER' },
+    select: { decorationMethod: true },
+    orderBy: { displayOrder: 'asc' },
+  })
+  const labelStockRequired = primaryContainer?.decorationMethod === 'PRESSURE_SENSITIVE_LABEL'
+  if (labelStockRequired && !state.production.substrateSlug) {
     return {
       ok: false,
       error: 'Set your label stock in the Design Studio (Material tab) before placing your order.',
@@ -600,7 +606,12 @@ export async function placeOrderFromCheckoutDraft(
   //        replaces this when the partner-side editors light up (Phase F2 +
   //        G3.1).
   const [substrate, packaging, finishApps, componentRows] = await Promise.all([
-    prisma.substrate.findUnique({ where: { slug: state.production.substrateSlug } }),
+    // #30 — substrateSlug is optional now (only a pressure-sensitive label uses stock).
+    // Guard the lookup; null -> labelUnitCents keeps only its 8c anchor, which feeds the
+    // dispatch COST estimate + floor reporting, never the creator's charge.
+    state.production.substrateSlug
+      ? prisma.substrate.findUnique({ where: { slug: state.production.substrateSlug } })
+      : Promise.resolve(null),
     // #38 — packagingMaterialSlug is optional now (packaging is the PDP container).
     // Only look it up when present; null -> packagingUnitCents 0, which affects only
     // the dispatch COST estimate + floor reporting, never the creator's charge (that

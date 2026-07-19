@@ -22,6 +22,19 @@ import { setDesignMaterials, getDesignMaterials } from '../material-actions'
 
 const sectionLabel = 'text-[12px] font-bold uppercase tracking-wider text-ink-700'
 
+// #30 — human label for the "no label stock needed" note.
+const DECORATION_LABEL: Record<string, string> = {
+  DIRECT_PRINT: 'Direct print',
+  SHRINK_SLEEVE: 'A shrink sleeve',
+  IN_MOLD_LABEL: 'An in-mold label',
+  HEAT_TRANSFER: 'A heat transfer',
+  FOIL_STAMP: 'Foil stamping',
+  EMBOSS: 'Embossing',
+  DEBOSS: 'Debossing',
+  SPOT_UV: 'Spot UV',
+  NONE: 'Your decoration',
+}
+
 function ecoLabel(tier: string): string | null {
   if (!tier || tier === 'STANDARD') return null
   return tier.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
@@ -91,13 +104,22 @@ export function MaterialDrawer({
   const [loaded, setLoaded] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [savedAt, setSavedAt] = React.useState<number | null>(null)
+  // #30: label stock applies only for a pressure-sensitive label. Default true so we
+  // don't flash "not needed" before the decoration loads; the method sets it straight.
+  const [labelStockApplies, setLabelStockApplies] = React.useState(true)
+  const [decorationMethod, setDecorationMethod] = React.useState<string>('NONE')
 
-  // Hydrate the current label-stock pin from the shared checkout draft on mount.
+  // Hydrate the label-stock pin + whether label stock applies (from the PDP-picked
+  // decoration) from the shared checkout draft + PRIMARY container on mount.
   React.useEffect(() => {
     let alive = true
     getDesignMaterials(productId).then((r) => {
       if (!alive) return
-      if (r.ok) setSubstrateSlug(r.substrateSlug ?? null)
+      if (r.ok) {
+        setSubstrateSlug(r.substrateSlug ?? null)
+        setLabelStockApplies(r.labelStockApplies ?? false)
+        setDecorationMethod(r.decorationMethod ?? 'NONE')
+      }
       setLoaded(true)
     })
     return () => {
@@ -121,23 +143,7 @@ export function MaterialDrawer({
   )
 
   const picked = !!substrateSlug
-
-  if (substrates.length === 0) {
-    return (
-      <div className="rounded-md border border-dashed border-ink-200 bg-ink-50/60 p-4">
-        <div className="flex items-start gap-2.5">
-          <Layers className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
-          <div>
-            <div className="text-[12.5px] font-bold text-ink-900">No label stocks available</div>
-            <p className="mt-1 text-[11.5px] leading-[1.5] text-ink-600">
-              The label-stock catalog is empty. This is admin-seeded data, contact
-              iLaunchify support if you expected options here.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const decorationLabel = DECORATION_LABEL[decorationMethod] ?? 'Your decoration'
 
   return (
     <div className="space-y-5">
@@ -152,38 +158,71 @@ export function MaterialDrawer({
         </p>
       </div>
 
-      <div className="space-y-2">
-        <div className={sectionLabel}>Label stock</div>
-        <div className="space-y-1.5">
-          {substrates.map((s) => (
-            <OptionRow
-              key={s.slug}
-              opt={s}
-              selected={substrateSlug === s.slug}
-              onPick={() => pickSubstrate(s.slug)}
-              disabled={!loaded || saving}
-            />
-          ))}
+      {loaded && !labelStockApplies ? (
+        // #30: label stock applies ONLY for a pressure-sensitive label. Every other
+        // decoration prints on the container directly, so there is no stock to choose
+        // (and placeOrder does not require one).
+        <div className="rounded-md border border-dashed border-ink-200 bg-ink-50/60 p-4">
+          <div className="flex items-start gap-2.5">
+            <Layers className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
+            <div>
+              <div className="text-[12.5px] font-bold text-ink-900">No label stock needed</div>
+              <p className="mt-1 text-[11.5px] leading-[1.5] text-ink-600">
+                {decorationLabel} prints on the container directly, so there is no
+                separate label stock to choose. Your decoration is set on the product page.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : substrates.length === 0 ? (
+        <div className="rounded-md border border-dashed border-ink-200 bg-ink-50/60 p-4">
+          <div className="flex items-start gap-2.5">
+            <Layers className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-500" />
+            <div>
+              <div className="text-[12.5px] font-bold text-ink-900">No label stocks available</div>
+              <p className="mt-1 text-[11.5px] leading-[1.5] text-ink-600">
+                The label-stock catalog is empty. This is admin-seeded data, contact
+                iLaunchify support if you expected options here.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2">
+            <div className={sectionLabel}>Label stock</div>
+            <div className="space-y-1.5">
+              {substrates.map((s) => (
+                <OptionRow
+                  key={s.slug}
+                  opt={s}
+                  selected={substrateSlug === s.slug}
+                  onPick={() => pickSubstrate(s.slug)}
+                  disabled={!loaded || saving}
+                />
+              ))}
+            </div>
+          </div>
 
-      <div className="flex items-center gap-1.5 border-t border-ink-100 pt-3 text-[11.5px]">
-        {saving ? (
-          <>
-            <Loader2 className="h-3 w-3 animate-spin text-ink-500" />
-            <span className="text-ink-500">Saving&hellip;</span>
-          </>
-        ) : picked ? (
-          <>
-            <Check className="h-3.5 w-3.5 text-success-600" strokeWidth={3} />
-            <span className="font-medium text-success-700">Label stock set.</span>
-          </>
-        ) : (
-          <span className="font-medium text-ink-500">
-            {savedAt ? 'Saved. ' : ''}Pick a label stock to continue to checkout.
-          </span>
-        )}
-      </div>
+          <div className="flex items-center gap-1.5 border-t border-ink-100 pt-3 text-[11.5px]">
+            {saving ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin text-ink-500" />
+                <span className="text-ink-500">Saving&hellip;</span>
+              </>
+            ) : picked ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-success-600" strokeWidth={3} />
+                <span className="font-medium text-success-700">Label stock set.</span>
+              </>
+            ) : (
+              <span className="font-medium text-ink-500">
+                {savedAt ? 'Saved. ' : ''}Pick a label stock to continue to checkout.
+              </span>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

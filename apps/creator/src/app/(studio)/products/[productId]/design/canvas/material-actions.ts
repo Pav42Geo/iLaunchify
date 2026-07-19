@@ -101,21 +101,42 @@ export async function setDesignMaterials(input: {
   return { ok: true }
 }
 
-/** Read back the current material selection so the drawer can show what's pinned. */
+/** Read back the current material selection so the drawer can show what's pinned,
+ *  plus whether LABEL STOCK even applies for this product's decoration (#30). */
 export async function getDesignMaterials(
   productId: string,
-): Promise<Result & { substrateSlug?: string | null; packagingMaterialSlug?: string | null }> {
+): Promise<
+  Result & {
+    substrateSlug?: string | null
+    packagingMaterialSlug?: string | null
+    /** The PDP-picked decoration on the PRIMARY container (NONE until picked). */
+    decorationMethod?: string
+    /** #30: label stock (substrate) applies ONLY for a pressure-sensitive label;
+     *  every other decoration prints on the container directly, so there is no stock. */
+    labelStockApplies?: boolean
+  }
+> {
   const { user, error } = await authorizeCreatorProduct(productId)
   if (error || !user) return { ok: false, error: error ?? 'NOT_A_CREATOR' }
 
-  const draft = await prisma.checkoutDraft.findUnique({
-    where: { creatorUserId_productId: { creatorUserId: user.id, productId } },
-    select: { state: true },
-  })
+  const [draft, container] = await Promise.all([
+    prisma.checkoutDraft.findUnique({
+      where: { creatorUserId_productId: { creatorUserId: user.id, productId } },
+      select: { state: true },
+    }),
+    prisma.packagingComponent.findFirst({
+      where: { productId, tier: 'PRIMARY', role: 'CONTAINER' },
+      select: { decorationMethod: true },
+      orderBy: { displayOrder: 'asc' },
+    }),
+  ])
   const state = draft?.state as unknown as CheckoutDraftState | undefined
+  const decorationMethod = container?.decorationMethod ?? 'NONE'
   return {
     ok: true,
     substrateSlug: state?.production.substrateSlug ?? null,
     packagingMaterialSlug: state?.production.packagingMaterialSlug ?? null,
+    decorationMethod,
+    labelStockApplies: decorationMethod === 'PRESSURE_SENSITIVE_LABEL',
   }
 }
