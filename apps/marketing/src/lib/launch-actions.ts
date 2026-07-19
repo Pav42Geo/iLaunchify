@@ -233,43 +233,60 @@ async function resolveOrCreateProductForTemplate(
       payload: { templateId: template.id, via: 'launch' },
     })
 
-    // Slice C8.2 — if the creator picked a decoration on the marketplace
-    // detail page, materialise ONE primary PackagingComponent (the container)
-    // wired to the chosen partner offering. Checkout prices it from the
-    // offering's tiered pricing. Verify the offering is still ACTIVE; skip
-    // silently if it isn't so the launch flow never breaks.
-    if (input.partnerOfferingId) {
-      try {
+    // #22 (2026-07-19) — ALWAYS materialise the PRIMARY container UPSTREAM, so the
+    // container is chosen HERE, never for the first time at checkout (Pavel's flow:
+    // detail page picks packaging, Studio designs, checkout is locked). Source order:
+    //   1. a decoration offering picked on the PDP (carries offering + method + dieline), else
+    //   2. the container the variant already carries, UNDECORATED — the split model:
+    //      the Studio decoration pick later sets offering + method + dieline on THIS row.
+    // Skips only when neither yields a container. Never breaks the launch.
+    try {
+      let containerData:
+        | {
+            packagingTypeId: string
+            partnerOfferingId?: string
+            dielineId?: string | null
+            decorationMethod?: DecorationMethod
+          }
+        | null = null
+
+      if (input.partnerOfferingId) {
         const offering = await prisma.partnerPackagingOffering.findFirst({
           where: { id: input.partnerOfferingId, status: 'ACTIVE' },
-          select: {
-            id: true,
-            packagingTypeId: true,
-            dielineId: true,
-            decorationMethod: true,
-          },
+          select: { id: true, packagingTypeId: true, dielineId: true, decorationMethod: true },
         })
         if (offering) {
-          await prisma.packagingComponent.create({
-            data: {
-              productId: product.id,
-              tier: 'PRIMARY',
-              role: 'CONTAINER',
-              packagingTypeId: offering.packagingTypeId,
-              partnerOfferingId: offering.id,
-              dielineId: offering.dielineId,
-              decorationMethod: offering.decorationMethod,
-              unitsPerParent: 1,
-              displayOrder: 0,
-            },
-          })
+          containerData = {
+            packagingTypeId: offering.packagingTypeId,
+            partnerOfferingId: offering.id,
+            dielineId: offering.dielineId,
+            decorationMethod: offering.decorationMethod,
+          }
         }
-      } catch (compErr) {
-        console.warn(
-          '[launch-actions] PackagingComponent seed failed — launch continues:',
-          compErr,
-        )
       }
+      // No offering (the usual path now) → the container the variant carries,
+      // undecorated. decorationMethod defaults to NONE; the Studio fills the rest.
+      if (!containerData && variant.packagingTypeId) {
+        containerData = { packagingTypeId: variant.packagingTypeId }
+      }
+
+      if (containerData) {
+        await prisma.packagingComponent.create({
+          data: {
+            productId: product.id,
+            tier: 'PRIMARY',
+            role: 'CONTAINER',
+            unitsPerParent: 1,
+            displayOrder: 0,
+            ...containerData,
+          },
+        })
+      }
+    } catch (compErr) {
+      console.warn(
+        '[launch-actions] PackagingComponent seed failed — launch continues:',
+        compErr,
+      )
     }
 
     // Pre-create the CheckoutDraft with the quantity (and any other

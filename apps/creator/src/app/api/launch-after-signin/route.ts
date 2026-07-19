@@ -125,42 +125,57 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     })
 
-    // Slice C8.2 — carry the marketplace decoration pick into the product as a
-    // primary PackagingComponent (mirrors launch-actions.ts). Skip silently if
-    // the offering is missing/inactive so the canvas redirect never breaks.
+    // #22 (2026-07-19) — ALWAYS materialise the PRIMARY container UPSTREAM so it is
+    // chosen here, never for the first time at checkout (mirrors launch-actions.ts).
+    // Source order: a PDP-picked offering (carries method + dieline), else the
+    // container the variant already carries, UNDECORATED — the Studio decoration
+    // pick later sets offering + method + dieline on THIS row. Never breaks launch.
     const partnerOfferingId = params.get('partnerOfferingId')
-    if (partnerOfferingId) {
-      try {
+    try {
+      let containerData:
+        | {
+            packagingTypeId: string
+            partnerOfferingId?: string
+            dielineId?: string | null
+            decorationMethod?: import('@ilaunchify/db').DecorationMethod
+          }
+        | null = null
+
+      if (partnerOfferingId) {
         const offering = await prisma.partnerPackagingOffering.findFirst({
           where: { id: partnerOfferingId, status: 'ACTIVE' },
-          select: {
-            id: true,
-            packagingTypeId: true,
-            dielineId: true,
-            decorationMethod: true,
-          },
+          select: { id: true, packagingTypeId: true, dielineId: true, decorationMethod: true },
         })
         if (offering) {
-          await prisma.packagingComponent.create({
-            data: {
-              productId: product.id,
-              tier: 'PRIMARY',
-              role: 'CONTAINER',
-              packagingTypeId: offering.packagingTypeId,
-              partnerOfferingId: offering.id,
-              dielineId: offering.dielineId,
-              decorationMethod: offering.decorationMethod,
-              unitsPerParent: 1,
-              displayOrder: 0,
-            },
-          })
+          containerData = {
+            packagingTypeId: offering.packagingTypeId,
+            partnerOfferingId: offering.id,
+            dielineId: offering.dielineId,
+            decorationMethod: offering.decorationMethod,
+          }
         }
-      } catch (compErr) {
-        console.warn(
-          '[launch-after-signin] PackagingComponent seed failed — launch continues:',
-          compErr,
-        )
       }
+      if (!containerData && variant.packagingTypeId) {
+        containerData = { packagingTypeId: variant.packagingTypeId }
+      }
+
+      if (containerData) {
+        await prisma.packagingComponent.create({
+          data: {
+            productId: product.id,
+            tier: 'PRIMARY',
+            role: 'CONTAINER',
+            unitsPerParent: 1,
+            displayOrder: 0,
+            ...containerData,
+          },
+        })
+      }
+    } catch (compErr) {
+      console.warn(
+        '[launch-after-signin] PackagingComponent seed failed — launch continues:',
+        compErr,
+      )
     }
 
     return NextResponse.redirect(
