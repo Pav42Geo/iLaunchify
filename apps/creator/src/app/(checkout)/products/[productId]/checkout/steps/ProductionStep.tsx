@@ -19,6 +19,7 @@ import {
   ImageOff,
   Leaf,
   Loader2,
+  Lock,
   Minus,
   Package,
   Plus,
@@ -42,7 +43,7 @@ import {
 } from '@ilaunchify/ui'
 import { getVarietyPreviewColumns } from '@/components/labels/label-actions'
 import { StepShell } from './_StepShell'
-import { ComponentsPanel } from './ComponentsPanel'
+import { listProductComponents, type ComponentRow } from '../component-actions'
 import type { ProductionState } from '../types'
 import {
   getProductionOptions,
@@ -98,6 +99,11 @@ export function ProductionStep({
   const [packMatrix, setPackMatrix] = useState<VarietyPackMatrix | null>(null)
   const [previewColumns, setPreviewColumns] = useState<PackPreviewColumn[]>([])
   const [loadingOptions, setLoadingOptions] = useState(true)
+  // #22 (2026-07-19) — the product's packaging components (container + decoration
+  // + secondary), shown READ-ONLY here. Picked upstream (container at launch,
+  // decoration in the Studio); checkout only confirms them. See the
+  // ilaunchify-checkout-is-confirm-only decision.
+  const [components, setComponents] = useState<ComponentRow[] | null>(null)
   const [moqFloor, setMoqFloor] = useState(FALLBACK_MOQ)
   const [estimate, setEstimate] = useState<CostBreakdown | null>(null)
   /**
@@ -150,6 +156,20 @@ export function ProductionStep({
         )
       }
       setLoadingOptions(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [productId])
+
+  // Load the packaging components for the READ-ONLY confirmation list. Reads only,
+  // no controls: the container is materialised at launch and the decoration is
+  // picked in the Studio, so checkout confirms them rather than re-opening the pick.
+  useEffect(() => {
+    let cancelled = false
+    listProductComponents(productId).then((r) => {
+      if (cancelled) return
+      if (r.ok) setComponents(r.data)
     })
     return () => {
       cancelled = true
@@ -538,8 +558,13 @@ export function ProductionStep({
           )
         )}
 
-        {/* C7.f — packaging components (primary / closure / seal). */}
-        <ComponentsPanel productId={productId} />
+        {/* #22 — packaging components, READ-ONLY. The container is materialised at
+            launch and its decoration is picked in the Studio, so checkout confirms
+            them and never re-opens the pick (ilaunchify-checkout-is-confirm-only). */}
+        <LockedComponentsSummary
+          components={components}
+          studioHref={studioHref}
+        />
 
         {/* Three small reassurance cards — kept lightweight so the cart
             line stays the visual anchor. The Subscribe & Save picker
@@ -710,6 +735,102 @@ function Reassurance({
       </div>
       <p className="mt-1 text-[11.5px] leading-snug text-ink-600">{body}</p>
     </div>
+  )
+}
+
+// =============================================================================
+// LockedComponentsSummary — #22: READ-ONLY confirmation of the product's
+// packaging components. No pickers, no add/remove: the container is materialised
+// at launch and its decoration is picked in the Studio, so checkout confirms
+// them and never re-opens the pick (ilaunchify-checkout-is-confirm-only).
+// =============================================================================
+
+const COMPONENT_ROLE_LABEL: Record<string, string> = {
+  CONTAINER: 'Primary container',
+  CLOSURE: 'Closure',
+  SEAL: 'Seal',
+  CARTON: 'Carton',
+  INSERT: 'Insert',
+  LABEL: 'Label',
+  SHIPPER: 'Shipper',
+}
+
+const DECORATION_LABEL: Record<string, string> = {
+  DIRECT_PRINT: 'Direct print',
+  PRESSURE_SENSITIVE_LABEL: 'Pressure-sensitive label',
+  SHRINK_SLEEVE: 'Shrink sleeve',
+  IN_MOLD_LABEL: 'In-mold label',
+  HEAT_TRANSFER: 'Heat transfer',
+  FOIL_STAMP: 'Foil stamp',
+  EMBOSS: 'Emboss',
+  DEBOSS: 'Deboss',
+  SPOT_UV: 'Spot UV',
+  NONE: 'Undecorated',
+}
+
+function LockedComponentsSummary({
+  components,
+  studioHref,
+}: {
+  components: ComponentRow[] | null
+  studioHref: string
+}) {
+  return (
+    <article className="rounded-2xl border border-ink-200 bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <Lock className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
+          <h3 className="text-[13px] font-semibold text-ink-900">Packaging</h3>
+        </div>
+        <Link
+          href={studioHref}
+          className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1 text-[11.5px] font-medium text-ink-700 hover:bg-ink-50"
+        >
+          <Settings2 className="h-3 w-3" />
+          Adjust in Studio
+        </Link>
+      </div>
+      <div className="px-5 py-4">
+        {components === null ? (
+          <div className="flex items-center gap-2 text-[12.5px] text-ink-500">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Loading packaging…
+          </div>
+        ) : components.length === 0 ? (
+          <p className="text-[12.5px] text-ink-500">
+            No packaging on this product yet. Set it up in the Studio before you order.
+          </p>
+        ) : (
+          <ul className="space-y-2.5">
+            {components.map((c) => {
+              const decoration = DECORATION_LABEL[c.decorationMethod] ?? c.decorationMethod
+              return (
+                <li key={c.id} className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] font-medium text-ink-900">
+                      {c.packagingTypeName}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] text-ink-500">
+                      {COMPONENT_ROLE_LABEL[c.role] ?? c.role}
+                      {c.role === 'CONTAINER' && (
+                        <>
+                          {' · '}
+                          {decoration}
+                          {c.selectedVariantName ? ` · ${c.selectedVariantName}` : ''}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <p className="mt-3 border-t border-ink-100 pt-3 text-[11px] text-ink-500">
+          Picked upfront and locked here. Change it in the Design Studio.
+        </p>
+      </div>
+    </article>
   )
 }
 
