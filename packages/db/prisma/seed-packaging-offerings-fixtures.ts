@@ -49,11 +49,32 @@ const OFFERING_PRESETS: Record<
 const PRIMARY_METHODS = new Set(Object.keys(OFFERING_PRESETS))
 
 export async function seedPackagingOfferingFixtures(prisma: PrismaClient): Promise<void> {
-  const service = await prisma.partnerService.findFirst({ select: { id: true } })
+  // DETERMINISTIC service (2026-07-18). Was `findFirst()` with no order, so
+  // successive seed runs picked DIFFERENT "first" services and each created its own
+  // offering for the same (type, method) — the unique key includes partnerServiceId,
+  // so they didn't collide, they DUPLICATED. A live check found every decoration
+  // method listed twice per container. Ordering by id makes the fixture pick the
+  // SAME service every run → the upsert is truly idempotent.
+  const service = await prisma.partnerService.findFirst({
+    where: { type: 'LABEL_PRINTING' },
+    orderBy: { id: 'asc' },
+    select: { id: true },
+  }).then((s) => s ?? prisma.partnerService.findFirst({ orderBy: { id: 'asc' }, select: { id: true } }))
   if (!service) {
     // eslint-disable-next-line no-console
     console.log('  ⓘ packaging-offering fixtures skipped (no PartnerService)')
     return
+  }
+
+  // Clear the duplicates left by past non-deterministic runs: any fixture offering
+  // NOT owned by the deterministic service is a stale dupe. Safe because this
+  // fixture is the ONLY seeder of PartnerPackagingOffering (verified 2026-07-18).
+  const dupes = await prisma.partnerPackagingOffering.deleteMany({
+    where: { partnerServiceId: { not: service.id } },
+  })
+  if (dupes.count > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`  ⓘ cleared ${dupes.count} duplicate packaging offerings from prior runs`)
   }
   const types = await prisma.packagingType.findMany({
     where: { status: 'ACTIVE' },

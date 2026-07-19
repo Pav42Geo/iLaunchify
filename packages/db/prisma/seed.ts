@@ -103,8 +103,12 @@ async function main() {
   await seedPhraseRules(prisma)
   // --- Decoration compatibility matrix (C8 — container category × method) ---
   await seedDecorationCompatibility(prisma)
-  // --- C8 Phase 2 fixtures: variant→type backfill + sample offerings ---
-  await seedPackagingOfferingFixtures(prisma)
+  // NOTE (2026-07-18): seedPackagingOfferingFixtures MOVED from here to AFTER
+  // seedDemoCatalog. It backfills ProductTemplateVariant.packagingTypeId, but the
+  // demo templates + their variants aren't created until seedDemoCatalog (~600
+  // lines below). Running it here linked only the variants that already existed,
+  // so every multi-variant demo (variety packs) ended up unmapped -> no container
+  // offerings. It must run once all templates exist.
   // --- C9 SpotColor reference catalog (PANTONE C/U/M + special channels) ---
   await seedSpotColors(prisma)
 
@@ -712,6 +716,14 @@ async function main() {
   // all domains. Public marketplace templates — NOT creator-owned. A creator
   // owns a Product only after drafting (Start Launching) or ordering. ---
   await seedDemoCatalog(prisma)
+
+  // --- Packaging offering fixtures (C8 Phase 2), MOVED here 2026-07-18 ---
+  // Runs AFTER every product template + variant exists (seedDemoProduct +
+  // seedDemoCatalog above), so the variant→packagingType backfill covers the
+  // multi-variant variety demos too, and each gets its container offerings. Was at
+  // ~line 107, which ran before these templates were created (seed-order bug found
+  // driving #22). Idempotent, so order-only move is safe.
+  await seedPackagingOfferingFixtures(prisma)
 
   // --- Design Studio template gallery (#148) ---
   // 12 DesignLibraryItem rows spanning categories × die-cuts × style buckets.
