@@ -52,12 +52,18 @@ export function OrderSummary({
   state,
   estimate,
   shipping,
-  currentStep: _currentStep,
+  currentStep,
   pinnedPrintProvider = null,
   fcLabelingFeeCentsPerUnit = null,
 }: Props) {
   const qty = state.production.quantity ?? 0
   const hasEstimate = !!estimate && estimate.quantity > 0
+  // #29b (2026-07-19): collapse to a single "pick a quantity" line ONLY on the
+  // Review Design step (index 1), which runs BEFORE any quantity/estimate exists.
+  // On later steps a missing estimate is a transient loading state (e.g. after
+  // navigating back and forward), so we keep the priced breakdown structure with
+  // dimmed placeholders rather than making the whole summary vanish.
+  const isReviewDesignStep = currentStep === 1
   const hasShipping = !!shipping && shipping.shippingCents > 0
   // G6.c — once the creator accepts the Subscribe & save offer on
   // Step 2, the right-rail surfaces both a savings line and a
@@ -111,8 +117,9 @@ export function OrderSummary({
       {/* #29b (Pavel 2026-07-19): only render the priced breakdown once there is a
           real estimate. Before a quantity is picked (the Review Design step) there
           is nothing to summarize, so show ONE explanatory line instead of a column
-          of empty $—.—— rows. */}
-      {hasEstimate ? (
+          of empty $—.—— rows. On steps 2-3 we keep the breakdown even without an
+          estimate (transient), so the summary never vanishes on the pay screen. */}
+      {hasEstimate || !isReviewDesignStep ? (
         <>
       <dl className="space-y-2 text-sm">
         {/* THE PRICED LINES, not a second opinion about them (2026-07-16).
