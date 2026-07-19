@@ -313,6 +313,11 @@ const SPECS: ProductSpec[] = [
     packingType: 'MULTI_FLAVOR_INDIVIDUAL_IN_OUTER',
     flavorArrangement: 'SEPARATED',
     maxFlavorsPerPack: 3,
+    // #34 (2026-07-19): the 20-sachet outer box IS the pack size. Without this the
+    // template had no authored unitsPerPack, so getVarietyPackMatrix.enabled was
+    // false and checkout fell to the legacy split while the PDP synthesized a
+    // fabricated fallback. moqPacks 25 preserves the 500-unit floor (500 / 20).
+    packSizes: [{ unitsPerPack: 20, moqPacks: 25 }],
     container: '20-sachet box',
     servingSizeG: 8,
     servingsPerContainer: 20,
