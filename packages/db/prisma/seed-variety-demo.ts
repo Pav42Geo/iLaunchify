@@ -37,10 +37,22 @@ async function main() {
     (await prisma.packingProfile.findFirst({ where: { flavorMode: 'MULTI', isActive: true } }))
   if (!profile) throw new Error('No MULTI PackingProfile found — run seed-packing-types first.')
 
-  const template =
-    (await prisma.productTemplate.findFirst({ where: { labelingType: 'FOOD', status: 'PUBLISHED' }, orderBy: { name: 'asc' } })) ??
-    (await prisma.productTemplate.findFirst({ where: { labelingType: 'FOOD' }, orderBy: { name: 'asc' } }))
-  if (!template) throw new Error('No FOOD ProductTemplate found — run the catalog seed first.')
+  // #36 (2026-07-19): this script CONVERTS a template into a variety pack (sets
+  // maxFlavorsPerPack, REPLACES its flavors). It used to grab "the first FOOD template
+  // alphabetically", which HIJACKED a real single-flavor product (it stamped Hot Sauce
+  // as a 4-flavor variety). The demo catalog now ships real variety-pack products, so
+  // don't auto-target anything: require an explicit slug, else skip. Converting a
+  // catalog product would clobber its authored flavors + prices.
+  const targetSlug = process.env.VARIETY_DEMO_TEMPLATE_SLUG
+  if (!targetSlug) {
+    console.log('\nℹ seed-variety-demo skipped (no VARIETY_DEMO_TEMPLATE_SLUG).')
+    console.log('  The demo catalog already ships variety-pack products to test the pack builder:')
+    console.log('    demo-greens-sachets · demo-build-your-bar-box · demo-sparkling-water-variety · demo-dog-treats-duo')
+    console.log('  To force a conversion onto a SPECIFIC template, set VARIETY_DEMO_TEMPLATE_SLUG.\n')
+    return
+  }
+  const template = await prisma.productTemplate.findFirst({ where: { slug: targetSlug } })
+  if (!template) throw new Error(`No ProductTemplate with slug "${targetSlug}" (VARIETY_DEMO_TEMPLATE_SLUG).`)
 
   // --- 2. Owner brand. PREFER an explicit brand id (the one you see on the
   // creator dashboard) so the product is owned by EXACTLY the account you're
