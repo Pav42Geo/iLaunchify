@@ -318,6 +318,12 @@ const SPECS: ProductSpec[] = [
     // false and checkout fell to the legacy split while the PDP synthesized a
     // fabricated fallback. moqPacks 25 preserves the 500-unit floor (500 / 20).
     packSizes: [{ unitsPerPack: 20, moqPacks: 25 }],
+    // #37 (2026-07-19): a PER_FLAVOR pack prices on its flavors' unit prices. Without
+    // these the pack priced to $0 and the creator paid nothing for the goods. Per-sachet
+    // price = the tier's per-unit cost (260c), so a pack order charges the same goods a
+    // non-pack order would at the band. Aligned to the authored band, not invented.
+    pricingBasis: 'PER_FLAVOR',
+    flavorUnitPriceCents: [260, 260, 260],
     container: '20-sachet box',
     servingSizeG: 8,
     servingsPerContainer: 20,
