@@ -31,7 +31,17 @@
 import { prisma } from '@ilaunchify/db'
 
 /**
- * Has a manufacturer authored any volume band for this template?
+ * Has a manufacturer authored a real price for this template?
+ *
+ * TWO conditions, both partner-authored, or it bills a price nobody agreed to:
+ *   1. Volume bands (ProductTemplatePricingTier) — the base per-unit price (#16/#18).
+ *   2. #37 (2026-07-19): a MULTI-FLAVOR pack template ALSO needs its pack-basis price,
+ *      because a pack order prices on its BASIS, never the band (see @ilaunchify plans
+ *      resolvePackSubtotal). PER_FLAVOR sums the flavors' unitPriceCents; PER_PACK uses
+ *      the pack-size pricePerPackCents. Without them a pack order billed $0 for goods
+ *      (a live variety-pack charge did exactly this), yet passed the bands-only gate.
+ *      An UNPRICED flavor / pack size fails: the creator could pick it and pay nothing
+ *      for that portion.
  *
  * Fails CLOSED. A DB hiccup returns false, which blocks a publish rather than
  * letting an unpriced template through. Publishing is never urgent; billing a
@@ -39,10 +49,50 @@ import { prisma } from '@ilaunchify/db'
  */
 export async function templateIsPriced(productTemplateId: string): Promise<boolean> {
   try {
-    const count = await prisma.productTemplatePricingTier.count({
+    // 1. Volume bands — the base price.
+    const bandCount = await prisma.productTemplatePricingTier.count({
       where: { productTemplateId },
     })
-    return count > 0
+    if (bandCount === 0) return false
+
+    // 2. Pack-basis price for a multi-flavor template. The pack columns are additive
+    //    (cast-guarded, like readPackModel), so read them through a cast.
+    const t = await (
+      prisma as unknown as {
+        productTemplate: {
+          findUnique: (a: unknown) => Promise<{
+            maxFlavorsPerPack: number | null
+            pricingBasis: 'PER_FLAVOR' | 'PER_PACK' | null
+            flavorPresets: Array<{ unitPriceCents: number | null }>
+            variants: Array<{ unitsPerPack: number | null; pricePerPackCents: number | null }>
+          } | null>
+        }
+      }
+    ).productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: {
+        maxFlavorsPerPack: true,
+        pricingBasis: true,
+        flavorPresets: { where: { status: 'ACTIVE' }, select: { unitPriceCents: true } },
+        variants: { where: { isActive: true }, select: { unitsPerPack: true, pricePerPackCents: true } },
+      },
+    })
+    if (!t) return false
+
+    if (t.maxFlavorsPerPack != null) {
+      const basis = t.pricingBasis ?? 'PER_FLAVOR'
+      if (basis === 'PER_FLAVOR') {
+        // Every offered flavor must be priced (an unpriced one adds $0 to the pack).
+        const flavors = t.flavorPresets ?? []
+        if (flavors.length === 0 || flavors.some((f) => (f.unitPriceCents ?? 0) <= 0)) return false
+      } else {
+        // PER_PACK: every offered pack SIZE (unitsPerPack set) must carry a pack price.
+        const sizes = (t.variants ?? []).filter((v) => (v.unitsPerPack ?? 0) > 0)
+        if (sizes.length === 0 || sizes.some((v) => (v.pricePerPackCents ?? 0) <= 0)) return false
+      }
+    }
+
+    return true
   } catch {
     return false
   }
@@ -50,4 +100,4 @@ export async function templateIsPriced(productTemplateId: string): Promise<boole
 
 /** The one message every door shows, so the fix is unambiguous to whoever reads it. */
 export const NO_PRICE_PUBLISH_ERROR =
-  'No pricing published: this template has no volume bands, so nobody has priced it. The manufacturer must add pricing tiers before it can go live.'
+  'No pricing published: the manufacturer must author a price before this can go live. That means volume bands, and for a variety pack the per-flavor prices (PER_FLAVOR basis) or per-pack prices (PER_PACK basis) as well.'
