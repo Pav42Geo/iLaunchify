@@ -89,12 +89,14 @@ export function isLive(
  * REMAINDER (production minus distinct-partner carve-outs), so the legs sum to
  * production and the platform keeps only its fee + merit.
  *
- * The 8% / 7% here are still fabricated ratios, kept ONLY as a stopgap for a
- * SEPARATE printer/co-packer until they author a real price (CP-1..CP-3, parked).
- * Under the N=1 model (one manufacturer self-fulfils every leg) NONE of these are
- * used: every leg is the manufacturer, so the whole production flows to PRODUCT.
- * `manufacturerCostCents` is retained for back-compat callers but is no longer the
- * manufacturer's dispatch cost.
+ * ONLY `coPackerCostCents` (7%) is still consumed, as the documented interim for a
+ * SEPARATE co-packer until co-pack authors a real price (CP-1..CP-3, parked;
+ * COPACK_SERVICE_SPEC has no price model yet). The PRINT leg no longer uses this:
+ * as of 2026-07-18 it is paid the AUTHORED decoration price (decorationPayoutCents,
+ * from priceComponents - the same number the creator was charged). `manufacturer-`
+ * `CostCents` + `printProviderCostCents` are retained for back-compat callers but
+ * are no longer used by deriveItemDispatch. Under N=1 none of this is consumed:
+ * every leg is the manufacturer, so the whole band flows to PRODUCT.
  */
 export function estimateDispatchCosts(params: {
   productId: string
@@ -129,8 +131,24 @@ export function deriveItemDispatch(params: {
   routing: ItemRouting
   components: ComponentLeg[]
   acceptDeadlineAt: Date
+  /**
+   * The AUTHORED decoration payout for a distinct print provider (Pavel 2026-07-18,
+   * "fix the print payout first"). This is `priceComponents(...).decorationUnitCents
+   * * qty` - the EXACT number the creator was charged for decoration, computed by
+   * createDispatches with the SAME @ilaunchify/plans function the checkout used, so
+   * charge and payout cannot diverge (the PP-0 lesson).
+   *
+   * It replaces the fabricated 8%-of-band estimate for the print leg. When the
+   * printer is the manufacturer (N=1 self-label) there is no distinct print leg, so
+   * this stays with the manufacturer (whole band). NOTE the base label-printing
+   * portion baked into the band is a SEPARATE, still-unsolved N>1 unbundling problem
+   * (the manufacturer would have to break out the label share of their band price);
+   * only the authored DECORATION premium is routed here. Defaults 0.
+   */
+  decorationPayoutCents?: number
 }): ItemDispatchPlan {
   const { orderId, item, routing, components, acceptDeadlineAt } = params
+  const decorationPayoutCents = Math.max(0, Math.round(params.decorationPayoutCents ?? 0))
 
   // Print legs — distinct live decorated-component LABEL_PRINTING providers.
   const printLegMap = new Map<string, { serviceId: string; userId: string }>()
@@ -200,19 +218,26 @@ export function deriveItemDispatch(params: {
   const mfrUserId = routing.manufacturingUserId
   const isDistinct = (userId: string) => userId !== mfrUserId
 
-  // estimateDispatchCosts is now ONLY a placeholder for a SEPARATE printer/co-packer
-  // until they author a price (CP-1..CP-3, parked); it no longer decides the
-  // manufacturer's payout.
+  const distinctPrintLegs = printLegs.filter((l) => isDistinct(l.userId))
+  const distinctAssemblyLegs = assemblyLegs.filter((l) => isDistinct(l.userId))
+
+  // PRINT payout = the AUTHORED decoration price the creator paid (decorationPayoutCents),
+  // split across the distinct print legs. NOT a fabricated ratio - this reconciles
+  // with the charge because both call priceComponents. When no printer is distinct
+  // (self-label) the decoration stays inside the manufacturer's band.
+  const perDistinctPrintCents = distinctPrintLegs.length
+    ? Math.floor(decorationPayoutCents / distinctPrintLegs.length)
+    : 0
+
+  // CO-PACK payout is STILL a placeholder (7% of the band) until co-pack authors a
+  // price (CP-1..CP-3, parked - COPACK_SERVICE_SPEC has no price model yet). Pavel
+  // 2026-07-18 confirmed this documented interim. estimateDispatchCosts survives
+  // ONLY for this.
   const est = estimateDispatchCosts({
     productId: item.productId,
     quantity: item.quantity,
     unitPriceCents: item.unitPriceCents,
   })
-  const distinctPrintLegs = printLegs.filter((l) => isDistinct(l.userId))
-  const distinctAssemblyLegs = assemblyLegs.filter((l) => isDistinct(l.userId))
-  const perDistinctPrintCents = distinctPrintLegs.length
-    ? Math.floor(est.printProviderCostCents / distinctPrintLegs.length)
-    : 0
   const perDistinctAssemblyCents = distinctAssemblyLegs.length
     ? Math.floor(est.coPackerCostCents / distinctAssemblyLegs.length)
     : 0

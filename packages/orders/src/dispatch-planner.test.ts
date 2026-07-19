@@ -44,11 +44,21 @@ const ROUTING: ItemRouting = {
 
 const DEADLINE = new Date('2026-06-20T00:00:00Z')
 
-// total = 1000 * 10 = 10_000 → mfg 3000 / print 800 / copack 700
+// production = 1000 * 10 = 10_000. The print payout is the AUTHORED decoration
+// (decorationPayoutCents), not a % — tests pass 800 to exercise the carve-out
+// (what the creator paid for decoration), and 0 for an undecorated product.
 const ITEM = { id: 'item-1', productId: 'prod-1', quantity: 10, unitPriceCents: 1000 }
+const DECORATION = 800
 
-function plan(components: ComponentLeg[], routing: ItemRouting = ROUTING) {
-  return deriveItemDispatch({ orderId: 'order-1', item: ITEM, routing, components, acceptDeadlineAt: DEADLINE })
+function plan(components: ComponentLeg[], routing: ItemRouting = ROUTING, decorationPayoutCents = DECORATION) {
+  return deriveItemDispatch({
+    orderId: 'order-1',
+    item: ITEM,
+    routing,
+    components,
+    acceptDeadlineAt: DEADLINE,
+    decorationPayoutCents,
+  })
 }
 
 // -----------------------------------------------------------------------------
@@ -105,21 +115,28 @@ describe('deriveItemDispatch — simple product (no components)', () => {
   })
   it('pays the manufacturer the REMAINDER after distinct-partner carve-outs, not 30%', () => {
     // Payout fix (2026-07-18): production = 10*1000 = 10,000. The label leg here is
-    // 'own-label-user' — a DISTINCT payee from 'mfg-user' — so it carves out 800
-    // (8% placeholder) and the manufacturer gets the remaining 9,200. NOT 3,000.
+    // 'own-label-user' — a DISTINCT payee from 'mfg-user' — so it carves out the
+    // AUTHORED decoration (800, what the creator paid), leaving the manufacturer
+    // 9,200. NOT 3,000 (the retired 30%).
     const product = p.rows.find((r) => r.type === 'PRODUCT')!
     expect(product.partnerServiceId).toBe('mfg-svc')
     expect(product.costCents).toBe(9200)
   })
-  it('carves the distinct self-label payee at the 8% placeholder', () => {
+  it('pays the distinct print payee the AUTHORED decoration price (not a %)', () => {
     const label = p.rows.find((r) => r.type === 'LABEL')!
     expect(label.partnerServiceId).toBe('own-label-svc')
-    expect(label.costCents).toBe(800)
+    expect(label.costCents).toBe(800) // = decorationPayoutCents, what the creator paid
     expect(p.primaryPrintServiceId).toBe('own-label-svc')
   })
   it('INVARIANT: dispatch legs sum to the production (no platform spread)', () => {
     const sum = p.rows.reduce((a, r) => a + r.costCents, 0)
     expect(sum).toBe(10_000) // == item.unitPriceCents * item.quantity
+  })
+  it('an UNDECORATED product (decoration 0) pays the printer 0, manufacturer the whole band', () => {
+    const q = plan([], ROUTING, 0) // decorationPayoutCents = 0
+    expect(q.rows.find((r) => r.type === 'PRODUCT')!.costCents).toBe(10_000)
+    expect(q.rows.find((r) => r.type === 'LABEL')!.costCents).toBe(0)
+    expect(q.rows.reduce((a, r) => a + r.costCents, 0)).toBe(10_000)
   })
   it('reports the manufacturer user and no assembly', () => {
     expect(p.manufacturerUserId).toBe('mfg-user')

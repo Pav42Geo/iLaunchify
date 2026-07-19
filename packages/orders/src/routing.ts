@@ -16,6 +16,7 @@ import { generateOrderManifest } from './manifest'
 import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
+import { priceComponents, COMPONENT_PRICING_SELECT, type ComponentRow } from '@ilaunchify/plans'
 import { resolveManufacturerMeritFeeBps, meritWithholdCents } from './manufacturer-merit-fee'
 import { resolveApplicationPoint, APPLIED_DECORATIONS } from './application-point'
 import { planShipmentHops, type PlannedHop, type HopDestinationKind } from './hop-planner'
@@ -786,6 +787,19 @@ export async function createDispatches(params: {
       },
     })
 
+    // PRINT PAYOUT = the AUTHORED decoration price the creator was charged (Pavel
+    // 2026-07-18). Priced with the SAME @ilaunchify/plans priceComponents +
+    // COMPONENT_PRICING_SELECT the checkout used, so the printer receives EXACTLY
+    // what the creator paid for decoration - charge and payout cannot diverge.
+    // Replaces the fabricated 8%-of-band estimate. 0 when nothing is decorated.
+    const pricingComponents = await prisma.packagingComponent.findMany({
+      where: { productId: item.productId },
+      select: COMPONENT_PRICING_SELECT,
+    })
+    const decorationPayoutCents =
+      priceComponents(pricingComponents as unknown as ComponentRow[], item.quantity).decorationUnitCents *
+      item.quantity
+
     // All the per-item dispatch decisions (print-leg collapse, assembly legs,
     // cost split, row construction) live in the pure planner so they're unit-
     // testable without a DB. We just normalize the prisma rows to ComponentLeg.
@@ -798,6 +812,7 @@ export async function createDispatches(params: {
         unitPriceCents: item.unitPriceCents,
       },
       routing,
+      decorationPayoutCents,
       components: components.map((c) => ({
         role: c.role as string,
         decorationMethod: c.decorationMethod as string,
