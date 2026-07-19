@@ -29,7 +29,6 @@ import {
 } from 'lucide-react'
 import {
   PackBuilder,
-  VarietyPackBuilder,
   composePack,
   packSummary,
   orderTotalUnits,
@@ -514,33 +513,23 @@ export function ProductionStep({
           </div>
         </article>
 
-        {/* Variety-pack composer. NEW pack model (docs/VARIETY_PACK_MODEL.md):
-            pack size → flavors (min–max) → fill → pack count; price by basis. The
-            pack-count stepper above drives `state.pack`; this composes ONE pack.
-            Falls back to the legacy "split the order quantity" PackBuilder for
-            products without an authored pack matrix. */}
+        {/* #33 — variety pack, READ-ONLY. The composition (pack size + flavors +
+            distribution) is picked and locked on the product page before the Studio;
+            the launch CTA is gated on a COMPLETE pack (#35), so it always threads
+            through and checkout just confirms it. Only the pack COUNT (the quantity
+            stepper above) stays editable (ilaunchify-checkout-is-confirm-only). */}
         {usePackModel ? (
-          <VarietyPackBuilder
-            packSizes={packSizes}
-            pool={(packMatrix?.pool ?? []).map((f) => ({
-              flavorPresetId: f.flavorPresetId,
-              name: f.name,
-              swatchHex: f.swatchHex,
-              unitPriceCents: f.unitPriceCents,
-            }))}
-            rules={{
-              minFlavors: packMatrix?.minFlavors ?? 1,
-              maxFlavors: packMatrix?.maxFlavors ?? null,
-              fillRule: packMatrix?.fillRule ?? 'CREATOR_CHOOSES',
-            }}
-            pricingBasis={packMatrix?.pricingBasis ?? 'PER_FLAVOR'}
-            mode={packMode}
-            assortment={packMatrix?.assortment ?? []}
-            fixedDistribution={packMatrix?.fixedDistribution ?? null}
-            value={packValue}
-            onChange={(next) => writePack(next, Math.max(moqPacks, packCount || moqPacks))}
+          <LockedPackSummary
+            slots={composedPack.slots}
+            pool={packMatrix?.pool ?? []}
+            packSizeLabel={selectedPackSize?.label ?? null}
+            packUnitsPerPack={packUnitsPerPack}
+            distinctCount={composedPack.distinctCount}
           />
         ) : (
+          // Legacy split model — unreachable for authored products (every variety
+          // product carries a pack size post-#34, so usePackModel is true). Kept for
+          // any pre-unification draft; #35's launch gate keeps new products off it.
           packConfig?.flavorMode === 'MULTI' && packConfig.pool.length > 0 && (
             <PackBuilder
               pool={packConfig.pool.map((f) => ({
@@ -828,6 +817,66 @@ function LockedComponentsSummary({
         )}
         <p className="mt-3 border-t border-ink-100 pt-3 text-[11px] text-ink-500">
           Picked upfront and locked here. Change it in the Design Studio.
+        </p>
+      </div>
+    </article>
+  )
+}
+
+// =============================================================================
+// LockedPackSummary — #33: READ-ONLY confirmation of the variety pack. The
+// composition is picked on the product page and gated complete before the Studio
+// (#35), so checkout confirms it; only the pack-count stepper stays editable. No
+// "adjust" link: flavors are chosen at launch, not in the Studio.
+// =============================================================================
+
+function LockedPackSummary({
+  slots,
+  pool,
+  packSizeLabel,
+  packUnitsPerPack,
+  distinctCount,
+}: {
+  slots: Array<{ flavorPresetId: string; units: number }>
+  pool: Array<{ flavorPresetId: string; name: string; swatchHex: string | null }>
+  packSizeLabel: string | null
+  packUnitsPerPack: number
+  distinctCount: number
+}) {
+  const byId = new Map(pool.map((f) => [f.flavorPresetId, f]))
+  const filled = slots.reduce((s, x) => s + x.units, 0)
+  return (
+    <article className="rounded-2xl border border-ink-200 bg-white">
+      <div className="flex items-center gap-2 border-b border-ink-100 px-5 py-3.5">
+        <Lock className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
+        <h3 className="text-[13px] font-semibold text-ink-900">
+          Variety pack{packSizeLabel ? ` · ${packSizeLabel}` : ''}
+        </h3>
+      </div>
+      <div className="px-5 py-4">
+        {slots.length === 0 ? (
+          <p className="text-[12.5px] text-ink-500">No flavors selected.</p>
+        ) : (
+          <ul className="space-y-2">
+            {slots.map((s) => {
+              const f = byId.get(s.flavorPresetId)
+              return (
+                <li key={s.flavorPresetId} className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 text-[12.5px] text-ink-900">
+                    <span
+                      className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: f?.swatchHex ?? '#cbd5e1' }}
+                    />
+                    {f?.name ?? 'Flavor'}
+                  </span>
+                  <span className="text-[12.5px] tabular-nums text-ink-700">{s.units} per pack</span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <p className="mt-3 border-t border-ink-100 pt-3 text-[11px] tabular-nums text-ink-500">
+          {distinctCount} flavor{distinctCount === 1 ? '' : 's'} · {filled} / {packUnitsPerPack} units per pack · picked upfront and locked. Change the quantity above.
         </p>
       </div>
     </article>
