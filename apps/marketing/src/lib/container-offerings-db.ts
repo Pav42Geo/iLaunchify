@@ -40,6 +40,140 @@ export interface ContainerOfferingCard {
   dielineId: string | null
 }
 
+// ============================================================================
+// #38 (2026-07-19): the PDP packaging picker. Packaging is a PDP choice, scoped
+// to the product's REAL offerings (never the flat PackagingMaterial catalog).
+// One entry per container the manufacturer actually offers for this template,
+// each carrying its decoration methods. The creator picks the container; if it
+// has >1 decoration method the PDP surfaces them (else the sole method auto-pins).
+// The chosen offering's id flows to launch as partnerOfferingId. See memory
+// ilaunchify-packaging-picked-on-pdp.
+// ============================================================================
+
+const DECORATION_LABELS: Record<DecorationMethod, string> = {
+  DIRECT_PRINT: 'Direct print',
+  PRESSURE_SENSITIVE_LABEL: 'Pressure-sensitive label',
+  SHRINK_SLEEVE: 'Shrink sleeve',
+  IN_MOLD_LABEL: 'In-mold label',
+  HEAT_TRANSFER: 'Heat transfer',
+  FOIL_STAMP: 'Foil stamp',
+  EMBOSS: 'Emboss',
+  DEBOSS: 'Deboss',
+  SPOT_UV: 'Spot UV',
+  NONE: 'No decoration',
+}
+
+export interface PdpDecorationChoice {
+  /** PartnerPackagingOffering.id for this (container × method) — the launch payload. */
+  offeringId: string
+  decorationMethod: DecorationMethod
+  methodLabel: string
+  moq: number
+  leadTimeDays: number
+  /** The offering's dieline (the Studio designs against it), if any. */
+  dielineId: string | null
+  /** Lowest tier price (cents), the "starting at" anchor. Null when unpriced. */
+  startingPricePerUnitCents: number | null
+}
+
+export interface PdpPackagingOption {
+  packagingTypeId: string
+  /** PackagingType.displayName, e.g. "Aluminum can, 12 oz slim". */
+  containerName: string
+  /** The decoration methods this container offers (>=1). */
+  decorations: PdpDecorationChoice[]
+}
+
+function lowestTierCents(tiers: unknown): number | null {
+  if (!Array.isArray(tiers) || tiers.length === 0) return null
+  const nums = (tiers as Array<{ pricePerUnitCents?: unknown }>)
+    .map((t) => (typeof t?.pricePerUnitCents === 'number' ? t.pricePerUnitCents : null))
+    .filter((n): n is number => n != null)
+  return nums.length ? Math.min(...nums) : null
+}
+
+/**
+ * The product's scoped packaging options for the PDP: one entry per container type
+ * the template's ACTIVE variants use, each with the ACTIVE decoration offerings for
+ * that container. Empty when nothing is published (the PDP renders absence, never a
+ * fabricated option). Throws swallowed to [].
+ */
+export async function getTemplatePackagingOptions(
+  templateSlug: string,
+): Promise<PdpPackagingOption[]> {
+  try {
+    const template = await prisma.productTemplate.findUnique({
+      where: { slug: templateSlug },
+      select: { variants: { where: { isActive: true }, select: { packagingTypeId: true } } },
+    })
+    if (!template) return []
+
+    const typeIds = Array.from(
+      new Set(template.variants.map((v) => v.packagingTypeId).filter((id): id is string => Boolean(id))),
+    )
+    if (typeIds.length === 0) return []
+
+    const offerings = await prisma.partnerPackagingOffering.findMany({
+      where: { packagingTypeId: { in: typeIds }, status: 'ACTIVE' },
+      select: {
+        id: true,
+        packagingTypeId: true,
+        decorationMethod: true,
+        moq: true,
+        leadTimeDays: true,
+        dielineId: true,
+        pricingTiers: true,
+        packagingType: { select: { displayName: true } },
+      },
+    })
+
+    // Group by container type; within a container, one entry per decoration method
+    // (lowest MOQ wins if a method somehow repeats).
+    const byType = new Map<string, PdpPackagingOption>()
+    for (const o of offerings) {
+      let opt = byType.get(o.packagingTypeId)
+      if (!opt) {
+        opt = {
+          packagingTypeId: o.packagingTypeId,
+          containerName: o.packagingType?.displayName ?? 'Container',
+          decorations: [],
+        }
+        byType.set(o.packagingTypeId, opt)
+      }
+      const existing = opt.decorations.find((d) => d.decorationMethod === o.decorationMethod)
+      const choice: PdpDecorationChoice = {
+        offeringId: o.id,
+        decorationMethod: o.decorationMethod,
+        methodLabel: DECORATION_LABELS[o.decorationMethod] ?? o.decorationMethod,
+        moq: o.moq,
+        leadTimeDays: o.leadTimeDays,
+        dielineId: o.dielineId,
+        startingPricePerUnitCents: lowestTierCents(o.pricingTiers),
+      }
+      if (!existing) opt.decorations.push(choice)
+      else if (choice.moq < existing.moq) {
+        opt.decorations = opt.decorations.map((d) => (d.decorationMethod === o.decorationMethod ? choice : d))
+      }
+    }
+
+    // Stable order: containers by name, decorations by starting price then label.
+    return [...byType.values()]
+      .map((opt) => ({
+        ...opt,
+        decorations: opt.decorations.sort(
+          (a, b) =>
+            (a.startingPricePerUnitCents ?? Number.MAX_SAFE_INTEGER) -
+              (b.startingPricePerUnitCents ?? Number.MAX_SAFE_INTEGER) ||
+            a.methodLabel.localeCompare(b.methodLabel),
+        ),
+      }))
+      .sort((a, b) => a.containerName.localeCompare(b.containerName))
+  } catch (err) {
+    console.error('[getTemplatePackagingOptions] failed:', err)
+    return []
+  }
+}
+
 export async function getTemplateContainerOfferings(
   templateSlug: string,
 ): Promise<ContainerOfferingCard[]> {

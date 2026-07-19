@@ -39,6 +39,7 @@ import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getProductRestrictions } from '@/lib/product-restrictions'
 import { getProductSampleOptions, getOwnedSampleProductId } from '@/lib/product-sample-options'
 import { getPackagingImageMap } from '@/lib/packaging-images-db'
+import { getTemplatePackagingOptions } from '@/lib/container-offerings-db'
 import { processLabel } from '@ilaunchify/types'
 
 /**
@@ -157,8 +158,11 @@ export default async function ProductDetailPage({
       : {}),
   }
 
-  // PDP redesign — decoration moved to the Design Studio. The marketplace PDP
-  // no longer surfaces a decoration picker (getDecorationOfferings dropped here).
+  // #38 (2026-07-19) — the product's SCOPED packaging options (the manufacturer's
+  // real container offerings + their decoration methods) for the PDP packaging
+  // picker. Replaces the removed fixture packaging/size lists; the creator picks the
+  // container here and its offering flows to launch. [] hides the picker.
+  const packagingOptions = await getTemplatePackagingOptions(template.slug)
 
   // P3 — real creator price = manufacturer unit cost + tier-discounted platform
   // fee. Tier comes from the signed-in creator's CreatorProfile (Maker for
@@ -353,6 +357,7 @@ export default async function ProductDetailPage({
             standardLead={packData.standardLead}
             flavorPricing={packData.flavorPricing}
             packSizes={packData.packSizes}
+            packagingOptions={packagingOptions}
             minFlavors={packData.minFlavors}
             fillRule={packData.fillRule}
             pricingBasis={packData.pricingBasis}

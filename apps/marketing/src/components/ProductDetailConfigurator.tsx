@@ -43,6 +43,8 @@ import type { SampleTemplate } from '@/lib/sample-templates'
 import type { TemplateDetail } from '@/lib/template-detail'
 import { LaunchCtaCluster } from './LaunchCtaCluster'
 import { SubscribeChoice } from './SubscribeChoice'
+import { PdpPackagingPicker, type PackagingSelection } from './PdpPackagingPicker'
+import type { PdpPackagingOption } from '@/lib/container-offerings-db'
 
 /**
  * ProductDetailConfigurator — the single "Configure & launch" surface on the
@@ -135,6 +137,10 @@ export interface ProductDetailConfiguratorProps {
   /** Secondary "Order a sample →" opener — supplied by the page (opens the
    *  SampleDrawer). When omitted, the sample button is hidden. */
   onOpenSample?: () => void
+  /** #38 — the product's SCOPED packaging options (container + its decoration
+   *  methods), from getTemplatePackagingOptions. The creator picks the container
+   *  here on the PDP; the chosen offering flows to launch. [] hides the picker. */
+  packagingOptions?: PdpPackagingOption[]
 }
 
 export function ProductDetailConfigurator({
@@ -168,7 +174,11 @@ export function ProductDetailConfigurator({
   onPackagingChange,
   onFlavorHeroChange,
   onOpenSample,
+  packagingOptions = [],
 }: ProductDetailConfiguratorProps) {
+  // #38 — the resolved (container × decoration) offering the creator picked on the
+  // PDP. Flows to launch as partnerOfferingId → materialises the container + die-line.
+  const [packagingSel, setPackagingSel] = React.useState<PackagingSelection | null>(null)
   // Product-level fallback sizes (legacy behaviour — used when the selected
   // package doesn't define its own `sizes`).
   const fallbackSizeOptions = detail.sizeChart.map((s) => s.size)
@@ -704,14 +714,15 @@ export function ProductDetailConfigurator({
         )
       )}
 
-      {/* #29 (Pavel 2026-07-19): the fixture Packaging picker (20-sachet carton /
-          Eco refill / Travel tin) and Size picker (240g / 480g) are REMOVED. They
-          came from detail.packaging / detail.sizeChart (marketingDetail JSON), not
-          the real variant model, so they selected nothing real: the container is
-          fixed by the variant and materialised at launch (keystone), and it already
-          shows in the Format key-attribute. `packagingId` / `sizeKey` keep their
-          defaults for the launch payload. When real per-variant sizes/containers
-          exist, a variant-backed picker replaces this, never a fixture list. */}
+      {/* 3) Packaging — #38 (Pavel 2026-07-19). The REAL, product-scoped container
+          options (getTemplatePackagingOptions), replacing the removed fixture list.
+          The creator picks the container; its decoration methods surface here only
+          when there's a choice (>1), else the sole method auto-pins. The resolved
+          offering flows to launch as partnerOfferingId → materialises the container +
+          die-line. Renders nothing when the product has no scoped offerings. */}
+      {packagingOptions.length > 0 && (
+        <PdpPackagingPicker options={packagingOptions} onSelect={setPackagingSel} />
+      )}
 
       {/* 5) Quantity — in multi-flavor pack mode this is the number of PACKS
           (step 1, MOQ in packs); otherwise units (step 50). */}
@@ -900,8 +911,10 @@ export function ProductDetailConfigurator({
           packagingId={packagingId}
           quantity={Math.max(minQty, quantity)}
           isAuthenticated={isAuthenticated}
-          decorationMethod={null}
-          partnerOfferingId={null}
+          // #38 — the packaging (container × decoration) the creator picked on the PDP.
+          // Materialises the PRIMARY container + its die-line at launch (keystone).
+          decorationMethod={packagingSel?.decorationMethod ?? null}
+          partnerOfferingId={packagingSel?.offeringId ?? null}
           // #35 — require a COMPLETE pack before the Studio. An incomplete pack
           // can't thread through (launch seeds nothing), so checkout would re-open
           // it and placeOrder would refuse. Block launch until the pack is filled.

@@ -79,6 +79,8 @@ export interface ProductDetailHeroProps {
   flavorPolicy?: 'CREATOR_PICK' | 'PARTNER_FIXED' | null
   assortment?: import('@ilaunchify/ui').AssortmentEntry[]
   fixedDistribution?: import('@ilaunchify/ui').FixedDistribution | null
+  // #38 — scoped PDP packaging options, passed straight through to the configurator.
+  packagingOptions?: import('@/lib/container-offerings-db').PdpPackagingOption[]
 
   // ----- sample drawer props (null sample → no sample button) -----
   sample?: {
@@ -117,11 +119,12 @@ export function ProductDetailHero({
   flavorPolicy,
   assortment,
   fixedDistribution,
+  packagingOptions,
   sample,
 }: ProductDetailHeroProps) {
   // Bundle the variety-pack model props once — passed through to both
   // configurator call sites (sample-wrapped + bare).
-  const packProps = { packSizes, minFlavors, fillRule, pricingBasis, flavorUnitPriceCents, structuralType, flavorPolicy, assortment, fixedDistribution }
+  const packProps = { packSizes, minFlavors, fillRule, pricingBasis, flavorUnitPriceCents, structuralType, flavorPolicy, assortment, fixedDistribution, packagingOptions }
   // Selected packaging — drives the per-package hero image when one exists.
   const [selectedPackagingId, setSelectedPackagingId] = React.useState<string>(
     detail.packaging.find((p) => !p.unavailable)?.id ?? detail.packaging[0]?.id ?? '',
