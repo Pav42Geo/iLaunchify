@@ -33,6 +33,7 @@ import {
   MapPin,
   CreditCard,
   ShieldCheck,
+  SlidersHorizontal,
   Layers,
   Globe2,
   PackageOpen,
@@ -514,6 +515,15 @@ export default async function PartnerDetail({ params }: PageProps) {
             </span>
           </>
         }
+        actions={
+          <Link
+            href={`/partners/${partner.id}/access`}
+            className="inline-flex items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-black"
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+            Access &amp; Opportunities
+          </Link>
+        }
       />
 
       {/* TWO COLUMN GRID */}
@@ -544,23 +554,6 @@ export default async function PartnerDetail({ params }: PageProps) {
             overall={overall}
             statusChangedAt={partner.statusChangedAt}
           />
-
-          <Link
-            href={`/partners/${partner.id}/access`}
-            className="block rounded-2xl border border-ink-200 bg-white p-4 transition-colors hover:border-pink-300"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[13px] font-bold text-ink-900">Access &amp; Opportunities</div>
-                <div className="mt-0.5 text-[11.5px] text-ink-500">
-                  Lock / unlock disclosure &amp; marketplace levers
-                </div>
-              </div>
-              <span aria-hidden="true" className="text-pink-700">
-                →
-              </span>
-            </div>
-          </Link>
 
           <PartnerScorecard data={scorecard} />
           {/* PS §8.1a — FC VAS verification (ACTIVE = eligible application point) */}

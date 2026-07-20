@@ -3,6 +3,7 @@
 // Creator-side room wrapper: binds the shared CoCreationRoomShell to this
 // app's server actions. Presentational logic lives in @ilaunchify/ui.
 
+import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CoCreationRoomShell,
@@ -88,6 +89,16 @@ export function RoomClient(props: {
       router.refresh()
       return r
     })
+
+  // Live rail (Pavel 2026-07-13): 15s refresh poll — the rail's Messages tab
+  // (and object statuses, activity) stay current without a manual reload.
+  // Same cadence as the /messages hub; paused while the tab is hidden.
+  React.useEffect(() => {
+    const t = setInterval(() => {
+      if (!document.hidden) router.refresh()
+    }, 15000)
+    return () => clearInterval(t)
+  }, [router])
 
   return (
     <CoCreationRoomShell

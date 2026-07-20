@@ -51,7 +51,7 @@ import { revalidatePath } from 'next/cache'
 import { uploadFile, brandAssetKey } from '@ilaunchify/storage'
 
 async function auditBrand(
-  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' },
+  user: { id: string; role: 'ADMIN' | 'CREATOR' | 'PARTNER' | 'DESIGNER' },
   brandId: string,
   action: string,
   payload?: Record<string, unknown>,

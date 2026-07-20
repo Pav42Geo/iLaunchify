@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify Founding Beta (prototype)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Fraunces:opsz,ital,wght@9..144,1,400;9..144,1,500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --pink-50:#FFE9F0; --pink-100:#FFD0E0; --pink-300:#FF7FA8; --pink-400:#FF5285;
+    --pink-500:#FF2E63; --pink-600:#E91E5A; --pink-700:#C71350;
+    --neon-300:#D4FF7A; --neon-400:#C2FF4D; --neon-500:#B5FF3D; --neon-600:#9EE61F;
+    --violet:#C9B6FF; --lemon:#FFE74C;
+    --ink-900:#18181A; --ink-800:#232327; --ink-700:#33343C; --ink-600:#474954;
+    --ink-500:#6B6D78; --ink-400:#9A9CA6; --ink-300:#CBCCD3; --ink-200:#E0E1E5;
+    --ink-100:#EEEFF1; --ink-50:#F8F8F9;
+    --r-sm:8px; --r-md:12px; --r-lg:20px; --r-xl:28px; --r-pill:999px;
+    --ease:cubic-bezier(0.16,1,0.3,1);
+    --font-sans:'Inter',system-ui,sans-serif;
+    --font-display:'Bricolage Grotesque','Inter',sans-serif;
+    --font-serif:'Fraunces',Georgia,serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;font-family:var(--font-sans);background:#FFFFFF;color:var(--ink-900);-webkit-font-smoothing:antialiased;line-height:1.5;font-size:15px;overflow-x:hidden;}
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  h1,h2,h3,h4{margin:0;line-height:1.05;letter-spacing:-0.02em;}
+  p{margin:0;}
+  img{max-width:100%;}
+  .serif{font-family:var(--font-serif);font-style:italic;font-weight:500;}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- buttons ---------- */
+  .btn{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:15px;border-radius:var(--r-pill);padding:14px 26px;transition:transform .14s var(--ease),box-shadow .2s,background .2s,color .2s,border-color .2s;white-space:nowrap;}
+  .btn-lg{font-size:17px;padding:17px 34px;}
+  .btn-primary{background:var(--ink-900);color:#fff;}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(24,24,26,.28);}
+  .btn-pink{background:var(--pink-500);color:#fff;}
+  .btn-pink:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(255,46,99,.38);}
+  .btn-neon{background:var(--neon-500);color:var(--ink-900);}
+  .btn-neon:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(181,255,61,.32);background:var(--neon-400);}
+  .btn-ghost{border:1px solid var(--ink-200);color:var(--ink-900);background:#fff;}
+  .btn-ghost:hover{border-color:var(--ink-900);transform:translateY(-2px);}
+  .btn-ghost-dark{border:1px solid var(--ink-700);color:#fff;background:transparent;}
+  .btn-ghost-dark:hover{border-color:var(--neon-500);color:var(--neon-500);}
+
+  /* ---------- beta ribbon ---------- */
+  .ribbon{background:var(--ink-900);color:#fff;font-size:13.5px;font-weight:500;text-align:center;padding:9px 44px 9px 20px;position:relative;}
+  .ribbon .glow{color:var(--neon-500);font-weight:700;}
+  .ribbon b{color:#fff;font-weight:700;}
+  .ribbon .x{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--ink-400);font-size:18px;line-height:1;padding:4px;}
+  .ribbon .x:hover{color:#fff;}
+
+  /* ---------- header ---------- */
+  .hdr{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.82);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--ink-100);}
+  .hdr-row{max-width:1240px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;gap:26px;}
+  .logo{display:inline-flex;align-items:center;gap:9px;flex-shrink:0;}
+  .logo .mark{width:26px;height:26px;border-radius:7px;background:var(--pink-500);display:inline-block;position:relative;}
+  .logo .mark::after{content:'';position:absolute;inset:8px 8px auto 8px;height:3px;border-radius:2px;background:#fff;box-shadow:0 5px 0 #fff;}
+  .logo-text{font-family:var(--font-display);font-size:21px;font-weight:800;letter-spacing:-0.045em;}
+  .beta-chip{font-family:var(--font-sans);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pink-700);background:var(--pink-50);border:1px solid var(--pink-100);padding:3px 8px;border-radius:var(--r-pill);margin-left:2px;vertical-align:middle;}
+  .nav{display:flex;gap:24px;font-size:14.5px;font-weight:500;color:var(--ink-600);}
+  .nav a:hover{color:var(--ink-900);}
+  .spacer{flex:1;}
+  .hdr .login{font-size:14.5px;font-weight:600;color:var(--ink-700);}
+  .hdr .login:hover{color:var(--ink-900);}
+  @media(max-width:860px){.nav{display:none;}}
+
+  /* ---------- mesh blobs ---------- */
+  .mesh{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+  .blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;animation:float 18s var(--ease) infinite;}
+  @keyframes float{0%,100%{transform:translate(0,0) scale(1);}33%{transform:translate(28px,-32px) scale(1.08);}66%{transform:translate(-22px,20px) scale(.96);}}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.9);opacity:0;}}
+
+  /* ---------- section rhythm ---------- */
+  section{position:relative;}
+  .pad{padding:96px 0;}
+  .pad-sm{padding:64px 0;}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--pink-700);margin-bottom:16px;}
+  .eyebrow.on-dark{color:var(--neon-500);}
+  h2.big{font-family:var(--font-display);font-weight:800;font-size:clamp(34px,4.6vw,62px);line-height:1.0;letter-spacing:-0.038em;}
+  .lede{font-size:clamp(16px,1.5vw,19px);line-height:1.6;color:rgba(24,24,26,.72);}
+
+  /* ---------- views ---------- */
+  .view{display:none;}
+  .view.active{display:block;animation:fade .4s var(--ease);}
+  @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+  /* ============ HERO (home) ============ */
+  .hero{position:relative;overflow:hidden;padding:84px 0 76px;}
+  .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;}
+  @media(max-width:940px){.hero-grid{grid-template-columns:1fr;gap:36px;}}
+  .beta-badge{display:inline-flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--ink-200);padding:8px 15px;border-radius:var(--r-pill);font-size:13px;font-weight:600;box-shadow:0 6px 18px rgba(13,7,23,.06);margin-bottom:26px;}
+  .beta-badge .dot{position:relative;width:8px;height:8px;border-radius:50%;background:var(--pink-500);}
+  .beta-badge .dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:var(--pink-500);animation:pulse 2.4s var(--ease) infinite;}
+  .hero h1{font-family:var(--font-display);font-weight:800;font-size:clamp(42px,5.6vw,82px);line-height:.94;letter-spacing:-0.04em;margin-bottom:24px;max-width:15ch;}
+  .hero h1 .serif{color:var(--pink-500);}
+  .hl{display:inline-block;background:var(--neon-500);color:var(--ink-900);padding:0 10px;border-radius:8px;transform:rotate(-1.5deg);}
+  .hero .lede{max-width:52ch;margin-bottom:20px;}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;}
+  .hero-note{margin-top:18px;font-size:13.5px;color:var(--ink-500);display:flex;align-items:center;gap:8px;}
+  .hero-note .tick{color:var(--pink-600);font-weight:700;}
+
+  /* free banner card in hero */
+  .free-card{position:relative;z-index:2;background:var(--ink-900);color:#fff;border-radius:var(--r-xl);padding:30px;overflow:hidden;}
+  .free-card::after{content:'';position:absolute;right:-70px;top:-70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(181,255,61,.28),transparent 65%);}
+  .free-card .kicker{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--neon-500);margin-bottom:14px;}
+  .free-card .price{font-family:var(--font-display);font-weight:800;font-size:64px;line-height:1;letter-spacing:-0.04em;margin-bottom:6px;}
+  .free-card .price small{font-size:20px;color:var(--ink-400);font-weight:600;}
+  .free-card .sub{color:var(--ink-300);font-size:14.5px;line-height:1.55;margin-bottom:22px;position:relative;z-index:2;}
+  .free-list{list-style:none;padding:0;margin:0;display:grid;gap:11px;position:relative;z-index:2;}
+  .free-list li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#fff;}
+  .free-list li .c{flex-shrink:0;width:19px;height:19px;border-radius:50%;background:var(--neon-500);color:var(--ink-900);display:grid;place-items:center;font-size:12px;font-weight:800;margin-top:1px;}
+
+  /* ---------- trust strip ---------- */
+  .trust{border-top:1px solid var(--ink-100);border-bottom:1px solid var(--ink-100);background:var(--ink-50);}
+  .trust-row{display:flex;flex-wrap:wrap;gap:14px 40px;align-items:center;justify-content:center;padding:22px 24px;font-size:13.5px;color:var(--ink-500);font-weight:500;}
+  .trust-row b{color:var(--ink-900);font-weight:700;}
+  .trust-row .sep{width:5px;height:5px;border-radius:50%;background:var(--ink-300);}
+
+  /* ============ beta explainer ============ */
+  .why-beta{background:#fff;}
+  .wb-head{max-width:60ch;margin-bottom:52px;}
+  .wb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+  @media(max-width:900px){.wb-grid{grid-template-columns:1fr;}}
+  .wb-card{border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:30px;background:#fff;transition:transform .22s var(--ease),border-color .22s,box-shadow .22s;}
+  .wb-card:hover{transform:translateY(-4px);border-color:var(--ink-300);box-shadow:0 20px 46px rgba(13,7,23,.07);}
+  .wb-ico{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:24px;margin-bottom:18px;}
+  .wb-card h3{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:10px;}
+  .wb-card p{font-size:14.5px;color:var(--ink-600);line-height:1.6;}
+
+  /* ============ two tracks ============ */
+  .tracks{background:var(--ink-900);color:#fff;border-radius:44px 44px 0 0;}
+  .tracks h2.big{color:#fff;}
+  .tracks h2.big .serif{color:var(--neon-500);}
+  .tracks .lede{color:var(--ink-400);}
+  .track-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:52px;}
+  @media(max-width:900px){.track-grid{grid-template-columns:1fr;}}
+  .track{position:relative;overflow:hidden;background:var(--ink-800);border:1px solid var(--ink-700);border-radius:var(--r-xl);padding:38px;transition:transform .24s var(--ease),border-color .24s;}
+  .track:hover{transform:translateY(-5px);}
+  .track.creator:hover{border-color:var(--pink-500);}
+  .track.partner:hover{border-color:var(--neon-500);}
+  .track .glow{position:absolute;width:240px;height:240px;border-radius:50%;filter:blur(50px);opacity:.5;top:-60px;right:-60px;transition:transform .5s var(--ease);}
+  .track:hover .glow{transform:scale(1.35);}
+  .track.creator .glow{background:var(--pink-500);}
+  .track.partner .glow{background:var(--neon-500);}
+  .track .tag{position:relative;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:5px 12px;border-radius:var(--r-pill);margin-bottom:22px;}
+  .track.creator .tag{background:rgba(255,46,99,.16);color:var(--pink-300);}
+  .track.partner .tag{background:rgba(181,255,61,.14);color:var(--neon-500);}
+  .track h3{position:relative;font-family:var(--font-display);font-weight:800;font-size:clamp(26px,3vw,36px);letter-spacing:-.03em;line-height:1.02;margin-bottom:14px;}
+  .track h3 .serif{color:inherit;}
+  .track p{position:relative;color:var(--ink-400);font-size:15px;line-height:1.6;margin-bottom:22px;max-width:42ch;}
+  .track ul{position:relative;list-style:none;padding:0;margin:0 0 28px;display:grid;gap:10px;}
+  .track ul li{display:flex;gap:10px;font-size:14px;color:var(--ink-200);}
+  .track ul li .c{flex-shrink:0;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;margin-top:1px;}
+  .track.creator ul li .c{background:var(--pink-500);color:#fff;}
+  .track.partner ul li .c{background:var(--neon-500);color:var(--ink-900);}
+  .track .cta-row{position:relative;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .track .seats{font-size:12.5px;color:var(--ink-500);}
+  .track .seats b{color:#fff;}
+
+  /* ============ timeline / how beta works ============ */
+  .how{background:#fff;}
+  .how-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:52px;}
+  @media(max-width:900px){.how-steps{grid-template-columns:1fr 1fr;}}
+  @media(max-width:560px){.how-steps{grid-template-columns:1fr;}}
+  .hstep{border-top:2px solid var(--ink-900);padding-top:18px;}
+  .hstep .n{font-family:var(--font-display);font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--pink-600);margin-bottom:14px;}
+  .hstep h4{font-size:18.5px;font-weight:700;letter-spacing:-.02em;margin-bottom:9px;}
+  .hstep p{font-size:14px;color:var(--ink-600);line-height:1.55;}
+
+  /* ============ founding perks ============ */
+  .perks{background:var(--ink-50);border-top:1px solid var(--ink-100);}
+  .perks-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:48px;}
+  @media(max-width:900px){.perks-grid{grid-template-columns:1fr 1fr;}}
+  @media(max-width:520px){.perks-grid{grid-template-columns:1fr;}}
+  .perk{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:26px;}
+  .perk .em{font-size:26px;margin-bottom:14px;display:block;}
+  .perk h4{font-size:16.5px;font-weight:700;letter-spacing:-.015em;margin-bottom:8px;}
+  .perk p{font-size:13.5px;color:var(--ink-600);line-height:1.55;}
+
+  /* ============ editorial quote ============ */
+  .quote{background:#fff;}
+  .quote p{font-family:var(--font-serif);font-style:italic;font-weight:400;font-size:clamp(28px,3.6vw,46px);line-height:1.2;letter-spacing:-.015em;max-width:20ch;}
+  .quote .mk{font-style:normal;font-family:var(--font-display);font-weight:800;background:var(--neon-500);color:var(--ink-900);padding:0 10px;border-radius:8px;transform:rotate(-1deg);display:inline-block;}
+  .quote .attr{margin-top:26px;font-size:14.5px;color:var(--ink-500);}
+
+  /* ============ FAQ ============ */
+  .faq{background:#fff;border-top:1px solid var(--ink-100);}
+  .faq-list{max-width:800px;margin:44px auto 0;}
+  .qa{border-bottom:1px solid var(--ink-200);}
+  .qa summary{list-style:none;cursor:pointer;padding:22px 4px;display:flex;align-items:center;justify-content:space-between;gap:20px;font-size:18px;font-weight:700;letter-spacing:-.015em;}
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary .pm{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:1px solid var(--ink-300);display:grid;place-items:center;font-size:18px;transition:transform .2s,background .2s,color .2s,border-color .2s;}
+  .qa[open] summary .pm{background:var(--ink-900);color:#fff;border-color:var(--ink-900);transform:rotate(45deg);}
+  .qa .ans{padding:0 4px 24px;font-size:15px;color:var(--ink-600);line-height:1.65;max-width:64ch;}
+
+  /* ============ final CTA (home) ============ */
+  .final{position:relative;overflow:hidden;text-align:center;padding:120px 0;}
+  .final h2{font-family:var(--font-display);font-weight:800;font-size:clamp(44px,7vw,110px);line-height:.92;letter-spacing:-.045em;margin-bottom:22px;position:relative;z-index:2;}
+  .final h2 .serif{color:var(--pink-500);}
+  .final .lede{max-width:52ch;margin:0 auto 34px;position:relative;z-index:2;}
+  .final .ctas{position:relative;z-index:2;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+
+  /* ============ footer ============ */
+  footer.ft{background:var(--ink-900);color:var(--ink-400);padding:56px 0 34px;}
+  .ft-top{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;margin-bottom:34px;}
+  .ft .logo-text{color:#fff;}
+  .ft-cols{display:flex;gap:56px;flex-wrap:wrap;}
+  .ft-col h5{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-500);margin:0 0 14px;font-weight:700;}
+  .ft-col a{display:block;font-size:14px;color:var(--ink-300);margin-bottom:9px;}
+  .ft-col a:hover{color:#fff;}
+  .ft-bottom{border-top:1px solid var(--ink-700);padding-top:22px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-500);}
+
+  /* ============ TRACK PAGE (creator / partner) ============ */
+  .tp-hero{position:relative;overflow:hidden;color:#fff;padding:76px 0 68px;}
+  .tp-hero.creator{background:var(--ink-900);}
+  .tp-hero.partner{background:var(--ink-900);}
+  .back{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:var(--ink-300);margin-bottom:26px;position:relative;z-index:2;}
+  .back:hover{color:#fff;}
+  .tp-hero .inner{position:relative;z-index:2;max-width:760px;}
+  .tp-tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 14px;border-radius:var(--r-pill);margin-bottom:22px;}
+  .tp-hero.creator .tp-tag{background:rgba(255,46,99,.18);color:var(--pink-300);border:1px solid rgba(255,46,99,.28);}
+  .tp-hero.partner .tp-tag{background:rgba(181,255,61,.14);color:var(--neon-500);border:1px solid rgba(181,255,61,.24);}
+  .tp-hero h1{font-family:var(--font-display);font-weight:800;font-size:clamp(38px,5.4vw,72px);line-height:.95;letter-spacing:-.04em;margin-bottom:20px;}
+  .tp-hero.creator h1 .serif{color:var(--pink-400);}
+  .tp-hero.partner h1 .serif{color:var(--neon-500);}
+  .tp-hero .lede{color:var(--ink-300);max-width:56ch;font-size:clamp(16px,1.6vw,19px);}
+  .tp-hero .stats{display:flex;gap:38px;flex-wrap:wrap;margin-top:36px;}
+  .tp-hero .stat .n{font-family:var(--font-display);font-weight:800;font-size:34px;letter-spacing:-.03em;}
+  .tp-hero.creator .stat .n{color:var(--pink-400);}
+  .tp-hero.partner .stat .n{color:var(--neon-500);}
+  .tp-hero .stat .l{font-size:13px;color:var(--ink-400);margin-top:2px;}
+
+  .tp-body{background:var(--ink-50);padding:72px 0 96px;}
+  .tp-cols{display:grid;grid-template-columns:.95fr 1.05fr;gap:40px;align-items:start;}
+  @media(max-width:940px){.tp-cols{grid-template-columns:1fr;gap:34px;}}
+  .tp-left h2{font-family:var(--font-display);font-weight:800;font-size:28px;letter-spacing:-.03em;margin-bottom:20px;}
+  .benefit{display:flex;gap:14px;margin-bottom:20px;}
+  .benefit .ic{flex-shrink:0;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;}
+  .tp-hero.creator ~ .tp-body .benefit .ic,.creator-scope .benefit .ic{background:var(--pink-50);}
+  .benefit h4{font-size:16.5px;font-weight:700;letter-spacing:-.015em;margin-bottom:5px;}
+  .benefit p{font-size:14px;color:var(--ink-600);line-height:1.55;}
+  .tp-left .callout{margin-top:30px;background:#fff;border:1px solid var(--ink-200);border-left:3px solid var(--pink-500);border-radius:var(--r-md);padding:20px 22px;font-size:14px;color:var(--ink-700);line-height:1.6;}
+  .partner-scope .tp-left .callout{border-left-color:var(--neon-600);}
+
+  /* ---------- form card ---------- */
+  .form-card{background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:34px;box-shadow:0 30px 60px rgba(13,7,23,.08);position:sticky;top:96px;}
+  .form-card .fc-head{margin-bottom:8px;}
+  .form-card .fc-eyebrow{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--pink-700);margin-bottom:10px;}
+  .partner-scope .form-card .fc-eyebrow{color:var(--ink-900);}
+  .form-card h3{font-family:var(--font-display);font-weight:800;font-size:26px;letter-spacing:-.03em;margin-bottom:8px;}
+  .form-card .fc-sub{font-size:14px;color:var(--ink-600);line-height:1.55;margin-bottom:8px;}
+  .progress{display:flex;gap:6px;margin:20px 0 24px;}
+  .progress .seg{flex:1;height:5px;border-radius:3px;background:var(--ink-200);transition:background .3s;}
+  .progress .seg.on{background:var(--pink-500);}
+  .partner-scope .progress .seg.on{background:var(--neon-600);}
+  .step-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-400);margin-bottom:16px;}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-size:13.5px;font-weight:600;color:var(--ink-800);margin-bottom:7px;}
+  .field label .opt{color:var(--ink-400);font-weight:500;}
+  .field input,.field select,.field textarea{width:100%;font-family:inherit;font-size:15px;color:var(--ink-900);background:#fff;border:1px solid var(--ink-300);border-radius:var(--r-md);padding:12px 14px;transition:border-color .18s,box-shadow .18s;}
+  .field textarea{resize:vertical;min-height:84px;}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--pink-500);box-shadow:0 0 0 3px rgba(255,46,99,.14);}
+  .partner-scope .field input:focus,.partner-scope .field select:focus,.partner-scope .field textarea:focus{border-color:var(--neon-600);box-shadow:0 0 0 3px rgba(158,230,31,.18);}
+  /* chip choices */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{font-size:13.5px;font-weight:600;padding:9px 14px;border-radius:var(--r-pill);border:1px solid var(--ink-300);color:var(--ink-700);background:#fff;transition:all .16s;}
+  .chip:hover{border-color:var(--ink-500);}
+  .chip.sel{background:var(--ink-900);color:#fff;border-color:var(--ink-900);}
+  .partner-scope .chip.sel{background:var(--neon-500);color:var(--ink-900);border-color:var(--neon-500);}
+  .creator-scope .chip.sel{background:var(--pink-500);color:#fff;border-color:var(--pink-500);}
+  .scale{display:flex;gap:6px;}
+  .scale .s{flex:1;text-align:center;font-size:14px;font-weight:700;padding:11px 0;border-radius:var(--r-md);border:1px solid var(--ink-300);color:var(--ink-600);transition:all .15s;}
+  .scale .s.sel{background:var(--pink-500);color:#fff;border-color:var(--pink-500);}
+  .partner-scope .scale .s.sel{background:var(--neon-600);color:#fff;border-color:var(--neon-600);}
+  .consent{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;color:var(--ink-500);line-height:1.5;margin:6px 0 20px;}
+  .consent input{margin-top:2px;width:16px;height:16px;flex-shrink:0;accent-color:var(--pink-500);}
+  .fc-actions{display:flex;gap:10px;}
+  .fc-actions .btn{flex:1;justify-content:center;}
+  .btn-block{width:100%;justify-content:center;}
+  .fine{font-size:12px;color:var(--ink-400);text-align:center;margin-top:14px;line-height:1.5;}
+  .step{display:none;}
+  .step.active{display:block;animation:fade .3s var(--ease);}
+  /* success */
+  .success{display:none;text-align:center;padding:20px 6px;}
+  .success.show{display:block;animation:fade .4s var(--ease);}
+  .success .check{width:72px;height:72px;border-radius:50%;background:var(--neon-500);color:var(--ink-900);display:grid;place-items:center;font-size:38px;margin:0 auto 22px;}
+  .success h3{font-family:var(--font-display);font-weight:800;font-size:26px;letter-spacing:-.03em;margin-bottom:12px;}
+  .success p{font-size:14.5px;color:var(--ink-600);line-height:1.6;max-width:38ch;margin:0 auto 8px;}
+  .success .whatnext{margin-top:22px;text-align:left;background:var(--ink-50);border:1px solid var(--ink-200);border-radius:var(--r-md);padding:18px;}
+  .success .whatnext h5{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-500);margin:0 0 12px;font-weight:700;}
+  .success .whatnext li{font-size:13.5px;color:var(--ink-700);margin-bottom:9px;display:flex;gap:9px;}
+  .success .whatnext li .num{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:var(--pink-500);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;}
+
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important;}}
+</style>
+</head>
+<body>
+
+<!-- ===================== BETA RIBBON ===================== -->
+<div class="ribbon" id="ribbon">
+  <span class="glow">● BETA</span>&nbsp; iLaunchify is in open beta. <b>Every feature is free while we test.</b> No fees, no subscription. Help us shape it.
+  <span class="x" onclick="document.getElementById('ribbon').style.display='none'" role="button" aria-label="Dismiss">×</span>
+</div>
+
+<!-- ===================== HEADER ===================== -->
+<header class="hdr">
+  <div class="hdr-row">
+    <a href="#" class="logo" onclick="go('home');return false;">
+      <span class="mark"></span>
+      <span class="logo-text">iLaunchify</span>
+      <span class="beta-chip">Beta</span>
+    </a>
+    <nav class="nav">
+      <a href="#" onclick="go('creator');return false;">For Creators</a>
+      <a href="#" onclick="go('partner');return false;">For Partners</a>
+      <a href="#how-beta" onclick="go('home','how-beta');return false;">How the beta works</a>
+      <a href="#faq" onclick="go('home','faq');return false;">FAQ</a>
+    </nav>
+    <span class="spacer"></span>
+    <a href="#" class="login">Log in</a>
+    <a href="#" class="btn btn-pink" onclick="go('creator');return false;">Join the beta →</a>
+  </div>
+</header>
+
+<!-- ============================================================= -->
+<!-- ======================= HOME VIEW =========================== -->
+<!-- ============================================================= -->
+<main id="view-home" class="view active">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="mesh">
+      <span class="blob" style="width:520px;height:520px;background:#FF2E63;top:-120px;left:-120px;"></span>
+      <span class="blob" style="width:460px;height:460px;background:#B5FF3D;top:200px;right:-160px;animation-delay:-6s;"></span>
+      <span class="blob" style="width:380px;height:380px;background:#C9B6FF;bottom:-160px;left:34%;animation-delay:-12s;"></span>
+    </div>
+    <div class="wrap hero-grid">
+      <div>
+        <span class="beta-badge"><span class="dot"></span> Founding Cohort · open now · US-only</span>
+        <h1>Build a real CPG brand, <span class="serif">free</span> while we're in <span class="hl">beta.</span></h1>
+        <p class="lede">iLaunchify orchestrates every manufacturer, printer, co-packer, and warehouse behind one timeline and one quote. We're in beta and inviting founding Creators and Partners to build alongside us: every feature unlocked, nothing to pay.</p>
+        <div class="hero-ctas">
+          <a href="#" class="btn btn-pink btn-lg" onclick="go('creator');return false;">I'm a Creator →</a>
+          <a href="#" class="btn btn-ghost btn-lg" onclick="go('partner');return false;">I'm a Partner →</a>
+        </div>
+        <div class="hero-note"><span class="tick">✓</span> 2-minute application &nbsp;·&nbsp; <span class="tick">✓</span> No card required &nbsp;·&nbsp; <span class="tick">✓</span> Shape the roadmap</div>
+      </div>
+
+      <div class="free-card">
+        <div class="kicker">Beta pricing</div>
+        <div class="price">$0<small> / everything</small></div>
+        <div class="sub">While we validate the platform, the full toolset is open to the founding cohort, and we only ask for your feedback in return.</div>
+        <ul class="free-list">
+          <li><span class="c">✓</span> Design Studio, templates &amp; label tools</li>
+          <li><span class="c">✓</span> Full marketplace &amp; partner orchestration</li>
+          <li><span class="c">✓</span> No platform fees, no subscription</li>
+          <li><span class="c">✓</span> Direct line to the founding team</li>
+          <li><span class="c">✓</span> Locked-in founder perks at launch</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST STRIP -->
+  <div class="trust">
+    <div class="trust-row">
+      <span><b>Private beta</b> · invite-only cohort</span><span class="sep"></span>
+      <span><b>4</b> partner types orchestrated per order</span><span class="sep"></span>
+      <span><b>8</b> creator niches live</span><span class="sep"></span>
+      <span><b>13</b> product categories</span><span class="sep"></span>
+      <span>Your feedback ships to the roadmap <b>weekly</b></span>
+    </div>
+  </div>
+
+  <!-- WHY BETA -->
+  <section class="pad why-beta">
+    <div class="wrap">
+      <div class="wb-head">
+        <span class="eyebrow">● Why we're in beta</span>
+        <h2 class="big">We're testing in the open, <span class="serif">with</span> our first users, not at them.</h2>
+      </div>
+      <div class="wb-grid">
+        <div class="wb-card">
+          <div class="wb-ico" style="background:var(--pink-50);">🧪</div>
+          <h3>Everything's free</h3>
+          <p>During beta there are no platform fees and no subscription. We're validating the model and usage patterns, not monetizing yet. You get the whole toolset, unlocked.</p>
+        </div>
+        <div class="wb-card">
+          <div class="wb-ico" style="background:#EAF9D6;">💬</div>
+          <h3>You steer the product</h3>
+          <p>Founding Creators and Partners get a direct line to the team. Short surveys, quick calls, and a feedback rail inside the app. The things you flag get built.</p>
+        </div>
+        <div class="wb-card">
+          <div class="wb-ico" style="background:#EDE6FF;">🏅</div>
+          <h3>Founder status sticks</h3>
+          <p>When we exit beta, founding members keep recognition and locked-in perks. You're not a test subject. You're the first community that made it real.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TWO TRACKS -->
+  <section class="pad tracks">
+    <div class="wrap">
+      <span class="eyebrow on-dark">● Two ways in</span>
+      <h2 class="big">Pick your <span class="serif">track.</span></h2>
+      <p class="lede" style="max-width:56ch;margin-top:14px;">iLaunchify is a two-sided platform. Tell us which side you're on and we'll tailor the beta to you.</p>
+
+      <div class="track-grid">
+        <div class="track creator">
+          <span class="glow"></span>
+          <span class="tag">● For Creators</span>
+          <h3>Launch your <span class="serif">CPG brand</span> in days.</h3>
+          <p>Influencers and indie operators with an audience but no ops team. Pick a starter, customize the label, we handle production.</p>
+          <ul>
+            <li><span class="c">✓</span> Design Studio + ready-to-sell templates</li>
+            <li><span class="c">✓</span> One quote, one timeline across all partners</li>
+            <li><span class="c">✓</span> Sell on the channels you already own</li>
+          </ul>
+          <div class="cta-row">
+            <a href="#" class="btn btn-pink" onclick="go('creator');return false;">Apply as a Creator →</a>
+            <span class="seats"><b>Cohort 1</b> · limited seats</span>
+          </div>
+        </div>
+
+        <div class="track partner">
+          <span class="glow"></span>
+          <span class="tag">● For Partners · Selective</span>
+          <h3>Fill your line with <span class="serif">orchestrated</span> demand.</h3>
+          <p>Only for manufacturers, printers, co-packers, and warehouses that offer <b style="color:#fff;">white-label, private-label, or custom-formulation</b> production. A curated, invite-only network, not an open directory.</p>
+          <ul>
+            <li><span class="c">✓</span> Qualified orders matched to your capabilities</li>
+            <li><span class="c">✓</span> Earn tier &amp; merit status, not pay-to-play</li>
+            <li><span class="c">✓</span> No listing fees during beta</li>
+          </ul>
+          <div class="cta-row">
+            <a href="#" class="btn btn-neon" onclick="go('partner');return false;">Apply as a Partner →</a>
+            <span class="seats"><b>Founding</b> supply network</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW THE BETA WORKS -->
+  <section class="pad how" id="how-beta">
+    <div class="wrap">
+      <span class="eyebrow">● How the beta works</span>
+      <h2 class="big">From apply to <span class="serif">building</span>, in four steps.</h2>
+      <div class="how-steps">
+        <div class="hstep"><div class="n">Step 01</div><h4>Tell us about you</h4><p>Answer a short survey so we understand what you're building and what you need. Two minutes, no card.</p></div>
+        <div class="hstep"><div class="n">Step 02</div><h4>Get your invite</h4><p>We review and invite founding members in waves. You'll get a link to the real sign-up when your seat opens.</p></div>
+        <div class="hstep"><div class="n">Step 03</div><h4>Build for free</h4><p>Full platform, unlocked. Design, quote, route, produce, with the founding team on call.</p></div>
+        <div class="hstep"><div class="n">Step 04</div><h4>Shape what ships</h4><p>Share feedback through surveys and the in-app rail. What you flag gets prioritized, weekly.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOUNDING PERKS -->
+  <section class="pad-sm perks">
+    <div class="wrap">
+      <span class="eyebrow">● What founding members get</span>
+      <h2 class="big">More than early access.</h2>
+      <div class="perks-grid">
+        <div class="perk"><span class="em">🎟️</span><h4>Zero fees in beta</h4><p>No platform fee, no subscription. The entire toolset is open.</p></div>
+        <div class="perk"><span class="em">🗣️</span><h4>Direct roadmap input</h4><p>Surveys, calls, and a feedback rail that routes straight to the team.</p></div>
+        <div class="perk"><span class="em">🏅</span><h4>Founder badge</h4><p>Permanent recognition on your profile when we go live.</p></div>
+        <div class="perk"><span class="em">🔒</span><h4>Locked-in pricing</h4><p>Founding rates honored after launch. Pay less than everyone after you.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUOTE -->
+  <section class="pad quote">
+    <div class="wrap">
+      <p>We're not selling a finished product yet. We're building the first <span class="mk">CPG community</span> that tests it with us.</p>
+      <div class="attr">The iLaunchify founding team</div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="pad faq" id="faq">
+    <div class="wrap">
+      <span class="eyebrow" style="display:block;text-align:center;">● Questions</span>
+      <h2 class="big" style="text-align:center;">Beta, explained.</h2>
+      <div class="faq-list">
+        <details class="qa" open><summary>Is it really free? <span class="pm">+</span></summary><div class="ans">Yes. While we're in beta, there are no platform fees and no subscription for founding members. We're focused on validating the platform and learning how you use it. Monetization comes later, and founding members keep locked-in pricing when it does.</div></details>
+        <details class="qa"><summary>What do you want in return? <span class="pm">+</span></summary><div class="ans">Your honest feedback. That means the occasional short survey, an optional call now and then, and using the in-app feedback rail when something works well, or doesn't. Your input directly shapes what we build.</div></details>
+        <details class="qa"><summary>Who can join the beta? <span class="pm">+</span></summary><div class="ans">Two groups: Creators (influencers and indie operators launching a CPG brand) and Partners. On the partner side we only accept manufacturers, printers, co-packers, and warehouses that offer white-label, private-label, or custom-formulation production. We do not accept partners who only make their own branded goods. The beta is US-only, invite-only, and released in waves.</div></details>
+        <details class="qa"><summary>How do I actually get in? <span class="pm">+</span></summary><div class="ans">Fill out the short beta interest survey for your track. If it's a fit, we email you an invite with a link to the real sign-up. You don't create a full account until your seat opens.</div></details>
+        <details class="qa"><summary>Will the platform change during beta? <span class="pm">+</span></summary><div class="ans">Constantly, and that's the point. Expect frequent improvements. We snapshot your work and communicate changes, and founding feedback is the biggest driver of what we ship each week.</div></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final">
+    <div class="mesh">
+      <span class="blob" style="width:560px;height:560px;background:#FF2E63;top:10%;left:-100px;"></span>
+      <span class="blob" style="width:460px;height:460px;background:#B5FF3D;top:6%;right:-80px;animation-delay:-6s;"></span>
+      <span class="blob" style="width:380px;height:380px;background:#C9B6FF;bottom:-120px;left:40%;animation-delay:-12s;"></span>
+    </div>
+    <div class="wrap">
+      <h2>Get in <span class="serif">early.</span></h2>
+      <p class="lede">Founding seats are limited and released in waves. Claim yours and help build the platform CPG creators actually needed.</p>
+      <div class="ctas">
+        <a href="#" class="btn btn-pink btn-lg" onclick="go('creator');return false;">Join as a Creator →</a>
+        <a href="#" class="btn btn-primary btn-lg" onclick="go('partner');return false;">Join as a Partner →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="ft">
+    <div class="wrap">
+      <div class="ft-top">
+        <div style="max-width:280px;">
+          <span class="logo-text" style="font-size:20px;">iLaunchify <span class="beta-chip">Beta</span></span>
+          <p style="font-size:13.5px;color:var(--ink-400);margin-top:12px;line-height:1.55;">The orchestration platform for launching CPG brands. Currently in founding beta.</p>
+        </div>
+        <div class="ft-cols">
+          <div class="ft-col"><h5>Platform</h5><a href="#" onclick="go('creator');return false;">For Creators</a><a href="#" onclick="go('partner');return false;">For Partners</a><a href="#">Marketplace</a><a href="#">How it works</a></div>
+          <div class="ft-col"><h5>Beta</h5><a href="#" onclick="go('home','how-beta');return false;">How the beta works</a><a href="#" onclick="go('home','faq');return false;">FAQ</a><a href="#">Roadmap</a><a href="#">Feedback</a></div>
+          <div class="ft-col"><h5>Company</h5><a href="#">About</a><a href="#">Contact</a><a href="#">Privacy</a><a href="#">Terms</a></div>
+        </div>
+      </div>
+      <div class="ft-bottom"><span>© 2026 iLaunchify · Founding beta · US-only</span><span>Made for CPG creators &amp; their production partners</span></div>
+    </div>
+  </footer>
+</main>
+
+<!-- ============================================================= -->
+<!-- ===================== CREATOR VIEW ========================== -->
+<!-- ============================================================= -->
+<main id="view-creator" class="view creator-scope">
+  <section class="tp-hero creator">
+    <div class="mesh">
+      <span class="blob" style="width:460px;height:460px;background:#FF2E63;top:-140px;left:-120px;opacity:.28;"></span>
+      <span class="blob" style="width:360px;height:360px;background:#C9B6FF;bottom:-160px;right:-100px;animation-delay:-8s;opacity:.22;"></span>
+    </div>
+    <div class="wrap">
+      <a href="#" class="back" onclick="go('home');return false;">← Back to overview</a>
+      <div class="inner">
+        <span class="tp-tag">● Creator beta · Founding Cohort</span>
+        <h1>Launch your CPG brand, <span class="serif">on us</span>, while we're in beta.</h1>
+        <p class="lede">You bring the audience and the idea. We orchestrate the manufacturer, printer, co-packer, and warehouse behind one timeline. Join the founding cohort and use the whole platform free while we test.</p>
+        <div class="stats">
+          <div class="stat"><div class="n">$0</div><div class="l">during beta, no fees</div></div>
+          <div class="stat"><div class="n">8</div><div class="l">niches to start from</div></div>
+          <div class="stat"><div class="n">2 min</div><div class="l">to apply</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tp-body">
+    <div class="wrap tp-cols">
+      <!-- LEFT: benefits -->
+      <div class="tp-left">
+        <h2>Why join as a founding Creator</h2>
+        <div class="benefit"><div class="ic">🎨</div><div><h4>The full Design Studio, free</h4><p>Starter templates, label tools, packaging previews. The entire toolset unlocked, no subscription during beta.</p></div></div>
+        <div class="benefit"><div class="ic">📦</div><div><h4>Production handled for you</h4><p>One quote, one timeline. We route every partner behind the scenes so you launch without becoming a CPG operator.</p></div></div>
+        <div class="benefit"><div class="ic">🛍️</div><div><h4>Sell on channels you own</h4><p>Shopify, TikTok Shop, and more. End buyers never touch iLaunchify. The brand stays yours.</p></div></div>
+        <div class="benefit"><div class="ic">🏅</div><div><h4>Founder perks that stick</h4><p>A founder badge and locked-in pricing when we exit beta. Early support that pays off later.</p></div></div>
+        <div class="callout"><b>What we ask in return:</b> honest feedback. A couple of short surveys, an optional call, and tapping the in-app feedback rail when something rocks, or breaks. That's it.</div>
+      </div>
+
+      <!-- RIGHT: survey + interest form -->
+      <div class="form-card" id="creator-form-card">
+        <form id="creator-form" onsubmit="submitForm(event,'creator')">
+          <div class="fc-head">
+            <div class="fc-eyebrow">● Creator beta · interest survey</div>
+            <h3>Apply to test</h3>
+            <p class="fc-sub">Tell us what you're building. If it's a fit, we'll email you an invite to the real sign-up.</p>
+          </div>
+          <div class="progress"><span class="seg on"></span><span class="seg"></span><span class="seg"></span></div>
+
+          <!-- STEP 1 -->
+          <div class="step active" data-step="1">
+            <div class="step-label">Step 1 of 3 · About your brand</div>
+            <div class="field">
+              <label>What are you looking to launch?</label>
+              <div class="chips" data-single>
+                <button type="button" class="chip">Functional drinks</button>
+                <button type="button" class="chip">Protein / powders</button>
+                <button type="button" class="chip">Supplements</button>
+                <button type="button" class="chip">Snacks / bars</button>
+                <button type="button" class="chip">Coffee / tea</button>
+                <button type="button" class="chip">Pet wellness</button>
+                <button type="button" class="chip">Still deciding</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Are you selling products today?</label>
+              <div class="chips" data-single>
+                <button type="button" class="chip">Not yet, first product</button>
+                <button type="button" class="chip">Yes, on my own channels</button>
+                <button type="button" class="chip">Yes, via another maker</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Roughly how big is your audience?</label>
+              <select><option value="" disabled selected>Select a range</option><option>Under 5K</option><option>5K – 50K</option><option>50K – 250K</option><option>250K – 1M</option><option>1M+</option><option>No audience yet</option></select>
+            </div>
+            <button type="button" class="btn btn-pink btn-block" onclick="nextStep('creator',2)">Continue →</button>
+          </div>
+
+          <!-- STEP 2 -->
+          <div class="step" data-step="2">
+            <div class="step-label">Step 2 of 3 · What you need</div>
+            <div class="field">
+              <label>What's the biggest thing standing between you and launching?</label>
+              <div class="chips" data-single>
+                <button type="button" class="chip">Finding a manufacturer</button>
+                <button type="button" class="chip">Cost / minimums</button>
+                <button type="button" class="chip">Design &amp; packaging</button>
+                <button type="button" class="chip">Compliance / labels</button>
+                <button type="button" class="chip">Just don't know where to start</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>How soon do you want your first product live?</label>
+              <div class="scale" data-scale><span class="s">ASAP</span><span class="s">1–3 mo</span><span class="s">3–6 mo</span><span class="s">Exploring</span></div>
+            </div>
+            <div class="field">
+              <label>What would make this a no-brainer to pay for later? <span class="opt">(optional)</span></label>
+              <textarea placeholder="e.g. speed, low minimums, hands-off production, trusted partners…"></textarea>
+            </div>
+            <div class="fc-actions">
+              <button type="button" class="btn btn-ghost" onclick="prevStep('creator',1)">← Back</button>
+              <button type="button" class="btn btn-pink" onclick="nextStep('creator',3)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- STEP 3 -->
+          <div class="step" data-step="3">
+            <div class="step-label">Step 3 of 3 · Where to reach you</div>
+            <div class="field"><label>Full name</label><input type="text" placeholder="Alex Rivera" required></div>
+            <div class="field"><label>Work / best email</label><input type="email" placeholder="you@brand.com" required></div>
+            <div class="field"><label>Brand or handle <span class="opt">(optional)</span></label><input type="text" placeholder="@yourbrand"></div>
+            <label class="consent"><input type="checkbox" required> I'd like to join the iLaunchify founding beta and I'm OK being contacted about testing and feedback.</label>
+            <button type="submit" class="btn btn-pink btn-block">Request my beta invite →</button>
+            <p class="fine">No account created yet · No card required · We invite founding Creators in waves.</p>
+          </div>
+        </form>
+
+        <!-- SUCCESS -->
+        <div class="success" id="creator-success">
+          <div class="check">✓</div>
+          <h3>You're on the founding list</h3>
+          <p>Thanks for applying to the Creator beta. We review applications in waves and email invites from the founding team.</p>
+          <div class="whatnext">
+            <h5>What happens next</h5>
+            <ul style="list-style:none;padding:0;margin:0;">
+              <li><span class="num">1</span><span>We review your survey to make sure the beta's a fit.</span></li>
+              <li><span class="num">2</span><span>When your seat opens, you get an email with a link to the <b>real sign-up</b>.</span></li>
+              <li><span class="num">3</span><span>You build for free, and tell us what to improve.</span></li>
+            </ul>
+          </div>
+          <a href="#" class="btn btn-ghost btn-block" style="margin-top:20px;" onclick="go('home');return false;">← Back to overview</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="ft">
+    <div class="wrap"><div class="ft-bottom" style="border:none;padding-top:0;"><span>© 2026 iLaunchify · Founding beta · US-only</span><a href="#" onclick="go('partner');return false;" style="color:var(--neon-500);">Are you a production partner? Apply here →</a></div></div>
+  </footer>
+</main>
+
+<!-- ============================================================= -->
+<!-- ===================== PARTNER VIEW ========================== -->
+<!-- ============================================================= -->
+<main id="view-partner" class="view partner-scope">
+  <section class="tp-hero partner">
+    <div class="mesh">
+      <span class="blob" style="width:460px;height:460px;background:#B5FF3D;top:-140px;right:-120px;opacity:.2;"></span>
+      <span class="blob" style="width:360px;height:360px;background:#FF2E63;bottom:-160px;left:-100px;animation-delay:-8s;opacity:.2;"></span>
+    </div>
+    <div class="wrap">
+      <a href="#" class="back" onclick="go('home');return false;">← Back to overview</a>
+      <div class="inner">
+        <span class="tp-tag">● Partner beta · Curated · Invite-only</span>
+        <h1>Put your line to work with <span class="serif">orchestrated</span> demand.</h1>
+        <p class="lede">For manufacturers, printers, co-packers, and warehouses that offer <b style="color:#fff;">white-label, private-label, or custom-formulation</b> production. A curated, invite-only network, not an open directory. If you can produce under a creator's brand, we want you in the founding supply network, free while we test.</p>
+        <div class="stats">
+          <div class="stat"><div class="n">$0</div><div class="l">listing fees in beta</div></div>
+          <div class="stat"><div class="n">4</div><div class="l">partner types onboarding</div></div>
+          <div class="stat"><div class="n">Merit</div><div class="l">earned tiers, not pay-to-play</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tp-body partner-scope">
+    <div class="wrap tp-cols">
+      <!-- LEFT -->
+      <div class="tp-left">
+        <div class="callout" style="border-left-color:var(--neon-600);margin:0 0 26px;"><b>Who qualifies:</b> iLaunchify is only for partners offering white-label, private-label, or custom-formulation products. If you make goods under a client's brand, you're exactly who we're building for. If you only sell your own brands, this network isn't a fit.</div>
+        <h2>Why join as a founding Partner</h2>
+        <div class="benefit"><div class="ic" style="background:#EAF9D6;">🎯</div><div><h4>Qualified, matched orders</h4><p>We route production to partners whose capabilities and capacity actually fit. No bidding wars, no tire-kickers.</p></div></div>
+        <div class="benefit"><div class="ic" style="background:#EAF9D6;">🏆</div><div><h4>Earn tier &amp; merit status</h4><p>Verified → Trusted → Premier is earned through performance, not purchased. Better standing means better fees and perks.</p></div></div>
+        <div class="benefit"><div class="ic" style="background:#EAF9D6;">🧩</div><div><h4>We hide the orchestration</h4><p>You focus on your step of the graph. We coordinate hand-offs between printer, co-packer, and warehouse.</p></div></div>
+        <div class="benefit"><div class="ic" style="background:#EAF9D6;">🚀</div><div><h4>Founding network advantage</h4><p>Early partners get first pick of demand and a say in how routing and standards evolve. No listing fees during beta.</p></div></div>
+        <div class="callout"><b>What we ask in return:</b> real feedback on onboarding, routing, and dispatch, plus a short survey and an optional walkthrough. Your input tunes the orchestration engine.</div>
+      </div>
+
+      <!-- RIGHT: survey + interest form -->
+      <div class="form-card" id="partner-form-card">
+        <form id="partner-form" onsubmit="submitForm(event,'partner')">
+          <div class="fc-head">
+            <div class="fc-eyebrow">● Partner beta · interest survey</div>
+            <h3>Apply to join the network</h3>
+            <p class="fc-sub">Tell us about your operation. If it's a fit, we'll email an invite to onboard.</p>
+          </div>
+          <div class="progress"><span class="seg on"></span><span class="seg"></span><span class="seg"></span></div>
+
+          <!-- STEP 1 -->
+          <div class="step active" data-step="1">
+            <div class="step-label">Step 1 of 3 · Your operation</div>
+            <div class="field">
+              <label>Do you offer white-label, private-label, or custom-formulation production? <span class="opt">(required to join)</span></label>
+              <div class="chips" data-single>
+                <button type="button" class="chip">Yes, that's our model</button>
+                <button type="button" class="chip">Some products, yes</button>
+                <button type="button" class="chip">No, only our own brands</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>What type of partner are you?</label>
+              <div class="chips" data-single>
+                <button type="button" class="chip">Manufacturer</button>
+                <button type="button" class="chip">Label printer</button>
+                <button type="button" class="chip">Co-packer</button>
+                <button type="button" class="chip">Warehouse / 3PL</button>
+                <button type="button" class="chip">More than one</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Which formats can you produce or handle?</label>
+              <div class="chips" data-multi>
+                <button type="button" class="chip">Powders</button>
+                <button type="button" class="chip">Beverages / RTD</button>
+                <button type="button" class="chip">Capsules / tablets</button>
+                <button type="button" class="chip">Bars / snacks</button>
+                <button type="button" class="chip">Gummies</button>
+                <button type="button" class="chip">Pet</button>
+                <button type="button" class="chip">Labels / packaging</button>
+              </div>
+            </div>
+            <button type="button" class="btn btn-neon btn-block" onclick="nextStep('partner',2)">Continue →</button>
+          </div>
+
+          <!-- STEP 2 -->
+          <div class="step" data-step="2">
+            <div class="step-label">Step 2 of 3 · Capacity &amp; fit</div>
+            <div class="field">
+              <label>How's your current capacity?</label>
+              <div class="chips" data-single>
+                <button type="button" class="chip">Plenty of open capacity</button>
+                <button type="button" class="chip">Some room for new work</button>
+                <button type="button" class="chip">Near full, selective</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>How open are you to pooled / orchestrated orders?</label>
+              <div class="scale" data-scale><span class="s">Very</span><span class="s">Somewhat</span><span class="s">Curious</span><span class="s">Unsure</span></div>
+            </div>
+            <div class="field">
+              <label>Biggest pain in winning new CPG clients today? <span class="opt">(optional)</span></label>
+              <textarea placeholder="e.g. lead quality, small runs, onboarding friction, payment terms…"></textarea>
+            </div>
+            <div class="fc-actions">
+              <button type="button" class="btn btn-ghost" onclick="prevStep('partner',1)">← Back</button>
+              <button type="button" class="btn btn-neon" onclick="nextStep('partner',3)">Continue →</button>
+            </div>
+          </div>
+
+          <!-- STEP 3 -->
+          <div class="step" data-step="3">
+            <div class="step-label">Step 3 of 3 · Where to reach you</div>
+            <div class="field"><label>Full name</label><input type="text" placeholder="Jordan Lee" required></div>
+            <div class="field"><label>Work email</label><input type="email" placeholder="you@company.com" required></div>
+            <div class="field"><label>Company</label><input type="text" placeholder="Acme Co-Pack LLC" required></div>
+            <div class="field"><label>Location <span class="opt">(state)</span></label><input type="text" placeholder="e.g. TX"></div>
+            <label class="consent"><input type="checkbox" required> I'd like to join the iLaunchify founding partner network and I'm OK being contacted about onboarding and feedback.</label>
+            <button type="submit" class="btn btn-neon btn-block">Request onboarding invite →</button>
+            <p class="fine">No account created yet · No listing fees in beta · We onboard partners in waves.</p>
+          </div>
+        </form>
+
+        <!-- SUCCESS -->
+        <div class="success" id="partner-success">
+          <div class="check">✓</div>
+          <h3>You're on the founding network list</h3>
+          <p>Thanks for applying. We review partners in waves and reach out from the founding team to start onboarding.</p>
+          <div class="whatnext">
+            <h5>What happens next</h5>
+            <ul style="list-style:none;padding:0;margin:0;">
+              <li><span class="num" style="background:var(--neon-600);">1</span><span>We review your capabilities against current creator demand.</span></li>
+              <li><span class="num" style="background:var(--neon-600);">2</span><span>When there's a fit, you get an invite with a link to <b>onboard</b>.</span></li>
+              <li><span class="num" style="background:var(--neon-600);">3</span><span>You start receiving matched work, and help us tune routing.</span></li>
+            </ul>
+          </div>
+          <a href="#" class="btn btn-ghost btn-block" style="margin-top:20px;" onclick="go('home');return false;">← Back to overview</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="ft">
+    <div class="wrap"><div class="ft-bottom" style="border:none;padding-top:0;"><span>© 2026 iLaunchify · Founding beta · US-only</span><a href="#" onclick="go('creator');return false;" style="color:var(--pink-400);">Launching a brand instead? Apply as a Creator →</a></div></div>
+  </footer>
+</main>
+
+<script>
+  // ---- view router ----
+  function go(view, anchor){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+view).classList.add('active');
+    if(anchor){
+      requestAnimationFrame(()=>{const el=document.getElementById(anchor);if(el)el.scrollIntoView({behavior:'smooth'});});
+    }else{
+      window.scrollTo({top:0,behavior:'instant'in window?'instant':'auto'});
+    }
+  }
+
+  // ---- chip selection ----
+  document.addEventListener('click',function(e){
+    const chip=e.target.closest('.chip');
+    if(chip){
+      const group=chip.closest('[data-single],[data-multi]');
+      if(group && group.hasAttribute('data-single')){
+        group.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+        chip.classList.add('sel');
+      }else{
+        chip.classList.toggle('sel');
+      }
+    }
+    const s=e.target.closest('.scale .s');
+    if(s){
+      s.parentElement.querySelectorAll('.s').forEach(x=>x.classList.remove('sel'));
+      s.classList.add('sel');
+    }
+  });
+
+  // ---- multi-step ----
+  function setProgress(scope,step){
+    const segs=document.querySelectorAll('#'+scope+'-form .progress .seg');
+    segs.forEach((seg,i)=>seg.classList.toggle('on',i<step));
+  }
+  function showStep(scope,step){
+    document.querySelectorAll('#'+scope+'-form .step').forEach(s=>s.classList.toggle('active',+s.dataset.step===step));
+    setProgress(scope,step);
+    document.getElementById(scope+'-form-card').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  function nextStep(scope,step){showStep(scope,step);}
+  function prevStep(scope,step){showStep(scope,step);}
+
+  // ---- submit ----
+  function submitForm(e,scope){
+    e.preventDefault();
+    document.getElementById(scope+'-form').style.display='none';
+    document.getElementById(scope+'-success').classList.add('show');
+    document.getElementById(scope+'-form-card').scrollIntoView({behavior:'smooth',block:'center'});
+  }
+</script>
+</body>
+</html>

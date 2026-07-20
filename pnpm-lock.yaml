@@ -640,6 +640,9 @@ importers:
       '@ilaunchify/legal':
         specifier: workspace:*
         version: link:../legal
+      '@ilaunchify/orders':
+        specifier: workspace:*
+        version: link:../orders
       next:
         specifier: ^15.0.0
         version: 15.0.2(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -685,6 +688,9 @@ importers:
         specifier: ^5.20.0
         version: 5.22.0(prisma@5.22.0)
     devDependencies:
+      '@ilaunchify/storage':
+        specifier: workspace:*
+        version: link:../storage
       dotenv-cli:
         specifier: ^7.4.4
         version: 7.4.4
@@ -781,6 +787,9 @@ importers:
       '@ilaunchify/nutrition':
         specifier: workspace:*
         version: link:../nutrition
+      '@ilaunchify/plans':
+        specifier: workspace:*
+        version: link:../plans
       '@ilaunchify/risk':
         specifier: workspace:*
         version: link:../risk

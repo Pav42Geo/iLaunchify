@@ -22,6 +22,8 @@ export interface ManufacturingLineDraft {
   loadedRateCentsPerHour: number
   changeoverMinutes: number
   maxBatchesPerRun: number
+  unitsPerBatch: number | null
+  batchTimeMinutes: number | null
   weeklyCapacityHours: number | null
   allergenClass: string | null
   active: boolean
@@ -29,13 +31,22 @@ export interface ManufacturingLineDraft {
 
 export interface ManufacturingBuilderPayload {
   serviceName: string | null
+  facilityId: string | null
   leadStockDays: number | null
   leadCustomDays: number | null
   minOrderValueCents: number | null
   overrunPolicyPct: number | null
+  toolingFirstArticleCents: number | null
+  changeoverFeeCents: number | null
+  rndFormulationCents: number | null
+  rushUpliftBps: number | null
+  rushLeadTimeDays: number | null
+  maxRushJobsPerWeek: number | null
+  repeatRunDiscountBps: number | null
   categories: string[]
   fillTypes: string[]
   containerFormats: string[]
+  certifications: string[]
   lines: ManufacturingLineDraft[]
 }
 
@@ -71,6 +82,7 @@ export async function saveManufacturingBuilder(
     categories: payload.categories ?? [],
     fillTypes: payload.fillTypes ?? [],
     containerFormats: payload.containerFormats ?? [],
+    certifications: payload.certifications ?? [],
   }
   if (payload.serviceName?.trim()) capsPatch.serviceName = payload.serviceName.trim()
   if (posInt(payload.leadStockDays) !== null) capsPatch.leadTimeStockDays = posInt(payload.leadStockDays)
@@ -82,12 +94,22 @@ export async function saveManufacturingBuilder(
       const nextCaps = { ...currentCaps, ...capsPatch }
       await tx.partnerService.update({
         where: { id: service.id },
-        data: { capabilities: nextCaps as Prisma.InputJsonValue },
+        data: {
+          ...(payload.facilityId ? { facilityId: payload.facilityId } : {}),
+          capabilities: nextCaps as Prisma.InputJsonValue,
+        },
       })
 
       const configData = {
         minOrderValueCents: posInt(payload.minOrderValueCents),
         overrunPolicyPct: payload.overrunPolicyPct != null ? Math.max(0, Math.min(100, Math.round(payload.overrunPolicyPct))) : null,
+        toolingFirstArticleCents: posInt(payload.toolingFirstArticleCents),
+        changeoverFeeCents: posInt(payload.changeoverFeeCents),
+        rndFormulationCents: posInt(payload.rndFormulationCents),
+        rushUpliftBps: posInt(payload.rushUpliftBps),
+        rushLeadTimeDays: posInt(payload.rushLeadTimeDays),
+        maxRushJobsPerWeek: posInt(payload.maxRushJobsPerWeek),
+        repeatRunDiscountBps: posInt(payload.repeatRunDiscountBps),
       } as const
       await tx.partnerManufacturingConfig.upsert({
         where: { partnerServiceId: service.id },
@@ -104,6 +126,8 @@ export async function saveManufacturingBuilder(
             loadedRateCentsPerHour: Math.round(l.loadedRateCentsPerHour),
             changeoverMinutes: Math.round(l.changeoverMinutes),
             maxBatchesPerRun: Math.round(l.maxBatchesPerRun),
+            unitsPerBatch: l.unitsPerBatch != null ? posInt(l.unitsPerBatch) : null,
+            batchTimeMinutes: l.batchTimeMinutes != null ? posInt(l.batchTimeMinutes) : null,
             weeklyCapacityHours: l.weeklyCapacityHours != null ? posInt(l.weeklyCapacityHours) : null,
             allergenClass: l.allergenClass?.trim() || null,
             status: l.active ? 'ACTIVE' : 'DRAFT',

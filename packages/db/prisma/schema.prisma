@@ -1658,6 +1658,11 @@ model PartnerManufacturingLine {
   loadedRateCentsPerHour Int
   changeoverMinutes      Int // fixed setup per run — the overrun/MOQ driver
   maxBatchesPerRun       Int            @default(1)
+  // DEFAULT batch (the prototype's "flows into every product"): a product inherits
+  // these and may override on ProductTemplate.unitsPerBatch/batchTimeMinutes, so MOQ
+  // is derived PER PRODUCT from its effective batch × this line's economics.
+  unitsPerBatch          Int? // default units one batch of this line makes
+  batchTimeMinutes       Int? // default run time per batch
   weeklyCapacityHours    Int? // capacity reservation (COPACK_CAPACITY_RESERVATION_BRIEF); inert until built
   allergenClass          String? // e.g. "nut-free segregated"; null = unrestricted
   status                 OfferingStatus @default(DRAFT) // ACTIVE only after admin verification
@@ -1678,6 +1683,15 @@ model PartnerManufacturingConfig {
   partnerServiceId          String   @unique // 1:1 with the MANUFACTURING service
   minOrderValueCents        Int?
   overrunPolicyPct          Int? // 0..100; 100 = creator buys the full batch (industry norm)
+  // Commercial defaults (prototype step 4) — inherited by every product, all
+  // partner-set + creator-paid ⇒ in the fee base (like the co-pack/print add-ons).
+  toolingFirstArticleCents  Int? // one-off per new formula (scale-up, first-article, retains)
+  changeoverFeeCents        Int? // per run, whatever the quantity
+  rndFormulationCents       Int? // custom-formula development; quoted, not auto-charged
+  rushUpliftBps             Int? // applied to the production subtotal
+  rushLeadTimeDays          Int?
+  maxRushJobsPerWeek        Int?
+  repeatRunDiscountBps      Int? // same formula inside window: waive re-qualification / first-article
   selfFillMaxUnits          Int? // fill/pack up to N per order yourself; above → overflow (MB-6)
   overflowCoPackerServiceId String? // soft FK → COPACKING PartnerService that fills the overflow
   createdAt                 DateTime @default(now())

@@ -666,26 +666,21 @@ export function MessagesShell(props: MessagesShellProps) {
                   aria-label="Collapse to a mini chat window"
                   title="Collapse to mini chat"
                   onClick={() => {
-                    // Collapse (Pavel 2026-07-13): dock the thread, then land
-                    // where the conversation CONTINUES. A room thread goes to
-                    // its room page — the right-rail Discussion is the same
-                    // thread, so the chat picks up there; the docked mini
-                    // window takes over the moment you leave that room. A DM
-                    // has no room page, so the mini window is the landing.
-                    dockThread({
-                      kind: props.selected!.kind,
-                      id: props.selected!.id,
-                      title: props.headerTitle,
-                      ...(props.headerIcon ? { icon: props.headerIcon } : {}),
-                    })
+                    // Collapse (Pavel 2026-07-13, model locked): rail = the
+                    // room's chat, corner windows = 1:1 member chats ONLY.
+                    // A room thread lands on its room page — the LIVE rail is
+                    // the collapsed view. A DM docks as a floating window.
                     if (props.selected!.kind === 'room') {
-                      // ?chat=1 → the room shell opens its Messages tab, so the
-                      // conversation continues in the room's right rail.
                       router.push(`${props.roomHref ?? `/rooms/${props.selected!.id}`}?chat=1`)
-                    } else if (window.history.length > 1) {
-                      router.back()
                     } else {
-                      router.push('/messages')
+                      dockThread({
+                        kind: 'dm',
+                        id: props.selected!.id,
+                        title: props.headerTitle,
+                        ...(props.headerIcon ? { icon: props.headerIcon } : {}),
+                      })
+                      if (window.history.length > 1) router.back()
+                      else router.push('/messages')
                     }
                   }}
                   className="hidden h-8 w-8 items-center justify-center rounded-pill text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 md:flex"

@@ -574,13 +574,17 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
         >
           {props.rooms?.find((r) => r.title === props.briefTitle)?.icon ?? '🥤'}
         </span>
-        <div>
-          <RoomSwitcher mode={mode} title={props.briefTitle} rooms={props.rooms ?? []} />
-          <span className="text-ui-label normal-case tracking-normal text-ink-500">
-            {props.creatorName} × {props.partnerName} · viewing as {meName} (
-            {mode === 'creator' ? 'Creator' : 'Manufacturer'})
-          </span>
-        </div>
+        <RoomSwitcher
+          mode={mode}
+          title={props.briefTitle}
+          rooms={props.rooms ?? []}
+          subtitle={
+            <>
+              {props.creatorName} × {props.partnerName} · viewing as {meName} (
+              {mode === 'creator' ? 'Creator' : 'Manufacturer'})
+            </>
+          }
+        />
         <span className="flex-1" />
         <span className="inline-flex items-center gap-s-1 rounded-pill border border-ink-200 bg-ink-50 px-s-3 py-s-1 text-ui-label normal-case tracking-normal text-ink-700">
           <span
@@ -773,8 +777,8 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
           <div className="flex border-b border-ink-100">
             {(
               [
-                // Tab order locked (Pavel 2026-07-13): Messages · Members · Activity log
-                ['messages', 'Messages'],
+                // Tab order locked (Pavel 2026-07-13): Room chat · Members · Activity log
+                ['messages', 'Room chat'],
                 ...(props.chatMembers && props.chatMembers.length > 0
                   ? ([['members', 'Members']] as const)
                   : []),
@@ -841,10 +845,12 @@ export function CoCreationRoomShell(props: CoCreationRoomShellProps) {
 function RoomSwitcher({
   mode,
   title,
+  subtitle,
   rooms,
 }: {
   mode: 'creator' | 'partner'
   title: string
+  subtitle?: React.ReactNode
   rooms: RoomSwitcherEntry[]
 }) {
   const [open, setOpen] = React.useState(false)
@@ -864,8 +870,24 @@ function RoomSwitcher({
     }
   }, [open])
 
+  const textBlock = (
+    <span className="min-w-0 text-left">
+      <span className="flex items-center gap-s-2">
+        <b className="truncate text-ui-value">{title}</b>
+        {rooms.length >= 2 ? (
+          <span className="flex-none rounded-pill bg-pink-50 px-s-2 py-0.5 text-ui-label tracking-normal text-pink-700">
+            {rooms.length} rooms
+          </span>
+        ) : null}
+      </span>
+      {subtitle ? (
+        <span className="block truncate text-ui-label normal-case tracking-normal text-ink-500">{subtitle}</span>
+      ) : null}
+    </span>
+  )
+
   if (rooms.length < 2) {
-    return <b className="block text-ui-value">{title}</b>
+    return <div>{textBlock}</div>
   }
 
   const footer =
@@ -875,19 +897,26 @@ function RoomSwitcher({
 
   return (
     <div ref={wrapRef} className="relative">
+      {/* Trigger spans BOTH text lines with a big right-side chevron
+          (Pavel 2026-07-13) — the whole title block is the affordance. */}
       <button
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-s-1 rounded-md text-ui-value font-bold transition hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
+        className="group flex items-center gap-s-3 rounded-lg pr-s-2 text-left transition hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500"
       >
-        {title}
-        <span aria-hidden className={cn('text-ink-400 transition-transform', open && 'rotate-180')}>
-          ⌄
-        </span>
-        <span className="rounded-pill bg-pink-50 px-s-2 py-0.5 text-ui-label tracking-normal text-pink-700">
-          {rooms.length} rooms
+        {textBlock}
+        <span
+          aria-hidden
+          className={cn(
+            'flex h-9 w-9 flex-none items-center justify-center rounded-md text-ink-400 transition-transform group-hover:text-pink-700',
+            open && 'rotate-180',
+          )}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </span>
       </button>
 
@@ -3937,7 +3966,15 @@ function MembersRail({
           <div key={side} className="mb-s-4">
             <div className="mb-s-2 text-ui-label uppercase text-ink-500">{label}</div>
             {rows.map((m) => (
-              <div key={m.userId} className="mb-s-2 flex items-center gap-s-2">
+              // The whole row is the affordance (Pavel 2026-07-13): click a
+              // member → their 1:1 opens as a floating corner window.
+              <button
+                key={m.userId}
+                type="button"
+                disabled={!onStartDm || dmBusy !== null}
+                onClick={() => void startFloatingDm(m)}
+                className="mb-s-1 flex w-full items-center gap-s-2 rounded-lg px-s-2 py-s-1.5 text-left transition-colors hover:bg-ink-50 disabled:cursor-default disabled:hover:bg-transparent"
+              >
                 <span
                   className={cn(
                     'flex h-7 w-7 flex-none items-center justify-center rounded-pill text-[10px] font-bold',
@@ -3952,17 +3989,10 @@ function MembersRail({
                     {m.roleLabel}
                   </span>
                 </span>
-                {onStartDm ? (
-                  <button
-                    type="button"
-                    disabled={dmBusy !== null}
-                    onClick={() => void startFloatingDm(m)}
-                    className="rounded-pill border border-ink-200 bg-white px-s-3 py-s-1 text-ui-label font-semibold normal-case tracking-normal text-ink-600 transition-colors hover:bg-ink-50 disabled:opacity-50"
-                  >
-                    {dmBusy === m.userId ? '…' : 'Message'}
-                  </button>
-                ) : null}
-              </div>
+                <span aria-hidden className="text-ui-label text-ink-400">
+                  {dmBusy === m.userId ? '…' : '💬'}
+                </span>
+              </button>
             ))}
           </div>
         )

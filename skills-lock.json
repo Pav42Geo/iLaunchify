@@ -5,6 +5,11 @@
       "source": "docs.stripe.com",
       "sourceType": "well-known",
       "computedHash": "3c85d46c6d927918aef200e4ced45ffb737aa108b05e2d538af7afbed09b0d27"
+    },
+    "upgrade-stripe": {
+      "source": "docs.stripe.com",
+      "sourceType": "well-known",
+      "computedHash": "46bb3c16878f93b953ed901b950686d64f04f90c67400bf31e1a0d7790d889df"
     }
   }
 }

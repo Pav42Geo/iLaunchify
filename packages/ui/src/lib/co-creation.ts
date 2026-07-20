@@ -47,6 +47,15 @@ export function nicheGradientKey(slug: string | null | undefined): ProductGradie
   return (slug && NICHE_GRADIENT[slug]) || 'pink'
 }
 
+/** BuildObjectKind → human label (room chat ⧉ anchors, activity copy). */
+export const OBJECT_KIND_LABEL: Record<string, string> = {
+  RECIPE: 'Recipe',
+  PACKAGING: 'Packaging',
+  LABEL: 'Label',
+  SAMPLE: 'Sample',
+  SPEC_SHEET: 'Spec sheet',
+}
+
 /**
  * One-line room status for the switcher, derived from the RECIPE object —
  * plus an attention chip when the ball is in the VIEWER's court.

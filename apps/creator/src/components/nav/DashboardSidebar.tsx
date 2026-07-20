@@ -74,11 +74,14 @@ const CC_STORAGE_KEY = 'ilf-creator-cocreation-sidebar-collapsed'
 export function DashboardSidebar({
   showBriefs = true,
   roomSeen = true,
+  messagesUnread = 0,
 }: {
   showBriefs?: boolean
   /** Account-level "has ever opened a Collaboration Room" flag
    *  (onboardingProgress.roomFirstVisitAt) — false triggers the one-shot fold. */
   roomSeen?: boolean
+  /** Threads (rooms + DMs) with unread messages — badge on the Messages item. */
+  messagesUnread?: number
 }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
@@ -191,10 +194,25 @@ export function DashboardSidebar({
             collapsedNow ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2',
             active ? 'bg-ink-100 font-medium text-ink-900' : 'text-ink-600 hover:bg-ink-50',
           )
+          // Messages unread badge: pink count pill expanded, pink dot folded.
+          const badge = href === '/messages' && messagesUnread > 0
           const inner = (
             <>
-              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="relative shrink-0">
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {badge && collapsedNow && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-pink-500"
+                  />
+                )}
+              </span>
               {!collapsedNow && <span>{label}</span>}
+              {badge && !collapsedNow && (
+                <span className="ml-auto rounded-full bg-pink-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                  {messagesUnread}
+                </span>
+              )}
             </>
           )
           if (external) {

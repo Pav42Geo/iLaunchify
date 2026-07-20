@@ -448,10 +448,10 @@ export function MessagesDock(props: MessagesDockProps) {
   // The full hub IS the messenger — the dock never doubles it.
   if (pathname?.startsWith(props.hubHref)) return null
 
-  const visible = items.filter(
-    // A room panel hides on its own room page (the Discussion rail is there).
-    (i) => !(i.kind === 'room' && pathname?.startsWith(`/rooms/${i.id}`)),
-  )
+  // Model locked (Pavel 2026-07-13): corner windows are 1:1 MEMBER chats only.
+  // Room conversations live in the room's live rail (collapsed view) or the
+  // fullscreen hub — never as floating windows. Legacy room entries filtered.
+  const visible = items.filter((i) => i.kind === 'dm')
   if (visible.length === 0) return null
   const open = visible.filter((i) => !i.min).slice(0, MAX_OPEN)
   const minimized = visible.filter((i) => i.min || !open.includes(i))
