@@ -49,12 +49,14 @@ const SERVICE_TYPE_OPTIONS: Array<{ value: ServiceType; label: string; descripti
   {
     value: 'MANUFACTURING',
     label: 'Manufacturing',
-    description: 'You produce finished goods from ingredients / raw materials',
+    description:
+      'You produce finished goods from ingredients or raw materials, including filling and packing your own product.',
   },
   {
     value: 'COPACKING',
     label: 'Co-packing',
-    description: 'You package products supplied by creators or other manufacturers',
+    description:
+      "You fill and pack OTHER brands' or creators' products. Not needed if you only pack your own.",
   },
   {
     value: 'LABEL_PRINTING',
@@ -185,7 +187,7 @@ export function YourBusinessSection({
       {/* Partner types — multi-select */}
       <Field
         label="What do you do?"
-        hint="Pick all that apply — many partners offer more than one. You can change this anytime."
+        hint="Pick all that apply. Most partners start with just one: manufacturing already covers filling and packing your own product, so you only need co-packing if you pack for other brands. You can change this anytime."
       >
         <div className="space-y-2">
           {SERVICE_TYPE_OPTIONS.map((opt) => {

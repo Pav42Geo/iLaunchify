@@ -52,8 +52,8 @@ type ServiceT = Values['serviceTypes'][number]
 // zod enum still accepts WAREHOUSE so previously saved drafts don't break.
 const SERVICE_ORDER: ServiceT[] = ['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING']
 const SERVICE: Record<ServiceT, { label: string; sub: string }> = {
-  MANUFACTURING: { label: 'Manufacturing', sub: 'Make from scratch' },
-  COPACKING: { label: 'Co-packing', sub: 'Fill & package' },
+  MANUFACTURING: { label: 'Manufacturing', sub: 'Make, fill & pack your own product' },
+  COPACKING: { label: 'Co-packing', sub: "Fill & pack OTHER brands' products" },
   LABEL_PRINTING: { label: 'Packaging printing', sub: 'Labels · sleeves · cartons · flexible' },
   WAREHOUSE: { label: 'Fulfillment (3PL)', sub: 'Store · pick · pack · ship' },
 }
