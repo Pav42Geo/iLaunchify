@@ -15,6 +15,7 @@
 
 import { useMemo, useState } from 'react'
 import { assessBatchRun, type BatchConfigInput } from '@ilaunchify/orders/batch-economics'
+import { saveManufacturingBuilder, type ManufacturingBuilderPayload } from './actions'
 
 interface LineDraft {
   id: string
@@ -59,6 +60,9 @@ const inputCls = 'h-[38px] w-full rounded-md border border-ink-300 bg-white px-[
 
 export function ManufacturingServiceBuilder({ initial }: { initial: ManufacturingBuilderInitial }) {
   const [v, setV] = useState(0)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
   const [serviceName, setServiceName] = useState(initial.serviceName)
   const [leadStock, setLeadStock] = useState(initial.leadStock)
   const [leadCustom, setLeadCustom] = useState(initial.leadCustom)
@@ -108,6 +112,37 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
       })
     : null
   const winnerLine = assessment?.selectedConfigId ? configs.find((c) => c.id === assessment.selectedConfigId)?.lineName : null
+
+  function save() {
+    setError(null)
+    const payload: ManufacturingBuilderPayload = {
+      serviceName: serviceName.trim() || null,
+      leadStockDays: leadStock.trim() ? intOf(leadStock) : null,
+      leadCustomDays: leadCustom.trim() ? intOf(leadCustom) : null,
+      minOrderValueCents: minOrderValue.trim() ? centsOf(minOrderValue) : null,
+      overrunPolicyPct: overrunPolicyPct.trim() ? intOf(overrunPolicyPct) : null,
+      categories: [...categories],
+      fillTypes: [...fills],
+      containerFormats: [...containers],
+      lines: lines
+        .filter((l) => l.name.trim() || num(l.rate) > 0)
+        .map((l) => ({
+          name: l.name.trim() || 'Line',
+          loadedRateCentsPerHour: centsOf(l.rate),
+          changeoverMinutes: Math.round(num(l.changeoverHours) * 60),
+          maxBatchesPerRun: intOf(l.maxBatches) || 1,
+          weeklyCapacityHours: l.capacityHours.trim() ? intOf(l.capacityHours) : null,
+          allergenClass: l.allergen.trim() || null,
+          active: l.active,
+        })),
+    }
+    setPending(true)
+    void saveManufacturingBuilder(initial.serviceId, payload).then((res) => {
+      setPending(false)
+      if (res.ok) setSaved(true)
+      else setError(res.error)
+    })
+  }
 
   return (
     <div className="mx-auto max-w-[1080px] pb-24">
@@ -221,6 +256,16 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
             </div>
           </Hero>
         )}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-[1080px] items-center gap-3 px-4">
+          <span className="text-[12.5px] font-semibold text-ink-500">{pending ? 'Saving…' : saved ? 'All changes saved' : error ? '' : 'Draft not yet saved'}</span>
+          {error && <span className="text-[12px] font-semibold text-danger-500">{error}</span>}
+          <span className="flex-1" />
+          <button type="button" onClick={() => setV((x) => Math.max(0, x - 1))} disabled={v === 0} className="rounded-pill border border-ink-300 bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 disabled:opacity-40">Back</button>
+          <button type="button" onClick={save} disabled={pending} className="rounded-pill bg-pink-500 px-5 py-2 text-[12.5px] font-bold text-white hover:bg-pink-600 disabled:opacity-40">{v === STAGES.length - 1 ? 'Save & finish' : 'Save changes'}</button>
+        </div>
       </div>
     </div>
   )
