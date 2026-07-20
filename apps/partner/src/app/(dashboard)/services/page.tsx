@@ -430,7 +430,20 @@ async function SectionPanel({
           ) : type === 'MANUFACTURING' ? (
             <ManufacturingEditor serviceId={svc.id} capabilities={caps} />
           ) : type === 'COPACKING' ? (
-            <CopackEditor serviceId={svc.id} capabilities={caps} />
+            <>
+              <a
+                href="/services/copacking"
+                className="mb-4 flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
+              >
+                <Package className="h-4 w-4 flex-none" />
+                <span className="flex-1">
+                  Open the full co-packing builder — lines, operations, run pricing and a live quote
+                  check.
+                </span>
+                <ExternalLink className="h-3.5 w-3.5 flex-none" />
+              </a>
+              <CopackEditor serviceId={svc.id} capabilities={caps} />
+            </>
           ) : (
             <PrintEditor
               serviceId={svc.id}
