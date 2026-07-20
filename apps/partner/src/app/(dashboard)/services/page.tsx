@@ -431,7 +431,19 @@ async function SectionPanel({
           {!canEdit ? (
             <CapabilityReadout capabilities={svc.capabilities} />
           ) : type === 'MANUFACTURING' ? (
-            <ManufacturingEditor serviceId={svc.id} capabilities={caps} />
+            <>
+              <a
+                href="/services/manufacturing"
+                className="mb-4 flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
+              >
+                <Factory className="h-4 w-4 flex-none" />
+                <span className="flex-1">
+                  Open the full manufacturing builder: your lines, floors, scope and a live MOQ check.
+                </span>
+                <ExternalLink className="h-3.5 w-3.5 flex-none" />
+              </a>
+              <ManufacturingEditor serviceId={svc.id} capabilities={caps} />
+            </>
           ) : type === 'COPACKING' ? (
             <a
               href="/services/copacking"
@@ -445,13 +457,25 @@ async function SectionPanel({
               <ExternalLink className="h-3.5 w-3.5 flex-none" />
             </a>
           ) : (
-            <PrintEditor
-              serviceId={svc.id}
-              capabilities={caps}
-              appliesLabels={svc.appliesLabels}
-              substrateCount={substrateCount}
-              dielineCount={dielineCount}
-            />
+            <>
+              <a
+                href="/services/printing"
+                className="mb-4 flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
+              >
+                <Printer className="h-4 w-4 flex-none" />
+                <span className="flex-1">
+                  Open the full print builder: per-press price curves and a live crossover check.
+                </span>
+                <ExternalLink className="h-3.5 w-3.5 flex-none" />
+              </a>
+              <PrintEditor
+                serviceId={svc.id}
+                capabilities={caps}
+                appliesLabels={svc.appliesLabels}
+                substrateCount={substrateCount}
+                dielineCount={dielineCount}
+              />
+            </>
           )}
         </>
       )

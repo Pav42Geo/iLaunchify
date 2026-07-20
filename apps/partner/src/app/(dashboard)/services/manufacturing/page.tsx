@@ -75,5 +75,18 @@ export default async function ManufacturingBuilderPage() {
     })),
   }
 
-  return <ManufacturingServiceBuilder initial={initial} />
+  return (
+    <>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[18px] font-bold text-ink-900">Manufacturing builder</h1>
+          <p className="text-[12.5px] text-ink-500">Your lines, floors and scope. Per-product batch size lives in the product builder.</p>
+        </div>
+        <a href={`/services?svc=${svc.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50">
+          Storage, labeling & prepress →
+        </a>
+      </div>
+      <ManufacturingServiceBuilder initial={initial} />
+    </>
+  )
 }
