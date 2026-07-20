@@ -1440,6 +1440,13 @@ model PartnerService {
   // per-product property, so MOQ is derived per product, never a flat number.
   manufacturingLines               PartnerManufacturingLine[]
   manufacturingConfig              PartnerManufacturingConfig?
+  // ---- PP-7 print service builder (docs/PRINT_PROVIDER_SELECTION.md §10 + prototype) ----
+  // Presses carry the run bands (MOQ belongs to the press, not the shop); config holds the
+  // single-value service settings (rush, envelope, finished-format, prepress rules+fees,
+  // tooling, order rules); finishes are both a capability and a price line.
+  printPresses                     PartnerPrintPress[]
+  printConfig                      PartnerPrintConfig?
+  printFinishes                    PartnerPrintFinish[]
   // ---- Partner rating aggregates (docs/FEEDBACK_MODULE.md §5.3–5.4) ----
   // Denormalized from PartnerRating on every write; SERVICE-scoped. Display
   // uses ratingMean+ratingCount ("New" below min-N=3); ranking/badging uses
@@ -1496,6 +1503,39 @@ enum PrintProcess {
   // laser / sublimation / 3D / large-format / engraving excluded (not CPG packaging print).
   LETTERPRESS // premium labels, tactile / semi-rotary
   LED_UV // UV-cured inkjet/flexo — premium, prints on varied substrates
+}
+
+// PP-7 — a finish is a capability AND a price line. Mode decides how the per-unit
+// number is read (flat setup + per piece, per printed area, per struck object, per
+// spot colour, or a tiered curve). Setup amortises like a plate; min-qty gates it.
+enum PrintPricingMode {
+  FLAT_PLUS_UNIT // setup once + per piece
+  PER_AREA // per printed square inch (foil/spot coverage)
+  PER_OBJECT // per struck object (emboss die hit)
+  PER_COLOR // per spot colour applied
+  TIERED // quantity-tiered curve, quote-anchored
+}
+
+// PP-7 — how the finished run leaves the press. A real minimum driver: two shops
+// with the same piece-MOQ are not interchangeable if one cannot wind a 3in core.
+enum PrintDeliveryFormat {
+  ROLL
+  SHEET
+  FAN_FOLD
+}
+
+// PP-7 — the order-value floor binds per design/version or per whole order. A
+// 6-flavour pack is 6 designs, so the basis materially changes the floor.
+enum MinValueBasis {
+  PER_DESIGN
+  PER_ORDER
+}
+
+// PP-7 — overs/unders. The industry norm is a tolerance band billed at actual
+// shipped; EXACT forces the press to hit the number (costlier, rarely offered).
+enum OversPolicy {
+  TOLERANCE_BILL_ACTUAL
+  EXACT
 }
 
 // FC declarable value-added jobs (§8.1a) — what makes resolver step 3 real.
@@ -7091,6 +7131,138 @@ model PartnerOfferingPriceCurve {
 
   @@unique([offeringId, printProcess, baseQty])
   @@index([offeringId, printProcess])
+}
+
+// ─── PP-7 · PRINT SERVICE BUILDER (docs/PARTNER_SERVICE_BUILDER_FAMILY_PLAN §3) ───
+// Prototype = design/print-service-builder-prototype.html. Doctrine: minimums belong
+// to the PRESS, not the shop; the digital↔flexo crossover is an OUTPUT of the partner's
+// own price bands (evaluatePrintPrice), never a hardcoded "<5k = digital" rule.
+
+/// One press on the converter's floor. The run band (minRun..maxRun) is the true
+/// floor for THIS press, so one shop declaring two presses serves 100 and 50,000
+/// pieces. Capability fields (web width, colours, white ink) are HARD filters.
+model PartnerPrintPress {
+  id               String       @id @default(uuid())
+  partnerServiceId String
+  name             String // "Digital (HP Indigo 6900)" — shown nowhere public; internal
+  process          PrintProcess
+  maxWebWidthMm    Int? // die-line must fit the web
+  maxColors        Int? // process colours + spots the press can lay down
+  minRunPieces     Int // the press's true floor (plates/makeready must amortise)
+  maxRunPieces     Int? // beyond this the press stops paying; NULL = "and up"
+  whiteInk         Boolean      @default(false) // needed for clear substrates
+  status           OfferingStatus @default(DRAFT)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  partnerService PartnerService        @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  priceBands     PartnerPrintPriceBand[]
+
+  @@index([partnerServiceId])
+}
+
+/// The per-press price curve (PrintTalk §4.1, same shape as PartnerOfferingPriceCurve
+/// but press-owned). Multiple rows = a piecewise curve. Setup is amortised into
+/// basePriceCents at baseQty, exactly like a real quote.
+model PartnerPrintPriceBand {
+  id                  String       @id @default(uuid())
+  pressId             String
+  baseQty             Int // minimum orderable qty for this segment
+  basePriceCents      Int // price AT baseQty (setup/plates included)
+  incrementQty        Int          @default(1) // increment + allowed order lattice
+  incrementPriceCents Int // marginal price of one increment
+  maxQty              Int? // segment ceiling; NULL = "and up"
+  quoteRequired       Boolean      @default(false) // eligible but indicative → route to quote
+  status              OfferingStatus @default(ACTIVE)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  press PartnerPrintPress @relation(fields: [pressId], references: [id], onDelete: Cascade)
+
+  @@unique([pressId, baseQty])
+  @@index([pressId])
+}
+
+/// A finish is BOTH a capability (a job needing foil only routes to foil shops) and a
+/// price line. mode decides how perUnitCents is read (see PrintPricingMode). Setup
+/// amortises like a plate; minQty gates it; maxCoveragePct caps the printable area.
+model PartnerPrintFinish {
+  id               String           @id @default(uuid())
+  partnerServiceId String
+  name             String // "Foil stamp: gold", "Spot UV gloss", "Emboss / deboss"
+  mode             PrintPricingMode @default(FLAT_PLUS_UNIT)
+  setupCents       Int?             @default(0) // one-off per job
+  perUnitCents     Int? // interpreted per mode (per piece / per sq-in / per object / per colour)
+  minQty           Int? // finish not offered below this
+  maxCoveragePct   Int? // physical coverage ceiling; NULL = n/a
+  status           OfferingStatus   @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+
+  @@index([partnerServiceId])
+}
+
+/// 1:1 with the print PartnerService. Every single-value setting the prototype exposes
+/// outside presses/finishes: rush terms, print envelope, food-contact HARD gate,
+/// finished-format, prepress rules + fees, tooling/repeat-run, and order rules. Cents/
+/// bps/mm are Int (CockroachDB: no Decimal); arrays hold admin-curated capability keys.
+model PartnerPrintConfig {
+  id               String @id @default(uuid())
+  partnerServiceId String @unique
+
+  // — Speed & expediting (Step 1) —
+  standardLeadTimeDays Int? // business days, ex-proof
+  rushLeadTimeDays     Int?
+  rushUpliftBps        Int? // applied to the print subtotal; partner-set + creator-paid → in fee base
+  rushCapacityPerWeek  Int? // jobs; prevents overselling
+
+  // — Print envelope & compliance (Step 3) —
+  minPrintWidthMm    Int?
+  minPrintHeightMm   Int?
+  maxPrintWidthMm    Int?
+  maxPrintHeightMm   Int?
+  foodContactSafeInks Boolean @default(false) // HARD gate — never overridable
+
+  // — Finished format (Step 3) —
+  deliveryFormats  PrintDeliveryFormat[] // ROLL / SHEET / FAN_FOLD
+  coreSizes        String[] // "1in", "3in"
+  rewindDirections String[] // "1".."8"
+  maxLabelsPerRoll Int?
+  maxRollDiameterMm Int?
+  splicesPerRoll   Int?
+
+  // — Prepress & colour rules (Step 4) —
+  fileFormat        String? // "PDF/X-4"
+  colourSpace       String? // "CMYK" | "CMYK + spot"
+  maxSpotColours    Int?
+  minDpi            Int?
+  bleedMm           Int?
+  totalInkCoveragePct Int?
+
+  // — Prepress & proofing fees (Step 4) —
+  artFixFeeCents     Int? // per job when files fail preflight
+  pantoneMatchFeeCents Int? // per spot colour matched
+  hardProofFeeCents  Int? // soft proof free; hard proof billed
+
+  // — Tooling & repeat runs (Step 5) —
+  customDieCents        Int? // one-time per shape, reused on repeats
+  plateChargePerColorCents Int? // flexo; one-time per artwork
+  repeatRunSetupWaived  Boolean @default(true) // same artwork, plates exist → waive setup
+
+  // — Order rules (Step 5) —
+  minOrderValueCents   Int? // binds independently of piece count
+  minValueBasis        MinValueBasis @default(PER_DESIGN)
+  orderMultiple        Int? // quantities are a lattice, not a range
+  oversPolicy          OversPolicy   @default(TOLERANCE_BILL_ACTUAL)
+  additionalVersionFeeCents Int? // per extra design/SKU in the run (digital's superpower)
+  priceValidUntil      DateTime? // raise prices without rewriting history
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
 }
 
 // -----------------------------------------------------------------------------

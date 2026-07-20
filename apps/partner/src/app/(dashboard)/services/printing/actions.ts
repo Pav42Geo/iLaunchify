@@ -1,15 +1,21 @@
 'use server'
 
-// PP-1 (writer half) — persist a printer's per-process price curves
-// (docs/PRINT_PRICING_SPEC §3.1). The evaluator is @ilaunchify/orders/print-price.
+// PP-7 (writer) — persist the full print service builder in ONE transaction
+// (docs/PARTNER_SERVICE_BUILDER_FAMILY_PLAN §3, prototype design/print-service-builder-prototype.html).
+// Mirrors saveManufacturingBuilder (MB-3): real data only, no invented defaults, ownership-fenced,
+// audited, cents/bps/mm are Int.
 //
-// GATED on the PS-9-0 db:push: `PartnerOfferingPriceCurve` is not in the generated client yet, so we
-// reach it via the `prisma as unknown as {...}` cast the spec already established (§8 "accessed via
-// prisma as unknown as casts pending db:push"). It compiles now and runs after the push.
+//   • service   — disclosureLevel + facilityId on the row; serviceName + capability chips
+//                 (packaging types / decoration / substrates) + acceptingWork MERGED into caps JSON.
+//   • config    — 1:1 upsert (PartnerPrintConfig: rush, envelope, finished-format, prepress rules+fees,
+//                 tooling, order rules, food-contact HARD gate).
+//   • presses   — REPLACE the set; each press OWNS its price bands (nested create).
+//   • finishes  — REPLACE the set (PartnerPrintFinish: capability + price line).
 //
-// OFFERING COUPLING (open decision, Pavel): curves key on `offeringId`, not the service, so this writes
-// them to the printer's PRIMARY PartnerPackagingOffering. If Pavel decides curves should live at the
-// service level, adjust the schema + this resolver; the shape here does not change.
+// MINIMUMS BELONG TO THE PRESS, not the shop — the digital↔flexo crossover is an OUTPUT of these bands
+// (evaluatePrintPrice), never hardcoded. rush/tooling/version fees are partner-set + creator-paid → in
+// the fee base. We do NOT touch excludeFromAutoRotation: the Partner Access PRINT_ROTATION lever is its
+// SOLE writer (CLAUDE.md). Gated on the PP-7 db:push (PartnerPrint* land in the client).
 
 import { prisma } from '@ilaunchify/db'
 import type { Prisma } from '@ilaunchify/db'
@@ -19,8 +25,14 @@ import { revalidatePath } from 'next/cache'
 
 export type SaveResult = { ok: true } | { ok: false; error: string }
 
-export interface PrintCurveDraft {
-  process: string // PrintProcess enum value
+export type PrintProcessKey = 'DIGITAL' | 'OFFSET' | 'FLEXO' | 'GRAVURE' | 'SCREEN' | 'LETTERPRESS' | 'LED_UV'
+export type PricingModeKey = 'FLAT_PLUS_UNIT' | 'PER_AREA' | 'PER_OBJECT' | 'PER_COLOR' | 'TIERED'
+export type DeliveryFormatKey = 'ROLL' | 'SHEET' | 'FAN_FOLD'
+export type MinValueBasisKey = 'PER_DESIGN' | 'PER_ORDER'
+export type OversPolicyKey = 'TOLERANCE_BILL_ACTUAL' | 'EXACT'
+export type DisclosureKey = 'FULL' | 'CITY_STATE' | 'ANONYMOUS'
+
+export interface BandDraft {
   baseQty: number
   basePriceCents: number
   incrementQty: number
@@ -29,21 +41,80 @@ export interface PrintCurveDraft {
   quoteRequired: boolean
 }
 
-export interface PrintCurvesPayload {
-  serviceName: string | null
-  standardLeadDays: number | null
-  minOrderValueCents: number | null
-  curves: PrintCurveDraft[]
+export interface PressDraft {
+  name: string
+  process: PrintProcessKey
+  maxWebWidthMm: number | null
+  maxColors: number | null
+  minRunPieces: number
+  maxRunPieces: number | null
+  whiteInk: boolean
+  active: boolean
+  bands: BandDraft[]
 }
 
-/** The ungenerated curve delegate, reached via the established interim cast (pending PS-9-0). */
-type CurveDelegate = {
-  deleteMany: (a: unknown) => Promise<unknown>
-  createMany: (a: unknown) => Promise<unknown>
-  findMany: (a: unknown) => Promise<unknown>
+export interface FinishDraft {
+  name: string
+  mode: PricingModeKey
+  setupCents: number | null
+  perUnitCents: number | null
+  minQty: number | null
+  maxCoveragePct: number | null
+  active: boolean
 }
-const curveDelegate = (client: unknown): CurveDelegate =>
-  (client as { partnerOfferingPriceCurve: CurveDelegate }).partnerOfferingPriceCurve
+
+export interface PrintBuilderPayload {
+  serviceName: string | null
+  facilityId: string | null
+  disclosureLevel: DisclosureKey
+  acceptingWork: boolean
+  // capability chips (hard filters) → caps JSON
+  packagingTypes: string[]
+  decorationMethods: string[]
+  substrates: string[]
+  // config — speed & expediting
+  standardLeadTimeDays: number | null
+  rushLeadTimeDays: number | null
+  rushUpliftBps: number | null
+  rushCapacityPerWeek: number | null
+  // config — envelope + food-contact HARD gate
+  minPrintWidthMm: number | null
+  minPrintHeightMm: number | null
+  maxPrintWidthMm: number | null
+  maxPrintHeightMm: number | null
+  foodContactSafeInks: boolean
+  // config — finished format
+  deliveryFormats: DeliveryFormatKey[]
+  coreSizes: string[]
+  rewindDirections: string[]
+  maxLabelsPerRoll: number | null
+  maxRollDiameterMm: number | null
+  splicesPerRoll: number | null
+  // config — prepress rules
+  fileFormat: string | null
+  colourSpace: string | null
+  maxSpotColours: number | null
+  minDpi: number | null
+  bleedMm: number | null
+  totalInkCoveragePct: number | null
+  // config — prepress fees
+  artFixFeeCents: number | null
+  pantoneMatchFeeCents: number | null
+  hardProofFeeCents: number | null
+  // config — tooling & repeat
+  customDieCents: number | null
+  plateChargePerColorCents: number | null
+  repeatRunSetupWaived: boolean
+  // config — order rules
+  minOrderValueCents: number | null
+  minValueBasis: MinValueBasisKey
+  orderMultiple: number | null
+  oversPolicy: OversPolicyKey
+  additionalVersionFeeCents: number | null
+  priceValidUntil: string | null // ISO date, or null
+  presses: PressDraft[]
+  finishes: FinishDraft[]
+}
 
 async function ownPrintService(userId: string, serviceId: string) {
   return prisma.partnerService.findFirst({
@@ -55,53 +126,141 @@ async function ownPrintService(userId: string, serviceId: string) {
 const posInt = (v: number | null | undefined): number | null =>
   typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.round(v) : null
 
-export async function savePrintCurves(serviceId: string, payload: PrintCurvesPayload): Promise<SaveResult> {
+export async function savePrintBuilder(serviceId: string, payload: PrintBuilderPayload): Promise<SaveResult> {
   const user = await requireUser()
   const service = await ownPrintService(user.id, serviceId)
   if (!service) return { ok: false, error: 'Print service not found.' }
 
-  // Curves attach to an offering (the coupling). Use the printer's primary one.
-  const offering = await prisma.partnerPackagingOffering.findFirst({
-    where: { partnerServiceId: service.id },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true },
-  })
-  if (!offering) {
-    return { ok: false, error: 'Add a packaging offering first, then your price curves attach to it.' }
+  const presses = payload.presses ?? []
+  for (const p of presses) {
+    if (!p.name?.trim()) return { ok: false, error: 'Every press needs a name.' }
+    if (posInt(p.minRunPieces) === null || p.minRunPieces <= 0)
+      return { ok: false, error: `Press "${p.name}" needs a minimum run above zero.` }
+    if (p.maxRunPieces != null && p.maxRunPieces < p.minRunPieces)
+      return { ok: false, error: `Press "${p.name}" has a max run below its min run.` }
+    for (const b of p.bands ?? []) {
+      if (posInt(b.baseQty) === null || b.baseQty <= 0)
+        return { ok: false, error: `A price band on "${p.name}" needs a base quantity above zero.` }
+      if (posInt(b.basePriceCents) === null)
+        return { ok: false, error: `A price band on "${p.name}" needs a price at its base quantity.` }
+      if (posInt(b.incrementQty) === null || b.incrementQty <= 0)
+        return { ok: false, error: `A price band on "${p.name}" needs an increment above zero.` }
+    }
+  }
+  for (const f of payload.finishes ?? []) {
+    if (!f.name?.trim()) return { ok: false, error: 'Every finish needs a name.' }
   }
 
-  const curves = payload.curves ?? []
-  for (const c of curves) {
-    if (posInt(c.baseQty) === null || c.baseQty <= 0) return { ok: false, error: `A ${c.process} curve needs a base quantity above zero.` }
-    if (posInt(c.basePriceCents) === null) return { ok: false, error: `The ${c.process} curve needs a price at its base quantity.` }
-    if (posInt(c.incrementQty) === null || c.incrementQty <= 0) return { ok: false, error: `The ${c.process} curve needs an increment above zero.` }
+  const capsPatch: Record<string, unknown> = {
+    packagingTypes: payload.packagingTypes ?? [],
+    decorationMethods: payload.decorationMethods ?? [],
+    substrates: payload.substrates ?? [],
+    acceptingWork: Boolean(payload.acceptingWork),
   }
-
-  const capsPatch: Record<string, unknown> = {}
   if (payload.serviceName?.trim()) capsPatch.serviceName = payload.serviceName.trim()
-  if (posInt(payload.standardLeadDays) !== null) capsPatch.leadTimeDays = posInt(payload.standardLeadDays)
-  if (posInt(payload.minOrderValueCents) !== null) capsPatch.minOrderValueCents = posInt(payload.minOrderValueCents)
+
+  const priceValidUntil =
+    payload.priceValidUntil && !Number.isNaN(Date.parse(payload.priceValidUntil))
+      ? new Date(payload.priceValidUntil)
+      : null
 
   try {
     await prisma.$transaction(async (tx) => {
       const currentCaps = { ...((service.capabilities ?? { type: 'LABEL_PRINTING' }) as Record<string, unknown>) }
       const nextCaps = { ...currentCaps, ...capsPatch }
-      await tx.partnerService.update({ where: { id: service.id }, data: { capabilities: nextCaps as Prisma.InputJsonValue } })
+      await tx.partnerService.update({
+        where: { id: service.id },
+        data: {
+          ...(payload.facilityId ? { facilityId: payload.facilityId } : {}),
+          disclosureLevel: payload.disclosureLevel,
+          capabilities: nextCaps as Prisma.InputJsonValue,
+        },
+      })
 
-      const del = curveDelegate(tx)
-      await del.deleteMany({ where: { offeringId: offering.id } })
-      if (curves.length > 0) {
-        await del.createMany({
-          data: curves.map((c) => ({
-            offeringId: offering.id,
-            printProcess: c.process,
-            baseQty: Math.round(c.baseQty),
-            basePriceCents: Math.round(c.basePriceCents),
-            incrementQty: Math.round(c.incrementQty),
-            incrementPriceCents: Math.round(c.incrementPriceCents),
-            maxQty: c.maxQty != null ? Math.round(c.maxQty) : null,
-            quoteRequired: Boolean(c.quoteRequired),
-            status: 'ACTIVE',
+      const configData = {
+        standardLeadTimeDays: posInt(payload.standardLeadTimeDays),
+        rushLeadTimeDays: posInt(payload.rushLeadTimeDays),
+        rushUpliftBps: posInt(payload.rushUpliftBps),
+        rushCapacityPerWeek: posInt(payload.rushCapacityPerWeek),
+        minPrintWidthMm: posInt(payload.minPrintWidthMm),
+        minPrintHeightMm: posInt(payload.minPrintHeightMm),
+        maxPrintWidthMm: posInt(payload.maxPrintWidthMm),
+        maxPrintHeightMm: posInt(payload.maxPrintHeightMm),
+        foodContactSafeInks: Boolean(payload.foodContactSafeInks),
+        deliveryFormats: payload.deliveryFormats ?? [],
+        coreSizes: payload.coreSizes ?? [],
+        rewindDirections: payload.rewindDirections ?? [],
+        maxLabelsPerRoll: posInt(payload.maxLabelsPerRoll),
+        maxRollDiameterMm: posInt(payload.maxRollDiameterMm),
+        splicesPerRoll: posInt(payload.splicesPerRoll),
+        fileFormat: payload.fileFormat?.trim() || null,
+        colourSpace: payload.colourSpace?.trim() || null,
+        maxSpotColours: posInt(payload.maxSpotColours),
+        minDpi: posInt(payload.minDpi),
+        bleedMm: posInt(payload.bleedMm),
+        totalInkCoveragePct: posInt(payload.totalInkCoveragePct),
+        artFixFeeCents: posInt(payload.artFixFeeCents),
+        pantoneMatchFeeCents: posInt(payload.pantoneMatchFeeCents),
+        hardProofFeeCents: posInt(payload.hardProofFeeCents),
+        customDieCents: posInt(payload.customDieCents),
+        plateChargePerColorCents: posInt(payload.plateChargePerColorCents),
+        repeatRunSetupWaived: Boolean(payload.repeatRunSetupWaived),
+        minOrderValueCents: posInt(payload.minOrderValueCents),
+        minValueBasis: payload.minValueBasis,
+        orderMultiple: posInt(payload.orderMultiple),
+        oversPolicy: payload.oversPolicy,
+        additionalVersionFeeCents: posInt(payload.additionalVersionFeeCents),
+        priceValidUntil,
+      } as const
+      await tx.partnerPrintConfig.upsert({
+        where: { partnerServiceId: service.id },
+        create: { partnerServiceId: service.id, ...configData },
+        update: configData,
+      })
+
+      // Presses REPLACE — each press owns its bands (nested create keeps them atomic).
+      await tx.partnerPrintPress.deleteMany({ where: { partnerServiceId: service.id } })
+      for (const p of presses) {
+        await tx.partnerPrintPress.create({
+          data: {
+            partnerServiceId: service.id,
+            name: p.name.trim(),
+            process: p.process,
+            maxWebWidthMm: posInt(p.maxWebWidthMm),
+            maxColors: posInt(p.maxColors),
+            minRunPieces: Math.round(p.minRunPieces),
+            maxRunPieces: p.maxRunPieces != null ? posInt(p.maxRunPieces) : null,
+            whiteInk: Boolean(p.whiteInk),
+            status: p.active ? 'ACTIVE' : 'DRAFT',
+            priceBands: {
+              create: (p.bands ?? []).map((b) => ({
+                baseQty: Math.round(b.baseQty),
+                basePriceCents: Math.round(b.basePriceCents),
+                incrementQty: Math.round(b.incrementQty),
+                incrementPriceCents: Math.round(b.incrementPriceCents),
+                maxQty: b.maxQty != null ? Math.round(b.maxQty) : null,
+                quoteRequired: Boolean(b.quoteRequired),
+                status: 'ACTIVE',
+              })),
+            },
+          },
+        })
+      }
+
+      // Finishes REPLACE.
+      await tx.partnerPrintFinish.deleteMany({ where: { partnerServiceId: service.id } })
+      const finishes = payload.finishes ?? []
+      if (finishes.length > 0) {
+        await tx.partnerPrintFinish.createMany({
+          data: finishes.map((f) => ({
+            partnerServiceId: service.id,
+            name: f.name.trim(),
+            mode: f.mode,
+            setupCents: posInt(f.setupCents),
+            perUnitCents: posInt(f.perUnitCents),
+            minQty: posInt(f.minQty),
+            maxCoveragePct: posInt(f.maxCoveragePct),
+            status: f.active ? 'ACTIVE' : 'DRAFT',
           })),
         })
       }
@@ -113,10 +272,11 @@ export async function savePrintCurves(serviceId: string, payload: PrintCurvesPay
   await logAuditAs(user, {
     entityType: 'PartnerService',
     entityId: service.id,
-    action: 'PRINT_CURVES_SAVED',
-    payload: { offeringId: offering.id, curves: curves.length },
+    action: 'PRINT_BUILDER_SAVED',
+    payload: { presses: presses.length, finishes: (payload.finishes ?? []).length },
   })
   revalidatePath('/services/printing')
   revalidatePath('/services')
+  revalidatePath('/activation')
   return { ok: true }
 }

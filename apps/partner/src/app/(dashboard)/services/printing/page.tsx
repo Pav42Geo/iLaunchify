@@ -1,24 +1,25 @@
-// PP-1 — the print service builder route. Loads the partner's LABEL_PRINTING service + its primary
-// offering's price curves, maps to the wizard's initial state. Curves read via the interim cast
-// (PartnerOfferingPriceCurve not in the client until the PS-9-0 db:push).
+// PP-7 — the print service builder route. Loads the partner's LABEL_PRINTING service, its config,
+// presses (+ price bands) and finishes + facilities, maps to the wizard's initial state. Written against
+// the real client names (PartnerPrint*), gated on the PP-7 db:push exactly like the manufacturing page.
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
-import { PrintServiceBuilder, type PrintBuilderInitial, type CurveDraft } from './PrintServiceBuilder'
+import {
+  PrintServiceBuilder,
+  type PrintBuilderInitial,
+  type PressDraftUI,
+  type FinishDraftUI,
+} from './PrintServiceBuilder'
+import type { PrintProcessKey, PricingModeKey, DeliveryFormatKey, MinValueBasisKey, OversPolicyKey, DisclosureKey } from './actions'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Print builder — Partners' }
 
-interface CurveRow {
-  printProcess: string
-  baseQty: number
-  basePriceCents: number
-  incrementQty: number
-  incrementPriceCents: number
-  maxQty: number | null
-  quoteRequired: boolean
-}
+let RID = 0
+const rid = (p: string) => `${p}-load-${RID++}`
+const dollars = (c: number | null | undefined): string => (c != null ? (c / 100).toFixed(2).replace(/\.00$/, '') : '')
+const numStr = (v: number | null | undefined): string => (typeof v === 'number' && Number.isFinite(v) ? String(v) : '')
 
 export default async function PrintBuilderPage() {
   const user = await requireUser()
@@ -26,7 +27,8 @@ export default async function PrintBuilderPage() {
     where: { userId: user.id },
     select: {
       id: true,
-      services: { where: { type: 'LABEL_PRINTING' }, select: { id: true, capabilities: true }, take: 1 },
+      facilities: { select: { id: true, name: true }, orderBy: { isDefault: 'desc' } },
+      services: { where: { type: 'LABEL_PRINTING' }, select: { id: true, capabilities: true, facilityId: true, disclosureLevel: true }, take: 1 },
     },
   })
   if (!partner) return null
@@ -36,58 +38,102 @@ export default async function PrintBuilderPage() {
     return (
       <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-ink-300 bg-white p-8 text-center">
         <h1 className="font-display text-[18px] font-bold text-ink-900">No print service yet</h1>
-        <p className="mx-auto mt-2 max-w-sm text-[13px] text-ink-500">
-          Add the print production service from your Services page first, then build your price curves here.
-        </p>
-        <Link href="/services" className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-black">
-          Go to Services
-        </Link>
+        <p className="mx-auto mt-2 max-w-sm text-[13px] text-ink-500">Add the print production service from your Services page first, then build your presses and price curves here.</p>
+        <Link href="/services" className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-black">Go to Services</Link>
       </div>
     )
   }
 
-  const offering = await prisma.partnerPackagingOffering.findFirst({
-    where: { partnerServiceId: svc.id },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true },
-  })
-
-  // Curves via the interim cast (PS-9-0 pending). Empty until the model is generated.
-  let curveRows: CurveRow[] = []
-  if (offering) {
-    try {
-      curveRows = (await (prisma as unknown as {
-        partnerOfferingPriceCurve: { findMany: (a: unknown) => Promise<CurveRow[]> }
-      }).partnerOfferingPriceCurve.findMany({
-        where: { offeringId: offering.id },
-        orderBy: { baseQty: 'asc' },
-        select: { printProcess: true, baseQty: true, basePriceCents: true, incrementQty: true, incrementPriceCents: true, maxQty: true, quoteRequired: true },
-      })) ?? []
-    } catch {
-      curveRows = [] // model not generated yet (pre PS-9-0 db:push)
-    }
-  }
+  const [config, presses, finishes] = await Promise.all([
+    prisma.partnerPrintConfig.findUnique({ where: { partnerServiceId: svc.id } }),
+    prisma.partnerPrintPress.findMany({
+      where: { partnerServiceId: svc.id },
+      orderBy: { createdAt: 'asc' },
+      include: { priceBands: { orderBy: { baseQty: 'asc' } } },
+    }),
+    prisma.partnerPrintFinish.findMany({ where: { partnerServiceId: svc.id }, orderBy: { createdAt: 'asc' } }),
+  ])
 
   const caps = (svc.capabilities ?? {}) as Record<string, unknown>
-  const numStr = (v: unknown): string => (typeof v === 'number' && Number.isFinite(v) ? String(v) : '')
-  const curves: CurveDraft[] = curveRows.map((c) => ({
-    id: `curve-${Math.random().toString(36).slice(2, 7)}`,
-    process: c.printProcess as CurveDraft['process'],
-    baseQty: String(c.baseQty),
-    basePrice: (c.basePriceCents / 100).toFixed(2),
-    incrementQty: String(c.incrementQty),
-    incrementPrice: (c.incrementPriceCents / 100).toFixed(2),
-    maxQty: c.maxQty != null ? String(c.maxQty) : '',
-    quoteRequired: c.quoteRequired,
-    active: true,
+  const strArr = (k: string): string[] => (Array.isArray(caps[k]) ? (caps[k] as unknown[]).filter((x): x is string => typeof x === 'string') : [])
+
+  const pressDrafts: PressDraftUI[] = presses.map((p) => ({
+    id: rid('press'),
+    name: p.name,
+    process: p.process as PrintProcessKey,
+    maxWebWidthMm: numStr(p.maxWebWidthMm),
+    maxColors: numStr(p.maxColors),
+    minRunPieces: numStr(p.minRunPieces),
+    maxRunPieces: numStr(p.maxRunPieces),
+    whiteInk: p.whiteInk,
+    active: p.status === 'ACTIVE',
+    bands: p.priceBands.map((b) => ({
+      id: rid('band'),
+      baseQty: numStr(b.baseQty),
+      basePrice: dollars(b.basePriceCents),
+      incrementQty: numStr(b.incrementQty),
+      incrementPrice: dollars(b.incrementPriceCents),
+      maxQty: numStr(b.maxQty),
+      quoteRequired: b.quoteRequired,
+    })),
+  }))
+
+  const finishDrafts: FinishDraftUI[] = finishes.map((f) => ({
+    id: rid('fin'),
+    name: f.name,
+    mode: f.mode as PricingModeKey,
+    setup: dollars(f.setupCents),
+    perUnit: dollars(f.perUnitCents),
+    minQty: numStr(f.minQty),
+    maxCoverage: numStr(f.maxCoveragePct),
+    active: f.status === 'ACTIVE',
   }))
 
   const initial: PrintBuilderInitial = {
     serviceId: svc.id,
     serviceName: typeof caps.serviceName === 'string' ? caps.serviceName : '',
-    standardLeadDays: numStr(caps.leadTimeDays),
-    minOrderValue: typeof caps.minOrderValueCents === 'number' ? (caps.minOrderValueCents / 100).toFixed(0) : '',
-    curves,
+    facilityId: svc.facilityId ?? '',
+    facilities: partner.facilities,
+    disclosureLevel: svc.disclosureLevel as DisclosureKey,
+    acceptingWork: typeof caps.acceptingWork === 'boolean' ? caps.acceptingWork : true,
+    standardLeadDays: numStr(config?.standardLeadTimeDays),
+    rushLeadDays: numStr(config?.rushLeadTimeDays),
+    rushUpliftPct: config?.rushUpliftBps != null ? String(config.rushUpliftBps / 100) : '',
+    rushCapacityPerWeek: numStr(config?.rushCapacityPerWeek),
+    packagingTypes: strArr('packagingTypes'),
+    decorationMethods: strArr('decorationMethods'),
+    substrates: strArr('substrates'),
+    minPrintW: numStr(config?.minPrintWidthMm),
+    minPrintH: numStr(config?.minPrintHeightMm),
+    maxPrintW: numStr(config?.maxPrintWidthMm),
+    maxPrintH: numStr(config?.maxPrintHeightMm),
+    foodContactSafeInks: config?.foodContactSafeInks ?? false,
+    deliveryFormats: (config?.deliveryFormats ?? []) as DeliveryFormatKey[],
+    coreSizes: config?.coreSizes ?? [],
+    rewindDirections: config?.rewindDirections ?? [],
+    maxLabelsPerRoll: numStr(config?.maxLabelsPerRoll),
+    maxRollDiameterMm: numStr(config?.maxRollDiameterMm),
+    splicesPerRoll: numStr(config?.splicesPerRoll),
+    fileFormat: config?.fileFormat ?? '',
+    colourSpace: config?.colourSpace ?? '',
+    maxSpotColours: numStr(config?.maxSpotColours),
+    minDpi: numStr(config?.minDpi),
+    bleedMm: numStr(config?.bleedMm),
+    totalInkCoveragePct: numStr(config?.totalInkCoveragePct),
+    artFixFee: dollars(config?.artFixFeeCents),
+    pantoneFee: dollars(config?.pantoneMatchFeeCents),
+    hardProofFee: dollars(config?.hardProofFeeCents),
+    customDie: dollars(config?.customDieCents),
+    plateChargePerColor: dollars(config?.plateChargePerColorCents),
+    repeatRunSetupWaived: config?.repeatRunSetupWaived ?? true,
+    minOrderValue: dollars(config?.minOrderValueCents),
+    minValueBasis: (config?.minValueBasis ?? 'PER_DESIGN') as MinValueBasisKey,
+    orderMultiple: numStr(config?.orderMultiple),
+    oversPolicy: (config?.oversPolicy ?? 'TOLERANCE_BILL_ACTUAL') as OversPolicyKey,
+    additionalVersionFee: dollars(config?.additionalVersionFeeCents),
+    priceValidUntil: config?.priceValidUntil ? config.priceValidUntil.toISOString().slice(0, 10) : '',
+    presses: pressDrafts,
+    finishes: finishDrafts,
   }
 
   return (
@@ -95,7 +141,7 @@ export default async function PrintBuilderPage() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-[18px] font-bold text-ink-900">Print builder</h1>
-          <p className="text-[12.5px] text-ink-500">Your presses and price curves. Substrates, die-lines and prepress live on the Services page.</p>
+          <p className="text-[12.5px] text-ink-500">Your presses, run bands and price curves. Minimums belong to the press: the crossover falls out of your own numbers.</p>
         </div>
         <a href={`/services?svc=${svc.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50">
           Labeling, substrates & prepress →
