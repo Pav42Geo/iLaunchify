@@ -28,6 +28,7 @@ import {
   type CopackOpType,
   type CopackPricingUnit,
 } from './actions'
+import { inputCls, F, Hero, StageBar } from '../builder-kit'
 
 // ─── shape passed from the server page ──────────────────────────────────────
 export interface CopackBuilderInitial {
@@ -132,17 +133,7 @@ const newLineId = () => `line-${LINE_SEQ++}-${Math.random().toString(36).slice(2
 const STAGES = ['Basics', 'Lines', 'Scope', 'Ops', 'Pricing', 'Publish'] as const
 
 // ─── shared field primitives (prototype .f / .card) ─────────────────────────
-const inputCls =
-  'h-[38px] w-full rounded-md border border-ink-300 bg-white px-[11px] text-[13.5px] text-ink-900 focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-500/15'
-function F({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-[5px] block text-[11px] font-bold uppercase tracking-[0.05em] text-ink-600">{label}</span>
-      {children}
-      {hint && <span className="mt-1 block text-[11.5px] text-ink-400">{hint}</span>}
-    </label>
-  )
-}
+// inputCls + F now come from ../builder-kit (shared across all three builders).
 function Card({ title, tag, tagNew, sub, children }: { title: string; tag?: string; tagNew?: boolean; sub?: string; children: React.ReactNode }) {
   return (
     <div className="mb-3 rounded-2xl border border-ink-200 bg-white px-5 py-[18px]">
@@ -370,46 +361,8 @@ export function CopackBuilder({ initial }: { initial: CopackBuilderInitial }) {
   // ═══ render ═══
   return (
     <div className="mx-auto max-w-[1080px] pb-24">
-      {/* stagebar — co-creation chrome */}
-      <div className="flex items-center gap-[5px] overflow-x-auto rounded-t-2xl border border-ink-200 bg-ink-50 px-5 py-[11px]">
-        {STAGES.map((label, i) => {
-          const state = i < v ? 'done' : i === v ? 'on' : ''
-          return (
-            <div key={label} className="flex items-center gap-[5px]">
-              <button
-                type="button"
-                onClick={() => setV(i)}
-                className={`flex items-center gap-2 whitespace-nowrap rounded-pill border px-[13px] py-[7px] text-[12.5px] font-semibold transition ${
-                  state === 'on'
-                    ? 'border-pink-200 bg-white text-ink-900 shadow-sm'
-                    : state === 'done'
-                      ? 'border-transparent text-success-700'
-                      : 'border-transparent text-ink-500'
-                }`}
-              >
-                <span
-                  className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[11px] font-extrabold ${
-                    state === 'on' ? 'bg-pink-500 text-white' : state === 'done' ? 'bg-success-500 text-white' : 'bg-ink-200 text-ink-600'
-                  }`}
-                >
-                  {i < v ? '✓' : i + 1}
-                </span>
-                {label}
-              </button>
-              {i < STAGES.length - 1 && <span className={`h-0.5 w-5 flex-none ${i < v ? 'bg-success-500' : 'bg-ink-200'}`} />}
-            </div>
-          )
-        })}
-        <span className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setV((x) => Math.min(STAGES.length - 1, x + 1))}
-          disabled={v >= STAGES.length - 1}
-          className="rounded-pill bg-ink-900 px-4 py-[9px] text-[12.5px] font-bold text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Next stage →
-        </button>
-      </div>
+      {/* stagebar — co-creation chrome (shared ../builder-kit) */}
+      <StageBar stages={STAGES} v={v} setV={setV} />
 
       <div className="rounded-b-2xl border border-t-0 border-ink-200 bg-ink-100 p-4">
         {readOnly && (
@@ -804,12 +757,3 @@ function StepReview(p: { lines: number; containers: number; fills: number; packs
 }
 
 // ─── hero ───────────────────────────────────────────────────────────────────
-function Hero({ eyebrow, title, desc }: { eyebrow: string; title: string; desc: string }) {
-  return (
-    <div className="mb-3.5 rounded-2xl border border-ink-200 bg-white px-[22px] py-5">
-      <div className="text-[11px] font-bold uppercase tracking-[0.08em] text-pink-700">{eyebrow}</div>
-      <h1 className="mt-[5px] font-display text-[22px] font-extrabold tracking-[-0.02em] text-ink-900">{title}</h1>
-      <p className="mt-1 max-w-[780px] text-[13.5px] text-ink-500">{desc}</p>
-    </div>
-  )
-}
