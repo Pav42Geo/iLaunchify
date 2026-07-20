@@ -5,8 +5,11 @@ import {
   copackOperationsCents,
   quoteCopack,
   copackCrossoverUnits,
+  copackQuoteFromRows,
   type CopackLineInput,
   type CopackOperationInput,
+  type CopackLineRow,
+  type CopackOperationRow,
 } from './copack-quote'
 
 // The spec's two real-shaped lines (COPACK_SERVICE_SPEC §1): auger 3,600/h + 4h
@@ -58,6 +61,36 @@ describe('copackCrossoverUnits — the ~6,171 crossover falls out of the two lin
   it('parallel lines never cross → null', () => {
     const clone = { ...AUGER, id: 'auger2', changeoverMinutes: 999 }
     expect(copackCrossoverUnits(AUGER, clone)).toBeNull() // same rate/speed → dd 0
+  })
+})
+
+describe('copackQuoteFromRows — the loader mapping quotes from plain CP-1 rows', () => {
+  const lineRows: CopackLineRow[] = [
+    { id: 'auger', runSpeedUnitsPerHour: 3600, changeoverMinutes: 240, lineRateCentsPerHour: 16500, minRunUnits: 1500, maxRunUnits: null, allergenClass: null, containerFormats: [], fillTypes: [], status: 'ACTIVE' },
+    { id: 'hand', runSpeedUnitsPerHour: 900, changeoverMinutes: 60, lineRateCentsPerHour: 12000, minRunUnits: 0, maxRunUnits: 25000, allergenClass: null, containerFormats: [], fillTypes: [], status: 'ACTIVE' },
+  ]
+  const opRows: CopackOperationRow[] = [{ opType: 'FILL_CLOSE', pricingUnit: 'PER_UNIT', priceCents: 12, status: 'ACTIVE' }]
+
+  it('no authored lines → null (caller emits no co-pack line)', () => {
+    expect(copackQuoteFromRows({ lines: [], operations: opRows, config: null }, { qty: 2400 })).toBeNull()
+  })
+  it('reproduces the engine: 2,400 units → hand $440 + fill $288 = $728', () => {
+    const q = copackQuoteFromRows({ lines: lineRows, operations: opRows, config: null }, { qty: 2400, unitsPerPack: 12, unitsPerCase: 24 })
+    expect(q?.ok).toBe(true)
+    expect(q?.selectedLineId).toBe('hand')
+    expect(q?.totalCents).toBe(72800)
+  })
+  it('changeoverMinutes passes straight through (240m = 4h): auger @20,000 = $1,576.67', () => {
+    const q = copackQuoteFromRows({ lines: [lineRows[0]!], operations: [], config: null }, { qty: 20000 })
+    expect(q?.runCostCents).toBe(157667)
+  })
+  it('config maps the min-run floor', () => {
+    const q = copackQuoteFromRows(
+      { lines: lineRows, operations: opRows, config: { changeoverFeeCents: null, minRunChargeCents: 100000, repeatRunDiscountBps: null, rushUpliftBps: null, minOrderValueCents: null } },
+      { qty: 300 },
+    )
+    expect(q?.minRunApplied).toBe(true)
+    expect(q?.totalCents).toBe(100000)
   })
 })
 

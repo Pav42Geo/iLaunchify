@@ -184,3 +184,76 @@ export function copackCrossoverUnits(a: CopackLineInput, b: CopackLineInput): nu
   const x = cc / dd
   return isFinite(x) && x > 0 ? x : null
 }
+
+// ─── CP-3.1: row → quote (PURE half of the loader) ──────────────────────────
+// Plain row shapes mirroring the CP-1 tables (PartnerCopackLine / Operation /
+// Config). Kept here, in the prisma-free engine file, so the mapping is unit-
+// testable without a DB; the I/O half (loadCopackQuoteCents, copack-quote-loader.ts)
+// only does prisma.find + this. `changeoverMinutes` passes straight through — the
+// engine divides by 60, so no conversion happens in the mapping.
+
+export interface CopackLineRow {
+  id: string
+  runSpeedUnitsPerHour: number
+  changeoverMinutes: number
+  lineRateCentsPerHour: number
+  minRunUnits: number
+  maxRunUnits: number | null
+  allergenClass: string | null
+  containerFormats: string[]
+  fillTypes: string[]
+  status: string
+}
+export interface CopackOperationRow {
+  opType: string
+  pricingUnit: string
+  priceCents: number
+  status: string
+}
+export interface CopackConfigRow {
+  changeoverFeeCents: number | null
+  minRunChargeCents: number | null
+  repeatRunDiscountBps: number | null
+  rushUpliftBps: number | null
+  minOrderValueCents: number | null
+}
+
+/**
+ * Quote a co-pack job straight from loaded rows. Null when no lines are authored
+ * (caller treats co-pack as $0, emits no line). Otherwise returns the engine's
+ * PricedCopack — `ok:false` means no line can run the job (co-pack cost is 0).
+ */
+export function copackQuoteFromRows(
+  rows: { lines: CopackLineRow[]; operations: CopackOperationRow[]; config: CopackConfigRow | null },
+  job: CopackJob,
+): PricedCopack | null {
+  if (rows.lines.length === 0) return null
+  const lines: CopackLineInput[] = rows.lines.map((l) => ({
+    id: l.id,
+    runSpeedUnitsPerHour: l.runSpeedUnitsPerHour,
+    changeoverMinutes: l.changeoverMinutes,
+    lineRateCentsPerHour: l.lineRateCentsPerHour,
+    minRunUnits: l.minRunUnits,
+    maxRunUnits: l.maxRunUnits,
+    allergenClass: l.allergenClass,
+    containerFormats: l.containerFormats,
+    fillTypes: l.fillTypes,
+    status: l.status,
+  }))
+  const operations: CopackOperationInput[] = rows.operations.map((o) => ({
+    opType: o.opType,
+    pricingUnit: o.pricingUnit as CopackPricingUnit,
+    priceCents: o.priceCents,
+    status: o.status,
+  }))
+  const config: CopackConfigInput = rows.config
+    ? {
+        changeoverFeeCents: rows.config.changeoverFeeCents,
+        minRunChargeCents: rows.config.minRunChargeCents,
+        repeatRunDiscountBps: rows.config.repeatRunDiscountBps,
+        rushUpliftBps: rows.config.rushUpliftBps,
+        minOrderValueCents: rows.config.minOrderValueCents,
+      }
+    : {}
+  return quoteCopack(lines, operations, config, job)
+}

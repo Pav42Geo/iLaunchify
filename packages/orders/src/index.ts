@@ -586,3 +586,25 @@ export {
   type CheckoutVelocityInput,
   type CapacityGateInfo,
 } from './capacity-risk-checkout'
+
+// CP-2 pure engine + CP-3.1 loader (docs/COPACK_SERVICE_SPEC §5, COPACK_CP3_SHADOW_AND_CP6_PLAN).
+export {
+  copackLineCostCents,
+  selectCopackLine,
+  copackOperationsCents,
+  quoteCopack,
+  copackCrossoverUnits,
+  copackQuoteFromRows,
+} from './copack-quote'
+export type {
+  CopackLineInput,
+  CopackOperationInput,
+  CopackConfigInput,
+  CopackJob,
+  CopackLineSelection,
+  PricedCopack,
+  CopackLineRow,
+  CopackOperationRow,
+  CopackConfigRow,
+} from './copack-quote'
+export { loadCopackQuoteCents } from './copack-quote-loader'
