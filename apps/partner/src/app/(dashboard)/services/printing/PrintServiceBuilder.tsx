@@ -19,6 +19,7 @@ import {
   printCrossoverQty,
   type PriceCurveSegment,
 } from '@ilaunchify/orders/print-price'
+import { savePrintCurves, type PrintCurvesPayload } from './actions'
 
 const PRINT_PROCESSES = ['DIGITAL', 'FLEXO', 'OFFSET', 'SCREEN', 'LETTERPRESS', 'GRAVURE'] as const
 type PrintProcess = (typeof PRINT_PROCESSES)[number]
@@ -62,6 +63,9 @@ const inputCls =
 
 export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial }) {
   const [v, setV] = useState(0)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
   const [serviceName, setServiceName] = useState(initial.serviceName)
   const [leadDays, setLeadDays] = useState(initial.standardLeadDays)
   const [minOrderValue, setMinOrderValue] = useState(initial.minOrderValue)
@@ -100,6 +104,32 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
     const sorted = [...perCurve].sort((a, b) => (a.cents ?? Infinity) - (b.cents ?? Infinity)).map((x) => x.seg)
     return sorted.length >= 2 ? printCrossoverQty(sorted[0]!, sorted[1]!) : null
   }, [perCurve])
+
+  function save() {
+    setError(null)
+    const payload: PrintCurvesPayload = {
+      serviceName: serviceName.trim() || null,
+      standardLeadDays: leadDays.trim() ? intOf(leadDays) : null,
+      minOrderValueCents: minOrderValue.trim() ? centsOf(minOrderValue) : null,
+      curves: curves
+        .filter((c) => num(c.baseQty) > 0)
+        .map((c) => ({
+          process: c.process,
+          baseQty: intOf(c.baseQty),
+          basePriceCents: centsOf(c.basePrice),
+          incrementQty: intOf(c.incrementQty) || 1,
+          incrementPriceCents: centsOf(c.incrementPrice),
+          maxQty: c.maxQty.trim() ? intOf(c.maxQty) : null,
+          quoteRequired: c.quoteRequired,
+        })),
+    }
+    setPending(true)
+    void savePrintCurves(initial.serviceId, payload).then((res) => {
+      setPending(false)
+      if (res.ok) setSaved(true)
+      else setError(res.error)
+    })
+  }
 
   return (
     <div className="mx-auto max-w-[1080px] pb-24">
@@ -208,13 +238,23 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
             <div className="rounded-2xl border border-ink-200 bg-white px-5 py-[18px]">
               <Row good={segments.length > 0} label="Price curves declared" help={`${segments.length} press curve${segments.length === 1 ? '' : 's'} — routing prices your leg from these, so a creator sees one number.`} />
               <Row good={num(minOrderValue) > 0} label="Order-value floor set" help={minOrderValue.trim() ? `${minOrderValue} minimum` : 'no floor set'} />
-              <Row good={false} label="Persistence pending PS-9-0" help="This slice is the curve editor + live check. Saving curves needs the PartnerOfferingPriceCurve db:push (PS-9-0) + the offering it attaches to. Wiring into the charge/payout is PP-1's other half." />
+              <Row good={false} label="Saving wired, persists after PS-9-0 db:push" help="The curve writer is wired (curves attach to your primary offering); it persists once PartnerOfferingPriceCurve is db:pushed (PS-9-0). Wiring the evaluator into the charge/payout is PP-1's other half." />
             </div>
             <p className="mt-3 px-1 text-[12px] leading-[1.6] text-ink-500">
               The richer steps from the prototype (rush &amp; capacity, formats &amp; envelope, finished format, prepress fees) land as their PP-7 schema does. This builder is the economic core: the curves and the crossover.
             </p>
           </Hero>
         )}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-[1080px] items-center gap-3 px-4">
+          <span className="text-[12.5px] font-semibold text-ink-500">{pending ? 'Saving…' : saved ? 'Curves saved' : error ? '' : 'Draft not yet saved'}</span>
+          {error && <span className="text-[12px] font-semibold text-danger-500">{error}</span>}
+          <span className="flex-1" />
+          <button type="button" onClick={() => setV((x) => Math.max(0, x - 1))} disabled={v === 0} className="rounded-pill border border-ink-300 bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-900 hover:bg-ink-50 disabled:opacity-40">Back</button>
+          <button type="button" onClick={save} disabled={pending} className="rounded-pill bg-pink-500 px-5 py-2 text-[12.5px] font-bold text-white hover:bg-pink-600 disabled:opacity-40">{v === STAGES.length - 1 ? 'Save & finish' : 'Save curves'}</button>
+        </div>
       </div>
     </div>
   )
