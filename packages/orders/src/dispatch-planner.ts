@@ -146,6 +146,22 @@ export function deriveItemDispatch(params: {
    * only the authored DECORATION premium is routed here. Defaults 0.
    */
   decorationPayoutCents?: number
+  /**
+   * CP-6 (docs/COPACK_CP3_SHADOW_AND_CP6_PLAN §2) — the REAL co-pack quote
+   * (loadCopackQuoteCents, the SAME number CP-3 charged), replacing the 7% interim.
+   * Provided by createDispatches ONLY when the co-pack flag is on; absent ⇒ today's
+   * 7%-estimate behavior. It is CARVED from productionCents (which already includes
+   * the co-pack line), so the sum invariant holds and the manufacturer gets the
+   * remainder.
+   */
+  coPackingPayoutCents?: number
+  /**
+   * CP-6 — the pinned co-packer (CP-5 `coPackerServiceId` + its payout userId) to
+   * route the assembly leg to, so the payee is EXACTLY the service CP-3 priced.
+   * Provided with `coPackingPayoutCents`; absent ⇒ derive the assembler from the
+   * CARTON/SHIPPER components as today.
+   */
+  coPacker?: { serviceId: string; userId: string }
 }): ItemDispatchPlan {
   const { orderId, item, routing, components, acceptDeadlineAt } = params
   const decorationPayoutCents = Math.max(0, Math.round(params.decorationPayoutCents ?? 0))
@@ -163,20 +179,27 @@ export function deriveItemDispatch(params: {
       ? [...printLegMap.values()]
       : [{ serviceId: routing.labelPrintingServiceId, userId: routing.labelPrintingUserId }]
 
-  // Assembly legs — only for CARTON/SHIPPER components; distinct live assemblers,
-  // else the manufacturer self-assembles.
-  const assemblyComponents = components.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
+  // Assembly legs. CP-6: a pinned co-packer (params.coPacker, passed by
+  // createDispatches ONLY when the co-pack flag is on) is AUTHORITATIVE — it routes
+  // the assembly leg to exactly the service CP-3 priced, so charge === payout.
+  // Absent ⇒ today's derivation: CARTON/SHIPPER components' live assemblers, else
+  // the manufacturer self-assembles.
   const assemblyLegMap = new Map<string, { serviceId: string; userId: string }>()
-  if (assemblyComponents.length > 0) {
-    for (const c of assemblyComponents) {
-      const svc = c.partnerService
-      if (isLive(svc) && svc) assemblyLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
-    }
-    if (assemblyLegMap.size === 0) {
-      assemblyLegMap.set(routing.manufacturingServiceId, {
-        serviceId: routing.manufacturingServiceId,
-        userId: routing.manufacturingUserId,
-      })
+  if (params.coPacker) {
+    assemblyLegMap.set(params.coPacker.serviceId, params.coPacker)
+  } else {
+    const assemblyComponents = components.filter((c) => c.role === 'CARTON' || c.role === 'SHIPPER')
+    if (assemblyComponents.length > 0) {
+      for (const c of assemblyComponents) {
+        const svc = c.partnerService
+        if (isLive(svc) && svc) assemblyLegMap.set(svc.id, { serviceId: svc.id, userId: svc.partner.userId })
+      }
+      if (assemblyLegMap.size === 0) {
+        assemblyLegMap.set(routing.manufacturingServiceId, {
+          serviceId: routing.manufacturingServiceId,
+          userId: routing.manufacturingUserId,
+        })
+      }
     }
   }
   const assemblyLegs = [...assemblyLegMap.values()]
@@ -229,17 +252,23 @@ export function deriveItemDispatch(params: {
     ? Math.floor(decorationPayoutCents / distinctPrintLegs.length)
     : 0
 
-  // CO-PACK payout is STILL a placeholder (7% of the band) until co-pack authors a
-  // price (CP-1..CP-3, parked - COPACK_SERVICE_SPEC has no price model yet). Pavel
-  // 2026-07-18 confirmed this documented interim. estimateDispatchCosts survives
-  // ONLY for this.
+  // CO-PACK payout — CP-6: the REAL authored quote (params.coPackingPayoutCents =
+  // loadCopackQuoteCents, the SAME number CP-3 charged) when the flag is on, else
+  // the 7% interim estimate (flag off / pre-CP-3). Either way it is CARVED from
+  // productionCents (which already includes the co-pack line), so sum(legs) ===
+  // productionCents and the manufacturer gets the remainder. estimateDispatchCosts
+  // survives ONLY for the interim path.
   const est = estimateDispatchCosts({
     productId: item.productId,
     quantity: item.quantity,
     unitPriceCents: item.unitPriceCents,
   })
+  const coPackPayoutTotal =
+    params.coPackingPayoutCents != null
+      ? Math.max(0, Math.round(params.coPackingPayoutCents))
+      : est.coPackerCostCents
   const perDistinctAssemblyCents = distinctAssemblyLegs.length
-    ? Math.floor(est.coPackerCostCents / distinctAssemblyLegs.length)
+    ? Math.floor(coPackPayoutTotal / distinctAssemblyLegs.length)
     : 0
   const printCarveoutCents = perDistinctPrintCents * distinctPrintLegs.length
   const assemblyCarveoutCents = perDistinctAssemblyCents * distinctAssemblyLegs.length

@@ -257,3 +257,40 @@ describe('deriveItemDispatch — full variety pack (the integration case)', () =
     expect(p.primaryPrintServiceId).toBe('printer-A')
   })
 })
+
+// -----------------------------------------------------------------------------
+// CP-6 — real co-pack quote + pinned co-packer (COPACK_CP3_SHADOW_AND_CP6_PLAN §2)
+// -----------------------------------------------------------------------------
+
+describe('deriveItemDispatch — CP-6 co-pack payout', () => {
+  const base = { orderId: 'o', item: ITEM, routing: ROUTING, components: [comp()], acceptDeadlineAt: DEADLINE, decorationPayoutCents: 0 }
+  const sum = (p: ReturnType<typeof deriveItemDispatch>) => p.rows.reduce((a, r) => a + r.costCents, 0)
+
+  it('a DISTINCT pinned co-packer is paid the REAL quote (not the 7% interim), and the sum invariant holds', () => {
+    const p = deriveItemDispatch({ ...base, coPacker: { serviceId: 'cop-svc', userId: 'cop-user' }, coPackingPayoutCents: 2500 })
+    const copack = p.rows.find((r) => r.type === 'COPACKING')!
+    expect(copack.partnerServiceId).toBe('cop-svc') // routed to the pinned co-packer
+    expect(copack.costCents).toBe(2500) // the authored quote
+    expect(copack.costCents).not.toBe(700) // NOT 7% of 10,000
+    expect(p.rows.find((r) => r.type === 'PRODUCT')!.costCents).toBe(7500) // manufacturer gets the remainder
+    expect(sum(p)).toBe(10_000) // INVARIANT: legs sum to production
+  })
+
+  it('N=1 (co-packer IS the manufacturer): the co-pack leg folds into the band, product keeps it all', () => {
+    const p = deriveItemDispatch({ ...base, coPacker: { serviceId: 'mfg-copack-svc', userId: 'mfg-user' }, coPackingPayoutCents: 2500 })
+    const copack = p.rows.find((r) => r.type === 'COPACKING')!
+    expect(copack.partnerServiceId).toBe('mfg-copack-svc')
+    expect(copack.costCents).toBe(0) // same payee as the manufacturer ⇒ carve nothing
+    expect(p.rows.find((r) => r.type === 'PRODUCT')!.costCents).toBe(10_000) // whole band, incl. the co-pack revenue
+    expect(sum(p)).toBe(10_000)
+  })
+
+  it('flag OFF (no pinned co-packer, no quote) is UNCHANGED: CARTON-derived leg paid the 7% interim', () => {
+    const carton = comp({ role: 'CARTON', decorationMethod: 'NONE', partnerService: svc({ id: 'asm', type: 'COPACKING' }) })
+    const p = deriveItemDispatch({ ...base, components: [carton] })
+    const copack = p.rows.find((r) => r.type === 'COPACKING')!
+    expect(copack.partnerServiceId).toBe('asm') // component-derived, as before
+    expect(copack.costCents).toBe(700) // 7% of 10,000, unchanged
+    expect(sum(p)).toBe(10_000)
+  })
+})

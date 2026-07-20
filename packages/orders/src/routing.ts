@@ -16,6 +16,8 @@ import { generateOrderManifest } from './manifest'
 import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
+import { isCopackRealPriceEnabled, resolveOrderCoPackerServiceId } from './copack-order-pricing'
+import { loadCopackQuoteCents } from './copack-quote-loader'
 import { priceComponents, COMPONENT_PRICING_SELECT, type ComponentRow } from '@ilaunchify/plans'
 import { resolveManufacturerMeritFeeBps, meritWithholdCents } from './manufacturer-merit-fee'
 import { resolveApplicationPoint, APPLIED_DECORATIONS } from './application-point'
@@ -800,6 +802,34 @@ export async function createDispatches(params: {
       priceComponents(pricingComponents as unknown as ComponentRow[], item.quantity).decorationUnitCents *
       item.quantity
 
+    // CP-6 (docs/COPACK_CP3_SHADOW_AND_CP6_PLAN §2): pay the pinned co-packer the
+    // REAL quote instead of the 7% interim, flag-gated. We RE-COMPUTE the quote from
+    // the SAME loader + the SAME job (total units + unitsPerPack) CP-3 charged,
+    // reconstructed from the OrderItem's pack snapshot, so charge === payout by
+    // construction (the decoration-payout lesson). Off / non-pack / no pinned
+    // co-packer ⇒ both stay undefined and the planner keeps today's behavior.
+    let coPacker: { serviceId: string; userId: string } | undefined
+    let coPackingPayoutCents: number | undefined
+    const isAssembly = (item.packUnitsPerPack ?? 0) > 0
+    if (isAssembly && item.product.productTemplateId && (await isCopackRealPriceEnabled())) {
+      const coPackerServiceId = await resolveOrderCoPackerServiceId(item.product.productTemplateId)
+      if (coPackerServiceId) {
+        const cpSvc = await prisma.partnerService.findUnique({
+          where: { id: coPackerServiceId },
+          select: { partner: { select: { userId: true } } },
+        })
+        if (cpSvc) {
+          coPacker = { serviceId: coPackerServiceId, userId: cpSvc.partner.userId }
+          const totalUnits = item.quantity * (item.packUnitsPerPack ?? 1)
+          const quote = await loadCopackQuoteCents({
+            coPackerServiceId,
+            job: { qty: totalUnits, unitsPerPack: item.packUnitsPerPack ?? undefined },
+          })
+          coPackingPayoutCents = quote?.ok ? quote.cents : 0
+        }
+      }
+    }
+
     // All the per-item dispatch decisions (print-leg collapse, assembly legs,
     // cost split, row construction) live in the pure planner so they're unit-
     // testable without a DB. We just normalize the prisma rows to ComponentLeg.
@@ -813,6 +843,8 @@ export async function createDispatches(params: {
       },
       routing,
       decorationPayoutCents,
+      coPacker,
+      coPackingPayoutCents,
       components: components.map((c) => ({
         role: c.role as string,
         decorationMethod: c.decorationMethod as string,
