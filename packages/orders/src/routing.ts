@@ -16,6 +16,7 @@ import { generateOrderManifest } from './manifest'
 import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
+import { moqDivergence } from './product-moq'
 import { isCopackRealPriceEnabled, resolveOrderCoPackerServiceId } from './copack-order-pricing'
 import { loadCopackQuoteCents } from './copack-quote-loader'
 import { priceComponents, COMPONENT_PRICING_SELECT, type ComponentRow } from '@ilaunchify/plans'
@@ -109,7 +110,10 @@ export async function findRouting(params: {
       // The NEW product template carries the owning manufacturer (the partner who
       // built this product). Owner-pinned routing reads it; the legacy `template`
       // above is still used for the print-leg die-cut fallback.
-      productTemplate: { select: { manufacturerServiceId: true } },
+      // MB-5: the product's batch-size override + the assigned line's default batch,
+      // so routing can DERIVE the per-product MOQ (shadow-compared below, gate not yet
+      // flipped onto it). Gated on the MB-1 db:push (these columns land then).
+      productTemplate: { select: { manufacturerServiceId: true, unitsPerBatch: true, manufacturingLine: { select: { unitsPerBatch: true } } } },
       // The print/decoration provider the product already SELECTED at config time
       // (PartnerPackagingOffering = packagingType × decorationMethod × dieline —
       // capability-matched then). Routing honors this binding instead of re-deriving
@@ -177,6 +181,26 @@ export async function findRouting(params: {
       return { ok: false, reason: 'NO_MANUFACTURER', message: `The product’s manufacturer can’t run quantity ${params.quantity}.` }
     }
     manufacturer = owner
+
+    // MB-5 SHADOW (gate unchanged): compare the batch-DERIVED product MOQ to the flat
+    // declared floor the gate above still uses. A divergence is exactly the bug MB-5
+    // fixes (sparkling water 30k vs peanut spice 5k, same maker: one flat moqMin
+    // cannot express both). We only LOG until Pavel flips the gate onto the derived
+    // basis, per the shadow-first doctrine. deriveProductMoq never invents a number.
+    {
+      const tmpl = product.productTemplate
+      const div = moqDivergence({
+        productUnitsPerBatch: tmpl?.unitsPerBatch ?? null,
+        lineUnitsPerBatch: tmpl?.manufacturingLine?.unitsPerBatch ?? null,
+        declaredMoqMin: min,
+      })
+      if (div.diverges) {
+        console.warn(
+          `[MB-5 shadow] product=${product.id} derived MOQ ${div.derived.moqUnits} (${div.derived.basis}) ` +
+            `!= declared moqMin ${div.declaredMoqMin}; qty=${params.quantity}. Gate still on declared floor.`,
+        )
+      }
+    }
   } else {
     // Legacy fallback (no owner set): hard gates (category fit, MOQ, payouts) then
     // B4 scoring ranks the survivors so we pick the best fit, not the first.

@@ -41,6 +41,7 @@ import { type PackingProfileOption } from './ProductTypeGate'
 import { VariantsPacksStep, type Flavor } from './VariantsPacksStep'
 import { axesToInput, type OptionAxisUI } from './OptionAxesCard'
 import { PricingTiersCard } from './PricingTiersCard'
+import { ProductBatchCard } from './ProductBatchCard'
 import { NotesCard } from './NotesCard'
 import { LabelPhrasesCard } from './LabelPhrasesCard'
 import { PackagingPicker } from './PackagingPicker'
@@ -572,6 +573,7 @@ export function GuidedBuilder({
           {cur === 4 && (
             <section>
               <PricingTiersCard draftId={draftId} initialTiers={initial?.pricingTiers} registerFlush={registerFlush} />
+              <ProductBatchCard draftId={draftId} registerFlush={registerFlush} />
               <NavBtns onBack={() => go(3)} onNext={() => go(5)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Review →" />
             </section>
           )}

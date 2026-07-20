@@ -635,3 +635,6 @@ export type {
   PrintPriceQuote,
   PrintProcessSelection,
 } from './print-price'
+// MB-5 product-MOQ derivation (docs/PARTNER_SERVICE_BUILDER_FAMILY_PLAN §2, MB-5).
+export { deriveProductMoq, moqDivergence } from './product-moq'
+export type { ProductMoqInput, ProductMoq, ProductMoqBasis } from './product-moq'
