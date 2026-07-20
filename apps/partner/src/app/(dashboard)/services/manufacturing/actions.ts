@@ -55,13 +55,16 @@ export interface ManufacturingBuilderPayload {
   moqMax: number | null
   orderIncrement: number | null
   monthlyCapacity: number | null
+  // MB-6 self-fill ceiling + overflow co-packer (soft FK to a COPACKING service).
+  selfFillMaxUnits: number | null
+  overflowCoPackerServiceId: string | null
   lines: ManufacturingLineDraft[]
 }
 
 async function ownManufacturingService(userId: string, serviceId: string) {
   return prisma.partnerService.findFirst({
     where: { id: serviceId, type: 'MANUFACTURING', partner: { userId } },
-    select: { id: true, capabilities: true },
+    select: { id: true, capabilities: true, partnerId: true },
   })
 }
 
@@ -84,6 +87,17 @@ export async function saveManufacturingBuilder(
     if (posInt(l.changeoverMinutes) === null) return { ok: false, error: `Line "${l.name}" needs a changeover time.` }
     if (posInt(l.maxBatchesPerRun) === null || l.maxBatchesPerRun < 1)
       return { ok: false, error: `Line "${l.name}" needs a max-batches-per-run of at least 1.` }
+  }
+
+  // MB-6: an overflow co-packer must be a COPACKING service the SAME partner owns
+  // (never route overflow to another org's service by id-guessing). Anything else → null.
+  let overflowCoPackerServiceId: string | null = null
+  if (payload.overflowCoPackerServiceId) {
+    const cop = await prisma.partnerService.findFirst({
+      where: { id: payload.overflowCoPackerServiceId, type: 'COPACKING', partnerId: service.partnerId },
+      select: { id: true },
+    })
+    overflowCoPackerServiceId = cop?.id ?? null
   }
 
   const capsPatch: Record<string, unknown> = {
@@ -127,6 +141,8 @@ export async function saveManufacturingBuilder(
         rushLeadTimeDays: posInt(payload.rushLeadTimeDays),
         maxRushJobsPerWeek: posInt(payload.maxRushJobsPerWeek),
         repeatRunDiscountBps: posInt(payload.repeatRunDiscountBps),
+        selfFillMaxUnits: posInt(payload.selfFillMaxUnits),
+        overflowCoPackerServiceId,
       } as const
       await tx.partnerManufacturingConfig.upsert({
         where: { partnerServiceId: service.id },

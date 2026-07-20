@@ -55,6 +55,10 @@ export interface ManufacturingBuilderInitial {
   moqMax: string
   orderIncrement: string
   monthlyCapacity: string
+  // MB-6 self-fill ceiling + overflow to a co-packer.
+  selfFillMaxUnits: string
+  overflowCoPackerServiceId: string
+  coPackerOptions: { id: string; name: string }[]
   batches: BatchDraft[]
 }
 
@@ -109,6 +113,8 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
   const [moqMax, setMoqMax] = useState(initial.moqMax)
   const [orderIncrement, setOrderIncrement] = useState(initial.orderIncrement)
   const [monthlyCapacity, setMonthlyCapacity] = useState(initial.monthlyCapacity)
+  const [selfFillMaxUnits, setSelfFillMaxUnits] = useState(initial.selfFillMaxUnits)
+  const [overflowCoPacker, setOverflowCoPacker] = useState(initial.overflowCoPackerServiceId)
   const [batches, setBatches] = useState<BatchDraft[]>(initial.batches.length ? initial.batches : [blankBatch()])
 
   const [q, setQ] = useState('800')
@@ -174,6 +180,8 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
       moqMax: moqMax.trim() ? intOf(moqMax) : null,
       orderIncrement: orderIncrement.trim() ? intOf(orderIncrement) : null,
       monthlyCapacity: monthlyCapacity.trim() ? intOf(monthlyCapacity) : null,
+      selfFillMaxUnits: selfFillMaxUnits.trim() ? intOf(selfFillMaxUnits) : null,
+      overflowCoPackerServiceId: overflowCoPacker || null,
       lines: batches
         .filter((b) => b.name.trim() || num(b.rate) > 0)
         .map((b) => ({
@@ -254,6 +262,9 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
                     <F label="Max batches / run"><input className={inputCls} value={b.maxBatches} onChange={(e) => setBatch(b.id, { maxBatches: e.target.value })} placeholder="40" /></F>
                     <F label="Allergen segregation"><input className={inputCls} value={b.allergen} onChange={(e) => setBatch(b.id, { allergen: e.target.value })} placeholder="Segregated · nut-free" /></F>
                   </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <F label="Weekly capacity (hours)" hint="Optional. Hours this line is available per week, for capacity planning."><input className={inputCls} value={b.capacityHours} onChange={(e) => setBatch(b.id, { capacityHours: e.target.value })} placeholder="60" /></F>
+                  </div>
                 </div>
               ))}
               <button type="button" onClick={addBatch} className="mt-1 rounded-pill border border-ink-300 bg-white px-4 py-2 text-[12.5px] font-semibold text-ink-700 hover:border-pink-500 hover:text-pink-700">+ Add a batch configuration</button>
@@ -304,6 +315,19 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
                 <F label="Order increment"><input className={inputCls} value={orderIncrement} onChange={(e) => setOrderIncrement(e.target.value)} placeholder="100" /></F>
                 <F label="Monthly capacity (units)"><input className={inputCls} value={monthlyCapacity} onChange={(e) => setMonthlyCapacity(e.target.value)} placeholder="250000" /></F>
               </div>
+            </Card>
+            <Card title="Self-fill & overflow">
+              <p className="mb-3 text-[12.5px] text-ink-500">You always MAKE the bulk. Small orders you fill and pack yourself; above your self-fill ceiling, the fill leg hands off to a co-packer. The creator still sees one product and one price. Leave the ceiling blank to fill every order yourself.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <F label="Self-fill ceiling (units / order)" hint="Blank = no ceiling, you fill every order."><input className={inputCls} value={selfFillMaxUnits} onChange={(e) => setSelfFillMaxUnits(e.target.value)} placeholder="10000" /></F>
+                <F label="Overflow co-packer" hint={initial.coPackerOptions.length ? 'One of your co-packing services fills orders above the ceiling.' : 'No co-packing service to hand off to yet. Add one, or nominate a co-packer.'}>
+                  <select className={inputCls} value={overflowCoPacker} onChange={(e) => setOverflowCoPacker(e.target.value)} disabled={initial.coPackerOptions.length === 0}>
+                    <option value="">None (self-fill only)</option>
+                    {initial.coPackerOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </F>
+              </div>
+              {selfFillMaxUnits.trim() && !overflowCoPacker && <Note><b>Ceiling set with no overflow co-packer.</b> Orders above {intOf(selfFillMaxUnits).toLocaleString()} units have nowhere to route the fill leg, so they would be declined until you set one.</Note>}
             </Card>
           </Hero>
         )}

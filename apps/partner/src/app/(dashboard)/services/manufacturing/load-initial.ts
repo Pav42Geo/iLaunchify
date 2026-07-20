@@ -27,7 +27,7 @@ export async function loadManufacturingBuilderInitial(userId: string): Promise<M
   const svc = partner?.services[0]
   if (!partner || !svc) return null
 
-  const [lines, config] = await Promise.all([
+  const [lines, config, coPackers] = await Promise.all([
     prisma.partnerManufacturingLine.findMany({
       where: { partnerServiceId: svc.id },
       orderBy: { createdAt: 'asc' },
@@ -35,9 +35,16 @@ export async function loadManufacturingBuilderInitial(userId: string): Promise<M
     }),
     prisma.partnerManufacturingConfig.findUnique({
       where: { partnerServiceId: svc.id },
-      select: { minOrderValueCents: true, overrunPolicyPct: true, toolingFirstArticleCents: true, changeoverFeeCents: true, rndFormulationCents: true, rushUpliftBps: true, rushLeadTimeDays: true, maxRushJobsPerWeek: true, repeatRunDiscountBps: true },
+      select: { minOrderValueCents: true, overrunPolicyPct: true, toolingFirstArticleCents: true, changeoverFeeCents: true, rndFormulationCents: true, rushUpliftBps: true, rushLeadTimeDays: true, maxRushJobsPerWeek: true, repeatRunDiscountBps: true, selfFillMaxUnits: true, overflowCoPackerServiceId: true },
     }),
+    // MB-6 overflow targets: this partner's OWN co-packing services (ownership-safe; a
+    // cross-partner co-packer picker is a nomination concern, not built here).
+    prisma.partnerService.findMany({ where: { partnerId: partner.id, type: 'COPACKING' }, select: { id: true, capabilities: true } }),
   ])
+  const coPackerOptions = coPackers.map((c) => {
+    const cc = (c.capabilities ?? {}) as Record<string, unknown>
+    return { id: c.id, name: typeof cc.serviceName === 'string' && cc.serviceName ? cc.serviceName : 'Co-packing service' }
+  })
 
   const caps = (svc.capabilities ?? {}) as Record<string, unknown>
   const strArr = (k: string) => strArrOf(caps, k)
@@ -69,6 +76,9 @@ export async function loadManufacturingBuilderInitial(userId: string): Promise<M
     moqMax: numStr(caps.moqMax),
     orderIncrement: numStr(caps.orderIncrement),
     monthlyCapacity: numStr(caps.monthlyCapacity),
+    selfFillMaxUnits: numStr(config?.selfFillMaxUnits),
+    overflowCoPackerServiceId: config?.overflowCoPackerServiceId ?? '',
+    coPackerOptions,
     batches: lines.map((l) => ({
       id: `batch-${Math.random().toString(36).slice(2, 8)}`,
       name: l.name,
