@@ -150,10 +150,27 @@ export async function saveCopackBuilder(
   // never see it) lives in capabilities.
   if (payload.serviceName?.trim()) capsPatch.serviceName = payload.serviceName.trim()
 
+  // BRIDGE to the routing quantity gate + matching. routing.ts `moqOf` reads
+  // capabilities.moqMin (?? 0) and moqMax (?? +Infinity). The builder never asks
+  // for a flat MOQ — it DERIVES the floor from the lines (COPACK_SERVICE_SPEC §1,
+  // "do not ask a co-packer to type an MOQ") — so we compute those keys here from
+  // the active lines, keeping routing working after the legacy CopackEditor is
+  // retired. leadTimeDays mirrors the typed base lead time for the same readers.
+  const activeLines = lines.filter((l) => l.active && l.runSpeedUnitsPerHour > 0)
+  let clearMoqMax = false
+  if (activeLines.length > 0) {
+    capsPatch.moqMin = Math.min(...activeLines.map((l) => posInt(l.minRunUnits) ?? 0))
+    const ceilings = activeLines.map((l) => (l.maxRunUnits != null ? posInt(l.maxRunUnits) : null))
+    if (ceilings.some((cval) => cval == null)) clearMoqMax = true // a line has no ceiling ⇒ unbounded (omit ⇒ +Infinity)
+    else capsPatch.moqMax = Math.max(...(ceilings as number[]))
+  }
+  if (posInt(payload.baseLeadTimeDays) !== null) capsPatch.leadTimeDays = posInt(payload.baseLeadTimeDays)
+
   try {
     await prisma.$transaction(async (tx) => {
       const currentCaps = { ...((service.capabilities ?? { type: 'COPACKING' }) as Record<string, unknown>) }
       const nextCaps = { ...currentCaps, ...capsPatch }
+      if (clearMoqMax) delete nextCaps.moqMax // unbounded ⇒ absent ⇒ routing reads +Infinity
 
       await tx.partnerService.update({
         where: { id: service.id },

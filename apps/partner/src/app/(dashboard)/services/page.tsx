@@ -18,7 +18,6 @@ import { StPill, type PillTone } from '@/components/panel-kit'
 import { addService, type AddableServiceType } from './actions'
 import {
   ManufacturingEditor,
-  CopackEditor,
   PrintEditor,
   StorageEditor,
   type StorageTypedVM,
@@ -153,7 +152,9 @@ export default async function ServicesPage({
   function sectionsFor(svc: NonNullable<typeof selected>): SectionKey[] {
     const type = svc.type as string
     if (type === 'WAREHOUSE') return ['overview']
-    const secs: SectionKey[] = ['capabilities']
+    // Co-packing capabilities (scope + lines + operations + pricing) now live in
+    // the full builder at /services/copacking, not in an in-page section.
+    const secs: SectionKey[] = type === 'COPACKING' ? [] : ['capabilities']
     if (producingSvc && svc.id === producingSvc.id) secs.push('storage', 'defaults')
     if (type === 'MANUFACTURING' || type === 'COPACKING' || type === 'LABEL_PRINTING')
       secs.push('labeling')
@@ -203,7 +204,9 @@ export default async function ServicesPage({
           return (
             <Link
               key={s.id}
-              href={`/services?svc=${s.id}`}
+              // Co-packing jumps straight into its full builder (lines / operations /
+              // run pricing). Every other service opens its sections in place.
+              href={type === 'COPACKING' ? '/services/copacking' : `/services?svc=${s.id}`}
               className={cn(
                 'rounded-[14px] border-[1.5px] p-3.5 transition-colors',
                 on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-400',
@@ -430,20 +433,17 @@ async function SectionPanel({
           ) : type === 'MANUFACTURING' ? (
             <ManufacturingEditor serviceId={svc.id} capabilities={caps} />
           ) : type === 'COPACKING' ? (
-            <>
-              <a
-                href="/services/copacking"
-                className="mb-4 flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
-              >
-                <Package className="h-4 w-4 flex-none" />
-                <span className="flex-1">
-                  Open the full co-packing builder — lines, operations, run pricing and a live quote
-                  check.
-                </span>
-                <ExternalLink className="h-3.5 w-3.5 flex-none" />
-              </a>
-              <CopackEditor serviceId={svc.id} capabilities={caps} />
-            </>
+            <a
+              href="/services/copacking"
+              className="flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
+            >
+              <Package className="h-4 w-4 flex-none" />
+              <span className="flex-1">
+                Open the full co-packing builder: lines, operations, run pricing and a live quote
+                check.
+              </span>
+              <ExternalLink className="h-3.5 w-3.5 flex-none" />
+            </a>
           ) : (
             <PrintEditor
               serviceId={svc.id}
