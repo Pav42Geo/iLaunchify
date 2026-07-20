@@ -67,12 +67,23 @@ surface or the estimate and the charge diverge. Feed it via `composeProductionLi
 `coPackingCents` input that emits a `{ kind: 'COPACKING', label: 'Co-packing', cents }` line) so all
 four call sites get it from one composer:
 
-| Surface | File:line | Role |
-|---|---|---|
-| **Charge** | `apps/creator/.../checkout/cart-actions.ts:737` (compose) + `:805` (price) | `placeOrder` — the till |
-| Checkout estimate | `apps/creator/.../checkout/production-actions.ts:642` | shown pre-pay; must equal the charge |
-| PDP | `apps/marketing/src/components/ProductDetailConfigurator.tsx:472` | live PDP price |
-| Sample | `apps/creator/.../checkout/sample-actions.ts:194` | a sample is a small order, same tier rate |
+| Surface | File:line | Role | Status |
+|---|---|---|---|
+| **Charge** | `apps/creator/.../checkout/cart-actions.ts:737` (compose) + `:805` (price) | `placeOrder` — the till | WIRED |
+| Checkout estimate | `apps/creator/.../checkout/production-actions.ts:642` | shown pre-pay; must equal the charge | WIRED |
+| PDP | `apps/marketing/src/components/ProductDetailConfigurator.tsx:472` | marketplace preview | **EXCLUDED — see below** |
+| Sample | `apps/creator/.../checkout/sample-actions.ts:194` | pre-production sample | **N/A — never an assembly** |
+
+**PDP correction (2026-07-19, on tracing it).** The PDP's live price is deliberately **goods + fee
+only** — its production array is `[{ kind: 'PRODUCT', cents: unitGoodsCents * quantity }]` and it
+carries NONE of the production add-ons (decoration, components, finishes), by explicit decision at
+`ProductDetailConfigurator.tsx:443-467`: those are authored later (Studio) and priced at checkout. So
+co-pack is an add-on of exactly that class and follows the same rule — it stays OFF the PDP. Wiring it
+in would make co-pack the ONLY add-on on the PDP, and the PDP would disagree with checkout for a
+reason unrelated to co-pack. **The parity that matters is estimate === charge (both include the add-ons,
+both wired).** The PDP shows the headline goods price; the full production breakdown appears at checkout.
+CP-3.2 is therefore COMPLETE with charge + estimate. Revisit only if Pavel decides the PDP should
+preview all production add-ons (a separate, larger change touching decoration/components too).
 
 **When co-pack applies:** the order has a pinned `coPackerServiceId` (CP-5) on the chosen packaging
 config AND the config produces an assembly (a CARTON/SHIPPER component, i.e. variety/multipack). A
