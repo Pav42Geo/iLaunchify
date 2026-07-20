@@ -625,6 +625,16 @@ export async function addPackagingLink(input: {
   })
   if (existing) return { ok: false, error: 'That packaging is already linked.' }
 
+  // CP-5: auto-pin the manufacturer's OWN live co-packing service (N=1 full-
+  // service) so the assembly leg has a declared co-packer. DATA ONLY today —
+  // deriveItemDispatch still self-assembles until CP-6 honors this field behind
+  // the shadow, and the publish-graph co-pack node stays admin-gated. Null when
+  // the partner has no live co-packing service (manufacturer self-assembles).
+  const ownCopack = await prisma.partnerService.findFirst({
+    where: { partnerId: partner.id, type: 'COPACKING', status: 'ACTIVE' },
+    select: { id: true },
+  })
+
   await prisma.productTemplatePackaging.create({
     data: {
       productTemplateId: template.id,
@@ -632,6 +642,7 @@ export async function addPackagingLink(input: {
       basePriceCents: input.basePriceCents,
       leadTimeDays: input.leadTimeDays,
       pricingTiers: [],
+      coPackerServiceId: ownCopack?.id ?? null,
     },
   })
 
@@ -689,6 +700,100 @@ export async function removePackagingLink(input: {
     },
   })
 
+  revalidatePath(`/products/${template.id}/edit`)
+  return { ok: true }
+}
+
+// -----------------------------------------------------------------------------
+// CO-PACKER ASSIGNMENT (CP-5, docs/COPACK_SERVICE_SPEC §5) — which co-packing
+// PartnerService fills / assembles this product's packaging config.
+//
+// DATA ONLY today. It is read by the publish-graph honey-problem gate
+// (validateTemplateGraph, itself behind the admin graph:publish_allow_copack_
+// application setting, OFF by default) and reserved for CP-6 routing.
+// deriveItemDispatch derives the assembly leg from the CARTON/SHIPPER component's
+// partnerService, NOT from this field, so writing it changes NO dispatch and NO
+// payout. That is deliberate: the assignment lands now, the money path follows
+// behind the shadow in CP-6.
+//
+// Eligible = the manufacturer's OWN live co-packing service (the N=1 full-service
+// case). Nominated co-partners (N>1) expand this list once the dark D7 nomination
+// flag is live.
+// -----------------------------------------------------------------------------
+
+export interface EligibleCoPacker {
+  serviceId: string
+  label: string
+}
+
+export async function resolveEligibleCoPackers(partnerId: string): Promise<EligibleCoPacker[]> {
+  // @@unique([partnerId, type]) ⇒ at most one COPACKING service per partner org.
+  const own = await prisma.partnerService.findFirst({
+    where: { partnerId, type: 'COPACKING', status: 'ACTIVE' },
+    select: { id: true, capabilities: true },
+  })
+  const list: EligibleCoPacker[] = []
+  if (own) {
+    const caps = (own.capabilities ?? {}) as Record<string, unknown>
+    const name =
+      typeof caps.serviceName === 'string' && caps.serviceName.trim() ? caps.serviceName.trim() : 'Your co-packing line'
+    list.push({ serviceId: own.id, label: name })
+  }
+  // TODO(CP): when the D7 nomination flag is live, append ACTIVE COPACKING
+  // co-partners this manufacturer has nominated (PartnerNomination).
+  return list
+}
+
+/** Eligible co-packers + the current per-size assignment, for the packaging card. */
+export async function loadPackagingCoPackers(
+  productTemplateId: string,
+): Promise<Result<{ eligible: EligibleCoPacker[]; assignments: Record<string, string | null> }>> {
+  const { partner, template, error } = await authorize(productTemplateId)
+  if (error) return { ok: false, error }
+  const [eligible, rows] = await Promise.all([
+    resolveEligibleCoPackers(partner.id),
+    prisma.productTemplatePackaging.findMany({
+      where: { productTemplateId: template.id },
+      select: { packagingSystemId: true, coPackerServiceId: true },
+    }),
+  ])
+  const assignments: Record<string, string | null> = {}
+  for (const r of rows) assignments[r.packagingSystemId] = r.coPackerServiceId
+  return { ok: true, data: { eligible, assignments } }
+}
+
+/** Pin (or clear, with null) the co-packer for one packaging config. */
+export async function setPackagingCoPacker(input: {
+  productTemplateId: string
+  packagingSystemId: string
+  coPackerServiceId: string | null
+}): Promise<Result> {
+  const { user, partner, template, error } = await authorize(input.productTemplateId)
+  if (error) return { ok: false, error }
+
+  // Never trust the client id — validate against the eligible set.
+  if (input.coPackerServiceId !== null) {
+    const eligible = await resolveEligibleCoPackers(partner.id)
+    if (!eligible.some((e) => e.serviceId === input.coPackerServiceId)) {
+      return { ok: false, error: 'That co-packer is not eligible for this product.' }
+    }
+  }
+
+  await prisma.productTemplatePackaging.update({
+    where: {
+      productTemplateId_packagingSystemId: {
+        productTemplateId: template.id,
+        packagingSystemId: input.packagingSystemId,
+      },
+    },
+    data: { coPackerServiceId: input.coPackerServiceId },
+  })
+  await logAuditAs(user, {
+    entityType: 'ProductTemplate',
+    entityId: template.id,
+    action: 'PACKAGING_COPACKER_SET',
+    payload: { packagingSystemId: input.packagingSystemId, coPackerServiceId: input.coPackerServiceId },
+  })
   revalidatePath(`/products/${template.id}/edit`)
   return { ok: true }
 }

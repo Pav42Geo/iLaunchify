@@ -7,7 +7,13 @@
 import { useCallback, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { loadPackaging } from './build-actions'
-import { addPackagingLink, removePackagingLink } from '../[id]/edit/card-actions'
+import {
+  addPackagingLink,
+  removePackagingLink,
+  loadPackagingCoPackers,
+  setPackagingCoPacker,
+  type EligibleCoPacker,
+} from '../[id]/edit/card-actions'
 import { Package } from 'lucide-react'
 
 interface PackagingOption { id: string; partnerName: string; topology: string; unitCount: number; moq: number; grossWeightG?: number | null; casesPerLayer?: number | null; layersPerPallet?: number | null }
@@ -16,9 +22,32 @@ export function PackagingPicker({ draftId, systems }: { draftId: string | null; 
   const [attached, setAttached] = useState<string[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [, start] = useTransition()
+  // CP-5 — eligible co-packers (the manufacturer's own live co-packing service)
+  // + the current per-size assignment. Empty eligible ⇒ no picker (self-assemble).
+  const [coPackers, setCoPackers] = useState<EligibleCoPacker[]>([])
+  const [assignments, setAssignments] = useState<Record<string, string | null>>({})
 
-  const refresh = useCallback(() => { if (draftId) void loadPackaging(draftId).then(setAttached) }, [draftId])
+  const refresh = useCallback(() => {
+    if (!draftId) return
+    void loadPackaging(draftId).then(setAttached)
+    void loadPackagingCoPackers(draftId).then((r) => {
+      if (r.ok) {
+        setCoPackers(r.data.eligible)
+        setAssignments(r.data.assignments)
+      }
+    })
+  }, [draftId])
   useEffect(() => { refresh() }, [refresh])
+
+  function assign(packagingSystemId: string, coPackerServiceId: string | null) {
+    if (!draftId) return
+    setAssignments((a) => ({ ...a, [packagingSystemId]: coPackerServiceId })) // optimistic
+    start(async () => {
+      const r = await setPackagingCoPacker({ productTemplateId: draftId, packagingSystemId, coPackerServiceId })
+      if (!r.ok) { toast.error(r.error ?? 'Could not update'); refresh(); return }
+      toast.success('Co-packer updated')
+    })
+  }
 
   function toggle(id: string, on: boolean) {
     if (!draftId) return
@@ -59,6 +88,17 @@ export function PackagingPicker({ draftId, systems }: { draftId: string | null; 
                       {s.casesPerLayer != null && s.layersPerPallet != null && <>pallet {s.casesPerLayer}×{s.layersPerPallet} = {(s.casesPerLayer * s.layersPerPallet).toLocaleString()} cases</>}
                     </div>
                   )}
+                  {on && coPackers.length > 0 && (
+                    <div className="tiny muted cpsel">
+                      <span>Fills&nbsp;/&nbsp;assembles:</span>
+                      <select value={assignments[s.id] ?? ''} onChange={(e) => assign(s.id, e.target.value || null)}>
+                        <option value="">Manufacturer self-assembles</option>
+                        {coPackers.map((cp) => (
+                          <option key={cp.serviceId} value={cp.serviceId}>{cp.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <button className={on ? 'btn sm' : 'rb-btn-add'} disabled={busy === s.id} onClick={() => toggle(s.id, !on)}>
                   {busy === s.id ? '…' : on ? 'Attached ✓' : '+ Attach'}
@@ -73,6 +113,9 @@ export function PackagingPicker({ draftId, systems }: { draftId: string | null; 
         .gb .pkgrow{display:flex;align-items:center;gap:10px;border:1px solid var(--ink-200);border-radius:12px;padding:10px 12px}
         .gb .pkgrow[data-on=on]{border-color:var(--pink);background:var(--pink-50)}
         .gb .pkgrow .grow{flex:1;min-width:0}
+        .gb .pkgrow .cpsel{display:flex;align-items:center;gap:6px;margin-top:6px}
+        .gb .pkgrow .cpsel select{border:1px solid var(--ink-300);border-radius:8px;padding:3px 7px;font-size:12px;background:#fff;color:var(--ink-900);max-width:220px}
+        .gb .pkgrow .cpsel select:focus{outline:none;border-color:var(--pink-500)}
       `}</style>
     </div>
   )
