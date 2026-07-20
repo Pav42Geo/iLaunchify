@@ -24,8 +24,6 @@ import {
 } from './ServiceEditors'
 import { ProductDefaultsForm } from '../settings/product-defaults/ProductDefaultsForm'
 import { getPartnerProductDefaults } from '../settings/product-defaults/actions'
-import { ManufacturingServiceBuilder, type ManufacturingBuilderInitial } from './manufacturing/ManufacturingServiceBuilder'
-import { loadManufacturingBuilderInitial } from './manufacturing/load-initial'
 import {
   ProducingServiceCard,
   FcVasCard,
@@ -121,12 +119,6 @@ export default async function ServicesPage({
     : [0, 0]
 
   const productDefaults = producingSvc ? await getPartnerProductDefaults(partner.id) : null
-
-  // The manufacturing builder is embedded inline in the MANUFACTURING "capabilities"
-  // tab (Option 1) — load its initial state here (same loader the old standalone page used).
-  const mfgInitial = partner.services.some((s) => (s.type as string) === 'MANUFACTURING')
-    ? await loadManufacturingBuilderInitial(user.id)
-    : null
 
   const warehouseSvcIds = partner.services
     .filter((sv) => (sv.type as string) === 'WAREHOUSE')
@@ -300,7 +292,6 @@ export default async function ServicesPage({
               storageVM={storageVM}
               facilities={partner.facilities}
               productDefaults={productDefaults}
-              mfgInitial={mfgInitial}
               vasRows={vasRows}
               substrateCount={substrateCount}
               dielineCount={dielineCount}
@@ -332,7 +323,6 @@ async function SectionPanel({
   storageVM,
   facilities,
   productDefaults,
-  mfgInitial,
   vasRows,
   substrateCount,
   dielineCount,
@@ -351,7 +341,6 @@ async function SectionPanel({
   storageVM: StorageTypedVM | null
   facilities: { id: string; name: string }[]
   productDefaults: Awaited<ReturnType<typeof getPartnerProductDefaults>>
-  mfgInitial: ManufacturingBuilderInitial | null
   vasRows: Array<{
     partnerServiceId: string
     jobType: string
@@ -442,17 +431,17 @@ async function SectionPanel({
           {!canEdit ? (
             <CapabilityReadout capabilities={svc.capabilities} />
           ) : type === 'MANUFACTURING' ? (
-            mfgInitial ? (
-              // The full builder embedded inline (Option 1) — no longer a separate page.
-              // -mx-6 -my-6 cancels the panel's p-6 so the builder's own chrome sits flush.
-              <div className="-mx-6 -my-6">
-                <ManufacturingServiceBuilder initial={mfgInitial} />
-              </div>
-            ) : (
-              <p className="text-[13px] text-ink-500">
-                Add your batches and floors here once your manufacturing service is set up.
-              </p>
-            )
+            <a
+              href="/services/manufacturing"
+              className="flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
+            >
+              <Factory className="h-4 w-4 flex-none" />
+              <span className="flex-1">
+                Open the full manufacturing builder: batches, scope, formulation, samples, runs &amp;
+                capacity, commercial defaults and a live MOQ check.
+              </span>
+              <ExternalLink className="h-3.5 w-3.5 flex-none" />
+            </a>
           ) : type === 'COPACKING' ? (
             <a
               href="/services/copacking"

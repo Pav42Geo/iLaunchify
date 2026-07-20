@@ -130,23 +130,8 @@ export default async function CopackingBuilderPage() {
     })),
   }
 
-  return (
-    <>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[18px] font-bold text-ink-900">Co-packing builder</h1>
-          <p className="text-[12.5px] text-ink-500">
-            Lines, operations and run pricing for your fill-and-pack service.
-          </p>
-        </div>
-        <a
-          href={`/services?svc=${svc.id}`}
-          className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
-        >
-          Storage, labeling & prepress →
-        </a>
-      </div>
-      <CopackBuilder initial={initial} />
-    </>
-  )
+  // The builder returns a fragment whose first child is the full-bleed co-creation
+  // stepper — it must be a DIRECT child of the layout grid to span edge-to-edge, so the
+  // page renders it with no wrapping element or header block above it.
+  return <CopackBuilder initial={initial} />
 }

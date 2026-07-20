@@ -28,7 +28,7 @@ import {
   type CopackOpType,
   type CopackPricingUnit,
 } from './actions'
-import { inputCls, F, Hero, StageBar } from '../builder-kit'
+import { inputCls, F, Hero, CoCreationStepper, builderSteps } from '../builder-kit'
 
 // ─── shape passed from the server page ──────────────────────────────────────
 export interface CopackBuilderInitial {
@@ -360,11 +360,15 @@ export function CopackBuilder({ initial }: { initial: CopackBuilderInitial }) {
 
   // ═══ render ═══
   return (
-    <div className="mx-auto max-w-[1080px] pb-24">
-      {/* stagebar — co-creation chrome (shared ../builder-kit) */}
-      <StageBar stages={STAGES} v={v} setV={setV} />
+    <>
+      {/* Co-creation stepper — full-bleed, hugging the sidebar, right under the header. */}
+      <CoCreationStepper className="col-span-full -mt-6 mb-s-5" steps={builderSteps(STAGES, v)} onStepClick={setV} />
+      <div className="pb-24">
+        <a href="/services" className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-500 transition hover:text-ink-900">
+          <span aria-hidden="true">←</span> Back to services
+        </a>
 
-      <div className="rounded-b-2xl border border-t-0 border-ink-200 bg-ink-100 p-4">
+      <div>
         {readOnly && (
           <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-warning-100 bg-warning-50 px-3.5 py-3 text-[12.5px] text-warning-700">
             <span>This builder becomes editable once your application is approved. Values below are read-only.</span>
@@ -391,7 +395,7 @@ export function CopackBuilder({ initial }: { initial: CopackBuilderInitial }) {
 
       {/* save bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-[1080px] items-center gap-3 px-4">
+        <div className="mx-auto flex max-w-[72rem] items-center gap-3 px-6">
           <span className="text-[12.5px] font-semibold text-ink-500">
             {pending ? 'Saving…' : saved ? 'All changes saved' : error ? '' : 'Draft not yet saved'}
           </span>
@@ -411,6 +415,7 @@ export function CopackBuilder({ initial }: { initial: CopackBuilderInitial }) {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

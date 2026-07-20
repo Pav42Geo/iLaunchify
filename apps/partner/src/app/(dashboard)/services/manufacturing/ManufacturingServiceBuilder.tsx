@@ -12,7 +12,7 @@
 import { useMemo, useState } from 'react'
 import { runBatches, selectBatchConfig, deriveBatchMoq, batchLattice, billedUnits, type BatchConfigInput } from '@ilaunchify/orders/batch-economics'
 import { saveManufacturingBuilder, type ManufacturingBuilderPayload } from './actions'
-import { inputCls, F, Hero, StageBar } from '../builder-kit'
+import { inputCls, F, Hero, CoCreationStepper, builderSteps } from '../builder-kit'
 
 interface BatchDraft {
   id: string
@@ -204,10 +204,15 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
   }
 
   return (
-    <div className="mx-auto max-w-[1080px] pb-24">
-      <StageBar stages={STAGES} v={v} setV={setV} />
+    <>
+      {/* Co-creation stepper — full-bleed, hugging the sidebar, right under the header. */}
+      <CoCreationStepper className="col-span-full -mt-6 mb-s-5" steps={builderSteps(STAGES, v)} onStepClick={setV} />
+      <div className="pb-24">
+        <a href="/services" className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-500 transition hover:text-ink-900">
+          <span aria-hidden="true">←</span> Back to services
+        </a>
 
-      <div className="rounded-b-2xl border border-t-0 border-ink-200 bg-ink-100 p-4">
+      <div>
         {v === 0 && (
           <Hero eyebrow="Manufacturing service" title="Service basics" desc="You make the formula. This builder captures your floor and your defaults, not your prices: a formula's price is product-specific, so it belongs on the product. Everything here flows into every product you build.">
             <Note><b>How this differs from the print and co-pack builders, on purpose.</b> A printer sells a piece, so they price a curve. A co-packer sells operations, so they price a menu. You sell a formula, and no two formulas cost the same, so your prices live on your products. What lives HERE is what every product inherits: your batch physics, your hard filters, your commercial defaults, and your standing.</Note>
@@ -395,7 +400,7 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-[1080px] items-center gap-3 px-4">
+        <div className="mx-auto flex max-w-[72rem] items-center gap-3 px-6">
           <span className="text-[12.5px] font-semibold text-ink-500">{pending ? 'Saving…' : saved ? 'All changes saved' : error ? '' : 'Draft not yet saved'}</span>
           {error && <span className="text-[12px] font-semibold text-danger-500">{error}</span>}
           <span className="flex-1" />
@@ -404,6 +409,7 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
         </div>
       </div>
     </div>
+    </>
   )
 }
 

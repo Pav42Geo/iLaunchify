@@ -18,7 +18,17 @@ export interface CoCreationStep {
   href?: string
 }
 
-export function CoCreationStepper({ steps, className }: { steps: CoCreationStep[]; className?: string }) {
+export function CoCreationStepper({
+  steps,
+  className,
+  onStepClick,
+}: {
+  steps: CoCreationStep[]
+  className?: string
+  /** Client-side step navigation (service builders). When set and a step has no
+   *  href, the step renders as a button that calls this instead of navigating. */
+  onStepClick?: (index: number) => void
+}) {
   return (
     <nav
       aria-label="Co-creation progress"
@@ -69,6 +79,15 @@ export function CoCreationStepper({ steps, className }: { steps: CoCreationStep[
               >
                 {body}
               </Link>
+            ) : onStepClick ? (
+              <button
+                type="button"
+                onClick={() => onStepClick(i)}
+                aria-current={s.state === 'current' ? 'step' : undefined}
+                className={cn(cls, 'transition hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500')}
+              >
+                {body}
+              </button>
             ) : (
               <span aria-current={s.state === 'current' ? 'step' : undefined} className={cls}>
                 {body}

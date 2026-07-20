@@ -10,7 +10,18 @@
 //   • Note / Callout / Dflt / DarkF / Toggle / Row / RevRow / Stat — per-builder variants
 // Only add something here once it is identical across at least two builders.
 
-import type { ReactNode, Dispatch, SetStateAction } from 'react'
+import type { ReactNode } from 'react'
+import type { CoCreationStep } from '@ilaunchify/ui'
+
+// The service builders use the SAME stepper the Co-Creation Studio uses (the one in the
+// briefs): full-bleed, hugging the sidebar, sitting right under the header. Re-exported so
+// all three builders pull it from one place. onStepClick drives client-side step nav.
+export { CoCreationStepper } from '@ilaunchify/ui'
+
+/** Map builder stages + current index to CoCreationStepper steps. */
+export function builderSteps(stages: readonly string[], v: number): CoCreationStep[] {
+  return stages.map((label, i) => ({ key: label, label, state: i < v ? 'done' : i === v ? 'current' : 'upcoming' }))
+}
 
 export const inputCls =
   'h-[38px] w-full rounded-md border border-ink-300 bg-white px-[11px] text-[13.5px] text-ink-900 focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-500/15'
@@ -44,29 +55,3 @@ export function Hero({ eyebrow, title, desc, children }: { eyebrow: string; titl
   )
 }
 
-/** The co-creation stepper chrome (.stagebar). `setV` is the useState dispatch so the
- *  Next button can use a functional update. */
-export function StageBar({ stages, v, setV }: { stages: readonly string[]; v: number; setV: Dispatch<SetStateAction<number>> }) {
-  return (
-    <div className="flex items-center gap-[5px] overflow-x-auto rounded-t-2xl border border-ink-200 bg-ink-50 px-5 py-[11px]">
-      {stages.map((label, i) => {
-        const st = i < v ? 'done' : i === v ? 'on' : ''
-        return (
-          <div key={label} className="flex items-center gap-[5px]">
-            <button
-              type="button"
-              onClick={() => setV(i)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-pill border px-[13px] py-[7px] text-[12.5px] font-semibold transition ${st === 'on' ? 'border-pink-200 bg-white text-ink-900 shadow-sm' : st === 'done' ? 'border-transparent text-success-700' : 'border-transparent text-ink-500'}`}
-            >
-              <span className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[11px] font-extrabold ${st === 'on' ? 'bg-pink-500 text-white' : st === 'done' ? 'bg-success-500 text-white' : 'bg-ink-200 text-ink-600'}`}>{i < v ? '✓' : i + 1}</span>
-              {label}
-            </button>
-            {i < stages.length - 1 && <span className={`h-0.5 w-5 flex-none ${i < v ? 'bg-success-500' : 'bg-ink-200'}`} />}
-          </div>
-        )
-      })}
-      <span className="flex-1" />
-      <button type="button" onClick={() => setV((x) => Math.min(stages.length - 1, x + 1))} disabled={v >= stages.length - 1} className="rounded-pill bg-ink-900 px-4 py-[9px] text-[12.5px] font-bold text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40">Next stage →</button>
-    </div>
-  )
-}

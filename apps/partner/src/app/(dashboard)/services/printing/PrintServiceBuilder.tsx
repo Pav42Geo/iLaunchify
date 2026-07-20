@@ -20,7 +20,7 @@ import {
   type OversPolicyKey,
   type DisclosureKey,
 } from './actions'
-import { inputCls, selectCls, F, Hero, StageBar } from '../builder-kit'
+import { inputCls, selectCls, F, Hero, CoCreationStepper, builderSteps } from '../builder-kit'
 
 const PRINT_PROCESSES: PrintProcessKey[] = ['DIGITAL', 'FLEXO', 'OFFSET', 'GRAVURE', 'SCREEN', 'LETTERPRESS', 'LED_UV']
 const PACKAGING_TYPES = ['PS label · roll', 'Shrink sleeve', 'Folding carton', 'Flexible pouch', 'Direct-print can', 'Tag / hangtag']
@@ -332,11 +332,15 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
   }
 
   return (
-    <div className="mx-auto max-w-[1080px] pb-24">
-      {/* stagebar */}
-      <StageBar stages={STAGES} v={v} setV={setV} />
+    <>
+      {/* Co-creation stepper — full-bleed, hugging the sidebar, right under the header. */}
+      <CoCreationStepper className="col-span-full -mt-6 mb-s-5" steps={builderSteps(STAGES, v)} onStepClick={setV} />
+      <div className="pb-24">
+        <a href="/services" className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-500 transition hover:text-ink-900">
+          <span aria-hidden="true">←</span> Back to services
+        </a>
 
-      <div className="rounded-b-2xl border border-t-0 border-ink-200 bg-ink-100 p-4">
+      <div>
         {/* STEP 1 — BASICS + RUSH */}
         {v === 0 && (
           <Hero eyebrow="Step 1 of 6" title="Service basics" desc="Who you are as a print provider. This is what creators see on your card and what routing uses to find you.">
@@ -642,7 +646,7 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
 
       {/* save bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200 bg-white/95 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-[1080px] items-center gap-3 px-4">
+        <div className="mx-auto flex max-w-[72rem] items-center gap-3 px-6">
           <span className="text-[12.5px] font-semibold text-ink-500">{pending ? 'Saving…' : saved ? 'Saved' : error ? '' : 'Draft not yet saved'}</span>
           {error && <span className="text-[12px] font-semibold text-danger-500">{error}</span>}
           <span className="flex-1" />
@@ -651,6 +655,7 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
         </div>
       </div>
     </div>
+    </>
   )
 }
 
