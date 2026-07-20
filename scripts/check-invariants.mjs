@@ -622,7 +622,44 @@ function checkNoHardcodedFixturePrice() {
   return { name: 'No hardcoded price in a marketing fixture (partners author prices)', level: 'warn', hits }
 }
 
+// =============================================================================
+// CHECK 17 — fabricated percentage-of-a-total in a money path  (WARN)
+// The "Swiss watch" doctrine (Pavel 2026-07-19, PARTNER_SERVICE_BUILDER_FAMILY_PLAN):
+// every charge and payout must DERIVE from declared partner data (a real quote,
+// price curve, or authored band), NEVER from a % of the order total. A
+// `total * 0.NN` is exactly the fabrication the service-builder family replaces:
+// the flat 7% co-pack payout (now CP-6's real quote), the 30/8 split, the 8c
+// print anchor (PP-1's curves). Any NEW one re-warns. The documented interim is
+// allowlisted so today's baseline is 0; delete the entry when the split is gone.
+// =============================================================================
+const MONEY_SPLIT_RX =
+  /\b(total|subtotal|price|band|production|goods|amount)[A-Za-z]*\s*\*\s*0\.\d+|\b0\.\d+\s*\*\s*(total|subtotal|price|band|production|goods|amount)[A-Za-z]*/i
+const MONEY_SPLIT_ALLOWLIST = new Set([
+  // estimateDispatchCosts' 30/8/7 interim: back-compat only, consumed ONLY when a
+  // real quote is not passed. Co-pack is already replaced by CP-6; the 0.08 print
+  // split goes when PP-1 lands the evaluator. Remove this entry then.
+  'packages/orders/src/dispatch-planner.ts',
+])
+function checkNoFabricatedMoneySplit() {
+  const hits = []
+  const roots = ['packages/orders', 'packages/plans', 'packages/payments', 'apps/creator/src/app/(checkout)']
+  for (const f of collect(roots, ['.ts', '.tsx'])) {
+    if (/\.test\.[tj]sx?$/.test(f)) continue
+    if (MONEY_SPLIT_ALLOWLIST.has(f)) continue
+    read(f).split('\n').forEach((line, i) => {
+      const code = line.split('//')[0]
+      if (MONEY_SPLIT_RX.test(code)) {
+        hits.push(
+          `${f}:${i + 1}  fabricated %-of-total \`${code.trim().slice(0, 56)}\` — derive from declared partner data (quote/curve/band), never a % of the total`,
+        )
+      }
+    })
+  }
+  return { name: 'No fabricated percentage-of-total in a money path (derive, do not fabricate)', level: 'warn', hits }
+}
+
 const CHECKS = [
+  checkNoFabricatedMoneySplit,
   checkNoHardcodedFixturePrice,
   checkNoHandRolledBandMatcher,
   checkEnablementScopedToManufacturer,
