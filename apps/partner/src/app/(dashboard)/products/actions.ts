@@ -219,6 +219,13 @@ export async function createDraftFromStepper(
       // 4. Packaging links. ProductTemplatePackaging requires per-size pricing.
       //    Stepper captures one base price; we mirror it to every linked
       //    packaging system. Partner refines per-size pricing in the editor.
+      // CP-5: auto-pin the manufacturer's OWN live co-packing service (N=1 full-
+      // service), matching addPackagingLink. DATA ONLY until CP-6 (deriveItemDispatch
+      // still self-assembles); null ⇒ manufacturer self-assembles.
+      const ownCopack = await tx.partnerService.findFirst({
+        where: { partnerId: partner.id, type: 'COPACKING', status: 'ACTIVE' },
+        select: { id: true },
+      })
       await Promise.all(
         input.packagingSystemIds.map((packagingSystemId) =>
           tx.productTemplatePackaging.create({
@@ -228,6 +235,7 @@ export async function createDraftFromStepper(
               basePriceCents: input.priceFloorCents,
               leadTimeDays: 30,
               pricingTiers: [],
+              coPackerServiceId: ownCopack?.id ?? null,
             },
           }),
         ),

@@ -45,6 +45,7 @@ export interface PriceLine {
     | 'PRINTING' // label/print leg
     | 'FINISHES' // foil / spot UV / emboss (incl. their setup)
     | 'SETUP' // tooling, plates, prepress, rush (PP-6/PP-7; partner-set)
+    | 'COPACKING' // co-packer fill/assembly operations: partner-set + creator-paid, so IN the base (CP-3)
     | 'FC_LABELING' // FC applies labels: a production service, so IN the base
     | 'PLATFORM_FEE' // our tier take (15/12/8)
     | 'SHIPPING' // carrier-quoted by US, our margin: OUT of the base

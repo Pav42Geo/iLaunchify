@@ -148,5 +148,31 @@ const cart: PricingInput = {
   assert(p.totalCents === 0 && p.feeBaseCents === 0, 'empty cart prices to zero')
 }
 
+// ── CP-3: a co-pack line is production, so it joins the fee base ─────────────
+// The co-packer's fill/assembly operations are partner-set + creator-paid, so a
+// COPACKING line enters via `production` and the tier fee applies to it exactly
+// like manufacturing or print. Loading the real quote from the co-pack offering
+// (CP-1 tables) is CP-3's shadow wiring; this pins that the price LINE, once
+// present, is fee-bearing production — never a fee-dodging sibling.
+{
+  const COPACK = 12_00
+  const withCopack = computeOrderPricing({
+    ...cart,
+    production: [...cart.production, { kind: 'COPACKING', label: 'Co-packing', cents: COPACK }],
+  })
+  const base = computeOrderPricing(cart)
+  assert(
+    withCopack.productionSubtotalCents - base.productionSubtotalCents === COPACK,
+    'co-pack raises the production subtotal by exactly its cost',
+  )
+  assert(withCopack.feeBaseCents - base.feeBaseCents === COPACK, 'co-pack joins the FEE BASE')
+  assert(
+    withCopack.platformFeeCents - base.platformFeeCents === 1_80,
+    'the tier fee applies to co-pack (15% of 12.00 = 1.80)',
+  )
+  const line = withCopack.lineItems.find((l) => l.kind === 'COPACKING')
+  assert(!!line && line.inFeeBase === true, 'the co-pack line declares itself in the base')
+}
+
 // eslint-disable-next-line no-console
 console.log('order-pricing: all pins passed')
