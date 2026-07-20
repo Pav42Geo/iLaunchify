@@ -73,6 +73,13 @@ export default async function ManufacturingBuilderPage() {
     fillTypes: strArr('fillTypes'),
     containerFormats: strArr('containerFormats'),
     certifications: strArr('certifications'),
+    formulation: strArr('formulationCapabilities'),
+    sampleCapable: caps.sampleCapable === true,
+    sampleLeadDays: numStr(caps.sampleLeadDays),
+    moqMin: numStr(caps.moqMin),
+    moqMax: numStr(caps.moqMax),
+    orderIncrement: numStr(caps.orderIncrement),
+    monthlyCapacity: numStr(caps.monthlyCapacity),
     batches: lines.map((l) => ({
       id: `batch-${Math.random().toString(36).slice(2, 8)}`,
       name: l.name,

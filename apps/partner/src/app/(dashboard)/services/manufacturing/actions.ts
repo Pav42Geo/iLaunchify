@@ -47,6 +47,14 @@ export interface ManufacturingBuilderPayload {
   fillTypes: string[]
   containerFormats: string[]
   certifications: string[]
+  // Folded in from the retired ManufacturingEditor (2026-07-20) — capabilities keys.
+  formulationCapabilities: string[]
+  sampleCapable: boolean
+  sampleLeadDays: number | null
+  moqMin: number | null
+  moqMax: number | null
+  orderIncrement: number | null
+  monthlyCapacity: number | null
   lines: ManufacturingLineDraft[]
 }
 
@@ -83,10 +91,19 @@ export async function saveManufacturingBuilder(
     fillTypes: payload.fillTypes ?? [],
     containerFormats: payload.containerFormats ?? [],
     certifications: payload.certifications ?? [],
+    // Folded from ManufacturingEditor — same keys routing/matching already read.
+    formulationCapabilities: payload.formulationCapabilities ?? [],
+    sampleCapable: Boolean(payload.sampleCapable),
   }
   if (payload.serviceName?.trim()) capsPatch.serviceName = payload.serviceName.trim()
   if (posInt(payload.leadStockDays) !== null) capsPatch.leadTimeStockDays = posInt(payload.leadStockDays)
   if (posInt(payload.leadCustomDays) !== null) capsPatch.leadTimeCustomDays = posInt(payload.leadCustomDays)
+  // Nullable numeric caps: write the value, or CLEAR the key when explicitly emptied.
+  capsPatch.sampleLeadDays = posInt(payload.sampleLeadDays)
+  capsPatch.moqMin = posInt(payload.moqMin)
+  capsPatch.moqMax = posInt(payload.moqMax)
+  capsPatch.orderIncrement = posInt(payload.orderIncrement)
+  capsPatch.monthlyCapacity = posInt(payload.monthlyCapacity)
 
   try {
     await prisma.$transaction(async (tx) => {

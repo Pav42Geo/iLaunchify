@@ -47,6 +47,14 @@ export interface ManufacturingBuilderInitial {
   fillTypes: string[]
   containerFormats: string[]
   certifications: string[]
+  // Folded in from the retired ManufacturingEditor (2026-07-20) — same capabilities keys.
+  formulation: string[]
+  sampleCapable: boolean
+  sampleLeadDays: string
+  moqMin: string
+  moqMax: string
+  orderIncrement: string
+  monthlyCapacity: string
   batches: BatchDraft[]
 }
 
@@ -58,6 +66,7 @@ const fmt = (c: number) => '$' + (c / 100).toLocaleString(undefined, { minimumFr
 const f0 = (c: number) => '$' + Math.round(c / 100).toLocaleString()
 
 const CATEGORIES: [string, string][] = [['FOOD', 'Food'], ['SUPPLEMENT', 'Supplement'], ['BEVERAGE_FUNCTIONAL', 'Functional beverage'], ['PET', 'Pet'], ['COSMETIC', 'Cosmetic']]
+const FORMULATION: [string, string][] = [['CUSTOM_FORMULATION', 'Custom formulation'], ['REFORMULATION', 'Reformulation'], ['STABILITY_TESTING', 'Stability testing']]
 const FILL_TYPES = ['Powder', 'Dry blend', 'Capsule', 'Tablet', 'Softgel', 'Liquid · thin', 'Gummy']
 const CONTAINERS = ['Tub', 'Bottle · HDPE', 'Stand-up pouch', 'Sachet', 'Stick pack', 'Jar · glass']
 const CERTS = ['cGMP', 'FDA registered', 'NSF', 'USDA Organic', 'Kosher', 'Halal', 'Non-GMO Project']
@@ -93,6 +102,13 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
   const [fills, setFills] = useState<Set<string>>(new Set(initial.fillTypes))
   const [containers, setContainers] = useState<Set<string>>(new Set(initial.containerFormats))
   const [certs, setCerts] = useState<Set<string>>(new Set(initial.certifications))
+  const [formulation, setFormulation] = useState<Set<string>>(new Set(initial.formulation))
+  const [sampleCapable, setSampleCapable] = useState(initial.sampleCapable)
+  const [sampleLeadDays, setSampleLeadDays] = useState(initial.sampleLeadDays)
+  const [moqMin, setMoqMin] = useState(initial.moqMin)
+  const [moqMax, setMoqMax] = useState(initial.moqMax)
+  const [orderIncrement, setOrderIncrement] = useState(initial.orderIncrement)
+  const [monthlyCapacity, setMonthlyCapacity] = useState(initial.monthlyCapacity)
   const [batches, setBatches] = useState<BatchDraft[]>(initial.batches.length ? initial.batches : [blankBatch()])
 
   const [q, setQ] = useState('800')
@@ -151,6 +167,13 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
       fillTypes: [...fills],
       containerFormats: [...containers],
       certifications: [...certs],
+      formulationCapabilities: [...formulation],
+      sampleCapable,
+      sampleLeadDays: sampleLeadDays.trim() ? intOf(sampleLeadDays) : null,
+      moqMin: moqMin.trim() ? intOf(moqMin) : null,
+      moqMax: moqMax.trim() ? intOf(moqMax) : null,
+      orderIncrement: orderIncrement.trim() ? intOf(orderIncrement) : null,
+      monthlyCapacity: monthlyCapacity.trim() ? intOf(monthlyCapacity) : null,
       lines: batches
         .filter((b) => b.name.trim() || num(b.rate) > 0)
         .map((b) => ({
@@ -241,6 +264,17 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
         {v === 2 && (
           <Hero eyebrow="Step 3" title="What you make" desc="Hard filters. Routing will never send you a formula you cannot run, and a creator will never see you for one. Say no freely.">
             <Card title="Categories"><p className="mb-3 text-[12.5px] text-ink-500">The regulated domains you are set up for. Each carries its own label law.</p><Chips opts={CATEGORIES.map((c) => c[0])} labels={Object.fromEntries(CATEGORIES)} value={categories} onToggle={tog(setCategories)} /></Card>
+            <Card title="Formulation & samples">
+              <p className="mb-3 text-[12.5px] text-ink-500">What you can develop, and whether you run pre-production samples. Formulation capability gates owner-pin eligibility.</p>
+              <Chips opts={FORMULATION.map((c) => c[0])} labels={Object.fromEntries(FORMULATION)} value={formulation} onToggle={tog(setFormulation)} />
+              <div className="mt-3 flex items-center gap-3.5 border-t border-ink-100 pt-3">
+                <div className="min-w-0"><div className="text-[13px] font-semibold text-ink-900">Sample runs</div><div className="text-[11.5px] text-ink-500">Pre-production samples for creators. A sample carries your tier fee like any small order.</div></div>
+                <div className="ml-auto flex items-center gap-2.5">
+                  {sampleCapable && <input className={`${inputCls} w-40`} value={sampleLeadDays} onChange={(e) => setSampleLeadDays(e.target.value)} placeholder="Sample lead (days)" />}
+                  <Toggle on={sampleCapable} onClick={() => setSampleCapable(!sampleCapable)} />
+                </div>
+              </div>
+            </Card>
             <Card title="Fill types"><Chips opts={FILL_TYPES} value={fills} onToggle={tog(setFills)} /></Card>
             <Card title="Container formats"><Chips opts={CONTAINERS} value={containers} onToggle={tog(setContainers)} /></Card>
             <Card title="Certifications"><p className="mb-3 text-[12.5px] text-ink-500">Admin verifies each one. A false claim here is a platform loss, so they stay pending until proven.</p><Chips opts={CERTS} value={certs} onToggle={tog(setCerts)} /></Card>
@@ -261,6 +295,15 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
               </div>
               <Dflt title="Repeat-run discount" desc="Same formula inside 120 days: no re-qualification, no first-article." value={repeatDiscount} onChange={setRepeatDiscount} placeholder="40%" foot="Applied to changeover, not to units." />
               <Dflt title="Overrun policy" desc="A batch makes what a batch makes. Who owns the remainder?" value={overrunPolicyPct} onChange={setOverrunPolicyPct} placeholder="100%" foot="Share of overrun units the creator pays for. 100% = they buy the full batch. See step 5." />
+            </Card>
+            <Card title="Runs & capacity">
+              <p className="mb-3 text-[12.5px] text-ink-500">The flat floor and ceiling routing uses. Your true per-product MOQ is DERIVED from batches (step 5); the min here is only the fallback for a product with no batch assigned. The max, increment and monthly capacity are live routing gates.</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <F label="MOQ min" hint="Fallback floor only."><input className={inputCls} value={moqMin} onChange={(e) => setMoqMin(e.target.value)} placeholder="500" /></F>
+                <F label="MOQ max" hint="Capacity ceiling."><input className={inputCls} value={moqMax} onChange={(e) => setMoqMax(e.target.value)} placeholder="100000" /></F>
+                <F label="Order increment"><input className={inputCls} value={orderIncrement} onChange={(e) => setOrderIncrement(e.target.value)} placeholder="100" /></F>
+                <F label="Monthly capacity (units)"><input className={inputCls} value={monthlyCapacity} onChange={(e) => setMonthlyCapacity(e.target.value)} placeholder="250000" /></F>
+              </div>
             </Card>
           </Hero>
         )}
@@ -372,6 +415,9 @@ function Dflt({ title, desc, value, onChange, placeholder, foot }: { title: stri
 }
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return <div className="mb-3 rounded-2xl border border-ink-200 bg-white px-5 py-[18px]"><h2 className="mb-3 font-display text-[15px] font-bold text-ink-900">{title}</h2>{children}</div>
+}
+function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return <button type="button" role="switch" aria-checked={on} onClick={onClick} className={`relative h-[22px] w-[38px] flex-none rounded-pill transition ${on ? 'bg-pink-500' : 'bg-ink-300'}`}><span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all ${on ? 'left-[19px]' : 'left-[3px]'}`} /></button>
 }
 function Chips({ opts, value, onToggle, labels = {} }: { opts: string[]; value: Set<string>; onToggle: (v: string) => void; labels?: Record<string, string> }) {
   return <div className="flex flex-wrap gap-[7px]">{opts.map((o) => { const on = value.has(o); return <button key={o} type="button" onClick={() => onToggle(o)} className={`rounded-pill border px-[13px] py-[7px] text-[12.5px] font-semibold transition ${on ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 bg-white text-ink-600 hover:border-ink-400'}`}>{labels[o] ?? o}</button> })}</div>

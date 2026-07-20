@@ -11,7 +11,7 @@
 
 import { useState, useTransition } from 'react'
 import { cn } from '@ilaunchify/ui'
-import { Check, ExternalLink, FlaskConical, Layers, Loader2, Printer, Truck, Warehouse } from 'lucide-react'
+import { Check, ExternalLink, Layers, Loader2, Printer, Truck, Warehouse } from 'lucide-react'
 import {
   saveCapabilities,
   saveStorageOffering,
@@ -25,18 +25,8 @@ import {
 // ContainerCategory / StorageClass) — no new spellings invented.
 // ---------------------------------------------------------------------------
 
-const DOMAIN_OPTS = [
-  { v: 'FOOD', l: 'Food' },
-  { v: 'BEVERAGE_FUNCTIONAL', l: 'Beverage — functional' },
-  { v: 'SUPPLEMENT', l: 'Supplement' },
-  { v: 'COSMETIC', l: 'Cosmetic' },
-  { v: 'PET', l: 'Pet' },
-]
-const FORMULATION_OPTS = [
-  { v: 'CUSTOM_FORMULATION', l: 'Custom formulation' },
-  { v: 'REFORMULATION', l: 'Reformulation' },
-  { v: 'STABILITY_TESTING', l: 'Stability testing' },
-]
+// (MANUFACTURING domain/formulation option lists retired 2026-07-20 with the
+// ManufacturingEditor — they now live in the manufacturing service builder.)
 const PROCESS_OPTS = [
   { v: 'DIGITAL', l: 'Digital' },
   { v: 'FLEXO', l: 'Flexo' },
@@ -240,112 +230,11 @@ function useSave() {
 }
 
 // ---------------------------------------------------------------------------
-// ① MANUFACTURING
+// ① MANUFACTURING — RETIRED 2026-07-20. The per-capability editor was folded into
+// the full manufacturing service builder (apps/.../services/manufacturing), which is
+// now the single surface for scope, formulation, samples, runs/capacity, batches and
+// commercial defaults. The Services page links to it (CTA-only, like co-packing).
 // ---------------------------------------------------------------------------
-
-export function ManufacturingEditor({
-  serviceId,
-  capabilities,
-}: {
-  serviceId: string
-  capabilities: Record<string, unknown>
-}) {
-  const caps = capabilities
-  const [categories, setCategories] = useState(strArr(caps, 'categories'))
-  const [formulation, setFormulation] = useState(strArr(caps, 'formulationCapabilities'))
-  const [sampleCapable, setSampleCapable] = useState(caps.sampleCapable === true)
-  const [sampleLead, setSampleLead] = useState(numOr(caps, 'sampleLeadDays'))
-  const [moqMin, setMoqMin] = useState(numOr(caps, 'moqMin'))
-  const [moqMax, setMoqMax] = useState(numOr(caps, 'moqMax'))
-  const [increment, setIncrement] = useState(numOr(caps, 'orderIncrement'))
-  const [monthly, setMonthly] = useState(numOr(caps, 'monthlyCapacity'))
-  const [leadStock, setLeadStock] = useState(numOr(caps, 'leadTimeStockDays'))
-  const [leadCustom, setLeadCustom] = useState(numOr(caps, 'leadTimeCustomDays'))
-  const s = useSave()
-  const touch = <T,>(set: (v: T) => void) => (v: T) => {
-    set(v)
-    s.setDirty(true)
-  }
-
-  const save = () =>
-    s.run(() =>
-      saveCapabilities(serviceId, {
-        categories,
-        formulationCapabilities: formulation,
-        sampleCapable,
-        sampleLeadDays: parseNum(sampleLead),
-        moqMin: parseNum(moqMin),
-        moqMax: parseNum(moqMax),
-        orderIncrement: parseNum(increment),
-        monthlyCapacity: parseNum(monthly),
-        leadTimeStockDays: parseNum(leadStock),
-        leadTimeCustomDays: parseNum(leadCustom),
-      }),
-    )
-
-  return (
-    <div>
-      <FieldsetBox icon={<Layers />} title="What you make" hint="capabilities.categories">
-        <FieldL label="Product domains">
-          <ChipGroup opts={DOMAIN_OPTS} value={categories} onChange={touch(setCategories)} />
-        </FieldL>
-        <RouteTags tags={['Matching engine', 'Marketplace facets']} />
-      </FieldsetBox>
-
-      <FieldsetBox icon={<FlaskConical />} title="Formulation & samples" hint="owner-pin eligibility">
-        <FieldL label="Formulation capability">
-          <ChipGroup opts={FORMULATION_OPTS} value={formulation} onChange={touch(setFormulation)} />
-        </FieldL>
-        <div className="mt-3 flex items-center gap-3.5 border-t border-ink-100 pt-3">
-          <div className="min-w-0">
-            <div className="text-[13px] font-semibold text-ink-900">Sample runs</div>
-            <div className="text-[11.5px] text-ink-500">
-              Pre-production samples for creators (credit-toward-first-order applies)
-            </div>
-          </div>
-          <div className="ml-auto flex items-center gap-2.5">
-            {sampleCapable && (
-              <input
-                value={sampleLead}
-                onChange={(e) => touch(setSampleLead)(e.target.value)}
-                placeholder="Sample lead (days)"
-                className={cn(inputCls, 'w-40')}
-              />
-            )}
-            <Toggle on={sampleCapable} onClick={() => touch(setSampleCapable)(!sampleCapable)} />
-          </div>
-        </div>
-        <RouteTags tags={['Product builder', 'Owner-pin eligibility', 'Sample orders']} />
-      </FieldsetBox>
-
-      <FieldsetBox icon={<Truck />} title="Runs, lead times & capacity" hint="moqMin/Max · leadTime* · monthlyCapacity">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <FieldL label="MOQ min">
-            <input value={moqMin} onChange={(e) => touch(setMoqMin)(e.target.value)} className={inputCls} />
-          </FieldL>
-          <FieldL label="MOQ max">
-            <input value={moqMax} onChange={(e) => touch(setMoqMax)(e.target.value)} className={inputCls} />
-          </FieldL>
-          <FieldL label="Lead — stock formulations (days)">
-            <input value={leadStock} onChange={(e) => touch(setLeadStock)(e.target.value)} className={inputCls} />
-          </FieldL>
-          <FieldL label="Lead — custom (days)">
-            <input value={leadCustom} onChange={(e) => touch(setLeadCustom)(e.target.value)} className={inputCls} />
-          </FieldL>
-          <FieldL label="Order increment">
-            <input value={increment} onChange={(e) => touch(setIncrement)(e.target.value)} className={inputCls} />
-          </FieldL>
-          <FieldL label="Monthly capacity (units)">
-            <input value={monthly} onChange={(e) => touch(setMonthly)(e.target.value)} className={inputCls} />
-          </FieldL>
-        </div>
-        <RouteTags tags={['Checkout ETA', 'Capacity gate', 'Risk Center capacity accuracy']} />
-      </FieldsetBox>
-
-      <SaveBar dirty={s.dirty} pending={s.pending} error={s.error} onSave={save} />
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // ③ PRINT PRODUCTION

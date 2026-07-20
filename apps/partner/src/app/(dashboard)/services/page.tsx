@@ -4,8 +4,9 @@
 //   ② pill SECTION TABS for the selected service (warning dot on unfinished)
 //   ③ ONE flat, fully-visible form per section.
 // URL-driven: ?svc=<serviceId>&sec=<section> — shareable, back-button-safe.
-// All editors are the existing ones (ManufacturingEditor, StorageEditor,
-// ProductDefaultsForm, labeling cards, PrepressSection) — data layer unchanged.
+// Manufacturing + co-packing are CTA-only (their full service builders live at
+// /services/manufacturing and /services/copacking). Print, Storage, ProductDefaults,
+// labeling cards and PrepressSection remain inline — data layer unchanged.
 // Storage / Product defaults ride the PRODUCING service (mfr first, else
 // co-packer); WAREHOUSE shows a read-only overview linking to its real editors.
 
@@ -17,7 +18,6 @@ import { ExternalLink, Factory, Package, Plus, Printer, Warehouse } from 'lucide
 import { StPill, type PillTone } from '@/components/panel-kit'
 import { addService, type AddableServiceType } from './actions'
 import {
-  ManufacturingEditor,
   PrintEditor,
   StorageEditor,
   type StorageTypedVM,
@@ -431,19 +431,17 @@ async function SectionPanel({
           {!canEdit ? (
             <CapabilityReadout capabilities={svc.capabilities} />
           ) : type === 'MANUFACTURING' ? (
-            <>
-              <a
-                href="/services/manufacturing"
-                className="mb-4 flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
-              >
-                <Factory className="h-4 w-4 flex-none" />
-                <span className="flex-1">
-                  Open the full manufacturing builder: your lines, floors, scope and a live MOQ check.
-                </span>
-                <ExternalLink className="h-3.5 w-3.5 flex-none" />
-              </a>
-              <ManufacturingEditor serviceId={svc.id} capabilities={caps} />
-            </>
+            <a
+              href="/services/manufacturing"
+              className="flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
+            >
+              <Factory className="h-4 w-4 flex-none" />
+              <span className="flex-1">
+                Open the full manufacturing builder: your batches, scope, formulation, samples, runs
+                &amp; capacity, commercial defaults and a live MOQ check.
+              </span>
+              <ExternalLink className="h-3.5 w-3.5 flex-none" />
+            </a>
           ) : type === 'COPACKING' ? (
             <a
               href="/services/copacking"
