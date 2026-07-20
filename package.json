@@ -29,7 +29,8 @@
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
     "prepare": "husky",
-    "pp0:delta": "node scripts/pp0-delta-report.mjs"
+    "pp0:delta": "node scripts/pp0-delta-report.mjs",
+    "copack:delta": "node scripts/copack-delta-report.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",

@@ -110,6 +110,13 @@ export interface ProductionComposition {
   decorationCents: number
   /** Component-upgrade surcharges (PackagingComponentVariant.baseSurchargePerUnit). */
   componentsCents: number
+  /**
+   * CP-3.2 — co-packer fill/assembly operations (loadCopackQuoteCents). Optional
+   * so existing callers are unchanged; a caller passes it only when the co-pack
+   * flag is ON and the order has a pinned co-packer + an assembly (CARTON/SHIPPER).
+   * Partner-set + creator-paid ⇒ production ⇒ in the fee base.
+   */
+  coPackingCents?: number
 }
 
 /**
@@ -134,6 +141,9 @@ export function composeProductionLines(c: ProductionComposition): PricingInput['
   if (c.decorationCents > 0) lines.push({ kind: 'DECORATION', label: 'Decoration', cents: c.decorationCents })
   if (c.componentsCents > 0) {
     lines.push({ kind: 'COMPONENTS', label: 'Component upgrades', cents: c.componentsCents })
+  }
+  if (c.coPackingCents && c.coPackingCents > 0) {
+    lines.push({ kind: 'COPACKING', label: 'Co-packing', cents: c.coPackingCents })
   }
   return lines
 }

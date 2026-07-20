@@ -608,3 +608,8 @@ export type {
   CopackConfigRow,
 } from './copack-quote'
 export { loadCopackQuoteCents } from './copack-quote-loader'
+export {
+  isCopackRealPriceEnabled,
+  resolveOrderCoPackerServiceId,
+  resolveOrderCopackCents,
+} from './copack-order-pricing'

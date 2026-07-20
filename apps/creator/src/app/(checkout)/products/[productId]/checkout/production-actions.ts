@@ -33,6 +33,7 @@ import {
   priceComponents,
   COMPONENT_PRICING_SELECT,
 } from '@ilaunchify/plans'
+import { resolveOrderCopackCents } from '@ilaunchify/orders'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -639,12 +640,21 @@ export async function estimateProductionCost(
     }
   }
 
+  // CP-3.2 (SHADOW, flag OFF): same co-pack seam the CHARGE calls, so the estimate
+  // the creator sees equals what placeOrder rings up. 0 until the flag flips.
+  const coPackingCents = await resolveOrderCopackCents({
+    productTemplateId: product?.productTemplateId ?? null,
+    isAssembly: isPackOrder,
+    qty: bandUnits,
+    unitsPerPack: input.pack?.unitsPerPack,
+  })
   const priced = computeOrderPricing({
     production: composeProductionLines({
       goods,
       finishesCents: finishUnitCents * qty + setupCents,
       decorationCents: decorationUnitCents * qty,
       componentsCents: componentsUnitCents * qty,
+      coPackingCents,
     }),
     // Shipping + tax land at Checkout (G4/G5), and neither is ever in the fee base.
     feeBps,

@@ -54,6 +54,7 @@ import {
   assertOrderTransition,
   resolveOrderApplication,
   broadcastCapabilityRequestsForTemplate,
+  resolveOrderCopackCents,
 } from '@ilaunchify/orders'
 import { loadLearnedFulfillmentAdjustment, recordFcOverrideSignal } from './afe-learning'
 import { resolvePackSubtotal } from './pack-pricing'
@@ -734,11 +735,21 @@ export async function placeOrderFromCheckoutDraft(
         'This product has no published price from its manufacturer yet, so it cannot be ordered. Please contact support.',
     }
   }
+  // CP-3.2 (SHADOW, flag OFF by default): the co-packer's fill/assembly price for
+  // this order, or 0. resolveOrderCopackCents is the SAME seam the estimate and PDP
+  // call, so shown === charged, and CP-6 pays the same co-packer this prices.
+  const coPackingCents = await resolveOrderCopackCents({
+    productTemplateId: product.productTemplateId,
+    isAssembly: packPersist != null,
+    qty: bandUnits,
+    unitsPerPack: packPersist?.packUnitsPerPack,
+  })
   const productionLines = composeProductionLines({
     goods,
     finishesCents: finishUnitCents * qty + finishSetupCents,
     decorationCents,
     componentsCents,
+    coPackingCents,
   })
   const productionTotalCents = productionLines.reduce((s, l) => s + l.cents, 0)
 

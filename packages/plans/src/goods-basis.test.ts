@@ -156,5 +156,29 @@ for (const isPack of [true, false]) {
   assert(zero.length === 1 && zero[0]!.kind === 'PRODUCT', 'zero add-ons emit no add-on lines')
 }
 
+// ── CP-3.2: the co-pack line is optional and appended exactly once ───────────
+// Omitted / zero ⇒ NO co-pack line (the shadow: existing callers are byte-identical).
+// Present ⇒ one COPACKING line, which computeOrderPricing folds into the fee base.
+{
+  const goods: Parameters<typeof composeProductionLines>[0]['goods'] = { goodsCents: 100_00, basis: 'TIER_PRICE' }
+  const base = { goods, finishesCents: 0, decorationCents: 0, componentsCents: 0 }
+
+  const without = composeProductionLines(base)
+  assert(!without.some((l) => l.kind === 'COPACKING'), 'no coPackingCents ⇒ no co-pack line (shadow off)')
+
+  const zero = composeProductionLines({ ...base, coPackingCents: 0 })
+  assert(!zero.some((l) => l.kind === 'COPACKING'), 'coPackingCents 0 ⇒ no co-pack line')
+
+  const withCopack = composeProductionLines({ ...base, coPackingCents: 12_00 })
+  const copackLines = withCopack.filter((l) => l.kind === 'COPACKING')
+  assert(copackLines.length === 1, 'coPackingCents > 0 ⇒ exactly one co-pack line')
+  assert(copackLines[0]!.cents === 12_00, 'the co-pack line carries the quoted cents')
+
+  const priced = computeOrderPricing({ production: withCopack, feeBps: 1500 })
+  const pricedWithout = computeOrderPricing({ production: without, feeBps: 1500 })
+  assert(priced.feeBaseCents - pricedWithout.feeBaseCents === 12_00, 'the co-pack line raises the fee base by its cost')
+  assert(priced.platformFeeCents - pricedWithout.platformFeeCents === 1_80, 'and the tier fee applies (15% of 12.00)')
+}
+
 // eslint-disable-next-line no-console
 console.log('goods-basis: all pins passed')
