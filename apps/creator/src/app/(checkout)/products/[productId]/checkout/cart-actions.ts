@@ -55,6 +55,7 @@ import {
   resolveOrderApplication,
   broadcastCapabilityRequestsForTemplate,
   resolveOrderCopackCents,
+  assessOverrunShadow,
 } from '@ilaunchify/orders'
 import { loadLearnedFulfillmentAdjustment, recordFcOverrideSignal } from './afe-learning'
 import { resolvePackSubtotal } from './pack-pricing'
@@ -752,6 +753,12 @@ export async function placeOrderFromCheckoutDraft(
     coPackingCents,
   })
   const productionTotalCents = productionLines.reduce((s, l) => s + l.cents, 0)
+
+  // MB overrun-into-price SHADOW (log-only, changes no bill). If this product has a
+  // batch basis, compute what the overrun policy WOULD add and log the delta, so we can
+  // watch it on real orders before ever flipping the charge onto billed units. Fully
+  // guarded: any error (incl. the pre-MB-1 client missing the columns) is swallowed.
+  await logOverrunShadow(product.productTemplateId, product.id, bandUnits, goods.goodsCents).catch(() => {})
 
   // Admin-tunable order policy (fees + shipping), resolved for THIS creator's tier
   // so scoped overrides (tier/market/region) take effect.
@@ -2250,3 +2257,46 @@ async function resolveFlavorDesignVersions(
 // readPackOrderInputs moved to ./pack-pricing (2026-07-16) so the ESTIMATE can
 // import it too. A 'use server' file may only export async functions, which is
 // why the estimate could not share this and priced the wrong basis.
+
+// MB overrun-into-price SHADOW logger (private, log-only, changes no bill). Reads the
+// product's batch size (override → line default) + the manufacturer's overrunPolicyPct,
+// runs assessOverrunShadow, and logs the delta between what the charge bills today (qty)
+// and what the overrun policy WOULD bill. Cast-guarded for the pre-MB-1 client; the
+// caller wraps this in .catch, so it can never affect an order. Not exported (a 'use
+// server' file may only export async functions — this stays private).
+async function logOverrunShadow(
+  productTemplateId: string | null,
+  productId: string,
+  bandUnits: number,
+  goodsCents: number,
+): Promise<void> {
+  if (!productTemplateId || bandUnits <= 0) return
+  const p = prisma as unknown as {
+    productTemplate: {
+      findUnique: (a: unknown) => Promise<{ unitsPerBatch: number | null; manufacturerServiceId: string | null; manufacturingLine: { unitsPerBatch: number | null } | null } | null>
+    }
+    partnerManufacturingConfig: { findUnique: (a: unknown) => Promise<{ overrunPolicyPct: number | null } | null> }
+  }
+  const tpl = await p.productTemplate.findUnique({
+    where: { id: productTemplateId },
+    select: { unitsPerBatch: true, manufacturerServiceId: true, manufacturingLine: { select: { unitsPerBatch: true } } },
+  })
+  const unitsPerBatch = tpl?.unitsPerBatch ?? tpl?.manufacturingLine?.unitsPerBatch ?? 0
+  if (!tpl || unitsPerBatch <= 0) return
+  const cfg = tpl.manufacturerServiceId
+    ? await p.partnerManufacturingConfig.findUnique({ where: { partnerServiceId: tpl.manufacturerServiceId }, select: { overrunPolicyPct: true } })
+    : null
+  const shadow = assessOverrunShadow({
+    unitsPerBatch,
+    qtyUnits: bandUnits,
+    overrunPolicyPct: cfg?.overrunPolicyPct ?? null,
+    unitPriceCents: Math.round(goodsCents / bandUnits),
+  })
+  if (shadow && shadow.deltaUnits > 0) {
+    console.log(
+      `[MB overrun shadow] product=${productId} qty=${bandUnits} batch=${unitsPerBatch} -> produced ${shadow.producedUnits}, ` +
+        `overrun ${shadow.overrunUnits}, policy ${shadow.appliedPolicyPct}% -> billed ${shadow.billedUnits} ` +
+        `(+${shadow.deltaUnits} units / +${shadow.deltaCents}c). Charge unchanged (${goodsCents}c).`,
+    )
+  }
+}
