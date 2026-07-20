@@ -1435,6 +1435,11 @@ model PartnerService {
   copackLines                      PartnerCopackLine[]
   copackOperations                 PartnerCopackOperation[]
   copackConfig                     PartnerCopackConfig?
+  // MB-1 (docs/PARTNER_SERVICE_BUILDER_FAMILY_PLAN §2) — manufacturing EQUIPMENT
+  // (lines, reused across products) + 1:1 service settings. The batch SIZE is a
+  // per-product property, so MOQ is derived per product, never a flat number.
+  manufacturingLines               PartnerManufacturingLine[]
+  manufacturingConfig              PartnerManufacturingConfig?
   // ---- Partner rating aggregates (docs/FEEDBACK_MODULE.md §5.3–5.4) ----
   // Denormalized from PartnerRating on every write; SERVICE-scoped. Display
   // uses ratingMean+ratingCount ("New" below min-N=3); ranking/badging uses
@@ -1636,6 +1641,47 @@ model PartnerCopackConfig {
   supplyModel          CopackSupplyModel @default(FILL_ONLY)
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+}
+
+/// MB-1 (docs/PARTNER_SERVICE_BUILDER_FAMILY_PLAN §2) — a manufacturing LINE is the
+/// partner's EQUIPMENT, reused across products. Its economics (rate, changeover, max
+/// batches) live here; the batch SIZE is a per-product property (ProductTemplate.
+/// unitsPerBatch), so MOQ is DERIVED per product from the product's batch × this
+/// line's economics, never a flat manufacturer number (Pavel 2026-07-19). The pure
+/// engine is @ilaunchify/orders/batch-economics. changeover is Int MINUTES (no Decimal).
+model PartnerManufacturingLine {
+  id                     String         @id @default(uuid())
+  partnerServiceId       String // the MANUFACTURING PartnerService
+  name                   String
+  loadedRateCentsPerHour Int
+  changeoverMinutes      Int // fixed setup per run — the overrun/MOQ driver
+  maxBatchesPerRun       Int            @default(1)
+  weeklyCapacityHours    Int? // capacity reservation (COPACK_CAPACITY_RESERVATION_BRIEF); inert until built
+  allergenClass          String? // e.g. "nut-free segregated"; null = unrestricted
+  status                 OfferingStatus @default(DRAFT) // ACTIVE only after admin verification
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  partnerService   PartnerService    @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  productTemplates ProductTemplate[]
+
+  @@index([partnerServiceId, status])
+}
+
+/// MB-1 — 1:1 manufacturing service settings: the commercial floor, the overrun
+/// policy, and the self-fill-overflow homes (COPACK_SELF_FILL_OVERFLOW_BRIEF). All
+/// additive + inert until MB-5/MB-6 wire them.
+model PartnerManufacturingConfig {
+  id                        String   @id @default(uuid())
+  partnerServiceId          String   @unique // 1:1 with the MANUFACTURING service
+  minOrderValueCents        Int?
+  overrunPolicyPct          Int? // 0..100; 100 = creator buys the full batch (industry norm)
+  selfFillMaxUnits          Int? // fill/pack up to N per order yourself; above → overflow (MB-6)
+  overflowCoPackerServiceId String? // soft FK → COPACKING PartnerService that fills the overflow
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
 }
@@ -4345,6 +4391,13 @@ model ProductTemplate {
   id                         String                        @id @default(cuid())
   subcategoryId              String
   manufacturerServiceId      String? // null until manufacturer self-builder ships (V1.1)
+  // MB-1 — per-product BATCH (docs/PARTNER_SERVICE_BUILDER_FAMILY_PLAN §1/§2). These
+  // × the chosen line's economics DERIVE this product's MOQ (sparkling water 30k,
+  // peanut packs 5k, same maker). MOQ is a property of the PRODUCT on the equipment,
+  // not the manufacturer. All nullable/additive; the engine is @ilaunchify/orders/batch-economics.
+  unitsPerBatch              Int?
+  batchTimeMinutes           Int?
+  manufacturingLineId        String? // the PartnerManufacturingLine this product runs on
   status                     ProductTemplateStatus         @default(DRAFT)
   // Primary recipe entry method (analytics). Nullable: legacy templates have no
   // recorded method. The FIRST method that adds a slot owns this — never
@@ -4518,6 +4571,7 @@ model ProductTemplate {
   // Relations
   subcategory                Subcategory                   @relation(fields: [subcategoryId], references: [id])
   manufacturerService        PartnerService?               @relation(fields: [manufacturerServiceId], references: [id])
+  manufacturingLine          PartnerManufacturingLine?     @relation(fields: [manufacturingLineId], references: [id])
   ingredientSlots            TemplateIngredientSlot[]
   optionalIngredients        TemplateOptionalIngredient[]
   variants                   ProductTemplateVariant[]
