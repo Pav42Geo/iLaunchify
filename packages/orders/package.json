@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./partner-fsm": "./src/partner-fsm.ts",
     "./copack-quote": "./src/copack-quote.ts",
-    "./batch-economics": "./src/batch-economics.ts"
+    "./batch-economics": "./src/batch-economics.ts",
+    "./print-price": "./src/print-price.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",

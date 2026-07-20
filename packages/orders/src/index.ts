@@ -623,3 +623,15 @@ export {
   assessBatchRun,
 } from './batch-economics'
 export type { BatchConfigInput, BatchRun, BatchJob, BatchSelection, BatchAssessment } from './batch-economics'
+// A3/PP-1 print price evaluator (docs/PRINT_PRICING_SPEC_2026-07-15 §4).
+export { segmentPriceCents, selectPrintProcess, finishCents, evaluatePrintPrice, printCrossoverQty } from './print-price'
+export type {
+  PrintProcess,
+  PriceCurveSegment,
+  FinishPricingMode,
+  FinishInput,
+  PrintJob,
+  PrintPriceLine,
+  PrintPriceQuote,
+  PrintProcessSelection,
+} from './print-price'
