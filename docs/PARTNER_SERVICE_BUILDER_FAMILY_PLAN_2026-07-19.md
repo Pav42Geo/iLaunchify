@@ -30,7 +30,8 @@ that seeds the service builder, never the authority.**
 | Concern | Owner after the builder lands | Today (to be migrated) |
 |---|---|---|
 | Identity, facility, lead times, **minimum order value** | **Service builder** (step 1) | scattered / missing |
-| **Batch configs** (units/batch, batch time, loaded rate, changeover, max batches) → **derived MOQ + lattice + overrun** | **Service builder** (step 2) — NEW model | MOQ is typed flat in `ManufacturingEditor` + onboarding |
+| **Line / equipment economics** (loaded rate, changeover, max batches, capacity, allergen segregation) — the EQUIPMENT, reused across products | **Service builder** (step 2) — NEW model | none |
+| **Per-product batch size + which line it runs on → that product's DERIVED MOQ + lattice + overrun** (MOQ is a property of the PRODUCT on the equipment, not of the manufacturer — Pavel 2026-07-19: sparkling water 30k, peanut packs 5k, same maker) | **PRODUCT builder** (per product; runs the batch engine over the product's batch × the line's economics) | `ProductTemplatePackaging.moqOverride` (per-size, mostly unused) + the wrong flat `capabilities.moqMin` |
 | Scope: categories, fill types, container formats | **Service builder** (step 3) | `ManufacturingEditor` capabilities + onboarding |
 | Certifications | **Service builder** (step 3) + shared certs surface | `/certifications` |
 | **Commercial defaults** (what pre-fills every product) | **Service builder** (step 4) | `settings/product-defaults` `ProductDefaultsForm` |
@@ -42,25 +43,37 @@ that seeds the service builder, never the authority.**
 | Storage-at-facility, labeling/prepress | stays on the services workspace sections (already good) | unchanged |
 
 **Migration discipline:** `ManufacturingEditor` (the capabilities card) and `ProductDefaultsForm` fold
-INTO the builder (the way co-packing retired the legacy `CopackEditor`). The product builder is
-untouched. Onboarding keeps a trimmed first pass that writes the same fields the builder reads, so a
-partner is never asked the same thing twice.
+INTO the service builder (the way co-packing retired the legacy `CopackEditor`). The PRODUCT builder
+gains two fields per product (batch size + line assignment) so it can DERIVE that product's MOQ; it is
+otherwise unchanged. Onboarding keeps a trimmed first pass that writes the same fields the builder
+reads, so a partner is never asked the same thing twice.
 
-**The one genuinely new idea (why this is an upgrade, not just consolidation):** MOQ stops being a
-typed number and becomes DERIVED from batch economics, exactly as co-packing derives its floor from
-changeover. `MOQ = the smallest batch you actually run`; a quantity snaps UP to a batch multiple (the
-lattice); the remainder is `overrun` that an explicit policy bills or absorbs. This is the manufacturing
-twin of the co-pack crossover, and it is the model the prototype's live check already runs.
+**The one genuinely new idea (why this is an upgrade, not just consolidation), corrected 2026-07-19
+after Pavel:** MOQ stops being a typed, manufacturer-wide number and becomes DERIVED **per product**
+from the product's batch size run over its line's economics. `MOQ = the product's batch on its line`;
+a quantity snaps UP to a batch multiple (the lattice); the remainder is `overrun` an explicit policy
+bills or absorbs. The SPLIT is the point: the line economics (rate, changeover, capacity) are the
+manufacturer's EQUIPMENT and live on the service (reused across products); the batch size + line
+choice are PRODUCT specifics and live on the product. A maker running sparkling water at a 30k batch
+and peanut packs at a 5k batch has TWO product MOQs from ONE set of lines, never a single flat number.
+This is the manufacturing twin of the co-pack crossover; the pure engine (MB-2, `batch-economics.ts`)
+is agnostic to where the fields come from, so the split changes only the data sourcing, not the maths.
 
 ---
 
 ## §2 Manufacturing service builder plan (MB-1..MB-6, mirrors CP-1..CP-6)
 
-- **MB-1 — schema (additive, uuid, no drops).** `PartnerBatchConfig` (per manufacturing service:
-  `unitsPerBatch`, `batchTimeHours` or minutes-Int, `loadedRateCentsPerHour`, `changeoverMinutes`,
-  `maxBatchesPerRun`, `allergenClass`, `status`). Service columns: `minOrderValueCents`,
-  `overrunPolicyPct` (0..100), the commercial-defaults home, and (folding the briefs in later)
-  `selfFillMaxUnits` + `overflowCoPackerServiceId`. `db:push` + `db:generate` gate, same as CP-1.
+- **MB-1 — schema (additive, uuid, no drops), SPLIT by the MOQ correction.**
+  - **Service level — the equipment:** `PartnerManufacturingLine` (per manufacturing service:
+    `loadedRateCentsPerHour`, `changeoverMinutes`, `maxBatchesPerRun`, `allergenClass`, capacity,
+    `status`). Plus service columns `minOrderValueCents`, `overrunPolicyPct` (0..100), the
+    commercial-defaults home, and (folding the briefs in later) `selfFillMaxUnits` +
+    `overflowCoPackerServiceId`.
+  - **Product level — the batch:** per-product `unitsPerBatch` + `batchTimeMinutes` + `manufacturingLineId`
+    on `ProductTemplate` (or its variant). These × the chosen line's economics feed the engine to derive
+    THAT product's MOQ. (The schema already has `ProductTemplatePackaging.moqOverride`; this makes it
+    derived instead of typed.)
+  - `db:push` + `db:generate` gate, same as CP-1.
 - **MB-2 — pure batch engine (START HERE).** `packages/orders/src/batch-economics.ts`: `runBatches`,
   `deriveBatchMoq`, `selectBatchConfig` (min-overrun then min-cost), `batchLattice`, `billedUnits`
   (qty + overrun × policy), `batchOrderValueFloorOk`. Pure, no prisma, client-safe subpath (for the
@@ -70,10 +83,12 @@ twin of the co-pack crossover, and it is the model the prototype's live check al
 - **MB-4 — builder UI.** Port `manufacturing-service-builder-prototype.html` 1:1 to
   `apps/partner/.../services/manufacturing/`, co-creation stepper chrome, live check on the real
   engine. Retire `ManufacturingEditor` + fold `ProductDefaultsForm` (division-of-labor migration).
-- **MB-5 — wire the derived MOQ (shadow).** Routing reads the DERIVED MOQ (from batch configs) instead
-  of the typed `capabilities.moqMin` (bridge them the way CP-5 bridged co-pack), and the overrun/billed-
-  units feed the price behind the same `pricing:*` shadow discipline. Nothing charges differently until
-  flipped.
+- **MB-5 — wire the PER-PRODUCT derived MOQ (shadow).** Routing's quantity gate reads THIS PRODUCT's
+  derived MOQ (its batch × its line) instead of the flat service-level `capabilities.moqMin` (bridge
+  them the way CP-5 bridged co-pack). This is also the correctness fix Pavel's split surfaced: today
+  `routing.ts moqOf` gates on a single manufacturer number; it should gate on the product's. Overrun /
+  billed-units feed the price behind the same `pricing:*` shadow discipline. Nothing charges differently
+  until flipped.
 - **MB-6 — the new-capability homes.** Self-fill ceiling + overflow (`COPACK_SELF_FILL_OVERFLOW_BRIEF`)
   and capacity reservation (`COPACK_CAPACITY_RESERVATION_BRIEF`) land in the builder, reusing CP-3/CP-6.
 
