@@ -1429,6 +1429,12 @@ model PartnerService {
   // FCs declare application via FcValueAddedService RELABEL rows instead.
   appliesLabels                    Boolean                           @default(true)
   fcValueAddedServices             FcValueAddedService[]
+  // ---- Co-pack offering model (CP-1, docs/COPACK_SERVICE_SPEC §4). A COPACKING
+  // service's physics (lines), the operations menu it prices, and its run-charge
+  // config. Additive; a co-packer sells OPERATIONS, priced by changeover + line-hours.
+  copackLines                      PartnerCopackLine[]
+  copackOperations                 PartnerCopackOperation[]
+  copackConfig                     PartnerCopackConfig?
   // ---- Partner rating aggregates (docs/FEEDBACK_MODULE.md §5.3–5.4) ----
   // Denormalized from PartnerRating on every write; SERVICE-scoped. Display
   // uses ratingMean+ratingCount ("New" below min-N=3); ranking/badging uses
@@ -1518,6 +1524,120 @@ model FcValueAddedService {
 
   @@unique([partnerServiceId, jobType])
   @@index([jobType, status])
+}
+
+// =============================================================================
+// CO-PACK OFFERING MODEL (CP-1, docs/COPACK_SERVICE_SPEC_2026-07-15.md §4)
+//
+// A printer sells a THING; a co-packer sells OPERATIONS performed on someone
+// else's things. So the model is: the LINES (physics: speed + changeover + rate),
+// the OPERATIONS menu (each with its own unit + price), and a run-charge CONFIG.
+// The dominant cost is CHANGEOVER, and the MOQ is DERIVED from its amortization,
+// never typed (schema.prisma logs that same lesson against the print offering).
+//
+// Additive, keyed on the COPACKING PartnerService (never widens
+// @@unique([partnerId, type]) — one partner may hold all four service types).
+// NOT wired to pricing/dispatch yet: CP-3 adds the CO_PACKING PriceLine + payout
+// behind a flag, shadow-inert. Nothing here touches the money path.
+// =============================================================================
+
+enum CopackOpType {
+  FILL_CLOSE // fill the container and close/seal it
+  LABEL_APPLY // apply a pressure-sensitive label / sleeve at the line
+  KIT_ASSEMBLY // variety / kit assembly (mixed units into one pack)
+  INSERT // drop an insert / coupon / sample into the pack
+  SHRINK_BUNDLE // shrink-wrap or band a multipack
+  CASE_PACK // case pack + palletize
+  QC_COA // QC hold + certificate of analysis
+  REWORK // correction jobs (wrong label, market swap)
+}
+
+enum CopackPricingUnit {
+  PER_UNIT
+  PER_PACK
+  PER_CASE
+  PER_PALLET
+  PER_RUN
+  PER_HOUR
+}
+
+// FILL_ONLY: the creator/manufacturer supplies the empty container; the co-packer
+// only fills. SUPPLIES_CONTAINER: the co-packer sources the container too. Routing-
+// critical (COPACK_SERVICE_SPEC §3, prototype step 3), a HARD filter.
+enum CopackSupplyModel {
+  FILL_ONLY
+  SUPPLIES_CONTAINER
+}
+
+// One physical line on the floor (prototype step 2, "Your lines"). THE PHYSICS.
+// changeoverMinutes is the fixed setup per run (stored as Int minutes, not Decimal
+// hours — cents/Int SSOT); the quoting engine computes runHours = qty / runSpeed at
+// call time. A floor may declare several lines; the engine hard-filters then picks
+// the min-cost one, which is where the ~6,171-unit crossover falls out.
+model PartnerCopackLine {
+  id                   String           @id @default(uuid())
+  partnerServiceId     String // the COPACKING PartnerService
+  name                 String
+  runSpeedUnitsPerHour Int
+  changeoverMinutes    Int // fixed setup per run — the MOQ driver (amortized over the run)
+  lineRateCentsPerHour Int
+  minRunUnits          Int              @default(0)
+  maxRunUnits          Int? // null = no ceiling
+  // HARD filters (COPACK_SERVICE_SPEC §3): a job the line can't run is excluded,
+  // never down-weighted. Empty array = "no constraint on this axis".
+  allergenClass        String? // e.g. "peanut-free line"; null = unrestricted
+  containerFormats     String[]
+  fillTypes            String[]
+  status               OfferingStatus   @default(DRAFT) // ACTIVE only after admin verification
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+
+  @@index([partnerServiceId, status])
+}
+
+// One priced operation on the co-packer's menu (prototype step 4, "Operations").
+// Each op has its OWN unit (fill priced per unit, case-pack per case, QC per run),
+// hence pricingUnit. @@unique([partnerServiceId, opType]) mirrors FcValueAddedService.
+model PartnerCopackOperation {
+  id               String            @id @default(uuid())
+  partnerServiceId String
+  opType           CopackOpType
+  pricingUnit      CopackPricingUnit
+  priceCents       Int
+  minUnits         Int               @default(1)
+  status           OfferingStatus    @default(DRAFT)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerServiceId, opType])
+  @@index([opType, status])
+}
+
+// Run-charge + capacity config, 1:1 with the COPACKING PartnerService (prototype
+// steps 1 + 5). Kept off PartnerService itself so the money knobs don't crowd the
+// shared service row. rushUplift is partner-set + creator-paid, so CP-3 puts it IN
+// the fee base. changeoverFeeCents is an OPTIONAL override of the derived
+// (lineRateCentsPerHour × changeoverMinutes/60) fee (COPACK_SERVICE_SPEC §6.4).
+model PartnerCopackConfig {
+  id                   String           @id @default(uuid())
+  partnerServiceId     String           @unique // 1:1 with the COPACKING service
+  changeoverFeeCents   Int? // override; null = derive from the selected line
+  minRunChargeCents    Int?
+  repeatRunDiscountBps Int?
+  rushUpliftBps        Int? // partner-set + creator-paid → in the fee base (CP-3)
+  rushLeadTimeDays     Int?
+  minOrderValueCents   Int?
+  weeklyCapacityUnits  Int?
+  baseLeadTimeDays     Int?
+  supplyModel          CopackSupplyModel @default(FILL_ONLY)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  partnerService PartnerService @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
 }
 
 // Creator's manual print-provider pick (PRINT_PROVIDER_SELECTION §4, PS-3).

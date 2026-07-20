@@ -24,6 +24,13 @@ export const CopackingCapabilitiesSchema = z.object({
   moqMax: z.number().int().positive(),
   leadTimeDays: z.number().int().positive(),
   certifications: z.array(z.string()),
+  // CP-1 (2026-07-19): the live co-pack editor already writes these three, but the
+  // schema didn't declare them, so parse silently dropped them (COPACK_SERVICE_SPEC §4).
+  // Declared OPTIONAL + permissive here; CP-2 migrates them to the typed model
+  // (PartnerCopackLine.changeoverMinutes / fillTypes, PartnerCopackConfig.supplyModel).
+  suppliesContainer: z.boolean().optional(),
+  fillingLines: z.array(z.unknown()).optional(),
+  changeoverDays: z.number().optional(),
 })
 export type CopackingCapabilities = z.infer<typeof CopackingCapabilitiesSchema>
 
