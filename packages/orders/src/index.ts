@@ -613,3 +613,13 @@ export {
   resolveOrderCoPackerServiceId,
   resolveOrderCopackCents,
 } from './copack-order-pricing'
+// MB-2 manufacturing batch-economics engine (docs/PARTNER_SERVICE_BUILDER_FAMILY_PLAN §2).
+export {
+  runBatches,
+  deriveBatchMoq,
+  selectBatchConfig,
+  batchLattice,
+  billedUnits,
+  assessBatchRun,
+} from './batch-economics'
+export type { BatchConfigInput, BatchRun, BatchJob, BatchSelection, BatchAssessment } from './batch-economics'
