@@ -47,6 +47,12 @@ const FEE_BASE_MEMBERSHIP: Record<PriceLine['kind'], { inBase: boolean; why: str
   PACKAGING: { inBase: true, why: 'partner-set packaging material' },
   PRINTING: { inBase: true, why: 'the printer sets it and is paid it' },
   FINISHES: { inBase: true, why: 'foil / spot UV / emboss: partner-set, incl. their setup' },
+  COPACKING: {
+    inBase: true,
+    why:
+      "the co-packer sets its fill/assembly operation prices (PartnerCopack* offering) and is paid them: " +
+      'partner-set, partner-kept, so it is production and IN the base like manufacturing or print (CP-3).',
+  },
   SETUP: {
     inBase: true,
     why:
