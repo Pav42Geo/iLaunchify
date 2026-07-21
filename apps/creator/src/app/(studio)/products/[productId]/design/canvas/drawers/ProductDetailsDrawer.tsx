@@ -182,7 +182,7 @@ export function ProductDetailsDrawer({ data }: { data: ProductDetailsData }) {
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-[11px] text-ink-400">Per-unit list price by quantity. Final total is confirmed at checkout.</p>
+            <p className="mt-2 text-[11px] text-ink-400">Per-unit price by quantity, including our service. Final total is confirmed at checkout.</p>
           </>
         )}
       </Accordion>

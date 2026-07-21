@@ -27,7 +27,7 @@ import { CanvasLayoutShell } from './CanvasLayoutShell'
 import type { StudioMockup } from './MockupModal'
 import { loadDesignJson, loadAlternateDesignJson } from './actions'
 import { listAlternates } from './alternates-actions'
-import { designAlternateCap } from '@ilaunchify/plans'
+import { designAlternateCap, creatorFeeCents } from '@ilaunchify/plans'
 import { loadProductCertBadges } from './cert-badge-actions'
 import { resolveProductPhrases } from './phrase-actions'
 import { resolvePartnerPrintSpec } from './partner-spec-actions'
@@ -570,13 +570,22 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // Product details drawer meta — category + owner-pinned manufacturer + a full cost summary
   // (per-unit by quantity tier) + the entry tier (lowest minQty) for the header MOQ line.
   // All fields already decided upstream in the builder.
+  //
+  // Option C (docs/PLATFORM_FEE_PRESENTATION_BRIEF_2026-07-21.md): every creator-
+  // facing per-unit price is ALL-IN — the manufacturer's band cost plus the
+  // viewer's tier-rate administrative fee, the same display math as the PDP
+  // matrix (getCreatorPricingMatrix). Per-ORDER fee bounds deliberately don't
+  // apply to a per-unit display figure; the real bounded fee is computed once
+  // per order by computeOrderPricing at checkout.
+  const viewerFeeBps = planPricing.feeBpsByTier[creatorTier]
+  const allInCents = (c: number) => c + creatorFeeCents(c, viewerFeeBps)
   const pricingTiers = product.productTemplate?.pricingTiers ?? []
   const entryTier = pricingTiers.length ? pricingTiers.reduce((a, b) => (b.minQty < a.minQty ? b : a)) : null
   const fulfillmentLabel = (m: string): string =>
     m === 'ON_DEMAND' ? 'On-demand' : m === 'BOTH' ? 'Bulk + On-demand' : 'Bulk'
   const qtyRange = (min: number, max: number | null): string =>
     max ? `${min.toLocaleString()}–${max.toLocaleString()}` : `${min.toLocaleString()}+`
-  const centsList = pricingTiers.map((t) => t.perUnitCostCents)
+  const centsList = pricingTiers.map((t) => allInCents(t.perUnitCostCents))
   const lowC = centsList.length ? Math.min(...centsList) : null
   const highC = centsList.length ? Math.max(...centsList) : null
   const cost =
@@ -590,7 +599,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
             .sort((a, b) => a.minQty - b.minQty)
             .map((t) => ({
               qtyRange: qtyRange(t.minQty, t.maxQty ?? null),
-              perUnit: usd(t.perUnitCostCents),
+              perUnit: usd(allInCents(t.perUnitCostCents)),
               leadTimeDays: t.leadTimeDays ?? null,
               fulfillment: fulfillmentLabel(String(t.fulfillmentMode)),
             })),
