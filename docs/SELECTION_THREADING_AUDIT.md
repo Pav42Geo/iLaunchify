@@ -64,6 +64,30 @@ The threading fix below is implemented, cast-guarded so it compiles before the m
 `rm -rf apps/*/.next` → restart dev. After that, drop the `as unknown as …` cast-guards on the new
 field. Then the Studio + checkout show ONLY the creator's selected flavors.
 
+## Update 2026-07-20 — `input.flavor` is a `FlavorPreset.id`, not a name (closes break #4 for the non-pack flavor)
+
+**The convention (write this down so the next reader doesn't rediscover it the hard way):** the
+`flavor` value the PDP threads into launch — `LaunchCtaCluster flavorId={flavorId}` →
+`startLaunchFromTemplate({ flavor })` → `StartLaunchInput.flavor` → the guest signup query param — is
+a **`FlavorPreset.id`**, because on the PDP `flavorId = detail.flavors[i].id` and `detail.flavors` is
+built from the FlavorPreset **pool** (`marketing lib/pricing.ts` keys `flavorPricing` by preset id;
+the marketplace page maps `packData.pool` ids into `detail.flavors`). It is **not** a human flavor
+name.
+
+**The gotcha it caused:** `pickVariantForPicks` (`launch-actions.ts`) matched
+`norm(variant.flavor) === norm(input.flavor)`, i.e. a flavor NAME string ("Chocolate") against a
+preset id — which never matches, so the size/flavor variant silently fell back to the first variant.
+This was the live tail of break #4: the flavor *reached* launch but was compared in the wrong id-space.
+
+**Fix (2026-07-20):** launch resolves the preset **once** — `FlavorPreset.findFirst({ id: input.flavor,
+productTemplateId: template.id, status: ACTIVE })` — and uses its **name** to match the variant and its
+**id** to pin `Product.selectedFlavorPresetIds` (the non-pack single-flavor subset). Robust to a legacy
+caller that already passes a NAME: the id lookup misses and `input.flavor` is used as the name as before
+(no regression), just without a preset pin. This is what lets a non-pack premium flavor's
+`priceDeltaCents` reach the charge — see the flavor-delta wire in `packages/plans/src/goods-basis.ts`
+(`resolveGoods` `flavorDeltaTotalCents`) + `cart-actions.ts` / `production-actions.ts`, verified by
+`pnpm --filter @ilaunchify/db report:flavor-delta` against the `flavor-delta-demo` fixture.
+
 ## Recommended fix (no-regret) — Code's zone
 
 Give the selection **one persistent home on the `Product`** and make it authoritative:
