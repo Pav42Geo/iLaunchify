@@ -4,6 +4,10 @@
 // (see processTierDunning). The webhook starts the grace period on a failed
 // recurring charge; this enforces the deadline. Returns the summary either way.
 //
+// Also runs the Cancellation P1 pause-start sweep (processTierPauseStarts):
+// creators whose PAID period has ended with a pause scheduled drop to MAKER
+// until Stripe resumes billing (the webhook restores the tier then).
+//
 // Auth: shared CRON_SECRET in the Authorization header.
 //
 // Schedule (apps/creator/vercel.json) — daily 8am:
@@ -13,7 +17,7 @@
 //   curl -X POST localhost:3000/api/cron/tier-dunning -H "Authorization: Bearer $CRON_SECRET"
 
 import { NextRequest, NextResponse } from 'next/server'
-import { processTierDunning } from '@ilaunchify/payments'
+import { processTierDunning, processTierPauseStarts } from '@ilaunchify/payments'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -25,7 +29,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const result = await processTierDunning(new Date())
-  return NextResponse.json({ ok: true, ...result, ranAt: new Date().toISOString() })
+  const pauseSweep = await processTierPauseStarts()
+  return NextResponse.json({
+    ok: true,
+    ...result,
+    pauseSweep,
+    ranAt: new Date().toISOString(),
+  })
 }
 
 export async function GET(req: NextRequest) {

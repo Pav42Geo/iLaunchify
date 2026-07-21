@@ -294,8 +294,10 @@ export const AUDIT_ACTIONS = [
   'SUBSCRIPTION_CANCEL_REQUESTED',
   'SUBSCRIPTION_CANCEL_RESUMED',
   // Cancellation P1 — the save-flow pause accepted from the cancel modal
-  // (Stripe pause_collection, benefits kept, 1x/365d guard).
+  // (Stripe pause_collection; benefits until paid period end, then MAKER
+  // until billing resumes; 1x/365d guard). UNPAUSED = manual early resume.
   'SUBSCRIPTION_PAUSED',
+  'SUBSCRIPTION_UNPAUSED',
   'PARTNER_TIER_CHANGE',
   'FEE_OVERRIDE_SET',
   'FEE_OVERRIDE_CLEAR',

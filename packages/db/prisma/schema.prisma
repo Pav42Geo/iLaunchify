@@ -791,9 +791,18 @@ model CreatorProfile {
   // §3.5). Stripe pause_collection is authoritative; these mirror it:
   //   tierPauseResumesAt — billing (and the pause) ends here; null = not paused.
   //   tierLastPausedAt   — one-pause-per-365-days abuse guard.
-  // Pavel 2026-07-20: benefits are KEPT during pause (sub stays active).
+  //   tierPauseStartsAt  — end of the already-PAID period; benefits are kept
+  //                        until here (they paid for it), then the tier drops
+  //                        to MAKER (pause-start cron sweep).
+  //   tierPausedFromTier — tier to RESTORE when billing resumes. Pavel
+  //                        2026-07-20 (supersedes same-day keep-benefits):
+  //                        during the unpaid window there are NO paid benefits
+  //                        (fee rate, seats, and tier-gated AI the platform
+  //                        pays inference for).
+  tierPauseStartsAt        DateTime?
   tierPauseResumesAt       DateTime?
   tierLastPausedAt         DateTime?
+  tierPausedFromTier       SubscriptionTier?
   // Fee overrides
   feeRateOverrideBp        Int?
   feeRateOverrideReason    String?

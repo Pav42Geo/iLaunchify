@@ -38,6 +38,7 @@ import {
   CancelButton,
   ResumeButton,
   ManageBillingButton,
+  ResumePauseButton,
 } from './PlanActionButtons'
 
 export const dynamic = 'force-dynamic'
@@ -164,8 +165,10 @@ export default async function PlanPage({ searchParams }: PageProps) {
       creatorProfile: {
         findUnique: (a: unknown) => Promise<{
           tierGraceUntil: Date | null
+          tierPauseStartsAt?: Date | null
           tierPauseResumesAt?: Date | null
           tierLastPausedAt?: Date | null
+          tierPausedFromTier?: string | null
         } | null>
       }
     }
@@ -174,23 +177,28 @@ export default async function PlanPage({ searchParams }: PageProps) {
       where: { userId: user.id },
       select: {
         tierGraceUntil: true,
+        tierPauseStartsAt: true,
         tierPauseResumesAt: true,
         tierLastPausedAt: true,
+        tierPausedFromTier: true,
       },
     })
     .catch(() => null)
   const graceUntil = extraState?.tierGraceUntil ?? null
 
-  // Pause save-offer eligibility: not currently paused + outside the
-  // 365-day cooldown (mirrors the guard in pauseTierSubscription).
+  // Pause save-offer eligibility: no pause in flight + outside the 365-day
+  // cooldown (mirrors the guard in pauseTierSubscription). A pause is "in
+  // flight" from acceptance until billing resumes (tierPausedFromTier set).
   const now = new Date()
-  const pausedUntil =
-    extraState?.tierPauseResumesAt && extraState.tierPauseResumesAt > now
-      ? extraState.tierPauseResumesAt
-      : null
+  const pausedFromTier = extraState?.tierPausedFromTier ?? null
+  const pauseStartsAt = extraState?.tierPauseStartsAt ?? null
+  const pauseResumesAt = extraState?.tierPauseResumesAt ?? null
+  const pauseScheduled =
+    Boolean(pausedFromTier) && pauseStartsAt !== null && pauseStartsAt > now
+  const pauseActive = Boolean(pausedFromTier) && !pauseScheduled
   const lastPausedAt = extraState?.tierLastPausedAt ?? null
   const pauseAvailable =
-    !pausedUntil &&
+    !pausedFromTier &&
     (!lastPausedAt ||
       now.getTime() - lastPausedAt.getTime() > 365 * 24 * 60 * 60 * 1000)
 
@@ -208,12 +216,23 @@ export default async function PlanPage({ searchParams }: PageProps) {
         </div>
       )}
 
-      {pausedUntil && (
+      {pauseScheduled && pauseStartsAt && pauseResumesAt && (
         <ResultBanner
           tone="warning"
           icon={<CalendarClock className="h-4 w-4" />}
-          title={`Billing paused until ${formatDate(pausedUntil)}`}
-          message={`You keep your ${currentTier[0]!.toUpperCase() + currentTier.slice(1)} benefits and pay nothing until then. Billing restarts automatically.`}
+          title={`Pause scheduled for ${formatDate(pauseStartsAt)}`}
+          message={`Your ${titleCase(pausedFromTier)} benefits continue until then (already paid). From ${formatDate(pauseStartsAt)} to ${formatDate(pauseResumesAt)} you'll be on the free Maker plan with no charges, then billing and benefits return automatically.`}
+          slot={<ResumePauseButton label="Cancel the pause" />}
+        />
+      )}
+
+      {pauseActive && pauseResumesAt && (
+        <ResultBanner
+          tone="warning"
+          icon={<CalendarClock className="h-4 w-4" />}
+          title={`Plan paused until ${formatDate(pauseResumesAt)}`}
+          message={`You're on the free Maker plan and pay nothing until then. Billing and your ${titleCase(pausedFromTier)} benefits return automatically.`}
+          slot={<ResumePauseButton label="Resume now" />}
         />
       )}
 
@@ -542,6 +561,12 @@ function formatDate(d: Date): string {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+/** "BUILDER" → "Builder" (pause banners show the remembered tier). */
+function titleCase(tier: string | null): string {
+  if (!tier) return 'plan'
+  return tier[0]!.toUpperCase() + tier.slice(1).toLowerCase()
 }
 
 // Used to silence "unused export" warnings in the in-page rendering —

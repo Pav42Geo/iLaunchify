@@ -736,6 +736,23 @@ async function onSubscriptionDeleted(subscription: Stripe.Subscription) {
       tierCancelAtPeriodEnd: false,
     },
   })
+
+  // Cancellation P1 — a dead subscription can't be paused; clear any pause
+  // window (cast-guarded until the tierPause* migration lands).
+  await (
+    prisma as unknown as {
+      creatorProfile: { update: (a: unknown) => Promise<unknown> }
+    }
+  ).creatorProfile
+    .update({
+      where: { id: tierProfile.id },
+      data: {
+        tierPauseStartsAt: null,
+        tierPauseResumesAt: null,
+        tierPausedFromTier: null,
+      },
+    })
+    .catch(() => null)
 }
 
 // =============================================================================
@@ -857,23 +874,55 @@ async function onSubscriptionUpdated(subscription: Stripe.Subscription) {
     },
   })
 
-  // Cancellation P1 — mirror pause_collection (the save-flow pause). Stripe
-  // is authoritative: resumes_at set = paused until then; null = not paused
-  // (also clears our mirror when Stripe auto-resumes billing). Cast-guarded
-  // until the tierPause* migration lands. TODO: fold into the update above.
-  const resumesAt = subscription.pause_collection?.resumes_at
-  await (
-    prisma as unknown as {
-      creatorProfile: { update: (a: unknown) => Promise<unknown> }
+  // Cancellation P1 — pause lifecycle (the save-flow pause). Stripe is
+  // authoritative: pause_collection set = pause scheduled/active;
+  // pause_collection null = not paused. When Stripe clears it (auto-resume
+  // at resumes_at, or a manual clear), we RESTORE the remembered tier via
+  // the shared audited helper (same-tier no-op if the drop never happened)
+  // and clear the pause window. Cast-guarded until the tierPause* migration
+  // lands. TODO: fold into the typed update above.
+  const guarded = prisma as unknown as {
+    creatorProfile: {
+      findUnique: (a: unknown) => Promise<{
+        tierPausedFromTier: string | null
+      } | null>
+      update: (a: unknown) => Promise<unknown>
     }
-  ).creatorProfile
-    .update({
-      where: { id: profile.id },
-      data: {
-        tierPauseResumesAt: resumesAt ? new Date(resumesAt * 1000) : null,
-      },
-    })
-    .catch(() => null)
+  }
+  const resumesAt = subscription.pause_collection?.resumes_at
+  if (resumesAt) {
+    await guarded.creatorProfile
+      .update({
+        where: { id: profile.id },
+        data: { tierPauseResumesAt: new Date(resumesAt * 1000) },
+      })
+      .catch(() => null)
+  } else {
+    const pauseState = await guarded.creatorProfile
+      .findUnique({
+        where: { id: profile.id },
+        select: { tierPausedFromTier: true },
+      })
+      .catch(() => null)
+    if (pauseState?.tierPausedFromTier) {
+      await setCreatorTierWithAudit({
+        creatorProfileId: profile.id,
+        newTier: pauseState.tierPausedFromTier as 'MAKER' | 'BUILDER' | 'AGENCY',
+        actor: { kind: 'system', label: 'pause_resumed' },
+        payload: { stripeSubscriptionId: subscription.id },
+      })
+      await guarded.creatorProfile
+        .update({
+          where: { id: profile.id },
+          data: {
+            tierPauseStartsAt: null,
+            tierPauseResumesAt: null,
+            tierPausedFromTier: null,
+          },
+        })
+        .catch(() => null)
+    }
+  }
 }
 
 // Suppress unused-import noise — kept for symmetry with cancelProductionSubscription.

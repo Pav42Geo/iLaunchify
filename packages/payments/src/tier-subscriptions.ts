@@ -32,8 +32,13 @@ import {
   creatorTierToPlanCode,
   getPlanByCode,
 } from '@ilaunchify/plans'
+import { setCreatorTierWithAudit } from '@ilaunchify/auth/server'
 import { stripe } from './client'
 import { getOrCreateCreatorCustomer } from './subscriptions'
+
+/** Prisma SubscriptionTier values, string-typed here to avoid a client
+    dependency on the enum while the pause migration is cast-guarded. */
+type TierValue = 'MAKER' | 'BUILDER' | 'AGENCY'
 
 /** Tier the creator is upgrading TO. Cannot be MAKER (downgrades happen by cancel). */
 export type UpgradeableTier = 'BUILDER' | 'AGENCY'
@@ -300,16 +305,28 @@ export async function cancelTierSubscription(
 // retention offer (CA ARL: max one, shown next to a plain cancel path).
 //
 // Mechanics: Stripe pause_collection { behavior: 'void', resumes_at } — the
-// subscription STAYS ACTIVE, invoices in the window are voided, billing
-// auto-resumes at resumes_at. Pavel decision 2026-07-20: the creator KEEPS
-// tier benefits during the pause (they are pausing because they are not
-// producing, so the fee-rate leak is negligible). Guards against abuse:
+// subscription STAYS ACTIVE in Stripe, invoices in the window are voided,
+// billing auto-resumes at resumes_at. We anchor the pause to the END of the
+// already-paid period: resumes_at = current_period_end + N months, so the
+// creator gets what they paid for, then N free-but-Maker months.
+//
+// Pavel decisions 2026-07-20 (supersede same-day keep-benefits):
+//   1. Benefits are KEPT until current_period_end — they paid through it.
+//   2. From period end until billing resumes the tier is MAKER. Not paying
+//      = no paid benefits: no 12/8% fee rate, no designer seats (swept by
+//      the shared tier helper), and critically no tier-gated AI features
+//      whose inference the platform pays for.
+// Timeline state on the profile:
+//   tierPauseStartsAt  (= paid period end; the pause-start cron sweeps the
+//                        tier to MAKER once this passes)
+//   tierPauseResumesAt (= startsAt + N months; Stripe resumes billing and
+//                        the customer.subscription.updated webhook restores
+//                        tierPausedFromTier)
+// unpauseTierSubscription handles a manual early resume at any point.
+// Guards against abuse:
 //   - 1 to 3 months only
 //   - at most ONE pause per rolling 365 days (tierLastPausedAt)
 //   - pausing clears a pending cancel_at_period_end (pause IS the save)
-//
-// The customer.subscription.updated webhook mirrors pause state onto the
-// profile, so the local mirror here is UI-latency cover, same as cancel.
 
 export interface PauseTierSubscriptionInput {
   creatorProfileId: string
@@ -324,7 +341,7 @@ export const PAUSE_COOLDOWN_DAYS = 365
 
 export async function pauseTierSubscription(
   input: PauseTierSubscriptionInput,
-): Promise<{ resumesAt: Date }> {
+): Promise<{ startsAt: Date; resumesAt: Date }> {
   if (
     !Number.isInteger(input.months) ||
     input.months < PAUSE_MIN_MONTHS ||
@@ -339,6 +356,7 @@ export async function pauseTierSubscription(
     where: { id: input.creatorProfileId },
     select: {
       id: true,
+      subscriptionTier: true,
       stripeTierSubscriptionId: true,
     },
   })
@@ -355,19 +373,27 @@ export async function pauseTierSubscription(
         findUnique: (a: unknown) => Promise<{
           tierPauseResumesAt: Date | null
           tierLastPausedAt: Date | null
+          tierPausedFromTier: string | null
         } | null>
       }
     }
   ).creatorProfile
     .findUnique({
       where: { id: profile.id },
-      select: { tierPauseResumesAt: true, tierLastPausedAt: true },
+      select: {
+        tierPauseResumesAt: true,
+        tierLastPausedAt: true,
+        tierPausedFromTier: true,
+      },
     })
     .catch(() => null)
 
   const now = new Date()
-  if (pauseState?.tierPauseResumesAt && pauseState.tierPauseResumesAt > now) {
-    throw new Error('Your subscription is already paused.')
+  if (
+    pauseState?.tierPausedFromTier ||
+    (pauseState?.tierPauseResumesAt && pauseState.tierPauseResumesAt > now)
+  ) {
+    throw new Error('Your subscription already has a pause scheduled.')
   }
   if (pauseState?.tierLastPausedAt) {
     const cooldownEnd = new Date(
@@ -381,7 +407,13 @@ export async function pauseTierSubscription(
     }
   }
 
-  const resumesAt = new Date(now)
+  // Anchor to the END of the paid period — the creator keeps what they
+  // paid for, then gets N unpaid Maker months.
+  const sub = await stripe.subscriptions.retrieve(
+    profile.stripeTierSubscriptionId,
+  )
+  const startsAt = new Date(sub.current_period_end * 1000)
+  const resumesAt = new Date(startsAt)
   resumesAt.setMonth(resumesAt.getMonth() + input.months)
 
   await stripe.subscriptions.update(profile.stripeTierSubscriptionId, {
@@ -393,7 +425,9 @@ export async function pauseTierSubscription(
     cancel_at_period_end: false,
   })
 
-  // Mirror immediately (webhook confirms). Cast-guarded — see above.
+  // Mirror immediately (webhook confirms). The tier is NOT flipped here —
+  // the pause-start cron (processTierPauseStarts) drops it to MAKER once
+  // startsAt passes. Cast-guarded — see above.
   await (
     prisma as unknown as {
       creatorProfile: {
@@ -403,13 +437,145 @@ export async function pauseTierSubscription(
   ).creatorProfile.update({
     where: { id: profile.id },
     data: {
+      tierPauseStartsAt: startsAt,
       tierPauseResumesAt: resumesAt,
+      tierPausedFromTier: profile.subscriptionTier,
       tierLastPausedAt: now,
       tierCancelAtPeriodEnd: false,
     },
   })
 
-  return { resumesAt }
+  return { startsAt, resumesAt }
+}
+
+// =============================================================================
+// unpauseTierSubscription — manual early resume (before or during the pause)
+// =============================================================================
+//
+// Clears Stripe pause_collection and restores the remembered tier. Safe in
+// both phases: before startsAt the tier never dropped (restore is a same-tier
+// no-op inside the shared helper); during the pause it flips MAKER back to
+// the remembered tier. Stripe resumes billing on its own schedule after the
+// pause_collection is cleared.
+
+export async function unpauseTierSubscription(input: {
+  creatorProfileId: string
+}): Promise<{ restoredTier: string | null }> {
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { id: input.creatorProfileId },
+    select: { id: true, stripeTierSubscriptionId: true },
+  })
+  if (!profile) throw new Error('Creator profile not found.')
+  if (!profile.stripeTierSubscriptionId) {
+    throw new Error('No tier subscription on file.')
+  }
+
+  const pauseState = await (
+    prisma as unknown as {
+      creatorProfile: {
+        findUnique: (a: unknown) => Promise<{
+          tierPausedFromTier: string | null
+        } | null>
+      }
+    }
+  ).creatorProfile
+    .findUnique({
+      where: { id: profile.id },
+      select: { tierPausedFromTier: true },
+    })
+    .catch(() => null)
+  if (!pauseState?.tierPausedFromTier) {
+    throw new Error('Your subscription is not paused.')
+  }
+
+  await stripe.subscriptions.update(profile.stripeTierSubscriptionId, {
+    // Empty string clears pause_collection (stripe-node convention).
+    pause_collection: '',
+  })
+
+  // Restore the tier (same-tier no-op if the drop never happened) + clear
+  // the pause window. tierLastPausedAt intentionally KEPT — the cooldown
+  // stands even after an early resume.
+  await setCreatorTierWithAudit({
+    creatorProfileId: profile.id,
+    newTier: pauseState.tierPausedFromTier as TierValue,
+    actor: { kind: 'system', label: 'pause_early_resume' },
+    payload: { stripeSubscriptionId: profile.stripeTierSubscriptionId },
+  })
+  await (
+    prisma as unknown as {
+      creatorProfile: { update: (a: unknown) => Promise<unknown> }
+    }
+  ).creatorProfile.update({
+    where: { id: profile.id },
+    data: {
+      tierPauseStartsAt: null,
+      tierPauseResumesAt: null,
+      tierPausedFromTier: null,
+    },
+  })
+
+  return { restoredTier: pauseState.tierPausedFromTier }
+}
+
+// =============================================================================
+// processTierPauseStarts — cron sweep: drop to MAKER once the paid period ends
+// =============================================================================
+//
+// Runs from the same cron route as processTierDunning. Finds profiles whose
+// pause window has begun (tierPauseStartsAt <= now, tierPausedFromTier set,
+// tier not yet MAKER) and flips them via the shared audited helper (which
+// also sweeps designer seats). Idempotent: once flipped, the tier IS MAKER
+// and the row no longer matches.
+
+export interface TierPauseSweepResult {
+  swept: number
+  errors: number
+}
+
+export async function processTierPauseStarts(): Promise<TierPauseSweepResult> {
+  const now = new Date()
+  const due = await (
+    prisma as unknown as {
+      creatorProfile: {
+        findMany: (a: unknown) => Promise<
+          Array<{ id: string; subscriptionTier: string }>
+        >
+      }
+    }
+  ).creatorProfile
+    .findMany({
+      where: {
+        tierPausedFromTier: { not: null },
+        tierPauseStartsAt: { lte: now },
+        subscriptionTier: { not: 'MAKER' },
+      },
+      select: { id: true, subscriptionTier: true },
+    })
+    .catch(() => [] as Array<{ id: string; subscriptionTier: string }>)
+
+  let swept = 0
+  let errors = 0
+  for (const row of due) {
+    try {
+      await setCreatorTierWithAudit({
+        creatorProfileId: row.id,
+        newTier: 'MAKER',
+        actor: { kind: 'system', label: 'pause_started' },
+        payload: { pausedFromTier: row.subscriptionTier },
+      })
+      swept += 1
+    } catch (err) {
+      errors += 1
+      // eslint-disable-next-line no-console
+      console.error(
+        '[tier-pause] sweep failed for profile',
+        row.id,
+        (err as Error).message,
+      )
+    }
+  }
+  return { swept, errors }
 }
 
 export async function resumeTierSubscription(input: {

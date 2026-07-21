@@ -26,6 +26,7 @@ import {
   cancelMyTierSubscription,
   resumeMyTierSubscription,
   pauseMyTierSubscription,
+  resumePausedTierSubscription,
   openBillingPortal,
 } from './actions'
 import {
@@ -262,12 +263,14 @@ export function CancelButton({
             {showPauseOffer && (
               <div className="rounded-xl border border-pink-200 bg-pink-50 px-4 py-3">
                 <p className="text-[12.5px] font-semibold text-ink-900">
-                  Pause instead? Keep everything, pay nothing.
+                  Pause instead? Take a break without losing your setup.
                 </p>
                 <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-600">
-                  We&rsquo;ll skip your invoices and billing restarts
-                  automatically. You keep your {tierName} benefits the whole
-                  time. Available once every 12 months.
+                  Your {tierName} benefits run until{' '}
+                  {periodEndLabel ?? 'the end of your paid period'} (already
+                  paid). Then your plan pauses: no charges, free Maker plan.
+                  Billing and your {tierName} benefits return automatically.
+                  Available once every 12 months.
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {[1, 2, 3].map((m) => (
@@ -351,6 +354,45 @@ export function CancelButton({
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+// =============================================================================
+// ResumePauseButton — cancel a scheduled pause / resume a paused plan early
+// =============================================================================
+//
+// Rendered in the pause banners on /settings/plan. Before the paid period
+// ends it just clears the scheduled pause; during the unpaid window it
+// restores the remembered tier and Stripe resumes billing on its schedule.
+
+export function ResumePauseButton({ label }: { label: string }) {
+  const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setError(null)
+          start(async () => {
+            const res = await resumePausedTierSubscription()
+            if (!res.ok) {
+              setError(res.error)
+            }
+          })
+        }}
+        className="inline-flex h-8 items-center justify-center rounded-full bg-ink-900 px-4 text-[11.5px] font-semibold uppercase tracking-wider text-white transition hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {pending ? 'Resuming…' : label}
+      </button>
+      {error && (
+        <p className="text-[11.5px] text-danger-700" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }
 

@@ -21,6 +21,7 @@ import {
   cancelTierSubscription,
   resumeTierSubscription,
   pauseTierSubscription,
+  unpauseTierSubscription,
   createBillingPortalSession,
   PAUSE_MIN_MONTHS,
   PAUSE_MAX_MONTHS,
@@ -74,6 +75,30 @@ export async function startTierUpgrade(input: {
       ok: false,
       error:
         'You already have an active tier subscription. Cancel the current plan before switching.',
+    }
+  }
+
+  // Cancellation P1 — a pause in flight blocks a new Checkout (the paused
+  // sub would resume on top of it). Cast-guarded until the migration lands.
+  const pauseState = await (
+    prisma as unknown as {
+      creatorProfile: {
+        findUnique: (a: unknown) => Promise<{
+          tierPausedFromTier: string | null
+        } | null>
+      }
+    }
+  ).creatorProfile
+    .findUnique({
+      where: { userId: user.id },
+      select: { tierPausedFromTier: true },
+    })
+    .catch(() => null)
+  if (pauseState?.tierPausedFromTier) {
+    return {
+      ok: false,
+      error:
+        'Your plan is paused. Resume it from the banner above before switching plans.',
     }
   }
 
@@ -279,14 +304,15 @@ export async function resumeMyTierSubscription(): Promise<
 //
 // Accepted from the cancel modal INSTEAD of cancelling (offered only for
 // NOT_USING / TEMPORARY reasons; the single retention offer, CA-compliant).
-// Stripe voids invoices for 1-3 months and auto-resumes; benefits are kept
-// (Pavel 2026-07-20). Eligibility guards (already-paused, 1x/365d cooldown)
-// live in the payments helper — this action adds auth + audit.
+// Benefits run to the end of the PAID period, then the account is MAKER for
+// 1-3 unpaid months, then billing + tier restore automatically (Pavel
+// 2026-07-20). Eligibility guards (pause in flight, 1x/365d cooldown) live
+// in the payments helper — this action adds auth + audit.
 
 export async function pauseMyTierSubscription(input: {
   months: number
   reasonCode?: TierCancelReasonCode
-}): Promise<Result<{ resumesAt: string }>> {
+}): Promise<Result<{ startsAt: string; resumesAt: string }>> {
   const user = await requireUser()
 
   if (
@@ -331,6 +357,7 @@ export async function pauseMyTierSubscription(input: {
         toValue: profile.subscriptionTier,
         payload: {
           months: input.months,
+          startsAt: res.startsAt.toISOString(),
           resumesAt: res.resumesAt.toISOString(),
           // Which cancel reason this save converted, for save-rate analytics.
           savedFromReasonCode: input.reasonCode ?? null,
@@ -345,7 +372,59 @@ export async function pauseMyTierSubscription(input: {
     }
 
     revalidatePath('/settings/plan')
-    return { ok: true, resumesAt: res.resumesAt.toISOString() }
+    return {
+      ok: true,
+      startsAt: res.startsAt.toISOString(),
+      resumesAt: res.resumesAt.toISOString(),
+    }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
+// =============================================================================
+// resumePausedTierSubscription — manual early resume of a pause
+// =============================================================================
+//
+// Works in both phases: before the paid period ends (just clears the
+// scheduled pause) and during the unpaid Maker window (restores the tier;
+// Stripe resumes billing on its own schedule).
+
+export async function resumePausedTierSubscription(): Promise<
+  Result<{ restoredTier: string | null }>
+> {
+  const user = await requireUser()
+
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  })
+  if (!profile) {
+    return { ok: false, error: 'Creator profile not found.' }
+  }
+
+  try {
+    const res = await unpauseTierSubscription({
+      creatorProfileId: profile.id,
+    })
+
+    try {
+      await logAuditAs(user, {
+        entityType: 'CreatorProfile',
+        entityId: profile.id,
+        action: 'SUBSCRIPTION_UNPAUSED',
+        toValue: res.restoredTier,
+      })
+    } catch (bookkeepingErr) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[plan] unpause bookkeeping failed',
+        (bookkeepingErr as Error).message,
+      )
+    }
+
+    revalidatePath('/settings/plan')
+    return { ok: true, restoredTier: res.restoredTier }
   } catch (err) {
     return { ok: false, error: (err as Error).message }
   }
