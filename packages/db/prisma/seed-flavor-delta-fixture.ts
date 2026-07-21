@@ -36,6 +36,21 @@ const PRESETS = [
   { name: 'Premium Cacao', priceDeltaCents: 75, swatchHex: '#5C3317', sortOrder: 1 },
 ]
 
+// Variants make the template LAUNCHABLE (launch requires a matching variant) and
+// exercise the flavor→variant threading fix: variant.flavor MATCHES the preset name,
+// so launching "Premium Cacao" now selects the Premium Cacao variant (not the first).
+// Single containerFormat ⇒ this stays a SINGLE_UNIT (non-pack) product.
+const VARIANTS = PRESETS.map((p) => ({
+  flavor: p.name,
+  containerFormat: '500g tub',
+  servingsPerContainer: 30,
+  servingSizeG: 16.7,
+  servingSizeDesc: '1 scoop (16.7g)',
+  moqMin: 50,
+  moqMax: 5000,
+  leadTimeDays: 28,
+}))
+
 export async function seedFlavorDeltaFixture(prisma: PrismaClient) {
   console.log('Seeding non-pack flavor-delta fixture (flavor-delta-demo)...')
 
@@ -121,10 +136,19 @@ export async function seedFlavorDeltaFixture(prisma: PrismaClient) {
     }
   }
 
+  // Variants — idempotent replace (mirrors seed-pricing-bridge). Launch requires a
+  // variant; matching variant.flavor to the preset name is what the threading fix
+  // now resolves. packagingTypeId is left unset (the standalone fixture doesn't run
+  // seedPackagingOfferingFixtures); launch tolerates that (#38, packaging optional).
+  await prisma.productTemplateVariant.deleteMany({ where: { productTemplateId: tpl.id } })
+  await prisma.productTemplateVariant.createMany({
+    data: VARIANTS.map((v) => ({ ...v, productTemplateId: tpl.id })),
+  })
+
   const premium = PRESETS.find((p) => p.priceDeltaCents > 0)!
   console.log(
-    `  ✓ ${FLAVOR_DELTA_SLUG} published: ${TIERS.length} tiers, ${PRESETS.length} presets ` +
-      `(premium "${premium.name}" +${premium.priceDeltaCents}c/unit).`,
+    `  ✓ ${FLAVOR_DELTA_SLUG} published: ${TIERS.length} tiers, ${PRESETS.length} presets, ` +
+      `${VARIANTS.length} variants (premium "${premium.name}" +${premium.priceDeltaCents}c/unit).`,
   )
 }
 

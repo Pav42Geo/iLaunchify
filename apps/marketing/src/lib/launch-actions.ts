@@ -154,12 +154,32 @@ async function resolveOrCreateProductForTemplate(
     })
   }
   if (!template) return { ok: false, reason: 'TEMPLATE_NOT_FOUND' }
+  // input.flavor from the PDP is a FlavorPreset.id (detail.flavors[i].id), but the
+  // variants match on a flavor NAME string (variant.flavor, e.g. "Chocolate"). Left
+  // as-is, `norm(preset-id) === norm("Chocolate")` never matches and the size/flavor
+  // pick silently fell back to the first variant. Resolve the preset ONCE: use its
+  // NAME to pick the right variant, and its ID to pin selectedFlavorPresetIds below.
+  // Robust to a legacy caller that already passes a NAME - the id lookup just misses
+  // and we fall back to treating input.flavor as the name (the prior behaviour).
+  let resolvedFlavorPresetId: string | null = null
+  let flavorNameForVariant: string | undefined = input.flavor
+  if (input.flavor) {
+    const preset = await prisma.flavorPreset.findFirst({
+      where: { id: input.flavor, productTemplateId: template.id, status: 'ACTIVE' },
+      select: { id: true, name: true },
+    })
+    if (preset) {
+      resolvedFlavorPresetId = preset.id
+      flavorNameForVariant = preset.name
+    }
+  }
+
   // Persist the creator's size / packaging / single-flavor picks by selecting the
   // matching active variant (containerFormat = size, flavor = single-flavor pick),
   // not just the first — previously these picks were dropped for authed users
   // (docs/CREATOR_PRODUCT_CONFIGURATION.md step 5). The chosen variantId carries
   // the container size + packagingType into the Product → checkout → configuration.
-  const variant = pickVariantForPicks(template.variants, input)
+  const variant = pickVariantForPicks(template.variants, { size: input.size, flavor: flavorNameForVariant })
   if (!variant) return { ok: false, reason: 'NO_VARIANT' }
 
   const market = await prisma.market.findUnique({ where: { code: 'US' } })
@@ -207,18 +227,13 @@ async function resolveOrCreateProductForTemplate(
   // (docs/SELECTION_THREADING_AUDIT.md). Empty when no pack was chosen → legacy full-pool behaviour.
   let selectedFlavorPresetIds = [...new Set((normalizeSeedPack(input.pack)?.slots ?? []).map((s) => s.flavorPresetId))]
 
-  // NON-PACK single flavor: the PDP passes the chosen FlavorPreset id as `input.flavor`
-  // (detail.flavors[i].id). Record it as the one-element subset so checkout can price
-  // its priceDeltaCents (matching the PDP) and name the flavor on the order. GUARDED:
-  // only when it resolves to an ACTIVE preset of THIS template; a stale/absent id (or a
-  // legacy caller passing a flavor NAME) leaves the base flavor, so this never breaks a
-  // launch. Skipped when a pack already supplied the subset.
-  if (selectedFlavorPresetIds.length === 0 && input.flavor) {
-    const preset = await prisma.flavorPreset.findFirst({
-      where: { id: input.flavor, productTemplateId: template.id, status: 'ACTIVE' },
-      select: { id: true },
-    })
-    if (preset) selectedFlavorPresetIds = [preset.id]
+  // NON-PACK single flavor: pin the resolved preset (from above) as the one-element
+  // subset so checkout can price its priceDeltaCents (matching the PDP) and name the
+  // flavor on the order. resolvedFlavorPresetId is already guarded to an ACTIVE preset
+  // of THIS template; a stale/absent/name-only input.flavor leaves it null and the base
+  // flavor stands, so this never breaks a launch. Skipped when a pack supplied the subset.
+  if (selectedFlavorPresetIds.length === 0 && resolvedFlavorPresetId) {
+    selectedFlavorPresetIds = [resolvedFlavorPresetId]
   }
 
   try {
