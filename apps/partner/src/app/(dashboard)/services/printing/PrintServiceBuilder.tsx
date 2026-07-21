@@ -80,6 +80,7 @@ export interface PrintBuilderInitial {
   facilities: { id: string; name: string }[]
   disclosureLevel: DisclosureKey
   acceptingWork: boolean
+  appliesLabels: boolean
   standardLeadDays: string
   rushLeadDays: string
   rushUpliftPct: string
@@ -147,6 +148,7 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
   const [facilityId, setFacilityId] = useState(initial.facilityId)
   const [disclosure, setDisclosure] = useState<DisclosureKey>(initial.disclosureLevel)
   const [accepting, setAccepting] = useState(initial.acceptingWork)
+  const [appliesLabels, setAppliesLabels] = useState(initial.appliesLabels)
   const [leadDays, setLeadDays] = useState(initial.standardLeadDays)
   const [rushLead, setRushLead] = useState(initial.rushLeadDays)
   const [rushUplift, setRushUplift] = useState(initial.rushUpliftPct)
@@ -255,6 +257,7 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
       facilityId: facilityId || null,
       disclosureLevel: disclosure,
       acceptingWork: accepting,
+      appliesLabels,
       packagingTypes: pkgTypes,
       decorationMethods: decoMethods,
       substrates: subs,
@@ -367,6 +370,14 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
                   <select className={selectCls} value={accepting ? 'open' : 'paused'} onChange={(e) => setAccepting(e.target.value === 'open')}>
                     <option value="open">Open to rotation</option>
                     <option value="paused">Paused</option>
+                  </select>
+                </F>
+              </div>
+              <div className="mt-3.5 max-w-xs">
+                <F label="We apply labels in-house" hint="No separate application leg after printing.">
+                  <select className={selectCls} value={appliesLabels ? 'yes' : 'no'} onChange={(e) => setAppliesLabels(e.target.value === 'yes')}>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
                   </select>
                 </F>
               </div>

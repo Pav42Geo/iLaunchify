@@ -68,6 +68,7 @@ export interface PrintBuilderPayload {
   facilityId: string | null
   disclosureLevel: DisclosureKey
   acceptingWork: boolean
+  appliesLabels: boolean
   // capability chips (hard filters) → caps JSON
   packagingTypes: string[]
   decorationMethods: string[]
@@ -158,6 +159,16 @@ export async function savePrintBuilder(serviceId: string, payload: PrintBuilderP
     acceptingWork: Boolean(payload.acceptingWork),
   }
   if (payload.serviceName?.trim()) capsPatch.serviceName = payload.serviceName.trim()
+  // Legacy DISPLAY keys the retired PrintEditor used to write (Front Face capability
+  // chips + admin). DERIVED from the richer PP-7 model so those views stay populated:
+  // processes from the declared presses, moqMin from the smallest press run, maxPrintArea
+  // from the print envelope. Routing does NOT read these (it uses offerings + substrates).
+  capsPatch.processes = [...new Set(presses.map((p) => p.process))]
+  const runFloors = presses.map((p) => posInt(p.minRunPieces)).filter((n): n is number => n !== null && n > 0)
+  if (runFloors.length > 0) capsPatch.moqMin = Math.min(...runFloors)
+  const maxW = posInt(payload.maxPrintWidthMm)
+  const maxH = posInt(payload.maxPrintHeightMm)
+  if (maxW !== null && maxH !== null) capsPatch.maxPrintArea = `${maxW} × ${maxH} mm`
 
   const priceValidUntil =
     payload.priceValidUntil && !Number.isNaN(Date.parse(payload.priceValidUntil))
@@ -173,6 +184,7 @@ export async function savePrintBuilder(serviceId: string, payload: PrintBuilderP
         data: {
           ...(payload.facilityId ? { facilityId: payload.facilityId } : {}),
           disclosureLevel: payload.disclosureLevel,
+          appliesLabels: Boolean(payload.appliesLabels),
           capabilities: nextCaps as Prisma.InputJsonValue,
         },
       })

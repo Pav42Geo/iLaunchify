@@ -11,13 +11,8 @@
 
 import { useState, useTransition } from 'react'
 import { cn } from '@ilaunchify/ui'
-import { Check, ExternalLink, Layers, Loader2, Printer, Truck, Warehouse } from 'lucide-react'
-import {
-  saveCapabilities,
-  saveStorageOffering,
-  setAppliesLabels,
-  type SaveResult,
-} from './actions'
+import { Check, Layers, Loader2, Truck, Warehouse } from 'lucide-react'
+import { saveStorageOffering, type SaveResult } from './actions'
 
 // ---------------------------------------------------------------------------
 // Option catalogs — value = the stored enum-ish string, label = display.
@@ -25,26 +20,8 @@ import {
 // ContainerCategory / StorageClass) — no new spellings invented.
 // ---------------------------------------------------------------------------
 
-// (MANUFACTURING domain/formulation option lists retired 2026-07-20 with the
-// ManufacturingEditor — they now live in the manufacturing service builder.)
-const PROCESS_OPTS = [
-  { v: 'DIGITAL', l: 'Digital' },
-  { v: 'FLEXO', l: 'Flexo' },
-  { v: 'OFFSET', l: 'Offset' },
-  { v: 'SCREEN', l: 'Screen' },
-]
-const COLOR_OPTS = [
-  { v: 'CMYK', l: 'CMYK' },
-  { v: 'PANTONE', l: 'Pantone' },
-  { v: 'WHITE_INK', l: 'White ink' },
-  { v: 'ICC_PROFILE', l: 'ICC profile' },
-]
-const FINISH_OPTS = [
-  { v: 'MATTE_LAMINATE', l: 'Matte laminate' },
-  { v: 'GLOSS_LAMINATE', l: 'Gloss laminate' },
-  { v: 'SPOT_UV', l: 'Spot UV' },
-  { v: 'FOIL_STAMP', l: 'Foil stamp' },
-]
+// (MANUFACTURING + PRINT option lists retired 2026-07-20 with the ManufacturingEditor
+// and PrintEditor — they now live in their respective service builders.)
 const STORAGE_CLASS_OPTS = [
   { v: 'AMBIENT', l: 'Ambient' },
   { v: 'PROTECT_HEAT', l: 'Protect from heat' },
@@ -58,13 +35,6 @@ const STORAGE_CLASS_OPTS = [
 
 const inputCls =
   'w-full rounded-md border border-ink-300 bg-white px-3 py-2 text-[13px] text-ink-900 transition-all focus:border-pink-500 focus:outline-none focus:ring-[3px] focus:ring-pink-500/15'
-
-/** Real strings from an unknown capabilities value — [] when absent. */
-const strArr = (caps: Record<string, unknown>, k: string): string[] =>
-  Array.isArray(caps[k]) ? (caps[k] as unknown[]).filter((x): x is string => typeof x === 'string') : []
-/** Real finite number or '' — the input renders EMPTY when unset. */
-const numOr = (caps: Record<string, unknown>, k: string): string =>
-  typeof caps[k] === 'number' && Number.isFinite(caps[k]) ? String(caps[k]) : ''
 
 /** '' → undefined (don't write); number string → number. */
 const parseNum = (s: string): number | undefined | null => {
@@ -235,134 +205,6 @@ function useSave() {
 // now the single surface for scope, formulation, samples, runs/capacity, batches and
 // commercial defaults. The Services page links to it (CTA-only, like co-packing).
 // ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// ③ PRINT PRODUCTION
-// ---------------------------------------------------------------------------
-
-export function PrintEditor({
-  serviceId,
-  capabilities,
-  appliesLabels,
-  substrateCount,
-  dielineCount,
-}: {
-  serviceId: string
-  capabilities: Record<string, unknown>
-  appliesLabels: boolean
-  substrateCount: number
-  dielineCount: number
-}) {
-  const caps = capabilities
-  const [processes, setProcesses] = useState(strArr(caps, 'processes'))
-  const [colors, setColors] = useState(strArr(caps, 'colorModes'))
-  const [finishes, setFinishes] = useState(strArr(caps, 'finishes'))
-  const [maxArea, setMaxArea] = useState(typeof caps.maxPrintArea === 'string' ? (caps.maxPrintArea as string) : '')
-  const [moqMin, setMoqMin] = useState(numOr(caps, 'moqMin'))
-  const [lead, setLead] = useState(numOr(caps, 'leadTimeDays'))
-  const [applies, setApplies] = useState(appliesLabels)
-  const s = useSave()
-  const touch = <T,>(set: (v: T) => void) => (v: T) => {
-    set(v)
-    s.setDirty(true)
-  }
-
-  const save = () =>
-    s.run(async () => {
-      const a = await saveCapabilities(serviceId, {
-        processes,
-        colorModes: colors,
-        finishes,
-        maxPrintArea: maxArea.trim() || null,
-        moqMin: parseNum(moqMin),
-        leadTimeDays: parseNum(lead),
-      })
-      if (!a.ok) return a
-      if (applies !== appliesLabels) return setAppliesLabels(serviceId, applies)
-      return a
-    })
-
-  return (
-    <div>
-      <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-info-100 bg-info-50 px-3.5 py-3 text-[12.5px] text-info-800">
-        <Printer className="mt-0.5 h-4 w-4 flex-none" />
-        <span>
-          You print for your <b>own production runs</b> (in-house cycle). Public print rotation is
-          only for pure Print Providers — your print service never rotates to other partners&rsquo;
-          jobs.
-        </span>
-      </div>
-
-      <FieldsetBox icon={<Layers />} title="Materials & die-lines" hint="PartnerServiceSubstrate · PackagingDieline">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <a
-            href="/packaging/offerings"
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
-          >
-            {substrateCount} substrate{substrateCount === 1 ? '' : 's'} · manage
-            <ExternalLink className="h-3 w-3" />
-          </a>
-          <a
-            href="/packaging/dielines"
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 bg-white px-3.5 py-1.5 text-[12px] font-semibold text-ink-900 hover:bg-ink-50"
-          >
-            {dielineCount} die-line{dielineCount === 1 ? '' : 's'} · manage
-            <ExternalLink className="h-3 w-3" />
-          </a>
-          <span className="text-[11.5px] text-ink-500">
-            Substrates &amp; die-lines live in Packaging — these counts are your real records.
-          </span>
-        </div>
-      </FieldsetBox>
-
-      <FieldsetBox icon={<Printer />} title="Print specs" hint="print-eligibility filter">
-        <FieldL label="Processes">
-          <ChipGroup opts={PROCESS_OPTS} value={processes} onChange={touch(setProcesses)} />
-        </FieldL>
-        <div className="mt-3">
-          <FieldL label="Color">
-            <ChipGroup opts={COLOR_OPTS} value={colors} onChange={touch(setColors)} />
-          </FieldL>
-        </div>
-        <div className="mt-3">
-          <FieldL label="Finishes">
-            <ChipGroup opts={FINISH_OPTS} value={finishes} onChange={touch(setFinishes)} />
-          </FieldL>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <FieldL label="Max print area">
-            <input
-              value={maxArea}
-              onChange={(e) => touch(setMaxArea)(e.target.value)}
-              placeholder={'e.g. 14 in × 20 in'}
-              className={inputCls}
-            />
-          </FieldL>
-          <FieldL label="Print MOQ">
-            <input value={moqMin} onChange={(e) => touch(setMoqMin)(e.target.value)} className={inputCls} />
-          </FieldL>
-          <FieldL label="Print lead (days)">
-            <input value={lead} onChange={(e) => touch(setLead)(e.target.value)} className={inputCls} />
-          </FieldL>
-        </div>
-        <div className="mt-3 flex items-center gap-3.5 border-t border-ink-100 pt-3">
-          <div>
-            <div className="text-[13px] font-semibold text-ink-900">We apply labels in-house</div>
-            <div className="text-[11.5px] text-ink-500">
-              appliesLabels — no separate application leg after printing
-            </div>
-          </div>
-          <div className="ml-auto">
-            <Toggle on={applies} onClick={() => touch(setApplies)(!applies)} />
-          </div>
-        </div>
-        <RouteTags tags={['Print-eligibility filter', 'Design Studio die-lines', 'Dispatch docs']} />
-      </FieldsetBox>
-
-      <SaveBar dirty={s.dirty} pending={s.pending} error={s.error} onSave={save} />
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // ④ STORAGE AT YOUR FACILITY — typed columns on a PRODUCING service.

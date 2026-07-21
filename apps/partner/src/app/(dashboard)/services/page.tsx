@@ -14,11 +14,10 @@ import Link from 'next/link'
 import { prisma, isNominationEnabled } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { cn } from '@ilaunchify/ui'
-import { ExternalLink, Factory, Package, Plus, Printer, Warehouse } from 'lucide-react'
+import { ExternalLink, Factory, Package, Plus, Printer, SlidersHorizontal, Warehouse } from 'lucide-react'
 import { StPill, type PillTone } from '@/components/panel-kit'
 import { addService, type AddableServiceType } from './actions'
 import {
-  PrintEditor,
   StorageEditor,
   type StorageTypedVM,
 } from './ServiceEditors'
@@ -82,6 +81,15 @@ const SECTION_LABEL: Record<SectionKey, string> = {
   overview: 'Overview',
 }
 
+// Services whose 'capabilities' now live in a dedicated builder page — the sub-rail
+// links out to it. Print's old PrintEditor was folded into the PP-7 builder (2026-07-20),
+// so it joins the set; the PP-7 writer keeps the legacy display caps keys populated.
+const BUILDER_HREF: Partial<Record<string, string>> = {
+  MANUFACTURING: '/services/manufacturing',
+  COPACKING: '/services/copacking',
+  LABEL_PRINTING: '/services/printing',
+}
+
 export default async function ServicesPage({
   searchParams,
 }: {
@@ -109,14 +117,6 @@ export default async function ServicesPage({
   const producingSvc =
     partner.services.find((s) => (s.type as string) === 'MANUFACTURING') ??
     partner.services.find((s) => (s.type as string) === 'COPACKING')
-
-  const printSvc = partner.services.find((s) => (s.type as string) === 'LABEL_PRINTING')
-  const [substrateCount, dielineCount] = printSvc
-    ? await Promise.all([
-        prisma.partnerServiceSubstrate.count({ where: { partnerServiceId: printSvc.id } }).catch(() => 0),
-        prisma.packagingDieline.count({ where: { partnerServiceId: printSvc.id } }).catch(() => 0),
-      ])
-    : [0, 0]
 
   const productDefaults = producingSvc ? await getPartnerProductDefaults(partner.id) : null
 
@@ -163,9 +163,15 @@ export default async function ServicesPage({
   }
 
   const sections = selected ? sectionsFor(selected) : []
-  const sec: SectionKey = sections.includes(sp.sec as SectionKey)
-    ? (sp.sec as SectionKey)
-    : (sections[0] ?? 'capabilities')
+  // 'capabilities' becomes the top link of the left sub-rail (to the dedicated builder)
+  // for services whose editor is folded (mfr, co-pack) + only when editable. Everyone
+  // else keeps it as an in-pane section (print's PrintEditor, or the read-only readout).
+  const builderHref = selected && canEdit ? (BUILDER_HREF[selected.type as string] ?? null) : null
+  const inPaneSections: SectionKey[] = builderHref ? sections.filter((k) => k !== 'capabilities') : sections
+  const sec: SectionKey =
+    sp.sec && sections.includes(sp.sec as SectionKey)
+      ? (sp.sec as SectionKey)
+      : (inPaneSections[0] ?? sections[0] ?? 'capabilities')
 
   const storageVM: StorageTypedVM | null = producingSvc
     ? {
@@ -204,9 +210,9 @@ export default async function ServicesPage({
           return (
             <Link
               key={s.id}
-              // Co-packing jumps straight into its full builder (lines / operations /
-              // run pricing). Every other service opens its sections in place.
-              href={type === 'COPACKING' ? '/services/copacking' : `/services?svc=${s.id}`}
+              // Every service lands on its hub, then the left sub-rail opens the builder
+              // (Capabilities) or a section in place.
+              href={`/services?svc=${s.id}`}
               className={cn(
                 'rounded-[14px] border-[1.5px] p-3.5 transition-colors',
                 on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-400',
@@ -259,32 +265,40 @@ export default async function ServicesPage({
       )}
 
       {selected && (
-        <>
-          {/* ② section pill-tabs (warning dot on unfinished) */}
-          {sections.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
-              {sections.map((k) => (
-                <Link
-                  key={k}
-                  href={`/services?svc=${selected.id}&sec=${k}`}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-[7px] text-[12.5px] font-semibold transition-colors',
-                    sec === k
-                      ? 'border-ink-900 bg-ink-900 text-white'
-                      : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400',
-                  )}
-                >
-                  {SECTION_LABEL[k]}
-                  {sectionWarns(selected, k) && (
-                    <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-warning-500" />
-                  )}
-                </Link>
-              ))}
-            </div>
-          )}
+        <div className="flex flex-col gap-4 md:flex-row md:items-start">
+          {/* ② left section sub-rail — Capabilities builder link + in-page sections */}
+          <nav className="flex flex-row flex-wrap gap-1.5 md:w-56 md:flex-none md:flex-col md:gap-1">
+            {builderHref && (
+              <a
+                href={builderHref}
+                className="flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-2.5 text-[13px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
+              >
+                <SlidersHorizontal className="h-4 w-4 flex-none" />
+                <span className="flex-1">Capabilities builder</span>
+                <ExternalLink className="h-3.5 w-3.5 flex-none opacity-70" />
+              </a>
+            )}
+            {inPaneSections.map((k) => (
+              <Link
+                key={k}
+                href={`/services?svc=${selected.id}&sec=${k}`}
+                className={cn(
+                  'flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-[13px] font-semibold transition-colors',
+                  sec === k
+                    ? 'border-ink-900 bg-ink-900 text-white'
+                    : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400',
+                )}
+              >
+                <span className="flex-1">{SECTION_LABEL[k]}</span>
+                {sectionWarns(selected, k) && (
+                  <span aria-hidden="true" className="h-1.5 w-1.5 flex-none rounded-full bg-warning-500" />
+                )}
+              </Link>
+            ))}
+          </nav>
 
-          {/* ③ ONE flat panel — the selected section, fully visible */}
-          <div className="rounded-2xl border border-ink-200 bg-white p-6">
+          {/* ③ right panel — the selected section, fully visible */}
+          <div className="min-w-0 flex-1 rounded-2xl border border-ink-200 bg-white p-6">
             <SectionPanel
               sec={sec}
               svc={selected}
@@ -293,11 +307,9 @@ export default async function ServicesPage({
               facilities={partner.facilities}
               productDefaults={productDefaults}
               vasRows={vasRows}
-              substrateCount={substrateCount}
-              dielineCount={dielineCount}
             />
           </div>
-        </>
+        </div>
       )}
     </div>
   )
@@ -324,8 +336,6 @@ async function SectionPanel({
   facilities,
   productDefaults,
   vasRows,
-  substrateCount,
-  dielineCount,
 }: {
   sec: SectionKey
   svc: {
@@ -351,11 +361,8 @@ async function SectionPanel({
     notes: string | null
     status: string
   }>
-  substrateCount: number
-  dielineCount: number
 }) {
   const type = svc.type
-  const caps = (svc.capabilities ?? {}) as Record<string, unknown>
 
   if (type === 'WAREHOUSE') {
     return (
@@ -455,25 +462,17 @@ async function SectionPanel({
               <ExternalLink className="h-3.5 w-3.5 flex-none" />
             </a>
           ) : (
-            <>
-              <a
-                href="/services/printing"
-                className="mb-4 flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
-              >
-                <Printer className="h-4 w-4 flex-none" />
-                <span className="flex-1">
-                  Open the full print builder: per-press price curves and a live crossover check.
-                </span>
-                <ExternalLink className="h-3.5 w-3.5 flex-none" />
-              </a>
-              <PrintEditor
-                serviceId={svc.id}
-                capabilities={caps}
-                appliesLabels={svc.appliesLabels}
-                substrateCount={substrateCount}
-                dielineCount={dielineCount}
-              />
-            </>
+            <a
+              href="/services/printing"
+              className="flex items-center gap-2.5 rounded-xl border border-pink-200 bg-pink-50 px-3.5 py-3 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-100"
+            >
+              <Printer className="h-4 w-4 flex-none" />
+              <span className="flex-1">
+                Open the full print builder: presses, capability, finishes, per-press price curves and a
+                live crossover check.
+              </span>
+              <ExternalLink className="h-3.5 w-3.5 flex-none" />
+            </a>
           )}
         </>
       )

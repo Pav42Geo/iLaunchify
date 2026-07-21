@@ -28,7 +28,7 @@ export default async function PrintBuilderPage() {
     select: {
       id: true,
       facilities: { select: { id: true, name: true }, orderBy: { isDefault: 'desc' } },
-      services: { where: { type: 'LABEL_PRINTING' }, select: { id: true, capabilities: true, facilityId: true, disclosureLevel: true }, take: 1 },
+      services: { where: { type: 'LABEL_PRINTING' }, select: { id: true, capabilities: true, facilityId: true, disclosureLevel: true, appliesLabels: true }, take: 1 },
     },
   })
   if (!partner) return null
@@ -96,6 +96,7 @@ export default async function PrintBuilderPage() {
     facilities: partner.facilities,
     disclosureLevel: svc.disclosureLevel as DisclosureKey,
     acceptingWork: typeof caps.acceptingWork === 'boolean' ? caps.acceptingWork : true,
+    appliesLabels: svc.appliesLabels,
     standardLeadDays: numStr(config?.standardLeadTimeDays),
     rushLeadDays: numStr(config?.rushLeadTimeDays),
     rushUpliftPct: config?.rushUpliftBps != null ? String(config.rushUpliftBps / 100) : '',
