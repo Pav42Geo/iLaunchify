@@ -12,7 +12,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
 import { requireUser, TIER_RANK, normalizeTier } from '@ilaunchify/auth'
-import { CREATOR_PLAN_CODES } from '@ilaunchify/plans'
+import { CREATOR_PLAN_CODES, resolveCreatorFeeBps } from '@ilaunchify/plans'
 import { Button } from '@ilaunchify/ui'
 import { Sparkles, Crown, Check, X, ArrowRight } from 'lucide-react'
 import { UpgradeButton } from '../settings/plan/PlanActionButtons'
@@ -24,12 +24,15 @@ export const metadata = { title: 'iLaunchify Plans — iLaunchify' }
 
 type TierKey = 'maker' | 'builder' | 'agency'
 
+// Fee percentages are NOT in this const: the '__FEE__' highlight token and the
+// per-card fee badge are substituted at render from FeeRule via
+// resolveCreatorFeeBps (Pavel 2026-07-21 — admin edits must propagate, never
+// hardcode a rate in copy).
 const TIERS: ReadonlyArray<{
   key: TierKey
   planCode: string
   name: string
   tagline: string
-  feePct: number
   recommended?: boolean
   highlights: { included: boolean; label: string }[]
 }> = [
@@ -38,9 +41,8 @@ const TIERS: ReadonlyArray<{
     planCode: CREATOR_PLAN_CODES.maker,
     name: 'Maker',
     tagline: 'Test ideas, pay only when you produce.',
-    feePct: 0.15,
     highlights: [
-      { included: true, label: '15% platform fee on production' },
+      { included: true, label: '__FEE__' },
       { included: true, label: 'Unlimited products & label drafts' },
       { included: true, label: 'Marketplace + partner matching' },
       { included: true, label: '1 brand kit' },
@@ -53,10 +55,9 @@ const TIERS: ReadonlyArray<{
     planCode: CREATOR_PLAN_CODES.builder,
     name: 'Builder',
     tagline: 'For creators running real production.',
-    feePct: 0.12,
     recommended: true,
     highlights: [
-      { included: true, label: '12% platform fee — save 3% per run' },
+      { included: true, label: '__FEE__' },
       { included: true, label: 'Print-ready Design Studio export' },
       { included: true, label: 'Priority human support' },
       { included: true, label: 'Up to 3 brand kits' },
@@ -69,9 +70,8 @@ const TIERS: ReadonlyArray<{
     planCode: CREATOR_PLAN_CODES.agency,
     name: 'Agency',
     tagline: 'Multi-brand teams & influencer agencies.',
-    feePct: 0.08,
     highlights: [
-      { included: true, label: '8% platform fee — our best rate' },
+      { included: true, label: '__FEE__' },
       { included: true, label: 'Unlimited brand kits & workspace' },
       { included: true, label: 'Custom domain storefronts' },
       { included: true, label: 'Dedicated launch partner' },
@@ -84,7 +84,9 @@ const COMPARISON: Array<{ section: string; rows: Array<{ label: string; cells: [
   {
     section: 'Production economics',
     rows: [
-      { label: 'Platform fee on production', cells: ['15%', '12%', '8%'] },
+      // Live rates substituted at render (buildComparison) from FeeRule —
+      // never hardcode fee percentages in copy (Pavel 2026-07-21).
+      { label: 'Administrative fee on production', cells: ['__FEE_MAKER__', '__FEE_BUILDER__', '__FEE_AGENCY__'] },
       { label: 'Volume pricing on runs', cells: [false, true, true] },
     ],
   },
@@ -127,7 +129,7 @@ const FAQ: Array<{ q: string; a: string }> = [
 export default async function PlansPage() {
   const user = await requireUser()
 
-  const [profile, plans] = await Promise.all([
+  const [profile, plans, makerFee, builderFee, agencyFee] = await Promise.all([
     prisma.creatorProfile.findUnique({
       where: { userId: user.id },
       select: { subscriptionTier: true },
@@ -136,15 +138,44 @@ export default async function PlansPage() {
       where: { code: { in: [CREATOR_PLAN_CODES.maker, CREATOR_PLAN_CODES.builder, CREATOR_PLAN_CODES.agency] } },
       select: { code: true, monthlyPriceCents: true },
     }),
+    // LIVE administrative-fee rates from FeeRule (SSOT, admin-editable).
+    resolveCreatorFeeBps('maker'),
+    resolveCreatorFeeBps('builder'),
+    resolveCreatorFeeBps('agency'),
   ])
 
   const priceByCode = new Map(plans.map((p) => [p.code, p.monthlyPriceCents]))
   const currentTier = normalizeTier(profile?.subscriptionTier) as TierKey
 
+  const feeBpsByTier: Record<TierKey, number> = {
+    maker: makerFee.feeBps,
+    builder: builderFee.feeBps,
+    agency: agencyFee.feeBps,
+  }
+  const pct = (bps: number) => {
+    const p = bps / 100
+    return Number.isInteger(p) ? String(p) : p.toFixed(1)
+  }
+  // Per-tier substitution for the '__FEE__' highlight token.
+  const feeHighlightByTier: Record<TierKey, string> = {
+    maker: `${pct(feeBpsByTier.maker)}% administrative fee on production`,
+    builder: `${pct(feeBpsByTier.builder)}% administrative fee instead of ${pct(feeBpsByTier.maker)}%`,
+    agency: `${pct(feeBpsByTier.agency)}% administrative fee, our best rate`,
+  }
+  // COMPARISON cell tokens → live rates.
+  const substituteFeeCell = (cell: React.ReactNode): React.ReactNode =>
+    cell === '__FEE_MAKER__'
+      ? `${pct(feeBpsByTier.maker)}%`
+      : cell === '__FEE_BUILDER__'
+        ? `${pct(feeBpsByTier.builder)}%`
+        : cell === '__FEE_AGENCY__'
+          ? `${pct(feeBpsByTier.agency)}%`
+          : cell
+
   const calcTiers: CalcTier[] = TIERS.map((t) => ({
     key: t.key,
     name: t.name,
-    feePct: t.feePct,
+    feePct: feeBpsByTier[t.key] / 10_000,
     monthlyCents: priceByCode.get(t.planCode) ?? 0,
   }))
 
@@ -179,7 +210,7 @@ export default async function PlansPage() {
             <span className="font-serif text-pink-500 italic font-medium tracking-[-0.02em]">pay for themselves.</span>
           </h1>
           <p className="mx-auto mt-3 max-w-[74ch] text-[15px] leading-relaxed text-ink-700 sm:text-base">
-            Every plan unlocks a lower platform fee on production. The more you make, the more you save —
+            Every plan unlocks lower prices on production. The more you make, the more you save —
             most creators find a paid plan costs less than it saves.
           </p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-pill border border-ink-200 bg-white/80 px-3.5 py-1.5 text-[12px] font-medium text-ink-600 backdrop-blur-sm">
@@ -229,7 +260,7 @@ export default async function PlansPage() {
                 <span className="text-[14px] font-medium text-ink-500">{price > 0 ? '/ month' : 'forever'}</span>
               </div>
               <div className="mb-6 text-[12px] font-semibold text-pink-700">
-                {Math.round(t.feePct * 100)}% production fee
+                {pct(feeBpsByTier[t.key])}% administrative fee
               </div>
 
               {/* CTA */}
@@ -257,7 +288,9 @@ export default async function PlansPage() {
                     ) : (
                       <X strokeWidth={2.5} className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-300" />
                     )}
-                    <span className={f.included ? 'text-ink-900' : 'text-ink-400 line-through'}>{f.label}</span>
+                    <span className={f.included ? 'text-ink-900' : 'text-ink-400 line-through'}>
+                      {f.label === '__FEE__' ? feeHighlightByTier[t.key] : f.label}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -291,9 +324,9 @@ export default async function PlansPage() {
                     {sec.rows.map((row) => (
                       <tr key={row.label} className="border-b border-ink-100 last:border-0">
                         <td className="px-6 py-3 font-medium text-ink-900">{row.label}</td>
-                        <CompareCell>{row.cells[0]}</CompareCell>
-                        <CompareCell highlight>{row.cells[1]}</CompareCell>
-                        <CompareCell>{row.cells[2]}</CompareCell>
+                        <CompareCell>{substituteFeeCell(row.cells[0])}</CompareCell>
+                        <CompareCell highlight>{substituteFeeCell(row.cells[1])}</CompareCell>
+                        <CompareCell>{substituteFeeCell(row.cells[2])}</CompareCell>
                       </tr>
                     ))}
                   </React.Fragment>

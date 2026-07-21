@@ -36,6 +36,12 @@ export type {
 export { computeOrderPricing, pricingDelta } from './order-pricing'
 export type { PricedOrder, PriceLine, PricingInput } from './order-pricing'
 
+// Option C all-in DISPLAY composer (docs/PLATFORM_FEE_PRESENTATION_BRIEF
+// 2026-07-21): folds the administrative fee into the goods lines for decision
+// surfaces. Presentation only — the pricer and fee snapshot are untouched.
+export { composeAllInLines } from './all-in-display'
+export type { AllInLine, AllInDisplay } from './all-in-display'
+
 // The declared goods basis + the single composer that makes "each add-on exactly
 // once" structural.
 export { resolveGoods, composeProductionLines, costFloorBreach } from './goods-basis'

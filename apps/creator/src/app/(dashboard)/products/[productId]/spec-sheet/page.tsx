@@ -143,7 +143,7 @@ function SpecSheetView({
           <Line label="Production subtotal" value={formatCents(q.subtotalCents)} />
           {q.platformFeeCents != null && (
             <Line
-              label={`Platform fee${q.platformFeePercent != null ? ` (${q.platformFeePercent}%)` : ''}`}
+              label={`Administrative fee${q.platformFeePercent != null ? ` (${q.platformFeePercent}%)` : ''}`}
               value={formatCents(q.platformFeeCents)}
             />
           )}

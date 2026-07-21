@@ -304,7 +304,7 @@ export function ConfiguratorClient({ data }: { data: ConfiguratorData }) {
             )}
             <Qline label="Production subtotal" value={formatCents(quote.subtotalCents)} />
             <Qline
-              label={`Platform fee · ${data.creatorTier} · ${data.platformFeePercent}%`}
+              label={`Administrative fee · ${data.creatorTier} · ${data.platformFeePercent}%`}
               value={formatCents(platformFeeCents)}
             />
             <div className="mt-1 flex items-center justify-between border-t border-ink-100 pt-2 text-[14px] font-semibold text-ink-900">

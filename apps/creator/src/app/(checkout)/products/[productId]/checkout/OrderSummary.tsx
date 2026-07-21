@@ -18,6 +18,7 @@
 // + carrier rates) and G5 (tax computation at My cart).
 
 import { formatCents } from '@ilaunchify/ui'
+import { composeAllInLines } from '@ilaunchify/plans/math'
 import type { CheckoutDraftState, WizardStepIndex } from './types'
 import type { CostBreakdown } from './production-actions'
 import type { ShippingHop } from './shipping-hops'
@@ -141,12 +142,23 @@ export function OrderSummary({
             sum(productionLines) === subtotalCents by construction. Same move as
             everything else in this cleanup - one source, projected, never
             re-derived. */}
+        {/* OPTION C — ALL-IN PRESENTATION (docs/PLATFORM_FEE_PRESENTATION_BRIEF
+            2026-07-21, Pavel). The administrative fee is FOLDED INTO the goods
+            lines via composeAllInLines (largest-remainder split, sums to
+            subtotal + fee by construction — same "one source, projected"
+            doctrine as the lines themselves). No fee line on the decision
+            surface; the honest partner-subtotal + fee breakdown is one click
+            away below, and itemized on the order detail + spec sheet.
+            DISPLAY ONLY: the pricer, snapshot and charge are unchanged. */}
         {hasEstimate ? (
-          estimate.productionLines.map((line, i) => (
+          composeAllInLines(
+            estimate.productionLines,
+            estimate.platformFeeCents,
+          ).lines.map((line, i) => (
             <Row
               key={`${line.kind}-${i}`}
               label={line.kind === 'PRODUCT' && qty ? `${line.label} × ${qty}` : line.label}
-              value={formatCents(line.cents)}
+              value={formatCents(line.allInCents)}
             />
           ))
         ) : (
@@ -166,11 +178,35 @@ export function OrderSummary({
             map above renders them. Keeping these would have double-counted them on
             screen (never in the charge, but a summary that adds up wrong is how
             nobody notices when it adds up wrong for a real reason). */}
-        <Row
-          label="Platform fee"
-          value={hasEstimate ? formatCents(estimate.platformFeeCents) : '$—.——'}
-          dimmed={!hasEstimate}
-        />
+        {hasEstimate && estimate.platformFeeCents > 0 && (
+          <details className="-mt-1 pl-0.5">
+            <summary className="cursor-pointer select-none text-[11.5px] text-ink-500 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500">
+              Prices include our service. See detail
+            </summary>
+            <ul className="mt-1 space-y-0.5">
+              <li className="flex items-baseline justify-between gap-2 text-[11.5px] text-ink-500">
+                <span>Production subtotal</span>
+                <span className="tabular-nums">
+                  {formatCents(estimate.subtotalCents)}
+                </span>
+              </li>
+              <li className="flex items-baseline justify-between gap-2 text-[11.5px] text-ink-500">
+                <span>
+                  Administrative fee
+                  {estimate.subtotalCents > 0
+                    ? ` (${(
+                        (estimate.platformFeeCents / estimate.subtotalCents) *
+                        100
+                      ).toFixed(1).replace(/\.0$/, '')}%)`
+                    : ''}
+                </span>
+                <span className="tabular-nums">
+                  {formatCents(estimate.platformFeeCents)}
+                </span>
+              </li>
+            </ul>
+          </details>
+        )}
         {subAccepted && subscriptionPerRunSavingsCents > 0 && (
           <Row
             label={`Future runs save ${(subscriptionDiscountBp / 100).toFixed(0)}% (from run 2)`}

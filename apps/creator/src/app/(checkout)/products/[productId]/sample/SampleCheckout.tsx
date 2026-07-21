@@ -11,7 +11,7 @@ import { Beaker, Package, Lock, Minus, Plus, Check } from 'lucide-react'
 import { Checkbox } from '@ilaunchify/ui'
 // PP-0d: client-safe money subpath. NOT '@ilaunchify/plans' (that barrel
 // re-exports the server-only lookups module, which imports prisma).
-import { creatorFeeCents, type FeeRuleBounds } from '@ilaunchify/plans/math'
+import { creatorFeeCents, composeAllInLines, type FeeRuleBounds } from '@ilaunchify/plans/math'
 import { quoteSample, hasSamplerSet, formatCents, type SampleOption, type SampleMode } from '@/lib/sample-quote'
 import { createSampleOrder } from '../checkout/sample-actions'
 
@@ -222,12 +222,39 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
         <div className="rounded-2xl border border-ink-200 bg-white p-5">
           <h3 className="mb-3 text-[12px] font-bold uppercase tracking-widest text-ink-700">Order summary</h3>
           <dl className="space-y-2 text-sm">
-            {quote.lines.map((l, i) => (
-              <Row key={i} label={`${l.label}${l.qty > 1 ? ` × ${l.qty}` : ''}`} value={formatCents(l.totalCents)} />
+            {/* Option C all-in presentation (PLATFORM_FEE_PRESENTATION_BRIEF
+                2026-07-21): the administrative fee folds into the sample lines
+                (a sample is not a different KIND of order, just a small one);
+                breakdown one click away. Display only — charge unchanged. */}
+            {composeAllInLines(
+              quote.lines.map((l) => ({
+                kind: 'SAMPLE',
+                label: `${l.label}${l.qty > 1 ? ` × ${l.qty}` : ''}`,
+                cents: l.totalCents,
+              })),
+              sampleFeeCents,
+            ).lines.map((l, i) => (
+              <Row key={i} label={l.label} value={formatCents(l.allInCents)} />
             ))}
             {quote.unitCount === 0 && <Row label="Sample" value="$—.——" dimmed />}
             <Row label="Sample shipping" value={formatCents(sampleShippingCents)} />
-            {sampleFeeCents > 0 && <Row label="Platform fee" value={formatCents(sampleFeeCents)} />}
+            {sampleFeeCents > 0 && (
+              <details className="-mt-1 pl-0.5">
+                <summary className="cursor-pointer select-none text-[11.5px] text-ink-500 hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500">
+                  Prices include our service. See detail
+                </summary>
+                <ul className="mt-1 space-y-0.5">
+                  <li className="flex items-baseline justify-between gap-2 text-[11.5px] text-ink-500">
+                    <span>Sample subtotal</span>
+                    <span className="tabular-nums">{formatCents(quote.subtotalCents)}</span>
+                  </li>
+                  <li className="flex items-baseline justify-between gap-2 text-[11.5px] text-ink-500">
+                    <span>Administrative fee</span>
+                    <span className="tabular-nums">{formatCents(sampleFeeCents)}</span>
+                  </li>
+                </ul>
+              </details>
+            )}
             <div className="my-1 border-t border-ink-100" />
             <Row label="Total" value={formatCents(totalCents)} bold />
           </dl>

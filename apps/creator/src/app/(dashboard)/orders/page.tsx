@@ -583,7 +583,7 @@ function TotalColumn({ order: o }: { order: OrderRow }) {
           <Row label="Subtotal" amount={subtotal} />
           <Row label="Shipping" amount={shipping} />
           <Row label="Tax" amount={tax} />
-          {platformFee > 0.005 && <Row label="Platform fee" amount={platformFee} />}
+          {platformFee > 0.005 && <Row label="Administrative fee" amount={platformFee} />}
           <div className="my-1.5 h-px bg-ink-300" />
           <div className="flex items-baseline justify-between gap-3 py-[2px]">
             <dt className="font-semibold text-ink-900">Total</dt>
