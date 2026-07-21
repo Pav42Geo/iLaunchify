@@ -44,6 +44,8 @@ pnpm check:colors       # bans off-palette families + brand-hex classes
 pnpm check:invariants   # architectural invariants (errors block, warns report)
 ```
 
+`pnpm lint` is the enforced local gate: it runs eslint AND `check:invariants --strict` (baseline burned to 0 on 2026-07-20, so ANY new warning fails), matching CI. So a clean `pnpm lint` locally means the invariant guard will pass CI too. Reviewed exceptions live in the `AUDIT_ALLOWLIST` / `FSM_ALLOWLIST` inside `scripts/check-invariants.mjs`; the husky pre-commit stays non-strict on purpose (WIP commits aren't blocked by a transient warning).
+
 ## Source-of-truth map
 
 | Layer | File |
