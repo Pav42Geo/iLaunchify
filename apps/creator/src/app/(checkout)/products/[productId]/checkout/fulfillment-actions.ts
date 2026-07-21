@@ -933,10 +933,13 @@ async function addLabelHop(
     if (goodsLeg.shippingCents > 0) {
       hops.push({
         kind: 'FINISHED_GOODS',
+        // "Freight", not "Finished goods" — Pavel misread the latter as the
+        // FINISHES price moving when the destination changed (2026-07-21).
+        // This leg is the destination-dependent carrier quote for the run.
         label:
           input.shipToType === 'HOLD_AT_MANUFACTURER'
-            ? 'Finished goods: held at manufacturer'
-            : 'Finished goods: producer → your destination',
+            ? 'Freight: held at manufacturer'
+            : 'Freight: producer → your destination',
         cents: goodsLeg.shippingCents,
       })
     }
