@@ -17,6 +17,7 @@ import { scopeManifestForDispatchType } from './partner-packet'
 import { pickBestMatch, rankPartnerMatches, type MatchCandidate, type MatchWeights } from './scoring'
 import { deriveItemDispatch, estimateDispatchCosts, type DispatchRow } from './dispatch-planner'
 import { moqDivergence } from './product-moq'
+import { logPrintPayoutShadow } from './print-payout-shadow'
 import { isCopackRealPriceEnabled, resolveOrderCoPackerServiceId } from './copack-order-pricing'
 import { loadCopackQuoteCents } from './copack-quote-loader'
 import { priceComponents, COMPONENT_PRICING_SELECT, type ComponentRow } from '@ilaunchify/plans'
@@ -899,6 +900,22 @@ export async function createDispatches(params: {
     plannedHops.push(...shipment.hops)
 
     dispatchRows.push(...plan.rows)
+
+    // Print-payout SHADOW (PP-1 groundwork, flag OFF by default): for each print leg,
+    // log what the printer's OWN authored bands would pay this qty vs the current payout
+    // (self-gated + no-op unless the leg's service has authored bands). Changes NO payout.
+    for (const row of plan.rows) {
+      if (row.type === 'LABEL') {
+        await logPrintPayoutShadow({
+          printServiceId: row.partnerServiceId,
+          qtyUnits: item.quantity,
+          currentPayoutCents: row.costCents,
+          orderId: order.id,
+          orderItemId: item.id,
+        })
+      }
+    }
+
     if (!primaryManufacturerId) {
       primaryManufacturerId = routing.manufacturingServiceId
       primaryPrintId = plan.primaryPrintServiceId

@@ -641,3 +641,5 @@ export type { ProductMoqInput, ProductMoq, ProductMoqBasis } from './product-moq
 // MB overrun-into-price shadow (pure; reuses billedUnits, changes no bill).
 export { assessOverrunShadow } from './overrun-shadow'
 export type { OverrunShadowInput, OverrunShadow } from './overrun-shadow'
+// Print-payout shadow (PP-1 groundwork; flag-gated, changes no payout).
+export { isPrintPayoutShadowEnabled, loadPrintServiceSegments, logPrintPayoutShadow } from './print-payout-shadow'
