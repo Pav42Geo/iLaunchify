@@ -629,10 +629,28 @@ export async function estimateProductionCost(
   const bandUnits = qty * Math.max(1, input.pack?.unitsPerPack ?? 1)
   const tierGoods = await resolveTierGoodsCents(product?.productTemplateId ?? null, bandUnits)
 
+  // NON-PACK single flavor: fold the selected FlavorPreset's delta into goods, the
+  // SAME arithmetic the PDP and cart-actions use (bandUnit + flavorDeltaCents) × qty.
+  // Threaded here with the charge on purpose - the estimate and the charge diverging
+  // on the flavor delta would be the quote-vs-charge gap wearing a different hat.
+  // Guarded to a single pinned flavor; pack orders skip it (per-flavor price is in
+  // PACK_PRICE) and unresolved selections fall back to 0.
+  let flavorDeltaTotalCents = 0
+  if (!isPackOrder) {
+    const selIds = await selectedFlavorIdsFor(input.productId)
+    if (selIds.length === 1) {
+      const preset = await prisma.flavorPreset.findFirst({
+        where: { id: selIds[0]!, status: 'ACTIVE' },
+        select: { priceDeltaCents: true },
+      })
+      flavorDeltaTotalCents = Math.round((preset?.priceDeltaCents ?? 0) * qty)
+    }
+  }
+
   // Refuse on the SAME condition the charge refuses on. If the estimate invented a
   // number here, the creator would configure a whole order against a price that
   // placeOrder then rejects: the quote-vs-charge gap, wearing an error message.
-  const goods = resolveGoods({ isPackOrder, packPricedSubtotalCents, tierGoodsCents: tierGoods })
+  const goods = resolveGoods({ isPackOrder, packPricedSubtotalCents, tierGoodsCents: tierGoods, flavorDeltaTotalCents })
   if (!goods) {
     return {
       ok: false,

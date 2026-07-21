@@ -180,5 +180,43 @@ for (const isPack of [true, false]) {
   assert(priced.platformFeeCents - pricedWithout.platformFeeCents === 1_80, 'and the tier fee applies (15% of 12.00)')
 }
 
+// ── non-pack flavor delta: folded into TIER_PRICE goods, ignored on packs ─────
+// The PDP shows `unitGoodsCents = bandUnit + flavorDeltaCents` for a non-pack
+// premium flavor; the charge must match. A pack order's per-flavor price already
+// lives in PACK_PRICE, so the delta must NOT touch it (double-count guard).
+{
+  const DELTA = 3_00 // whole-order delta (perUnitDelta x qty)
+
+  const base = resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0, tierGoodsCents: GOODS_BUILDUP })!
+  const withDelta = resolveGoods({
+    isPackOrder: false,
+    packPricedSubtotalCents: 0,
+    tierGoodsCents: GOODS_BUILDUP,
+    flavorDeltaTotalCents: DELTA,
+  })!
+  assert(withDelta.goodsCents - base.goodsCents === DELTA, 'non-pack: flavor delta raises goods by exactly the delta')
+  assert(withDelta.basis === 'TIER_PRICE', 'the flavor delta does not change the declared basis')
+
+  // Inert by default: omitting the field is byte-identical to before.
+  assert(
+    resolveGoods({ isPackOrder: false, packPricedSubtotalCents: 0, tierGoodsCents: GOODS_BUILDUP })!.goodsCents ===
+      GOODS_BUILDUP,
+    'no flavorDeltaTotalCents ⇒ goods unchanged (existing callers identical)',
+  )
+
+  // Pack orders ignore it entirely (their per-flavor price is inside PACK_PRICE).
+  const pack = resolveGoods({ isPackOrder: true, packPricedSubtotalCents: GOODS_PACK, flavorDeltaTotalCents: DELTA })!
+  assert(pack.goodsCents === GOODS_PACK, 'pack order ignores flavorDeltaTotalCents (no double-count)')
+
+  // A discount flavor can never push goods below zero (matches the PDP clamp).
+  const clamped = resolveGoods({
+    isPackOrder: false,
+    packPricedSubtotalCents: 0,
+    tierGoodsCents: 1_00,
+    flavorDeltaTotalCents: -5_00,
+  })!
+  assert(clamped.goodsCents === 0, 'a negative flavor delta clamps goods at 0, never negative')
+}
+
 // eslint-disable-next-line no-console
 console.log('goods-basis: all pins passed')

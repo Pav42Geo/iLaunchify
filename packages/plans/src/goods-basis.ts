@@ -64,6 +64,17 @@ export interface GoodsBasisInput {
    * a pack price) means there is no price at all and resolveGoods returns null.
    */
   tierGoodsCents?: number | null
+  /**
+   * NON-PACK ONLY: the selected FlavorPreset's `priceDeltaCents` extended over the
+   * order (perUnitDeltaCents x qty). Folded into the TIER_PRICE goods so the charge
+   * equals the PDP, which shows `unitGoodsCents = bandUnit + flavorDeltaCents` and
+   * bills `unitGoodsCents x qty`. The manufacturer authors the delta on the preset,
+   * the creator pays it, so per the fee-base rule it belongs in the goods line, not
+   * a separate add-on. IGNORED on pack orders: a pack's per-flavor price is already
+   * inside PACK_PRICE (FlavorPreset.unitPriceCents), so applying it here too would
+   * double-count. Default 0 ⇒ inert (existing callers are byte-identical).
+   */
+  flavorDeltaTotalCents?: number
 }
 
 /**
@@ -97,7 +108,12 @@ export function resolveGoods(input: GoodsBasisInput): ResolvedGoods | null {
     return { goodsCents: Math.max(0, Math.round(input.packPricedSubtotalCents)), basis: 'PACK_PRICE' }
   }
   if (input.tierGoodsCents != null) {
-    return { goodsCents: Math.max(0, Math.round(input.tierGoodsCents)), basis: 'TIER_PRICE' }
+    // Fold the non-pack flavor delta into goods, mirroring the PDP's
+    // `Math.max(0, bandUnit + flavorDeltaCents) x qty`. Summing the extended band
+    // and the extended delta is the same arithmetic ((bandUnit + delta) x qty),
+    // clamped once at the bottom so a discount flavor can never drive goods below 0.
+    const deltaTotal = Math.round(input.flavorDeltaTotalCents ?? 0)
+    return { goodsCents: Math.max(0, Math.round(input.tierGoodsCents) + deltaTotal), basis: 'TIER_PRICE' }
   }
   return null
 }

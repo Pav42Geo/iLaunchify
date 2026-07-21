@@ -205,7 +205,21 @@ async function resolveOrCreateProductForTemplate(
   // The creator's chosen flavor subset (of the template's full pool) from the PDP pack.
   // Persisted on the Product so the Design Studio + checkout scope to the creator's choice
   // (docs/SELECTION_THREADING_AUDIT.md). Empty when no pack was chosen → legacy full-pool behaviour.
-  const selectedFlavorPresetIds = [...new Set((normalizeSeedPack(input.pack)?.slots ?? []).map((s) => s.flavorPresetId))]
+  let selectedFlavorPresetIds = [...new Set((normalizeSeedPack(input.pack)?.slots ?? []).map((s) => s.flavorPresetId))]
+
+  // NON-PACK single flavor: the PDP passes the chosen FlavorPreset id as `input.flavor`
+  // (detail.flavors[i].id). Record it as the one-element subset so checkout can price
+  // its priceDeltaCents (matching the PDP) and name the flavor on the order. GUARDED:
+  // only when it resolves to an ACTIVE preset of THIS template; a stale/absent id (or a
+  // legacy caller passing a flavor NAME) leaves the base flavor, so this never breaks a
+  // launch. Skipped when a pack already supplied the subset.
+  if (selectedFlavorPresetIds.length === 0 && input.flavor) {
+    const preset = await prisma.flavorPreset.findFirst({
+      where: { id: input.flavor, productTemplateId: template.id, status: 'ACTIVE' },
+      select: { id: true },
+    })
+    if (preset) selectedFlavorPresetIds = [preset.id]
+  }
 
   try {
     const product = await prisma.product.create({

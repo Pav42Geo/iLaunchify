@@ -318,6 +318,11 @@ export async function placeOrderFromCheckoutDraft(
   // Per-flavor list price (cents) for the configuration snapshot / channel variants
   // (pack path only; legacy leaves it empty → null price downstream).
   const flavorPriceByPreset = new Map<string, number | null>()
+  // NON-PACK single flavor: the whole-order price delta (perUnitDelta × qty) the
+  // selected FlavorPreset carries. Folded into goods below via resolveGoods so the
+  // charge equals the PDP (which shows bandUnit + flavorDeltaCents). Stays 0 for
+  // pack orders and whenever the selection can't be resolved (degrades to base).
+  let nonPackFlavorDeltaTotalCents = 0
 
   const packRules = product.productTemplateId
     ? await prisma.productTemplate.findUnique({
@@ -394,6 +399,38 @@ export async function placeOrderFromCheckoutDraft(
       soiSnapshot: byId.get(p.flavorPresetId)?.statementOfIdentity ?? null,
       designVersionId: dvByFlavor.get(p.flavorPresetId) ?? null,
     }))
+  } else {
+    // ── NON-PACK single flavor ────────────────────────────────────────────────
+    // The creator picked ONE flavor on the PDP; it lives on
+    // Product.selectedFlavorPresetIds (launch records it). Record it as one
+    // OrderItemFlavor (so the order + manifest name the flavor + its SoI) and let
+    // its priceDeltaCents flow into goods, matching the PDP's bandUnit +
+    // flavorDeltaCents. GUARDED: only when EXACTLY ONE active preset resolves;
+    // otherwise we do nothing and the order degrades to today's behaviour (base
+    // flavor, no delta, no OrderItemFlavor). "Exactly one" mirrors the PDP, which
+    // shows a single flavorId for a non-pack product.
+    const selectedIds = product.selectedFlavorPresetIds ?? []
+    if (selectedIds.length === 1) {
+      const preset = await prisma.flavorPreset.findFirst({
+        where: { id: selectedIds[0]!, status: 'ACTIVE' },
+        select: { id: true, name: true, statementOfIdentity: true, priceDeltaCents: true },
+      })
+      if (preset) {
+        const dvByFlavor = await resolveFlavorDesignVersions(product.id, [preset.id])
+        flavorRows = [
+          {
+            flavorPresetId: preset.id,
+            qty,
+            flavorName: preset.name,
+            soiSnapshot: preset.statementOfIdentity ?? null,
+            designVersionId: dvByFlavor.get(preset.id) ?? null,
+          },
+        ]
+        // Same arithmetic the PDP does: perUnit delta × the order quantity. Clamped
+        // to non-negative goods inside resolveGoods (a discount flavor can't go < 0).
+        nonPackFlavorDeltaTotalCents = Math.round((preset.priceDeltaCents ?? 0) * qty)
+      }
+    }
   }
 
   // --- 3. Resolve ship-to + warehouse-partner ID -----------------------------
@@ -714,6 +751,10 @@ export async function placeOrderFromCheckoutDraft(
     packPricedSubtotalCents,
     // The band the PDP showed. Same picker, same order, same number.
     tierGoodsCents: tierGoods,
+    // Non-pack only: the selected flavor's delta, folded into goods exactly as the
+    // PDP folds it into unitGoodsCents. 0 for pack orders (resolveGoods ignores it
+    // on the PACK_PRICE arm) and whenever no single flavor resolved above.
+    flavorDeltaTotalCents: nonPackFlavorDeltaTotalCents,
   })
   // NO PARTNER PRICE, NO SALE (Pavel's rule, 2026-07-16). This used to fall back to
   // `(labelUnitCents + packagingUnitCents) * qty`: the 8c literal on line 620 plus
