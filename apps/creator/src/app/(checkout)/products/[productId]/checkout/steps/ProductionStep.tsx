@@ -246,9 +246,13 @@ export function ProductionStep({
    * material/spec detail now, not money: summing them produces a number that
    * belongs to no basis at all.
    */
+  // Option C (PLATFORM_FEE_PRESENTATION_BRIEF 2026-07-21): the per-unit price
+  // is ALL-IN — derived from the fee-inclusive total the creator will actually
+  // pay, at their tier, never the bare partner subtotal. "$3.02 / unit +
+  // platform fee" made the unit price a number nobody would ever be charged.
   const perUnitCents =
     estimate && estimate.quantity > 0
-      ? Math.round(estimate.subtotalCents / estimate.quantity)
+      ? Math.round(estimate.totalBeforeShippingAndTaxCents / estimate.quantity)
       : 0
   const lineTotalCents = estimate?.totalBeforeShippingAndTaxCents ?? 0
 
@@ -498,7 +502,7 @@ export function ProductionStep({
               </p>
               {qty > 0 && estimate && perUnitCents > 0 && (
                 <p className="text-[11px] text-ink-500">
-                  {formatCents(perUnitCents)} / unit + platform fee
+                  {formatCents(perUnitCents)} / unit, all in before ship + tax
                 </p>
               )}
               {/* WHY THE PRICE IS MISSING. Without this the creator gets a bare
