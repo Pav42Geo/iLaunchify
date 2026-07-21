@@ -13,6 +13,7 @@
 // card states automatically.
 
 import { useState, useTransition } from 'react'
+import { X, PauseCircle } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -175,25 +176,29 @@ export function CancelButton({
       </button>
 
       <Dialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Cancel your {tierName} plan?</DialogTitle>
-            <DialogDescription>
+            <p className="text-[10.5px] font-semibold uppercase tracking-widest text-pink-600">
+              Manage subscription
+            </p>
+            <DialogTitle className="font-display text-2xl font-bold tracking-tight text-ink-900">
+              Cancel your {tierName} plan?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-ink-600">
               {periodEndLabel ? (
                 <>
-                  You&rsquo;ll keep every {tierName} benefit until{' '}
+                  Every {tierName} benefit stays until{' '}
                   <span className="font-semibold text-ink-900">
                     {periodEndLabel}
-                  </span>
-                  , then move to the free Maker plan. No further charges. You
-                  can resume any time before then.
+                  </span>{' '}
+                  (already paid), then you move to the free Maker plan. No
+                  further charges, resume any time before then.
                 </>
               ) : (
                 <>
-                  You&rsquo;ll keep every {tierName} benefit until the end of
-                  your current billing period, then move to the free Maker
-                  plan. No further charges. You can resume any time before
-                  then.
+                  Every {tierName} benefit stays until the end of your paid
+                  period, then you move to the free Maker plan. No further
+                  charges, resume any time before then.
                 </>
               )}
             </DialogDescription>
@@ -201,16 +206,25 @@ export function CancelButton({
 
           <div className="space-y-4">
             {loseFeatures.length > 0 && (
-              <div className="rounded-xl border border-ink-200 bg-ink-50 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-600">
-                  What you&rsquo;ll lose on Maker
-                </p>
-                <ul className="mt-1.5 space-y-1 text-[12px] text-ink-700">
+              <div className="rounded-xl border border-ink-200 bg-white p-4">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-ink-100 text-ink-700">
+                    <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  </span>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-600">
+                    What you&rsquo;ll lose on Maker
+                  </p>
+                </div>
+                <ul className="mt-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
                   {loseFeatures.map((f, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
-                      <span aria-hidden="true" className="mt-[1px]">
-                        &bull;
-                      </span>
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-[12.5px] text-ink-700"
+                    >
+                      <X
+                        className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-danger-500"
+                        aria-hidden="true"
+                      />
                       <span>{f}</span>
                     </li>
                   ))}
@@ -219,14 +233,14 @@ export function CancelButton({
             )}
 
             <fieldset>
-              <legend className="text-[12px] font-semibold text-ink-900">
+              <legend className="text-[13px] font-semibold text-ink-900">
                 Why are you cancelling?
               </legend>
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
                 {TIER_CANCEL_REASONS.map((r) => (
                   <label
                     key={r.code}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-ink-200 px-3 py-2 text-[12.5px] text-ink-800 transition has-[:checked]:border-pink-400 has-[:checked]:bg-pink-50"
+                    className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-[12.5px] leading-snug text-ink-800 transition-colors hover:border-ink-300 has-[:checked]:border-pink-400 has-[:checked]:bg-gradient-to-br has-[:checked]:from-pink-50/80 has-[:checked]:to-white has-[:checked]:text-ink-900 has-[:checked]:shadow-sm"
                   >
                     <input
                       type="radio"
@@ -234,7 +248,7 @@ export function CancelButton({
                       value={r.code}
                       checked={reasonCode === r.code}
                       onChange={() => setReasonCode(r.code)}
-                      className="h-3.5 w-3.5 accent-pink-500"
+                      className="h-3.5 w-3.5 flex-shrink-0 accent-pink-500"
                     />
                     <span>{r.label}</span>
                   </label>
@@ -253,7 +267,7 @@ export function CancelButton({
                   setReasonText(e.target.value.slice(0, REASON_TEXT_MAX_LENGTH))
                 }
                 rows={2}
-                className="mt-1 w-full rounded-lg border border-ink-200 px-3 py-2 text-[12.5px] text-ink-900 placeholder:text-ink-400 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
+                className="mt-1.5 w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-[12.5px] text-ink-900 placeholder:text-ink-400 focus:border-pink-400 focus:outline-none focus:ring-1 focus:ring-pink-400"
                 placeholder="Your feedback goes straight to the team."
               />
             </label>
@@ -261,27 +275,36 @@ export function CancelButton({
             {/* Cancellation P1 — the single save offer (CA ARL: max one,
                 rendered ABOVE a plain, always-visible cancel path). */}
             {showPauseOffer && (
-              <div className="rounded-xl border border-pink-200 bg-pink-50 px-4 py-3">
-                <p className="text-[12.5px] font-semibold text-ink-900">
-                  Pause instead? Take a break without losing your setup.
-                </p>
-                <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-600">
+              <div className="rounded-xl border border-pink-300 bg-gradient-to-br from-pink-50/80 to-white p-4 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-pink-100 text-pink-700">
+                    <PauseCircle className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <p className="text-[13px] font-semibold text-ink-900">
+                    Pause instead? Keep your setup, pay nothing.
+                  </p>
+                  <span className="ml-auto flex-shrink-0 rounded-full bg-pink-500 px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-white">
+                    One-time offer
+                  </span>
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-ink-600">
                   Your {tierName} benefits run until{' '}
                   {periodEndLabel ?? 'the end of your paid period'} (already
-                  paid). Then your plan pauses: no charges, free Maker plan.
-                  Billing and your {tierName} benefits return automatically.
-                  Available once every 12 months.
+                  paid). Then your plan pauses on free Maker with no charges,
+                  and billing plus your {tierName} benefits return
+                  automatically. Available once every 12 months.
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
                   {[1, 2, 3].map((m) => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setPauseMonths(m)}
-                      className={`rounded-full border px-3 py-1 text-[11.5px] font-semibold transition ${
+                      aria-pressed={pauseMonths === m}
+                      className={`rounded-full px-3.5 py-1.5 text-[11.5px] font-semibold transition-colors ${
                         pauseMonths === m
-                          ? 'border-pink-500 bg-white text-pink-700'
-                          : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300'
+                          ? 'bg-pink-500 text-white'
+                          : 'border border-ink-200 bg-white text-ink-600 hover:border-pink-300 hover:text-pink-700'
                       }`}
                     >
                       {m} month{m > 1 ? 's' : ''}
@@ -304,7 +327,7 @@ export function CancelButton({
                         setOpen(false)
                       })
                     }}
-                    className="ml-auto inline-flex h-8 items-center justify-center rounded-full bg-pink-600 px-4 text-[11.5px] font-semibold uppercase tracking-wider text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="ml-auto inline-flex h-9 items-center justify-center rounded-full bg-pink-500 px-4 text-[11.5px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {pending ? 'Pausing…' : 'Pause my plan'}
                   </button>
@@ -319,12 +342,12 @@ export function CancelButton({
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="gap-2 border-t border-ink-100 pt-4 sm:gap-2">
             <button
               type="button"
               disabled={pending}
               onClick={() => setOpen(false)}
-              className="inline-flex h-9 items-center justify-center rounded-full bg-ink-900 px-4 text-[12px] font-semibold uppercase tracking-wider text-white transition hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center rounded-full bg-ink-900 px-5 text-[12px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
             >
               Keep my plan
             </button>
@@ -346,7 +369,7 @@ export function CancelButton({
                   setOpen(false)
                 })
               }}
-              className="inline-flex h-9 items-center justify-center rounded-full border border-danger-300 bg-white px-4 text-[12px] font-semibold uppercase tracking-wider text-danger-700 transition hover:bg-danger-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 items-center justify-center rounded-full border border-danger-300 bg-white px-5 text-[12px] font-semibold uppercase tracking-wider text-danger-700 transition-colors hover:bg-danger-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {pending ? 'Scheduling…' : 'Cancel subscription'}
             </button>
