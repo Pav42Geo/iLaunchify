@@ -23,6 +23,7 @@ import {
   broadcastCapabilityRequestsForTemplate,
   templateIsPriced,
   NO_PRICE_PUBLISH_ERROR,
+  isProductTemplateTransitionAllowed,
 } from '@ilaunchify/orders'
 import type { PhraseRequirement } from '@ilaunchify/db'
 import {
@@ -366,10 +367,11 @@ export async function setProductPaused(
   })
   if (!tpl) return { ok: false, error: 'Product not found.' }
 
-  const allowed =
-    (to === 'PAUSED' && tpl.status === 'PUBLISHED') ||
-    (to === 'PUBLISHED' && tpl.status === 'PAUSED')
-  if (!allowed) {
+  // Route the pause/resume gate through the ProductTemplate FSM (single source of
+  // truth for the transition table) rather than hand-rolling the allowed pairs.
+  // PUBLISHED->PAUSED and PAUSED->PUBLISHED are the only edges `to` can express,
+  // and the FSM confirms them; a friendly Result error preserves the UX.
+  if (!isProductTemplateTransitionAllowed(tpl.status, to)) {
     return { ok: false, error: `Cannot transition ${tpl.status} -> ${to}.` }
   }
 

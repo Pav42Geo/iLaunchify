@@ -149,7 +149,8 @@ const FSM_MODELS = ['order', 'dispatch', 'productTemplate', 'partner', 'partnerS
 // the entry goes stale and re-warns for re-review, which is the intended behavior.
 const FSM_ALLOWLIST = new Set([
   'apps/admin/src/app/(dashboard)/partners/[partnerId]/actions.ts:270', // PartnerService ACTIVE/PAUSED toggle (audited)
-  'apps/admin/src/app/(dashboard)/products/actions.ts:319',             // guarded PUBLISHED⇄PAUSED (audited; no PT FSM home) — re-reviewed 2026-07-11, line moved 295→319
+  // products/actions.ts setProductPaused now gates via isProductTemplateTransitionAllowed
+  // (FSM_GUARD_RX), so the whole file is guarded and the old per-line exception is retired.
   'apps/admin/src/lib/partner-ops-worker.ts:156',                       // cron PartnerService→PAUSED (logSystemAudit)
   'apps/admin/src/lib/print-coverage-worker.ts:78',                     // cron ProductTemplate auto-pause (logSystemAudit)
   'apps/admin/src/app/(dashboard)/partners/actions.ts:65',              // admin re-invite → INVITED: audited governed override from any non-ACTIVE state (2026-07-07)
