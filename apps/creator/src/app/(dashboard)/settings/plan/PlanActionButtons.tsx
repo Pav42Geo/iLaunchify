@@ -206,12 +206,12 @@ export function CancelButton({
 
           <div className="space-y-4">
             {loseFeatures.length > 0 && (
-              <div className="rounded-xl border border-ink-200 bg-white p-4">
+              <div className="rounded-xl border border-danger-200 bg-gradient-to-br from-danger-50 to-white p-4">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-ink-100 text-ink-700">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-danger-100 text-danger-700">
                     <X className="h-3.5 w-3.5" aria-hidden="true" />
                   </span>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-600">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-danger-700">
                     What you&rsquo;ll lose on Maker
                   </p>
                 </div>

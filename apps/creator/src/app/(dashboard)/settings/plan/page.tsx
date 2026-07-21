@@ -22,6 +22,7 @@ import { requireUser, TIER_RANK, normalizeTier } from '@ilaunchify/auth'
 import {
   CREATOR_PLAN_CODES,
   CREATOR_FEATURES,
+  resolveCreatorFeeBps,
   type CreatorPlanCode,
 } from '@ilaunchify/plans'
 import Link from 'next/link'
@@ -73,7 +74,10 @@ const TIER_META: readonly TierMeta[] = [
       'Unlimited products + label drafts',
       'Marketplace browse + partner matching',
       'Standard order routing + tracking',
-      'Pay-as-you-go production fees',
+      // '__FEE__' is replaced at render time with the LIVE administrative-fee
+      // rate from FeeRule (admin-editable in Tiers & Plans) — never hardcode
+      // a percentage in tier copy; admin edits must propagate.
+      '__FEE__',
       'DIY label design on your maker’s die-line',
     ],
   },
@@ -86,7 +90,7 @@ const TIER_META: readonly TierMeta[] = [
     Icon: Rocket,
     features: [
       'Everything in Maker, plus:',
-      '12% platform fee — save 3% on every run',
+      '__FEE__', // live rate + savings vs Maker, see comment on the Maker card
       'Print-ready Design Studio export',
       'Post co-creation briefs to matched makers',
       '2 invited-designer seats (shared design workspace)',
@@ -105,7 +109,7 @@ const TIER_META: readonly TierMeta[] = [
       'Everything in Builder, plus:',
       'Multi-brand workspace (unlimited brands)',
       'Custom domain storefronts',
-      'Best-in-class fee rate on production',
+      '__FEE__', // live rate + savings vs Maker, see comment on the Maker card
       '5 invited-designer seats (shared design workspace)',
       'Dedicated launch partner + roadmap input',
     ],
@@ -157,6 +161,26 @@ export default async function PlanPage({ searchParams }: PageProps) {
   const currentTier = normalizeTier(profile?.subscriptionTier)
   const pendingCancel = profile?.tierCancelAtPeriodEnd ?? false
   const periodEnd = profile?.tierCurrentPeriodEnd ?? null
+
+  // LIVE administrative-fee rates from FeeRule (SSOT: @ilaunchify/plans,
+  // admin-editable in Tiers & Plans, cache invalidated on edit). The tier
+  // cards + cancel modal render these — an admin rate change propagates
+  // here with zero copy edits. Never hardcode a percentage in tier copy.
+  const [makerFee, builderFee, agencyFee] = await Promise.all([
+    resolveCreatorFeeBps('maker'),
+    resolveCreatorFeeBps('builder'),
+    resolveCreatorFeeBps('agency'),
+  ])
+  const feePctByTier = {
+    maker: bpsToPct(makerFee.feeBps),
+    builder: bpsToPct(builderFee.feeBps),
+    agency: bpsToPct(agencyFee.feeBps),
+  } as const
+  const feeLineByTier: Record<'maker' | 'builder' | 'agency', string> = {
+    maker: `${feePctByTier.maker}% administrative fee, pay as you go`,
+    builder: `${feePctByTier.builder}% administrative fee instead of ${feePctByTier.maker}%`,
+    agency: `${feePctByTier.agency}% administrative fee, our best rate`,
+  }
 
   // V1 dunning grace state + Cancellation P1 pause state (cast-guarded —
   // fields land after their migrations).
@@ -298,6 +322,10 @@ export default async function PlanPage({ searchParams }: PageProps) {
       <div className="grid gap-4 lg:grid-cols-3">
         {TIER_META.map((meta) => {
           const plan = planByCode.get(meta.planCode)
+          // Substitute the live fee line into the editorial feature list.
+          const features = meta.features.map((f) =>
+            f === '__FEE__' ? feeLineByTier[meta.key] : f,
+          )
           const isCurrent = currentTier === meta.key
           const tierRank = TIER_RANK[meta.key]
           const currentRank = TIER_RANK[currentTier]
@@ -308,6 +336,7 @@ export default async function PlanPage({ searchParams }: PageProps) {
             <TierCard
               key={meta.key}
               meta={meta}
+              features={features}
               monthlyPriceCents={plan?.monthlyPriceCents ?? 0}
               description={plan?.description ?? null}
               isCurrent={isCurrent}
@@ -333,6 +362,8 @@ export default async function PlanPage({ searchParams }: PageProps) {
 
 interface TierCardProps {
   meta: TierMeta
+  /** meta.features with the '__FEE__' token resolved to the live rate. */
+  features: string[]
   monthlyPriceCents: number
   description: string | null
   isCurrent: boolean
@@ -349,6 +380,7 @@ interface TierCardProps {
 
 function TierCard({
   meta,
+  features,
   monthlyPriceCents,
   description,
   isCurrent,
@@ -411,7 +443,7 @@ function TierCard({
 
       {/* Features */}
       <ul className="mt-4 space-y-1.5 px-5 text-[12.5px] text-ink-700">
-        {meta.features.map((f, i) => (
+        {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
             <Check
               className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-success-600"
@@ -435,9 +467,7 @@ function TierCard({
             <CancelButton
               tierName={meta.name}
               periodEndLabel={periodEnd ? formatDate(periodEnd) : null}
-              loseFeatures={meta.features.filter(
-                (f) => !f.endsWith('plus:'),
-              )}
+              loseFeatures={features.filter((f) => !f.endsWith('plus:'))}
               pauseAvailable={pauseAvailable}
             />
           ) : (
@@ -561,6 +591,12 @@ function formatDate(d: Date): string {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+/** 1500 → "15", 1250 → "12.5" — human percent from basis points. */
+function bpsToPct(bps: number): string {
+  const pct = bps / 100
+  return Number.isInteger(pct) ? String(pct) : pct.toFixed(1)
 }
 
 /** "BUILDER" → "Builder" (pause banners show the remembered tier). */
