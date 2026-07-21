@@ -13,6 +13,8 @@
     "migrate:status": "pnpm exec dotenv -e ../../.env.local -- prisma migrate status",
     "studio": "pnpm exec dotenv -e ../../.env.local -- prisma studio",
     "seed": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed.ts",
+    "seed:flavor-delta": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/seed-flavor-delta-fixture.ts",
+    "report:flavor-delta": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/flavor-delta-report.ts",
     "backfill:facilities": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-facilities.ts",
     "backfill:dieline-svg": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-dieline-normalized-svg.ts",
     "backfill:price-curves": "pnpm exec dotenv -e ../../.env.local -- tsx prisma/backfill-offering-price-curves.ts",
