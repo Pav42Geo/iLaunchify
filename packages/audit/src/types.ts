@@ -287,6 +287,12 @@ export const AUDIT_ACTIONS = [
   'REFUND_FAILED',
   // R15.c — admin tier management module
   'CREATOR_TIER_CHANGE',
+  // Cancellation P0 (docs/CREATOR_PLAN_CANCELLATION_RESEARCH_2026-07-20.md) —
+  // the creator's decision moment, logged at click time from /settings/plan
+  // server actions. The eventual tier flip still audits separately as
+  // CREATOR_TIER_CHANGE when the subscription.deleted webhook fires.
+  'SUBSCRIPTION_CANCEL_REQUESTED',
+  'SUBSCRIPTION_CANCEL_RESUMED',
   'PARTNER_TIER_CHANGE',
   'FEE_OVERRIDE_SET',
   'FEE_OVERRIDE_CLEAR',

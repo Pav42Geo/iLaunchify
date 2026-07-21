@@ -15,12 +15,18 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import {
   createTierCheckoutSession,
   cancelTierSubscription,
   resumeTierSubscription,
   type UpgradeableTier,
 } from '@ilaunchify/payments'
+import {
+  isTierCancelReasonCode,
+  REASON_TEXT_MAX_LENGTH,
+  type TierCancelReasonCode,
+} from './cancel-reasons'
 
 type Result<T = unknown> = (T & { ok: true }) | { ok: false; error: string }
 
@@ -99,30 +105,100 @@ export async function startTierUpgrade(input: {
 // keeps Builder/Agency benefits until then. customer.subscription.deleted
 // (V1.5-T4) flips them back to MAKER at the actual end date.
 //
-// Reason is captured on the Stripe subscription so the cancellation
-// shows up on the eventual subscription.deleted payload for audit.
+// Cancellation P0 (docs/CREATOR_PLAN_CANCELLATION_RESEARCH_2026-07-20.md):
+// the decision moment is now recorded on OUR side too, not just Stripe:
+//   1. Structured reasonCode (+ optional free text) from the cancel modal.
+//   2. TierCancellationEvent row — churn-analytics SSOT.
+//   3. SUBSCRIPTION_CANCEL_REQUESTED audit row (actor = the creator).
+// The reason still mirrors to Stripe cancellation_details so it appears on
+// the eventual subscription.deleted payload. Steps 2 + 3 are best-effort
+// AFTER the Stripe call succeeds: the cancel must not appear to fail when
+// only bookkeeping does. The tier flip stays webhook-authoritative.
 
 export async function cancelMyTierSubscription(input: {
-  reason?: string
+  reasonCode: TierCancelReasonCode
+  reasonText?: string
 }): Promise<Result<{ cancelAt: string }>> {
   const user = await requireUser()
 
+  if (!isTierCancelReasonCode(input.reasonCode)) {
+    return { ok: false, error: 'Pick a reason for cancelling.' }
+  }
+  const reasonText =
+    input.reasonText?.trim().slice(0, REASON_TEXT_MAX_LENGTH) || null
+
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId: user.id },
-    select: { id: true, stripeTierSubscriptionId: true },
+    select: {
+      id: true,
+      subscriptionTier: true,
+      stripeTierSubscriptionId: true,
+    },
   })
   if (!profile) {
     return { ok: false, error: 'Creator profile not found.' }
   }
   if (!profile.stripeTierSubscriptionId) {
-    return { ok: false, error: 'No active tier subscription to cancel.' }
+    // Admin-granted Builder/Agency (courtesy upgrade) has no Stripe sub —
+    // the page hides the cancel CTA for this state, but guard here too.
+    return {
+      ok: false,
+      error:
+        'Your plan is managed by iLaunchify. Contact support to make changes.',
+    }
   }
 
   try {
     const res = await cancelTierSubscription({
       creatorProfileId: profile.id,
-      reason: input.reason,
+      // Compact "CODE: free text" string for Stripe cancellation_details.
+      reason: reasonText
+        ? `${input.reasonCode}: ${reasonText}`
+        : input.reasonCode,
     })
+
+    // Best-effort bookkeeping — Stripe already accepted the cancel.
+    try {
+      // Cast-guarded until the TierCancellationEvent migration lands
+      // (db:push + db:generate) — same pattern as the dunning fields on
+      // page.tsx. TODO: drop the cast once the client is regenerated.
+      await (
+        prisma as unknown as {
+          tierCancellationEvent: {
+            create: (a: { data: Record<string, unknown> }) => Promise<unknown>
+          }
+        }
+      ).tierCancellationEvent.create({
+        data: {
+          creatorProfileId: profile.id,
+          tier: profile.subscriptionTier,
+          reasonCode: input.reasonCode,
+          reasonText,
+          stripeSubscriptionId: profile.stripeTierSubscriptionId,
+          periodEnd: res.cancelAt,
+        },
+      })
+      await logAuditAs(user, {
+        entityType: 'CreatorProfile',
+        entityId: profile.id,
+        action: 'SUBSCRIPTION_CANCEL_REQUESTED',
+        fromValue: profile.subscriptionTier,
+        toValue: 'MAKER',
+        payload: {
+          reasonCode: input.reasonCode,
+          reasonText,
+          cancelAt: res.cancelAt.toISOString(),
+          stripeSubscriptionId: profile.stripeTierSubscriptionId,
+        },
+      })
+    } catch (bookkeepingErr) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[plan] cancel bookkeeping failed',
+        (bookkeepingErr as Error).message,
+      )
+    }
+
     revalidatePath('/settings/plan')
     return { ok: true, cancelAt: res.cancelAt.toISOString() }
   } catch (err) {
@@ -141,7 +217,7 @@ export async function resumeMyTierSubscription(): Promise<
 
   const profile = await prisma.creatorProfile.findUnique({
     where: { userId: user.id },
-    select: { id: true },
+    select: { id: true, subscriptionTier: true },
   })
   if (!profile) {
     return { ok: false, error: 'Creator profile not found.' }
@@ -151,6 +227,41 @@ export async function resumeMyTierSubscription(): Promise<
     const res = await resumeTierSubscription({
       creatorProfileId: profile.id,
     })
+
+    // Best-effort bookkeeping (Cancellation P0) — stamp resumedAt on the
+    // open cancellation event(s) + audit the undo.
+    try {
+      // Cast-guarded until the migration lands — see cancel above.
+      await (
+        prisma as unknown as {
+          tierCancellationEvent: {
+            updateMany: (a: {
+              where: Record<string, unknown>
+              data: Record<string, unknown>
+            }) => Promise<unknown>
+          }
+        }
+      ).tierCancellationEvent.updateMany({
+        where: { creatorProfileId: profile.id, resumedAt: null },
+        data: { resumedAt: new Date() },
+      })
+      await logAuditAs(user, {
+        entityType: 'CreatorProfile',
+        entityId: profile.id,
+        action: 'SUBSCRIPTION_CANCEL_RESUMED',
+        toValue: profile.subscriptionTier,
+        payload: {
+          currentPeriodEnd: res.currentPeriodEnd.toISOString(),
+        },
+      })
+    } catch (bookkeepingErr) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[plan] resume bookkeeping failed',
+        (bookkeepingErr as Error).message,
+      )
+    }
+
     revalidatePath('/settings/plan')
     return { ok: true, currentPeriodEnd: res.currentPeriodEnd.toISOString() }
   } catch (err) {

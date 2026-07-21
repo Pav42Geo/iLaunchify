@@ -261,6 +261,7 @@ export default async function PlanPage({ searchParams }: PageProps) {
               isDowngrade={isDowngrade}
               pendingCancel={isCurrent && pendingCancel}
               periodEnd={isCurrent ? periodEnd : null}
+              hasStripeSub={Boolean(profile?.stripeTierSubscriptionId)}
             />
           )
         })}
@@ -284,6 +285,9 @@ interface TierCardProps {
   isDowngrade: boolean
   pendingCancel: boolean
   periodEnd: Date | null
+  /** False for admin-granted Builder/Agency (courtesy upgrade, no Stripe
+      sub on file) — the self-serve cancel CTA is hidden for that state. */
+  hasStripeSub: boolean
 }
 
 function TierCard({
@@ -295,6 +299,7 @@ function TierCard({
   isDowngrade,
   pendingCancel,
   periodEnd,
+  hasStripeSub,
 }: TierCardProps) {
   const Icon = meta.Icon
   const price = monthlyPriceCents > 0 ? `$${(monthlyPriceCents / 100).toFixed(0)}` : 'Free'
@@ -368,8 +373,27 @@ function TierCard({
             <p className="text-center text-[11.5px] text-ink-500">
               You&rsquo;re on the free plan.
             </p>
+          ) : hasStripeSub ? (
+            <CancelButton
+              tierName={meta.name}
+              periodEndLabel={periodEnd ? formatDate(periodEnd) : null}
+              loseFeatures={meta.features.filter(
+                (f) => !f.endsWith('plus:'),
+              )}
+            />
           ) : (
-            <CancelButton />
+            // Admin-granted tier (no Stripe sub) — self-serve cancel would
+            // 404 against Stripe; route these through support instead.
+            <p className="text-center text-[11.5px] leading-relaxed text-ink-500">
+              Your plan is managed by iLaunchify.{' '}
+              <Link
+                href="/help/new"
+                className="font-medium text-pink-700 underline hover:text-pink-800"
+              >
+                Contact support
+              </Link>{' '}
+              to make changes.
+            </p>
           )
         ) : isUpgrade && meta.key !== 'maker' ? (
           <UpgradeButton

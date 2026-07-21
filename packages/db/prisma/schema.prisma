@@ -801,8 +801,49 @@ model CreatorProfile {
   // Co-creation P0 (docs/CO_CREATION_MARKETPLACE_SPEC.md §6)
   productBriefs            ProductBrief[]
   fulfillmentSignal        CreatorFulfillmentSignal? // AFE P2 learned behavior signal
+  // Cancellation P0 — churn analytics rows (docs/CREATOR_PLAN_CANCELLATION_RESEARCH_2026-07-20.md)
+  tierCancellations        TierCancellationEvent[]
   createdAt                DateTime         @default(now())
   updatedAt                DateTime         @updatedAt
+}
+
+// Cancellation P0 (docs/CREATOR_PLAN_CANCELLATION_RESEARCH_2026-07-20.md §3).
+// One row per creator cancel REQUEST, written at click time by
+// cancelMyTierSubscription — this is the churn-analytics SSOT (the reason also
+// mirrors to Stripe cancellation_details so it appears on the eventual
+// subscription.deleted payload). resumedAt is stamped if the creator undoes
+// the pending cancel before period end; null resumedAt + past periodEnd =
+// realized churn. Rows are never deleted.
+model TierCancellationEvent {
+  id               String           @id @default(uuid())
+  creatorProfileId String
+  // Tier held at the moment of the request (the plan being cancelled).
+  tier             SubscriptionTier
+  reasonCode       TierCancelReason
+  reasonText       String?          @db.String(2000)
+  // Stripe sub handle at request time (profile's handle is cleared on delete).
+  stripeSubscriptionId String?
+  // End of the paid period = when the cancel takes effect.
+  periodEnd        DateTime?
+  resumedAt        DateTime?
+  createdAt        DateTime         @default(now())
+  creatorProfile   CreatorProfile   @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([creatorProfileId, createdAt])
+  @@index([reasonCode])
+}
+
+// Cancellation P0 — structured "why are you leaving?" taxonomy. Maps 1:1 to
+// the cancel-modal radio options; each code routes to a different retention
+// strategy in the P1 save-flow (docs/CREATOR_PLAN_CANCELLATION_RESEARCH §3.5).
+// Append new codes at the bottom; never rename (analytics continuity).
+enum TierCancelReason {
+  TOO_EXPENSIVE
+  NOT_USING
+  MISSING_FEATURE
+  SWITCHING
+  TEMPORARY
+  OTHER
 }
 
 // AFE P2 — rolling per-creator FC-override signal (docs/FC_SELECTION_STRATEGY_BRIEF_2026-07-09.md).
