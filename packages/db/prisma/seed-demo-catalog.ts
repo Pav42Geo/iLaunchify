@@ -603,20 +603,31 @@ export async function seedDemoCatalog(prisma: PrismaClient) {
       else await prisma.productTemplateVariant.create({ data: { productTemplateId: tpl.id, ...variantData } })
     }
 
-    // Flavor presets (idempotent replace). PER_FLAVOR products carry a per-unit
-    // price on each preset (unitPriceCents — additive, cast-written).
-    await prisma.flavorPreset.deleteMany({ where: { productTemplateId: tpl.id } })
+    // Flavor presets (idempotent, FK-SAFE). PER_FLAVOR products carry a per-unit price
+    // on each preset (unitPriceCents — additive, cast-written). A real order
+    // (OrderItemFlavor) can reference a preset, which makes a blind deleteMany fail with
+    // P2003 (the crash that blocked the whole seed). So delete only the UNREFERENCED
+    // presets, then upsert the spec set BY NAME: a referenced preset is updated in place,
+    // never orphaned or duplicated (FlavorPreset has no unique key to upsert on directly).
+    await prisma.flavorPreset.deleteMany({
+      where: { productTemplateId: tpl.id, orderItemFlavors: { none: {} } },
+    })
     if (spec.flavors && spec.flavors.length > 0) {
       let fo = 0
       for (const f of spec.flavors) {
         const unitPriceCents = spec.flavorUnitPriceCents?.[fo] ?? null
-        await prisma.flavorPreset.create({
-          data: {
-            productTemplateId: tpl.id, name: f.name, swatchHex: f.color,
-            statementOfIdentity: f.soi ?? null, slotResolution: {} as object, sortOrder: fo++,
-            ...(unitPriceCents != null ? { unitPriceCents } : {}),
-          } as never,
+        const data = {
+          name: f.name, swatchHex: f.color, statementOfIdentity: f.soi ?? null,
+          slotResolution: {} as object, sortOrder: fo,
+          ...(unitPriceCents != null ? { unitPriceCents } : {}),
+        }
+        const existing = await prisma.flavorPreset.findFirst({
+          where: { productTemplateId: tpl.id, name: f.name },
+          select: { id: true },
         })
+        if (existing) await prisma.flavorPreset.update({ where: { id: existing.id }, data: data as never })
+        else await prisma.flavorPreset.create({ data: { productTemplateId: tpl.id, ...data } as never })
+        fo++
       }
     }
 
