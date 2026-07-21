@@ -20,6 +20,10 @@ import {
   createTierCheckoutSession,
   cancelTierSubscription,
   resumeTierSubscription,
+  pauseTierSubscription,
+  createBillingPortalSession,
+  PAUSE_MIN_MONTHS,
+  PAUSE_MAX_MONTHS,
   type UpgradeableTier,
 } from '@ilaunchify/payments'
 import {
@@ -264,6 +268,108 @@ export async function resumeMyTierSubscription(): Promise<
 
     revalidatePath('/settings/plan')
     return { ok: true, currentPeriodEnd: res.currentPeriodEnd.toISOString() }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
+// =============================================================================
+// pauseMyTierSubscription — the P1 save-flow offer (Cancellation P1)
+// =============================================================================
+//
+// Accepted from the cancel modal INSTEAD of cancelling (offered only for
+// NOT_USING / TEMPORARY reasons; the single retention offer, CA-compliant).
+// Stripe voids invoices for 1-3 months and auto-resumes; benefits are kept
+// (Pavel 2026-07-20). Eligibility guards (already-paused, 1x/365d cooldown)
+// live in the payments helper — this action adds auth + audit.
+
+export async function pauseMyTierSubscription(input: {
+  months: number
+  reasonCode?: TierCancelReasonCode
+}): Promise<Result<{ resumesAt: string }>> {
+  const user = await requireUser()
+
+  if (
+    !Number.isInteger(input.months) ||
+    input.months < PAUSE_MIN_MONTHS ||
+    input.months > PAUSE_MAX_MONTHS
+  ) {
+    return { ok: false, error: 'Pick a pause length of 1 to 3 months.' }
+  }
+
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.id },
+    select: {
+      id: true,
+      subscriptionTier: true,
+      stripeTierSubscriptionId: true,
+    },
+  })
+  if (!profile) {
+    return { ok: false, error: 'Creator profile not found.' }
+  }
+  if (!profile.stripeTierSubscriptionId) {
+    return {
+      ok: false,
+      error:
+        'Your plan is managed by iLaunchify. Contact support to make changes.',
+    }
+  }
+
+  try {
+    const res = await pauseTierSubscription({
+      creatorProfileId: profile.id,
+      months: input.months,
+    })
+
+    // Best-effort bookkeeping — Stripe already accepted the pause.
+    try {
+      await logAuditAs(user, {
+        entityType: 'CreatorProfile',
+        entityId: profile.id,
+        action: 'SUBSCRIPTION_PAUSED',
+        toValue: profile.subscriptionTier,
+        payload: {
+          months: input.months,
+          resumesAt: res.resumesAt.toISOString(),
+          // Which cancel reason this save converted, for save-rate analytics.
+          savedFromReasonCode: input.reasonCode ?? null,
+        },
+      })
+    } catch (bookkeepingErr) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[plan] pause bookkeeping failed',
+        (bookkeepingErr as Error).message,
+      )
+    }
+
+    revalidatePath('/settings/plan')
+    return { ok: true, resumesAt: res.resumesAt.toISOString() }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
+// =============================================================================
+// openBillingPortal — Stripe-hosted card update + invoice history
+// =============================================================================
+//
+// Cancellation P1: the dunning grace banner's "Manage billing" now works.
+// The portal configuration disables cancel + plan switching — those stay in
+// our flows (reason capture + audit). Returns a hosted URL; the client does
+// a top-level navigation, same pattern as Checkout.
+
+export async function openBillingPortal(): Promise<Result<{ url: string }>> {
+  const user = await requireUser()
+
+  const origin = await getOrigin()
+  try {
+    const res = await createBillingPortalSession({
+      userId: user.id,
+      returnUrl: `${origin}/settings/plan`,
+    })
+    return { ok: true, url: res.url }
   } catch (err) {
     return { ok: false, error: (err as Error).message }
   }

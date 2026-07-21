@@ -856,6 +856,24 @@ async function onSubscriptionUpdated(subscription: Stripe.Subscription) {
       tierCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
     },
   })
+
+  // Cancellation P1 — mirror pause_collection (the save-flow pause). Stripe
+  // is authoritative: resumes_at set = paused until then; null = not paused
+  // (also clears our mirror when Stripe auto-resumes billing). Cast-guarded
+  // until the tierPause* migration lands. TODO: fold into the update above.
+  const resumesAt = subscription.pause_collection?.resumes_at
+  await (
+    prisma as unknown as {
+      creatorProfile: { update: (a: unknown) => Promise<unknown> }
+    }
+  ).creatorProfile
+    .update({
+      where: { id: profile.id },
+      data: {
+        tierPauseResumesAt: resumesAt ? new Date(resumesAt * 1000) : null,
+      },
+    })
+    .catch(() => null)
 }
 
 // Suppress unused-import noise — kept for symmetry with cancelProductionSubscription.

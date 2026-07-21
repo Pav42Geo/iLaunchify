@@ -293,6 +293,9 @@ export const AUDIT_ACTIONS = [
   // CREATOR_TIER_CHANGE when the subscription.deleted webhook fires.
   'SUBSCRIPTION_CANCEL_REQUESTED',
   'SUBSCRIPTION_CANCEL_RESUMED',
+  // Cancellation P1 — the save-flow pause accepted from the cancel modal
+  // (Stripe pause_collection, benefits kept, 1x/365d guard).
+  'SUBSCRIPTION_PAUSED',
   'PARTNER_TIER_CHANGE',
   'FEE_OVERRIDE_SET',
   'FEE_OVERRIDE_CLEAR',

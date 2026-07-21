@@ -52,7 +52,17 @@ export {
   createTierCheckoutSession,
   cancelTierSubscription,
   resumeTierSubscription,
+  // Cancellation P1 — save-flow pause (1-3 months, benefits kept).
+  pauseTierSubscription,
+  PAUSE_MIN_MONTHS,
+  PAUSE_MAX_MONTHS,
+  PAUSE_COOLDOWN_DAYS,
 } from './tier-subscriptions'
+export type { PauseTierSubscriptionInput } from './tier-subscriptions'
+// Cancellation P1 — Stripe Billing Portal (card update + invoices only;
+// cancel/plan-switch disabled — those stay in our flows).
+export { createBillingPortalSession } from './billing-portal'
+export type { CreateBillingPortalSessionInput } from './billing-portal'
 export type {
   UpgradeableTier,
   CreateTierCheckoutSessionInput,

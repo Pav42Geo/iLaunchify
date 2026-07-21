@@ -787,6 +787,13 @@ model CreatorProfile {
   // cron downgrades to MAKER if still unpaid past tierGraceUntil.
   tierPaymentFailedAt      DateTime?
   tierGraceUntil           DateTime?
+  // Cancellation P1 — save-flow pause (docs/CREATOR_PLAN_CANCELLATION_RESEARCH
+  // §3.5). Stripe pause_collection is authoritative; these mirror it:
+  //   tierPauseResumesAt — billing (and the pause) ends here; null = not paused.
+  //   tierLastPausedAt   — one-pause-per-365-days abuse guard.
+  // Pavel 2026-07-20: benefits are KEPT during pause (sub stays active).
+  tierPauseResumesAt       DateTime?
+  tierLastPausedAt         DateTime?
   // Fee overrides
   feeRateOverrideBp        Int?
   feeRateOverrideReason    String?

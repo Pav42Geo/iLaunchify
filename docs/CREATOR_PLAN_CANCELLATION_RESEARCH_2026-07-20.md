@@ -32,6 +32,16 @@ Design consequence: build compliant-by-default now (prominent cancel, one save o
 
 Well-designed flows (reason capture + matched offer + pause option) save 20 to 40% of cancel-intent users; generic or offer-less flows sit under 10 to 15%. Pause is the single highest-leverage tool: ~50% acceptance among those offered it, and 60 to 80% of pausers reactivate. Exit surveys should be ONE multiple-choice question plus one optional free-text field; >40% completion means it is placed well. Punitive friction (hidden buttons, forced calls) is both a legal risk and a brand tax.
 
+## Build status (2026-07-20, same day)
+
+P0 and P1 (section 3 below) are BUILT. Decisions locked while building:
+
+- **Pause keeps benefits** (Pavel 2026-07-20): sub stays active, invoices void (Stripe `pause_collection` behavior `void`). Guards: pause offered only for NOT_USING / TEMPORARY reasons (TOO_EXPENSIVE excluded to close the fee-rate leak), 1 to 3 months, one pause per rolling 365 days (`tierLastPausedAt`). Accepting a pause withdraws a pending cancel.
+- **Portal is locked down**: `subscription_cancel` and `subscription_update` disabled in the portal configuration (metadata-tagged `creator_billing_v1`, lazily created + cached); cancel stays in our modal, plan changes in Checkout.
+- New audit action `SUBSCRIPTION_PAUSED` (payload carries `savedFromReasonCode` for save-rate analytics). Pause state mirrors on `CreatorProfile.tierPauseResumesAt` via `customer.subscription.updated`.
+
+Remaining P2: true downgrade via price-swap, churn dashboard on the admin Tiers console.
+
 ## 3. Recommended build (priority order)
 
 ### P0: Correct + audit-complete (small, do now)

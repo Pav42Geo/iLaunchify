@@ -37,6 +37,7 @@ import {
   UpgradeButton,
   CancelButton,
   ResumeButton,
+  ManageBillingButton,
 } from './PlanActionButtons'
 
 export const dynamic = 'force-dynamic'
@@ -156,30 +157,64 @@ export default async function PlanPage({ searchParams }: PageProps) {
   const pendingCancel = profile?.tierCancelAtPeriodEnd ?? false
   const periodEnd = profile?.tierCurrentPeriodEnd ?? null
 
-  // V1 dunning grace state (cast-guarded — fields land after the migration).
-  const dunning = await (
+  // V1 dunning grace state + Cancellation P1 pause state (cast-guarded —
+  // fields land after their migrations).
+  const extraState = await (
     prisma as unknown as {
       creatorProfile: {
-        findUnique: (a: unknown) => Promise<{ tierGraceUntil: Date | null } | null>
+        findUnique: (a: unknown) => Promise<{
+          tierGraceUntil: Date | null
+          tierPauseResumesAt?: Date | null
+          tierLastPausedAt?: Date | null
+        } | null>
       }
     }
   ).creatorProfile
-    .findUnique({ where: { userId: user.id }, select: { tierGraceUntil: true } })
+    .findUnique({
+      where: { userId: user.id },
+      select: {
+        tierGraceUntil: true,
+        tierPauseResumesAt: true,
+        tierLastPausedAt: true,
+      },
+    })
     .catch(() => null)
-  const graceUntil = dunning?.tierGraceUntil ?? null
+  const graceUntil = extraState?.tierGraceUntil ?? null
+
+  // Pause save-offer eligibility: not currently paused + outside the
+  // 365-day cooldown (mirrors the guard in pauseTierSubscription).
+  const now = new Date()
+  const pausedUntil =
+    extraState?.tierPauseResumesAt && extraState.tierPauseResumesAt > now
+      ? extraState.tierPauseResumesAt
+      : null
+  const lastPausedAt = extraState?.tierLastPausedAt ?? null
+  const pauseAvailable =
+    !pausedUntil &&
+    (!lastPausedAt ||
+      now.getTime() - lastPausedAt.getTime() > 365 * 24 * 60 * 60 * 1000)
 
   return (
     <div className="space-y-6">
       {graceUntil && (
-        <div className="rounded-2xl border border-danger-200 bg-danger-50 px-4 py-3">
-          <p className="text-[12.5px] leading-relaxed text-danger-900">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-danger-200 bg-danger-50 px-4 py-3">
+          <p className="min-w-0 flex-1 text-[12.5px] leading-relaxed text-danger-900">
             <span className="font-semibold">Your last subscription payment failed.</span>{' '}
             Update your card by{' '}
             <span className="font-semibold">{graceUntil.toLocaleDateString()}</span> or your account
-            will move to the free Maker plan. Use <span className="font-medium">Manage billing</span>{' '}
-            below to update your payment method.
+            will move to the free Maker plan.
           </p>
+          <ManageBillingButton compact />
         </div>
+      )}
+
+      {pausedUntil && (
+        <ResultBanner
+          tone="warning"
+          icon={<CalendarClock className="h-4 w-4" />}
+          title={`Billing paused until ${formatDate(pausedUntil)}`}
+          message={`You keep your ${currentTier[0]!.toUpperCase() + currentTier.slice(1)} benefits and pay nothing until then. Billing restarts automatically.`}
+        />
       )}
 
       <header className="rounded-3xl border border-ink-200 bg-[var(--bg-hero)] px-6 py-6">
@@ -262,6 +297,7 @@ export default async function PlanPage({ searchParams }: PageProps) {
               pendingCancel={isCurrent && pendingCancel}
               periodEnd={isCurrent ? periodEnd : null}
               hasStripeSub={Boolean(profile?.stripeTierSubscriptionId)}
+              pauseAvailable={pauseAvailable}
             />
           )
         })}
@@ -288,6 +324,8 @@ interface TierCardProps {
   /** False for admin-granted Builder/Agency (courtesy upgrade, no Stripe
       sub on file) — the self-serve cancel CTA is hidden for that state. */
   hasStripeSub: boolean
+  /** Cancellation P1 — gates the pause save-offer in the cancel modal. */
+  pauseAvailable: boolean
 }
 
 function TierCard({
@@ -300,6 +338,7 @@ function TierCard({
   pendingCancel,
   periodEnd,
   hasStripeSub,
+  pauseAvailable,
 }: TierCardProps) {
   const Icon = meta.Icon
   const price = monthlyPriceCents > 0 ? `$${(monthlyPriceCents / 100).toFixed(0)}` : 'Free'
@@ -380,6 +419,7 @@ function TierCard({
               loseFeatures={meta.features.filter(
                 (f) => !f.endsWith('plus:'),
               )}
+              pauseAvailable={pauseAvailable}
             />
           ) : (
             // Admin-granted tier (no Stripe sub) — self-serve cancel would

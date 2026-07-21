@@ -291,6 +291,127 @@ export async function cancelTierSubscription(
 // Useful for V1.5-T5's /settings/plan UI: when tierCancelAtPeriodEnd is
 // true, show a "Resume subscription" button next to the planned end date.
 
+// =============================================================================
+// pauseTierSubscription — the P1 save-flow offer (Cancellation P1)
+// =============================================================================
+//
+// docs/CREATOR_PLAN_CANCELLATION_RESEARCH_2026-07-20.md §3.5. Offered from
+// the cancel modal (only for NOT_USING / TEMPORARY reasons) as the single
+// retention offer (CA ARL: max one, shown next to a plain cancel path).
+//
+// Mechanics: Stripe pause_collection { behavior: 'void', resumes_at } — the
+// subscription STAYS ACTIVE, invoices in the window are voided, billing
+// auto-resumes at resumes_at. Pavel decision 2026-07-20: the creator KEEPS
+// tier benefits during the pause (they are pausing because they are not
+// producing, so the fee-rate leak is negligible). Guards against abuse:
+//   - 1 to 3 months only
+//   - at most ONE pause per rolling 365 days (tierLastPausedAt)
+//   - pausing clears a pending cancel_at_period_end (pause IS the save)
+//
+// The customer.subscription.updated webhook mirrors pause state onto the
+// profile, so the local mirror here is UI-latency cover, same as cancel.
+
+export interface PauseTierSubscriptionInput {
+  creatorProfileId: string
+  /** Whole months to pause: 1, 2, or 3. */
+  months: number
+}
+
+export const PAUSE_MIN_MONTHS = 1
+export const PAUSE_MAX_MONTHS = 3
+/** Rolling window for the one-pause guard. */
+export const PAUSE_COOLDOWN_DAYS = 365
+
+export async function pauseTierSubscription(
+  input: PauseTierSubscriptionInput,
+): Promise<{ resumesAt: Date }> {
+  if (
+    !Number.isInteger(input.months) ||
+    input.months < PAUSE_MIN_MONTHS ||
+    input.months > PAUSE_MAX_MONTHS
+  ) {
+    throw new Error(
+      `Pause length must be ${PAUSE_MIN_MONTHS} to ${PAUSE_MAX_MONTHS} months.`,
+    )
+  }
+
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { id: input.creatorProfileId },
+    select: {
+      id: true,
+      stripeTierSubscriptionId: true,
+    },
+  })
+  if (!profile) throw new Error('Creator profile not found.')
+  if (!profile.stripeTierSubscriptionId) {
+    throw new Error('No active tier subscription to pause.')
+  }
+
+  // Pause-abuse guard — cast-guarded until the tierPause* migration lands
+  // (db:push + db:generate). TODO: fold into the select above afterwards.
+  const pauseState = await (
+    prisma as unknown as {
+      creatorProfile: {
+        findUnique: (a: unknown) => Promise<{
+          tierPauseResumesAt: Date | null
+          tierLastPausedAt: Date | null
+        } | null>
+      }
+    }
+  ).creatorProfile
+    .findUnique({
+      where: { id: profile.id },
+      select: { tierPauseResumesAt: true, tierLastPausedAt: true },
+    })
+    .catch(() => null)
+
+  const now = new Date()
+  if (pauseState?.tierPauseResumesAt && pauseState.tierPauseResumesAt > now) {
+    throw new Error('Your subscription is already paused.')
+  }
+  if (pauseState?.tierLastPausedAt) {
+    const cooldownEnd = new Date(
+      pauseState.tierLastPausedAt.getTime() +
+        PAUSE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000,
+    )
+    if (cooldownEnd > now) {
+      throw new Error(
+        'You can pause once every 12 months. Contact support if you need more time.',
+      )
+    }
+  }
+
+  const resumesAt = new Date(now)
+  resumesAt.setMonth(resumesAt.getMonth() + input.months)
+
+  await stripe.subscriptions.update(profile.stripeTierSubscriptionId, {
+    pause_collection: {
+      behavior: 'void',
+      resumes_at: Math.floor(resumesAt.getTime() / 1000),
+    },
+    // Pause IS the save — a pending cancel is withdrawn by taking it.
+    cancel_at_period_end: false,
+  })
+
+  // Mirror immediately (webhook confirms). Cast-guarded — see above.
+  await (
+    prisma as unknown as {
+      creatorProfile: {
+        update: (a: unknown) => Promise<unknown>
+      }
+    }
+  ).creatorProfile.update({
+    where: { id: profile.id },
+    data: {
+      tierPauseResumesAt: resumesAt,
+      tierLastPausedAt: now,
+      tierCancelAtPeriodEnd: false,
+    },
+  })
+
+  return { resumesAt }
+}
+
 export async function resumeTierSubscription(input: {
   creatorProfileId: string
 }): Promise<{ currentPeriodEnd: Date }> {

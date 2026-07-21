@@ -25,6 +25,8 @@ import {
   startTierUpgrade,
   cancelMyTierSubscription,
   resumeMyTierSubscription,
+  pauseMyTierSubscription,
+  openBillingPortal,
 } from './actions'
 import {
   TIER_CANCEL_REASONS,
@@ -118,14 +120,25 @@ export function UpgradeButton({
 // interrogation. NO retention offer here yet (that's the P1 save-flow; CA's
 // ARL allows at most one, shown next to a plain cancel path).
 
+// Cancellation P1: reasons that unlock the pause save-offer. TOO_EXPENSIVE
+// deliberately excluded — a pauser who keeps producing would keep the lower
+// fee rate unbilled; "not producing right now" reasons carry no such leak.
+const PAUSE_ELIGIBLE_REASONS: readonly TierCancelReasonCode[] = [
+  'NOT_USING',
+  'TEMPORARY',
+]
+
 export function CancelButton({
   tierName,
   periodEndLabel,
   loseFeatures,
+  pauseAvailable,
 }: {
   tierName: string
   periodEndLabel: string | null
   loseFeatures: string[]
+  /** False when already paused or inside the 365-day pause cooldown. */
+  pauseAvailable: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [pending, start] = useTransition()
@@ -134,11 +147,17 @@ export function CancelButton({
     null,
   )
   const [reasonText, setReasonText] = useState('')
+  const [pauseMonths, setPauseMonths] = useState(2)
+
+  const showPauseOffer =
+    pauseAvailable && reasonCode !== null &&
+    PAUSE_ELIGIBLE_REASONS.includes(reasonCode)
 
   const reset = () => {
     setReasonCode(null)
     setReasonText('')
     setError(null)
+    setPauseMonths(2)
   }
 
   return (
@@ -238,6 +257,58 @@ export function CancelButton({
               />
             </label>
 
+            {/* Cancellation P1 — the single save offer (CA ARL: max one,
+                rendered ABOVE a plain, always-visible cancel path). */}
+            {showPauseOffer && (
+              <div className="rounded-xl border border-pink-200 bg-pink-50 px-4 py-3">
+                <p className="text-[12.5px] font-semibold text-ink-900">
+                  Pause instead? Keep everything, pay nothing.
+                </p>
+                <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-600">
+                  We&rsquo;ll skip your invoices and billing restarts
+                  automatically. You keep your {tierName} benefits the whole
+                  time. Available once every 12 months.
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {[1, 2, 3].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPauseMonths(m)}
+                      className={`rounded-full border px-3 py-1 text-[11.5px] font-semibold transition ${
+                        pauseMonths === m
+                          ? 'border-pink-500 bg-white text-pink-700'
+                          : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300'
+                      }`}
+                    >
+                      {m} month{m > 1 ? 's' : ''}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      setError(null)
+                      start(async () => {
+                        const res = await pauseMyTierSubscription({
+                          months: pauseMonths,
+                          reasonCode: reasonCode ?? undefined,
+                        })
+                        if (!res.ok) {
+                          setError(res.error)
+                          return
+                        }
+                        setOpen(false)
+                      })
+                    }}
+                    className="ml-auto inline-flex h-8 items-center justify-center rounded-full bg-pink-600 px-4 text-[11.5px] font-semibold uppercase tracking-wider text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {pending ? 'Pausing…' : 'Pause my plan'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {error && (
               <p className="text-[11.5px] text-danger-700" role="alert">
                 {error}
@@ -280,6 +351,52 @@ export function CancelButton({
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+// =============================================================================
+// ManageBillingButton — Stripe Billing Portal (Cancellation P1)
+// =============================================================================
+//
+// Card update + invoice history only (portal config disables cancel + plan
+// switching). Lives in the dunning grace banner so a failed payment has a
+// one-click fix, and below the tier cards for everyday card management.
+
+export function ManageBillingButton({ compact }: { compact?: boolean }) {
+  const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setError(null)
+          start(async () => {
+            const res = await openBillingPortal()
+            if (!res.ok) {
+              setError(res.error)
+              return
+            }
+            // Stripe-hosted portal — full-page nav, same as Checkout.
+            window.location.assign(res.url)
+          })
+        }}
+        className={
+          compact
+            ? 'inline-flex h-8 items-center justify-center rounded-full bg-ink-900 px-4 text-[11.5px] font-semibold uppercase tracking-wider text-white transition hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-60'
+            : 'inline-flex h-9 items-center justify-center rounded-full border border-ink-300 bg-white px-4 text-[12px] font-semibold uppercase tracking-wider text-ink-700 transition hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-60'
+        }
+      >
+        {pending ? 'Opening…' : 'Manage billing'}
+      </button>
+      {error && (
+        <p className="text-[11.5px] text-danger-700" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }
 
