@@ -11,9 +11,10 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "lint": "turbo run lint && pnpm check:invariants:strict",
     "check:colors": "node scripts/check-no-raw-tailwind-colors.mjs",
     "check:invariants": "node scripts/check-invariants.mjs",
+    "check:invariants:strict": "node scripts/check-invariants.mjs --strict",
     "manifest": "node scripts/build-flow-manifest.mjs",
     "test": "turbo run test",
     "type-check": "turbo run type-check",
