@@ -40,6 +40,8 @@ import {
   ResumeButton,
   ManageBillingButton,
   ResumePauseButton,
+  DowngradeButton,
+  UndoDowngradeButton,
 } from './PlanActionButtons'
 
 export const dynamic = 'force-dynamic'
@@ -193,6 +195,8 @@ export default async function PlanPage({ searchParams }: PageProps) {
           tierPauseResumesAt?: Date | null
           tierLastPausedAt?: Date | null
           tierPausedFromTier?: string | null
+          tierPendingDowngradeTo?: string | null
+          tierDowngradeAt?: Date | null
         } | null>
       }
     }
@@ -205,6 +209,8 @@ export default async function PlanPage({ searchParams }: PageProps) {
         tierPauseResumesAt: true,
         tierLastPausedAt: true,
         tierPausedFromTier: true,
+        tierPendingDowngradeTo: true,
+        tierDowngradeAt: true,
       },
     })
     .catch(() => null)
@@ -225,6 +231,9 @@ export default async function PlanPage({ searchParams }: PageProps) {
     !pausedFromTier &&
     (!lastPausedAt ||
       now.getTime() - lastPausedAt.getTime() > 365 * 24 * 60 * 60 * 1000)
+  // Cancellation P2 — scheduled true downgrade state.
+  const pendingDowngradeTo = extraState?.tierPendingDowngradeTo ?? null
+  const downgradeAt = extraState?.tierDowngradeAt ?? null
 
   return (
     <div className="space-y-6">
@@ -238,6 +247,16 @@ export default async function PlanPage({ searchParams }: PageProps) {
           </p>
           <ManageBillingButton compact />
         </div>
+      )}
+
+      {pendingDowngradeTo && (
+        <ResultBanner
+          tone="warning"
+          icon={<CalendarClock className="h-4 w-4" />}
+          title={`Switching to ${titleCase(pendingDowngradeTo)}${downgradeAt ? ` on ${formatDate(downgradeAt)}` : ' at renewal'}`}
+          message={`You keep every ${titleCase(currentTier.toUpperCase())} benefit until then, and ${titleCase(pendingDowngradeTo)} billing starts automatically. Changed your mind?`}
+          slot={<UndoDowngradeButton />}
+        />
       )}
 
       {pauseScheduled && pauseStartsAt && pauseResumesAt && (
@@ -346,6 +365,8 @@ export default async function PlanPage({ searchParams }: PageProps) {
               periodEnd={isCurrent ? periodEnd : null}
               hasStripeSub={Boolean(profile?.stripeTierSubscriptionId)}
               pauseAvailable={pauseAvailable}
+              downgradeScheduled={Boolean(pendingDowngradeTo)}
+              accountPeriodEndLabel={periodEnd ? formatDate(periodEnd) : null}
             />
           )
         })}
@@ -376,6 +397,11 @@ interface TierCardProps {
   hasStripeSub: boolean
   /** Cancellation P1 — gates the pause save-offer in the cancel modal. */
   pauseAvailable: boolean
+  /** Cancellation P2 — a downgrade is already scheduled (banner owns it). */
+  downgradeScheduled: boolean
+  /** Period end formatted for CTAs on NON-current cards (periodEnd prop is
+      current-card-only). */
+  accountPeriodEndLabel: string | null
 }
 
 function TierCard({
@@ -390,6 +416,8 @@ function TierCard({
   periodEnd,
   hasStripeSub,
   pauseAvailable,
+  downgradeScheduled,
+  accountPeriodEndLabel,
 }: TierCardProps) {
   const Icon = meta.Icon
   const price = monthlyPriceCents > 0 ? `$${(monthlyPriceCents / 100).toFixed(0)}` : 'Free'
@@ -492,7 +520,15 @@ function TierCard({
         ) : isDowngrade && meta.key === 'maker' ? (
           <DowngradeExplainer />
         ) : isDowngrade ? (
-          <DowngradeExplainer agency />
+          // Cancellation P2 — TRUE downgrade at renewal (retires the old
+          // "cancel + re-subscribe" copy). Hidden when a downgrade is already
+          // scheduled (the banner above owns that state) or when the tier is
+          // admin-granted (no Stripe sub to reschedule).
+          hasStripeSub && !downgradeScheduled ? (
+            <DowngradeButton effectiveLabel={accountPeriodEndLabel} />
+          ) : (
+            <DowngradeExplainer agency scheduled={downgradeScheduled} />
+          )
         ) : null}
       </div>
     </article>
@@ -517,12 +553,20 @@ function CurrentWithPendingCancel({ periodEnd }: { periodEnd: Date | null }) {
   )
 }
 
-function DowngradeExplainer({ agency = false }: { agency?: boolean }) {
+function DowngradeExplainer({
+  agency = false,
+  scheduled = false,
+}: {
+  agency?: boolean
+  scheduled?: boolean
+}) {
   return (
     <p className="text-center text-[11.5px] leading-snug text-ink-500">
-      {agency
-        ? 'To switch from Agency to Builder, cancel your current subscription, then re-subscribe at the lower tier.'
-        : 'Cancel your current subscription to drop back to Maker at the end of the billing period.'}
+      {scheduled
+        ? 'Your switch to Builder is scheduled — see the banner above.'
+        : agency
+          ? 'Your plan is managed by iLaunchify. Contact support to switch tiers.'
+          : 'Cancel your current subscription to drop back to Maker at the end of the billing period.'}
     </p>
   )
 }

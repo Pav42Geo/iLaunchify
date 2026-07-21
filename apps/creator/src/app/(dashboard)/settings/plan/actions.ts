@@ -22,6 +22,8 @@ import {
   resumeTierSubscription,
   pauseTierSubscription,
   unpauseTierSubscription,
+  scheduleTierDowngrade,
+  releaseScheduledTierDowngrade,
   createBillingPortalSession,
   PAUSE_MIN_MONTHS,
   PAUSE_MAX_MONTHS,
@@ -425,6 +427,83 @@ export async function resumePausedTierSubscription(): Promise<
 
     revalidatePath('/settings/plan')
     return { ok: true, restoredTier: res.restoredTier }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
+// =============================================================================
+// scheduleMyTierDowngrade / undoMyTierDowngrade — Agency → Builder at renewal
+// =============================================================================
+//
+// Cancellation P2: TRUE downgrade, retiring "cancel + re-subscribe". Keeps
+// Agency until the paid period ends, then Builder billing starts (no
+// proration — nothing changes mid-cycle). Undo any time before it lands.
+
+export async function scheduleMyTierDowngrade(): Promise<
+  Result<{ effectiveAt: string }>
+> {
+  const user = await requireUser()
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true, subscriptionTier: true },
+  })
+  if (!profile) return { ok: false, error: 'Creator profile not found.' }
+
+  try {
+    const res = await scheduleTierDowngrade({
+      creatorProfileId: profile.id,
+      targetTier: 'BUILDER',
+    })
+    try {
+      await logAuditAs(user, {
+        entityType: 'CreatorProfile',
+        entityId: profile.id,
+        action: 'SUBSCRIPTION_DOWNGRADE_SCHEDULED',
+        fromValue: profile.subscriptionTier,
+        toValue: 'BUILDER',
+        payload: { effectiveAt: res.effectiveAt.toISOString() },
+      })
+    } catch (bookkeepingErr) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[plan] downgrade bookkeeping failed',
+        (bookkeepingErr as Error).message,
+      )
+    }
+    revalidatePath('/settings/plan')
+    return { ok: true, effectiveAt: res.effectiveAt.toISOString() }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
+export async function undoMyTierDowngrade(): Promise<Result> {
+  const user = await requireUser()
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true, subscriptionTier: true },
+  })
+  if (!profile) return { ok: false, error: 'Creator profile not found.' }
+
+  try {
+    await releaseScheduledTierDowngrade({ creatorProfileId: profile.id })
+    try {
+      await logAuditAs(user, {
+        entityType: 'CreatorProfile',
+        entityId: profile.id,
+        action: 'SUBSCRIPTION_DOWNGRADE_UNDONE',
+        toValue: profile.subscriptionTier,
+      })
+    } catch (bookkeepingErr) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[plan] downgrade-undo bookkeeping failed',
+        (bookkeepingErr as Error).message,
+      )
+    }
+    revalidatePath('/settings/plan')
+    return { ok: true }
   } catch (err) {
     return { ok: false, error: (err as Error).message }
   }

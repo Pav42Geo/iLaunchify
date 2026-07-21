@@ -57,6 +57,10 @@ export {
   pauseTierSubscription,
   unpauseTierSubscription,
   processTierPauseStarts,
+  // Cancellation P2 — true downgrade at renewal (Stripe Subscription
+  // Schedule; paid-through, no proration) + the undo.
+  scheduleTierDowngrade,
+  releaseScheduledTierDowngrade,
   PAUSE_MIN_MONTHS,
   PAUSE_MAX_MONTHS,
   PAUSE_COOLDOWN_DAYS,

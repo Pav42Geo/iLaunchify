@@ -578,6 +578,213 @@ export async function processTierPauseStarts(): Promise<TierPauseSweepResult> {
   return { swept, errors }
 }
 
+// =============================================================================
+// scheduleTierDowngrade — TRUE downgrade at renewal (Cancellation P2)
+// =============================================================================
+//
+// Replaces the "cancel + re-subscribe" doctrine for tier downgrades
+// (docs/CREATOR_PLAN_CANCELLATION_RESEARCH_2026-07-20.md P2). Paid-through
+// doctrine: the creator keeps the CURRENT tier until current_period_end, then
+// the LOWER tier's price starts billing, with no proration in either
+// direction (nothing changes mid-cycle, so there is nothing to prorate).
+//
+// Mechanics: Stripe Subscription Schedule with two phases:
+//   phase 1 = current price, ends at current_period_end
+//   phase 2 = per-subscription Builder price (grandfather pattern, same as
+//             Checkout), ONE iteration, then end_behavior 'release' — the
+//             subscription continues on the Builder price with no schedule
+//             attached, back to the exact shape upgrades produce.
+// The tier flip happens when phase 2 starts: customer.subscription.updated
+// fires with the new price whose metadata carries ilaunchify_tier, and the
+// webhook flips DOWN only (guarded), then clears the mirrors.
+//
+// Undo: releaseScheduledTierDowngrade before phase 2 — the schedule releases,
+// the sub keeps the current price, nothing ever changes.
+
+export interface ScheduleTierDowngradeInput {
+  creatorProfileId: string
+  /** Tier to land on at renewal. V1: 'BUILDER' (Agency is the only tier
+      with somewhere lower to go that isn't a cancel-to-Maker). */
+  targetTier: 'BUILDER'
+}
+
+export async function scheduleTierDowngrade(
+  input: ScheduleTierDowngradeInput,
+): Promise<{ effectiveAt: Date }> {
+  const profile = await prisma.creatorProfile.findUnique({
+    where: { id: input.creatorProfileId },
+    select: {
+      id: true,
+      subscriptionTier: true,
+      stripeTierSubscriptionId: true,
+      tierCancelAtPeriodEnd: true,
+    },
+  })
+  if (!profile) throw new Error('Creator profile not found.')
+  if (!profile.stripeTierSubscriptionId) {
+    throw new Error('No active tier subscription to downgrade.')
+  }
+  if (profile.subscriptionTier !== 'AGENCY') {
+    throw new Error('Only an Agency plan can switch down to Builder.')
+  }
+  if (profile.tierCancelAtPeriodEnd) {
+    throw new Error(
+      'Your plan is set to cancel. Resume it first, then switch tiers.',
+    )
+  }
+
+  const extra = await (
+    prisma as unknown as {
+      creatorProfile: {
+        findUnique: (a: unknown) => Promise<{
+          tierPausedFromTier: string | null
+          tierPendingDowngradeTo: string | null
+          tierDowngradeAt: Date | null
+        } | null>
+      }
+    }
+  ).creatorProfile
+    .findUnique({
+      where: { id: profile.id },
+      select: {
+        tierPausedFromTier: true,
+        tierPendingDowngradeTo: true,
+        tierDowngradeAt: true,
+      },
+    })
+    .catch(() => null)
+  if (extra?.tierPausedFromTier) {
+    throw new Error('Your plan is paused. Resume it before switching tiers.')
+  }
+  if (extra?.tierPendingDowngradeTo && extra.tierDowngradeAt) {
+    // Idempotent: already scheduled.
+    return { effectiveAt: extra.tierDowngradeAt }
+  }
+
+  const sub = await stripe.subscriptions.retrieve(
+    profile.stripeTierSubscriptionId,
+  )
+  const currentItem = sub.items.data[0]
+  if (!currentItem) throw new Error('Subscription has no billable item.')
+
+  // Per-subscription Builder Product+Price — SubscriptionPlan is the price
+  // SSOT (admin-editable), grandfathered per creator exactly like Checkout.
+  const planCode = tierToPlanCode(input.targetTier)
+  const plan = await getPlanByCode(planCode)
+  if (!plan?.monthlyPriceCents || plan.monthlyPriceCents <= 0) {
+    throw new Error(`Plan ${planCode} has no monthly price set.`)
+  }
+  const priceMetadata = {
+    ilaunchify_kind: 'tier' as const,
+    ilaunchify_creator_profile_id: profile.id,
+    ilaunchify_plan_code: planCode,
+    ilaunchify_tier: input.targetTier,
+  }
+  const product = await stripe.products.create({
+    name: `iLaunchify ${plan.tierName} — scheduled downgrade`,
+    metadata: priceMetadata,
+  })
+  const newPrice = await stripe.prices.create({
+    product: product.id,
+    currency: 'usd',
+    unit_amount: plan.monthlyPriceCents,
+    recurring: { interval: 'month', interval_count: 1 },
+    metadata: priceMetadata,
+  })
+
+  // Attach (or reuse) the schedule and lay out the two phases.
+  const scheduleId =
+    typeof sub.schedule === 'string'
+      ? sub.schedule
+      : (sub.schedule?.id ??
+        (await stripe.subscriptionSchedules.create({
+          from_subscription: sub.id,
+        })).id)
+
+  await stripe.subscriptionSchedules.update(scheduleId, {
+    end_behavior: 'release',
+    phases: [
+      {
+        items: [{ price: currentItem.price.id, quantity: 1 }],
+        start_date: sub.current_period_start,
+        end_date: sub.current_period_end,
+      },
+      {
+        items: [{ price: newPrice.id, quantity: 1 }],
+        iterations: 1,
+      },
+    ],
+    metadata: priceMetadata,
+  })
+
+  const effectiveAt = new Date(sub.current_period_end * 1000)
+
+  // Mirror for the UI (cast-guarded until the migration lands).
+  await (
+    prisma as unknown as {
+      creatorProfile: { update: (a: unknown) => Promise<unknown> }
+    }
+  ).creatorProfile.update({
+    where: { id: profile.id },
+    data: {
+      tierPendingDowngradeTo: input.targetTier,
+      tierDowngradeAt: effectiveAt,
+      tierScheduleId: scheduleId,
+    },
+  })
+
+  return { effectiveAt }
+}
+
+/**
+ * Undo a scheduled downgrade before it takes effect: release the schedule
+ * (subscription keeps its current price as if nothing happened) + clear the
+ * mirrors. Safe to call twice.
+ */
+export async function releaseScheduledTierDowngrade(input: {
+  creatorProfileId: string
+}): Promise<void> {
+  const extra = await (
+    prisma as unknown as {
+      creatorProfile: {
+        findUnique: (a: unknown) => Promise<{
+          tierScheduleId: string | null
+        } | null>
+      }
+    }
+  ).creatorProfile
+    .findUnique({
+      where: { id: input.creatorProfileId },
+      select: { tierScheduleId: true },
+    })
+    .catch(() => null)
+  if (!extra?.tierScheduleId) return
+
+  try {
+    await stripe.subscriptionSchedules.release(extra.tierScheduleId)
+  } catch (err) {
+    // Already released/completed is fine — mirrors get cleared either way.
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[tier-downgrade] schedule release warning',
+      (err as Error).message,
+    )
+  }
+
+  await (
+    prisma as unknown as {
+      creatorProfile: { update: (a: unknown) => Promise<unknown> }
+    }
+  ).creatorProfile.update({
+    where: { id: input.creatorProfileId },
+    data: {
+      tierPendingDowngradeTo: null,
+      tierDowngradeAt: null,
+      tierScheduleId: null,
+    },
+  })
+}
+
 export async function resumeTierSubscription(input: {
   creatorProfileId: string
 }): Promise<{ currentPeriodEnd: Date }> {

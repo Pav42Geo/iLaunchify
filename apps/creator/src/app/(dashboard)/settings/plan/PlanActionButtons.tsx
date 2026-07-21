@@ -28,6 +28,8 @@ import {
   resumeMyTierSubscription,
   pauseMyTierSubscription,
   resumePausedTierSubscription,
+  scheduleMyTierDowngrade,
+  undoMyTierDowngrade,
   openBillingPortal,
 } from './actions'
 import {
@@ -377,6 +379,82 @@ export function CancelButton({
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+// =============================================================================
+// DowngradeButton / UndoDowngradeButton — Agency → Builder at renewal (P2)
+// =============================================================================
+//
+// True downgrade via Stripe Subscription Schedule. Confirmation stays light:
+// nothing is lost today (Agency runs to the paid date), and the banner offers
+// a one-click undo until it lands, so a heavyweight modal would be friction
+// without protection.
+
+export function DowngradeButton({
+  effectiveLabel,
+}: {
+  /** Formatted period-end date, when known. */
+  effectiveLabel: string | null
+}) {
+  const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <div className="space-y-1.5">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setError(null)
+          start(async () => {
+            const res = await scheduleMyTierDowngrade()
+            if (!res.ok) setError(res.error)
+          })
+        }}
+        className="inline-flex h-9 w-full items-center justify-center rounded-full border border-ink-300 bg-white px-4 text-[12px] font-semibold uppercase tracking-wider text-ink-700 transition-colors hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {pending ? 'Scheduling…' : 'Switch to Builder at renewal'}
+      </button>
+      <p className="text-center text-[11px] leading-snug text-ink-500">
+        Keep Agency until {effectiveLabel ?? 'your paid period ends'}, then
+        Builder billing starts. Undo any time before then.
+      </p>
+      {error && (
+        <p className="text-[11.5px] text-danger-700" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+export function UndoDowngradeButton() {
+  const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          setError(null)
+          start(async () => {
+            const res = await undoMyTierDowngrade()
+            if (!res.ok) setError(res.error)
+          })
+        }}
+        className="inline-flex h-8 items-center justify-center rounded-full bg-ink-900 px-4 text-[11.5px] font-semibold uppercase tracking-wider text-white transition-colors hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {pending ? 'Undoing…' : 'Keep Agency'}
+      </button>
+      {error && (
+        <p className="text-[11.5px] text-danger-700" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   )
 }
 

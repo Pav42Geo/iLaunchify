@@ -737,8 +737,8 @@ async function onSubscriptionDeleted(subscription: Stripe.Subscription) {
     },
   })
 
-  // Cancellation P1 — a dead subscription can't be paused; clear any pause
-  // window (cast-guarded until the tierPause* migration lands).
+  // Cancellation P1/P2 — a dead subscription can't be paused or downgrade-
+  // scheduled; clear both windows (cast-guarded until the migrations land).
   await (
     prisma as unknown as {
       creatorProfile: { update: (a: unknown) => Promise<unknown> }
@@ -750,6 +750,9 @@ async function onSubscriptionDeleted(subscription: Stripe.Subscription) {
         tierPauseStartsAt: null,
         tierPauseResumesAt: null,
         tierPausedFromTier: null,
+        tierPendingDowngradeTo: null,
+        tierDowngradeAt: null,
+        tierScheduleId: null,
       },
     })
     .catch(() => null)
@@ -862,7 +865,7 @@ async function onCheckoutSessionCompleted(
 async function onSubscriptionUpdated(subscription: Stripe.Subscription) {
   const profile = await prisma.creatorProfile.findUnique({
     where: { stripeTierSubscriptionId: subscription.id },
-    select: { id: true },
+    select: { id: true, subscriptionTier: true },
   })
   if (!profile) return // not a tier sub (likely a ProductionSubscription) — ignore
 
@@ -923,6 +926,67 @@ async function onSubscriptionUpdated(subscription: Stripe.Subscription) {
         .catch(() => null)
     }
   }
+
+  // Cancellation P2 — scheduled-downgrade phase start. When the schedule's
+  // Builder phase begins, the sub's item price changes to one whose metadata
+  // carries ilaunchify_tier. Flip DOWN ONLY (rank guard — an upgrade tier
+  // flip belongs to checkout.session.completed, never here), and never while
+  // a pause is mid-flight (the pause restore owns the tier then). Idempotent:
+  // same-tier no-ops inside the shared helper; mirror clear is re-runnable.
+  const itemTier = subscription.items.data[0]?.price?.metadata?.ilaunchify_tier
+  if (
+    (itemTier === 'BUILDER' || itemTier === 'MAKER') &&
+    (TIER_RANK_LOCAL[itemTier] ?? 0) <
+      (TIER_RANK_LOCAL[profile.subscriptionTier] ?? 0) &&
+    subscription.pause_collection == null
+  ) {
+    const state = await (
+      prisma as unknown as {
+        creatorProfile: {
+          findUnique: (a: unknown) => Promise<{
+            tierPausedFromTier: string | null
+            tierPendingDowngradeTo: string | null
+          } | null>
+        }
+      }
+    ).creatorProfile
+      .findUnique({
+        where: { id: profile.id },
+        select: { tierPausedFromTier: true, tierPendingDowngradeTo: true },
+      })
+      .catch(() => null)
+    if (!state?.tierPausedFromTier && state?.tierPendingDowngradeTo === itemTier) {
+      await setCreatorTierWithAudit({
+        creatorProfileId: profile.id,
+        newTier: itemTier,
+        actor: { kind: 'system', label: 'scheduled_downgrade_effective' },
+        payload: { stripeSubscriptionId: subscription.id },
+      })
+      await (
+        prisma as unknown as {
+          creatorProfile: { update: (a: unknown) => Promise<unknown> }
+        }
+      ).creatorProfile
+        .update({
+          where: { id: profile.id },
+          data: {
+            tierPendingDowngradeTo: null,
+            tierDowngradeAt: null,
+            tierScheduleId: null,
+          },
+        })
+        .catch(() => null)
+    }
+  }
+}
+
+// Local rank map for the downgrade-only guard above. Values mirror
+// @ilaunchify/auth TIER_RANK (maker 0 / builder 1 / agency 2); kept local so
+// the webhook does not pull the client-side auth barrel.
+const TIER_RANK_LOCAL: Record<string, number> = {
+  MAKER: 0,
+  BUILDER: 1,
+  AGENCY: 2,
 }
 
 // Suppress unused-import noise — kept for symmetry with cancelProductionSubscription.

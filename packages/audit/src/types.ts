@@ -298,6 +298,11 @@ export const AUDIT_ACTIONS = [
   // until billing resumes; 1x/365d guard). UNPAUSED = manual early resume.
   'SUBSCRIPTION_PAUSED',
   'SUBSCRIPTION_UNPAUSED',
+  // Cancellation P2 — scheduled true downgrade (Agency→Builder at renewal)
+  // + the creator undoing it before it takes effect. The actual tier flip
+  // still audits as CREATOR_TIER_CHANGE when the schedule phase starts.
+  'SUBSCRIPTION_DOWNGRADE_SCHEDULED',
+  'SUBSCRIPTION_DOWNGRADE_UNDONE',
   'PARTNER_TIER_CHANGE',
   'FEE_OVERRIDE_SET',
   'FEE_OVERRIDE_CLEAR',

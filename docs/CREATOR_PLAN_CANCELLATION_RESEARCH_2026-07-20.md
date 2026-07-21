@@ -40,7 +40,28 @@ P0 and P1 (section 3 below) are BUILT. Decisions locked while building:
 - **Portal is locked down**: `subscription_cancel` and `subscription_update` disabled in the portal configuration (metadata-tagged `creator_billing_v1`, lazily created + cached); cancel stays in our modal, plan changes in Checkout.
 - New audit action `SUBSCRIPTION_PAUSED` (payload carries `savedFromReasonCode` for save-rate analytics). Pause state mirrors on `CreatorProfile.tierPauseResumesAt` via `customer.subscription.updated`.
 
-Remaining P2: true downgrade via price-swap, churn dashboard on the admin Tiers console.
+**P2 BUILT (2026-07-21):**
+
+- **True downgrade** (Agency → Builder at renewal): Stripe Subscription
+  Schedule, two phases (current price to period end, then a per-subscription
+  Builder price for one iteration, `end_behavior: 'release'`). Paid-through
+  doctrine, no proration. Tier flips when the phase starts, via the
+  `customer.subscription.updated` handler (DOWN-only rank guard, skipped while
+  paused, requires the mirrored `tierPendingDowngradeTo` to match). Undo =
+  schedule release any time before it lands. Mirrors:
+  `tierPendingDowngradeTo/tierDowngradeAt/tierScheduleId`. Audit:
+  `SUBSCRIPTION_DOWNGRADE_SCHEDULED` / `_UNDONE` + `CREATOR_TIER_CHANGE`
+  (label `scheduled_downgrade_effective`). UI: "Switch to Builder at renewal"
+  on the Builder card + undo banner. Blocked while pending-cancel or paused;
+  upgrades while scheduled go through the existing guards.
+- **Churn dashboard** at `/tiers/churn` (admin, `tiers:write`): 30-day KPIs
+  (cancel requests, save rate, realized churn, pauses + downgrades, top
+  reason) + latest-50 cancel-request table with Saved / Scheduled / Churned
+  status, reading `TierCancellationEvent` + the audit actions.
+
+Remaining: the live verification pass in Stripe test mode (cancel round-trip,
+pause round-trip incl. cron sweep + webhook restore, downgrade phase start,
+portal config self-creation), and dropping the cast-guards after db:generate.
 
 ## 3. Recommended build (priority order)
 

@@ -803,6 +803,16 @@ model CreatorProfile {
   tierPauseResumesAt       DateTime?
   tierLastPausedAt         DateTime?
   tierPausedFromTier       SubscriptionTier?
+  // Cancellation P2 — scheduled TRUE downgrade (Agency→Builder) via Stripe
+  // Subscription Schedule: current tier runs to period end (paid-through
+  // doctrine), then the lower price starts and the webhook flips the tier.
+  //   tierPendingDowngradeTo — target tier; null = no downgrade scheduled.
+  //   tierDowngradeAt        — when it takes effect (= period end).
+  //   tierScheduleId         — Stripe SubscriptionSchedule handle (sub_sched_…)
+  //                            for the undo path (release before phase 2).
+  tierPendingDowngradeTo   SubscriptionTier?
+  tierDowngradeAt          DateTime?
+  tierScheduleId           String?
   // Fee overrides
   feeRateOverrideBp        Int?
   feeRateOverrideReason    String?
