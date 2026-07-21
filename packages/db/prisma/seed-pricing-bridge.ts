@@ -1,7 +1,9 @@
 // Targeted bridge seed — one real ProductTemplate whose slug matches a
 // marketplace FIXTURE (`daily-greens-powder`) + its ProductTemplatePricingTier
-// rows, so the marketplace detail page renders REAL volume pricing and proves
-// the getPricingTierRows wire end-to-end (punch-list #2).
+// rows + its ProductTemplateVariant rows, so the marketplace detail page renders
+// REAL volume pricing AND a real flavor/packaging picker. The variants close the
+// "0 variants → no packaging" gap: their containerFormat feeds the packagingType
+// backfill + offering seeding in seedPackagingOfferingFixtures (runs after this).
 //
 // Why a "bridge": the marketplace detail page is still fixture-driven (slugs
 // like `daily-greens-powder` have no DB ProductTemplate). getPricingTierRows()
@@ -72,5 +74,22 @@ export async function seedPricingBridge(prisma: PrismaClient) {
     data: TIERS.map((t) => ({ ...t, productTemplateId: tpl.id })),
   })
 
-  console.log(`  ✓ ${BRIDGE_SLUG} published with ${TIERS.length} pricing tiers.`)
+  // Variants — the PDP flavor + packaging pickers read these. WITHOUT them
+  // getTemplatePackagingOptions() returns [] and the page shows "no packaging" (the
+  // reported gap: this bridge template had zero variants). Each variant's
+  // `containerFormat` drives the backfill in seedPackagingOfferingFixtures (runs AFTER
+  // this): it maps the text to a PackagingType, sets variant.packagingTypeId, and seeds
+  // ACTIVE offerings for that type — which is exactly what the picker resolves. Two
+  // containers (tub + sachet) + two flavors so the pickers have real choices. Idempotent
+  // replace, mirroring the tiers.
+  await prisma.productTemplateVariant.deleteMany({ where: { productTemplateId: tpl.id } })
+  await prisma.productTemplateVariant.createMany({
+    data: [
+      { productTemplateId: tpl.id, flavor: 'Unflavored', containerFormat: '300g tub', servingsPerContainer: 30, servingSizeG: 10, servingSizeDesc: '1 scoop (10g)', moqMin: 500, moqMax: 5000, leadTimeDays: 28 },
+      { productTemplateId: tpl.id, flavor: 'Berry', containerFormat: '300g tub', servingsPerContainer: 30, servingSizeG: 10, servingSizeDesc: '1 scoop (10g)', moqMin: 500, moqMax: 5000, leadTimeDays: 28 },
+      { productTemplateId: tpl.id, flavor: 'Unflavored', containerFormat: '30 single-serve sachets', servingsPerContainer: 30, servingSizeG: 10, servingSizeDesc: '1 sachet (10g)', moqMin: 500, moqMax: 5000, leadTimeDays: 35 },
+    ],
+  })
+
+  console.log(`  ✓ ${BRIDGE_SLUG} published with ${TIERS.length} pricing tiers + 3 variants (tub / sachet).`)
 }
