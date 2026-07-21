@@ -5,9 +5,12 @@ import { Button } from '@ilaunchify/ui'
 import { LandingHeader } from '@/components/LandingHeader'
 import { LandingFooter } from '@/components/LandingFooter'
 import { Reveal } from '@/components/Reveal'
-import { PricingCards } from '@/components/PricingCards'
+import { PricingCards, type PlanPricing, type TierId } from '@/components/PricingCards'
 import { creatorUrl } from '@/lib/app-urls'
 import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
+import { getCreatorFeePcts } from '@/lib/pricing'
+import { prisma } from '@ilaunchify/db'
+import { CREATOR_PLAN_CODES } from '@ilaunchify/plans'
 
 /**
  * /pricing — public-facing tier comparison.
@@ -33,6 +36,54 @@ export default async function PricingPage({
   const session = await getMarketingSession()
   const { user, brands, activeBrandId } = headerPropsFromSession(session)
 
+  // LIVE money (Pavel 2026-07-21, option C phase 2): fee rates from FeeRule
+  // and plan prices from SubscriptionPlan — this page carried hardcoded
+  // $79/$249 + 15/12/8% that had drifted from what the app charges. Admin
+  // edits in Tiers & Plans now propagate here with zero copy changes.
+  const [feePcts, plans] = await Promise.all([
+    getCreatorFeePcts(),
+    prisma.subscriptionPlan.findMany({
+      where: {
+        code: {
+          in: [
+            CREATOR_PLAN_CODES.maker,
+            CREATOR_PLAN_CODES.builder,
+            CREATOR_PLAN_CODES.agency,
+          ],
+        },
+      },
+      select: { code: true, monthlyPriceCents: true, annualPriceCents: true },
+    }),
+  ])
+  const planByCode = new Map(plans.map((p) => [p.code, p]))
+  const fmtPct = (p: number) => (Number.isInteger(p) ? String(p) : p.toFixed(1))
+  const planPricing = (tier: TierId): PlanPricing => {
+    const codes = {
+      maker: CREATOR_PLAN_CODES.maker,
+      builder: CREATOR_PLAN_CODES.builder,
+      agency: CREATOR_PLAN_CODES.agency,
+    } as const
+    const row = planByCode.get(codes[tier])
+    const monthlyCents = row?.monthlyPriceCents ?? 0
+    const annualCents = row?.annualPriceCents ?? monthlyCents * 10 // 2 months free
+    return {
+      monthly: monthlyCents > 0 ? monthlyCents / 100 : 'free',
+      annual: monthlyCents > 0 ? annualCents / 100 : 'free',
+      feeLabel: `${fmtPct(feePcts[tier])}% production-order fee`,
+    }
+  }
+  const pricing: Record<TierId, PlanPricing> = {
+    maker: planPricing('maker'),
+    builder: planPricing('builder'),
+    agency: planPricing('agency'),
+  }
+  // Substitute live rates into copy strings carrying __FEE_*__ tokens.
+  const subFees = (s: string) =>
+    s
+      .replaceAll('__FEE_MAKER__', `${fmtPct(feePcts.maker)}%`)
+      .replaceAll('__FEE_BUILDER__', `${fmtPct(feePcts.builder)}%`)
+      .replaceAll('__FEE_AGENCY__', `${fmtPct(feePcts.agency)}%`)
+
   return (
     <>
       <LandingHeader
@@ -55,9 +106,11 @@ export default async function PricingPage({
             </span>
           </h1>
           <p className="text-lg text-ink-700 max-w-[58ch] mx-auto leading-[1.55]">
-            Maker is free forever. Production-order fees drop with tier — 15% on
-            Maker, 12% on Builder, 8% on Agency. No setup fees, no platform tax,
-            no per-seat charges. You only pay when you place a real production run.
+            Maker is free forever. Production-order fees drop with tier —{' '}
+            {fmtPct(feePcts.maker)}% on Maker, {fmtPct(feePcts.builder)}% on
+            Builder, {fmtPct(feePcts.agency)}% on Agency. No setup fees, no
+            platform tax, no per-seat charges. You only pay when you place a
+            real production run.
           </p>
         </div>
 
@@ -65,7 +118,7 @@ export default async function PricingPage({
             Builder" CTAs that deep-link straight to /settings/plan in the
             creator app, bypassing /signup. Anonymous visitors still get
             the marketing /signup funnel. */}
-        <PricingCards isLoggedIn={Boolean(session?.user)} />
+        <PricingCards isLoggedIn={Boolean(session?.user)} pricing={pricing} />
 
         {/* "First sample" perk pip */}
         <div className="mt-12 max-w-[640px] mx-auto bg-white border border-ink-200 rounded-xl p-5 flex items-start gap-3">
@@ -136,9 +189,9 @@ export default async function PricingPage({
                   {section.rows.map((row) => (
                     <tr key={row.label} className="border-b border-ink-100 last:border-b-0">
                       <td className="px-6 py-3 text-ink-900 font-medium">{row.label}</td>
-                      <Cell>{row.maker}</Cell>
-                      <Cell highlight>{row.builder}</Cell>
-                      <Cell>{row.agency}</Cell>
+                      <Cell>{typeof row.maker === 'string' ? subFees(row.maker) : row.maker}</Cell>
+                      <Cell highlight>{typeof row.builder === 'string' ? subFees(row.builder) : row.builder}</Cell>
+                      <Cell>{typeof row.agency === 'string' ? subFees(row.agency) : row.agency}</Cell>
                     </tr>
                   ))}
                 </React.Fragment>
@@ -183,7 +236,7 @@ export default async function PricingPage({
                 </span>
               </summary>
               <div className="px-5 pb-5 text-[14px] text-ink-700 leading-[1.6]">
-                {q.answer}
+                {subFees(q.answer)}
               </div>
             </details>
           ))}
@@ -305,7 +358,8 @@ const SECTIONS: ComparisonSection[] = [
   {
     label: 'Production economics',
     rows: [
-      { label: 'Production-order fee', maker: '15%', builder: '12%', agency: '8%' },
+      // Live rates substituted at render via subFees (never hardcode a rate).
+      { label: 'Production-order fee', maker: '__FEE_MAKER__', builder: '__FEE_BUILDER__', agency: '__FEE_AGENCY__' },
       {
         label: 'Routing priority',
         maker: 'Standard',
@@ -387,7 +441,7 @@ const FAQ = [
   {
     question: 'What’s the difference between Builder and Agency?',
     answer:
-      'Builder is for creators scaling past one SKU — lower fee (12%), priority routing, more brand profiles, sample discounts. Agency adds full bulk pricing visibility across all partner volume tiers, free first sample credited against your main order if placed within 30 days, a dedicated account manager with a 4-hour support SLA, and the lowest production-order fee (8%). Most creators graduate to Agency when they take on a second brand or hit ~5 active SKUs.',
+      'Builder is for creators scaling past one SKU — lower fee (__FEE_BUILDER__), priority routing, more brand profiles, sample discounts. Agency adds full bulk pricing visibility across all partner volume tiers, free first sample credited against your main order if placed within 30 days, a dedicated account manager with a 4-hour support SLA, and the lowest production-order fee (__FEE_AGENCY__). Most creators graduate to Agency when they take on a second brand or hit ~5 active SKUs.',
   },
   {
     question: 'Is the marketplace free to browse?',

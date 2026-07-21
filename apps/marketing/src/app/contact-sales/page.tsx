@@ -5,6 +5,7 @@ import { LandingFooter } from '@/components/LandingFooter'
 import { ContactSalesForm } from '@/components/ContactSalesForm'
 import { creatorUrl } from '@/lib/app-urls'
 import { getMarketingSession, headerPropsFromSession } from '@/lib/session'
+import { getCreatorFeePcts } from '@/lib/pricing'
 
 /**
  * /contact-sales — Agency-tier lead capture.
@@ -25,6 +26,16 @@ export default async function ContactSalesPage({
   await searchParams
   const session = await getMarketingSession()
   const { user, brands, activeBrandId } = headerPropsFromSession(session)
+
+  // Live fee rates for the perks list (option C phase 2, 2026-07-21) — the
+  // '__FEE_*__' tokens in PERKS resolve here so admin FeeRule edits propagate.
+  const feePcts = await getCreatorFeePcts()
+  const fmtPct = (p: number) => (Number.isInteger(p) ? String(p) : p.toFixed(1))
+  const subFees = (s: string) =>
+    s
+      .replaceAll('__FEE_MAKER__', `${fmtPct(feePcts.maker)}%`)
+      .replaceAll('__FEE_BUILDER__', `${fmtPct(feePcts.builder)}%`)
+      .replaceAll('__FEE_AGENCY__', `${fmtPct(feePcts.agency)}%`)
 
   return (
     <>
@@ -78,7 +89,7 @@ export default async function ContactSalesPage({
                         strokeWidth={2.5}
                         className="w-4 h-4 text-pink-500 flex-shrink-0 mt-0.5"
                       />
-                      <span>{p}</span>
+                      <span>{subFees(p)}</span>
                     </li>
                   ))}
                 </ul>
@@ -145,7 +156,8 @@ export default async function ContactSalesPage({
 
 const PERKS = [
   'Unlimited brand profiles + unlimited active products',
-  '8% production-order fee (Maker is 15%, Builder is 12%)',
+  // Live rates substituted at render (never hardcode a rate).
+  '__FEE_AGENCY__ production-order fee (Maker is __FEE_MAKER__, Builder is __FEE_BUILDER__)',
   'First-look routing position in the order-routing engine',
   'Bulk volume pricing visibility across all partner volume tiers (500–1,999 / 2k–9,999 / 10k+ units)',
   'Free first sample + future samples credited against your first main order if placed within 30 days',

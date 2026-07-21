@@ -101,10 +101,25 @@ Guardrails if adopted:
   (resolveCreatorFeeBps), hardcoded 15/12/8 strings removed; hero repositioned
   to "lower prices on production."
 
-Phase 2 (open): marketing app pricing surfaces (`apps/marketing` pricing.ts,
-ProductDetailConfigurator, UpgradeOverlay perks copy) + PDP all-in unit prices +
-legal Membership Terms wording (needs counsel). Re-verify all-in shown ==
-charged on the next live test order.
+Phase 2 BUILT (2026-07-21): marketing money is now live. Findings + changes:
+
+- `apps/marketing/lib/pricing.ts` + `ProductDetailConfigurator` were ALREADY
+  dynamic and all-in (resolveCreatorFeeBps + computeOrderPricing; the PDP
+  headline was fee-inclusive since PP-0c). No change needed.
+- `/pricing`: hero copy, comparison-table fee row, FAQ answer, and
+  PricingCards now render LIVE FeeRule rates and LIVE SubscriptionPlan prices
+  (`__FEE_*__` token substitution + a `pricing` prop). This also fixed real
+  price drift: the cards advertised $79/$249 while the app charges the
+  DB-seeded prices.
+- `/contact-sales`: Agency perks fee line tokenized + substituted.
+
+Still open:
+- `UpgradeOverlay` (Studio canvas) hardcodes $0/$29/$99 + "~12%/~22% off
+  catalog" perks. NOT touched: the Design Studio canvas is a two-agent HOT
+  ZONE (single-writer, currently Code's). Hand to Code: feed it the same
+  PlanPricing/fee data or strip numbers from its copy.
+- Legal Membership Terms wording (counsel).
+- Re-verify all-in shown == charged on the next live test order.
 
 ## Sources
 

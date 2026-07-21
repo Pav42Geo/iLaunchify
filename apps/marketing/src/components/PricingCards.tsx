@@ -18,14 +18,12 @@ import { creatorUrl } from '@/lib/app-urls'
 
 type Billing = 'monthly' | 'annual'
 
+export type TierId = 'maker' | 'builder' | 'agency'
+
 interface Tier {
-  id: 'maker' | 'builder' | 'agency'
+  id: TierId
   name: string
   tagline: string
-  monthly: number | 'free'
-  /** Annual price (full year). Falls back to monthly * 10 if not provided. */
-  annual: number | 'free'
-  productionFee: string
   /** Marked the recommended tier — gets the pink glow + "Most popular" pip. */
   recommended?: boolean
   /** 4-6 headline features for the card body. */
@@ -38,9 +36,6 @@ const TIERS: Tier[] = [
     id: 'maker',
     name: 'Maker',
     tagline: 'Launch your first brand for free.',
-    monthly: 'free',
-    annual: 'free',
-    productionFee: '15% production-order fee',
     highlights: [
       { included: true, label: 'Unlimited products' },
       { included: true, label: '1 brand profile' },
@@ -55,9 +50,6 @@ const TIERS: Tier[] = [
     id: 'builder',
     name: 'Builder',
     tagline: 'Scale to a multi-SKU brand.',
-    monthly: 79,
-    annual: 790, // 2 months free vs $79 × 12
-    productionFee: '12% production-order fee',
     recommended: true,
     highlights: [
       { included: true, label: 'Unlimited products' },
@@ -73,9 +65,6 @@ const TIERS: Tier[] = [
     id: 'agency',
     name: 'Agency',
     tagline: 'Run multiple brands at scale.',
-    monthly: 249,
-    annual: 2490,
-    productionFee: '8% production-order fee',
     highlights: [
       { included: true, label: 'Unlimited products + brands' },
       { included: true, label: 'First-look routing position' },
@@ -87,6 +76,18 @@ const TIERS: Tier[] = [
   },
 ]
 
+/** DB-driven money for one tier card (SubscriptionPlan + FeeRule, resolved by
+    the server page). Prices and fee rates were hardcoded here until 2026-07-21
+    and had drifted from what the app actually charges; per the no-hardcoded-
+    rates rule they now arrive as props, so admin edits propagate. */
+export interface PlanPricing {
+  monthly: number | 'free'
+  /** Full-year price. 'free' for Maker. */
+  annual: number | 'free'
+  /** e.g. "12% production-order fee" built from the live rate. */
+  feeLabel: string
+}
+
 export interface PricingCardsProps {
   /**
    * Set by the server-rendered /pricing page when there's a session.
@@ -95,9 +96,10 @@ export interface PricingCardsProps {
    * shouldn't have to re-onboard to upgrade.
    */
   isLoggedIn?: boolean
+  pricing: Record<TierId, PlanPricing>
 }
 
-export function PricingCards({ isLoggedIn = false }: PricingCardsProps) {
+export function PricingCards({ isLoggedIn = false, pricing }: PricingCardsProps) {
   const [billing, setBilling] = React.useState<Billing>('annual')
 
   return (
@@ -146,6 +148,7 @@ export function PricingCards({ isLoggedIn = false }: PricingCardsProps) {
           <PricingCard
             key={tier.id}
             tier={tier}
+            plan={pricing[tier.id]}
             billing={billing}
             isLoggedIn={isLoggedIn}
           />
@@ -157,24 +160,26 @@ export function PricingCards({ isLoggedIn = false }: PricingCardsProps) {
 
 function PricingCard({
   tier,
+  plan,
   billing,
   isLoggedIn,
 }: {
   tier: Tier
+  plan: PlanPricing
   billing: Billing
   isLoggedIn: boolean
 }) {
-  const isFree = tier.monthly === 'free'
+  const isFree = plan.monthly === 'free'
   const displayedMonthly =
     isFree
       ? 0
       : billing === 'annual'
-        ? Math.round(((tier.annual as number) / 12) * 100) / 100
-        : (tier.monthly as number)
+        ? Math.round(((plan.annual as number) / 12) * 100) / 100
+        : (plan.monthly as number)
 
   const annualTotalNote =
     !isFree && billing === 'annual'
-      ? `$${(tier.annual as number).toLocaleString()} billed annually`
+      ? `$${(plan.annual as number).toLocaleString()} billed annually`
       : null
 
   // V1.5-T6 — auth-aware CTAs.
@@ -249,7 +254,7 @@ function PricingCard({
         {annualTotalNote ?? ' '}
       </div>
       <div className="text-[12px] font-semibold text-pink-700 mb-6">
-        {tier.productionFee}
+        {plan.feeLabel}
       </div>
 
       <div className="mb-6">
