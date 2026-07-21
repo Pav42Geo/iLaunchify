@@ -19,8 +19,10 @@
 //   * Agency upgrade => /contact-sales on marketing (Agency is a sales-
 //     touched plan, no self-serve Checkout in V1.5).
 //
-// Tier source-of-truth comes from @ilaunchify/ui's pricing-tier-data so
-// the labels + ordering stay in sync with the marketing pricing page.
+// Prices + fee rates arrive via the `pricing` prop, resolved server-side in
+// the canvas page loader (SubscriptionPlan.monthlyPriceCents + FeeRule via
+// resolveCreatorFeeBps). Never hardcode a plan price or fee percentage in
+// copy — admin edits must propagate everywhere (Pavel 2026-07-21).
 
 import * as React from 'react'
 import Link from 'next/link'
@@ -30,9 +32,18 @@ import type { TierKey } from '@ilaunchify/ui'
 // links must use marketingUrl(); plain <Link href="/contact-sales"> 404s.
 import { marketingUrl } from '@/lib/marketing-url'
 
+/** Live plan prices + administrative-fee rates, resolved server-side
+ *  (SubscriptionPlan + FeeRule are the SSOTs — both admin-editable). */
+export interface UpgradeOverlayPricing {
+  monthlyPriceCentsByTier: Record<TierKey, number>
+  feeBpsByTier: Record<TierKey, number>
+}
+
 interface Props {
   /** Currently-paying tier (drives the highlighted card + button states). */
   currentTier: TierKey
+  /** Live prices + fee rates from the server loader. */
+  pricing: UpgradeOverlayPricing
   /** Action that triggered the overlay — used in the headline copy. */
   blockedAction?: 'export' | 'preview' | 'other'
   /** Open/close. */
@@ -51,61 +62,75 @@ interface TierCard {
   highlight?: boolean
 }
 
-const TIERS: TierCard[] = [
-  {
-    key: 'maker',
-    icon: Sparkles,
-    name: 'Maker',
-    price: '$0',
-    cadence: '/ month',
-    tagline: 'For makers exploring an idea.',
-    perks: [
-      'Unlimited products',
-      'Brand kit + canvas',
-      'Auto-compliance scan',
-      'No PDF export',
-      'iLaunchify watermark on previews',
-    ],
-  },
-  {
-    key: 'builder',
-    icon: Zap,
-    name: 'Builder',
-    price: '$29',
-    cadence: '/ month',
-    tagline: 'For creators ready to ship orders.',
-    highlight: true,
-    perks: [
-      'Everything in Maker',
-      'Print-ready PDF + PNG export',
-      'Multi-channel push (Shopify, Etsy…)',
-      'Custom domain storefront',
-      'Volume pricing (~12% off catalog)',
-    ],
-  },
-  {
-    key: 'agency',
-    icon: Crown,
-    name: 'Agency',
-    price: '$99',
-    cadence: '/ month',
-    tagline: 'For influencer agencies + teams.',
-    perks: [
-      'Everything in Builder',
-      'Multi-brand workspace',
-      'Team seats + roles',
-      'Priority partner routing',
-      'Volume pricing (~22% off catalog)',
-    ],
-  },
-]
+function formatPct(bps: number): string {
+  const p = bps / 100
+  return Number.isInteger(p) ? String(p) : p.toFixed(1)
+}
+
+function formatPrice(cents: number): string {
+  return cents > 0 ? `$${Math.round(cents / 100)}` : '$0'
+}
+
+function buildTiers(pricing: UpgradeOverlayPricing): TierCard[] {
+  const pct = (t: TierKey) => formatPct(pricing.feeBpsByTier[t])
+  return [
+    {
+      key: 'maker',
+      icon: Sparkles,
+      name: 'Maker',
+      price: formatPrice(pricing.monthlyPriceCentsByTier.maker),
+      cadence: '/ month',
+      tagline: 'For makers exploring an idea.',
+      perks: [
+        'Unlimited products',
+        'Brand kit + canvas',
+        'Auto-compliance scan',
+        'No PDF export',
+        'iLaunchify watermark on previews',
+      ],
+    },
+    {
+      key: 'builder',
+      icon: Zap,
+      name: 'Builder',
+      price: formatPrice(pricing.monthlyPriceCentsByTier.builder),
+      cadence: '/ month',
+      tagline: 'For creators ready to ship orders.',
+      highlight: true,
+      perks: [
+        'Everything in Maker',
+        'Print-ready PDF + PNG export',
+        'Multi-channel push (Shopify, Etsy…)',
+        'Custom domain storefront',
+        `${pct('builder')}% administrative fee instead of ${pct('maker')}%`,
+      ],
+    },
+    {
+      key: 'agency',
+      icon: Crown,
+      name: 'Agency',
+      price: formatPrice(pricing.monthlyPriceCentsByTier.agency),
+      cadence: '/ month',
+      tagline: 'For influencer agencies + teams.',
+      perks: [
+        'Everything in Builder',
+        'Multi-brand workspace',
+        'Team seats + roles',
+        'Priority partner routing',
+        `${pct('agency')}% administrative fee, our best rate`,
+      ],
+    },
+  ]
+}
 
 export function UpgradeOverlay({
   currentTier,
+  pricing,
   blockedAction = 'export',
   open,
   onClose,
 }: Props) {
+  const tiers = React.useMemo(() => buildTiers(pricing), [pricing])
   // Two-phase mount so the slide-in animation runs on open. When `open`
   // flips to true, we render the panel at translate-y-full FIRST, then
   // flip the local `animateIn` flag on the next frame so the CSS
@@ -187,14 +212,14 @@ export function UpgradeOverlay({
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            {TIERS.map((t) => (
+            {tiers.map((t) => (
               <TierCardView key={t.key} tier={t} currentTier={currentTier} />
             ))}
           </div>
 
           <p className="mt-5 text-center text-[11px] text-ink-500">
-            Volume pricing applies to every order, not just one. Cancel anytime
-            inside Settings → Plan.
+            The lower administrative fee applies to every order, not just one.
+            Cancel anytime inside Settings → Plan.
           </p>
         </div>
       </div>

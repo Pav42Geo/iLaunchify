@@ -33,6 +33,7 @@ import { resolveProductPhrases } from './phrase-actions'
 import { resolvePartnerPrintSpec } from './partner-spec-actions'
 import { loadDielineFrames, type DielineFramesData } from '@/lib/dieline-frames'
 import { buildBrandCanvasAssets } from '@/lib/brand-canvas-assets'
+import { loadCreatorPlanPricing } from '@/lib/plan-pricing'
 import { resolveStudioNutrition, getVarietyPreviewColumns, computeProductLabel } from '@/components/labels/label-actions'
 import {
   panelDataToNutritionPanelData,
@@ -452,6 +453,10 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // anyone without a CreatorProfile row, e.g. admin impersonation).
   const creatorTier = await getCreatorTier(user.id)
 
+  // Live plan prices + administrative-fee rates for the UpgradeOverlay
+  // (SubscriptionPlan + FeeRule SSOTs — admin edits must propagate here).
+  const planPricing = await loadCreatorPlanPricing()
+
   // ---- DS-56 derive productCtx for compliance scan + label drawer pre-fill -
   const productCtx = deriveProductCtx({
     category: studioCategory(product.category),
@@ -619,6 +624,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
       productCtx={{ ...productCtx, lockedPhrases }}
       labelingType={labelingType}
       creatorTier={creatorTier}
+      planPricing={planPricing}
       partnerPrintSpec={partnerPrintSpec}
       restrictionLabels={restrictionLabels}
       pausedForCoverage={pausedForCoverage}

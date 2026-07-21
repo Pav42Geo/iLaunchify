@@ -83,7 +83,7 @@ import { useDeselectOnOutsideClick } from './useDeselectOnOutsideClick'
 import { useObjectClipboard } from './useObjectClipboard'
 import { ObjectActions } from './ObjectActions'
 import { ObjectContextMenu } from './ObjectContextMenu'
-import { UpgradeOverlay } from './UpgradeOverlay'
+import { UpgradeOverlay, type UpgradeOverlayPricing } from './UpgradeOverlay'
 // R14.d — single tier helper now lives in @ilaunchify/auth. The TierKey
 // re-export here is structurally identical to @ilaunchify/ui's so the
 // UpgradeOverlay (which still imports from ui) continues to type-check.
@@ -293,6 +293,12 @@ interface Props {
    */
   creatorTier?: TierKey
   /**
+   * Live plan prices + administrative-fee rates for the UpgradeOverlay,
+   * resolved server-side (SubscriptionPlan + FeeRule SSOTs — both
+   * admin-editable, never hardcoded in copy). See lib/plan-pricing.ts.
+   */
+  planPricing: UpgradeOverlayPricing
+  /**
    * C9 — the bound print partner's resolved output spec, when the product's
    * PRIMARY packaging component is routed to a partner service with a
    * PartnerPrintOutputSpec. Null for almost all products today → the export
@@ -456,6 +462,7 @@ export function CanvasLayoutShell({
   pictureCosmeticData = null,
   pictureOtcData = null,
   creatorTier = 'maker',
+  planPricing,
   partnerPrintSpec = null,
   restrictionLabels = [],
   pausedForCoverage = false,
@@ -1694,6 +1701,7 @@ export function CanvasLayoutShell({
           top header when a Maker creator clicks Export. */}
       <UpgradeOverlay
         currentTier={creatorTier}
+        pricing={planPricing}
         blockedAction="export"
         open={upgradeOpen}
         onClose={() => setUpgradeOpen(false)}

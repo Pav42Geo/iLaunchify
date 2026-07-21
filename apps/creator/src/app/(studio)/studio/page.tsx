@@ -8,6 +8,7 @@ import type { LabelingType } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { deriveTemplateTargeting, type BrandCanvasAssets } from '@ilaunchify/ui'
 import { buildBrandCanvasAssets } from '@/lib/brand-canvas-assets'
+import { loadCreatorPlanPricing } from '@/lib/plan-pricing'
 import { CanvasLayoutShell } from '../products/[productId]/design/canvas/CanvasLayoutShell'
 
 export const dynamic = 'force-dynamic'
@@ -72,6 +73,10 @@ export default async function TemplateAuthorPage({
 
   const brandAssets: BrandCanvasAssets = await buildBrandCanvasAssets(brand)
 
+  // Live plan pricing for the shell's UpgradeOverlay. Admin authors run as
+  // 'agency' so the overlay never opens here, but the prop stays real.
+  const planPricing = await loadCreatorPlanPricing()
+
   const dieCutSpec = {
     id: chosen.id,
     name: chosen.name,
@@ -94,6 +99,7 @@ export default async function TemplateAuthorPage({
       productCtx={{ allergens: [], bioengineered: false, netQuantity: null, netQuantityKind: 'count' }}
       labelingType={domain}
       creatorTier="agency"
+      planPricing={planPricing}
       partnerPrintSpec={null}
       restrictionLabels={[]}
       retailIdentity={{ gtin: null, internalSku: null, barcodeMode: 'NONE' }}
