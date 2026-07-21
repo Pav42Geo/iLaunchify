@@ -23,6 +23,7 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
+import { logAuditAs } from '@ilaunchify/audit'
 import { emptyDraftState, type CheckoutDraftState } from '../../../../../(checkout)/products/[productId]/checkout/types'
 
 type Result = { ok: true } | { ok: false; error: string }
@@ -96,6 +97,24 @@ export async function setDesignMaterials(input: {
       completedSteps: existing?.completedSteps ?? [],
     },
     update: { state: next as unknown as object },
+  })
+
+  // Audit the production-spec pick against the Product (same posture as the
+  // sibling PRODUCT_DECORATION_SET Studio pin): substrate + packaging material
+  // flow into the manifest the printer receives and placeOrder hard-requires
+  // them, so the change is legally meaningful, not transient draft noise. Prev
+  // values ride in the payload so the trail shows what the creator changed.
+  await logAuditAs(user, {
+    entityType: 'Product',
+    entityId: input.productId,
+    action: 'PRODUCT_MATERIALS_SET',
+    payload: {
+      substrateSlug: { from: base.production.substrateSlug ?? null, to: next.production.substrateSlug },
+      packagingMaterialSlug: {
+        from: base.production.packagingMaterialSlug ?? null,
+        to: next.production.packagingMaterialSlug,
+      },
+    },
   })
 
   return { ok: true }

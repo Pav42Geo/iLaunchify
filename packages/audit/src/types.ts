@@ -259,6 +259,10 @@ export const AUDIT_ACTIONS = [
   // Creator picks the decoration method in the Studio (#22) — pins the offering
   // onto the product's PRIMARY container (charge + printer payout read it).
   'PRODUCT_DECORATION_SET',
+  // Creator picks LABEL STOCK (substrate) + PACKAGING MATERIAL in the Studio
+  // (F3b) — a production spec that flows into the printer manifest and that
+  // placeOrder hard-requires. Not money; describes what the thing is made of.
+  'PRODUCT_MATERIALS_SET',
   // §7 marketplace filter attributes set by the partner builder (format /
   // process / allergen-free claims / markets).
   'MARKETPLACE_ATTRIBUTES_SET',
