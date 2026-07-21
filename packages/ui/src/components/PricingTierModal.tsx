@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { BarChart3, X } from 'lucide-react'
+import { pickPricingBandIndex } from '@ilaunchify/plans/math'
 import { Button } from '../primitives/button'
 import { cn } from '../lib/utils'
 import type { PricingTierRow, TierKey } from './pricing-tier-data'
@@ -61,8 +62,14 @@ function withFee(base: number, pct: number): number {
   return base + Math.round((base * pct) / 100)
 }
 function findRowForQuantity(rows: PricingTierRow[], qty: number): PricingTierRow | null {
-  const eligible = rows.filter((r) => r.bandMin !== null && r.bandMin <= qty)
-  return eligible.length > 0 ? eligible[eligible.length - 1]! : null
+  // SSOT band matcher (@ilaunchify/plans/math): the same "highest band whose min
+  // <= units" rule the pricer uses, so the modal can never disagree with the
+  // charge. Do NOT re-hand-roll a `bandMin <= qty` filter here (CHECK 15).
+  const idx = pickPricingBandIndex(
+    rows.map((r) => r.bandMin),
+    qty,
+  )
+  return idx === null ? null : rows[idx] ?? null
 }
 
 export function PricingTierModal({

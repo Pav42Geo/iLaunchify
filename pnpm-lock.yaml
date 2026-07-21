@@ -952,6 +952,9 @@ importers:
       '@ilaunchify/ai-design':
         specifier: workspace:*
         version: link:../ai-design
+      '@ilaunchify/plans':
+        specifier: workspace:*
+        version: link:../plans
       '@ilaunchify/types':
         specifier: workspace:*
         version: link:../types
