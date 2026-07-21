@@ -28,6 +28,13 @@ export const LOGISTICS_GATE_KEYS = [
   'graph:publish_allow_copack_application',
   'graph:checkout_allow_fc_relabel',
   'graph:enforce_assembly_resolution',
+  // Pricing money-path gates (OFF by default). `copack_real_price` (CP-3/CP-6) makes a
+  // co-pack leg charge + pay the REAL authored quote instead of the 7% interim.
+  // `print_payout_shadow` (PP-1) is LOG-ONLY: it logs what a printer's authored bands
+  // would pay a print leg vs today's payout, changing nothing. Registered here so both
+  // are flippable from the admin Logistics → Gates console instead of raw SQL.
+  'pricing:copack_real_price',
+  'pricing:print_payout_shadow',
 ] as const
 
 export type LogisticsGateKey = (typeof LOGISTICS_GATE_KEYS)[number]

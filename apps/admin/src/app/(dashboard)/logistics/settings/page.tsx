@@ -117,6 +117,18 @@ const GATE_META: Record<string, { label: string; group: string; description: str
     description:
       'ON = carton / multipack templates need an assembler (the manufacturer self-assembles or a co-packer performs assembly). OFF = skip the assembly-point check.',
   },
+  'pricing:copack_real_price': {
+    label: 'Co-pack real price',
+    group: 'Pricing',
+    description:
+      'ON = a co-pack leg charges + pays the REAL authored co-pack quote (CP-3/CP-6) instead of the 7% interim. OFF = interim estimate. Flip once co-pack quotes are trusted.',
+  },
+  'pricing:print_payout_shadow': {
+    label: 'Print-payout shadow (log-only)',
+    group: 'Pricing',
+    description:
+      'ON = log what a printer’s authored price bands WOULD pay each print leg vs today’s payout ([print payout shadow]), changing nothing. Observation step before wiring the print evaluator into payout (PP-1). Safe to leave on.',
+  },
 }
 
 export default async function LogisticsSettingsPage() {
