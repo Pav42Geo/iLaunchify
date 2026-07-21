@@ -59,6 +59,7 @@ export async function startTierUpgrade(input: {
       displayName: true,
       stripeTierSubscriptionId: true,
       tierCancelAtPeriodEnd: true,
+      tierPausedFromTier: true,
     },
   })
   if (!profile) {
@@ -81,22 +82,8 @@ export async function startTierUpgrade(input: {
   }
 
   // Cancellation P1 — a pause in flight blocks a new Checkout (the paused
-  // sub would resume on top of it). Cast-guarded until the migration lands.
-  const pauseState = await (
-    prisma as unknown as {
-      creatorProfile: {
-        findUnique: (a: unknown) => Promise<{
-          tierPausedFromTier: string | null
-        } | null>
-      }
-    }
-  ).creatorProfile
-    .findUnique({
-      where: { userId: user.id },
-      select: { tierPausedFromTier: true },
-    })
-    .catch(() => null)
-  if (pauseState?.tierPausedFromTier) {
+  // sub would resume on top of it).
+  if (profile.tierPausedFromTier) {
     return {
       ok: false,
       error:
@@ -190,16 +177,7 @@ export async function cancelMyTierSubscription(input: {
 
     // Best-effort bookkeeping — Stripe already accepted the cancel.
     try {
-      // Cast-guarded until the TierCancellationEvent migration lands
-      // (db:push + db:generate) — same pattern as the dunning fields on
-      // page.tsx. TODO: drop the cast once the client is regenerated.
-      await (
-        prisma as unknown as {
-          tierCancellationEvent: {
-            create: (a: { data: Record<string, unknown> }) => Promise<unknown>
-          }
-        }
-      ).tierCancellationEvent.create({
+      await prisma.tierCancellationEvent.create({
         data: {
           creatorProfileId: profile.id,
           tier: profile.subscriptionTier,
@@ -262,17 +240,7 @@ export async function resumeMyTierSubscription(): Promise<
     // Best-effort bookkeeping (Cancellation P0) — stamp resumedAt on the
     // open cancellation event(s) + audit the undo.
     try {
-      // Cast-guarded until the migration lands — see cancel above.
-      await (
-        prisma as unknown as {
-          tierCancellationEvent: {
-            updateMany: (a: {
-              where: Record<string, unknown>
-              data: Record<string, unknown>
-            }) => Promise<unknown>
-          }
-        }
-      ).tierCancellationEvent.updateMany({
+      await prisma.tierCancellationEvent.updateMany({
         where: { creatorProfileId: profile.id, resumedAt: null },
         data: { resumedAt: new Date() },
       })

@@ -141,6 +141,13 @@ export default async function PlanPage({ searchParams }: PageProps) {
       stripeTierSubscriptionId: true,
       tierCurrentPeriodEnd: true,
       tierCancelAtPeriodEnd: true,
+      tierGraceUntil: true,
+      tierPauseStartsAt: true,
+      tierPauseResumesAt: true,
+      tierLastPausedAt: true,
+      tierPausedFromTier: true,
+      tierPendingDowngradeTo: true,
+      tierDowngradeAt: true,
     },
   })
 
@@ -184,56 +191,28 @@ export default async function PlanPage({ searchParams }: PageProps) {
     agency: `${feePctByTier.agency}% administrative fee, our best rate`,
   }
 
-  // V1 dunning grace state + Cancellation P1 pause state (cast-guarded —
-  // fields land after their migrations).
-  const extraState = await (
-    prisma as unknown as {
-      creatorProfile: {
-        findUnique: (a: unknown) => Promise<{
-          tierGraceUntil: Date | null
-          tierPauseStartsAt?: Date | null
-          tierPauseResumesAt?: Date | null
-          tierLastPausedAt?: Date | null
-          tierPausedFromTier?: string | null
-          tierPendingDowngradeTo?: string | null
-          tierDowngradeAt?: Date | null
-        } | null>
-      }
-    }
-  ).creatorProfile
-    .findUnique({
-      where: { userId: user.id },
-      select: {
-        tierGraceUntil: true,
-        tierPauseStartsAt: true,
-        tierPauseResumesAt: true,
-        tierLastPausedAt: true,
-        tierPausedFromTier: true,
-        tierPendingDowngradeTo: true,
-        tierDowngradeAt: true,
-      },
-    })
-    .catch(() => null)
-  const graceUntil = extraState?.tierGraceUntil ?? null
+  // V1 dunning grace + Cancellation P1 pause + P2 downgrade state, all from
+  // the profile select above.
+  const graceUntil = profile?.tierGraceUntil ?? null
 
   // Pause save-offer eligibility: no pause in flight + outside the 365-day
   // cooldown (mirrors the guard in pauseTierSubscription). A pause is "in
   // flight" from acceptance until billing resumes (tierPausedFromTier set).
   const now = new Date()
-  const pausedFromTier = extraState?.tierPausedFromTier ?? null
-  const pauseStartsAt = extraState?.tierPauseStartsAt ?? null
-  const pauseResumesAt = extraState?.tierPauseResumesAt ?? null
+  const pausedFromTier = profile?.tierPausedFromTier ?? null
+  const pauseStartsAt = profile?.tierPauseStartsAt ?? null
+  const pauseResumesAt = profile?.tierPauseResumesAt ?? null
   const pauseScheduled =
     Boolean(pausedFromTier) && pauseStartsAt !== null && pauseStartsAt > now
   const pauseActive = Boolean(pausedFromTier) && !pauseScheduled
-  const lastPausedAt = extraState?.tierLastPausedAt ?? null
+  const lastPausedAt = profile?.tierLastPausedAt ?? null
   const pauseAvailable =
     !pausedFromTier &&
     (!lastPausedAt ||
       now.getTime() - lastPausedAt.getTime() > 365 * 24 * 60 * 60 * 1000)
   // Cancellation P2 — scheduled true downgrade state.
-  const pendingDowngradeTo = extraState?.tierPendingDowngradeTo ?? null
-  const downgradeAt = extraState?.tierDowngradeAt ?? null
+  const pendingDowngradeTo = profile?.tierPendingDowngradeTo ?? null
+  const downgradeAt = profile?.tierDowngradeAt ?? null
 
   return (
     <div className="space-y-6">

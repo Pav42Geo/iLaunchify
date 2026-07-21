@@ -36,10 +36,6 @@ import { setCreatorTierWithAudit } from '@ilaunchify/auth/server'
 import { stripe } from './client'
 import { getOrCreateCreatorCustomer } from './subscriptions'
 
-/** Prisma SubscriptionTier values, string-typed here to avoid a client
-    dependency on the enum while the pause migration is cast-guarded. */
-type TierValue = 'MAKER' | 'BUILDER' | 'AGENCY'
-
 /** Tier the creator is upgrading TO. Cannot be MAKER (downgrades happen by cancel). */
 export type UpgradeableTier = 'BUILDER' | 'AGENCY'
 
@@ -358,6 +354,9 @@ export async function pauseTierSubscription(
       id: true,
       subscriptionTier: true,
       stripeTierSubscriptionId: true,
+      tierPauseResumesAt: true,
+      tierLastPausedAt: true,
+      tierPausedFromTier: true,
     },
   })
   if (!profile) throw new Error('Creator profile not found.')
@@ -365,39 +364,17 @@ export async function pauseTierSubscription(
     throw new Error('No active tier subscription to pause.')
   }
 
-  // Pause-abuse guard — cast-guarded until the tierPause* migration lands
-  // (db:push + db:generate). TODO: fold into the select above afterwards.
-  const pauseState = await (
-    prisma as unknown as {
-      creatorProfile: {
-        findUnique: (a: unknown) => Promise<{
-          tierPauseResumesAt: Date | null
-          tierLastPausedAt: Date | null
-          tierPausedFromTier: string | null
-        } | null>
-      }
-    }
-  ).creatorProfile
-    .findUnique({
-      where: { id: profile.id },
-      select: {
-        tierPauseResumesAt: true,
-        tierLastPausedAt: true,
-        tierPausedFromTier: true,
-      },
-    })
-    .catch(() => null)
-
+  // Pause-abuse guards: one pause in flight at a time, one per rolling year.
   const now = new Date()
   if (
-    pauseState?.tierPausedFromTier ||
-    (pauseState?.tierPauseResumesAt && pauseState.tierPauseResumesAt > now)
+    profile.tierPausedFromTier ||
+    (profile.tierPauseResumesAt && profile.tierPauseResumesAt > now)
   ) {
     throw new Error('Your subscription already has a pause scheduled.')
   }
-  if (pauseState?.tierLastPausedAt) {
+  if (profile.tierLastPausedAt) {
     const cooldownEnd = new Date(
-      pauseState.tierLastPausedAt.getTime() +
+      profile.tierLastPausedAt.getTime() +
         PAUSE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000,
     )
     if (cooldownEnd > now) {
@@ -427,14 +404,8 @@ export async function pauseTierSubscription(
 
   // Mirror immediately (webhook confirms). The tier is NOT flipped here —
   // the pause-start cron (processTierPauseStarts) drops it to MAKER once
-  // startsAt passes. Cast-guarded — see above.
-  await (
-    prisma as unknown as {
-      creatorProfile: {
-        update: (a: unknown) => Promise<unknown>
-      }
-    }
-  ).creatorProfile.update({
+  // startsAt passes.
+  await prisma.creatorProfile.update({
     where: { id: profile.id },
     data: {
       tierPauseStartsAt: startsAt,
@@ -470,20 +441,10 @@ export async function unpauseTierSubscription(input: {
     throw new Error('No tier subscription on file.')
   }
 
-  const pauseState = await (
-    prisma as unknown as {
-      creatorProfile: {
-        findUnique: (a: unknown) => Promise<{
-          tierPausedFromTier: string | null
-        } | null>
-      }
-    }
-  ).creatorProfile
-    .findUnique({
-      where: { id: profile.id },
-      select: { tierPausedFromTier: true },
-    })
-    .catch(() => null)
+  const pauseState = await prisma.creatorProfile.findUnique({
+    where: { id: profile.id },
+    select: { tierPausedFromTier: true },
+  })
   if (!pauseState?.tierPausedFromTier) {
     throw new Error('Your subscription is not paused.')
   }
@@ -498,15 +459,11 @@ export async function unpauseTierSubscription(input: {
   // stands even after an early resume.
   await setCreatorTierWithAudit({
     creatorProfileId: profile.id,
-    newTier: pauseState.tierPausedFromTier as TierValue,
+    newTier: pauseState.tierPausedFromTier,
     actor: { kind: 'system', label: 'pause_early_resume' },
     payload: { stripeSubscriptionId: profile.stripeTierSubscriptionId },
   })
-  await (
-    prisma as unknown as {
-      creatorProfile: { update: (a: unknown) => Promise<unknown> }
-    }
-  ).creatorProfile.update({
+  await prisma.creatorProfile.update({
     where: { id: profile.id },
     data: {
       tierPauseStartsAt: null,
@@ -535,24 +492,14 @@ export interface TierPauseSweepResult {
 
 export async function processTierPauseStarts(): Promise<TierPauseSweepResult> {
   const now = new Date()
-  const due = await (
-    prisma as unknown as {
-      creatorProfile: {
-        findMany: (a: unknown) => Promise<
-          Array<{ id: string; subscriptionTier: string }>
-        >
-      }
-    }
-  ).creatorProfile
-    .findMany({
-      where: {
-        tierPausedFromTier: { not: null },
-        tierPauseStartsAt: { lte: now },
-        subscriptionTier: { not: 'MAKER' },
-      },
-      select: { id: true, subscriptionTier: true },
-    })
-    .catch(() => [] as Array<{ id: string; subscriptionTier: string }>)
+  const due = await prisma.creatorProfile.findMany({
+    where: {
+      tierPausedFromTier: { not: null },
+      tierPauseStartsAt: { lte: now },
+      subscriptionTier: { not: 'MAKER' },
+    },
+    select: { id: true, subscriptionTier: true },
+  })
 
   let swept = 0
   let errors = 0
@@ -618,6 +565,9 @@ export async function scheduleTierDowngrade(
       subscriptionTier: true,
       stripeTierSubscriptionId: true,
       tierCancelAtPeriodEnd: true,
+      tierPausedFromTier: true,
+      tierPendingDowngradeTo: true,
+      tierDowngradeAt: true,
     },
   })
   if (!profile) throw new Error('Creator profile not found.')
@@ -632,33 +582,12 @@ export async function scheduleTierDowngrade(
       'Your plan is set to cancel. Resume it first, then switch tiers.',
     )
   }
-
-  const extra = await (
-    prisma as unknown as {
-      creatorProfile: {
-        findUnique: (a: unknown) => Promise<{
-          tierPausedFromTier: string | null
-          tierPendingDowngradeTo: string | null
-          tierDowngradeAt: Date | null
-        } | null>
-      }
-    }
-  ).creatorProfile
-    .findUnique({
-      where: { id: profile.id },
-      select: {
-        tierPausedFromTier: true,
-        tierPendingDowngradeTo: true,
-        tierDowngradeAt: true,
-      },
-    })
-    .catch(() => null)
-  if (extra?.tierPausedFromTier) {
+  if (profile.tierPausedFromTier) {
     throw new Error('Your plan is paused. Resume it before switching tiers.')
   }
-  if (extra?.tierPendingDowngradeTo && extra.tierDowngradeAt) {
+  if (profile.tierPendingDowngradeTo && profile.tierDowngradeAt) {
     // Idempotent: already scheduled.
-    return { effectiveAt: extra.tierDowngradeAt }
+    return { effectiveAt: profile.tierDowngradeAt }
   }
 
   const sub = await stripe.subscriptions.retrieve(
@@ -719,12 +648,8 @@ export async function scheduleTierDowngrade(
 
   const effectiveAt = new Date(sub.current_period_end * 1000)
 
-  // Mirror for the UI (cast-guarded until the migration lands).
-  await (
-    prisma as unknown as {
-      creatorProfile: { update: (a: unknown) => Promise<unknown> }
-    }
-  ).creatorProfile.update({
+  // Mirror for the UI.
+  await prisma.creatorProfile.update({
     where: { id: profile.id },
     data: {
       tierPendingDowngradeTo: input.targetTier,
@@ -744,20 +669,10 @@ export async function scheduleTierDowngrade(
 export async function releaseScheduledTierDowngrade(input: {
   creatorProfileId: string
 }): Promise<void> {
-  const extra = await (
-    prisma as unknown as {
-      creatorProfile: {
-        findUnique: (a: unknown) => Promise<{
-          tierScheduleId: string | null
-        } | null>
-      }
-    }
-  ).creatorProfile
-    .findUnique({
-      where: { id: input.creatorProfileId },
-      select: { tierScheduleId: true },
-    })
-    .catch(() => null)
+  const extra = await prisma.creatorProfile.findUnique({
+    where: { id: input.creatorProfileId },
+    select: { tierScheduleId: true },
+  })
   if (!extra?.tierScheduleId) return
 
   try {
@@ -771,11 +686,7 @@ export async function releaseScheduledTierDowngrade(input: {
     )
   }
 
-  await (
-    prisma as unknown as {
-      creatorProfile: { update: (a: unknown) => Promise<unknown> }
-    }
-  ).creatorProfile.update({
+  await prisma.creatorProfile.update({
     where: { id: input.creatorProfileId },
     data: {
       tierPendingDowngradeTo: null,

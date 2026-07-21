@@ -10,10 +10,6 @@
 //     (saves that never produced a cancellation event)
 // Read-only surface: no actions, no mutations — interventions happen from the
 // creator detail page. Access mirrors the Tiers console (tiers:write).
-//
-// TierCancellationEvent is cast-guarded until the migration lands (db:push +
-// db:generate) — same dunning-field pattern as everywhere else. TODO: drop
-// the casts once the client is regenerated.
 
 import Link from 'next/link'
 import {
@@ -40,55 +36,32 @@ const REASON_LABEL: Record<string, string> = {
   OTHER: 'Something else',
 }
 
-interface EventRow {
-  id: string
-  tier: string
-  reasonCode: string
-  reasonText: string | null
-  periodEnd: Date | null
-  resumedAt: Date | null
-  createdAt: Date
-  creatorProfile: { displayName: string; handle: string } | null
-}
-
 export default async function TierChurnPage() {
   await requireCapability('tiers:write')
 
   const now = new Date()
   const since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-  // Cast-guarded model access (see file header).
-  const guarded = prisma as unknown as {
-    tierCancellationEvent: {
-      findMany: (a: unknown) => Promise<EventRow[]>
-      count: (a: unknown) => Promise<number>
-    }
-  }
-
   const [events, cancels30, saved30, reasonRows, pauses30, downgrades30] =
     await Promise.all([
-      guarded.tierCancellationEvent
-        .findMany({
-          orderBy: { createdAt: 'desc' },
-          take: 50,
-          include: {
-            creatorProfile: { select: { displayName: true, handle: true } },
-          },
-        })
-        .catch(() => [] as EventRow[]),
-      guarded.tierCancellationEvent
-        .count({ where: { createdAt: { gte: since } } })
-        .catch(() => 0),
-      guarded.tierCancellationEvent
-        .count({ where: { createdAt: { gte: since }, resumedAt: { not: null } } })
-        .catch(() => 0),
-      guarded.tierCancellationEvent
-        .findMany({
-          where: { createdAt: { gte: since } },
-          select: { reasonCode: true },
-          take: 500,
-        })
-        .catch(() => [] as Array<Pick<EventRow, 'reasonCode'>>),
+      prisma.tierCancellationEvent.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        include: {
+          creatorProfile: { select: { displayName: true, handle: true } },
+        },
+      }),
+      prisma.tierCancellationEvent.count({
+        where: { createdAt: { gte: since } },
+      }),
+      prisma.tierCancellationEvent.count({
+        where: { createdAt: { gte: since }, resumedAt: { not: null } },
+      }),
+      prisma.tierCancellationEvent.findMany({
+        where: { createdAt: { gte: since } },
+        select: { reasonCode: true },
+        take: 500,
+      }),
       prisma.auditLog.count({
         where: { action: 'SUBSCRIPTION_PAUSED', at: { gte: since } },
       }),
@@ -101,15 +74,13 @@ export default async function TierChurnPage() {
     ])
 
   // Realized churn: past the paid period without a resume.
-  const realized30 = await guarded.tierCancellationEvent
-    .count({
-      where: {
-        createdAt: { gte: since },
-        resumedAt: null,
-        periodEnd: { lt: now },
-      },
-    })
-    .catch(() => 0)
+  const realized30 = await prisma.tierCancellationEvent.count({
+    where: {
+      createdAt: { gte: since },
+      resumedAt: null,
+      periodEnd: { lt: now },
+    },
+  })
 
   const reasonCounts = new Map<string, number>()
   for (const r of reasonRows) {
@@ -183,8 +154,7 @@ export default async function TierChurnPage() {
             {events.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-ink-500">
-                  No cancel requests yet — either the flow is unused or the
-                  TierCancellationEvent migration hasn&rsquo;t been pushed.
+                  No cancel requests yet.
                 </td>
               </tr>
             )}
