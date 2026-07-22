@@ -524,12 +524,14 @@ export function ProductDetailConfigurator({
   // (no MOQ), so in On-demand mode it becomes the headline figure.
   const onDemandRow = React.useMemo(() => {
     if (!onDemandRows || onDemandRows.length === 0) return null
-    // bandUnits, not quantity: on-demand bands are per-UNIT bounds exactly like the
-    // bulk ones, so a pack order has to convert here too (Blocker 5). This arm is
-    // usually hidden in pack mode, which is precisely why it would have been the
-    // one left behind.
-    return onDemandRows[pickPricingBandIndex(onDemandRows.map((r) => r.bandMin), bandUnits) ?? 0]!
-  }, [onDemandRows, bandUnits])
+    // BAND 1, not the bulk quantity state (e2e finding 2026-07-22): the stepper
+    // is hidden in On-demand display mode but its bulk value (e.g. 1000) kept
+    // feeding the band pick, so the headline showed a volume break no qty-1
+    // consumer order gets. The velocity rule (§4b.5) selects by TRAILING volume,
+    // which is 0 for a product still on the PDP: band 1, same as the Studio
+    // line. The full ladder stays visible under "See pricing by tier".
+    return onDemandRows[0]!
+  }, [onDemandRows])
   // PP-0c: the fabricated size multiplier is gone here too (it had leaked into the
   // on-demand price). The fixture packaging delta had leaked here as well and is
   // gone for the same reason (see the block above). On-demand rows are already
@@ -937,8 +939,21 @@ export function ProductDetailConfigurator({
           isAuthenticated={isAuthenticated}
           // #38 — the packaging (container × decoration) the creator picked on the PDP.
           // Materialises the PRIMARY container + its die-line at launch (keystone).
-          decorationMethod={packagingSel?.decorationMethod ?? null}
-          partnerOfferingId={packagingSel?.offeringId ?? null}
+          //
+          // §4b follow-up (Pavel 2026-07-22): in ON_DEMAND display mode the
+          // decoration picker is hidden ("finished in-house by the manufacturer"),
+          // but the picker still auto-resolves a default offering, and that
+          // default belongs to an OUTSIDE printer. Binding it at launch made
+          // every on-demand launch fail the full-service gate
+          // (EXTERNAL_PRINT_OFFERING) and hid the Studio on-demand cost line.
+          // So: on-demand launches bind NO decoration offering. The container
+          // still materialises from the variant (launch-actions falls back to
+          // variant.packagingTypeId, undecorated); the made-to-order finish is
+          // the manufacturer's onDemandDecorationOfferingId pin (§4b.2), which
+          // the C2.2 router reads at dispatch time. A later bulk run of the
+          // same product picks its decoration in checkout/configure as usual.
+          decorationMethod={effectiveMode === 'ON_DEMAND' ? null : (packagingSel?.decorationMethod ?? null)}
+          partnerOfferingId={effectiveMode === 'ON_DEMAND' ? null : (packagingSel?.offeringId ?? null)}
           // #35 — require a COMPLETE pack before the Studio. An incomplete pack
           // can't thread through (launch seeds nothing), so checkout would re-open
           // it and placeOrder would refuse. Block launch until the pack is filled.

@@ -108,6 +108,35 @@ export default async function DispatchDetailPage({
     })
     .catch(() => null)
 
+  // C2.2 partner tagging (CHANNEL_MANAGEMENT_SPEC §3.4): channel-origin
+  // on-demand dispatches are made to order for ONE consumer and ship DIRECT to
+  // that consumer's address (the order's ship-to fields carry it). Resolution:
+  // ChannelOrder.productionOrderId soft back-ref (cast-guarded), internalNotes
+  // marker as the fallback. Best-effort: failure = untagged, never a crash.
+  const channelOrigin = await (
+    prisma as unknown as {
+      channelOrder?: {
+        findFirst: (a: unknown) => Promise<{
+          externalOrderId: string
+          connection: { channel: { displayName: string | null; code: string } }
+        } | null>
+      }
+    }
+  ).channelOrder
+    ?.findFirst({
+      where: { productionOrderId: dispatch.order.id },
+      select: {
+        externalOrderId: true,
+        connection: { select: { channel: { select: { displayName: true, code: true } } } },
+      },
+    })
+    .catch(() => null)
+  const isChannelOnDemand =
+    !!channelOrigin || (dispatch.order.internalNotes ?? '').includes('ORIGIN: CHANNEL')
+  const channelName = channelOrigin
+    ? (channelOrigin.connection.channel.displayName ?? channelOrigin.connection.channel.code)
+    : null
+
   const item = dispatch.order.items[0]
   const pill = STATUS_PILL[dispatch.status] ?? { label: dispatch.status, cls: 'border-ink-200 bg-ink-100 text-ink-700' }
   const isProduct = dispatch.type === 'PRODUCT'
@@ -237,7 +266,9 @@ export default async function DispatchDetailPage({
     ? 'Co-packing · Work order'
     : isLabel
       ? 'Print production · Print job'
-      : 'Manufacturing · Production dispatch'
+      : isChannelOnDemand
+        ? 'Manufacturing · Channel · On-Demand'
+        : 'Manufacturing · Production dispatch'
   const titleFallback = isCopack ? 'Work order' : isLabel ? 'Print job' : 'Production dispatch'
 
   // ---- Phase L1.1b — shipping requirements + doc gate ----------------------
@@ -362,6 +393,12 @@ export default async function DispatchDetailPage({
               <span className={`inline-flex items-center rounded-full border px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider ${pill.cls}`}>
                 {pill.label}
               </span>
+              {isChannelOnDemand && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-info-200 bg-info-50 px-2.5 py-[3px] text-[11px] font-semibold uppercase tracking-wider text-info-800">
+                  <Truck className="h-3 w-3" aria-hidden="true" />
+                  Channel · On-Demand{channelName ? ` · ${channelName}` : ''}
+                </span>
+              )}
             </h1>
             <p className="mt-1.5 text-[13px] text-ink-600">
               Order <span className="font-medium text-ink-800">{(dispatch.order as { orderNumber?: string | null }).orderNumber ?? `#${dispatch.order.id.slice(-8)}`}</span>
@@ -376,6 +413,32 @@ export default async function DispatchDetailPage({
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> All orders
           </Link>
         </div>
+
+        {/* C2.2 - consumer ship-to callout: this parcel goes to the END BUYER,
+            not the creator. The address rides the order's ship-to fields; the
+            logistics DIRECT_CONSUMER enum lands later, so the callout is what
+            keeps a made-to-order parcel from being shipped to the brand. */}
+        {isChannelOnDemand && (
+          <div className="mt-4 rounded-xl border border-info-200 bg-info-50 px-3.5 py-2.5 text-[12.5px] text-info-800">
+            <p className="flex items-center gap-2 font-semibold">
+              <MapPin className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              Made to order for one consumer
+              {channelName ? ` on ${channelName}` : ''}
+              {channelOrigin ? ` (their order ${channelOrigin.externalOrderId})` : ''} · print, pack and parcel in-house.
+            </p>
+            <p className="mt-1 pl-6">
+              Ship DIRECT to the consumer:{' '}
+              <span className="font-semibold">
+                {dispatch.order.shipToContactName} · {dispatch.order.shipToAddressLine1}
+                {dispatch.order.shipToAddressLine2 ? `, ${dispatch.order.shipToAddressLine2}` : ''},{' '}
+                {dispatch.order.shipToCity}
+                {dispatch.order.shipToState ? `, ${dispatch.order.shipToState}` : ''}{' '}
+                {dispatch.order.shipToPostalCode}, {dispatch.order.shipToCountry}
+              </span>
+              . Never include creator pricing or platform paperwork in the box.
+            </p>
+          </div>
+        )}
 
         {/* Accept-deadline urgency banner */}
         {dispatch.status === 'PENDING_ACCEPT' && (

@@ -70,11 +70,22 @@ export function createStubAdapter(): ChannelAdapter {
     },
 
     async pullOrders(ctx: ConnectionCtx, sinceIso: string): Promise<ExternalOrder[]> {
-      // One reproducible paid order per (connection, day) — enough to exercise
-      // the import → map → route pipeline in dev without a real store.
+      // Reproducible paid orders per (connection, day) — enough to exercise the
+      // import → map → route pipeline in dev without a real store. Two flavors:
+      //   1. An UNMAPPED line (always): exercises the NEEDS_ATTENTION inbox.
+      //   2. A MAPPABLE line (only when the caller supplied knownVariantIds):
+      //      lands READY and feeds the C2.2 router + auto-billing e2e.
       const day = sinceIso.slice(0, 10)
+      const shipTo = {
+        name: 'Stub Buyer',
+        address1: '1 Test Street',
+        city: 'Austin',
+        provinceCode: 'TX',
+        postalCode: '78701',
+        countryCode: 'US',
+      }
       const oid = `stub-order-${stableId(`${ctx.connectionId}:${day}`)}`
-      return [
+      const orders: ExternalOrder[] = [
         {
           externalOrderId: oid,
           placedAtIso: `${day}T12:00:00Z`,
@@ -90,17 +101,33 @@ export function createStubAdapter(): ChannelAdapter {
               title: 'Stub product',
             },
           ],
-          shipTo: {
-            name: 'Stub Buyer',
-            address1: '1 Test Street',
-            city: 'Austin',
-            provinceCode: 'TX',
-            postalCode: '78701',
-            countryCode: 'US',
-          },
+          shipTo,
           raw: { stub: true, oid },
         },
       ]
+      const mappable = ctx.knownVariantIds?.[0]
+      if (mappable) {
+        const moid = `stub-order-${stableId(`${ctx.connectionId}:${day}:mapped`)}`
+        orders.push({
+          externalOrderId: moid,
+          placedAtIso: `${day}T12:30:00Z`,
+          financialStatus: 'PAID',
+          currency: 'USD',
+          totalPrice: '9.66',
+          lines: [
+            {
+              externalLineId: `${moid}-1`,
+              externalVariantId: mappable,
+              quantity: 1,
+              unitPrice: '9.66',
+              title: 'Stub product (mapped)',
+            },
+          ],
+          shipTo,
+          raw: { stub: true, oid: moid, mapped: true },
+        })
+      }
+      return orders
     },
 
     async ackOrder() {

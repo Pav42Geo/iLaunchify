@@ -13,8 +13,8 @@
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser, getCreatorTier } from '@ilaunchify/auth'
-import { loadOnDemandEligibility } from '@ilaunchify/orders'
-import { resolveCreatorFeeBps, creatorFeeCents } from '@ilaunchify/plans'
+import { loadOnDemandEligibility, describeOnDemandIneligibility } from '@ilaunchify/orders'
+import { resolveCreatorFeeBps, resolveCreatorFeeBounds, creatorFeeCents } from '@ilaunchify/plans'
 import { estimateProductionCost } from '../../../../../(checkout)/products/[productId]/checkout/production-actions'
 import type { CheckoutDraftState } from '../../../../../(checkout)/products/[productId]/checkout/types'
 
@@ -34,6 +34,13 @@ export interface StudioEstimate {
    *  by trailing-30-day volume, which is 0 pre-launch. Null for pack products
    *  (per-unit on-demand is incoherent for packs) and when ineligible. */
   onDemand: { unitCents: number } | null
+  /** §4b.3 follow-up (Pavel 2026-07-22): when the manufacturer authored
+   *  ON_DEMAND bands but the PRODUCT fails the full-service gate, the drawer
+   *  used to render nothing, which read as "on-demand has no price". Carry the
+   *  creator-facing reason instead so the Cost summary can say WHY. Null when
+   *  on-demand priced fine, when the template has no on-demand bands at all
+   *  (pure-bulk products stay quiet), or for packs. */
+  onDemandBlocker: string | null
 }
 
 type Result = { ok: true; data: StudioEstimate } | { ok: false; error: string }
@@ -51,7 +58,7 @@ export async function estimateStudioSubtotal(input: {
   if (user.role !== 'CREATOR') return { ok: false, error: 'NOT_A_CREATOR' }
   const product = await prisma.product.findFirst({
     where: { id: input.productId, brand: { creatorProfile: { userId: user.id } } },
-    select: { id: true, productTemplateId: true },
+    select: { id: true, productTemplateId: true, selectedFlavorPresetIds: true },
   })
   if (!product) return { ok: false, error: 'NOT_YOUR_PRODUCT' }
 
@@ -69,34 +76,57 @@ export async function estimateStudioSubtotal(input: {
   // informational and must never block the bulk estimate. NOT a second pricer:
   // it reads the manufacturer's authored ON_DEMAND band + the ONE fee SSOT,
   // exactly what the PDP's on-demand headline shows.
-  const onDemand = isPack
-    ? null
-    : await (async (): Promise<{ unitCents: number } | null> => {
-        try {
-          if (!product.productTemplateId) return null
-          const eligibility = await loadOnDemandEligibility(product.id, user.id)
-          if (!eligibility.eligible) return null
-          // Velocity rule (§4b.5, LOCKED): band by trailing-30-day volume, which
-          // is 0 for a product still in the Studio → band 1.
-          const band = await prisma.productTemplatePricingTier.findFirst({
+  let onDemand: { unitCents: number } | null = null
+  let onDemandBlocker: string | null = null
+  if (!isPack) {
+    try {
+      // Bands FIRST: a template without ON_DEMAND bands is a pure-bulk product
+      // and the Cost summary stays quiet about on-demand entirely.
+      const band = product.productTemplateId
+        ? await prisma.productTemplatePricingTier.findFirst({
             where: { productTemplateId: product.productTemplateId, fulfillmentMode: 'ON_DEMAND' },
             orderBy: { sortOrder: 'asc' },
             select: { perUnitCostCents: true },
           })
-          if (!band) return null
+        : null
+      if (band) {
+        const eligibility = await loadOnDemandEligibility(product.id, user.id)
+        if (eligibility.eligible) {
+          // Velocity rule (§4b.5, LOCKED): band by trailing-30-day volume,
+          // which is 0 for a product still in the Studio → band 1.
+          // E2E parity fixes (2026-07-22, quote must equal the C2.2 charge):
+          //   * single-flavor priceDelta folds into goods (resolveGoods SSOT),
+          //   * the fee applies the FeeRule BOUNDS (min fee dominates at qty 1).
+          let flavorDeltaCents = 0
+          const selIds = product.selectedFlavorPresetIds ?? []
+          if (selIds.length === 1) {
+            const preset = await prisma.flavorPreset.findFirst({
+              where: { id: selIds[0]!, status: 'ACTIVE' },
+              select: { priceDeltaCents: true },
+            })
+            flavorDeltaCents = preset?.priceDeltaCents ?? 0
+          }
           const tier = await getCreatorTier(user.id)
           const { feeBps } = await resolveCreatorFeeBps(tier)
-          return { unitCents: band.perUnitCostCents + creatorFeeCents(band.perUnitCostCents, feeBps) }
-        } catch {
-          return null
+          const feeBounds = await resolveCreatorFeeBounds(tier)
+          const goodsUnitCents = Math.max(0, band.perUnitCostCents + flavorDeltaCents)
+          onDemand = { unitCents: goodsUnitCents + creatorFeeCents(goodsUnitCents, feeBps, feeBounds) }
+        } else {
+          // The manufacturer priced on-demand but THIS product can't use it:
+          // say why (same copy map as the publish gate), never a silent blank.
+          onDemandBlocker = describeOnDemandIneligibility(eligibility.reasons)
         }
-      })()
+      }
+    } catch {
+      /* fail-soft: the informational line must never block the bulk estimate */
+    }
+  }
 
   let units = Math.max(0, Math.floor(input.quantity ?? production?.quantity ?? 0))
   if (units <= 0) {
     // Nothing to price yet — hand the (possibly draft-derived) zero back so the
     // panel seeds its input from the MOQ and re-asks.
-    return { ok: true, data: { quantity: 0, totalCents: 0, perUnitCents: 0, isPack, unitsPerPack, onDemand } }
+    return { ok: true, data: { quantity: 0, totalCents: 0, perUnitCents: 0, isPack, unitsPerPack, onDemand, onDemandBlocker } }
   }
 
   // Pack orders price on packCount (resolvePackSubtotal); mirror ProductionStep's
@@ -127,6 +157,7 @@ export async function estimateStudioSubtotal(input: {
       isPack,
       unitsPerPack,
       onDemand,
+      onDemandBlocker,
     },
   }
 }

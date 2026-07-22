@@ -92,6 +92,30 @@ export function OnDemandQueueClient({
                   {r.creatorLabel} · requested {new Date(r.requestedAtIso).toLocaleDateString()}
                   {r.snapshotSummary ? ` · ${r.snapshotSummary}` : ''}
                 </p>
+                {/* Frozen branding under review (Pavel 2026-07-22): approving
+                    locks THIS design. No design yet = say so, never a blank. */}
+                {r.designLabel ? (
+                  <p className="mt-0.5 truncate text-[11.5px] text-ink-600">
+                    {r.designLabel}
+                    {r.designUrl && (
+                      <>
+                        {' · '}
+                        <a
+                          href={r.designUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="font-semibold text-pink-700 hover:underline"
+                        >
+                          View label PDF
+                        </a>
+                      </>
+                    )}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 truncate text-[11.5px] text-warning-700">
+                    No label design attached yet: you are approving branding sight-unseen.
+                  </p>
+                )}
               </div>
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase ${STATUS_TONE[r.status]}`}>{r.status.replace(/_/g, ' ')}</span>
             </div>

@@ -215,12 +215,16 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
               </p>
             )}
 
-            {o.status === 'ON_HOLD' && (
+            {(o.status === 'ON_HOLD' || o.status === 'NEEDS_ATTENTION') && (
               <div className="mt-2.5 flex flex-wrap gap-2">
                 <button
                   onClick={() => void route(o.id)}
                   disabled={busyId === o.id}
-                  title="Retry now instead of waiting for the next automatic cycle"
+                  title={
+                    o.status === 'ON_HOLD'
+                      ? 'Retry now instead of waiting for the next automatic cycle'
+                      : 'Fixed the issue above? Retry routing now.'
+                  }
                   className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 px-3 py-1.5 text-[11.5px] font-semibold text-ink-800 hover:bg-ink-50 disabled:opacity-50"
                 >
                   {busyId === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Retry routing

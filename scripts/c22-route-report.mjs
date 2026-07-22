@@ -121,7 +121,7 @@ for (const o of orders) {
   const vlinks = vlinkIds.length
     ? await prisma.channelVariantLink.findMany({
         where: { id: { in: vlinkIds } },
-        select: { id: true, productId: true, channelProductLink: { select: { mode: true } } },
+        select: { id: true, productId: true, flavorPresetId: true, channelProductLink: { select: { mode: true } } },
       })
     : []
   const byId = new Map(vlinks.map((v) => [v.id, v]))
@@ -137,7 +137,12 @@ for (const o of orders) {
     }
     const mode = link.channelProductLink?.mode === 'BULK' ? 'BULK' : 'ON_DEMAND'
     const key = `${link.productId}:${mode}`
-    jobs.set(key, { productId: link.productId, mode, units: (jobs.get(key)?.units ?? 0) + l.quantity })
+    const job = jobs.get(key) ?? { productId: link.productId, mode, units: 0, flavors: new Map() }
+    job.units += l.quantity
+    // Per-flavor split (mirrors planChannelOrderRouting): feeds the priceDelta fold.
+    const fid = link.flavorPresetId ?? null
+    job.flavors.set(fid, (job.flavors.get(fid) ?? 0) + l.quantity)
+    jobs.set(key, job)
   }
   if (unmapped > 0) {
     console.log(`  would park NEEDS_ATTENTION: ${unmapped} unmapped line(s)`)
@@ -173,6 +178,8 @@ for (const o of orders) {
           where: {
             channelVariantLinkId: { in: productLinks.map((x) => x.id) },
             channelOrder: {
+              // Exclude THIS order (router parity): bandUnits adds it separately.
+              id: { not: o.id },
               placedAt: { gte: new Date(now - 30 * DAY) },
               status: { not: 'CANCELLED' },
               connection: { creatorUserId },
@@ -196,7 +203,23 @@ for (const o of orders) {
       continue
     }
     const band = pickBand(tiers, bandUnits)
-    const goods = band.perUnitCostCents * job.units
+
+    // Flavor priceDelta fold (router parity, e2e finding 2026-07-22): premium
+    // flavors ride on top of the band goods exactly as route-core folds them.
+    const flavorIds = [...job.flavors.keys()].filter(Boolean)
+    const presets = flavorIds.length
+      ? await prisma.flavorPreset.findMany({
+          where: { id: { in: flavorIds }, status: 'ACTIVE' },
+          select: { id: true, priceDeltaCents: true },
+        })
+      : []
+    const deltaById = new Map(presets.map((p) => [p.id, p.priceDeltaCents ?? 0]))
+    let flavorDeltaCents = 0
+    for (const [fid, units] of job.flavors) {
+      if (fid) flavorDeltaCents += (deltaById.get(fid) ?? 0) * units
+    }
+
+    const goods = band.perUnitCostCents * job.units + flavorDeltaCents
 
     const tierRow = await prisma.creatorProfile.findUnique({
       where: { userId: creatorUserId },
@@ -206,7 +229,7 @@ for (const o of orders) {
     const fee = await feeBpsForTier(tier)
     const feeCents = creatorFee(goods, fee.feeBps, fee.bounds)
     console.log(
-      `  ${product.name} x${job.units} [ON_DEMAND]: trailing30d=${trailing} bandUnits=${bandUnits} -> band minQty=${band.minQty} @ ${cents(band.perUnitCostCents)}/unit`,
+      `  ${product.name} x${job.units} [ON_DEMAND]: trailing30d=${trailing} bandUnits=${bandUnits} -> band minQty=${band.minQty} @ ${cents(band.perUnitCostCents)}/unit${flavorDeltaCents ? ` + flavor delta ${cents(flavorDeltaCents)}` : ''}`,
     )
     console.log(
       `    goods ${cents(goods)} + fee ${cents(feeCents)} (${fee.feeBps} bps, tier ${tier}, ${fee.source}) = WOULD CHARGE ${cents(goods + feeCents)}`,

@@ -111,9 +111,50 @@ export default async function OrdersPage({
   })
   if (services.length === 0) return null
 
-  const all = services.flatMap((s) =>
+  const allRaw = services.flatMap((s) =>
     s.dispatches.map((d) => ({ ...d, serviceType: s.type })),
   )
+
+  // C2.2 partner tagging (CHANNEL_MANAGEMENT_SPEC §3.4): a channel-origin
+  // on-demand dispatch is made to order for ONE consumer, so the inbox flags it.
+  // Resolution: ChannelOrder.productionOrderId soft back-ref (cast-guarded),
+  // with the router's internalNotes marker as the pre-push / multi-order
+  // fallback. Best-effort: a lookup failure just renders untagged rows.
+  const channelByOrderId = new Map<string, string>()
+  try {
+    const orderIds = [...new Set(allRaw.map((d) => d.order.id))]
+    const channelRows = orderIds.length
+      ? await (
+          prisma as unknown as {
+            channelOrder?: {
+              findMany: (a: unknown) => Promise<
+                Array<{ productionOrderId: string | null; connection: { channel: { displayName: string | null; code: string } } }>
+              >
+            }
+          }
+        ).channelOrder?.findMany({
+          where: { productionOrderId: { in: orderIds } },
+          select: {
+            productionOrderId: true,
+            connection: { select: { channel: { select: { displayName: true, code: true } } } },
+          },
+        })
+      : []
+    for (const r of channelRows ?? []) {
+      if (r.productionOrderId) {
+        channelByOrderId.set(r.productionOrderId, r.connection.channel.displayName ?? r.connection.channel.code)
+      }
+    }
+  } catch {
+    /* untagged rows are correct rows */
+  }
+  const all = allRaw.map((d) => ({
+    ...d,
+    channelTag:
+      channelByOrderId.get(d.order.id) ??
+      (((d.order as { internalNotes?: string | null }).internalNotes ?? '').includes('ORIGIN: CHANNEL') ? 'Channel' : null),
+  }))
+
   const countFor = (t: Exclude<Tab, 'all'>) => all.filter((d) => TAB_STATUSES[t].includes(d.status as string)).length
 
   const visible = (
@@ -210,7 +251,10 @@ export default async function OrdersPage({
                     <tr key={d.id} className="border-b border-ink-50 last:border-0 hover:bg-ink-50/60">
                       <td className="px-5 py-3 font-mono text-[11.5px] text-ink-700">{(d.order as { orderNumber?: string | null }).orderNumber ?? `#${d.order.id.slice(-8)}`}</td>
                       <td className="px-3 py-3 font-medium text-ink-900">{d.order.brand.name}</td>
-                      <td className="px-3 py-3 text-[12px] text-ink-600">{d.type} · {d.serviceType}</td>
+                      <td className="px-3 py-3 text-[12px] text-ink-600">
+                        {d.type} · {d.serviceType}
+                        {d.channelTag && <ChannelBadge tag={d.channelTag} />}
+                      </td>
                       <td className="px-3 py-3">
                         <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
                           {pill.label}
@@ -251,6 +295,8 @@ type DispatchRow = {
   id: string
   type: string
   serviceType: string
+  /** C2.2: non-null = channel-origin on-demand dispatch (value = channel name). */
+  channelTag: string | null
   status: string
   costCents: number
   createdAt: Date
@@ -307,6 +353,7 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
         <span className={cn('inline-flex items-center rounded-full border px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider', pill.cls)}>
           {pill.label}
         </span>
+        {d.channelTag && <ChannelBadge tag={d.channelTag} />}
         <span>
           <span className="text-ink-500">Order</span> <span className="font-mono text-[11.5px]">{(d.order as { orderNumber?: string | null }).orderNumber ?? `#${d.order.id.slice(-8)}`}</span>
         </span>
@@ -333,6 +380,7 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
           <div className="truncate text-[15px] font-medium leading-tight text-ink-900">{title}</div>
           <div className="mt-0.5 text-[12.5px] text-ink-500">
             {d.order.brand.name} · {d.type} · {d.serviceType}
+            {d.channelTag && <span className="text-info-700"> · ships direct to the consumer</span>}
           </div>
           <div className={cn('mt-1 text-[11.5px] tabular-nums', pending ? 'font-medium text-pink-700' : 'text-ink-500')}>
             {dateLabel}
@@ -452,6 +500,18 @@ function ActionLink({ href, icon: Icon, children }: { href: string; icon: Lucide
 
 function Sep() {
   return <span className="text-ink-300">·</span>
+}
+
+/** C2.2 - channel-origin on-demand marker (spec §3.4: "tagged Channel · On-Demand").
+ *  `tag` is the channel's display name; the generic 'Channel' fallback comes from
+ *  the internalNotes marker when the ChannelOrder back-ref can't be resolved. */
+function ChannelBadge({ tag }: { tag: string }) {
+  return (
+    <span className="ml-1.5 inline-flex items-center gap-1 rounded-full border border-info-200 bg-info-50 px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wider text-info-800">
+      <Truck className="h-3 w-3" aria-hidden="true" />
+      Channel · On-Demand{tag !== 'Channel' ? ` · ${tag}` : ''}
+    </span>
+  )
 }
 
 // -----------------------------------------------------------------------------

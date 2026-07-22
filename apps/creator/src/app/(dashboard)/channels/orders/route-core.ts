@@ -92,8 +92,22 @@ type AnyDelegate = {
 const d = (name: string): AnyDelegate | null =>
   ((prisma as unknown as Record<string, AnyDelegate | undefined>)[name] ?? null)
 
-/** Claim sentinel: the atomic in-flight marker (see claimChannelOrder). */
-const ROUTING_SENTINEL = 'Routing in progress…'
+/** Claim sentinel: the atomic in-flight marker. TIMESTAMPED (e2e finding
+ *  2026-07-22): a run that dies mid-flight (crash, hot-reload, kill) would
+ *  otherwise leave the claim set forever and the order stuck at "already being
+ *  routed". A sentinel older than the takeover window is treated as abandoned
+ *  and re-claimable; every terminal write overwrites the sentinel, so a fresh
+ *  one only ever means a run is genuinely in flight. */
+const ROUTING_SENTINEL_PREFIX = 'Routing in progress'
+const ROUTING_CLAIM_TAKEOVER_MS = 5 * 60 * 1000
+const routingSentinel = (nowMs: number) => `${ROUTING_SENTINEL_PREFIX} since ${new Date(nowMs).toISOString()}`
+const isRoutingSentinel = (s: string | null | undefined): boolean => !!s && s.startsWith(ROUTING_SENTINEL_PREFIX)
+function sentinelAgeMs(s: string, nowMs: number): number {
+  const iso = s.slice(`${ROUTING_SENTINEL_PREFIX} since `.length)
+  const t = Date.parse(iso)
+  // Legacy/unparseable sentinel (e.g. the pre-fix constant): treat as stale.
+  return Number.isFinite(t) ? nowMs - t : Number.POSITIVE_INFINITY
+}
 
 export type RouteOutcome =
   | { kind: 'ROUTED'; orderIds: string[]; chargedCents: number }
@@ -171,8 +185,16 @@ async function variantLinkIdsForProduct(productId: string): Promise<string[]> {
 
 /** Trailing 30-day consumer-unit volume for (creator, product): the velocity
  *  input of the band selection (gate doc §4b.5). Counts every non-cancelled
- *  imported channel order line in the window. */
-export async function trailing30dUnitsFor(creatorUserId: string, productId: string, nowMs: number): Promise<number> {
+ *  imported channel order line in the window EXCEPT the order being routed:
+ *  bandSelectionUnits adds that order's units separately (trailing + order),
+ *  so counting it here too would double it into the band pick (e2e finding
+ *  2026-07-22, visible as a one-order product banding at 2x its real volume). */
+export async function trailing30dUnitsFor(
+  creatorUserId: string,
+  productId: string,
+  nowMs: number,
+  excludeChannelOrderId?: string,
+): Promise<number> {
   const linkIds = await variantLinkIdsForProduct(productId)
   if (linkIds.length === 0) return 0
   const cutoff = new Date(nowMs - 30 * 24 * 60 * 60 * 1000)
@@ -182,6 +204,7 @@ export async function trailing30dUnitsFor(creatorUserId: string, productId: stri
         where: {
           channelVariantLinkId: { in: linkIds },
           channelOrder: {
+            ...(excludeChannelOrderId ? { id: { not: excludeChannelOrderId } } : {}),
             placedAt: { gte: cutoff },
             status: { not: 'CANCELLED' },
             connection: { creatorUserId },
@@ -330,12 +353,22 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
     .catch(() => null)) as unknown as LoadedChannelOrder | null
   if (!row) return { kind: 'SKIPPED', reason: 'Order not found.' }
   if (row.productionOrderId) return { kind: 'SKIPPED', reason: 'Already routed.' }
-  if (!['READY', 'ON_HOLD'].includes(row.status)) {
+  // READY + ON_HOLD are the auto-retry pool (the scan feeds them). Manual
+  // "Retry routing" also accepts NEEDS_ATTENTION: config parks need a human
+  // fix first, and after fixing, the creator retries from the card (FSM:
+  // NEEDS_ATTENTION -> ROUTED is a legal recovery). productionOrderId still
+  // gates double-routing above.
+  if (!['READY', 'ON_HOLD', 'NEEDS_ATTENTION'].includes(row.status)) {
     return { kind: 'SKIPPED', reason: `Order is ${row.status}, not routable.` }
   }
   if (row.manualConfirmRequired) return { kind: 'SKIPPED', reason: 'Awaiting creator approval (manual-confirm).' }
-  if (row.statusReason === ROUTING_SENTINEL) return { kind: 'SKIPPED', reason: 'Already being routed.' }
-  const previousHoldReason = row.status === 'ON_HOLD' ? row.statusReason : null
+  const claimNowMs = Date.now()
+  const staleClaim =
+    isRoutingSentinel(row.statusReason) && sentinelAgeMs(row.statusReason as string, claimNowMs) >= ROUTING_CLAIM_TAKEOVER_MS
+  if (isRoutingSentinel(row.statusReason) && !staleClaim) {
+    return { kind: 'SKIPPED', reason: 'Already being routed.' }
+  }
+  const previousHoldReason = row.status === 'ON_HOLD' && !isRoutingSentinel(row.statusReason) ? row.statusReason : null
 
   // --- Plan (pure) BEFORE claiming, so a bulk-only order is never touched. ----
   const vlinkIds = row.lines.map((l) => l.channelVariantLinkId).filter((x): x is string => !!x)
@@ -408,18 +441,27 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
   // --- CLAIM: one router run at a time per order (double-click / cron overlap).
   // A sentinel statusReason instead of a status flip, so every terminal write
   // below is a single legal FSM step from the order's real state.
+  // Stale takeover matches the EXACT abandoned sentinel value, so two sweeps
+  // racing for the same dead claim still resolve to one winner atomically.
+  const mySentinel = routingSentinel(claimNowMs)
   const claimed = await odUpdateMany({
       where: {
         id: row.id,
         status: row.status,
         productionOrderId: null,
-        NOT: { statusReason: ROUTING_SENTINEL },
+        // NULL TRAP (e2e finding 2026-07-22): `NOT: { startsWith }` never
+        // matches NULL statusReason (SQL NULL LIKE = NULL), so a freshly
+        // approved order could never be claimed. Spell the NULL arm out.
+        ...(staleClaim
+          ? { statusReason: row.statusReason }
+          : { OR: [{ statusReason: null }, { NOT: { statusReason: { startsWith: ROUTING_SENTINEL_PREFIX } } }] }),
       },
-      data: { statusReason: ROUTING_SENTINEL },
+      data: { statusReason: mySentinel },
     })
     .catch(() => ({ count: 0 }))
   if (claimed.count !== 1) return { kind: 'SKIPPED', reason: 'This order is already being routed.' }
 
+  try {
   const nowMs = Date.now()
   const orderSettings = await getOrderSettings()
   const creatorTier = await getCreatorTier(creatorUserId)
@@ -511,6 +553,16 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
   }).catch(() => {})
 
   return { kind: 'ROUTED', orderIds, chargedCents }
+  } catch (err) {
+    // Unexpected throw AFTER the claim (e2e finding 2026-07-22: a dev-server
+    // hot-reload killed a run mid-flight). Park ON_HOLD so the claim never
+    // leaks and the next cycle retries automatically; charges are protected by
+    // the per-(channelOrder, order) Stripe idempotency key regardless.
+    const reason = `Routing failed unexpectedly: ${err instanceof Error ? err.message : 'unknown error'}. It retries automatically next cycle.`
+    await odUpdate({ where: { id: row.id }, data: { status: 'ON_HOLD', statusReason: reason } }).catch(() => {})
+    await logSync(row.connection.id, 'ERROR', reason)
+    return { kind: 'PARKED', park: 'ON_HOLD', reason }
+  }
 }
 
 // ─── One production job: eligibility -> routing -> price -> charge -> dispatch ─
@@ -601,6 +653,9 @@ async function routeOneJob(ctx: {
     destinationRegionId: product.brand.operatingRegionId,
     targetMarketId: primaryMarket?.marketId ?? null,
     creatorUserId: user.id,
+    // Made-to-order: the enablement is the consent to qty-1 runs; the bulk
+    // MOQ floor does not gate this path (capacityPerDay guards volume).
+    onDemandMadeToOrder: true,
   })
   if (!routing.ok) return { ok: false, park: 'NEEDS_ATTENTION', reason: routing.message }
   const coPackerServiceId = product.productTemplateId
@@ -627,7 +682,7 @@ async function routeOneJob(ctx: {
   }
 
   // Velocity-banded ON_DEMAND price (LOCKED 2026-07-21) through the ONE pricer.
-  const trailing30dUnits = await trailing30dUnitsFor(user.id, product.id, nowMs)
+  const trailing30dUnits = await trailing30dUnitsFor(user.id, product.id, nowMs, row.id)
   const bandUnits = bandSelectionUnits(trailing30dUnits, job.units)
   const tierGoods = await resolveTierGoodsCents(product.productTemplateId, job.units, 'ON_DEMAND', {
     bandSelectionUnits: bandUnits,
@@ -689,6 +744,21 @@ async function routeOneJob(ctx: {
     finish ? `ON-DEMAND FINISH: ${finish.decorationMethod} in-house (offering ${finish.offeringId}).` : 'ON-DEMAND FINISH: manufacturer in-house (no pin).',
   ].join('\n')
 
+  // Lock the exact DesignVersion sold (same rule as checkout: the newest
+  // version of the ACTIVE design, never a draft alternate) so the partner's
+  // work packet carries the artwork. Null = no design yet; the order still
+  // routes and the manifest marks the bundle for admin follow-up, matching
+  // checkout's legacy-edge behavior. (Pavel 2026-07-22: the first e2e run
+  // showed made-to-order dispatches without the design pointer.)
+  const lockedDesign = await prisma.design
+    .findFirst({
+      where: { productId: product.id, isActiveAlternate: true },
+      orderBy: { updatedAt: 'desc' },
+      include: { versions: { orderBy: { version: 'desc' }, take: 1, select: { id: true } } },
+    })
+    .catch(() => null)
+  const lockedDesignVersionId = lockedDesign?.versions[0]?.id ?? null
+
   const order = await createOrderWithNumber(async (orderNumber) => {
     return prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
@@ -725,6 +795,7 @@ async function routeOneJob(ctx: {
           quantity: job.units,
           unitPriceCents: Math.round(priced.productionSubtotalCents / Math.max(1, job.units)),
           totalCents: priced.productionSubtotalCents,
+          designVersionId: lockedDesignVersionId,
         } as Parameters<typeof tx.orderItem.create>[0]['data'],
       })
       // Per-flavor split for the partner manifest (cast-guarded model).

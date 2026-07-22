@@ -565,10 +565,15 @@ export async function getOnDemandPricingRows(slug: string, viewerTier: TierKey):
   if (!eligibility?.eligible) return []
 
   const { feeBps } = await resolveCreatorFeeBps(viewerTier)
+  // FEE BOUNDS (e2e finding 2026-07-22): the C2.2 charge applies the FeeRule's
+  // flat/min/max via creatorFeeCents bounds, and at qty-1 the MIN fee dominates
+  // (a $3.72 unit carries a $1.00 minimum fee, not $0.56). Quoting without the
+  // bounds under-quoted every small on-demand order: quote must equal charge.
+  const feeBounds = await resolveCreatorFeeBounds(viewerTier)
   const feePercent = feeBps / 100
   return base.map((r) => {
     const manufacturerCents = r.perUnitCents
-    const platformFeeCents = creatorFeeCents(manufacturerCents, feeBps)
+    const platformFeeCents = creatorFeeCents(manufacturerCents, feeBps, feeBounds)
     return { ...r, manufacturerCents, platformFeeCents, feePercent, perUnitCents: manufacturerCents + platformFeeCents }
   })
 }

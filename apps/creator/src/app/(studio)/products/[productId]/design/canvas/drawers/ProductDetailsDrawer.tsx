@@ -398,6 +398,14 @@ function CostSummaryLive({
             no minimum · produced per sale once published to a channel
           </p>
         )}
+        {/* §4b.3 follow-up (Pavel 2026-07-22): the manufacturer authored
+            on-demand bands but THIS product fails the full-service gate: say
+            why instead of hiding the line ("doesn't show properly"). */}
+        {!estimate?.onDemand && estimate?.onDemandBlocker && (
+          <p className="mt-1.5 rounded-md bg-warning-50 px-2 py-1.5 text-[11px] leading-relaxed text-warning-800">
+            <span className="font-semibold">On-demand unavailable:</span> {estimate.onDemandBlocker}
+          </p>
+        )}
         {/* WHY THE PRICE IS MISSING — render the refusal, never a bare dash. */}
         {estimateError && !busy && (
           <p className="mt-1 text-[11px] font-medium text-danger-700">{estimateError}</p>

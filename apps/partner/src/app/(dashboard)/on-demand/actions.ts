@@ -12,6 +12,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { loadOnDemandEligibility, describeOnDemandIneligibility } from '@ilaunchify/orders'
+import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 
 type EnablementRow = {
   id: string
@@ -51,6 +52,11 @@ export interface OnDemandRequestRow {
   partnerNote: string | null
   capacityPerDay: number | null
   snapshotSummary: string | null
+  /** Frozen branding (Pavel 2026-07-22): the design version under review and a
+   *  viewable export when one exists. Null design = creator hasn't designed yet;
+   *  the card says so explicitly instead of showing nothing. */
+  designLabel: string | null
+  designUrl: string | null
 }
 
 /** The partner's queue: pending first, then recent decisions. */
@@ -83,10 +89,22 @@ export async function loadOnDemandRequests(): Promise<{ migrated: boolean; rows:
   const productName = new Map(products.map((p) => [p.id, p.name]))
   const creatorLabel = new Map(creators.map((c) => [c.id, c.name ?? c.email ?? c.id]))
 
+  type Snapshot = {
+    note?: string
+    designVersion?: number | string | null
+    exportedPdfAssetId?: string | null
+  } | null
+  const snapshots = rows.map((r) => (r.brandingSnapshotJson ?? null) as Snapshot)
+  // Resolve the frozen export assets to viewable URLs in one batch (same
+  // storage-backed helper the dispatch cards use for product images).
+  const pdfUrls = await resolveCertBadgeUrls(snapshots.map((s) => s?.exportedPdfAssetId ?? null)).catch(
+    () => new Map<string, string>(),
+  )
+
   return {
     migrated: true,
-    rows: rows.map((r) => {
-      const snap = (r.brandingSnapshotJson ?? null) as { note?: string; designVersion?: string } | null
+    rows: rows.map((r, i) => {
+      const snap = snapshots[i]
       return {
         id: r.id,
         status: r.status,
@@ -96,7 +114,9 @@ export async function loadOnDemandRequests(): Promise<{ migrated: boolean; rows:
         decidedAtIso: r.decidedAt?.toISOString() ?? null,
         partnerNote: r.partnerNote,
         capacityPerDay: r.capacityPerDay,
-        snapshotSummary: snap?.note ?? (snap?.designVersion ? `design ${snap.designVersion}` : null),
+        snapshotSummary: snap?.note ?? null,
+        designLabel: snap?.designVersion != null ? `Label design v${snap.designVersion} (frozen at request)` : null,
+        designUrl: snap?.exportedPdfAssetId ? (pdfUrls.get(snap.exportedPdfAssetId) ?? null) : null,
       }
     }),
   }

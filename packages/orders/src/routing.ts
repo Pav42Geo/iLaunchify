@@ -71,6 +71,17 @@ export async function findRouting(params: {
   productId: string
   quantity: number
   templateId?: string | null
+  /**
+   * C2.2 (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md §4): a channel
+   * on-demand order is made to order at qty ~1-2. The bulk moqMin is a
+   * BATCH-RUN economic floor and does not apply: the manufacturer's
+   * OnDemandEnablement IS their standing consent to per-unit runs (with
+   * capacityPerDay as the volume guard). True = skip the owner-pinned
+   * manufacturer's MOQ gate; every other gate (ACTIVE, payouts, owner pin)
+   * still applies, and the legacy no-owner fallback stays fully gated
+   * (on-demand requires a pinned manufacturer upstream anyway).
+   */
+  onDemandMadeToOrder?: boolean
   // B4 — optional matching context. When supplied, proximity + cert dimensions
   // join the manufacturer scoring; absent, scoring uses capacity fit alone.
   destinationCountry?: string | null
@@ -178,7 +189,8 @@ export async function findRouting(params: {
       return { ok: false, reason: 'NO_MANUFACTURER', message: 'The product’s manufacturer has not enabled payouts.' }
     }
     const { min, max } = moqOf(owner)
-    if (params.quantity < min || params.quantity > max) {
+    // Made-to-order consent supersedes the batch MOQ floor (see the param doc).
+    if (!params.onDemandMadeToOrder && (params.quantity < min || params.quantity > max)) {
       return { ok: false, reason: 'NO_MANUFACTURER', message: `The product’s manufacturer can’t run quantity ${params.quantity}.` }
     }
     manufacturer = owner

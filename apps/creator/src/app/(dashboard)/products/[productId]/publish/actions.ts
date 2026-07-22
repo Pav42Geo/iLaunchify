@@ -386,7 +386,30 @@ export async function requestOnDemandEnablement(productId: string): Promise<Sell
   ).onDemandEnablement
   if (!delegate) return { ok: false, error: 'On-demand tables not migrated yet — run db:push.' }
 
+  // Branding snapshot (spec §3.2: "snapshot of approved branding"). Freeze the
+  // ACTIVE design's latest version so the manufacturer reviews the actual label
+  // (Pavel 2026-07-22: the queue card showed no design at all). Null design =
+  // the creator hasn't designed yet; the queue says so instead of hiding it.
+  const lockedDesign = await prisma.design
+    .findFirst({
+      where: { productId: product.id, isActiveAlternate: true },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        versions: { orderBy: { version: 'desc' }, take: 1, select: { id: true, version: true, exportedPdfAssetId: true } },
+      },
+    })
+    .catch(() => null)
+  const lockedVersion = lockedDesign?.versions[0] ?? null
+
   try {
+    const brandingSnapshotJson = {
+      note: product.name,
+      designId: lockedDesign?.id ?? null,
+      designVersionId: lockedVersion?.id ?? null,
+      designVersion: lockedVersion?.version ?? null,
+      exportedPdfAssetId: lockedVersion?.exportedPdfAssetId ?? null,
+      requestedAt: new Date().toISOString(),
+    }
     const row = await delegate.upsert({
       where: {
         creatorUserId_productId_manufacturerServiceId: {
@@ -400,9 +423,10 @@ export async function requestOnDemandEnablement(productId: string): Promise<Sell
         productId: product.id,
         manufacturerServiceId,
         status: 'REQUESTED',
-        brandingSnapshotJson: { note: product.name, requestedAt: new Date().toISOString() },
+        brandingSnapshotJson,
       },
-      update: { status: 'REQUESTED', decidedAt: null },
+      // Re-request refreshes the snapshot: the partner reviews CURRENT branding.
+      update: { status: 'REQUESTED', decidedAt: null, brandingSnapshotJson },
     })
     await logAuditAs(user, {
       entityType: 'OnDemandEnablement',

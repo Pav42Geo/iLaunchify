@@ -101,10 +101,22 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
   const touchedProducts = new Set<string>()
 
   const since = (conn.lastSyncAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000)).toISOString()
+  // Known variant links for THIS connection: real adapters ignore the hint;
+  // the stub uses it to fabricate a mappable order (adapter.ts ConnectionCtx).
+  const knownVariantIds = (
+    (await d('channelVariantLink')
+      ?.findMany?.({
+        where: { channelProductLink: { channelConnectionId: conn.id } },
+        select: { externalVariantId: true },
+      })
+      .catch(() => [])) ?? []
+  )
+    .map((v) => String(v.externalVariantId))
+    .filter(Boolean)
   let externals: ExternalOrder[] = []
   try {
     externals = await adapter.pullOrders(
-      { connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: { accessToken: 'stub' } },
+      { connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: { accessToken: 'stub' }, knownVariantIds },
       since,
     )
   } catch (err) {

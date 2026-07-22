@@ -47,6 +47,12 @@ export interface ConnectionCtx {
   tokens: TokenSet
   /** Channel-specific settings blob (location ids, policy ids, store URL…). */
   settings?: Record<string, unknown>
+  /** External variant ids the platform already linked for this connection
+   *  (ChannelVariantLink.externalVariantId), supplied by the CALLER so the
+   *  adapter stays Prisma-free. Real adapters ignore it; the STUB uses it to
+   *  fabricate a MAPPABLE paid order so the dev pipeline can reach READY ->
+   *  route -> auto-bill without a real store (C2.2 e2e, 2026-07-22). */
+  knownVariantIds?: string[]
 }
 
 // --- Catalog → channel ------------------------------------------------------
