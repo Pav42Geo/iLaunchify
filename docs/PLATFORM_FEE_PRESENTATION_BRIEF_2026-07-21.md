@@ -113,11 +113,25 @@ Phase 2 BUILT (2026-07-21): marketing money is now live. Findings + changes:
   DB-seeded prices.
 - `/contact-sales`: Agency perks fee line tokenized + substituted.
 
+- `UpgradeOverlay`: DONE by Code (2026-07-21, via
+  HANDOFF-TO-CODE-upgrade-overlay-live-pricing, deleted on completion). No
+  literal prices or rates remain in the overlay.
+
+**RULING — finishes drawer upcharges (2026-07-21, answers Code's note):**
+`buildFinishPricingSummary` renders partner finish upcharges raw
+("+$0.08/unit"). Finishes are inside the fee base, so per Option C the
+CREATOR-facing rendering must be all-in; the PARTNER-facing rendering must
+stay raw (a partner sets and keeps that price; a fee-inflated number would
+misstate their own list). So: do NOT change the shared formatter — add an
+audience-aware wrapper on the creator/Studio side that grosses the delta up
+at the viewer's tier rate (guests/Maker = maker bps) using the shared fee
+math. Per-unit deltas use plain bps (FeeRule flat/min/max bounds apply at
+ORDER level, not to an informational delta); exact money still comes from
+computeOrderPricing at checkout. Divergence by audience is the point, made
+explicit by the wrapper, never silent. Owner: Code (Studio canvas hot zone).
+
 Still open:
-- `UpgradeOverlay` (Studio canvas) hardcodes $0/$29/$99 + "~12%/~22% off
-  catalog" perks. NOT touched: the Design Studio canvas is a two-agent HOT
-  ZONE (single-writer, currently Code's). Hand to Code: feed it the same
-  PlanPricing/fee data or strip numbers from its copy.
+- Finishes-drawer all-in wrapper per the ruling above (Code's zone).
 - Legal Membership Terms wording (counsel).
 - Re-verify all-in shown == charged on the next live test order.
 

@@ -82,6 +82,15 @@ function usd(c: number): string {
   return `$${(c / 100).toFixed(2)}`
 }
 
+// Option C (docs/PLATFORM_FEE_PRESENTATION_BRIEF_2026-07-21.md): gross a
+// partner-authored cents amount up by the viewer's tier administrative fee,
+// via the shared fee math. Plain bps only — FeeRule bounds are per-ORDER and
+// never apply to per-component display deltas; the real bounded fee is
+// computed once per order by computeOrderPricing at checkout.
+function allInCents(cents: number, feeBps: number): number {
+  return cents + creatorFeeCents(cents, feeBps)
+}
+
 // Mirrors the partner-side pricing-summary formatter (packaging-finishes-actions.ts).
 function buildFinishPricingSummary(f: {
   pricingMode: string
@@ -152,7 +161,11 @@ async function loadStudioMaterials(): Promise<{ substrates: StudioMaterial[] }> 
   }
 }
 
-async function loadStudioFinishes(productTemplateId: string | null): Promise<StudioFinish[]> {
+async function loadStudioFinishes(
+  productTemplateId: string | null,
+  /** Viewer's tier rate — finish upcharges display ALL-IN here (see below). */
+  viewerFeeBps: number,
+): Promise<StudioFinish[]> {
   if (!productTemplateId) return []
   try {
     const rows = await prisma.productTemplateFinish.findMany({
@@ -165,17 +178,25 @@ async function loadStudioFinishes(productTemplateId: string | null): Promise<Stu
       .filter((r) => r.partnerFinish)
       .map((r) => {
         const pf = r.partnerFinish!
+        // Option C finishes ruling (brief, 2026-07-21): finishes are inside the
+        // fee base, so the CREATOR sees each upcharge grossed up at their tier
+        // rate; the PARTNER-side formatter keeps the raw list price it authored.
+        // Explicit divergence by audience: the shared formatter stays untouched,
+        // only the money inputs differ.
         return {
           partnerFinishId: r.partnerFinishId,
           name: pf.name?.trim() || pf.finishType.name,
           category: String(pf.finishType.category),
           pricingSummary: buildFinishPricingSummary({
             pricingMode: String(pf.pricingMode),
-            basePriceCents: pf.basePriceCents,
-            perUnitPriceCents: pf.perUnitPriceCents,
-            pricePerSqInCents: pf.pricePerSqInCents,
-            pricePerObjectCents: pf.pricePerObjectCents,
-            pricePerColorCents: pf.pricePerColorCents,
+            basePriceCents: allInCents(pf.basePriceCents, viewerFeeBps),
+            perUnitPriceCents: allInCents(pf.perUnitPriceCents, viewerFeeBps),
+            pricePerSqInCents:
+              pf.pricePerSqInCents != null ? allInCents(pf.pricePerSqInCents, viewerFeeBps) : null,
+            pricePerObjectCents:
+              pf.pricePerObjectCents != null ? allInCents(pf.pricePerObjectCents, viewerFeeBps) : null,
+            pricePerColorCents:
+              pf.pricePerColorCents != null ? allInCents(pf.pricePerColorCents, viewerFeeBps) : null,
             leadTimeDays: pf.leadTimeDays,
             moqMin: pf.moqMin,
           }),
@@ -456,6 +477,9 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // Live plan prices + administrative-fee rates for the UpgradeOverlay
   // (SubscriptionPlan + FeeRule SSOTs — admin edits must propagate here).
   const planPricing = await loadCreatorPlanPricing()
+  // Option C: every creator-facing money string in the Studio is ALL-IN at the
+  // viewer's tier rate (getCreatorTier already defaults to 'maker').
+  const viewerFeeBps = planPricing.feeBpsByTier[creatorTier]
 
   // ---- DS-56 derive productCtx for compliance scan + label drawer pre-fill -
   const productCtx = deriveProductCtx({
@@ -554,7 +578,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
 
   // F3a — finishes this product offers (partner's ProductTemplateFinish allow-
   // list). DISPLAY-ONLY in the Studio drawer; cast-guarded → [] pre-migration.
-  const studioFinishes = await loadStudioFinishes(product.productTemplate?.id ?? null)
+  const studioFinishes = await loadStudioFinishes(product.productTemplate?.id ?? null, viewerFeeBps)
   const partnerOffersFinishes = studioFinishes.length > 0
 
   // F3b — the label-stock + packaging-material catalogs the creator picks from in
@@ -571,21 +595,15 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
   // (per-unit by quantity tier) + the entry tier (lowest minQty) for the header MOQ line.
   // All fields already decided upstream in the builder.
   //
-  // Option C (docs/PLATFORM_FEE_PRESENTATION_BRIEF_2026-07-21.md): every creator-
-  // facing per-unit price is ALL-IN — the manufacturer's band cost plus the
-  // viewer's tier-rate administrative fee, the same display math as the PDP
-  // matrix (getCreatorPricingMatrix). Per-ORDER fee bounds deliberately don't
-  // apply to a per-unit display figure; the real bounded fee is computed once
-  // per order by computeOrderPricing at checkout.
-  const viewerFeeBps = planPricing.feeBpsByTier[creatorTier]
-  const allInCents = (c: number) => c + creatorFeeCents(c, viewerFeeBps)
+  // Option C: per-unit band prices are all-in at the viewer's tier rate, the
+  // same display math as the PDP matrix (getCreatorPricingMatrix).
   const pricingTiers = product.productTemplate?.pricingTiers ?? []
   const entryTier = pricingTiers.length ? pricingTiers.reduce((a, b) => (b.minQty < a.minQty ? b : a)) : null
   const fulfillmentLabel = (m: string): string =>
     m === 'ON_DEMAND' ? 'On-demand' : m === 'BOTH' ? 'Bulk + On-demand' : 'Bulk'
   const qtyRange = (min: number, max: number | null): string =>
     max ? `${min.toLocaleString()}–${max.toLocaleString()}` : `${min.toLocaleString()}+`
-  const centsList = pricingTiers.map((t) => allInCents(t.perUnitCostCents))
+  const centsList = pricingTiers.map((t) => allInCents(t.perUnitCostCents, viewerFeeBps))
   const lowC = centsList.length ? Math.min(...centsList) : null
   const highC = centsList.length ? Math.max(...centsList) : null
   const cost =
@@ -599,7 +617,7 @@ export default async function DesignStudioCanvasPage({ params, searchParams }: P
             .sort((a, b) => a.minQty - b.minQty)
             .map((t) => ({
               qtyRange: qtyRange(t.minQty, t.maxQty ?? null),
-              perUnit: usd(allInCents(t.perUnitCostCents)),
+              perUnit: usd(allInCents(t.perUnitCostCents, viewerFeeBps)),
               leadTimeDays: t.leadTimeDays ?? null,
               fulfillment: fulfillmentLabel(String(t.fulfillmentMode)),
             })),
