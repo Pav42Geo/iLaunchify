@@ -4,7 +4,13 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { resolveChannelAdapter, variantKey, applyLedgerEntry, type ChannelCode, type ListingVariantInput } from '@ilaunchify/channels'
-import { configurationChannelVariants, isCurrentConfiguration } from '@ilaunchify/orders'
+import {
+  configurationChannelVariants,
+  isCurrentConfiguration,
+  loadOnDemandEligibility,
+  describeOnDemandIneligibility,
+  ON_DEMAND_INELIGIBLE_COPY,
+} from '@ilaunchify/orders'
 import { recomputeStockAlert } from '../../../channels/inventory/alerts'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
@@ -100,7 +106,16 @@ export interface SellData {
   /** On-demand gate state for THIS product (LOCKED gate #1): the pinned
    *  manufacturer's enablement. 'NONE' = never requested; null manufacturer =
    *  product has no pinned manufacturer yet (can't request). */
-  onDemand: { status: string; hasManufacturer: boolean; partnerNote: string | null }
+  onDemand: {
+    status: string
+    hasManufacturer: boolean
+    partnerNote: string | null
+    /** Full-service gate (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md):
+     *  the pinned manufacturer must execute the whole order in-house. When
+     *  ineligible, `blockers` carries the creator-facing reasons. */
+    eligible: boolean
+    blockers: string[]
+  }
   /** Bulk stock (gate #2): the CREATOR-location pool for this product. */
   stock: { onHand: number; reserved: number; available: number }
 }
@@ -156,6 +171,12 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
       : Promise.resolve([]),
   ])
 
+  // Full-service gate for the Sell surface: the UI disables the on-demand mode
+  // + request button and explains why, instead of failing on submit.
+  const eligibility = await loadOnDemandEligibility(product.id, user.id).catch(
+    () => ({ eligible: false, reasons: ['NO_PINNED_MANUFACTURER'] }) as const,
+  )
+
   const linkByChannel = new Map(links.map((l) => [l.channelId, l]))
   return {
     productName: product.name,
@@ -165,6 +186,8 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
       status: enablement?.status ?? 'NONE',
       hasManufacturer: !!manufacturerServiceId,
       partnerNote: enablement?.partnerNote ?? null,
+      eligible: eligibility.eligible,
+      blockers: eligibility.eligible ? [] : eligibility.reasons.map((r) => ON_DEMAND_INELIGIBLE_COPY[r]),
     },
     stock: await (async () => {
       const pool = await (
@@ -339,6 +362,15 @@ export async function requestOnDemandEnablement(productId: string): Promise<Sell
   const manufacturerServiceId = product.productTemplate?.manufacturerServiceId
   if (!manufacturerServiceId) return { ok: false, error: 'This product has no pinned manufacturer yet.' }
 
+  // Full-service gate #1 (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md):
+  // pre-flight BEFORE the manufacturer ever sees a request. On-demand is
+  // manufacturer-only, single-dispatch; the creator fixes the product first
+  // (unpin an outside printer, etc.), so the queue only carries decidable asks.
+  const eligibility = await loadOnDemandEligibility(product.id, user.id)
+  if (!eligibility.eligible) {
+    return { ok: false, error: `Not eligible for on-demand yet: ${describeOnDemandIneligibility(eligibility.reasons)}` }
+  }
+
   const delegate = (
     prisma as unknown as {
       onDemandEnablement?: { upsert: (a: unknown) => Promise<{ id: string }> }
@@ -504,6 +536,21 @@ export async function pushListing(input: { productId: string; channelCode: strin
         : null
       live = en?.status === 'ENABLED'
       if (!live) gateNote = pinnedMfr ? 'Awaiting manufacturer on-demand enablement.' : 'This product has no pinned manufacturer yet.'
+
+      // Full-service gate #3 (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md):
+      // enablement alone is not enough. The product may have changed since
+      // approval (an outside printer pinned, a co-packer added), and going LIVE
+      // is what arms per-order production, so re-verify at the door. Fail-closed:
+      // ineligible => PUSHED with the reason, never LIVE.
+      if (live) {
+        const eligibility = await loadOnDemandEligibility(product.id, user.id).catch(
+          () => ({ eligible: false, reasons: ['NO_PINNED_MANUFACTURER'] }) as const,
+        )
+        if (!eligibility.eligible) {
+          live = false
+          gateNote = `On-demand needs the manufacturer to run the whole order in-house. ${describeOnDemandIneligibility(eligibility.reasons)}`
+        }
+      }
     } else {
       const pool = await (
         prisma as unknown as {

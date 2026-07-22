@@ -643,3 +643,18 @@ export { assessOverrunShadow } from './overrun-shadow'
 export type { OverrunShadowInput, OverrunShadow } from './overrun-shadow'
 // Print-payout shadow (PP-1 groundwork; flag-gated, changes no payout).
 export { isPrintPayoutShadowEnabled, loadPrintServiceSegments, logPrintPayoutShadow } from './print-payout-shadow'
+// On-demand full-service gate (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md):
+// an ON_DEMAND channel listing requires the pinned manufacturer to execute the
+// WHOLE order in-house (mfg + print + pack + parcel). SSOT predicate; the four
+// enablement/go-live/ingest/router gates all call this, nothing re-derives it.
+export {
+  evaluateOnDemandEligibility,
+  loadOnDemandEligibility,
+  describeOnDemandIneligibility,
+  ON_DEMAND_INELIGIBLE_COPY,
+} from './on-demand-eligibility'
+export type {
+  OnDemandEligibility,
+  OnDemandEligibilitySnapshot,
+  OnDemandIneligibleReason,
+} from './on-demand-eligibility'

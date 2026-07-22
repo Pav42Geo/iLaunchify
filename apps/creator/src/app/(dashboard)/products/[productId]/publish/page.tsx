@@ -104,7 +104,14 @@ export default async function PublishStubPage({
               unitCostCents: product.priceCents,
               flavors: [],
               channels: [],
-              onDemand: { status: 'NONE', hasManufacturer: false, partnerNote: null },
+              onDemand: {
+                status: 'NONE',
+                hasManufacturer: false,
+                partnerNote: null,
+                // Fallback state fails closed: no pinned manufacturer resolved.
+                eligible: false,
+                blockers: ['This product has no pinned manufacturer yet.'],
+              },
               stock: { onHand: 0, reserved: 0, available: 0 },
             }
           }

@@ -89,6 +89,7 @@ export function SellChannels({ productId, initial }: { productId: string; initia
           row={row}
           unitCostCents={data.unitCostCents}
           flavorCount={data.flavors.length}
+          onDemandBlockers={data.onDemand.eligible ? null : data.onDemand.blockers}
           busy={busy === row.code}
           onSave={async (mode, price) => {
             setBusy(row.code)
@@ -120,6 +121,7 @@ function SellChannelCard({
   row,
   unitCostCents,
   flavorCount,
+  onDemandBlockers,
   busy,
   onSave,
   onPush,
@@ -127,11 +129,16 @@ function SellChannelCard({
   row: SellChannelRow
   unitCostCents: number
   flavorCount: number
+  /** Full-service gate: non-null = on-demand is unavailable for this product,
+   *  with creator-facing reasons (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md). */
+  onDemandBlockers: string[] | null
   busy: boolean
   onSave: (mode: 'ON_DEMAND' | 'BULK', price: string) => Promise<void>
   onPush: () => Promise<void>
 }) {
-  const [mode, setMode] = React.useState<'ON_DEMAND' | 'BULK'>((row.link?.mode as 'ON_DEMAND' | 'BULK') ?? 'ON_DEMAND')
+  // Blocked products default to From-stock: the on-demand tile is not a choice.
+  const savedMode = (row.link?.mode as 'ON_DEMAND' | 'BULK') ?? 'ON_DEMAND'
+  const [mode, setMode] = React.useState<'ON_DEMAND' | 'BULK'>(onDemandBlockers && savedMode === 'ON_DEMAND' ? 'BULK' : savedMode)
   const [price, setPrice] = React.useState(row.link?.price ?? '')
 
   const unitCost = unitCostCents / 100
@@ -163,9 +170,14 @@ function SellChannelCard({
         <ModeButton
           active={mode === 'ON_DEMAND'}
           onClick={() => setMode('ON_DEMAND')}
+          disabled={!!onDemandBlockers}
           icon={<Factory className="h-3.5 w-3.5" />}
           title="On-demand"
-          hint="Each sale triggers a production order. Needs manufacturer enablement."
+          hint={
+            onDemandBlockers
+              ? `Unavailable: ${onDemandBlockers.join(' ')}`
+              : 'Each sale triggers a production order. Made and shipped entirely by your manufacturer.'
+          }
         />
         <ModeButton
           active={mode === 'BULK'}
@@ -266,6 +278,27 @@ function OnDemandGate({
       </p>
     )
   }
+  // Full-service gate (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md): on-demand
+  // is only offered when the pinned manufacturer runs the WHOLE order in-house.
+  // Blocked = explain what to fix; the request button stays off.
+  if (!state.eligible) {
+    return (
+      <div className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2">
+        <p className="flex items-start gap-1.5 text-[12px] text-warning-800">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            <span className="font-semibold">On-demand isn’t available for this product yet.</span> It requires your
+            manufacturer to produce, print, pack and ship each order in-house.
+          </span>
+        </p>
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-8 text-[11.5px] text-warning-800">
+          {state.blockers.map((b) => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-ink-200 bg-ink-50 px-3 py-2">
       <p className="text-[12px] text-ink-600">
@@ -337,19 +370,28 @@ function ModeButton({
   icon,
   title,
   hint,
+  disabled = false,
 }: {
   active: boolean
   onClick: () => void
   icon: React.ReactNode
   title: string
   hint: string
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
-      className={`rounded-xl border p-2.5 text-left transition ${active ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-300'}`}
+      className={`rounded-xl border p-2.5 text-left transition ${
+        disabled
+          ? 'cursor-not-allowed border-ink-200 bg-ink-50 opacity-60'
+          : active
+            ? 'border-pink-500 bg-pink-50'
+            : 'border-ink-200 bg-white hover:border-ink-300'
+      }`}
     >
       <span className={`inline-flex items-center gap-1.5 text-[12.5px] font-semibold ${active ? 'text-pink-700' : 'text-ink-800'}`}>
         {icon} {title}

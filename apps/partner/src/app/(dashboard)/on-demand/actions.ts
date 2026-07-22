@@ -11,6 +11,7 @@
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
+import { loadOnDemandEligibility, describeOnDemandIneligibility } from '@ilaunchify/orders'
 
 type EnablementRow = {
   id: string
@@ -120,6 +121,28 @@ export async function decideOnDemandEnablement(input: {
     .catch(() => null)
   if (!row) return { ok: false, error: 'Request not found.' }
   if (row.status === 'ENABLED' && input.decision === 'ENABLED') return { ok: true }
+
+  // Full-service gate #2 (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md):
+  // re-check at decision time. The creator's pre-flight ran at REQUEST time,
+  // but the product can change in between (an outside printer pinned, a
+  // co-packer added), and ENABLED is standing consent. Scoped to the ROW's
+  // creator: this action decides on that creator's product, not the caller's.
+  // DECLINE is always allowed.
+  if (input.decision === 'ENABLED') {
+    const eligibility = await loadOnDemandEligibility(row.productId, row.creatorUserId).catch(() => null)
+    if (!eligibility) return { ok: false, error: 'Could not verify on-demand eligibility. Try again.' }
+    if (!eligibility.eligible) {
+      return {
+        ok: false,
+        error: `This product no longer qualifies for on-demand (must run fully in-house): ${describeOnDemandIneligibility(eligibility.reasons)}`,
+      }
+    }
+    if (eligibility.manufacturerServiceId !== row.manufacturerServiceId) {
+      // The creator re-pinned since the request. This row's consent would attach
+      // to a manufacturer that no longer owns the product: refuse, fail-closed.
+      return { ok: false, error: 'The product is now pinned to a different manufacturer. Ask the creator to re-request.' }
+    }
+  }
 
   const capacity =
     input.capacityPerDay != null && Number.isFinite(input.capacityPerDay) && input.capacityPerDay > 0
