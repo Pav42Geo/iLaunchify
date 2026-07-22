@@ -143,6 +143,47 @@ export function evaluateOnDemandEligibility(snap: OnDemandEligibilitySnapshot): 
     : { eligible: false, reasons }
 }
 
+/**
+ * TEMPLATE-scoped eligibility, for surfaces shown BEFORE a creator Product
+ * exists (the marketplace PDP advertising "sell on-demand"). Evaluates the
+ * subset of the predicate knowable at template level: pinned manufacturer,
+ * its print sourcing + parcel capability, an active print nomination, and a
+ * pinned co-packer. Product-level artifacts (creator print pin, selection-bound
+ * offerings, legacy die-cut) do not exist yet, so they pass vacuously here and
+ * are re-checked by the product-scoped gates 1-4 after launch.
+ */
+export async function loadTemplateOnDemandEligibility(productTemplateId: string): Promise<OnDemandEligibility> {
+  const tpl = await prisma.productTemplate.findUnique({
+    where: { id: productTemplateId },
+    select: { manufacturerServiceId: true },
+  })
+  const manufacturerServiceId = tpl?.manufacturerServiceId ?? null
+  const mfrService = manufacturerServiceId
+    ? await prisma.partnerService.findFirst({
+        where: { id: manufacturerServiceId, type: 'MANUFACTURING', status: 'ACTIVE' },
+        select: { partnerId: true, labelingMode: true, canShipParcel: true },
+      })
+    : null
+  if (!manufacturerServiceId || !mfrService) {
+    return { eligible: false, reasons: ['NO_PINNED_MANUFACTURER'] }
+  }
+  const [nominatedPrintServiceId, coPackerServiceId] = await Promise.all([
+    getActiveNominatedServiceId(mfrService.partnerId, 'LABEL_PRINTING'),
+    resolveOrderCoPackerServiceId(productTemplateId),
+  ])
+  return evaluateOnDemandEligibility({
+    manufacturerServiceId,
+    manufacturerService: mfrService,
+    productPrintSourcingMode: null,
+    pinnedPrintPartnerId: null,
+    offeringPrintPartnerIds: [],
+    nominatedPrintServiceId,
+    dieCutTemplateId: null,
+    ownerHasDieCutPress: false,
+    coPackerServiceId,
+  })
+}
+
 // ─── Router-time assertion (gate 4, C2.2) ────────────────────────────────────
 //
 // Layer 1 above PREDICTS; this VERIFIES what findRouting actually resolved,

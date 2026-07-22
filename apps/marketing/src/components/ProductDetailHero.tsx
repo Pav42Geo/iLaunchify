@@ -43,6 +43,10 @@ export interface ProductDetailHeroProps {
 
   // ----- configurator props (passed straight through) -----
   pricingRows: PricingTierRow[]
+  /** On-demand band rows, DISPLAY-ONLY (2026-07-20). Present only when the
+   *  manufacturer authored them AND the template passes the full-service gate;
+   *  wakes the configurator's Bulk/On-demand price toggle. */
+  onDemandRows?: PricingTierRow[]
   viewerTier?: 'maker' | 'builder' | 'agency'
   isAuthenticated?: boolean
   feePctByTier?: { maker: number; builder: number; agency: number }
@@ -99,6 +103,7 @@ export function ProductDetailHero({
   identity,
   belowFold,
   pricingRows,
+  onDemandRows,
   viewerTier,
   isAuthenticated = false,
   feePctByTier,
@@ -191,6 +196,7 @@ export function ProductDetailHero({
                 template={template}
                 detail={detail}
                 pricingRows={pricingRows}
+                onDemandRows={onDemandRows}
                 viewerTier={viewerTier}
                 isAuthenticated={isAuthenticated}
                 feePctByTier={feePctByTier}
@@ -214,6 +220,7 @@ export function ProductDetailHero({
             template={template}
             detail={detail}
             pricingRows={pricingRows}
+            onDemandRows={onDemandRows}
             viewerTier={viewerTier}
             isAuthenticated={isAuthenticated}
             feePctByTier={feePctByTier}

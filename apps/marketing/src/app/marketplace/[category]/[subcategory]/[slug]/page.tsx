@@ -28,7 +28,7 @@ import { getTemplateFlavorRecipes } from '@/lib/flavor-recipe-detail'
 import { getTemplateFlavorDomainFacts } from '@/lib/flavor-domain-facts'
 import { DomainFactsSwitcher } from '@/components/DomainFactsSwitcher'
 import { findTemplateDetail } from '@/lib/template-detail'
-import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData } from '@/lib/pricing'
+import { getCreatorPricingMatrix, getCreatorFeePcts, getPackBuilderData, getOnDemandPricingRows } from '@/lib/pricing'
 import { getMarketingSession } from '@/lib/session'
 import { getFavoritedTemplateIds } from '@/app/marketplace/favorites-actions'
 import { MarketplaceProductActions } from '@/components/MarketplaceProductActions'
@@ -181,6 +181,11 @@ export default async function ProductDetailPage({
 
   const pricingMatrix = await getCreatorPricingMatrix(template.slug, viewerTier)
   const pricingRows = pricingMatrix.rows
+  // On-demand DISPLAY rows (2026-07-20): non-empty only when the manufacturer
+  // authored ON_DEMAND bands AND the template passes the full-service gate.
+  // Wakes the configurator's Bulk/On-demand toggle as display-only — a direct
+  // order stays bulk; on-demand selling is configured per channel after launch.
+  const onDemandRows = await getOnDemandPricingRows(template.slug, viewerTier)
   // Per-tier fee % for the modal's Maker/Builder/Agency columns.
   const feePctByTier = await getCreatorFeePcts()
 
@@ -345,6 +350,7 @@ export default async function ProductDetailPage({
             detail={detailForConfigurator}
             images={galleryImages}
             pricingRows={pricingRows}
+            onDemandRows={onDemandRows.length > 0 ? onDemandRows : undefined}
             viewerTier={viewerTier}
             isAuthenticated={isAuthenticated}
             feePctByTier={feePctByTier}

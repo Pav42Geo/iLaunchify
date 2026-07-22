@@ -725,7 +725,10 @@ export function ProductDetailConfigurator({
       )}
 
       {/* 5) Quantity — in multi-flavor pack mode this is the number of PACKS
-          (step 1, MOQ in packs); otherwise units (step 50). */}
+          (step 1, MOQ in packs); otherwise units (step 50). Hidden in ON_DEMAND
+          display mode: the stepper is bulk-run machinery clamped to the bulk MOQ,
+          which would sit directly under a "no minimum" price. */}
+      {effectiveMode !== 'ON_DEMAND' && (
       <div className="flex flex-col gap-1.5">
         <label className="text-[12px] font-semibold text-ink-700">
           {isMultiFlavor ? 'Packs' : 'Quantity'}
@@ -777,6 +780,7 @@ export function ProductDetailConfigurator({
           </div>
         )}
       </div>
+      )}
 
       {/* Price block — Bulk vs On-demand toggle (when both offered), the
           headline price, then "See pricing by tier" underneath.
@@ -827,10 +831,20 @@ export function ProductDetailConfigurator({
             )}
           </div>
         ) : effectiveMode === 'ON_DEMAND' && onDemandUnitCost != null ? (
-          <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
-            ${onDemandUnitCost.toFixed(2)}
-            <span className="ml-1.5 text-[15px] font-semibold text-ink-400">/ unit</span>
-            <span className="ml-2 align-middle text-[12px] font-medium text-ink-400">no minimum</span>
+          <div>
+            <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
+              ${onDemandUnitCost.toFixed(2)}
+              <span className="ml-1.5 text-[15px] font-semibold text-ink-400">/ unit</span>
+              <span className="ml-2 align-middle text-[12px] font-medium text-ink-400">no minimum</span>
+            </div>
+            {/* The on-demand journey is publish-not-checkout
+                (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md §4): nothing is
+                bought here. Say where the real switch lives. */}
+            <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-500">
+              Each sale on your channel is produced to order by the manufacturer and
+              shipped direct — no inventory, no upfront run. Launch the product, then
+              enable On-demand per channel on the Publish page.
+            </p>
           </div>
         ) : (
           <div className="font-display text-[26px] font-extrabold tracking-[-0.01em] text-ink-900 tabular-nums">
@@ -943,12 +957,16 @@ export function ProductDetailConfigurator({
 
       {/* 7) Subscribe & save — One-time vs Subscribe radio rows mirroring the
           checkout SubscribeChoiceRail (discount from SUBSCRIPTION_DISCOUNT_LADDER).
-          // TODO wire subscribe into launch/checkout — UI affordance for now. */}
-      <SubscribeChoice
-        subscribe={subscribe}
-        onChange={setSubscribe}
-        unitPrice={landedCost}
-      />
+          // TODO wire subscribe into launch/checkout — UI affordance for now.
+          Hidden in ON_DEMAND display mode: recurring production runs are a
+          bulk-inventory concept. */}
+      {effectiveMode !== 'ON_DEMAND' && (
+        <SubscribeChoice
+          subscribe={subscribe}
+          onChange={setSubscribe}
+          unitPrice={landedCost}
+        />
+      )}
 
       {/* Ship-to estimate (estimate only — no address entry). */}
       <div className="flex items-center gap-1.5 text-[12.5px] text-ink-600">

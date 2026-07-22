@@ -10,6 +10,9 @@ import {
   type FeeRuleBounds,
 } from '@ilaunchify/plans'
 import type { TierKey } from '@ilaunchify/auth'
+// Template-level full-service gate for the PDP's on-demand display
+// (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md).
+import { loadTemplateOnDemandEligibility } from '@ilaunchify/orders'
 
 // D5 multi-flavor lead-time model now lives in @ilaunchify/ui (shared with the
 // creator checkout pack-builder). Re-exported here for existing callers.
@@ -408,7 +411,14 @@ export async function getPricingTierRows(
    * lead time reflects the changeovers. `changeoverDays` is read from
    * OrderSettings unless supplied (e.g. when the caller already loaded it).
    */
-  opts?: { flavorCount?: number; changeoverDays?: number },
+  opts?: {
+    flavorCount?: number
+    changeoverDays?: number
+    /** Which band set to read (A1, ON_DEMAND_FULL_SERVICE_GATE §5.2). Default
+     *  BULK_PRODUCTION: the PDP's ladder, configure and checkout are bulk
+     *  surfaces. 'ON_DEMAND' feeds the display-only on-demand toggle. */
+    mode?: 'BULK_PRODUCTION' | 'ON_DEMAND'
+  },
 ): Promise<PricingTierRow[]> {
   const template = await prisma.productTemplate.findUnique({
     where: { slug },
@@ -421,10 +431,7 @@ export async function getPricingTierRows(
         // them by sortOrder (indexed per mode: two rows per index). Changed in the
         // SAME commit as `checkout/tier-pricing.ts` and `configure-data.ts`, per
         // the parity rule in that file's header (quote === charge).
-        // The configurator's `onDemandRows` prop stays deliberately unfed
-        // (disambiguation §4.2): wake it only when a direct on-demand order
-        // journey exists to stand behind the displayed price.
-        where: { fulfillmentMode: 'BULK_PRODUCTION' },
+        where: { fulfillmentMode: opts?.mode ?? 'BULK_PRODUCTION' },
         orderBy: { sortOrder: 'asc' },
         select: {
           minQty: true,
@@ -530,6 +537,40 @@ export async function getCreatorPricingMatrix(
   })
 
   return { rows, feePercent, feeBps, feeBounds, viewerTier }
+}
+
+/**
+ * On-demand band rows for the PDP's DISPLAY-ONLY toggle (2026-07-20, wakes the
+ * configurator's long-dormant `onDemandRows` scaffolding — disambiguation §4.2).
+ *
+ * Returns [] (toggle hidden) unless BOTH hold:
+ *   1. the manufacturer authored ON_DEMAND bands for this template, AND
+ *   2. the template passes the full-service gate at template level
+ *      (`loadTemplateOnDemandEligibility`): pinned manufacturer who prints
+ *      in-house and ships parcels, no nomination, no co-packer. The PDP must
+ *      never advertise a mode the manufacturer cannot execute.
+ *
+ * Rows carry the SAME all-in fee math as the bulk matrix (manufacturer band
+ * price + the viewer's tier fee via the ONE fee SSOT). Display only: nothing
+ * here feeds checkout — a direct order is always bulk, and on-demand selling is
+ * configured per channel on the publish page after launch.
+ */
+export async function getOnDemandPricingRows(slug: string, viewerTier: TierKey): Promise<PricingTierRow[]> {
+  const base = await getPricingTierRows(slug, { mode: 'ON_DEMAND' })
+  if (base.length === 0) return []
+
+  const tpl = await prisma.productTemplate.findUnique({ where: { slug }, select: { id: true } })
+  if (!tpl) return []
+  const eligibility = await loadTemplateOnDemandEligibility(tpl.id).catch(() => null)
+  if (!eligibility?.eligible) return []
+
+  const { feeBps } = await resolveCreatorFeeBps(viewerTier)
+  const feePercent = feeBps / 100
+  return base.map((r) => {
+    const manufacturerCents = r.perUnitCents
+    const platformFeeCents = creatorFeeCents(manufacturerCents, feeBps)
+    return { ...r, manufacturerCents, platformFeeCents, feePercent, perUnitCents: manufacturerCents + platformFeeCents }
+  })
 }
 
 /**

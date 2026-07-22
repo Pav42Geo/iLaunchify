@@ -650,6 +650,7 @@ export { isPrintPayoutShadowEnabled, loadPrintServiceSegments, logPrintPayoutSha
 export {
   evaluateOnDemandEligibility,
   loadOnDemandEligibility,
+  loadTemplateOnDemandEligibility,
   describeOnDemandIneligibility,
   checkSinglePartnerPlan,
   assertSinglePartnerPlan,
