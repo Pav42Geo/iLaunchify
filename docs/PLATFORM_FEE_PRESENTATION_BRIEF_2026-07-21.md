@@ -130,8 +130,20 @@ ORDER level, not to an informational delta); exact money still comes from
 computeOrderPricing at checkout. Divergence by audience is the point, made
 explicit by the wrapper, never silent. Owner: Code (Studio canvas hot zone).
 
+Finishes drawer: DONE by Code (2026-07-21) per the ruling. Shared formatter
+untouched; `loadStudioFinishes` is the audience-aware wrapper grossing up all
+money components via a module-level `allInCents` built on `creatorFeeCents`
+(plain bps, bounds stay order-level in computeOrderPricing); guests need no
+special case because the Studio sits behind requireUser and `getCreatorTier`
+defaults missing profiles to maker.
+
+**BOUNDARY RULE (Code, 2026-07-21, standing):** pre-fee `perUnitCostCents`
+numbers flow RAW into partner and admin surfaces — correct and intended. Any
+NEW creator-facing surface built off `PartnerFinish` pricing must route
+through the same audience-aware wrapper pattern, never read the raw columns
+into creator-visible money strings.
+
 Still open:
-- Finishes-drawer all-in wrapper per the ruling above (Code's zone).
 - Legal Membership Terms wording (counsel).
 - Re-verify all-in shown == charged on the next live test order.
 

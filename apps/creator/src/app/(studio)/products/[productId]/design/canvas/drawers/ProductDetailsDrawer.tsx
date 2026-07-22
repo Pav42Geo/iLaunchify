@@ -7,8 +7,9 @@
 // hot-file internals imported.
 
 import * as React from 'react'
-import { ChevronDown, FileDown, Box, X } from 'lucide-react'
-import { generateBlankPdfSpec, generateBlankSvgSpec, mmToInchesStr, type DieCutSpec } from '@ilaunchify/ui'
+import { ChevronDown, FileDown, Box, X, Minus, Plus, Loader2 } from 'lucide-react'
+import { generateBlankPdfSpec, generateBlankSvgSpec, mmToInchesStr, formatCents, type DieCutSpec } from '@ilaunchify/ui'
+import { estimateStudioSubtotal, type StudioEstimate } from '../cost-estimate-actions'
 
 export interface CostTier {
   qtyRange: string // "500–999" | "1,000+"
@@ -59,6 +60,9 @@ export interface ProductPicture {
 }
 
 export interface ProductDetailsData {
+  /** Enables the live Cost summary estimator (null in template-author mode,
+   *  where there is no real product to price). */
+  productId?: string | null
   productName: string
   thumbnailUrl?: string | null
   /** Header quantity line, e.g. "MOQ 500 units". Null hides it. */
@@ -162,26 +166,11 @@ export function ProductDetailsDrawer({ data }: { data: ProductDetailsData }) {
       >
         {!data.cost ? (
           <p className="text-[12px] text-ink-500">Pricing isn&apos;t set for this product yet.</p>
+        ) : data.productId ? (
+          <CostSummaryLive productId={data.productId} moq={data.moq ?? null} tiers={data.cost.tiers} />
         ) : (
           <>
-            <table className="w-full text-[12px] tabular-nums">
-              <thead>
-                <tr className="border-b border-ink-100 text-left text-ink-500">
-                  <th className="py-1.5 font-semibold">Quantity</th>
-                  <th className="py-1.5 font-semibold">Per unit</th>
-                  <th className="py-1.5 font-semibold">Lead</th>
-                </tr>
-              </thead>
-              <tbody className="text-ink-800">
-                {data.cost.tiers.map((t, i) => (
-                  <tr key={i} className="border-b border-ink-50 last:border-0">
-                    <td className="py-1.5">{t.qtyRange} <span className="text-ink-400">· {t.fulfillment}</span></td>
-                    <td className="py-1.5 font-medium">{t.perUnit}</td>
-                    <td className="py-1.5 text-ink-500">{t.leadTimeDays ? `${t.leadTimeDays}d` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <BandTable tiers={data.cost.tiers} />
             <p className="mt-2 text-[11px] text-ink-400">Per-unit price by quantity, including our service. Final total is confirmed at checkout.</p>
           </>
         )}
@@ -249,6 +238,206 @@ export function ProductDetailsDrawer({ data }: { data: ProductDetailsData }) {
 
       {detailsOpen && <DetailsModal data={data} onClose={() => setDetailsOpen(false)} />}
     </div>
+  )
+}
+
+// ── Cost summary — live all-in subtotal ──────────────────────────────────────
+// HANDOFF-TO-CODE-studio-cost-summary-subtotal (Pavel 2026-07-21): the creator
+// enters a quantity and sees what THEIR run costs, all in, instead of reading a
+// rate card. Prices through estimateStudioSubtotal -> estimateProductionCost,
+// the ONE pricer path (PP-0), over the creator's draft selections — so this
+// number equals checkout Step 2's "before ship + tax" for the same quantity by
+// construction. The all-in band table survives as a "Volume pricing" expander.
+
+const FALLBACK_MOQ = 100 // checkout Step 2 parity (its OrderSettings floor fallback)
+const DEFAULT_STEP = 50
+const MAX_QTY = 100_000
+
+function CostSummaryLive({
+  productId,
+  moq,
+  tiers,
+}: {
+  productId: string
+  moq: number | null
+  tiers: CostTier[]
+}) {
+  const floor = moq ?? FALLBACK_MOQ
+  // null = still seeding from the draft's saved quantity.
+  const [qty, setQty] = React.useState<number | null>(null)
+  const [estimate, setEstimate] = React.useState<StudioEstimate | null>(null)
+  const [estimateError, setEstimateError] = React.useState<string | null>(null)
+  const [busy, setBusy] = React.useState(false)
+  const [bandsOpen, setBandsOpen] = React.useState(false)
+
+  // Pack products step in whole packs (a partial pack is not orderable).
+  const step = estimate?.isPack ? Math.max(1, estimate.unitsPerPack) : DEFAULT_STEP
+
+  const clamp = (n: number) => (Number.isNaN(n) ? floor : Math.min(MAX_QTY, Math.max(floor, n)))
+
+  // Seed from the draft's last checkout quantity when there is one; else MOQ.
+  React.useEffect(() => {
+    let cancelled = false
+    estimateStudioSubtotal({ productId, quantity: null }).then((r) => {
+      if (cancelled) return
+      if (r.ok && r.data.quantity > 0) {
+        setQty(r.data.quantity)
+        setEstimate(r.data)
+      } else {
+        // No saved quantity (or a refusal the qty effect will re-surface).
+        setQty(floor)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId])
+
+  // Debounced re-estimate on quantity change (220ms, same cadence as checkout).
+  React.useEffect(() => {
+    if (qty == null) return
+    if (estimate && estimate.quantity === qty && !estimateError) return
+    const id = setTimeout(() => {
+      setBusy(true)
+      estimateStudioSubtotal({ productId, quantity: qty }).then((r) => {
+        setBusy(false)
+        if (r.ok) {
+          setEstimate(r.data)
+          setEstimateError(null)
+        } else {
+          // Never keep a stale price on screen beside an error (checkout's
+          // 2026-07-16 lesson: a refusal you cannot see is worse than the
+          // wrong price it replaced).
+          setEstimate(null)
+          setEstimateError(r.error)
+        }
+      })
+    }, 220)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId, qty])
+
+  return (
+    <div>
+      {/* Quantity stepper */}
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor="studio-cost-qty" className="text-[11px] font-bold uppercase tracking-wide text-ink-700">
+          {estimate?.isPack ? 'Quantity (units)' : 'Quantity'}
+        </label>
+        <div
+          className="inline-flex items-center overflow-hidden rounded-full border border-ink-300 bg-white focus-within:border-pink-400 focus-within:ring-2 focus-within:ring-pink-200"
+          role="group"
+          aria-label="Quantity"
+        >
+          <button
+            type="button"
+            onClick={() => setQty((q) => clamp((q ?? floor) - step))}
+            disabled={qty == null || qty <= floor}
+            aria-label={`Decrease quantity by ${step}`}
+            className="inline-flex h-8 w-8 items-center justify-center text-ink-700 transition-colors hover:bg-ink-100 disabled:cursor-not-allowed disabled:text-ink-300"
+          >
+            <Minus className="h-3 w-3" aria-hidden="true" />
+          </button>
+          <input
+            id="studio-cost-qty"
+            type="number"
+            inputMode="numeric"
+            min={floor}
+            max={MAX_QTY}
+            step={step}
+            value={qty ?? ''}
+            placeholder={String(floor)}
+            aria-label="Quantity in units"
+            onChange={(e) => setQty(e.target.value ? parseInt(e.target.value, 10) : floor)}
+            onBlur={() => setQty((q) => clamp(q ?? floor))}
+            className="w-16 border-0 bg-transparent text-center text-[13px] font-semibold tabular-nums text-ink-900 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <button
+            type="button"
+            onClick={() => setQty((q) => clamp((q ?? floor) + step))}
+            disabled={qty != null && qty >= MAX_QTY}
+            aria-label={`Increase quantity by ${step}`}
+            className="inline-flex h-8 w-8 items-center justify-center text-ink-700 transition-colors hover:bg-ink-100 disabled:cursor-not-allowed disabled:text-ink-300"
+          >
+            <Plus className="h-3 w-3" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <p className="mt-1 text-right text-[10.5px] text-ink-400">
+        MOQ {floor.toLocaleString()} · steps of {step.toLocaleString()}
+      </p>
+
+      {/* Headline: estimated all-in subtotal (fee folded in, Option C) */}
+      <div className="mt-2">
+        <p className="text-[10.5px] uppercase tracking-widest text-ink-500">
+          {busy ? (
+            <span className="inline-flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+              Recalculating…
+            </span>
+          ) : (
+            'Estimated subtotal'
+          )}
+        </p>
+        <p className="font-display text-2xl font-bold tabular-nums text-ink-900">
+          {estimate && estimate.quantity > 0 ? formatCents(estimate.totalCents) : '$—.——'}
+        </p>
+        {estimate && estimate.perUnitCents > 0 && (
+          <p className="text-[11px] text-ink-500">
+            {formatCents(estimate.perUnitCents)} / unit, all in before ship + tax
+          </p>
+        )}
+        {/* WHY THE PRICE IS MISSING — render the refusal, never a bare dash. */}
+        {estimateError && !busy && (
+          <p className="mt-1 text-[11px] font-medium text-danger-700">{estimateError}</p>
+        )}
+      </div>
+
+      {/* Volume pricing expander — the all-in band table */}
+      <div className="mt-3 border-t border-ink-100 pt-2">
+        <button
+          type="button"
+          onClick={() => setBandsOpen((v) => !v)}
+          aria-expanded={bandsOpen}
+          className="flex w-full items-center gap-1.5 text-[11px] font-semibold text-ink-600 hover:text-ink-900"
+        >
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${bandsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+          Volume pricing
+        </button>
+        {bandsOpen && (
+          <div className="mt-2">
+            <BandTable tiers={tiers} />
+          </div>
+        )}
+      </div>
+
+      <p className="mt-2 text-[11px] text-ink-400">Estimate before shipping + tax. Confirmed at checkout.</p>
+    </div>
+  )
+}
+
+/** All-in per-unit band table (unit prices grossed up server-side, page.tsx). */
+function BandTable({ tiers }: { tiers: CostTier[] }) {
+  return (
+    <table className="w-full text-[12px] tabular-nums">
+      <thead>
+        <tr className="border-b border-ink-100 text-left text-ink-500">
+          <th className="py-1.5 font-semibold">Quantity</th>
+          <th className="py-1.5 font-semibold">Per unit</th>
+          <th className="py-1.5 font-semibold">Lead</th>
+        </tr>
+      </thead>
+      <tbody className="text-ink-800">
+        {tiers.map((t, i) => (
+          <tr key={i} className="border-b border-ink-50 last:border-0">
+            <td className="py-1.5">{t.qtyRange} <span className="text-ink-400">· {t.fulfillment}</span></td>
+            <td className="py-1.5 font-medium">{t.perUnit}</td>
+            <td className="py-1.5 text-ink-500">{t.leadTimeDays ? `${t.leadTimeDays}d` : '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 

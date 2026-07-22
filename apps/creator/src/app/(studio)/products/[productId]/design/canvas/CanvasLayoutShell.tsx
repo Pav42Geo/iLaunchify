@@ -2230,6 +2230,9 @@ function ToolDrawer({
           <ProductDrawer
             dieCut={dieCut}
             details={{
+              // Live Cost-summary estimator target; null in template-author mode
+              // (no real product to price through the checkout draft).
+              productId: templateAuthor ? null : productId,
               productName,
               thumbnailUrl: productImageUrl,
               quantityLabel: productMeta.moq ? `MOQ ${productMeta.moq.toLocaleString()} units` : null,
