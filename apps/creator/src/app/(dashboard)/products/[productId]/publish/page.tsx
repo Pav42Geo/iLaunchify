@@ -111,6 +111,9 @@ export default async function PublishStubPage({
                 // Fallback state fails closed: no pinned manufacturer resolved.
                 eligible: false,
                 blockers: ['This product has no pinned manufacturer yet.'],
+                // C2.2: fail closed here too; the warning renders only in the
+                // ENABLED state, which this fallback can never be.
+                paymentMethodOnFile: false,
               },
               stock: { onHand: 0, reserved: 0, available: 0 },
             }
