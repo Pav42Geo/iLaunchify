@@ -67,6 +67,8 @@ export interface TemplateData {
   PARTNER_TEAM_MEMBER_JOINED: { memberName: string; memberEmail?: string; isAdmin?: boolean }
   CREATOR_CHANNEL_CONNECTED: { channelName: string; shopName?: string }
   CREATOR_CHANNEL_DISCONNECTED: { channelName: string }
+  // C2.2 auto-billing hold (cap reached / saved-method charge failed)
+  CREATOR_CHANNEL_ORDER_HOLD: { externalOrderId: string; channelName?: string; reason: string }
   // Phase H4 — creator-facing workflow events
   CREATOR_DISPATCH_ACCEPTED: {
     orderId: string
@@ -586,6 +588,14 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `${d.channelName} disconnected`,
         body: 'Publishing and order routing to this channel stopped. Reconnect any time from the Channels hub.',
         link: '/channels',
+      }
+    }
+    case 'CREATOR_CHANNEL_ORDER_HOLD': {
+      const d = data as TemplateData['CREATOR_CHANNEL_ORDER_HOLD']
+      return {
+        title: `Channel order ${d.externalOrderId} is on hold`,
+        body: `${d.reason} Held orders retry automatically each routing cycle${d.channelName ? ` (${d.channelName})` : ''}.`,
+        link: '/channels/orders',
       }
     }
     // -----------------------------------------------------------------------

@@ -93,3 +93,6 @@ export {
 } from './payment-methods'
 // Billing slice 3 — orders & invoices (Stripe-hosted receipt links).
 export { getChargeReceiptUrl } from './invoices'
+// C2.2 — channel auto-billing: off-session charge of the creator's saved method.
+export { chargeSavedMethodOffSession } from './off-session'
+export type { OffSessionChargeInput, OffSessionChargeResult } from './off-session'

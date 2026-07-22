@@ -24,6 +24,7 @@ export const REQUIRED_PAYLOAD_KEYS: {
   PARTNER_TEAM_MEMBER_JOINED: ['memberName'],
   CREATOR_CHANNEL_CONNECTED: ['channelName'],
   CREATOR_CHANNEL_DISCONNECTED: ['channelName'],
+  CREATOR_CHANNEL_ORDER_HOLD: ['externalOrderId', 'reason'],
   SECTION_VERIFIED: ['sectionType'],
   SECTION_NEEDS_CHANGES: ['sectionType'],
   PARTNER_ACTIVATED: [],

@@ -265,10 +265,26 @@ function OnDemandGate({
 }) {
   if (state.status === 'ENABLED') {
     return (
-      <p className="flex items-center gap-1.5 rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-[12px] text-success-800">
-        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> On-demand enabled by your manufacturer — consumer orders route to
-        production automatically.
-      </p>
+      <div className="space-y-2">
+        <p className="flex items-center gap-1.5 rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-[12px] text-success-800">
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> On-demand enabled by your manufacturer — consumer orders route to
+          production automatically and bill your saved payment method per order.
+        </p>
+        {/* C2.2 go-live gate (PAYMENT_METHOD_MISSING): warn before the push does. */}
+        {!state.paymentMethodOnFile && (
+          <p className="flex items-start gap-1.5 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[12px] text-warning-800">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              <span className="font-semibold">No payment method on file.</span> On-demand listings can't go live until
+              you{' '}
+              <a href="/settings/billing" className="font-semibold underline">
+                add a card in Billing
+              </a>
+              : each consumer order auto-bills its production cost.
+            </span>
+          </p>
+        )}
+      </div>
     )
   }
   if (state.status === 'REQUESTED' || state.status === 'PARTNER_REVIEW') {

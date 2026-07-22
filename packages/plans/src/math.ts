@@ -49,7 +49,7 @@ export type { GoodsBasis, ResolvedGoods, GoodsBasisInput, ProductionComposition 
 
 // The volume-band picker: the PDP, the estimate and the charge must all resolve a
 // quantity to the SAME manufacturer band, or the quote is not the price.
-export { pickPricingBand, pickPricingBandIndex, tierGoodsCents, bandUnitsForPackOrder } from './pricing-band'
+export { pickPricingBand, pickPricingBandIndex, tierGoodsCents, tierGoodsCentsAtBand, bandUnitsForPackOrder } from './pricing-band'
 export type { PricingBandInput } from './pricing-band'
 
 // Decoration + component-upgrade money (pure; callers pass the rows they loaded).

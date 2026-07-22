@@ -162,6 +162,7 @@ export function ChannelReplenishmentForm({ initial }: { initial: OrderSettingsVa
   const [channelProcessingBufferDays, setBuf] = React.useState(initial.channelProcessingBufferDays)
   const [channelSafetyStockDays, setSafety] = React.useState(initial.channelSafetyStockDays)
   const [channelTargetDaysOfCover, setCover] = React.useState(initial.channelTargetDaysOfCover)
+  const [channelDailySpendCapCents, setCap] = React.useState(initial.channelDailySpendCapCents)
   const { pending, status, setStatus, save } = useSaver('channels')
   return (
     <div className="space-y-5">
@@ -179,8 +180,11 @@ export function ChannelReplenishmentForm({ initial }: { initial: OrderSettingsVa
         <Field label="Target days of cover" hint="Suggested reorder quantities top the pool up to this many days of sales (in-production units already subtracted).">
           <input className={NUM} type="number" min={7} max={365} value={channelTargetDaysOfCover} onChange={(e) => { setCover(intOr(e, 7)); setStatus(null) }} />
         </Field>
+        <Field label="Daily auto-billing cap (¢)" hint={`${formatCentsOrDash(channelDailySpendCapCents)} per creator per UTC day. On-demand consumer orders past the cap hold and retry next cycle. 0 = no cap.`}>
+          <input className={NUM} type="number" min={0} value={channelDailySpendCapCents} onChange={(e) => { setCap(intOr(e, 0)); setStatus(null) }} />
+        </Field>
       </Card>
-      <SaveBar pending={pending} status={status} onSave={() => save({ channelProcessingBufferDays, channelSafetyStockDays, channelTargetDaysOfCover })} />
+      <SaveBar pending={pending} status={status} onSave={() => save({ channelProcessingBufferDays, channelSafetyStockDays, channelTargetDaysOfCover, channelDailySpendCapCents })} />
     </div>
   )
 }

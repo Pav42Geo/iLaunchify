@@ -3429,6 +3429,13 @@ model Order {
   platformFeeBps           Int? // creator tier rate in bps (1500 / 1200 / 800)
   platformFeeCents         Int? // resolved application fee at checkout
   platformFeeSource        String? // 'TIER_RULE' | 'FALLBACK'
+  // C2.2 velocity-banded on-demand pricing (gate doc §4b.5, LOCKED 2026-07-21):
+  // the band-SELECTION input, snapshotted so a historical order reproduces.
+  // onDemandBandUnits = onDemandTrailing30dUnits + this order's units; the
+  // manufacturer authors band prices, the platform only selects the band.
+  // Null for every non-channel order.
+  onDemandBandUnits        Int?
+  onDemandTrailing30dUnits Int?
   // Routing references — chosen partner services
   manufacturerServiceId    String?
   printProviderServiceId   String?
@@ -3572,6 +3579,11 @@ model OrderSettings {
   channelProcessingBufferDays Int @default(3) // days added on top of manufacturer lead (receiving/processing)
   channelSafetyStockDays      Int @default(7) // safety stock expressed as days of cover
   channelTargetDaysOfCover    Int @default(45) // suggested reorder qty targets this many days of cover
+  // C2.2 auto-billing (channel spec LOCKED decision #1): daily cap on per-consumer-
+  // order production auto-charges, in cents, per creator per UTC day. Breach or a
+  // charge failure parks the ChannelOrder ON_HOLD (auto-recoverable next cycle).
+  // 0 = cap disabled. Creator-side lowering lands with the creator settings UI.
+  channelDailySpendCapCents   Int @default(50000) // $500/day default
 
   // ---- Cancellations & refunds (policy; consumers land as the flows ship) ----
   creatorCancelWindowHours             Int     @default(24) // creator self-cancel window after placing
@@ -5426,6 +5438,10 @@ enum NotificationEvent {
   PARTNER_TEAM_MEMBER_JOINED // invitee accepted — tell the inviter
   CREATOR_CHANNEL_CONNECTED // sales channel connected (security-relevant confirmation)
   CREATOR_CHANNEL_DISCONNECTED // sales channel disconnected
+  // C2.2 auto-billing (channel spec LOCKED #1): a channel order parked ON_HOLD
+  // (daily cap reached / saved-method charge failed); the creator should act
+  // or wait for the next auto-recovery cycle.
+  CREATOR_CHANNEL_ORDER_HOLD
   // Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8b) —
   // broadcast to shortlisted printers when a template's print coverage hits 0.
   PARTNER_CAPABILITY_RFQ // a manufacturer needs printing you could produce — claim the job
@@ -6116,6 +6132,13 @@ model ChannelOrder {
   shipToJson            Json? // consumer ship-to (PII-scoped; feeds the dispatch manifest)
   /// Soft FK → the production Order created for on-demand legs (origin: CHANNEL).
   productionOrderId     String?
+  /// C2.2 router snapshots (additive, all null pre-router):
+  /// when the order routed, what the auto-charge billed (the daily-cap ledger
+  /// reads sum(productionChargeCents) per creator per UTC day), and how many
+  /// on-demand units routed (the capacityPerDay ledger).
+  routedAt              DateTime?
+  productionChargeCents Int?
+  routedUnits           Int?
   manualConfirmRequired Boolean            @default(false) // LOCKED #5 training wheels
   fulfilledAt           DateTime?
   closedAt              DateTime?

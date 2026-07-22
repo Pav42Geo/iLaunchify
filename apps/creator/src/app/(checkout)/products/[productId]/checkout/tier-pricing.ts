@@ -25,9 +25,17 @@
 //     on the manufacturer's on-demand bands. NO fallback across modes: a
 //     manufacturer who authored no on-demand bands has not priced on-demand, and
 //     null means "refuse", never "borrow the bulk curve".
+//
+// VELOCITY-BANDED SELECTION (C2.2, LOCKED Pavel 2026-07-21, gate doc §4b.5):
+// `opts.bandSelectionUnits` decouples the band LOOKUP from the billed quantity.
+// The C2.2 router passes trailing-30-day units + this order's units so a qty-1
+// consumer order earns the volume break the creator's velocity has earned, while
+// the bill stays this order's units at that band's per-unit price. Omitted =
+// behavior unchanged (band selected by `quantity`, byte-identical for every
+// existing caller).
 
 import { prisma } from '@ilaunchify/db'
-import { tierGoodsCents, type PricingBandInput } from '@ilaunchify/plans'
+import { tierGoodsCents, tierGoodsCentsAtBand, type PricingBandInput } from '@ilaunchify/plans'
 
 export type TierFulfillmentMode = 'BULK_PRODUCTION' | 'ON_DEMAND'
 
@@ -41,6 +49,11 @@ export async function resolveTierGoodsCents(
   productTemplateId: string | null,
   quantity: number,
   mode: TierFulfillmentMode = 'BULK_PRODUCTION',
+  opts?: {
+    /** Velocity-band selection input (units). When set, the band is picked by
+     *  THIS number while `quantity` stays the billed multiplier. */
+    bandSelectionUnits?: number
+  },
 ): Promise<number | null> {
   if (!productTemplateId) return null
   try {
@@ -58,7 +71,9 @@ export async function resolveTierGoodsCents(
       minQty: t.minQty,
       perUnitCents: t.perUnitCostCents,
     }))
-    return tierGoodsCents(bands, quantity)
+    return opts?.bandSelectionUnits != null
+      ? tierGoodsCentsAtBand(bands, quantity, opts.bandSelectionUnits)
+      : tierGoodsCents(bands, quantity)
   } catch {
     // A read failure must NOT silently bill the 8c buildup. Null propagates to the
     // COST_BUILDUP fallback, which the caller logs as a cost-floor breach: visible,

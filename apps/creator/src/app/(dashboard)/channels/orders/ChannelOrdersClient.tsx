@@ -8,7 +8,7 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { RefreshCw, Loader2, CheckCircle2, AlertTriangle, PauseCircle, Clock, Factory } from 'lucide-react'
 import { importOrdersForAllConnections, approveChannelOrder } from './ingest'
-import { routeChannelOrderToProduction, fulfillChannelOrder, cancelChannelOrder } from './route-actions'
+import { routeChannelOrderNow, runMyChannelRouter, fulfillChannelOrder, cancelChannelOrder } from './route-actions'
 
 export interface ChannelOrderRow {
   id: string
@@ -69,7 +69,7 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
     setBusyId(id)
     try {
       const res = await approveChannelOrder(id)
-      flash(res.ok ? 'Order approved — hit “Route & pay” to send it to production.' : res.error ?? 'Could not approve.')
+      flash(res.ok ? 'Order approved. Hit "Route now" (or wait for the next cycle) to send it to production.' : res.error ?? 'Could not approve.')
       router.refresh()
     } finally {
       setBusyId(null)
@@ -107,16 +107,30 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
   async function route(id: string) {
     setBusyId(id)
     try {
-      const res = await routeChannelOrderToProduction(id)
+      const res = await routeChannelOrderNow(id)
       if (!res.ok) {
         flash(res.error)
       } else {
-        flash('Routed to production — complete payment in the opened tab.')
-        if (res.checkoutUrl) window.open(res.checkoutUrl, '_blank', 'noopener')
+        flash(`Routed to production and charged $${(res.chargedCents / 100).toFixed(2)} to your saved card.`)
       }
       router.refresh()
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function runRouter() {
+    setSyncing(true)
+    try {
+      const s = await runMyChannelRouter()
+      flash(
+        s.errors.length > 0
+          ? `Router finished with issues: ${s.errors[0]}`
+          : `Router run: ${s.routed} routed · ${s.onHold} on hold · ${s.needsAttention} need attention.`,
+      )
+      router.refresh()
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -145,13 +159,23 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
             </button>
           ))}
         </div>
-        <button
-          onClick={() => void syncNow()}
-          disabled={syncing || !migrated}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-ink-900 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
-        >
-          {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Sync now
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={() => void runRouter()}
+            disabled={syncing || !migrated}
+            title="Route every ready order to production now (auto-billed). Held orders retry too."
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50 disabled:opacity-50"
+          >
+            <Factory className="h-3.5 w-3.5" /> Run router
+          </button>
+          <button
+            onClick={() => void syncNow()}
+            disabled={syncing || !migrated}
+            className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
+          >
+            {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Sync now
+          </button>
+        </div>
       </div>
 
       {confirmQueue > 0 && (
@@ -191,6 +215,19 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
               </p>
             )}
 
+            {o.status === 'ON_HOLD' && (
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                <button
+                  onClick={() => void route(o.id)}
+                  disabled={busyId === o.id}
+                  title="Retry now instead of waiting for the next automatic cycle"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 px-3 py-1.5 text-[11.5px] font-semibold text-ink-800 hover:bg-ink-50 disabled:opacity-50"
+                >
+                  {busyId === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Retry routing
+                </button>
+              </div>
+            )}
+
             {(o.status === 'READY' || o.status === 'ROUTED' || o.status === 'IN_FULFILLMENT') && (
               <div className="mt-2.5 flex flex-wrap gap-2">
                 {o.status === 'READY' && o.manualConfirmRequired ? (
@@ -207,10 +244,10 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
                       <button
                         onClick={() => void route(o.id)}
                         disabled={busyId === o.id}
-                        title="On-demand: creates the production order and opens payment"
+                        title="On-demand: creates the production order and charges your saved payment method"
                         className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
                       >
-                        {busyId === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Factory className="h-3 w-3" />} Route &amp; pay
+                        {busyId === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Factory className="h-3 w-3" />} Route now
                       </button>
                     )}
                     <button

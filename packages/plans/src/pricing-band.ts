@@ -134,3 +134,30 @@ export function tierGoodsCents(
   if (!band) return null
   return Math.max(0, Math.round(band.perUnitCents) * Math.max(0, Math.floor(totalUnits)))
 }
+
+/**
+ * The GOODS line when the band is selected by a DIFFERENT quantity than the one
+ * billed. Exists for velocity-banded on-demand pricing (LOCKED, Pavel
+ * 2026-07-21, docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md §4b.5): a channel
+ * on-demand order is qty ~1-2, so matching bands by per-order qty would price
+ * everything at band 1 forever and dead-letter the 100+ band. The C2.2 router
+ * selects the band by the creator's trailing-30-day unit volume plus this
+ * order's units, then bills THIS order's units at that band's per-unit price.
+ *
+ * Two named quantities on purpose (the pickPricingBandIndex lesson: "quantity"
+ * was true of both scales, and that was the bug's hiding place):
+ *   * billedUnits        - what this order actually buys (the multiply).
+ *   * bandSelectionUnits - what the band lookup runs on (the velocity input).
+ *
+ * `tierGoodsCentsAtBand(bands, n, n)` === `tierGoodsCents(bands, n)`: same
+ * picker, same fallback-to-first-band rule, same rounding.
+ */
+export function tierGoodsCentsAtBand(
+  bands: readonly PricingBandInput[],
+  billedUnits: number,
+  bandSelectionUnits: number,
+): number | null {
+  const band = pickPricingBand(bands, bandSelectionUnits)
+  if (!band) return null
+  return Math.max(0, Math.round(band.perUnitCents) * Math.max(0, Math.floor(billedUnits)))
+}

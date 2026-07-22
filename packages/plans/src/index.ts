@@ -74,7 +74,7 @@ export { resolveGoods, composeProductionLines, costFloorBreach } from './goods-b
 // Blocker 2 (2026-07-16): the manufacturer's volume band. THE goods basis for a
 // non-pack order, and the number the PDP already quotes. placeOrder never read the
 // tiers at all, so it billed a catalog buildup ~90% below the quote.
-export { pickPricingBand, pickPricingBandIndex, tierGoodsCents, bandUnitsForPackOrder } from './pricing-band'
+export { pickPricingBand, pickPricingBandIndex, tierGoodsCents, tierGoodsCentsAtBand, bandUnitsForPackOrder } from './pricing-band'
 export type { PricingBandInput } from './pricing-band'
 export type { GoodsBasis, ResolvedGoods, GoodsBasisInput, ProductionComposition } from './goods-basis'
 

@@ -1,6 +1,6 @@
 'use server'
 
-import { prisma } from '@ilaunchify/db'
+import { prisma, listPaymentMethodRefs } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { resolveChannelAdapter, variantKey, applyLedgerEntry, type ChannelCode, type ListingVariantInput } from '@ilaunchify/channels'
@@ -115,6 +115,9 @@ export interface SellData {
      *  ineligible, `blockers` carries the creator-facing reasons. */
     eligible: boolean
     blockers: string[]
+    /** C2.2 go-live gate: a chargeable saved method must be on file before an
+     *  ON_DEMAND listing goes LIVE (per-consumer-order auto-billing). */
+    paymentMethodOnFile: boolean
   }
   /** Bulk stock (gate #2): the CREATOR-location pool for this product. */
   stock: { onHand: number; reserved: number; available: number }
@@ -177,6 +180,10 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
     () => ({ eligible: false, reasons: ['NO_PINNED_MANUFACTURER'] }) as const,
   )
 
+  // C2.2 payment-method gate input: the Sell surface warns BEFORE push (the
+  // pushListing gate is the enforcement; this is the explanation).
+  const paymentMethods = await listPaymentMethodRefs(user.id).catch(() => [])
+
   const linkByChannel = new Map(links.map((l) => [l.channelId, l]))
   return {
     productName: product.name,
@@ -188,6 +195,7 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
       partnerNote: enablement?.partnerNote ?? null,
       eligible: eligibility.eligible,
       blockers: eligibility.eligible ? [] : eligibility.reasons.map((r) => ON_DEMAND_INELIGIBLE_COPY[r]),
+      paymentMethodOnFile: paymentMethods.length > 0,
     },
     stock: await (async () => {
       const pool = await (
@@ -549,6 +557,20 @@ export async function pushListing(input: { productId: string; channelCode: strin
         if (!eligibility.eligible) {
           live = false
           gateNote = `On-demand needs the manufacturer to run the whole order in-house. ${describeOnDemandIneligibility(eligibility.reasons)}`
+        }
+      }
+
+      // PAYMENT_METHOD_MISSING (C2.2 go-live gate, gate doc §4): each consumer
+      // order auto-bills the creator's SAVED method, so going LIVE without one
+      // guarantees the first order parks ON_HOLD: a support ticket, not a flow.
+      // Same PUSHED-with-reason pattern as the gates above; fail-closed on a
+      // read error (a listing must not go live on an unverifiable method).
+      if (live) {
+        const methods = await listPaymentMethodRefs(user.id).catch(() => [])
+        if (methods.length === 0) {
+          live = false
+          gateNote =
+            'PAYMENT_METHOD_MISSING: add a payment method under Settings > Billing so consumer orders can auto-bill production, then push again.'
         }
       }
     } else {

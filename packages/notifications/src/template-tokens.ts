@@ -64,6 +64,7 @@ export const EVENT_TOKEN_PALETTE: {
   PARTNER_TEAM_MEMBER_JOINED: ['memberName', 'memberEmail', 'isAdmin'],
   CREATOR_CHANNEL_CONNECTED: ['channelName', 'shopName'],
   CREATOR_CHANNEL_DISCONNECTED: ['channelName'],
+  CREATOR_CHANNEL_ORDER_HOLD: ['externalOrderId', 'channelName', 'reason'],
   SECTION_VERIFIED: ['sectionType', 'companyName'],
   SECTION_NEEDS_CHANGES: ['sectionType', 'companyName', 'notes'],
   PARTNER_ACTIVATED: ['companyName'],

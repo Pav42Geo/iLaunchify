@@ -54,6 +54,8 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     set('channelProcessingBufferDays', 0, 60)
     set('channelSafetyStockDays', 0, 90)
     set('channelTargetDaysOfCover', 7, 365)
+    // C2.2 auto-billing daily cap (LOCKED #1). 0 = disabled; upper bound $100k/day.
+    set('channelDailySpendCapCents', 0, 10_000_000)
     set('rfqShortlistSize', 1, 100)
     set('rfqExpiryDays', 1, 90)
     set('rfqRebroadcastDays', 1, 60)

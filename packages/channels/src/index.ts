@@ -75,6 +75,21 @@ export {
 } from './order-fsm'
 
 export {
+  planChannelOrderRouting,
+  trailingUnits,
+  bandSelectionUnits,
+  utcDayStartMs,
+  withinDailySpendCap,
+  withinDailyCapacity,
+  TRAILING_WINDOW_DAYS,
+  type RoutePlanLine,
+  type ProductionJob,
+  type ProductionJobFlavor,
+  type ChannelOrderRoutePlan,
+  type DayGuardVerdict,
+} from './route-plan'
+
+export {
   PUBLISH_STATES,
   PUBLISH_TRIGGERS,
   canPublishTransition,

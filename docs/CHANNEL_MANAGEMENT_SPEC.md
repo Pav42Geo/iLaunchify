@@ -365,7 +365,24 @@ offers a change the stage forbids):
       after decline/suspend); partner `/on-demand` review queue (enable w/ optional
       daily capacity, decline w/ note, suspend kill-switch); enablement state
       surfaced on the Sell card; ingest gate consumes it
-- [~] **C2.2 (C2.2a shipped 2026-07-02):** "Route & pay" — READY+approved
+- [x] **C2.2 (BUILT 2026-07-22; C2.2a shipped 2026-07-02, retired by C2.2b):**
+      auto-billing router: READY (past manual-confirm) + auto-recoverable ON_HOLD
+      ChannelOrders route via route-core.ts (creator "Route now"/"Run router" +
+      hourly /api/cron/channel-router). Per production job: loadOnDemandEligibility
+      -> enablement + capacityPerDay -> findRouting -> assertSinglePartnerPlan ->
+      velocity-banded ON_DEMAND price (resolveTierGoodsCents bandSelectionUnits =
+      trailing30d + order units, snapshotted on Order.onDemandBandUnits) through
+      computeOrderPricing -> daily cap (OrderSettings.channelDailySpendCapCents,
+      admin knob) -> off-session charge of the saved method
+      (chargeSavedMethodOffSession; webhook deliberately bypassed, router owns
+      Charge row + PAID + the ONE manufacturer dispatch w/ merit snapshot +
+      manifest + DISPATCH_RECEIVED). Failures park: config -> NEEDS_ATTENTION,
+      cap/capacity/charge -> ON_HOLD + CREATOR_CHANNEL_ORDER_HOLD (once per
+      reason), auto-retried next cycle. Bulk lines ship from reserved stock (no
+      production order). Go-live gained PAYMENT_METHOD_MISSING (pushListing +
+      SellChannels warning). Dry run: `pnpm c22:report`. DIRECT_CONSUMER ship-to
+      enum still pending logistics sign-off (CREATOR_ADDRESS + notes marker).
+      The retired C2.2a "Route & pay" text follows for history: READY+approved
       ChannelOrder → production Order(s) per product via createOrderWithNumber
       (PENDING_PAYMENT, consumer ship-to on the order, ORIGIN: CHANNEL notes,
       pinned manufacturer) + Stripe Checkout session on the EXISTING billing rail

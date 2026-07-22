@@ -2,7 +2,7 @@
   "name": "ilaunchify",
   "version": "2.0.0",
   "private": true,
-  "description": "iLaunchify v2 \u2014 two-sided marketplace for creators, manufacturers, and print providers in US-compliant supplements + food & beverage.",
+  "description": "iLaunchify v2 — two-sided marketplace for creators, manufacturers, and print providers in US-compliant supplements + food & beverage.",
   "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": ">=20.11.0",
@@ -33,6 +33,7 @@
     "pp0:delta": "node scripts/pp0-delta-report.mjs",
     "copack:delta": "node scripts/copack-delta-report.mjs",
     "mode:delta": "node scripts/mode-band-delta-report.mjs",
+    "c22:report": "node scripts/c22-route-report.mjs",
     "seed:mode-bands": "node scripts/seed-mode-bands.mjs",
     "ondemand:why": "pnpm --filter @ilaunchify/db exec dotenv -e ../../.env.local -- tsx ../orders/scripts/on-demand-why.ts"
   },
@@ -52,5 +53,8 @@
     "*.{md,json}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "esbuild": "^0.28.1"
   }
 }

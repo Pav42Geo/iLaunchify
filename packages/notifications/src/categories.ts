@@ -120,6 +120,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   PARTNER_TEAM_MEMBER_JOINED: 'account',
   CREATOR_CHANNEL_CONNECTED: 'account',
   CREATOR_CHANNEL_DISCONNECTED: 'account',
+  // C2.2 auto-billing: a channel order parked ON_HOLD (cap / charge failure).
+  CREATOR_CHANNEL_ORDER_HOLD: 'orders',
   // Account & security (mandatory)
   SECTION_VERIFIED: 'account',
   SECTION_NEEDS_CHANGES: 'account',

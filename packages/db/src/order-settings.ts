@@ -33,6 +33,9 @@ export interface OrderSettingsValues {
   channelProcessingBufferDays: number
   channelSafetyStockDays: number
   channelTargetDaysOfCover: number
+  // C2.2 auto-billing (channel spec LOCKED #1): daily per-creator cap on
+  // per-consumer-order production auto-charges (cents). 0 = disabled.
+  channelDailySpendCapCents: number
   // Print Capability RFQ knobs (PRINT_PROVIDER_SELECTION §10.2)
   rfqShortlistSize: number
   rfqExpiryDays: number
@@ -62,6 +65,7 @@ export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
   channelProcessingBufferDays: 3,
   channelSafetyStockDays: 7,
   channelTargetDaysOfCover: 45,
+  channelDailySpendCapCents: 50000,
   rfqShortlistSize: 10,
   rfqExpiryDays: 14,
   rfqRebroadcastDays: 7,
@@ -94,6 +98,16 @@ export async function getOrderSettings(): Promise<OrderSettingsValues> {
         select: { channelProcessingBufferDays: true, channelSafetyStockDays: true, channelTargetDaysOfCover: true },
       })
       .catch(() => null)
+    // C2.2 daily-cap knob: its own cast-guarded select so a pre-push client
+    // fails ONLY this knob back to its default, never the whole row.
+    const capRow = await (prisma as unknown as {
+      orderSettings: { findUnique: (a: unknown) => Promise<Partial<OrderSettingsValues> | null> }
+    }).orderSettings
+      .findUnique({
+        where: { id: 'default' },
+        select: { channelDailySpendCapCents: true },
+      })
+      .catch(() => null)
     // RFQ knobs — same separate cast-guarded select (pre-push safe → knob defaults).
     const rfqRow = await (prisma as unknown as {
       orderSettings: { findUnique: (a: unknown) => Promise<Partial<OrderSettingsValues> | null> }
@@ -103,8 +117,8 @@ export async function getOrderSettings(): Promise<OrderSettingsValues> {
         select: { rfqShortlistSize: true, rfqExpiryDays: true, rfqRebroadcastDays: true },
       })
       .catch(() => null)
-    return row || channelRow || rfqRow
-      ? { ...ORDER_SETTINGS_DEFAULTS, ...(row ?? {}), ...(channelRow ?? {}), ...(rfqRow ?? {}) }
+    return row || channelRow || capRow || rfqRow
+      ? { ...ORDER_SETTINGS_DEFAULTS, ...(row ?? {}), ...(channelRow ?? {}), ...(capRow ?? {}), ...(rfqRow ?? {}) }
       : ORDER_SETTINGS_DEFAULTS
   } catch {
     return ORDER_SETTINGS_DEFAULTS
