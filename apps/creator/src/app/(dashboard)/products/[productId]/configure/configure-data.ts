@@ -149,6 +149,12 @@ export async function loadConfiguratorData(
         select: { id: true, name: true, swatchHex: true, priceDeltaCents: true, slotResolution: true },
       },
       pricingTiers: {
+        // BULK bands only (2026-07-20, ON_DEMAND_FULL_SERVICE_GATE §5.2): the
+        // configure surface feeds a bulk production order. Unfiltered, a template
+        // with both band sets interleaved them here by minQty (the on-demand set
+        // starts at qty 1). Same-commit parity with getPricingTierRows +
+        // checkout/tier-pricing.ts.
+        where: { fulfillmentMode: 'BULK_PRODUCTION' },
         orderBy: { minQty: 'asc' },
         select: { minQty: true, maxQty: true, perUnitCostCents: true },
       },

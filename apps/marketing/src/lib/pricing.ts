@@ -414,6 +414,17 @@ export async function getPricingTierRows(
     where: { slug },
     select: {
       pricingTiers: {
+        // BULK bands only (2026-07-20, ON_DEMAND_FULL_SERVICE_GATE §5.2). The PDP
+        // is a bulk-order surface: direct creator orders are bulk production, and
+        // on-demand production is priced by the channel router on the ON_DEMAND
+        // band set. Without this filter a template carrying both sets interleaved
+        // them by sortOrder (indexed per mode: two rows per index). Changed in the
+        // SAME commit as `checkout/tier-pricing.ts` and `configure-data.ts`, per
+        // the parity rule in that file's header (quote === charge).
+        // The configurator's `onDemandRows` prop stays deliberately unfed
+        // (disambiguation §4.2): wake it only when a direct on-demand order
+        // journey exists to stand behind the displayed price.
+        where: { fulfillmentMode: 'BULK_PRODUCTION' },
         orderBy: { sortOrder: 'asc' },
         select: {
           minQty: true,

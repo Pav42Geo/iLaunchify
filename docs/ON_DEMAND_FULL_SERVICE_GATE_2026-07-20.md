@@ -146,8 +146,20 @@ The Printify/Printful shape is the right one, and the platform is already built 
 
 ## §5 Sequencing
 
-1. Predicate + patch points 1-3 + UI reasons (schema-free, buildable now, all dark-safe).
-2. Mode-aware pricing: `resolveGoods`/`computeOrderPricing` select bands by
-   `fulfillmentMode`; fix the PDP interleaving bug (tier-pricing.ts:22-33) on the way.
-3. C2.2 router with `assertSinglePartnerPlan` + payment-method gate + auto-billing.
+1. **DONE 2026-07-20.** Predicate + patch points 1-4 + UI reasons + CHECK 18.
+2. **DONE 2026-07-20.** Mode-aware pricing at the tier READ, all three consumers in
+   ONE change (per tier-pricing.ts's own parity rule):
+   - `checkout/tier-pricing.ts` `resolveTierGoodsCents(templateId, qty, mode = 'BULK_PRODUCTION')`:
+     filters `fulfillmentMode`. C2.2 passes `'ON_DEMAND'`. NO cross-mode fallback:
+     no on-demand bands = null = refuse, never borrow the bulk curve.
+   - `apps/marketing/lib/pricing.ts` `getPricingTierRows`: BULK filter (PDP is a
+     bulk surface). The configurator's `onDemandRows` prop stays deliberately
+     unfed until a direct on-demand journey exists.
+   - `apps/creator/.../configure/configure-data.ts`: BULK filter (was interleaving
+     by minQty, with the on-demand set starting at qty 1).
+   Visibility: `pnpm mode:delta` (scripts/mode-band-delta-report.mjs) prints
+   before/after band rows per affected template; bulk-only templates are
+   byte-identical. Run it before trusting the change on real data.
+3. C2.2 router with `assertSinglePartnerPlan` + payment-method gate + auto-billing,
+   pricing made-to-order production via `resolveTierGoodsCents(..., 'ON_DEMAND')`.
 4. Later, if ever: relax the predicate for nominated co-partner print (one site).

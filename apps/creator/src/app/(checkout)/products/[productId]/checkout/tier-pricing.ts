@@ -10,30 +10,37 @@
 // functions, which is what stopped the estimate importing the pack math and the
 // charge importing the decoration math. Third time is the charm - this file exists
 // so both callers share one expression.
+//
+// MODE-AWARE (2026-07-20, docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md §5.2):
+// `ProductTemplatePricingTier.fulfillmentMode` (BULK_PRODUCTION | ON_DEMAND, A1 of
+// docs/ON_DEMAND_DISAMBIGUATION) separates two band sets the partner builder
+// authors side by side. The old read had NO filter, so a template carrying both
+// sets INTERLEAVED them by sortOrder (sortOrder is indexed PER MODE: two rows per
+// index). Fixed here and on the PDP (`getPricingTierRows`) and the configure
+// surface (`configure-data.ts`) in the SAME change, keeping quote === charge:
+//   - default 'BULK_PRODUCTION': every direct creator order is a bulk production
+//     order today, and legacy rows default to bulk, so bulk-only templates price
+//     byte-identically.
+//   - 'ON_DEMAND': the C2.2 channel-order router prices made-to-order production
+//     on the manufacturer's on-demand bands. NO fallback across modes: a
+//     manufacturer who authored no on-demand bands has not priced on-demand, and
+//     null means "refuse", never "borrow the bulk curve".
 
 import { prisma } from '@ilaunchify/db'
 import { tierGoodsCents, type PricingBandInput } from '@ilaunchify/plans'
 
+export type TierFulfillmentMode = 'BULK_PRODUCTION' | 'ON_DEMAND'
+
 /**
- * Read a template's price tiers and return the GOODS cents for a quantity.
- * Returns null when the template has no tiers (the caller falls back to the
- * catalog buildup and should treat that as a data gap, not a price).
- *
- * MIRRORS `apps/marketing/src/lib/pricing.ts` getPricingTierRows:
- *   - orderBy sortOrder asc
- *   - NO fulfillmentMode filter
- *
- * That second one is deliberate and worth stating, because it looks like an
- * omission. `ProductTemplatePricingTier` carries a `fulfillmentMode`
- * (BULK_PRODUCTION | ON_DEMAND) inside its @@unique, and the PDP ignores it, so a
- * template with BOTH band sets has them interleaved by sortOrder on the PDP. That
- * is a REAL separate bug (docs/ON_DEMAND_DISAMBIGUATION §1, meaning A1) - but
- * "fixing" it HERE and not on the PDP would re-open the exact quote-vs-charge gap
- * this file closes. Fix it in both places, in one change, or not at all.
+ * Read a template's price tiers for ONE fulfillment mode and return the GOODS
+ * cents for a quantity. Returns null when the template has no tiers in that mode
+ * (the caller falls back to the catalog buildup for bulk, or refuses for
+ * on-demand, and treats it as a data gap, not a price).
  */
 export async function resolveTierGoodsCents(
   productTemplateId: string | null,
   quantity: number,
+  mode: TierFulfillmentMode = 'BULK_PRODUCTION',
 ): Promise<number | null> {
   if (!productTemplateId) return null
   try {
@@ -41,6 +48,7 @@ export async function resolveTierGoodsCents(
       where: { id: productTemplateId },
       select: {
         pricingTiers: {
+          where: { fulfillmentMode: mode },
           orderBy: { sortOrder: 'asc' },
           select: { minQty: true, perUnitCostCents: true },
         },
