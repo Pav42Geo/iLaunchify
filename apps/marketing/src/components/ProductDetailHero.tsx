@@ -47,6 +47,9 @@ export interface ProductDetailHeroProps {
    *  manufacturer authored them AND the template passes the full-service gate;
    *  wakes the configurator's Bulk/On-demand price toggle. */
   onDemandRows?: PricingTierRow[]
+  /** §4b.2 — the declared made-to-order finish ("Pressure-sensitive label");
+   *  undefined falls back to the generic in-house line. */
+  onDemandFinishLabel?: string
   viewerTier?: 'maker' | 'builder' | 'agency'
   isAuthenticated?: boolean
   feePctByTier?: { maker: number; builder: number; agency: number }
@@ -104,6 +107,7 @@ export function ProductDetailHero({
   belowFold,
   pricingRows,
   onDemandRows,
+  onDemandFinishLabel,
   viewerTier,
   isAuthenticated = false,
   feePctByTier,
@@ -197,6 +201,7 @@ export function ProductDetailHero({
                 detail={detail}
                 pricingRows={pricingRows}
                 onDemandRows={onDemandRows}
+                onDemandFinishLabel={onDemandFinishLabel}
                 viewerTier={viewerTier}
                 isAuthenticated={isAuthenticated}
                 feePctByTier={feePctByTier}
@@ -221,6 +226,7 @@ export function ProductDetailHero({
             detail={detail}
             pricingRows={pricingRows}
             onDemandRows={onDemandRows}
+            onDemandFinishLabel={onDemandFinishLabel}
             viewerTier={viewerTier}
             isAuthenticated={isAuthenticated}
             feePctByTier={feePctByTier}

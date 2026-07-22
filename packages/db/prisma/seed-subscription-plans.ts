@@ -68,6 +68,9 @@ const CREATOR_PLANS: PlanInput[] = [
       { code: 'custom_domain',        label: 'Custom domain',       description: 'V1.1+ storefront feature.', boolValue: false },
       { code: 'multi_brand_workspace',label: 'Multi-brand workspace', description: 'Multiple Brand profiles per creator.', boolValue: false },
       { code: 'volume_pricing',       label: 'Volume pricing',      description: 'Tier-specific volume discounts on production runs.', boolValue: false },
+      // Open to EVERY tier incl. free Maker (channel spec LOCKED); on-demand
+      // band selection = trailing-30-day volume (ON_DEMAND_FULL_SERVICE_GATE §4b.5).
+      { code: 'on_demand_selling',    label: 'On-demand selling',   description: 'Made-to-order channel sales: each sale is produced per order by the manufacturer, no inventory.', boolValue: true },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 15.00, minCents: 100, notes: 'Maker take rate' },
@@ -90,6 +93,7 @@ const CREATOR_PLANS: PlanInput[] = [
       { code: 'custom_domain',        label: 'Custom domain',       boolValue: false },
       { code: 'multi_brand_workspace',label: 'Multi-brand workspace', boolValue: false },
       { code: 'volume_pricing',       label: 'Volume pricing',      boolValue: true },
+      { code: 'on_demand_selling',    label: 'On-demand selling',   boolValue: true },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 12.00, minCents: 100, notes: 'Builder take rate (volume discount baked in)' },
@@ -112,6 +116,7 @@ const CREATOR_PLANS: PlanInput[] = [
       { code: 'custom_domain',        label: 'Custom domain',       boolValue: true },
       { code: 'multi_brand_workspace',label: 'Multi-brand workspace', boolValue: true },
       { code: 'volume_pricing',       label: 'Volume pricing',      boolValue: true },
+      { code: 'on_demand_selling',    label: 'On-demand selling',   boolValue: true },
     ],
     feeRules: [
       { triggerEvent: 'production_order_subtotal', ratePercent: 8.00, minCents: 100, notes: 'Agency take rate' },

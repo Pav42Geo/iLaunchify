@@ -22,6 +22,7 @@ export function PdpPackagingPicker({
   options,
   onSelect,
   hideDecoration = false,
+  onDemandFinishLabel,
 }: {
   options: PdpPackagingOption[]
   /** Fired with the resolved (container × decoration) offering, or null when none. */
@@ -33,6 +34,9 @@ export function PdpPackagingPicker({
    *  untouched — this is display-only until the partner's made-to-order
    *  declaration (§4b.2) exists. */
   hideDecoration?: boolean
+  /** §4b.2 — the manufacturer's declared made-to-order finish (pin or sole
+   *  candidate). Shown in the hideDecoration line; undefined = generic copy. */
+  onDemandFinishLabel?: string
 }) {
   const [containerId, setContainerId] = React.useState<string | null>(
     options[0]?.packagingTypeId ?? null,
@@ -122,8 +126,17 @@ export function PdpPackagingPicker({
           ON_DEMAND display mode the section is replaced entirely (§4b.1). */}
       {hideDecoration ? (
         <div className="text-[11.5px] leading-relaxed text-ink-500">
-          Decorated and finished <span className="font-medium text-ink-700">in-house by the manufacturer</span> for
-          each made-to-order unit.
+          {onDemandFinishLabel ? (
+            <>
+              Finished with <span className="font-medium text-ink-700">{onDemandFinishLabel}</span>, applied
+              in-house by the manufacturer for each made-to-order unit.
+            </>
+          ) : (
+            <>
+              Decorated and finished <span className="font-medium text-ink-700">in-house by the manufacturer</span> for
+              each made-to-order unit.
+            </>
+          )}
         </div>
       ) : multiDecoration ? (
         <div className="flex flex-col gap-1.5">

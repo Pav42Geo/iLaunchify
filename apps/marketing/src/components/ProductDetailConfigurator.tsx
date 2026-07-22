@@ -89,6 +89,8 @@ export interface ProductDetailConfiguratorProps {
   /** PP-0c: the FeeRule's flat/min/max, which the charge applies. */
   platformFeeBounds?: FeeRuleBounds
   onDemandRows?: PricingTierRow[]
+  /** §4b.2 — the manufacturer's declared made-to-order finish label. */
+  onDemandFinishLabel?: string
   flavorMode?: 'SINGLE' | 'MULTI'
   maxFlavorsPerPack?: number | null
   flavorPool?: PackBuilderFlavor[]
@@ -155,6 +157,7 @@ export function ProductDetailConfigurator({
   platformFeeBps = 1500,
   platformFeeBounds,
   onDemandRows,
+  onDemandFinishLabel,
   flavorMode = 'SINGLE',
   maxFlavorsPerPack = null,
   flavorPool = [],
@@ -726,6 +729,8 @@ export function ProductDetailConfigurator({
           onSelect={setPackagingSel}
           // §4b.1 — MOQ'd decoration cards contradict a qty-1 made-to-order unit.
           hideDecoration={effectiveMode === 'ON_DEMAND'}
+          // §4b.2 — the manufacturer's declared made-to-order finish, when known.
+          onDemandFinishLabel={onDemandFinishLabel}
         />
       )}
 

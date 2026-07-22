@@ -329,6 +329,28 @@ const SECTIONS: ComparisonSection[] = [
     ],
   },
   {
+    // On-demand selling (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md §4b.5,
+    // Pavel 2026-07-21): open to EVERY tier including free Maker (channel spec
+    // LOCKED decision). The tier ladder differentiates via the production-order
+    // fee row below + the channel-connections row above; band selection by
+    // rolling 30-day volume applies to all tiers.
+    label: 'On-demand selling',
+    rows: [
+      {
+        label: 'Made-to-order fulfillment (each sale produced per order, no inventory)',
+        maker: true,
+        builder: true,
+        agency: true,
+      },
+      {
+        label: 'Volume pricing bands by rolling 30-day sales',
+        maker: true,
+        builder: true,
+        agency: true,
+      },
+    ],
+  },
+  {
     // Co-Creation Studio + Shared Design Workspace perks (Pavel 2026-07-13):
     // briefs = Builder+ (D-CC1); designer seats = Builder 2 / Agency 5, Maker
     // none (live numbers admin-tunable in Co-Creation Settings).

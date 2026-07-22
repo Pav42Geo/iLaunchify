@@ -4512,6 +4512,13 @@ model ProductTemplate {
   id                         String                        @id @default(cuid())
   subcategoryId              String
   manufacturerServiceId      String? // null until manufacturer self-builder ships (V1.1)
+  // Made-to-order decoration pin (ON_DEMAND_FULL_SERVICE_GATE §4b.2, 2026-07-22).
+  // Which of the MANUFACTURER'S OWN decoration offerings finishes a qty-1
+  // on-demand unit (bulk MOQ'd offerings can't). Soft FK → PartnerPackagingOffering,
+  // partner-pinned in the builder when >1 candidate; null = sole candidate applies
+  // or not yet declared. Read by the PDP on-demand display + the C2.2 dispatch.
+  // Additive; rides the next db:push (cast-guarded until then).
+  onDemandDecorationOfferingId String?
   // MB-1 — per-product BATCH (docs/PARTNER_SERVICE_BUILDER_FAMILY_PLAN §1/§2). These
   // × the chosen line's economics DERIVE this product's MOQ (sparkling water 30k,
   // peanut packs 5k, same maker). MOQ is a property of the PRODUCT on the equipment,

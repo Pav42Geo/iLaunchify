@@ -1035,6 +1035,140 @@ export async function savePricingTiers(productTemplateId: string, tiers: Pricing
   }
 }
 
+// ─── Made-to-order fulfillment declaration (ON_DEMAND_FULL_SERVICE_GATE §4b.2) ─
+//
+// WHICH decoration finishes a qty-1 on-demand unit. Candidates are the
+// MANUFACTURER'S OWN ACTIVE offerings on the template's container types (the
+// full-service rule: on-demand is decorated in-house, never an outside press).
+// Pin required only when >1 candidate; a sole candidate applies implicitly.
+// `ProductTemplate.onDemandDecorationOfferingId` is a new column — all access
+// cast-guarded until the next db:push (degrades to "not migrated yet").
+
+export interface OnDemandFulfillmentData {
+  /** Whether the template has any ON_DEMAND price bands (card hidden otherwise). */
+  hasOnDemandBands: boolean
+  pinnedOfferingId: string | null
+  candidates: Array<{ offeringId: string; decorationMethod: string; containerName: string; moq: number }>
+}
+
+async function onDemandDecorationCandidates(productTemplateId: string, partnerId: string) {
+  const variants = await prisma.productTemplateVariant.findMany({
+    where: { productTemplateId, isActive: true, packagingTypeId: { not: null } },
+    select: { packagingTypeId: true },
+  })
+  const typeIds = [...new Set(variants.map((v) => v.packagingTypeId).filter((x): x is string => !!x))]
+  if (typeIds.length === 0) return []
+  return prisma.partnerPackagingOffering.findMany({
+    where: {
+      packagingTypeId: { in: typeIds },
+      status: 'ACTIVE',
+      partnerService: { partnerId },
+    },
+    select: {
+      id: true,
+      decorationMethod: true,
+      moq: true,
+      packagingType: { select: { displayName: true } },
+    },
+    orderBy: { moq: 'asc' },
+  })
+}
+
+export async function loadOnDemandFulfillment(
+  productTemplateId: string,
+): Promise<Result & { data?: OnDemandFulfillmentData }> {
+  try {
+    const { partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: { manufacturerServiceId: true },
+    })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    const [bandCount, offerings, pinnedRow] = await Promise.all([
+      prisma.productTemplatePricingTier.count({
+        where: { productTemplateId, fulfillmentMode: 'ON_DEMAND' },
+      }),
+      onDemandDecorationCandidates(productTemplateId, partner.id),
+      // New column — cast-guarded select, null before db:push.
+      (prisma.productTemplate as unknown as {
+        findUnique: (a: unknown) => Promise<{ onDemandDecorationOfferingId?: string | null } | null>
+      })
+        .findUnique({ where: { id: productTemplateId }, select: { onDemandDecorationOfferingId: true } })
+        .catch(() => null),
+    ])
+
+    return {
+      ok: true,
+      data: {
+        hasOnDemandBands: bandCount > 0,
+        pinnedOfferingId: pinnedRow?.onDemandDecorationOfferingId ?? null,
+        candidates: offerings.map((o) => ({
+          offeringId: o.id,
+          decorationMethod: o.decorationMethod,
+          containerName: o.packagingType?.displayName ?? 'Container',
+          moq: o.moq,
+        })),
+      },
+    }
+  } catch (err) {
+    console.error('[loadOnDemandFulfillment] failed:', err)
+    return { ok: false, error: 'Could not load on-demand fulfillment.' }
+  }
+}
+
+/** Pin (or clear, null) the decoration offering used for made-to-order units.
+ *  The offering must be one of the manufacturer's own candidates — re-derived
+ *  server-side, never trusted from the client. */
+export async function saveOnDemandDecoration(
+  productTemplateId: string,
+  offeringId: string | null,
+): Promise<Result> {
+  try {
+    const { user, partner, error } = await requirePartner()
+    if (error) return { ok: false, error }
+    if (!partner) return { ok: false, error: 'Partner profile not found.' }
+    const tpl = await prisma.productTemplate.findUnique({
+      where: { id: productTemplateId },
+      select: { manufacturerServiceId: true },
+    })
+    if (!tpl) return { ok: false, error: 'Draft not found.' }
+    const ownIds = partner.services.map((s) => s.id)
+    if (tpl.manufacturerServiceId && !ownIds.includes(tpl.manufacturerServiceId)) return { ok: false, error: 'Not your product.' }
+
+    if (offeringId != null) {
+      const candidates = await onDemandDecorationCandidates(productTemplateId, partner.id)
+      if (!candidates.some((c) => c.id === offeringId)) {
+        return { ok: false, error: 'Pick one of your own decoration offerings for this product.' }
+      }
+    }
+
+    try {
+      await prisma.productTemplate.update({
+        where: { id: productTemplateId },
+        // New column — cast until the client regenerates (db:push + db:generate).
+        data: { onDemandDecorationOfferingId: offeringId } as never,
+      })
+    } catch {
+      return { ok: false, error: 'On-demand fulfillment column not migrated yet — run db:push.' }
+    }
+    await logAuditAs(user, {
+      entityType: 'ProductTemplate',
+      entityId: productTemplateId,
+      action: 'PRODUCT_TEMPLATE_UPDATE',
+      payload: { onDemandDecorationOfferingId: offeringId },
+    }).catch(() => {})
+    return { ok: true }
+  } catch (err) {
+    console.error('[saveOnDemandDecoration] failed:', err)
+    return { ok: false, error: `Could not save: ${(err as Error).message}` }
+  }
+}
+
 export interface ProductionInput {
   fulfillmentMode: 'BULK_PRODUCTION' | 'ON_DEMAND' | 'BOTH'
   moqMin: number

@@ -39,7 +39,7 @@ import { getProductNutrientSource } from '@/lib/product-nutrient-source'
 import { getProductRestrictions } from '@/lib/product-restrictions'
 import { getProductSampleOptions, getOwnedSampleProductId } from '@/lib/product-sample-options'
 import { getPackagingImageMap } from '@/lib/packaging-images-db'
-import { getTemplatePackagingOptions } from '@/lib/container-offerings-db'
+import { getTemplatePackagingOptions, getOnDemandFinishLabel } from '@/lib/container-offerings-db'
 import { processLabel } from '@ilaunchify/types'
 
 /**
@@ -186,6 +186,9 @@ export default async function ProductDetailPage({
   // Wakes the configurator's Bulk/On-demand toggle as display-only — a direct
   // order stays bulk; on-demand selling is configured per channel after launch.
   const onDemandRows = await getOnDemandPricingRows(template.slug, viewerTier)
+  // §4b.2 — the manufacturer's declared made-to-order finish (pin or sole
+  // candidate); null falls back to the generic in-house line.
+  const onDemandFinishLabel = onDemandRows.length > 0 ? await getOnDemandFinishLabel(template.slug) : null
   // Per-tier fee % for the modal's Maker/Builder/Agency columns.
   const feePctByTier = await getCreatorFeePcts()
 
@@ -351,6 +354,7 @@ export default async function ProductDetailPage({
             images={galleryImages}
             pricingRows={pricingRows}
             onDemandRows={onDemandRows.length > 0 ? onDemandRows : undefined}
+            onDemandFinishLabel={onDemandFinishLabel ?? undefined}
             viewerTier={viewerTier}
             isAuthenticated={isAuthenticated}
             feePctByTier={feePctByTier}

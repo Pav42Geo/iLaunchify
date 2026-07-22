@@ -152,10 +152,16 @@ Observed on the working display toggle. Each is a scoped work item, none blocks 
    cannot decorate a qty-1 order. INTERIM: hide the decoration picker in On-demand
    display mode; show "decorated and finished in-house by the manufacturer".
    REAL FIX: item 2.
-2. **Partner "made-to-order fulfillment" declaration (new, small).** On the
-   manufacturer's product: which decoration method runs per-order. DERIVE
-   compatibility from each offering's MOQ (fits a qty-1 run); ask the partner to
-   PIN only when >1 method qualifies. Feeds the PDP (item 1) and C2.2 dispatch.
+2. **Partner "made-to-order fulfillment" declaration. BUILT 2026-07-22** (dark
+   until db:push): `ProductTemplate.onDemandDecorationOfferingId` (soft FK,
+   additive) + builder Step-5 `OnDemandFulfillmentCard` (renders only when the
+   template has ON_DEMAND bands; candidates = the MANUFACTURER'S OWN ACTIVE
+   offerings on the product's containers; sole candidate applies implicitly, >1
+   requires the pin; server re-derives candidates on save, audited). PDP reads
+   pin-or-sole via `getOnDemandFinishLabel` and names the finish in the
+   on-demand line ("Finished with Pressure-sensitive label, applied in-house
+   per order"). The stale-client invariant WARN on this column is expected
+   until the runbook push runs. C2.2 dispatch reads the same pin.
 3. **Design Studio cost summary is bulk-only.** Show the on-demand unit cost
    (same mode split as the PDP) when the product is eligible.
 4. **Studio exit fork, NOT a mode rename.** A product can sell From-stock and

@@ -81,6 +81,9 @@ const TIER_META: readonly TierMeta[] = [
       // a percentage in tier copy; admin edits must propagate.
       '__FEE__',
       'DIY label design on your maker’s die-line',
+      // On-demand is open to every tier including free Maker (channel spec
+      // LOCKED decision); tiers differentiate on fee + connection count.
+      'Sell on-demand: each sale produced to order, no inventory (1 channel)',
     ],
   },
   {
@@ -98,6 +101,7 @@ const TIER_META: readonly TierMeta[] = [
       '2 invited-designer seats (shared design workspace)',
       'Priority human support on every order',
       'Volume pricing on production runs',
+      '3 channel connections for on-demand + from-stock selling',
     ],
   },
   {
@@ -114,6 +118,7 @@ const TIER_META: readonly TierMeta[] = [
       '__FEE__', // live rate + savings vs Maker, see comment on the Maker card
       '5 invited-designer seats (shared design workspace)',
       'Dedicated launch partner + roadmap input',
+      'All sales channels unlocked (on-demand + from-stock)',
     ],
   },
 ] as const

@@ -174,6 +174,63 @@ export async function getTemplatePackagingOptions(
   }
 }
 
+/**
+ * The finish that decorates a MADE-TO-ORDER unit, for the PDP's on-demand
+ * display line (ON_DEMAND_FULL_SERVICE_GATE §4b.2). Resolution:
+ *   1. the manufacturer's pin (`ProductTemplate.onDemandDecorationOfferingId`,
+ *      new column, cast-guarded until db:push), else
+ *   2. the manufacturer's SOLE own ACTIVE offering on the product's containers
+ *      (applies implicitly), else
+ *   3. null — the display falls back to the generic in-house line.
+ * Candidates are the MANUFACTURER'S OWN offerings only (full-service rule).
+ */
+export async function getOnDemandFinishLabel(templateSlug: string): Promise<string | null> {
+  try {
+    const template = await prisma.productTemplate.findUnique({
+      where: { slug: templateSlug },
+      select: {
+        id: true,
+        manufacturerServiceId: true,
+        variants: { where: { isActive: true }, select: { packagingTypeId: true } },
+      },
+    })
+    if (!template?.manufacturerServiceId) return null
+    const mfr = await prisma.partnerService.findUnique({
+      where: { id: template.manufacturerServiceId },
+      select: { partnerId: true },
+    })
+    if (!mfr) return null
+
+    const typeIds = Array.from(
+      new Set(template.variants.map((v) => v.packagingTypeId).filter((id): id is string => Boolean(id))),
+    )
+    if (typeIds.length === 0) return null
+
+    const candidates = await prisma.partnerPackagingOffering.findMany({
+      where: { packagingTypeId: { in: typeIds }, status: 'ACTIVE', partnerService: { partnerId: mfr.partnerId } },
+      select: { id: true, decorationMethod: true },
+    })
+    if (candidates.length === 0) return null
+
+    // Pin (cast-guarded: column may predate the generated client / db:push).
+    const pinned = await (
+      prisma.productTemplate as unknown as {
+        findUnique: (a: unknown) => Promise<{ onDemandDecorationOfferingId?: string | null } | null>
+      }
+    )
+      .findUnique({ where: { id: template.id }, select: { onDemandDecorationOfferingId: true } })
+      .catch(() => null)
+
+    const chosen =
+      candidates.find((c) => c.id === pinned?.onDemandDecorationOfferingId) ??
+      (candidates.length === 1 ? candidates[0] : null)
+    if (!chosen) return null
+    return DECORATION_LABELS[chosen.decorationMethod] ?? chosen.decorationMethod
+  } catch {
+    return null
+  }
+}
+
 export async function getTemplateContainerOfferings(
   templateSlug: string,
 ): Promise<ContainerOfferingCard[]> {
