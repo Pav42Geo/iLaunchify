@@ -32,7 +32,8 @@
     "prepare": "husky",
     "pp0:delta": "node scripts/pp0-delta-report.mjs",
     "copack:delta": "node scripts/copack-delta-report.mjs",
-    "mode:delta": "node scripts/mode-band-delta-report.mjs"
+    "mode:delta": "node scripts/mode-band-delta-report.mjs",
+    "seed:mode-bands": "node scripts/seed-mode-bands.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",
