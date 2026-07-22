@@ -388,6 +388,16 @@ function CostSummaryLive({
             {formatCents(estimate.perUnitCents)} / unit, all in before ship + tax
           </p>
         )}
+        {/* §4b.3 — display-only on-demand line: present only when the product
+            passes the full-service gate and the manufacturer authored on-demand
+            bands. Band 1 by the locked velocity rule (trailing volume = 0 here). */}
+        {estimate?.onDemand && (
+          <p className="mt-1.5 rounded-md bg-ink-50 px-2 py-1.5 text-[11px] leading-relaxed text-ink-600">
+            <span className="font-semibold text-ink-800">On-demand:</span>{' '}
+            <span className="tabular-nums font-semibold">{formatCents(estimate.onDemand.unitCents)}</span> / unit ·
+            no minimum · produced per sale once published to a channel
+          </p>
+        )}
         {/* WHY THE PRICE IS MISSING — render the refusal, never a bare dash. */}
         {estimateError && !busy && (
           <p className="mt-1 text-[11px] font-medium text-danger-700">{estimateError}</p>

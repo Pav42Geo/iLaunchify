@@ -168,6 +168,8 @@ import {
   X,
   Lock,
   BookmarkPlus,
+  UploadCloud,
+  Package,
 } from 'lucide-react'
 
 // Stage is dynamically imported with ssr:false because Fabric.js needs `window`.
@@ -1966,15 +1968,81 @@ function TopBar({
             Next
           </button>
         ) : (
-          <Link
-            href={`/products/${productId}/checkout`}
-            className="ml-2 inline-flex items-center rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-black"
-          >
-            Next
-          </Link>
+          /* §4b.4 (ON_DEMAND_FULL_SERVICE_GATE) — the Studio exit is a FORK,
+             not a straight line to checkout: the same product can sell bulk
+             (order a run) AND on-demand (publish, no upfront cost) on
+             different channels, so both doors are offered. NOT a mode rename:
+             there is deliberately no product-level bulk/on-demand field. */
+          <NextForkButton productId={productId} />
         )}
       </div>
     </header>
+  )
+}
+
+/** The Studio exit fork (§4b.4). "Next" opens a two-door menu:
+ *  publish to channels (made-to-order / from-stock listings; the publish page
+ *  handles the no-connected-channels case with its connect empty-state) or
+ *  order a production run (the existing 3-step checkout). Design autosaves, so
+ *  closing the menu / leaving IS "save as draft" — no third button needed. */
+function NextForkButton({ productId }: { productId: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative ml-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-black"
+      >
+        Next
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <>
+          {/* Click-away scrim */}
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div
+            role="menu"
+            className="absolute right-0 z-50 mt-2 w-72 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-lg"
+          >
+            <Link
+              href={`/products/${productId}/publish`}
+              role="menuitem"
+              className="flex items-start gap-2.5 px-3.5 py-3 transition-colors hover:bg-ink-50"
+              onClick={() => setOpen(false)}
+            >
+              <UploadCloud className="mt-0.5 h-4 w-4 shrink-0 text-pink-600" aria-hidden="true" />
+              <span>
+                <span className="block text-[13px] font-semibold text-ink-900">Publish to channels</span>
+                <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-500">
+                  Sell on-demand or from stock. No upfront cost — connect a channel if you haven&apos;t yet.
+                </span>
+              </span>
+            </Link>
+            <div className="h-px bg-ink-100" />
+            <Link
+              href={`/products/${productId}/checkout`}
+              role="menuitem"
+              className="flex items-start gap-2.5 px-3.5 py-3 transition-colors hover:bg-ink-50"
+              onClick={() => setOpen(false)}
+            >
+              <Package className="mt-0.5 h-4 w-4 shrink-0 text-ink-700" aria-hidden="true" />
+              <span>
+                <span className="block text-[13px] font-semibold text-ink-900">Order a production run</span>
+                <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-500">
+                  Buy inventory at volume pricing — the 3-step checkout.
+                </span>
+              </span>
+            </Link>
+            <div className="bg-ink-50 px-3.5 py-2 text-[10.5px] text-ink-400">
+              Your design autosaves — you can come back and do either later.
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

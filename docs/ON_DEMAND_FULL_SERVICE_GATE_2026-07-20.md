@@ -162,13 +162,18 @@ Observed on the working display toggle. Each is a scoped work item, none blocks 
    on-demand line ("Finished with Pressure-sensitive label, applied in-house
    per order"). The stale-client invariant WARN on this column is expected
    until the runbook push runs. C2.2 dispatch reads the same pin.
-3. **Design Studio cost summary is bulk-only.** Show the on-demand unit cost
-   (same mode split as the PDP) when the product is eligible.
-4. **Studio exit fork, NOT a mode rename.** A product can sell From-stock and
-   On-demand SIMULTANEOUSLY on different channels (per-channel mode is the
-   design), so no product-level mode and no conditional "Publish" button.
-   Exit offers BOTH: "Publish to channels" (no upfront cost; checks connected
-   channels, offers connect-or-save-draft) and "Order a production run" (checkout).
+3. **Design Studio cost summary. BUILT 2026-07-22:** `estimateStudioSubtotal`
+   returns an optional `onDemand.unitCents` (product-scoped eligibility gate +
+   ON_DEMAND band 1 per the velocity rule, trailing volume = 0 pre-launch +
+   the ONE fee SSOT; fail-soft null, never blocks the bulk estimate; null for
+   packs). ProductDetailsDrawer renders it as an info line under the subtotal.
+4. **Studio exit fork. BUILT 2026-07-22:** the canvas "Next" pill opens a
+   two-door menu (`NextForkButton` in CanvasLayoutShell): "Publish to channels"
+   (→ /publish; its SellChannels empty-state handles connect-a-channel) and
+   "Order a production run" (→ the existing checkout). Autosave note covers
+   save-as-draft. Deliberately NOT a mode rename: a product can sell From-stock
+   and On-demand SIMULTANEOUSLY on different channels, so no product-level mode
+   exists. The flavor-completeness lock on Next is unchanged.
 5. **PRICING RULE for C2.2 (LOCKED, Pavel 2026-07-21): velocity-banded
    on-demand.** A channel on-demand order is qty ~1-2, so matching bands by
    per-order qty would price EVERYTHING at band 1 forever and make the 100+ band
