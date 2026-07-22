@@ -659,8 +659,53 @@ function checkNoFabricatedMoneySplit() {
   return { name: 'No fabricated percentage-of-total in a money path (derive, do not fabricate)', level: 'warn', hits }
 }
 
+// =============================================================================
+// CHECK 18 — ON_DEMAND full-service gate calls the SSOT (WARN)
+// docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md.
+//
+// DECIDED (Pavel 2026-07-20): an ON_DEMAND channel order is executed by ONE
+// partner, the pinned manufacturer (mfg + print + pack + parcel in-house). The
+// predicate is `loadOnDemandEligibility` / `assertSinglePartnerPlan`
+// (packages/orders/src/on-demand-eligibility.ts). WHY A GREP AND NOT A TYPE:
+// same story as CHECK 14, the channel sites are cast-guarded, so removing the
+// call compiles clean. Two clauses:
+//   (a) the three known gate files must keep calling the predicate;
+//   (b) tripwire for the future C2.2 router: any file that touches channelOrder
+//       AND findRouting (reading READY channel orders into production) must
+//       assert the single-partner plan before creating dispatches.
+// =============================================================================
+const ON_DEMAND_GATE_FILES = [
+  'apps/creator/src/app/(dashboard)/products/[productId]/publish/actions.ts',
+  'apps/partner/src/app/(dashboard)/on-demand/actions.ts',
+  'apps/creator/src/app/(dashboard)/channels/orders/ingest.ts',
+]
+function checkOnDemandFullServiceGate() {
+  const hits = []
+  for (const f of ON_DEMAND_GATE_FILES) {
+    let src = ''
+    try {
+      src = read(f)
+    } catch {
+      hits.push(`${f}  gate file missing — on-demand full-service gate has lost a choke point`)
+      continue
+    }
+    if (!/loadOnDemandEligibility/.test(src)) {
+      hits.push(`${f}  no loadOnDemandEligibility call — this gate must verify the manufacturer runs the whole order in-house`)
+    }
+  }
+  for (const f of collect(APPS.map((a) => `${a}/src`), ['.ts', '.tsx'])) {
+    if (/\.test\.[tj]sx?$/.test(f)) continue
+    const src = read(f)
+    if (/channelOrder/.test(src) && /findRouting/.test(src) && !/assertSinglePartnerPlan/.test(src)) {
+      hits.push(`${f}  routes channel orders (channelOrder + findRouting) without assertSinglePartnerPlan — an on-demand order must never fan out to a second partner`)
+    }
+  }
+  return { name: 'ON_DEMAND full-service gate calls the SSOT (single-partner orders)', level: 'warn', hits }
+}
+
 const CHECKS = [
   checkNoFabricatedMoneySplit,
+  checkOnDemandFullServiceGate,
   checkNoHardcodedFixturePrice,
   checkNoHandRolledBandMatcher,
   checkEnablementScopedToManufacturer,

@@ -143,6 +143,56 @@ export function evaluateOnDemandEligibility(snap: OnDemandEligibilitySnapshot): 
     : { eligible: false, reasons }
 }
 
+// ─── Router-time assertion (gate 4, C2.2) ────────────────────────────────────
+//
+// Layer 1 above PREDICTS; this VERIFIES what findRouting actually resolved,
+// right before dispatches are created. Belt and suspenders: upstream state can
+// change between publish and routing, and this line is what makes the print
+// rotation unreachable for on-demand orders regardless of anything upstream.
+//
+// Partner identity via userId: every leg in RoutingResult carries the owning
+// partner's userId (Partner is keyed one-per-user), so same userId = same
+// partner. The owner's OWN print service (different serviceId, same partner)
+// is a valid single-partner plan.
+
+export interface SinglePartnerPlanInput {
+  manufacturingServiceId: string
+  manufacturingUserId: string
+  labelPrintingServiceId: string
+  labelPrintingUserId: string
+  /** resolveOrderCoPackerServiceId(...) for the order's template, when known. */
+  coPackerServiceId?: string | null
+}
+
+export type SinglePartnerPlanVerdict =
+  | { ok: true }
+  | { ok: false; violation: 'EXTERNAL_PRINT_LEG' | 'COPACK_LEG'; detail: string }
+
+export function checkSinglePartnerPlan(plan: SinglePartnerPlanInput): SinglePartnerPlanVerdict {
+  if (plan.labelPrintingUserId !== plan.manufacturingUserId) {
+    return {
+      ok: false,
+      violation: 'EXTERNAL_PRINT_LEG',
+      detail: `label leg resolved to service ${plan.labelPrintingServiceId} owned by another partner`,
+    }
+  }
+  if (plan.coPackerServiceId) {
+    return { ok: false, violation: 'COPACK_LEG', detail: `co-pack leg pinned to service ${plan.coPackerServiceId}` }
+  }
+  return { ok: true }
+}
+
+/** Throwing form for the C2.2 router: an on-demand order with a multi-partner
+ *  plan must never create dispatches. Fail loud, park the channel order. */
+export function assertSinglePartnerPlan(plan: SinglePartnerPlanInput): void {
+  const verdict = checkSinglePartnerPlan(plan)
+  if (!verdict.ok) {
+    throw new Error(
+      `On-demand order requires a single-partner plan (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md): ${verdict.violation}: ${verdict.detail}`,
+    )
+  }
+}
+
 // ─── Prisma loader ───────────────────────────────────────────────────────────
 
 /**

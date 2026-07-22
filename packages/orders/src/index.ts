@@ -651,10 +651,14 @@ export {
   evaluateOnDemandEligibility,
   loadOnDemandEligibility,
   describeOnDemandIneligibility,
+  checkSinglePartnerPlan,
+  assertSinglePartnerPlan,
   ON_DEMAND_INELIGIBLE_COPY,
 } from './on-demand-eligibility'
 export type {
   OnDemandEligibility,
   OnDemandEligibilitySnapshot,
   OnDemandIneligibleReason,
+  SinglePartnerPlanInput,
+  SinglePartnerPlanVerdict,
 } from './on-demand-eligibility'

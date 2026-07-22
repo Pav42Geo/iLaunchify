@@ -16,7 +16,7 @@
 // is C2.2 — this module stops at READY. All new-model access is cast-guarded.
 
 import { prisma } from '@ilaunchify/db'
-import { normalizeDemandRegion } from '@ilaunchify/orders'
+import { normalizeDemandRegion, loadOnDemandEligibility, describeOnDemandIneligibility } from '@ilaunchify/orders'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import {
@@ -169,6 +169,33 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
         for (const r of rows) pinnedMfrByProduct.set(r.id, r.productTemplate?.manufacturerServiceId ?? null)
       }
 
+      // 2c. Full-service gate #4a (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md),
+      //     batched per unique ON_DEMAND product. Go-live already checked this
+      //     (gate #3), but the product can change AFTER go-live (an outside
+      //     printer pinned, a co-packer added), and readiness is the last stop
+      //     before C2.2 routes production. A blocker parks the line as
+      //     NEEDS_ATTENTION with the concrete fix; loader failure parks too
+      //     (fail-closed, same direction as the enablement lookup below).
+      const fullServiceBlockerByProduct = new Map<string, string | null>()
+      const onDemandProductIds = [
+        ...new Set(
+          vlinks
+            .filter((v) => (((v.channelProductLink as { mode?: string } | undefined)?.mode ?? 'ON_DEMAND') === 'ON_DEMAND'))
+            .map((v) => String(v.productId)),
+        ),
+      ]
+      for (const pid of onDemandProductIds) {
+        const eligibility = await loadOnDemandEligibility(pid, user.id).catch(() => null)
+        fullServiceBlockerByProduct.set(
+          pid,
+          eligibility == null
+            ? 'On-demand eligibility could not be verified.'
+            : eligibility.eligible
+              ? null
+              : describeOnDemandIneligibility(eligibility.reasons),
+        )
+      }
+
       // 3. Readiness (pure) — both LOCKED gates. Spending cap wiring lands with
       //    C2.2 auto-billing; until then within-cap = true.
       const lines: OrderLineReadiness[] = await Promise.all(
@@ -198,6 +225,8 @@ export async function importOrdersForConnection(connectionId: string): Promise<I
               mapped: true,
               mode,
               enablement: ((en?.status as string | undefined) ?? 'NONE') as OrderLineReadiness['enablement'],
+              // Gate #4a (see 2c): non-null parks the order for the creator.
+              fullServiceBlocker: fullServiceBlockerByProduct.get(String(link.productId)) ?? null,
               quantity: l.quantity,
             }
           }

@@ -54,6 +54,11 @@ export interface OrderLineReadiness {
   mode: 'ON_DEMAND' | 'BULK'
   /** ON_DEMAND: OnDemandEnablement status for the line's product×manufacturer. */
   enablement?: 'ENABLED' | 'REQUESTED' | 'PARTNER_REVIEW' | 'DECLINED' | 'SUSPENDED' | 'NONE'
+  /** ON_DEMAND full-service gate (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md):
+   *  non-null = the product no longer qualifies (pinned manufacturer can't run
+   *  the whole order in-house), with the creator-facing reason. Caught here so a
+   *  product change AFTER go-live parks the order instead of mis-routing it. */
+  fullServiceBlocker?: string | null
   /** BULK: available-to-sell in the pool AFTER reservations. */
   poolAvailable?: number
   quantity: number
@@ -85,6 +90,12 @@ export function evaluateReadiness(input: ReadinessInput): ReadinessVerdict {
     return { next: 'NEEDS_ATTENTION', reason: `${unmapped.length} line(s) not linked to a product variant.` }
   }
   for (const l of input.lines) {
+    // Full-service gate first: it is a product-configuration problem the CREATOR
+    // must fix (unpin an outside printer, etc.), so it outranks the enablement
+    // hold and lands in NEEDS_ATTENTION, not the auto-recoverable ON_HOLD.
+    if (l.mode === 'ON_DEMAND' && l.fullServiceBlocker) {
+      return { next: 'NEEDS_ATTENTION', reason: `On-demand needs a full-service manufacturer: ${l.fullServiceBlocker}` }
+    }
     if (l.mode === 'ON_DEMAND' && l.enablement !== 'ENABLED') {
       return { next: 'ON_HOLD', reason: `Manufacturer on-demand enablement is ${l.enablement ?? 'NONE'}.` }
     }

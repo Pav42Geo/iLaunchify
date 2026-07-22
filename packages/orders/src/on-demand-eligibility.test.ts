@@ -6,8 +6,11 @@ import { describe, it, expect } from 'vitest'
 import {
   evaluateOnDemandEligibility,
   describeOnDemandIneligibility,
+  checkSinglePartnerPlan,
+  assertSinglePartnerPlan,
   type OnDemandEligibilitySnapshot,
   type OnDemandIneligibleReason,
+  type SinglePartnerPlanInput,
 } from './on-demand-eligibility'
 
 const MFR_PARTNER = 'partner-mfr'
@@ -118,5 +121,45 @@ describe('evaluateOnDemandEligibility', () => {
       'MANUFACTURER_CANNOT_SHIP_PARCEL',
     ])
     expect(describeOnDemandIneligibility(reasons)).toContain('parcel')
+  })
+})
+
+describe('checkSinglePartnerPlan / assertSinglePartnerPlan (gate 4, C2.2)', () => {
+  function plan(over: Partial<SinglePartnerPlanInput> = {}): SinglePartnerPlanInput {
+    // Baseline: manufacturer self-labels (same service), no co-pack. Valid.
+    return {
+      manufacturingServiceId: 'svc-mfr',
+      manufacturingUserId: 'user-mfr',
+      labelPrintingServiceId: 'svc-mfr',
+      labelPrintingUserId: 'user-mfr',
+      coPackerServiceId: null,
+      ...over,
+    }
+  }
+
+  it('self-label plan passes', () => {
+    expect(checkSinglePartnerPlan(plan())).toEqual({ ok: true })
+    expect(() => assertSinglePartnerPlan(plan())).not.toThrow()
+  })
+
+  it('the owner’s OWN print service (different service, same partner) passes', () => {
+    const p = plan({ labelPrintingServiceId: 'svc-mfr-press', labelPrintingUserId: 'user-mfr' })
+    expect(checkSinglePartnerPlan(p)).toEqual({ ok: true })
+  })
+
+  it('an external print leg fails: this is the line that makes rotation unreachable', () => {
+    const p = plan({ labelPrintingServiceId: 'svc-rotated-printer', labelPrintingUserId: 'user-printer' })
+    const v = checkSinglePartnerPlan(p)
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.violation).toBe('EXTERNAL_PRINT_LEG')
+    expect(() => assertSinglePartnerPlan(p)).toThrow(/single-partner plan/)
+  })
+
+  it('a co-pack leg fails even when print is in-house', () => {
+    const p = plan({ coPackerServiceId: 'svc-copack' })
+    const v = checkSinglePartnerPlan(p)
+    expect(v.ok).toBe(false)
+    if (!v.ok) expect(v.violation).toBe('COPACK_LEG')
+    expect(() => assertSinglePartnerPlan(p)).toThrow(/COPACK_LEG/)
   })
 })

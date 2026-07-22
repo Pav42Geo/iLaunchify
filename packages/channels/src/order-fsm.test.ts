@@ -63,6 +63,27 @@ const paidBase: ReadinessInput = {
   assert(v.next === 'NEEDS_ATTENTION', 'bulk beyond pool stock → NEEDS_ATTENTION (gate #2)')
 }
 {
+  // Full-service gate (docs/ON_DEMAND_FULL_SERVICE_GATE_2026-07-20.md): a
+  // product change AFTER go-live (outside printer pinned, co-packer added)
+  // parks the order for the CREATOR, even when enablement is still ENABLED.
+  const v = evaluateReadiness({
+    ...paidBase,
+    lines: [{ mapped: true, mode: 'ON_DEMAND', enablement: 'ENABLED', fullServiceBlocker: 'You have pinned an outside print provider.', quantity: 1 }],
+  })
+  assert(
+    v.next === 'NEEDS_ATTENTION' && 'reason' in v && v.reason.includes('outside print provider'),
+    'full-service blocker → NEEDS_ATTENTION with the concrete reason',
+  )
+}
+{
+  // And it outranks the enablement hold: the real cause surfaces, not a generic wait.
+  const v = evaluateReadiness({
+    ...paidBase,
+    lines: [{ mapped: true, mode: 'ON_DEMAND', enablement: 'SUSPENDED', fullServiceBlocker: 'This product’s packaging runs through a co-packer.', quantity: 1 }],
+  })
+  assert(v.next === 'NEEDS_ATTENTION', 'full-service blocker outranks the enablement hold')
+}
+{
   const v = evaluateReadiness({ ...paidBase, lines: [{ mapped: true, mode: 'BULK', poolAvailable: 5, quantity: 5 }] })
   assert(v.next === 'READY', 'bulk exactly covered by pool → READY')
 }

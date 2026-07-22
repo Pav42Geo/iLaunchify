@@ -1,8 +1,13 @@
 # On-demand = manufacturer-only, full-service. The gate that enforces it.
 
-**Status:** DECIDED (Pavel, 2026-07-20). **Predicate + gates 1-3 + SellChannels UI BUILT 2026-07-20**
-(`packages/orders/src/on-demand-eligibility.ts` + tests; schema-free, dark-safe). Remaining: gate 4
-(ingest readiness fold-in + C2.2 router `assertSinglePartnerPlan`) and the `check:invariants` rule.
+**Status:** DECIDED (Pavel, 2026-07-20). **ALL FOUR GATES BUILT 2026-07-20** (schema-free, dark-safe):
+predicate + tests (`packages/orders/src/on-demand-eligibility.ts`), gates 1-3, SellChannels UI,
+gate 4a (`OrderLineReadiness.fullServiceBlocker` in `@ilaunchify/channels` + ingest §2c fold-in,
+NEEDS_ATTENTION outranking the enablement hold), gate 4b (`checkSinglePartnerPlan` /
+`assertSinglePartnerPlan`, exported, awaiting its C2.2 caller), and invariant **CHECK 18**
+(gate files must call `loadOnDemandEligibility`; any file touching channelOrder + findRouting
+must call `assertSinglePartnerPlan` — the C2.2 tripwire, verified firing in both directions).
+Remaining work is C2.2 itself + the mode-aware pricing prerequisite (§4).
 **Scope:** ChannelListingMode.ON_DEMAND, meaning **A2** of `ON_DEMAND_DISAMBIGUATION_2026-07-16.md`.
 **Origin:** bulk-vs-on-demand audit 2026-07-20. Line refs are as of that date.
 
