@@ -21,10 +21,18 @@ export interface PackagingSelection {
 export function PdpPackagingPicker({
   options,
   onSelect,
+  hideDecoration = false,
 }: {
   options: PdpPackagingOption[]
   /** Fired with the resolved (container × decoration) offering, or null when none. */
   onSelect: (sel: PackagingSelection | null) => void
+  /** ON_DEMAND display mode (docs/ON_DEMAND_FULL_SERVICE_GATE §4b.1): MOQ'd
+   *  decoration offerings contradict a qty-1 made-to-order unit, so the
+   *  decoration section is replaced by the in-house line. The CONTAINER choice
+   *  stays (it defines the product either way), and the offering resolution is
+   *  untouched — this is display-only until the partner's made-to-order
+   *  declaration (§4b.2) exists. */
+  hideDecoration?: boolean
 }) {
   const [containerId, setContainerId] = React.useState<string | null>(
     options[0]?.packagingTypeId ?? null,
@@ -110,8 +118,14 @@ export function PdpPackagingPicker({
         )}
       </div>
 
-      {/* Decoration — only when the chosen container offers a choice. */}
-      {multiDecoration ? (
+      {/* Decoration — only when the chosen container offers a choice. In
+          ON_DEMAND display mode the section is replaced entirely (§4b.1). */}
+      {hideDecoration ? (
+        <div className="text-[11.5px] leading-relaxed text-ink-500">
+          Decorated and finished <span className="font-medium text-ink-700">in-house by the manufacturer</span> for
+          each made-to-order unit.
+        </div>
+      ) : multiDecoration ? (
         <div className="flex flex-col gap-1.5">
           <div className="text-[12px] font-semibold text-ink-700">
             Decoration

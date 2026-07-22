@@ -144,6 +144,35 @@ The Printify/Printful shape is the right one, and the platform is already built 
   BEFORE C2.2, per the 2026-07-20 audit. Publishing without upfront payment is safe
   only if the per-order bill is the right one.
 
+## §4b UX punch list (Pavel, 2026-07-21, from first live look at the PDP toggle)
+
+Observed on the working display toggle. Each is a scoped work item, none blocks the runbook.
+
+1. **Decoration cards contradict On-demand mode.** MOQ'd offerings (direct print 5k)
+   cannot decorate a qty-1 order. INTERIM: hide the decoration picker in On-demand
+   display mode; show "decorated and finished in-house by the manufacturer".
+   REAL FIX: item 2.
+2. **Partner "made-to-order fulfillment" declaration (new, small).** On the
+   manufacturer's product: which decoration method runs per-order. DERIVE
+   compatibility from each offering's MOQ (fits a qty-1 run); ask the partner to
+   PIN only when >1 method qualifies. Feeds the PDP (item 1) and C2.2 dispatch.
+3. **Design Studio cost summary is bulk-only.** Show the on-demand unit cost
+   (same mode split as the PDP) when the product is eligible.
+4. **Studio exit fork, NOT a mode rename.** A product can sell From-stock and
+   On-demand SIMULTANEOUSLY on different channels (per-channel mode is the
+   design), so no product-level mode and no conditional "Publish" button.
+   Exit offers BOTH: "Publish to channels" (no upfront cost; checks connected
+   channels, offers connect-or-save-draft) and "Order a production run" (checkout).
+5. **PRICING RULE for C2.2 (LOCKED, Pavel 2026-07-21): velocity-banded
+   on-demand.** A channel on-demand order is qty ~1-2, so matching bands by
+   per-order qty would price EVERYTHING at band 1 forever and make the 100+ band
+   dead. Select the ON_DEMAND band by the creator's TRAILING 30-DAY unit volume
+   for that product instead (the Supliful model; independently specced in
+   docs/builds/on-demand-pricing-economics.md before it went stale). Doctrine
+   holds: the manufacturer authors band prices; the platform only SELECTS the
+   band, and the selection input (rolling volume) is snapshotted on the order.
+   Supliful's third axis, membership plan, is already live as the tier fee.
+
 ## §5 Sequencing
 
 1. **DONE 2026-07-20.** Predicate + patch points 1-4 + UI reasons + CHECK 18.

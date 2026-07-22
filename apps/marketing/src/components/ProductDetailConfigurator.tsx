@@ -721,7 +721,12 @@ export function ProductDetailConfigurator({
           offering flows to launch as partnerOfferingId → materialises the container +
           die-line. Renders nothing when the product has no scoped offerings. */}
       {packagingOptions.length > 0 && (
-        <PdpPackagingPicker options={packagingOptions} onSelect={setPackagingSel} />
+        <PdpPackagingPicker
+          options={packagingOptions}
+          onSelect={setPackagingSel}
+          // §4b.1 — MOQ'd decoration cards contradict a qty-1 made-to-order unit.
+          hideDecoration={effectiveMode === 'ON_DEMAND'}
+        />
       )}
 
       {/* 5) Quantity — in multi-flavor pack mode this is the number of PACKS
