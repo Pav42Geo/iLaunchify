@@ -9,12 +9,12 @@ import { PageTabs } from '@/components/PageTabs'
 import { getRequestsHiddenTabs } from '@/lib/requests-tabs'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'On-demand requests — Partners' }
+export const metadata = { title: 'On-demand requests · Partners' }
 
 export default async function OnDemandRequestsPage() {
   const user = await requireUser()
   const requestsHidden = await getRequestsHiddenTabs(user.id)
-  const { migrated, rows } = await loadOnDemandRequests()
+  const { rows } = await loadOnDemandRequests()
   const pending = rows.filter((r) => r.status === 'REQUESTED' || r.status === 'PARTNER_REVIEW')
   const decided = rows.filter((r) => r.status !== 'REQUESTED' && r.status !== 'PARTNER_REVIEW')
 
@@ -25,11 +25,11 @@ export default async function OnDemandRequestsPage() {
         <h1 className="font-display text-2xl font-bold text-ink-900">On-demand requests</h1>
         <p className="mt-1 text-[13.5px] text-ink-600">
           Creators asking to sell these products on-demand: every consumer sale becomes a production order to you,
-          printed and shipped as orders arrive. Approving locks the reviewed branding — the creator can’t change the
+          printed and shipped as orders arrive. Approving locks the reviewed branding: the creator can’t change the
           design without a new request.
         </p>
       </div>
-      <OnDemandQueueClient pending={pending} decided={decided} migrated={migrated} />
+      <OnDemandQueueClient pending={pending} decided={decided} />
     </div>
   )
 }

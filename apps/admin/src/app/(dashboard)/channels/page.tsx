@@ -1,11 +1,10 @@
-// Admin /channels — channel-ops console (CHANNEL_MANAGEMENT_SPEC §3.4a).
+// Admin /channels: channel-ops console (CHANNEL_MANAGEMENT_SPEC §3.4a).
 //
 // The ChannelEngine/Linnworks-style operator view: one row per channel with
 // live health (connections, listings, orders 7d, sync errors 24h, last
-// activity) and three levels of control —
+// activity) and three levels of control:
 //   enabled switch (visibility) → ingest/push pause (capability kill switches)
 //   → per-connection force-disconnect (on the Connections page).
-// All post-C0 model access is cast-guarded so the page renders before db:push.
 
 import Link from 'next/link'
 import { Plug, KeyRound, ShoppingBag, AlertTriangle, Power } from 'lucide-react'
@@ -16,19 +15,9 @@ import { ChannelToggle } from './ChannelToggle'
 import { ChannelOpsControls } from './ChannelOpsControls'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Channels — Admin' }
+export const metadata = { title: 'Channels · Admin' }
 
 const DAY = 24 * 60 * 60 * 1000
-
-// --- cast-guarded delegates (degrade before db:push) --------------------------
-type GroupRow = Record<string, unknown>
-type AnyDelegate = {
-  groupBy?: (a: unknown) => Promise<GroupRow[]>
-  findMany?: (a: unknown) => Promise<GroupRow[]>
-  count?: (a?: unknown) => Promise<number>
-}
-const d = (name: string): AnyDelegate | null =>
-  ((prisma as unknown as Record<string, AnyDelegate | undefined>)[name] ?? null)
 
 export default async function ChannelsPage() {
   const now = Date.now()
@@ -41,23 +30,15 @@ export default async function ChannelsPage() {
       include: { _count: { select: { connections: true, productLinks: true } } },
     }),
     // connections by channel × status
-    prisma.channelConnection.groupBy({ by: ['channelId', 'status'], _count: { _all: true } }).catch(() => []),
-    // LIVE listings by channel (publishState is a C0 column — cast-guarded)
-    d('channelProductLink')
-      ?.groupBy?.({ by: ['channelId'], where: { publishState: 'LIVE' }, _count: { _all: true } })
-      .catch(() => [] as GroupRow[]) ?? Promise.resolve([] as GroupRow[]),
+    prisma.channelConnection.groupBy({ by: ['channelId', 'status'], _count: { _all: true } }),
+    // LIVE listings by channel
+    prisma.channelProductLink.groupBy({ by: ['channelId'], where: { publishState: 'LIVE' }, _count: { _all: true } }),
     // orders (7d) by connection
-    d('channelOrder')
-      ?.groupBy?.({ by: ['channelConnectionId'], where: { placedAt: { gte: since7d } }, _count: { _all: true } })
-      .catch(() => [] as GroupRow[]) ?? Promise.resolve([] as GroupRow[]),
+    prisma.channelOrder.groupBy({ by: ['channelConnectionId'], where: { placedAt: { gte: since7d } }, _count: { _all: true } }),
     // sync errors (24h) by connection
-    d('channelSyncEvent')
-      ?.groupBy?.({ by: ['channelConnectionId'], where: { outcome: 'ERROR', createdAt: { gte: since24h } }, _count: { _all: true } })
-      .catch(() => [] as GroupRow[]) ?? Promise.resolve([] as GroupRow[]),
+    prisma.channelSyncEvent.groupBy({ by: ['channelConnectionId'], where: { outcome: 'ERROR', createdAt: { gte: since24h } }, _count: { _all: true } }),
     // most recent sync event by connection
-    d('channelSyncEvent')
-      ?.groupBy?.({ by: ['channelConnectionId'], _max: { createdAt: true } })
-      .catch(() => [] as GroupRow[]) ?? Promise.resolve([] as GroupRow[]),
+    prisma.channelSyncEvent.groupBy({ by: ['channelConnectionId'], _max: { createdAt: true } }),
   ])
 
   // connection id → channel id map so per-connection stats roll up per channel
@@ -66,32 +47,32 @@ export default async function ChannelsPage() {
 
   const connectedBy = new Map<string, number>()
   const problemBy = new Map<string, number>()
-  for (const g of connGroups as Array<{ channelId: string; status: string; _count: { _all: number } }>) {
+  for (const g of connGroups) {
     if (g.status === 'CONNECTED') connectedBy.set(g.channelId, (connectedBy.get(g.channelId) ?? 0) + g._count._all)
     if (g.status === 'TOKEN_EXPIRED' || g.status === 'ERROR') problemBy.set(g.channelId, (problemBy.get(g.channelId) ?? 0) + g._count._all)
   }
 
   const liveBy = new Map<string, number>()
   for (const g of liveLinkGroups) {
-    liveBy.set(String(g.channelId), Number((g._count as { _all?: number } | undefined)?._all ?? 0))
+    liveBy.set(g.channelId, g._count._all)
   }
 
-  const rollup = (groups: GroupRow[], pick: (g: GroupRow) => number) => {
+  const rollup = (groups: Array<{ channelConnectionId: string; _count: { _all: number } }>) => {
     const by = new Map<string, number>()
     for (const g of groups) {
-      const chId = connToChannel.get(String(g.channelConnectionId))
+      const chId = connToChannel.get(g.channelConnectionId)
       if (!chId) continue
-      by.set(chId, (by.get(chId) ?? 0) + pick(g))
+      by.set(chId, (by.get(chId) ?? 0) + g._count._all)
     }
     return by
   }
-  const orders7dBy = rollup(orderGroups, (g) => Number((g._count as { _all?: number } | undefined)?._all ?? 0))
-  const errors24hBy = rollup(errorGroups, (g) => Number((g._count as { _all?: number } | undefined)?._all ?? 0))
+  const orders7dBy = rollup(orderGroups)
+  const errors24hBy = rollup(errorGroups)
 
   const lastEventBy = new Map<string, Date>()
   for (const g of lastEventGroups) {
-    const chId = connToChannel.get(String(g.channelConnectionId))
-    const at = (g._max as { createdAt?: Date | string | null } | undefined)?.createdAt
+    const chId = connToChannel.get(g.channelConnectionId)
+    const at = g._max.createdAt
     if (!chId || !at) continue
     const date = new Date(at)
     const prev = lastEventBy.get(chId)
@@ -167,7 +148,7 @@ export default async function ChannelsPage() {
           </thead>
           <tbody>
             {channels.map((c) => {
-              const ops = c as unknown as { ingestPaused?: boolean; pushPaused?: boolean; maintenanceNote?: string | null }
+              const ops = c
               const connected = connectedBy.get(c.id) ?? 0
               const problems = problemBy.get(c.id) ?? 0
               const errors = errors24hBy.get(c.id) ?? 0
@@ -207,7 +188,7 @@ export default async function ChannelsPage() {
                     {errors}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-ink-500">
-                    {last ? last.toISOString().slice(0, 16).replace('T', ' ') : '—'}
+                    {last ? last.toISOString().slice(0, 16).replace('T', ' ') : '-'}
                   </td>
                   <td className="px-3 py-2.5">
                     <ChannelOpsControls
@@ -226,7 +207,7 @@ export default async function ChannelsPage() {
             {channels.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-3 py-8 text-center text-ink-400">
-                  No channels registered — run pnpm db:seed.
+                  No channels registered: run pnpm db:seed.
                 </td>
               </tr>
             )}
@@ -235,7 +216,7 @@ export default async function ChannelsPage() {
       </div>
 
       <p className="text-[11.5px] text-ink-400">
-        OAuth readiness is derived from env keys — manage them under{' '}
+        OAuth readiness is derived from env keys; manage them under{' '}
         <Link href="/developer" className="underline hover:text-ink-600">
           Developer &amp; API
         </Link>

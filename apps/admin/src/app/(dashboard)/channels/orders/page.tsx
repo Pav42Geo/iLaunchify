@@ -1,8 +1,7 @@
 // Admin → Channels → Channel orders (CHANNEL_MANAGEMENT_SPEC §3.4 oversight).
 // Every imported consumer order across all creators, with FSM status + reason.
-// Read-only oversight per the admin-v2 pattern — fixing an order happens where
+// Read-only oversight per the admin-v2 pattern: fixing an order happens where
 // the workflow lives (creator inbox / partner dispatch), never inline here.
-// All model access cast-guarded so the page renders before db:push.
 
 import Link from 'next/link'
 import { ShoppingBag, AlertTriangle, PauseCircle, CheckCircle2, Truck } from 'lucide-react'
@@ -11,7 +10,7 @@ import { cn } from '@ilaunchify/ui'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Channel orders — Admin' }
+export const metadata = { title: 'Channel orders · Admin' }
 
 const STATUSES = [
   'NEEDS_ATTENTION',
@@ -28,30 +27,6 @@ const STATUSES = [
 type Status = (typeof STATUSES)[number]
 const PAGE_SIZE = 50
 
-type OrderRow = {
-  id: string
-  externalOrderId: string
-  status: string
-  statusReason: string | null
-  financialStatus: string
-  currency: string
-  totalPrice: unknown
-  placedAt: Date
-  manualConfirmRequired: boolean
-  productionOrderId: string | null
-  connection: {
-    channel: { code: string; displayName: string }
-    creator: { email: string | null; name: string | null }
-  }
-  lines: Array<{ quantity: number }>
-}
-type Delegate = {
-  findMany?: (a: unknown) => Promise<OrderRow[]>
-  count?: (a?: unknown) => Promise<number>
-  groupBy?: (a: unknown) => Promise<Array<{ status: string; _count: { _all: number } }>>
-}
-const orderDelegate = () => ((prisma as unknown as { channelOrder?: Delegate }).channelOrder ?? null)
-
 export default async function AdminChannelOrdersPage({
   searchParams,
 }: {
@@ -60,28 +35,25 @@ export default async function AdminChannelOrdersPage({
   const sp = await searchParams
   const status = STATUSES.includes(sp.status as Status) ? (sp.status as Status) : undefined
   const page = Math.max(1, Number(sp.page) || 1)
-  const od = orderDelegate()
 
   const [rows, total, groups] = await Promise.all([
-    od
-      ?.findMany?.({
-        where: status ? { status } : undefined,
-        include: {
-          connection: {
-            select: {
-              channel: { select: { code: true, displayName: true } },
-              creator: { select: { email: true, name: true } },
-            },
+    prisma.channelOrder.findMany({
+      where: status ? { status } : undefined,
+      include: {
+        connection: {
+          select: {
+            channel: { select: { code: true, displayName: true } },
+            creator: { select: { email: true, name: true } },
           },
-          lines: { select: { quantity: true } },
         },
-        orderBy: { placedAt: 'desc' },
-        skip: (page - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      })
-      .catch(() => [] as OrderRow[]) ?? Promise.resolve([] as OrderRow[]),
-    od?.count?.({ where: status ? { status } : undefined }).catch(() => 0) ?? Promise.resolve(0),
-    od?.groupBy?.({ by: ['status'], _count: { _all: true } }).catch(() => []) ?? Promise.resolve([]),
+        lines: { select: { quantity: true } },
+      },
+      orderBy: { placedAt: 'desc' },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.channelOrder.count({ where: status ? { status } : undefined }),
+    prisma.channelOrder.groupBy({ by: ['status'], _count: { _all: true } }),
   ])
 
   const countBy = new Map(groups.map((g) => [g.status, g._count._all]))
@@ -93,7 +65,7 @@ export default async function AdminChannelOrdersPage({
       <AdminPageHeader
         eyebrow="Operate · Channels"
         title="Channel orders"
-        description="Every consumer order imported from creators' connected stores, platform-wide. Oversight only — creators resolve their own inbox; production orders live under Orders."
+        description="Every consumer order imported from creators' connected stores, platform-wide. Oversight only: creators resolve their own inbox; production orders live under Orders."
         actions={
           <Link href="/channels" className="rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50">
             ← Channel operations
@@ -142,12 +114,12 @@ export default async function AdminChannelOrdersPage({
                 <tr key={o.id} className="border-b border-ink-100 last:border-0 hover:bg-ink-50/50">
                   <td className="whitespace-nowrap px-3 py-2 text-ink-500">{o.placedAt.toISOString().slice(0, 16).replace('T', ' ')}</td>
                   <td className="px-3 py-2 font-semibold text-ink-900">{o.connection.channel.displayName}</td>
-                  <td className="px-3 py-2 text-ink-700">{o.connection.creator.name ?? o.connection.creator.email ?? '—'}</td>
+                  <td className="px-3 py-2 text-ink-700">{o.connection.creator.name ?? o.connection.creator.email ?? '-'}</td>
                   <td className="px-3 py-2 font-mono text-[11.5px] text-ink-600">{o.externalOrderId}</td>
                   <td className="px-3 py-2">
                     <StatusPill status={o.status} />
                     {o.manualConfirmRequired && (
-                      <span className="ml-1 rounded-full bg-info-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-info-700" title="Manual-confirm training wheels — awaiting creator approval">
+                      <span className="ml-1 rounded-full bg-info-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-info-700" title="Manual-confirm training wheels - awaiting creator approval">
                         confirm
                       </span>
                     )}
@@ -167,7 +139,7 @@ export default async function AdminChannelOrdersPage({
                         {o.productionOrderId.slice(0, 8)}…
                       </Link>
                     ) : (
-                      <span className="text-ink-300">—</span>
+                      <span className="text-ink-300">-</span>
                     )}
                   </td>
                 </tr>
@@ -176,7 +148,7 @@ export default async function AdminChannelOrdersPage({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-8 text-center text-ink-400">
-                  No channel orders{status ? ` with status ${status.replace(/_/g, ' ').toLowerCase()}` : ' yet — they appear once creators sync their stores (needs db:push)'}.
+                  No channel orders{status ? ` with status ${status.replace(/_/g, ' ').toLowerCase()}` : ' yet - they appear once creators sync their stores (needs db:push)'}.
                 </td>
               </tr>
             )}

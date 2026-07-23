@@ -36,7 +36,7 @@ import { ProofPanel, type ProofRoundView } from './ProofPanel'
 import { isProofRequired } from './proof-actions'
 import { ProductionLotsCard, type ProductionLotView } from './ProductionLotsCard'
 import { StorageReleasesCard, type StorageReleaseView } from './StorageReleasesCard'
-// F — job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3)
+// F: job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3)
 import { ProgressUpdatePanel } from './ProgressUpdatePanel'
 import { listProgressUpdates } from './progress-actions'
 import { getDispatchShippingContext } from './ship-requirements'
@@ -87,50 +87,25 @@ export default async function DispatchDetailPage({
   })
   if (!dispatch) notFound()
 
-  // Open quality dispute on this order (cast-guarded — OrderDispute is a
-  // pending-migration model). Surfaces a respond panel so the partner can add
-  // their side. Fail-safe to null so it never breaks the page.
-  const openDispute = await (
-    prisma as unknown as {
-      orderDispute: {
-        findFirst: (a: unknown) => Promise<{
-          id: string
-          category: string
-          description: string
-          partnerResponse: string | null
-        } | null>
-      }
-    }
-  ).orderDispute
-    .findFirst({
-      where: { orderId: dispatch.order.id, status: { in: ['OPEN', 'UNDER_REVIEW'] } },
-      select: { id: true, category: true, description: true, partnerResponse: true },
-    })
-    .catch(() => null)
+  // Open quality dispute on this order: surfaces a respond panel so the
+  // partner can add their side.
+  const openDispute = await prisma.orderDispute.findFirst({
+    where: { orderId: dispatch.order.id, status: { in: ['OPEN', 'UNDER_REVIEW'] } },
+    select: { id: true, category: true, description: true, partnerResponse: true },
+  })
 
   // C2.2 partner tagging (CHANNEL_MANAGEMENT_SPEC §3.4): channel-origin
   // on-demand dispatches are made to order for ONE consumer and ship DIRECT to
   // that consumer's address (the order's ship-to fields carry it). Resolution:
-  // ChannelOrder.productionOrderId soft back-ref (cast-guarded), internalNotes
-  // marker as the fallback. Best-effort: failure = untagged, never a crash.
-  const channelOrigin = await (
-    prisma as unknown as {
-      channelOrder?: {
-        findFirst: (a: unknown) => Promise<{
-          externalOrderId: string
-          connection: { channel: { displayName: string | null; code: string } }
-        } | null>
-      }
-    }
-  ).channelOrder
-    ?.findFirst({
-      where: { productionOrderId: dispatch.order.id },
-      select: {
-        externalOrderId: true,
-        connection: { select: { channel: { select: { displayName: true, code: true } } } },
-      },
-    })
-    .catch(() => null)
+  // ChannelOrder.productionOrderId soft back-ref, internalNotes marker as the
+  // multi-order fallback.
+  const channelOrigin = await prisma.channelOrder.findFirst({
+    where: { productionOrderId: dispatch.order.id },
+    select: {
+      externalOrderId: true,
+      connection: { select: { channel: { select: { displayName: true, code: true } } } },
+    },
+  })
   const isChannelOnDemand =
     !!channelOrigin || (dispatch.order.internalNotes ?? '').includes('ORIGIN: CHANNEL')
   const channelName = channelOrigin
@@ -192,7 +167,7 @@ export default async function DispatchDetailPage({
       }))
     : []
 
-  // P2 proof loop (D3) — rounds + requirement for LABEL jobs.
+  // P2 proof loop (D3): rounds + requirement for LABEL jobs.
   const proofRounds: ProofRoundView[] = isLabel
     ? (
         await prisma.proofRound.findMany({
@@ -217,7 +192,7 @@ export default async function DispatchDetailPage({
         annotation: r.annotation,
         createdAt: r.createdAt.toISOString(),
         decidedAt: r.decidedAt?.toISOString() ?? null,
-        url: `/api/ship-doc/${r.assetId}`, // proofs are PartnerFiles — same guarded route
+        url: `/api/ship-doc/${r.assetId}`, // proofs are PartnerFiles, same guarded route
       }))
     : []
   const proofRequired = isLabel
@@ -230,7 +205,7 @@ export default async function DispatchDetailPage({
     : false
   const proofCanUpload = ['ACCEPTED', 'PRODUCING', 'QUALITY_CHECK'].includes(dispatch.status)
 
-  // P2 lot traceability — output-lot records on producing dispatches (§3.2.B).
+  // P2 lot traceability: output-lot records on producing dispatches (§3.2.B).
   const productionLots: ProductionLotView[] = !isLabel
     ? (
         await prisma.productionLot.findMany({
@@ -271,7 +246,7 @@ export default async function DispatchDetailPage({
         : 'Manufacturing · Production dispatch'
   const titleFallback = isCopack ? 'Work order' : isLabel ? 'Print job' : 'Production dispatch'
 
-  // ---- Phase L1.1b — shipping requirements + doc gate ----------------------
+  // ---- Phase L1.1b: shipping requirements + doc gate -----------------------
   // Computed once server-side and shared with the action rail; the shipDispatch
   // action re-runs the same gate (never trust the client). Only relevant once
   // the dispatch is accepted and until it's delivered.
@@ -289,7 +264,7 @@ export default async function DispatchDetailPage({
     : null
 
   const canUploadShipDocs = shippingCtx !== null
-  // Evidence lock — no deletes once the goods have physically shipped.
+  // Evidence lock: no deletes once the goods have physically shipped.
   const canDeleteShipDocs =
     shippingCtx !== null && !['SHIPPED', 'IN_TRANSIT', 'DELIVERED'].includes(dispatch.status)
 
@@ -313,9 +288,9 @@ export default async function DispatchDetailPage({
     ? shippingCtx.documents.filter((d) => d.type === 'QC_PHOTO').map(toUploadedDoc)
     : []
 
-  // ---- Phase L2a — platform label purchase gate ----------------------------
+  // ---- Phase L2a: platform label purchase gate -----------------------------
   // Visible only when the EasyPost rail is admin-enabled AND the env key is
-  // configured (presence checked HERE server-side — the key itself never
+  // configured (presence checked HERE server-side; the key itself never
   // reaches the client) AND the doc gate passes. label-actions.ts re-checks
   // all of this server-side on every call; this boolean is UX only.
   const platformLabelEnabled =
@@ -324,8 +299,8 @@ export default async function DispatchDetailPage({
     Boolean(process.env.EASYPOST_API_KEY) &&
     (await isLogisticsEnabled('carrier:easypost'))
 
-  // ---- Phase L1.2a — storage releases (HOLD_AT_MANUFACTURER) ---------------
-  // The card renders only when this dispatch belongs to the STORING service —
+  // ---- Phase L1.2a: storage releases (HOLD_AT_MANUFACTURER) ----------------
+  // The card renders only when this dispatch belongs to the STORING service;
   // enforced by the partnerServiceId match in the query (a co-dispatched
   // printer never sees the storage queue), on top of the ownership guard the
   // dispatch query already ran.
@@ -453,7 +428,7 @@ export default async function DispatchDetailPage({
           >
             <Clock className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
             {overdue ? (
-              <span>Accept window passed {fmtDate(dispatch.acceptDeadlineAt)} — this may auto-reroute soon.</span>
+              <span>Accept window passed {fmtDate(dispatch.acceptDeadlineAt)}. This may auto-reroute soon.</span>
             ) : (
               <span>
                 Respond within <span className="font-semibold tabular-nums">{hrsLeft}h</span> · accept deadline{' '}
@@ -478,7 +453,7 @@ export default async function DispatchDetailPage({
               : dispatch.status === 'TIMED_OUT'
                 ? 'Auto-declined (no response in time)'
                 : dispatch.status === 'DECLINED'
-                  ? 'Declined — order rerouted'
+                  ? 'Declined: order rerouted'
                   : dispatch.status === 'CANCELLED'
                     ? 'Cancelled'
                     : 'Halted'
@@ -488,7 +463,7 @@ export default async function DispatchDetailPage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr,340px]">
         <div className="space-y-6">
-          {/* Quality dispute — partner's response panel (B.1) */}
+          {/* Quality dispute: partner's response panel (B.1) */}
           {openDispute && (
             <DisputeResponsePanel
               disputeId={openDispute.id}
@@ -498,7 +473,7 @@ export default async function DispatchDetailPage({
             />
           )}
 
-          {/* P2 role skins — print contract / component readiness */}
+          {/* P2 role skins: print contract / component readiness */}
           {isLabel && <PrintJobCard spec={printSpec} status={dispatch.status} />}
           {isLabel && (proofRequired || proofRounds.length > 0) && (
             <ProofPanel
@@ -513,7 +488,7 @@ export default async function DispatchDetailPage({
             <ProductionLotsCard dispatchId={dispatch.id} lots={productionLots} canRecord={canRecordLots} />
           )}
 
-          {/* F — job-progress capture: notes / revised ETA / milestones → creator timeline */}
+          {/* F, job-progress capture: notes / revised ETA / milestones to creator timeline */}
           <ProgressUpdatePanel
             dispatchId={dispatch.id}
             canPost={['ACCEPTED', 'PRODUCING', 'QUALITY_CHECK', 'READY', 'SHIPPED', 'IN_TRANSIT'].includes(dispatch.status)}
@@ -529,14 +504,14 @@ export default async function DispatchDetailPage({
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
               <Field label="Product" value={item?.product.name} />
               <Field label="Category" value={item?.product.category} />
-              <Field label="Quantity" value={item ? `${item.quantity.toLocaleString()} units` : '—'} />
+              <Field label="Quantity" value={item ? `${item.quantity.toLocaleString()} units` : '-'} />
               <Field
                 label="Unit price"
-                value={item ? `$${(item.unitPriceCents / 100).toFixed(2)}` : '—'}
+                value={item ? `$${(item.unitPriceCents / 100).toFixed(2)}` : '-'}
               />
               <Field
                 label="Order value"
-                value={item ? `$${((item.unitPriceCents * item.quantity) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                value={item ? `$${((item.unitPriceCents * item.quantity) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
               />
               <Field
                 label="Your payout"
@@ -551,13 +526,13 @@ export default async function DispatchDetailPage({
               {dispatch.acceptedManifestVersion != null &&
                 dispatch.acceptedManifestVersion !== dispatch.manifestVersion && (
                   <span className="font-medium text-warning-700">
-                    · you accepted v{dispatch.acceptedManifestVersion} — re-review the changes
+                    · you accepted v{dispatch.acceptedManifestVersion}: re-review the changes
                   </span>
                 )}
             </p>
           </section>
 
-          {/* Shipping requirements — doc gate + pre-departure QC (L1.1b) */}
+          {/* Shipping requirements: doc gate + pre-departure QC (L1.1b) */}
           {shippingCtx && (
             <ShipRequirementsCard
               dispatchId={dispatch.id}
@@ -572,7 +547,7 @@ export default async function DispatchDetailPage({
             />
           )}
 
-          {/* Storage releases — HOLD_AT_MANUFACTURER release queue (L1.2a) */}
+          {/* Storage releases: HOLD_AT_MANUFACTURER release queue (L1.2a) */}
           {storageAgreement && (
             <StorageReleasesCard
               dispatchId={dispatch.id}
@@ -602,7 +577,7 @@ export default async function DispatchDetailPage({
             status={dispatch.status}
           />
 
-          {/* Work packet — the role-scoped need-to-know slice (partner-order-packets).
+          {/* Work packet: the role-scoped need-to-know slice (partner-order-packets.
               New dispatches persist a RolePacket; legacy/ungenerated ones fall back to
               the full-manifest view. */}
           {dispatch.finishManifestJson &&
@@ -667,7 +642,7 @@ export default async function DispatchDetailPage({
                 ? {
                     canShip: shippingCtx.gate.canShip,
                     missingDocLabels: shippingCtx.gate.missing.map((t) => SHIP_DOC_LABELS[t]),
-                    // LABEL dispatches ship printed stock ambient — never show
+                    // LABEL dispatches ship printed stock ambient: never show
                     // the product's cold-chain fields on a label shipment.
                     storageClass: shippingCtx.docGateApplies ? shippingCtx.storageClass : 'AMBIENT',
                     mode: shippingCtx.mode,
@@ -823,7 +798,7 @@ function Field({
           mono ? 'font-mono text-[13px]' : ''
         }`}
       >
-        {value || '—'}
+        {value || '-'}
       </dd>
       {hint && <p className="mt-0.5 text-[10.5px] text-ink-400">{hint}</p>}
     </div>
@@ -844,9 +819,9 @@ function fmtShort(d: Date): string {
 }
 
 // ---------------------------------------------------------------------------
-// Phase L1.2a — defensive destinationJson readers. The column is Json (written
+// Phase L1.2a: defensive destinationJson readers. The column is Json (written
 // creator-side as an address snapshot; releases-actions.ts merges tracking in
-// at SHIPPED) — never trust its shape at read time.
+// at SHIPPED): never trust its shape at read time.
 // ---------------------------------------------------------------------------
 
 function summarizeReleaseDestination(v: unknown): string {
@@ -861,7 +836,7 @@ function summarizeReleaseDestination(v: unknown): string {
   const postal = str('postalCode')
   const place = [line1, [city, state].filter(Boolean).join(', '), postal].filter(Boolean).join(' · ')
   if (!contact && !place) return 'Creator address'
-  return [contact, place].filter(Boolean).join(' — ')
+  return [contact, place].filter(Boolean).join(' · ')
 }
 
 function summarizeReleaseTracking(v: unknown): string | null {

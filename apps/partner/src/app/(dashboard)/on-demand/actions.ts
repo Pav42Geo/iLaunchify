@@ -5,34 +5,13 @@
 // The LOCKED rule: a channel order in ON_DEMAND mode may only route to
 // production once THIS manufacturer has ENABLED on-demand for that creator
 // product (branding snapshot reviewed). These actions power the review queue.
-// OnDemandEnablement is cast-guarded (degrades before db:push); ownership is
-// verified against the partner's own service ids on every decision.
+// Ownership is verified against the partner's own service ids on every decision.
 
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { loadOnDemandEligibility, describeOnDemandIneligibility } from '@ilaunchify/orders'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
-
-type EnablementRow = {
-  id: string
-  creatorUserId: string
-  productId: string
-  manufacturerServiceId: string
-  status: string
-  brandingSnapshotJson: unknown
-  partnerNote: string | null
-  capacityPerDay: number | null
-  createdAt: Date
-  decidedAt: Date | null
-}
-type EnablementDelegate = {
-  findMany: (a: unknown) => Promise<EnablementRow[]>
-  findFirst: (a: unknown) => Promise<EnablementRow | null>
-  update: (a: unknown) => Promise<unknown>
-}
-const enablementDelegate = () =>
-  (prisma as unknown as { onDemandEnablement?: EnablementDelegate }).onDemandEnablement ?? null
 
 async function partnerServiceIds(userId: string): Promise<string[]> {
   const partner = await prisma.partner.findUnique({
@@ -60,22 +39,18 @@ export interface OnDemandRequestRow {
 }
 
 /** The partner's queue: pending first, then recent decisions. */
-export async function loadOnDemandRequests(): Promise<{ migrated: boolean; rows: OnDemandRequestRow[] }> {
+export async function loadOnDemandRequests(): Promise<{ rows: OnDemandRequestRow[] }> {
   const user = await requireUser()
-  const delegate = enablementDelegate()
-  if (!delegate) return { migrated: false, rows: [] }
   const serviceIds = await partnerServiceIds(user.id)
-  if (serviceIds.length === 0) return { migrated: true, rows: [] }
+  if (serviceIds.length === 0) return { rows: [] }
 
-  const rows = await delegate
-    .findMany({
-      where: { manufacturerServiceId: { in: serviceIds } },
-      orderBy: [{ decidedAt: 'asc' }, { createdAt: 'desc' }],
-      take: 100,
-    })
-    .catch(() => [] as EnablementRow[])
+  const rows = await prisma.onDemandEnablement.findMany({
+    where: { manufacturerServiceId: { in: serviceIds } },
+    orderBy: [{ decidedAt: 'asc' }, { createdAt: 'desc' }],
+    take: 100,
+  })
 
-  // Soft FKs → resolve names in bulk.
+  // Soft FKs: resolve names in bulk.
   const [products, creators] = await Promise.all([
     prisma.product.findMany({
       where: { id: { in: rows.map((r) => r.productId) } },
@@ -102,7 +77,6 @@ export async function loadOnDemandRequests(): Promise<{ migrated: boolean; rows:
   )
 
   return {
-    migrated: true,
     rows: rows.map((r, i) => {
       const snap = snapshots[i]
       return {
@@ -132,13 +106,10 @@ export async function decideOnDemandEnablement(input: {
   capacityPerDay?: number | null
 }): Promise<DecisionResult> {
   const user = await requireUser()
-  const delegate = enablementDelegate()
-  if (!delegate) return { ok: false, error: 'On-demand tables not migrated yet.' }
-
   const serviceIds = await partnerServiceIds(user.id)
-  const row = await delegate
-    .findFirst({ where: { id: input.enablementId, manufacturerServiceId: { in: serviceIds } } })
-    .catch(() => null)
+  const row = await prisma.onDemandEnablement.findFirst({
+    where: { id: input.enablementId, manufacturerServiceId: { in: serviceIds } },
+  })
   if (!row) return { ok: false, error: 'Request not found.' }
   if (row.status === 'ENABLED' && input.decision === 'ENABLED') return { ok: true }
 
@@ -169,7 +140,7 @@ export async function decideOnDemandEnablement(input: {
       ? Math.floor(input.capacityPerDay)
       : null
 
-  await delegate.update({
+  await prisma.onDemandEnablement.update({
     where: { id: row.id },
     data: {
       status: input.decision,
@@ -190,12 +161,12 @@ export async function decideOnDemandEnablement(input: {
 /** Pause a previously enabled product (partner-side kill switch). */
 export async function suspendOnDemandEnablement(enablementId: string, note?: string): Promise<DecisionResult> {
   const user = await requireUser()
-  const delegate = enablementDelegate()
-  if (!delegate) return { ok: false, error: 'On-demand tables not migrated yet.' }
   const serviceIds = await partnerServiceIds(user.id)
-  const row = await delegate.findFirst({ where: { id: enablementId, manufacturerServiceId: { in: serviceIds } } }).catch(() => null)
+  const row = await prisma.onDemandEnablement.findFirst({
+    where: { id: enablementId, manufacturerServiceId: { in: serviceIds } },
+  })
   if (!row) return { ok: false, error: 'Request not found.' }
-  await delegate.update({
+  await prisma.onDemandEnablement.update({
     where: { id: row.id },
     data: { status: 'SUSPENDED', partnerNote: note?.trim().slice(0, 500) || row.partnerNote, decidedAt: new Date() },
   })

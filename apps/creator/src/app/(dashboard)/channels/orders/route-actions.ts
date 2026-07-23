@@ -21,13 +21,6 @@ import { resolveChannelAdapter, applyLedgerEntry, type ChannelCode } from '@ilau
 import { recomputeStockAlert } from '../inventory/alerts'
 import { routeReadyChannelOrder, scanAndRouteForCreator, type RouterRunSummary } from './route-core'
 
-type AnyDelegate = {
-  findFirst?: (a: unknown) => Promise<Record<string, unknown> | null>
-  update?: (a: unknown) => Promise<unknown>
-  create?: (a: unknown) => Promise<Record<string, unknown>>
-}
-const d = (name: string): AnyDelegate | null => ((prisma as unknown as Record<string, AnyDelegate | undefined>)[name] ?? null)
-
 export type RouteNowResult =
   | { ok: true; orderIds: string[]; chargedCents: number }
   | { ok: false; parked?: 'ON_HOLD' | 'NEEDS_ATTENTION'; error: string }
@@ -71,28 +64,15 @@ export async function fulfillChannelOrder(input: {
   trackingUrl?: string
 }): Promise<FulfillResult> {
   const user = await requireUser()
-  const od = d('channelOrder')
-  if (!od?.findFirst || !od.update) return { ok: false, error: 'Channel-order tables not migrated yet.' }
   if (!input.carrier.trim() || !input.trackingNumber.trim()) return { ok: false, error: 'Carrier and tracking number are required.' }
 
-  const row = (await od
-    .findFirst({
-      where: { id: input.channelOrderId, connection: { creatorUserId: user.id } },
-      include: { lines: true, connection: { select: { id: true, externalAccountId: true, channel: { select: { code: true } } } } },
-    })
-    .catch(() => null)) as
-    | ({
-        id: string
-        status: string
-        manualConfirmRequired: boolean
-        externalOrderId: string
-        connection: { id: string; externalAccountId: string | null; channel: { code: string } }
-        lines: Array<{ channelVariantLinkId: string | null; quantity: number }>
-      } & Record<string, unknown>)
-    | null
+  const row = await prisma.channelOrder.findFirst({
+    where: { id: input.channelOrderId, connection: { creatorUserId: user.id } },
+    include: { lines: true, connection: { select: { id: true, externalAccountId: true, channel: { select: { code: true } } } } },
+  })
   if (!row) return { ok: false, error: 'Order not found.' }
   if (!['READY', 'ROUTED', 'IN_FULFILLMENT'].includes(row.status)) {
-    return { ok: false, error: `Order is ${row.status} — nothing to fulfill.` }
+    return { ok: false, error: `Order is ${row.status}: nothing to fulfill.` }
   }
   if (row.status === 'READY' && row.manualConfirmRequired) return { ok: false, error: 'Approve the order first.' }
 
@@ -107,55 +87,49 @@ export async function fulfillChannelOrder(input: {
       )
     } catch (err) {
       const detail = err instanceof Error ? err.message : 'fulfillment push failed'
-      await d('channelSyncEvent')
-        ?.create?.({ data: { channelConnectionId: row.connection.id, direction: 'PUSH', topic: 'fulfillment.push', outcome: 'ERROR', detail } })
+      await prisma.channelSyncEvent
+        .create({ data: { channelConnectionId: row.connection.id, direction: 'PUSH', topic: 'fulfillment.push', outcome: 'ERROR', detail } })
         .catch(() => {})
       return { ok: false, error: `Tracking push failed: ${detail}` }
     }
   }
 
-  // Convert reservations → sales for every BULK line with a pool (invariant-checked).
+  // Convert reservations to sales for every BULK line with a pool (invariant-checked).
   const touchedProducts = new Set<string>()
   for (const l of row.lines) {
     if (!l.channelVariantLinkId) continue
-    const vlink = await (
-      prisma as unknown as {
-        channelVariantLink: { findUnique: (a: unknown) => Promise<{ productId: string; channelProductLink: { mode?: string } } | null> }
-      }
-    ).channelVariantLink
-      .findUnique({ where: { id: l.channelVariantLinkId }, select: { productId: true, channelProductLink: { select: { mode: true } } } })
-      .catch(() => null)
+    const vlink = await prisma.channelVariantLink.findUnique({
+      where: { id: l.channelVariantLinkId },
+      select: { productId: true, channelProductLink: { select: { mode: true } } },
+    })
     if (!vlink || vlink.channelProductLink?.mode !== 'BULK') continue
-    const pool = await d('inventoryPool')
-      ?.findFirst?.({
-        where: { creatorUserId: user.id, productId: vlink.productId },
-        select: { id: true, quantityOnHand: true, quantityReserved: true },
-      })
-      .catch(() => null)
+    const pool = await prisma.inventoryPool.findFirst({
+      where: { creatorUserId: user.id, productId: vlink.productId },
+      select: { id: true, quantityOnHand: true, quantityReserved: true },
+    })
     if (!pool) continue
     const applied = applyLedgerEntry(
-      { onHand: Number(pool.quantityOnHand ?? 0), reserved: Number(pool.quantityReserved ?? 0) },
+      { onHand: pool.quantityOnHand, reserved: pool.quantityReserved },
       'CHANNEL_SALE',
       l.quantity,
     )
-    if (!applied.ok) continue // reservation drift — reconcile via replayLedger, never block fulfillment
-    await d('inventoryPool')
-      ?.update?.({ where: { id: String(pool.id) }, data: { quantityOnHand: applied.next.onHand, quantityReserved: applied.next.reserved } })
-      .catch(() => {})
-    await d('inventoryLedger')
-      ?.create?.({
-        data: { poolId: String(pool.id), kind: 'CHANNEL_SALE', delta: -l.quantity, channelOrderId: row.id, note: `fulfilled ${row.externalOrderId}` },
-      })
-      .catch(() => {})
+    if (!applied.ok) continue // reservation drift: reconcile via replayLedger, never block fulfillment
+    await prisma.inventoryPool.update({
+      where: { id: pool.id },
+      data: { quantityOnHand: applied.next.onHand, quantityReserved: applied.next.reserved },
+    })
+    await prisma.inventoryLedger.create({
+      data: { poolId: pool.id, kind: 'CHANNEL_SALE', delta: -l.quantity, channelOrderId: row.id, note: `fulfilled ${row.externalOrderId}` },
+    })
     touchedProducts.add(vlink.productId)
   }
 
-  // Stock consumed → recompute alert state per product; notifies on escalation (C6.3).
+  // Stock consumed -> recompute alert state per product; notifies on escalation (C6.3).
   for (const pid of touchedProducts) await recomputeStockAlert(user.id, pid)
 
-  await od.update({ where: { id: row.id }, data: { status: 'FULFILLED', statusReason: null, fulfilledAt: new Date() } })
-  await d('channelSyncEvent')
-    ?.create?.({
+  await prisma.channelOrder.update({ where: { id: row.id }, data: { status: 'FULFILLED', statusReason: null, fulfilledAt: new Date() } })
+  await prisma.channelSyncEvent
+    .create({
       data: {
         channelConnectionId: row.connection.id,
         direction: 'PUSH',
@@ -178,51 +152,44 @@ export async function fulfillChannelOrder(input: {
  *  available (RELEASE ledger) and closes the FSM leg. */
 export async function cancelChannelOrder(channelOrderId: string, reason?: string): Promise<FulfillResult> {
   const user = await requireUser()
-  const od = d('channelOrder')
-  if (!od?.findFirst || !od.update) return { ok: false, error: 'Channel-order tables not migrated yet.' }
-  const row = (await od
-    .findFirst({
-      where: { id: channelOrderId, connection: { creatorUserId: user.id } },
-      select: { id: true, status: true, externalOrderId: true },
-    })
-    .catch(() => null)) as { id: string; status: string; externalOrderId: string } | null
+  const row = await prisma.channelOrder.findFirst({
+    where: { id: channelOrderId, connection: { creatorUserId: user.id } },
+    select: { id: true, status: true, externalOrderId: true },
+  })
   if (!row) return { ok: false, error: 'Order not found.' }
   if (['FULFILLED', 'CLOSED', 'CANCELLED'].includes(row.status)) {
-    return { ok: false, error: `Order is ${row.status} — cannot cancel.` }
+    return { ok: false, error: `Order is ${row.status}: cannot cancel.` }
   }
 
   // Release reservations this order holds (ledger provenance query).
-  const reservations =
-    (await (
-      prisma as unknown as {
-        inventoryLedger?: { findMany: (a: unknown) => Promise<Array<{ poolId: string; delta: number }>> }
-      }
-    ).inventoryLedger
-      ?.findMany({ where: { channelOrderId: row.id, kind: 'RESERVATION' }, select: { poolId: true, delta: true } })
-      .catch(() => [])) ?? []
+  const reservations = await prisma.inventoryLedger.findMany({
+    where: { channelOrderId: row.id, kind: 'RESERVATION' },
+    select: { poolId: true, delta: true },
+  })
   const releasedProducts = new Set<string>()
   for (const r of reservations) {
-    const pool = await d('inventoryPool')
-      ?.findFirst?.({ where: { id: r.poolId }, select: { id: true, productId: true, quantityOnHand: true, quantityReserved: true } })
-      .catch(() => null)
+    const pool = await prisma.inventoryPool.findFirst({
+      where: { id: r.poolId },
+      select: { id: true, productId: true, quantityOnHand: true, quantityReserved: true },
+    })
     if (!pool) continue
     const applied = applyLedgerEntry(
-      { onHand: Number(pool.quantityOnHand ?? 0), reserved: Number(pool.quantityReserved ?? 0) },
+      { onHand: pool.quantityOnHand, reserved: pool.quantityReserved },
       'RELEASE',
       Math.abs(r.delta),
     )
     if (!applied.ok) continue
-    await d('inventoryPool')?.update?.({ where: { id: r.poolId }, data: { quantityReserved: applied.next.reserved } }).catch(() => {})
-    await d('inventoryLedger')
-      ?.create?.({ data: { poolId: r.poolId, kind: 'RELEASE', delta: -Math.abs(r.delta), channelOrderId: row.id, note: 'cancelled' } })
-      .catch(() => {})
-    if (typeof pool.productId === 'string') releasedProducts.add(pool.productId)
+    await prisma.inventoryPool.update({ where: { id: r.poolId }, data: { quantityReserved: applied.next.reserved } })
+    await prisma.inventoryLedger.create({
+      data: { poolId: r.poolId, kind: 'RELEASE', delta: -Math.abs(r.delta), channelOrderId: row.id, note: 'cancelled' },
+    })
+    releasedProducts.add(pool.productId)
   }
 
-  // Stock released → recompute; a release can be the recovery back to HEALTHY (C6.3).
+  // Stock released -> recompute; a release can be the recovery back to HEALTHY (C6.3).
   for (const pid of releasedProducts) await recomputeStockAlert(user.id, pid)
 
-  await od.update({
+  await prisma.channelOrder.update({
     where: { id: row.id },
     data: { status: 'CANCELLED', statusReason: reason?.trim().slice(0, 300) || 'Cancelled by creator' },
   })

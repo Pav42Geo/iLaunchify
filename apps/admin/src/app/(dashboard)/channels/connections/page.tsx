@@ -1,7 +1,6 @@
 // Admin → Channels → Connections & sync (CHANNEL_MANAGEMENT_SPEC §3.4, C0).
 // Admin-v2 surface: hero header + KPI strip + URL status chips + plain table +
-// recent ChannelSyncEvent log. ChannelSyncEvent / ChannelOrder counts are
-// cast-guarded so the page renders before `pnpm db:push`.
+// recent ChannelSyncEvent log.
 
 import Link from 'next/link'
 import { Plug, CheckCircle2, AlertTriangle, Activity, ShoppingBag } from 'lucide-react'
@@ -11,26 +10,11 @@ import { AdminPageHeader } from '@/components/AdminPageHeader'
 import { ConnectionForceDisconnect } from './ConnectionForceDisconnect'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Channel connections — Admin' }
+export const metadata = { title: 'Channel connections · Admin' }
 
 const STATUSES = ['CONNECTED', 'TOKEN_EXPIRED', 'ERROR', 'DISCONNECTED', 'NOT_CONNECTED'] as const
 type Status = (typeof STATUSES)[number]
 const PAGE_SIZE = 50
-
-type SyncEventRow = {
-  id: string
-  channelConnectionId: string
-  direction: string
-  topic: string
-  outcome: string
-  detail: string | null
-  createdAt: Date
-}
-const syncEventDelegate = () =>
-  (prisma as unknown as { channelSyncEvent?: { findMany: (a: unknown) => Promise<SyncEventRow[]>; count: (a?: unknown) => Promise<number> } })
-    .channelSyncEvent ?? null
-const channelOrderDelegate = () =>
-  (prisma as unknown as { channelOrder?: { count: (a?: unknown) => Promise<number> } }).channelOrder ?? null
 
 export default async function ChannelConnectionsPage({
   searchParams,
@@ -52,10 +36,8 @@ export default async function ChannelConnectionsPage({
     prisma.channelConnection.count({ where: status ? { status } : undefined }),
     prisma.channelConnection.count({ where: { status: 'CONNECTED' } }),
     prisma.channelConnection.count({ where: { status: { in: ['TOKEN_EXPIRED', 'ERROR'] } } }),
-    syncEventDelegate()
-      ?.findMany({ orderBy: { createdAt: 'desc' }, take: 20 })
-      .catch(() => [] as SyncEventRow[]) ?? Promise.resolve([] as SyncEventRow[]),
-    channelOrderDelegate()?.count().catch(() => 0) ?? Promise.resolve(0),
+    prisma.channelSyncEvent.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }),
+    prisma.channelOrder.count(),
   ])
 
   const errorEvents = syncEvents.filter((e) => e.outcome === 'ERROR').length
@@ -112,13 +94,13 @@ export default async function ChannelConnectionsPage({
             {connections.map((c) => (
               <tr key={c.id} className="border-b border-ink-100 last:border-0 hover:bg-ink-50/50">
                 <td className="px-3 py-2 font-semibold text-ink-900">{c.channel.displayName}</td>
-                <td className="px-3 py-2 text-ink-700">{c.creator.name ?? c.creator.email ?? '—'}</td>
-                <td className="px-3 py-2 font-mono text-[11.5px] text-ink-600">{c.externalAccountId ?? '—'}</td>
+                <td className="px-3 py-2 text-ink-700">{c.creator.name ?? c.creator.email ?? '-'}</td>
+                <td className="px-3 py-2 font-mono text-[11.5px] text-ink-600">{c.externalAccountId ?? '-'}</td>
                 <td className="px-3 py-2">
                   <StatusPill status={c.status} />
                 </td>
-                <td className="px-3 py-2 text-ink-500">{c.connectedAt ? c.connectedAt.toISOString().slice(0, 10) : '—'}</td>
-                <td className="px-3 py-2 text-ink-500">{c.lastSyncAt ? c.lastSyncAt.toISOString().slice(0, 16).replace('T', ' ') : '—'}</td>
+                <td className="px-3 py-2 text-ink-500">{c.connectedAt ? c.connectedAt.toISOString().slice(0, 10) : '-'}</td>
+                <td className="px-3 py-2 text-ink-500">{c.lastSyncAt ? c.lastSyncAt.toISOString().slice(0, 16).replace('T', ' ') : '-'}</td>
                 <td className="px-3 py-2 text-right">
                   {c.status !== 'DISCONNECTED' && c.status !== 'NOT_CONNECTED' ? (
                     <ConnectionForceDisconnect
@@ -126,7 +108,7 @@ export default async function ChannelConnectionsPage({
                       label={`${c.channel.displayName} · ${c.creator.name ?? c.creator.email ?? c.id}`}
                     />
                   ) : (
-                    <span className="text-ink-300">—</span>
+                    <span className="text-ink-300">-</span>
                   )}
                 </td>
               </tr>
@@ -193,13 +175,13 @@ export default async function ChannelConnectionsPage({
                       {e.outcome}
                     </span>
                   </td>
-                  <td className="max-w-[360px] truncate px-3 py-2 text-ink-500">{e.detail ?? '—'}</td>
+                  <td className="max-w-[360px] truncate px-3 py-2 text-ink-500">{e.detail ?? '-'}</td>
                 </tr>
               ))}
               {syncEvents.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-3 py-8 text-center text-ink-400">
-                    No sync events yet — they appear once listings push or orders import (needs db:push).
+                    No sync events yet - they appear once listings push or orders import (needs db:push).
                   </td>
                 </tr>
               )}

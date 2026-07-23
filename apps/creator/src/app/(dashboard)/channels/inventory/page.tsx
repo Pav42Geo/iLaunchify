@@ -20,10 +20,14 @@ import {
 } from '@ilaunchify/channels'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Stock & replenishment — iLaunchify' }
+export const metadata = { title: 'Stock & replenishment · iLaunchify' }
 
-// Knobs come from admin OrderSettings (§3.5a; C6.3) — defaults 3/7/45 until tuned.
-const IN_FLIGHT_STATUSES = ['PENDING_ACCEPT', 'ACCEPTED', 'PRODUCING', 'READY', 'SHIPPED', 'IN_TRANSIT']
+// Knobs come from admin OrderSettings (§3.5a; C6.3): defaults 3/7/45 until tuned.
+// Production orders still on their way to stock. NOTE (burndown 2026-07-22):
+// this list previously held DISPATCH statuses (PENDING_ACCEPT/PRODUCING/...)
+// passed through an `as never[]` cast, so Prisma rejected the query at runtime.
+// These are the real OrderStatus values between payment and delivery.
+const IN_FLIGHT_STATUSES = ['PAID', 'ROUTING', 'IN_FULFILLMENT', 'READY_TO_SHIP', 'SHIPPED', 'IN_TRANSIT'] as const
 
 const STATE_ORDER: Record<StockAlertState, number> = { STOCKOUT: 0, CRITICAL: 1, LOW: 2, HEALTHY: 3 }
 const STATE_TONE: Record<StockAlertState, string> = {
@@ -55,52 +59,43 @@ export default async function StockReplenishmentPage() {
   const SAFETY_DAYS = settings.channelSafetyStockDays
   const TARGET_DAYS_OF_COVER = settings.channelTargetDaysOfCover
 
-  // Pools (cast-guarded — page renders a helpful empty state pre-db:push).
-  const pools =
-    (await (
-      prisma as unknown as {
-        inventoryPool?: {
-          findMany: (a: unknown) => Promise<Array<{ productId: string; quantityOnHand: number; quantityReserved: number }>>
-        }
-      }
-    ).inventoryPool
-      ?.findMany({ where: { creatorUserId: user.id }, select: { productId: true, quantityOnHand: true, quantityReserved: true } })
-      .catch(() => [])) ?? []
+  const pools = await prisma.inventoryPool.findMany({
+    where: { creatorUserId: user.id },
+    select: { productId: true, quantityOnHand: true, quantityReserved: true },
+  })
 
   // Sales velocity inputs: mapped channel-order lines from the trailing 30 days.
   const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
   const since7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const lines =
-    (await (
-      prisma as unknown as {
-        channelOrderLine?: {
-          findMany: (a: unknown) => Promise<
-            Array<{ quantity: number; channelOrder: { placedAt: Date }; channelVariantLink: { productId: string } | null }>
-          >
-        }
-      }
-    ).channelOrderLine
-      ?.findMany({
-        where: {
-          channelVariantLinkId: { not: null },
-          channelOrder: {
-            connection: { creatorUserId: user.id },
-            placedAt: { gte: since30 },
-            status: { notIn: ['CANCELLED'] },
-          },
-        },
-        select: {
-          quantity: true,
-          channelOrder: { select: { placedAt: true } },
-          channelVariantLink: { select: { productId: true } },
-        },
-      })
-      .catch(() => [])) ?? []
+  const lines = await prisma.channelOrderLine.findMany({
+    where: {
+      channelVariantLinkId: { not: null },
+      channelOrder: {
+        connection: { creatorUserId: user.id },
+        placedAt: { gte: since30 },
+        status: { notIn: ['CANCELLED'] },
+      },
+    },
+    select: {
+      quantity: true,
+      channelVariantLinkId: true,
+      channelOrder: { select: { placedAt: true } },
+    },
+  })
+  // ChannelVariantLink.productId is a SOFT FK (no relation on the line):
+  // batch-resolve link -> product. NOTE (burndown 2026-07-22): the old
+  // cast-guarded read nest-selected a nonexistent relation; Prisma rejected it
+  // at runtime and the .catch faked [] so this page always showed zero sales.
+  const lineLinkIds = [...new Set(lines.map((l) => l.channelVariantLinkId).filter((x): x is string => !!x))]
+  const lineLinks = lineLinkIds.length
+    ? await prisma.channelVariantLink.findMany({ where: { id: { in: lineLinkIds } }, select: { id: true, productId: true } })
+    : []
+  const productByLink = new Map(lineLinks.map((l) => [l.id, l.productId]))
 
   const sales7 = new Map<string, number>()
   const sales30 = new Map<string, number>()
   for (const l of lines) {
-    const pid = l.channelVariantLink?.productId
+    const pid = l.channelVariantLinkId ? productByLink.get(l.channelVariantLinkId) : undefined
     if (!pid) continue
     sales30.set(pid, (sales30.get(pid) ?? 0) + l.quantity)
     if (l.channelOrder.placedAt >= since7) sales7.set(pid, (sales7.get(pid) ?? 0) + l.quantity)
@@ -113,7 +108,7 @@ export default async function StockReplenishmentPage() {
       <Shell>
         <p className="rounded-xl border border-dashed border-ink-200 bg-ink-50 px-4 py-10 text-center text-[12.5px] text-ink-500">
           <PackageSearch className="mx-auto mb-2 h-5 w-5 text-ink-300" />
-          Nothing to track yet — stock appears here once you record a delivery or channel sales start flowing.
+          Nothing to track yet: stock appears here once you record a delivery or channel sales start flowing.
         </p>
       </Shell>
     )
@@ -129,7 +124,7 @@ export default async function StockReplenishmentPage() {
       },
     }),
     prisma.orderItem.findMany({
-      where: { productId: { in: productIds }, order: { creatorUserId: user.id, status: { in: IN_FLIGHT_STATUSES as never[] } } },
+      where: { productId: { in: productIds }, order: { creatorUserId: user.id, status: { in: [...IN_FLIGHT_STATUSES] } } },
       select: { productId: true, quantity: true },
     }),
   ])
@@ -172,7 +167,7 @@ export default async function StockReplenishmentPage() {
     <Shell>
       {urgent > 0 && (
         <div className="flex items-center gap-2 rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-[12.5px] text-danger-800">
-          <AlertTriangle className="h-4 w-4 shrink-0" /> {urgent} product{urgent === 1 ? '' : 's'} need immediate attention —
+          <AlertTriangle className="h-4 w-4 shrink-0" /> {urgent} product{urgent === 1 ? '' : 's'} need immediate attention:
           reorders placed today may not arrive before stockout.
         </div>
       )}
@@ -203,8 +198,8 @@ export default async function StockReplenishmentPage() {
                   {r.available}
                   {r.reserved > 0 && <span className="text-[10.5px] text-ink-400"> (+{r.reserved} rsv)</span>}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums text-ink-600">{r.onOrder || '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-ink-600">{r.velocity > 0 ? r.velocity.toFixed(1) : '—'}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-ink-600">{r.onOrder || '-'}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-ink-600">{r.velocity > 0 ? r.velocity.toFixed(1) : '-'}</td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   {Number.isFinite(r.cover) ? `${Math.floor(r.cover)}d` : '∞'}
                   <span className="text-[10.5px] text-ink-400"> / {r.leadDays}d lead</span>
@@ -215,10 +210,10 @@ export default async function StockReplenishmentPage() {
                       {r.reorderByIso.slice(0, 10)}
                     </span>
                   ) : (
-                    '—'
+                    '-'
                   )}
                 </td>
-                <td className="px-3 py-2 text-right font-semibold tabular-nums text-ink-900">{r.suggestedQty || '—'}</td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums text-ink-900">{r.suggestedQty || '-'}</td>
                 <td className="px-3 py-2 text-right">
                   {r.suggestedQty > 0 && (
                     <Link
@@ -251,7 +246,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <TrendingUp className="h-5 w-5 text-pink-600" /> Stock &amp; replenishment
         </h1>
         <p className="mt-1 text-[13.5px] text-ink-600">
-          One shared inventory across every channel — with honest math on when to reorder so you never go dark.
+          One shared inventory across every channel, with honest math on when to reorder so you never go dark.
         </p>
       </div>
       {children}

@@ -2,14 +2,14 @@
 //
 // Daily sweep: recompute the stock-alert state for EVERY inventory pool
 // (CHANNEL_MANAGEMENT_SPEC §3.5a, C6.4). The mutation hooks (ingest / fulfill /
-// cancel / intake) catch stock CHANGES — this catches TIME: a pool whose stock
+// cancel / intake) catch stock CHANGES; this catches TIME: a pool whose stock
 // sits still while sales velocity keeps running drifts into LOW/CRITICAL with
 // no mutation to trigger the alert. shouldNotify still gates every ping to one
 // per transition, so re-running the sweep is always safe (idempotent by design).
 //
 // Auth: shared CRON_SECRET in the Authorization header (same as tier-dunning).
 //
-// Schedule (apps/creator/vercel.json) — daily 7am, before the workday:
+// Schedule (apps/creator/vercel.json), daily 7am, before the workday:
 //   { "path": "/api/cron/stock-alerts", "schedule": "0 7 * * *" }
 //
 // Manual test:
@@ -24,7 +24,7 @@ export const runtime = 'nodejs'
 // The sweep is sequential on purpose (bounded DB pressure); allow headroom.
 export const maxDuration = 300
 
-const SWEEP_CAP = 2000 // safety valve — revisit with a cursor once pools exceed this
+const SWEEP_CAP = 2000 // safety valve: revisit with a cursor once pools exceed this
 
 export async function POST(req: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -33,15 +33,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Cast-guarded: pre-db:push there are no pools and the sweep is a no-op.
-  const pools =
-    (await (
-      prisma as unknown as {
-        inventoryPool?: { findMany: (a: unknown) => Promise<Array<{ creatorUserId: string; productId: string }>> }
-      }
-    ).inventoryPool
-      ?.findMany({ select: { creatorUserId: true, productId: true }, take: SWEEP_CAP })
-      .catch(() => [])) ?? []
+  const pools = await prisma.inventoryPool.findMany({
+    select: { creatorUserId: true, productId: true },
+    take: SWEEP_CAP,
+  })
 
   // Dedupe creator×product (multiple storage locations share one alert).
   const seen = new Set<string>()

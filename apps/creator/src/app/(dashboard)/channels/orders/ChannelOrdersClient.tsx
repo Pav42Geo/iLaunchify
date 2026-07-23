@@ -2,7 +2,7 @@
 
 // Channel-orders inbox client (C2.1): status-chip filtering, Sync now (pull via
 // the adapter seam), approve for manual-confirm holds. Reload-after-action keeps
-// it simple — volumes are small at this stage.
+// it simple: volumes are small at this stage.
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
@@ -38,7 +38,7 @@ const STATUS_TONE: Record<string, string> = {
   MAPPED: 'bg-ink-100 text-ink-600',
 }
 
-export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrderRow[]; migrated: boolean }) {
+export function ChannelOrdersClient({ initial }: { initial: ChannelOrderRow[] }) {
   const router = useRouter()
   const [filter, setFilter] = React.useState<(typeof FILTERS)[number]>('ALL')
   const [syncing, setSyncing] = React.useState(false)
@@ -57,7 +57,7 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
       flash(
         s.errors.length > 0
           ? `Sync finished with issues: ${s.errors[0]}`
-          : `Synced — ${s.imported} new (${s.ready} ready · ${s.onHold} on hold · ${s.needsAttention} need attention).`,
+          : `Synced: ${s.imported} new (${s.ready} ready · ${s.onHold} on hold · ${s.needsAttention} need attention).`,
       )
       router.refresh()
     } finally {
@@ -84,7 +84,7 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
     setBusyId(id)
     try {
       const res = await fulfillChannelOrder({ channelOrderId: id, carrier, trackingNumber })
-      flash(res.ok ? 'Fulfilled — tracking pushed to the channel, stock updated.' : res.error)
+      flash(res.ok ? 'Fulfilled: tracking pushed to the channel, stock updated.' : res.error)
       router.refresh()
     } finally {
       setBusyId(null)
@@ -97,7 +97,7 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
     setBusyId(id)
     try {
       const res = await cancelChannelOrder(id, reason || undefined)
-      flash(res.ok ? 'Cancelled — reserved stock released.' : res.error)
+      flash(res.ok ? 'Cancelled: reserved stock released.' : res.error)
       router.refresh()
     } finally {
       setBusyId(null)
@@ -139,12 +139,6 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
 
   return (
     <div className="space-y-4">
-      {!migrated && (
-        <div className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[12.5px] text-warning-800">
-          Channel-order tables aren’t migrated yet — run <code>pnpm db:push</code> and restart to activate the inbox.
-        </div>
-      )}
-
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1.5">
           {FILTERS.map((f) => (
@@ -162,7 +156,7 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
         <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => void runRouter()}
-            disabled={syncing || !migrated}
+            disabled={syncing}
             title="Route every ready order to production now (auto-billed). Held orders retry too."
             className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50 disabled:opacity-50"
           >
@@ -170,7 +164,7 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
           </button>
           <button
             onClick={() => void syncNow()}
-            disabled={syncing || !migrated}
+            disabled={syncing}
             className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-ink-800 disabled:opacity-50"
           >
             {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Sync now
@@ -257,7 +251,7 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
                     <button
                       onClick={() => void fulfill(o.id)}
                       disabled={busyId === o.id}
-                      title="From stock: enter tracking — pushes to the channel + updates inventory"
+                      title="From stock: enter tracking, pushes to the channel + updates inventory"
                       className="inline-flex items-center gap-1.5 rounded-full border border-ink-300 px-3 py-1.5 text-[11.5px] font-semibold text-ink-800 hover:bg-ink-50 disabled:opacity-50"
                     >
                       Mark fulfilled (self-ship)
@@ -277,7 +271,7 @@ export function ChannelOrdersClient({ initial, migrated }: { initial: ChannelOrd
         ))}
         {shown.length === 0 && (
           <p className="rounded-xl border border-dashed border-ink-200 bg-ink-50 px-4 py-8 text-center text-[12.5px] text-ink-500">
-            {filter === 'ALL' ? 'No channel orders yet — hit Sync now once a listing is live.' : 'Nothing with this status.'}
+            {filter === 'ALL' ? 'No channel orders yet: hit Sync now once a listing is live.' : 'Nothing with this status.'}
           </p>
         )}
       </div>

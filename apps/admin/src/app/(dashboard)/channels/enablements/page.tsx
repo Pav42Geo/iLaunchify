@@ -1,9 +1,9 @@
 // Admin → Channels → On-demand enablements (CHANNEL_MANAGEMENT_SPEC §3.4
 // oversight). Every creator×product×manufacturer on-demand approval across the
-// platform — the gate that decides whether a channel sale may auto-route into
+// platform: the gate that decides whether a channel sale may auto-route into
 // production. Read-only oversight: manufacturers decide in their partner queue;
 // this page answers "where is enablement stuck platform-wide?".
-// OnDemandEnablement uses soft FKs — names batch-resolved. Cast-guarded.
+// OnDemandEnablement uses soft FKs: names batch-resolved.
 
 import Link from 'next/link'
 import { Zap, Clock4, CheckCircle2, XCircle, PauseCircle } from 'lucide-react'
@@ -12,29 +12,11 @@ import { cn } from '@ilaunchify/ui'
 import { AdminPageHeader } from '@/components/AdminPageHeader'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'On-demand enablements — Admin' }
+export const metadata = { title: 'On-demand enablements · Admin' }
 
 const STATUSES = ['REQUESTED', 'ENABLED', 'DECLINED', 'SUSPENDED'] as const
 type Status = (typeof STATUSES)[number]
 const PAGE_SIZE = 50
-
-type EnablementRow = {
-  id: string
-  creatorUserId: string
-  productId: string
-  manufacturerServiceId: string
-  status: string
-  partnerNote: string | null
-  capacityPerDay: number | null
-  decidedAt: Date | null
-  createdAt: Date
-}
-type Delegate = {
-  findMany?: (a: unknown) => Promise<EnablementRow[]>
-  count?: (a?: unknown) => Promise<number>
-  groupBy?: (a: unknown) => Promise<Array<{ status: string; _count: { _all: number } }>>
-}
-const enablementDelegate = () => ((prisma as unknown as { onDemandEnablement?: Delegate }).onDemandEnablement ?? null)
 
 export default async function AdminEnablementsPage({
   searchParams,
@@ -44,22 +26,22 @@ export default async function AdminEnablementsPage({
   const sp = await searchParams
   const status = STATUSES.includes(sp.status as Status) ? (sp.status as Status) : undefined
   const page = Math.max(1, Number(sp.page) || 1)
-  const en = enablementDelegate()
 
   const [rows, total, groups] = await Promise.all([
-    en
-      ?.findMany?.({
-        where: status ? { status } : undefined,
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      })
-      .catch(() => [] as EnablementRow[]) ?? Promise.resolve([] as EnablementRow[]),
-    en?.count?.({ where: status ? { status } : undefined }).catch(() => 0) ?? Promise.resolve(0),
-    en?.groupBy?.({ by: ['status'], _count: { _all: true } }).catch(() => []) ?? Promise.resolve([]),
+    prisma.onDemandEnablement.findMany({
+      // CHECK 14 waiver: deliberately NOT scoped by manufacturerServiceId. This
+      // is the read-only ADMIN oversight of every manufacturer's queue; no
+      // consent-gate decision is made from this read.
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.onDemandEnablement.count({ where: status ? { status } : undefined }),
+    prisma.onDemandEnablement.groupBy({ by: ['status'], _count: { _all: true } }),
   ])
 
-  // Batch-resolve the soft FKs → display names.
+  // Batch-resolve the soft FKs to display names.
   const [users, products, services] = await Promise.all([
     rows.length
       ? prisma.user.findMany({
@@ -95,7 +77,7 @@ export default async function AdminEnablementsPage({
       <AdminPageHeader
         eyebrow="Operate · Channels"
         title="On-demand enablements"
-        description="Manufacturer approvals for on-demand channel selling, platform-wide. Manufacturers decide in their partner queue — use this to spot requests going stale and nudge."
+        description="Manufacturer approvals for on-demand channel selling, platform-wide. Manufacturers decide in their partner queue; use this to spot requests going stale and nudge."
         actions={
           <Link href="/channels" className="rounded-full border border-ink-300 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 hover:bg-ink-50">
             ← Channel operations
@@ -145,7 +127,7 @@ export default async function AdminEnablementsPage({
                   <td className="whitespace-nowrap px-3 py-2 text-ink-500">
                     {r.createdAt.toISOString().slice(0, 10)}
                     {stale && (
-                      <span className="ml-1 rounded-full bg-warning-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-warning-700" title="Requested more than 3 days ago — creator is blocked">
+                      <span className="ml-1 rounded-full bg-warning-50 px-1.5 py-0.5 text-[9.5px] font-bold uppercase text-warning-700" title="Requested more than 3 days ago - creator is blocked">
                         stale
                       </span>
                     )}
@@ -156,10 +138,10 @@ export default async function AdminEnablementsPage({
                   <td className="px-3 py-2">
                     <StatusPill status={r.status} />
                   </td>
-                  <td className="px-3 py-2 tabular-nums text-ink-700">{r.capacityPerDay ?? '—'}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-ink-500">{r.decidedAt ? r.decidedAt.toISOString().slice(0, 10) : '—'}</td>
+                  <td className="px-3 py-2 tabular-nums text-ink-700">{r.capacityPerDay ?? '-'}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-ink-500">{r.decidedAt ? r.decidedAt.toISOString().slice(0, 10) : '-'}</td>
                   <td className="max-w-[240px] truncate px-3 py-2 text-ink-500" title={r.partnerNote ?? undefined}>
-                    {r.partnerNote ?? '—'}
+                    {r.partnerNote ?? '-'}
                   </td>
                 </tr>
               )
@@ -167,7 +149,7 @@ export default async function AdminEnablementsPage({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-3 py-8 text-center text-ink-400">
-                  No enablement requests{status ? ` with status ${status.toLowerCase()}` : ' yet — they appear when creators request on-demand selling (needs db:push)'}.
+                  No enablement requests{status ? ` with status ${status.toLowerCase()}` : ' yet - they appear when creators request on-demand selling (needs db:push)'}.
                 </td>
               </tr>
             )}

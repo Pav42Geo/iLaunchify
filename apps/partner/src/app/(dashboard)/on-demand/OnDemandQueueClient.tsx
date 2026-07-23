@@ -19,11 +19,9 @@ const STATUS_TONE: Record<string, string> = {
 export function OnDemandQueueClient({
   pending,
   decided,
-  migrated,
 }: {
   pending: OnDemandRequestRow[]
   decided: OnDemandRequestRow[]
-  migrated: boolean
 }) {
   const router = useRouter()
   const [busyId, setBusyId] = React.useState<string | null>(null)
@@ -38,7 +36,7 @@ export function OnDemandQueueClient({
     let note: string | undefined
     let capacity: number | null = null
     if (decision === 'DECLINED') {
-      note = window.prompt(`Decline "${row.productName}" — add a short reason for the creator:`) ?? undefined
+      note = window.prompt(`Decline "${row.productName}": add a short reason for the creator:`) ?? undefined
       if (note === undefined) return // cancelled
     } else {
       const cap = window.prompt('Optional: max on-demand units per day (leave empty for no cap):', '')
@@ -74,11 +72,6 @@ export function OnDemandQueueClient({
 
   return (
     <div className="space-y-5">
-      {!migrated && (
-        <div className="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-[12.5px] text-warning-800">
-          On-demand tables aren’t migrated yet — run <code>pnpm db:push</code> to activate this queue.
-        </div>
-      )}
       {notice && <div className="rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-[12.5px] font-medium text-pink-900">{notice}</div>}
 
       <section className="space-y-2">

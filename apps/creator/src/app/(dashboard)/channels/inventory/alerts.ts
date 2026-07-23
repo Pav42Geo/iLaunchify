@@ -8,11 +8,11 @@
 //
 // Knobs come from admin OrderSettings (§3.4a philosophy: everything tunable).
 // Notifications go through dispatchNotification (event: CREATOR_STOCK_ALERT), so
-// the alert picks up preference/quiet-hours/email fan-out for free — see the
+// the alert picks up preference/quiet-hours/email fan-out for free: see the
 // template case in packages/notifications/src/templates.ts.
 //
-// Every read/write is cast-guarded and the whole helper never throws — an alert
-// must never break the money/inventory mutation it piggybacks on.
+// The whole helper never throws: an alert must never break the money/inventory
+// mutation it piggybacks on.
 
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { dispatchNotification } from '@ilaunchify/notifications'
@@ -26,28 +26,23 @@ import {
   type StockAlertState,
 } from '@ilaunchify/channels'
 
-type AnyDelegate = {
-  findFirst?: (a: unknown) => Promise<Record<string, unknown> | null>
-  findMany?: (a: unknown) => Promise<Array<Record<string, unknown>>>
-  create?: (a: unknown) => Promise<unknown>
-  update?: (a: unknown) => Promise<unknown>
-}
-const d = (name: string): AnyDelegate | null =>
-  ((prisma as unknown as Record<string, AnyDelegate | undefined>)[name] ?? null)
-
-const IN_FLIGHT_STATUSES = ['PENDING_ACCEPT', 'ACCEPTED', 'PRODUCING', 'READY', 'SHIPPED', 'IN_TRANSIT']
+// Production orders still on their way to stock. NOTE (burndown 2026-07-22):
+// this list previously held DISPATCH statuses (PENDING_ACCEPT/PRODUCING/...)
+// passed through an `as never[]` cast, so Prisma rejected the query at runtime.
+// These are the real OrderStatus values between payment and delivery.
+const IN_FLIGHT_STATUSES = ['PAID', 'ROUTING', 'IN_FULFILLMENT', 'READY_TO_SHIP', 'SHIPPED', 'IN_TRANSIT'] as const
 
 function alertCopy(state: StockAlertState, name: string, ctx: { available: number; cover: number; leadDays: number; suggestedQty: number }): { title: string; body: string } {
   switch (state) {
     case 'STOCKOUT':
       return {
         title: `${name} is out of stock`,
-        body: `Available stock hit 0 — new channel sales can no longer reserve inventory. Suggested reorder: ${ctx.suggestedQty} units.`,
+        body: `Available stock hit 0: new channel sales can no longer reserve inventory. Suggested reorder: ${ctx.suggestedQty} units.`,
       }
     case 'CRITICAL':
       return {
         title: `${name} will run out before a reorder can arrive`,
-        body: `${Math.floor(ctx.cover)} days of cover left vs a ${ctx.leadDays}-day lead time. Reorder now — suggested ${ctx.suggestedQty} units.`,
+        body: `${Math.floor(ctx.cover)} days of cover left vs a ${ctx.leadDays}-day lead time. Reorder now, suggested ${ctx.suggestedQty} units.`,
       }
     case 'LOW':
       return {
@@ -66,25 +61,29 @@ function alertCopy(state: StockAlertState, name: string, ctx: { available: numbe
 /** Recompute the alert state for one creator×product and notify on transition. */
 export async function recomputeStockAlert(creatorUserId: string, productId: string): Promise<void> {
   try {
-    const pool = await d('inventoryPool')
-      ?.findFirst?.({
-        where: { creatorUserId, productId },
-        select: { id: true, quantityOnHand: true, quantityReserved: true, alertState: true },
-      })
-      .catch(() => null)
+    const pool = await prisma.inventoryPool.findFirst({
+      where: { creatorUserId, productId },
+      select: { id: true, quantityOnHand: true, quantityReserved: true, alertState: true },
+    })
     if (!pool) return
 
-    const available = Math.max(0, Number(pool.quantityOnHand ?? 0) - Number(pool.quantityReserved ?? 0))
+    const available = Math.max(0, pool.quantityOnHand - pool.quantityReserved)
 
     // Velocity from mapped channel-order lines, trailing 30 days (same ground
     // truth as the Stock & replenishment page).
     const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
     const since7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    const lines =
-      (await d('channelOrderLine')
-        ?.findMany?.({
+    // ChannelVariantLink.productId is a SOFT FK (no relation on the line), so
+    // resolve link ids first. NOTE (burndown 2026-07-22): the old cast-guarded
+    // read filtered on a `channelVariantLink` relation that does not exist;
+    // Prisma rejected it at runtime and the .catch faked an empty result, so
+    // velocity here was silently ALWAYS 0.
+    const linkRows = await prisma.channelVariantLink.findMany({ where: { productId }, select: { id: true } })
+    const linkIds = linkRows.map((l) => l.id)
+    const lines = linkIds.length
+      ? await prisma.channelOrderLine.findMany({
           where: {
-            channelVariantLink: { productId },
+            channelVariantLinkId: { in: linkIds },
             channelOrder: {
               connection: { creatorUserId },
               placedAt: { gte: since30 },
@@ -93,13 +92,12 @@ export async function recomputeStockAlert(creatorUserId: string, productId: stri
           },
           select: { quantity: true, channelOrder: { select: { placedAt: true } } },
         })
-        .catch(() => [])) ?? []
+      : []
     let units7 = 0
     let units30 = 0
     for (const l of lines) {
-      const qty = Number(l.quantity ?? 0)
-      units30 += qty
-      if ((l.channelOrder as { placedAt?: Date } | undefined)?.placedAt && (l.channelOrder as { placedAt: Date }).placedAt >= since7) units7 += qty
+      units30 += l.quantity
+      if (l.channelOrder.placedAt >= since7) units7 += l.quantity
     }
     const velocity = blendedVelocity({ unitsLast7: units7, unitsLast30: units30 })
 
@@ -113,7 +111,7 @@ export async function recomputeStockAlert(creatorUserId: string, productId: stri
       }),
       getOrderSettings(),
       prisma.orderItem.findMany({
-        where: { productId, order: { creatorUserId, status: { in: IN_FLIGHT_STATUSES as never[] } } },
+        where: { productId, order: { creatorUserId, status: { in: [...IN_FLIGHT_STATUSES] } } },
         select: { quantity: true },
       }),
     ])
@@ -124,14 +122,12 @@ export async function recomputeStockAlert(creatorUserId: string, productId: stri
       settings.channelProcessingBufferDays
     const rop = reorderPoint({ velocityPerDay: velocity, leadDays, safetyDays: settings.channelSafetyStockDays })
     const next = stockAlertState({ available, velocityPerDay: velocity, reorderPoint: rop, leadDays })
-    const prev = (typeof pool.alertState === 'string' ? pool.alertState : 'HEALTHY') as StockAlertState
+    const prev = (pool.alertState ?? 'HEALTHY') as StockAlertState
 
     if (next !== prev) {
-      // Persist first — if the notify write fails we'd rather miss one ping
+      // Persist first: if the notify write fails we'd rather miss one ping
       // than double-send on the next recompute.
-      await d('inventoryPool')
-        ?.update?.({ where: { id: String(pool.id) }, data: { alertState: next } })
-        .catch(() => {})
+      await prisma.inventoryPool.update({ where: { id: pool.id }, data: { alertState: next } })
     }
 
     if (!shouldNotify(prev, next)) return

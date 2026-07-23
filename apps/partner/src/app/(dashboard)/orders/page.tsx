@@ -1,6 +1,6 @@
-// Partner orders — dispatch inbox.
+// Partner orders: dispatch inbox.
 //
-// Partner-v2 surface (Pavel 2026-06-05): same interface as /products — cream
+// Partner-v2 surface (Pavel 2026-06-05): same interface as /products, cream
 // hero + KPI strip + URL-driven status filter chips + sortable table. Replaces
 // the old grouped-section list. Data wiring unchanged (last 50 dispatches).
 
@@ -30,7 +30,7 @@ import { QuickShipButton } from './QuickShipButton'
 import { ListTitleRow } from '@/components/list-kit'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Orders — Partners' }
+export const metadata = { title: 'Orders · Partners' }
 
 type Tab = 'all' | 'awaiting' | 'production' | 'ready' | 'transit' | 'delivered'
 
@@ -117,42 +117,29 @@ export default async function OrdersPage({
 
   // C2.2 partner tagging (CHANNEL_MANAGEMENT_SPEC §3.4): a channel-origin
   // on-demand dispatch is made to order for ONE consumer, so the inbox flags it.
-  // Resolution: ChannelOrder.productionOrderId soft back-ref (cast-guarded),
-  // with the router's internalNotes marker as the pre-push / multi-order
-  // fallback. Best-effort: a lookup failure just renders untagged rows.
+  // Resolution: ChannelOrder.productionOrderId soft back-ref, with the router's
+  // internalNotes marker as the multi-order fallback.
   const channelByOrderId = new Map<string, string>()
-  try {
-    const orderIds = [...new Set(allRaw.map((d) => d.order.id))]
-    const channelRows = orderIds.length
-      ? await (
-          prisma as unknown as {
-            channelOrder?: {
-              findMany: (a: unknown) => Promise<
-                Array<{ productionOrderId: string | null; connection: { channel: { displayName: string | null; code: string } } }>
-              >
-            }
-          }
-        ).channelOrder?.findMany({
-          where: { productionOrderId: { in: orderIds } },
-          select: {
-            productionOrderId: true,
-            connection: { select: { channel: { select: { displayName: true, code: true } } } },
-          },
-        })
-      : []
-    for (const r of channelRows ?? []) {
-      if (r.productionOrderId) {
-        channelByOrderId.set(r.productionOrderId, r.connection.channel.displayName ?? r.connection.channel.code)
-      }
+  const orderIds = [...new Set(allRaw.map((d) => d.order.id))]
+  const channelRows = orderIds.length
+    ? await prisma.channelOrder.findMany({
+        where: { productionOrderId: { in: orderIds } },
+        select: {
+          productionOrderId: true,
+          connection: { select: { channel: { select: { displayName: true, code: true } } } },
+        },
+      })
+    : []
+  for (const r of channelRows) {
+    if (r.productionOrderId) {
+      channelByOrderId.set(r.productionOrderId, r.connection.channel.displayName ?? r.connection.channel.code)
     }
-  } catch {
-    /* untagged rows are correct rows */
   }
   const all = allRaw.map((d) => ({
     ...d,
     channelTag:
       channelByOrderId.get(d.order.id) ??
-      (((d.order as { internalNotes?: string | null }).internalNotes ?? '').includes('ORIGIN: CHANNEL') ? 'Channel' : null),
+      ((d.order.internalNotes ?? '').includes('ORIGIN: CHANNEL') ? 'Channel' : null),
   }))
 
   const countFor = (t: Exclude<Tab, 'all'>) => all.filter((d) => TAB_STATUSES[t].includes(d.status as string)).length
@@ -178,7 +165,7 @@ export default async function OrdersPage({
       {services.some((s) => (s.type as string) === 'WAREHOUSE') && <PageTabs group="orders" />}
       {/* Modern list chrome (Pavel 2026-07-14): slim title row + quiet stat
           strip replace the cream hero + KPI cards. Cells still link to their
-          filter tabs — the old KPI→filter behavior survives. */}
+          filter tabs; the old KPI to filter behavior survives. */}
       <ListTitleRow
         title="Orders"
         sub={`${all.length} dispatch${all.length === 1 ? '' : 'es'} in the last 50 events · ${roleWord}`}
@@ -268,7 +255,7 @@ export default async function OrdersPage({
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Etsy-pattern quick-ship (Pavel 2026-07-14) — READY rows only. */}
+                          {/* Etsy-pattern quick-ship (Pavel 2026-07-14): READY rows only. */}
                           {d.status === 'READY' && (
                             <QuickShipButton dispatchId={d.id} label={(d.order as { orderNumber?: string | null }).orderNumber ? `Order ${(d.order as { orderNumber?: string | null }).orderNumber}` : 'This dispatch'} />
                           )}
@@ -409,7 +396,7 @@ function PartnerOrderCard({ d, imgMap }: { d: DispatchRow; imgMap: Map<string, s
           Get order support
         </ActionLink>
         <span className="ml-auto inline-flex items-center gap-2">
-          {/* Etsy-pattern quick-ship (Pavel 2026-07-14) — READY cards only. */}
+          {/* Etsy-pattern quick-ship (Pavel 2026-07-14): READY cards only. */}
           {d.status === 'READY' && (
             <QuickShipButton dispatchId={d.id} label={(d.order as { orderNumber?: string | null }).orderNumber ? `Order ${(d.order as { orderNumber?: string | null }).orderNumber}` : 'This dispatch'} />
           )}

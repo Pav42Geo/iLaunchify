@@ -43,7 +43,7 @@
 // Money boundary: the consumer's payment stays on the channel. This bills the
 // CREATOR for production only (LOCKED decision #1).
 
-import { prisma, getOrderSettings, listPaymentMethodRefs } from '@ilaunchify/db'
+import { prisma, getOrderSettings, listPaymentMethodRefs, type ChannelOrderStatus } from '@ilaunchify/db'
 import { logAuditAs } from '@ilaunchify/audit'
 import {
   findRouting,
@@ -78,19 +78,6 @@ import {
   type ProductionJob,
 } from '@ilaunchify/channels'
 import { resolveTierGoodsCents } from '@/app/(checkout)/products/[productId]/checkout/tier-pricing'
-
-// --- cast-guarded delegates (degrade before db:push) --------------------------
-type AnyDelegate = {
-  findUnique?: (a: unknown) => Promise<Record<string, unknown> | null>
-  findFirst?: (a: unknown) => Promise<Record<string, unknown> | null>
-  findMany?: (a: unknown) => Promise<Array<Record<string, unknown>>>
-  create?: (a: unknown) => Promise<Record<string, unknown>>
-  createMany?: (a: unknown) => Promise<unknown>
-  update?: (a: unknown) => Promise<unknown>
-  updateMany?: (a: unknown) => Promise<{ count: number }>
-}
-const d = (name: string): AnyDelegate | null =>
-  ((prisma as unknown as Record<string, AnyDelegate | undefined>)[name] ?? null)
 
 /** Claim sentinel: the atomic in-flight marker. TIMESTAMPED (e2e finding
  *  2026-07-22): a run that dies mid-flight (crash, hot-reload, kill) would
@@ -142,8 +129,9 @@ async function loadActor(creatorUserId: string): Promise<ActorUser | null> {
 }
 
 async function logSync(connectionId: string, outcome: 'OK' | 'ERROR', detail: string) {
-  await d('channelSyncEvent')
-    ?.create?.({
+  // Best-effort telemetry: a failed log write must never affect routing.
+  await prisma.channelSyncEvent
+    .create({
       data: { channelConnectionId: connectionId, direction: 'PUSH', topic: 'order.route', outcome, detail },
     })
     .catch(() => {})
@@ -172,15 +160,12 @@ async function notifyHold(
   }
 }
 
-// ─── Per-day ledgers (cast-guarded; pre-push they read as empty) ─────────────
+// ─── Per-day ledgers ─────────────────────────────────────────────────────────
 
 /** ChannelVariantLink ids for one product (soft-FK resolution helper). */
 async function variantLinkIdsForProduct(productId: string): Promise<string[]> {
-  const links =
-    (await d('channelVariantLink')
-      ?.findMany?.({ where: { productId }, select: { id: true } })
-      .catch(() => [])) ?? []
-  return links.map((l) => String(l.id))
+  const links = await prisma.channelVariantLink.findMany({ where: { productId }, select: { id: true } })
+  return links.map((l) => l.id)
 }
 
 /** Trailing 30-day consumer-unit volume for (creator, product): the velocity
@@ -198,62 +183,49 @@ export async function trailing30dUnitsFor(
   const linkIds = await variantLinkIdsForProduct(productId)
   if (linkIds.length === 0) return 0
   const cutoff = new Date(nowMs - 30 * 24 * 60 * 60 * 1000)
-  const rows =
-    (await d('channelOrderLine')
-      ?.findMany?.({
-        where: {
-          channelVariantLinkId: { in: linkIds },
-          channelOrder: {
-            ...(excludeChannelOrderId ? { id: { not: excludeChannelOrderId } } : {}),
-            placedAt: { gte: cutoff },
-            status: { not: 'CANCELLED' },
-            connection: { creatorUserId },
-          },
-        },
-        select: { quantity: true, channelOrder: { select: { placedAt: true } } },
-      })
-      .catch(() => [])) ?? []
+  const rows = await prisma.channelOrderLine.findMany({
+    where: {
+      channelVariantLinkId: { in: linkIds },
+      channelOrder: {
+        ...(excludeChannelOrderId ? { id: { not: excludeChannelOrderId } } : {}),
+        placedAt: { gte: cutoff },
+        status: { not: 'CANCELLED' },
+        connection: { creatorUserId },
+      },
+    },
+    select: { quantity: true, channelOrder: { select: { placedAt: true } } },
+  })
   return trailingUnits(
-    rows.map((r) => ({
-      placedAtMs: new Date(String((r.channelOrder as { placedAt?: unknown } | undefined)?.placedAt ?? 0)).getTime(),
-      units: Number(r.quantity) || 0,
-    })),
+    rows.map((r) => ({ placedAtMs: r.channelOrder.placedAt.getTime(), units: r.quantity })),
     nowMs,
   )
 }
 
-/** Units already routed TODAY for (creator, product): the capacityPerDay ledger.
- *  Reads ChannelOrder.routedAt (additive column) - pre-push it reads 0, which
- *  fails OPEN on capacity exactly while the whole auto-billing rail is dark. */
+/** Units already routed TODAY for (creator, product): the capacityPerDay ledger
+ *  (ChannelOrder.routedAt since UTC midnight). */
 async function unitsRoutedTodayFor(creatorUserId: string, productId: string, nowMs: number): Promise<number> {
   const linkIds = await variantLinkIdsForProduct(productId)
   if (linkIds.length === 0) return 0
   const dayStart = new Date(utcDayStartMs(nowMs))
-  const rows =
-    (await d('channelOrderLine')
-      ?.findMany?.({
-        where: {
-          channelVariantLinkId: { in: linkIds },
-          channelOrder: { routedAt: { gte: dayStart }, connection: { creatorUserId } },
-        },
-        select: { quantity: true },
-      })
-      .catch(() => [])) ?? []
-  return rows.reduce((s, r) => s + (Number(r.quantity) || 0), 0)
+  const rows = await prisma.channelOrderLine.findMany({
+    where: {
+      channelVariantLinkId: { in: linkIds },
+      channelOrder: { routedAt: { gte: dayStart }, connection: { creatorUserId } },
+    },
+    select: { quantity: true },
+  })
+  return rows.reduce((s, r) => s + r.quantity, 0)
 }
 
 /** Auto-charges billed TODAY for this creator: the daily-cap ledger
  *  (sum of ChannelOrder.productionChargeCents since UTC midnight). */
 async function spentTodayCentsFor(creatorUserId: string, nowMs: number): Promise<number> {
   const dayStart = new Date(utcDayStartMs(nowMs))
-  const rows =
-    (await d('channelOrder')
-      ?.findMany?.({
-        where: { routedAt: { gte: dayStart }, connection: { creatorUserId } },
-        select: { productionChargeCents: true },
-      })
-      .catch(() => [])) ?? []
-  return rows.reduce((s, r) => s + (Number(r.productionChargeCents) || 0), 0)
+  const rows = await prisma.channelOrder.findMany({
+    where: { routedAt: { gte: dayStart }, connection: { creatorUserId } },
+    select: { productionChargeCents: true },
+  })
+  return rows.reduce((s, r) => s + (r.productionChargeCents ?? 0), 0)
 }
 
 // ─── On-demand finish (gate doc §4b item 2) ──────────────────────────────────
@@ -266,42 +238,31 @@ async function resolveOnDemandFinish(
   productTemplateId: string | null,
 ): Promise<{ offeringId: string; decorationMethod: string } | null> {
   if (!productTemplateId) return null
-  try {
-    const template = await prisma.productTemplate.findUnique({
-      where: { id: productTemplateId },
-      select: {
-        manufacturerServiceId: true,
-        variants: { where: { isActive: true }, select: { packagingTypeId: true } },
-      },
-    })
-    if (!template?.manufacturerServiceId) return null
-    const mfr = await prisma.partnerService.findUnique({
-      where: { id: template.manufacturerServiceId },
-      select: { partnerId: true },
-    })
-    if (!mfr) return null
-    const typeIds = [...new Set(template.variants.map((v) => v.packagingTypeId).filter((x): x is string => !!x))]
-    if (typeIds.length === 0) return null
-    const candidates = await prisma.partnerPackagingOffering.findMany({
-      where: { packagingTypeId: { in: typeIds }, status: 'ACTIVE', partnerService: { partnerId: mfr.partnerId } },
-      select: { id: true, decorationMethod: true },
-    })
-    if (candidates.length === 0) return null
-    // Pin (cast-guarded: the column may predate the generated client).
-    const pinned = await (
-      prisma.productTemplate as unknown as {
-        findUnique: (a: unknown) => Promise<{ onDemandDecorationOfferingId?: string | null } | null>
-      }
-    )
-      .findUnique({ where: { id: productTemplateId }, select: { onDemandDecorationOfferingId: true } })
-      .catch(() => null)
-    const chosen =
-      candidates.find((c) => c.id === pinned?.onDemandDecorationOfferingId) ??
-      (candidates.length === 1 ? candidates[0]! : null)
-    return chosen ? { offeringId: chosen.id, decorationMethod: chosen.decorationMethod } : null
-  } catch {
-    return null
-  }
+  const template = await prisma.productTemplate.findUnique({
+    where: { id: productTemplateId },
+    select: {
+      manufacturerServiceId: true,
+      onDemandDecorationOfferingId: true,
+      variants: { where: { isActive: true }, select: { packagingTypeId: true } },
+    },
+  })
+  if (!template?.manufacturerServiceId) return null
+  const mfr = await prisma.partnerService.findUnique({
+    where: { id: template.manufacturerServiceId },
+    select: { partnerId: true },
+  })
+  if (!mfr) return null
+  const typeIds = [...new Set(template.variants.map((v) => v.packagingTypeId).filter((x): x is string => !!x))]
+  if (typeIds.length === 0) return null
+  const candidates = await prisma.partnerPackagingOffering.findMany({
+    where: { packagingTypeId: { in: typeIds }, status: 'ACTIVE', partnerService: { partnerId: mfr.partnerId } },
+    select: { id: true, decorationMethod: true },
+  })
+  if (candidates.length === 0) return null
+  const chosen =
+    candidates.find((c) => c.id === template.onDemandDecorationOfferingId) ??
+    (candidates.length === 1 ? candidates[0]! : null)
+  return chosen ? { offeringId: chosen.id, decorationMethod: chosen.decorationMethod } : null
 }
 
 // ─── The router ──────────────────────────────────────────────────────────────
@@ -333,24 +294,17 @@ interface LoadedChannelOrder {
  * anything - non-routable states return SKIPPED, never throw.
  */
 export async function routeReadyChannelOrder(creatorUserId: string, channelOrderId: string): Promise<RouteOutcome> {
-  const od = d('channelOrder')
-  const odFindFirst = od?.findFirst
-  const odUpdate = od?.update
-  const odUpdateMany = od?.updateMany
-  if (!odFindFirst || !odUpdate || !odUpdateMany) {
-    return { kind: 'SKIPPED', reason: 'Channel-order tables not migrated yet.' }
-  }
   const actor = await loadActor(creatorUserId)
   if (!actor) return { kind: 'SKIPPED', reason: 'Creator account not found.' }
 
-  const row = (await odFindFirst({
-      where: { id: channelOrderId, connection: { creatorUserId } },
-      include: {
-        lines: true,
-        connection: { select: { id: true, creatorUserId: true, channel: { select: { code: true, displayName: true } } } },
-      },
-    })
-    .catch(() => null)) as unknown as LoadedChannelOrder | null
+  // shipToJson is a JSON column; the cast narrows it to the ingest shape.
+  const row = (await prisma.channelOrder.findFirst({
+    where: { id: channelOrderId, connection: { creatorUserId } },
+    include: {
+      lines: true,
+      connection: { select: { id: true, creatorUserId: true, channel: { select: { code: true, displayName: true } } } },
+    },
+  })) as unknown as LoadedChannelOrder | null
   if (!row) return { kind: 'SKIPPED', reason: 'Order not found.' }
   if (row.productionOrderId) return { kind: 'SKIPPED', reason: 'Already routed.' }
   // READY + ON_HOLD are the auto-retry pool (the scan feeds them). Manual
@@ -372,26 +326,20 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
 
   // --- Plan (pure) BEFORE claiming, so a bulk-only order is never touched. ----
   const vlinkIds = row.lines.map((l) => l.channelVariantLinkId).filter((x): x is string => !!x)
-  const vlinks =
-    (await d('channelVariantLink')
-      ?.findMany?.({
-        where: { id: { in: vlinkIds } },
-        select: { id: true, productId: true, flavorPresetId: true, channelProductLink: { select: { mode: true } } },
-      })
-      .catch(() => [])) ?? []
-  const byId = new Map(vlinks.map((v) => [String(v.id), v]))
+  const vlinks = await prisma.channelVariantLink.findMany({
+    where: { id: { in: vlinkIds } },
+    select: { id: true, productId: true, flavorPresetId: true, channelProductLink: { select: { mode: true } } },
+  })
+  const byId = new Map(vlinks.map((v) => [v.id, v]))
   const planLines: RoutePlanLine[] = row.lines.map((l) => {
     const link = l.channelVariantLinkId ? byId.get(l.channelVariantLinkId) : undefined
-    const mode = (((link?.channelProductLink as { mode?: string } | undefined)?.mode ?? 'ON_DEMAND') === 'BULK'
-      ? 'BULK'
-      : 'ON_DEMAND') as 'ON_DEMAND' | 'BULK'
-    const rawFlavor = link ? String(link.flavorPresetId ?? '') : ''
+    const rawFlavor = link?.flavorPresetId ?? ''
     return {
       mapped: !!link,
-      productId: link ? String(link.productId) : null,
+      productId: link?.productId ?? null,
       // 'base' is the variantKey null-marker (order-fsm variantKey()).
       flavorPresetId: rawFlavor && rawFlavor !== 'base' ? rawFlavor : null,
-      mode,
+      mode: link?.channelProductLink?.mode === 'BULK' ? 'BULK' : 'ON_DEMAND',
       quantity: l.quantity,
     }
   })
@@ -402,7 +350,7 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
     reason: string,
     extra?: Record<string, unknown>,
   ): Promise<RouteOutcome> => {
-    await odUpdate({ where: { id: row.id }, data: { status: where, statusReason: reason } }).catch(() => {})
+    await prisma.channelOrder.update({ where: { id: row.id }, data: { status: where, statusReason: reason } }).catch(() => {})
     await logSync(row.connection.id, 'ERROR', reason)
     await logAuditAs(actor, {
       entityType: 'ChannelOrder',
@@ -444,10 +392,10 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
   // Stale takeover matches the EXACT abandoned sentinel value, so two sweeps
   // racing for the same dead claim still resolve to one winner atomically.
   const mySentinel = routingSentinel(claimNowMs)
-  const claimed = await odUpdateMany({
+  const claimed = await prisma.channelOrder.updateMany({
       where: {
         id: row.id,
-        status: row.status,
+        status: row.status as ChannelOrderStatus,
         productionOrderId: null,
         // NULL TRAP (e2e finding 2026-07-22): `NOT: { startsWith }` never
         // matches NULL statusReason (SQL NULL LIKE = NULL), so a freshly
@@ -458,7 +406,6 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
       },
       data: { statusReason: mySentinel },
     })
-    .catch(() => ({ count: 0 }))
   if (claimed.count !== 1) return { kind: 'SKIPPED', reason: 'This order is already being routed.' }
 
   try {
@@ -470,7 +417,7 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
 
   // Saved method: the go-live gate (PAYMENT_METHOD_MISSING) should make this
   // unreachable, but a method can be removed after go-live. Park, don't fail.
-  const methods = await listPaymentMethodRefs(creatorUserId).catch(() => [])
+  const methods = await listPaymentMethodRefs(creatorUserId)
   const savedMethod = methods.find((m) => m.isDefault) ?? methods[0] ?? null
   if (!savedMethod) {
     return park('ON_HOLD', 'No saved payment method on file. Add a card under Settings -> Billing, then the order retries automatically.')
@@ -487,7 +434,7 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
     // auto-retry pool (a retry would re-route the already-charged product).
     const parkJob = async (where: 'ON_HOLD' | 'NEEDS_ATTENTION', reason: string): Promise<RouteOutcome> => {
       if (!partial) return park(where, reason)
-      await odUpdate({
+      await prisma.channelOrder.update({
         where: { id: row.id },
         data: {
           status: 'NEEDS_ATTENTION',
@@ -521,15 +468,17 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
   // --- ROUTED: the one legal success transition (READY/ON_HOLD -> ... -> ROUTED
   //     via the recovery path; persistence writes the terminal state directly,
   //     same as ingest writes its verdicts).
-  await odUpdate({
+  await prisma.channelOrder.update({
     where: { id: row.id },
-    data: { status: 'ROUTED', statusReason: null, productionOrderId: orderIds[0] ?? null },
+    data: {
+      status: 'ROUTED',
+      statusReason: null,
+      productionOrderId: orderIds[0] ?? null,
+      routedAt: new Date(nowMs),
+      productionChargeCents: chargedCents,
+      routedUnits,
+    },
   })
-  // Router snapshots (additive columns; a stale client degrades silently).
-  await odUpdate({
-    where: { id: row.id },
-    data: { routedAt: new Date(nowMs), productionChargeCents: chargedCents, routedUnits },
-  }).catch(() => {})
   await logSync(
     row.connection.id,
     'OK',
@@ -559,7 +508,7 @@ export async function routeReadyChannelOrder(creatorUserId: string, channelOrder
     // leaks and the next cycle retries automatically; charges are protected by
     // the per-(channelOrder, order) Stripe idempotency key regardless.
     const reason = `Routing failed unexpectedly: ${err instanceof Error ? err.message : 'unknown error'}. It retries automatically next cycle.`
-    await odUpdate({ where: { id: row.id }, data: { status: 'ON_HOLD', statusReason: reason } }).catch(() => {})
+    await prisma.channelOrder.update({ where: { id: row.id }, data: { status: 'ON_HOLD', statusReason: reason } }).catch(() => {})
     await logSync(row.connection.id, 'ERROR', reason)
     return { kind: 'PARKED', park: 'ON_HOLD', reason }
   }
@@ -620,12 +569,10 @@ async function routeOneJob(ctx: {
   }
 
   // Consent gate (LOCKED #1 of the enablement loop) + the partner capacity cap.
-  const enablement = (await d('onDemandEnablement')
-    ?.findFirst?.({
-      where: { creatorUserId: user.id, productId: product.id, manufacturerServiceId: pinnedMfr },
-      select: { status: true, capacityPerDay: true },
-    })
-    .catch(() => null)) as { status?: string; capacityPerDay?: number | null } | null
+  const enablement = await prisma.onDemandEnablement.findFirst({
+    where: { creatorUserId: user.id, productId: product.id, manufacturerServiceId: pinnedMfr },
+    select: { status: true, capacityPerDay: true },
+  })
   if (enablement?.status !== 'ENABLED') {
     return {
       ok: false,
@@ -756,7 +703,6 @@ async function routeOneJob(ctx: {
       orderBy: { updatedAt: 'desc' },
       include: { versions: { orderBy: { version: 'desc' }, take: 1, select: { id: true } } },
     })
-    .catch(() => null)
   const lockedDesignVersionId = lockedDesign?.versions[0]?.id ?? null
 
   const order = await createOrderWithNumber(async (orderNumber) => {
@@ -786,7 +732,7 @@ async function routeOneJob(ctx: {
           shipToPostalCode: ship.postalCode!,
           shipToCountry: ship.countryCode!,
           internalNotes,
-        } as Parameters<typeof tx.order.create>[0]['data'],
+        },
       })
       const item = await tx.orderItem.create({
         data: {
@@ -796,37 +742,33 @@ async function routeOneJob(ctx: {
           unitPriceCents: Math.round(priced.productionSubtotalCents / Math.max(1, job.units)),
           totalCents: priced.productionSubtotalCents,
           designVersionId: lockedDesignVersionId,
-        } as Parameters<typeof tx.orderItem.create>[0]['data'],
+        },
       })
-      // Per-flavor split for the partner manifest (cast-guarded model).
+      // Per-flavor split for the partner manifest.
       const flavorRows = job.flavors.filter((f) => f.flavorPresetId && presetById.has(f.flavorPresetId))
       if (flavorRows.length > 0) {
-        await (tx as unknown as { orderItemFlavor: { createMany: (a: unknown) => Promise<unknown> } }).orderItemFlavor
-          .createMany({
-            data: flavorRows.map((f) => {
-              const p = presetById.get(f.flavorPresetId as string)!
-              return {
-                orderItemId: item.id,
-                flavorPresetId: f.flavorPresetId,
-                qty: f.units,
-                flavorName: p.name,
-                soiSnapshot: p.statementOfIdentity,
-              }
-            }),
-          })
-          .catch(() => {})
+        await tx.orderItemFlavor.createMany({
+          data: flavorRows.map((f) => {
+            const p = presetById.get(f.flavorPresetId as string)!
+            return {
+              orderItemId: item.id,
+              flavorPresetId: f.flavorPresetId as string,
+              qty: f.units,
+              flavorName: p.name,
+              soiSnapshot: p.statementOfIdentity,
+            }
+          }),
+        })
       }
       return created
     })
   })
 
-  // Band-selection snapshot columns (additive; stale client degrades to notes).
-  await (prisma.order as unknown as { update: (a: unknown) => Promise<unknown> })
-    .update({
-      where: { id: order.id },
-      data: { onDemandBandUnits: bandUnits, onDemandTrailing30dUnits: trailing30dUnits },
-    })
-    .catch(() => {})
+  // Band-selection snapshot columns (§4b.5 selection input, also in notes + audit).
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { onDemandBandUnits: bandUnits, onDemandTrailing30dUnits: trailing30dUnits },
+  })
 
   await logAuditAs(user, {
     entityType: 'Order',
@@ -866,7 +808,7 @@ async function routeOneJob(ctx: {
     // idempotency key changes with the next order id, so the retry can charge.
     try {
       assertOrderTransition('PENDING_PAYMENT', 'CANCELLED')
-      await prisma.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } as never })
+      await prisma.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } })
       await logAuditAs(user, {
         entityType: 'Order',
         entityId: order.id,
@@ -903,9 +845,7 @@ async function routeOneJob(ctx: {
   const meritFeeBps = await resolveManufacturerMeritFeeBps(routing.manufacturingServiceId).catch(() => 0)
   const item = await prisma.orderItem.findFirst({ where: { orderId: order.id }, select: { id: true } })
   await prisma.$transaction(async (tx) => {
-    const dispatch = (await (
-      tx as unknown as { orderDispatch: { create: (a: unknown) => Promise<{ id: string }> } }
-    ).orderDispatch.create({
+    const dispatch = await tx.orderDispatch.create({
       data: {
         orderId: order.id,
         orderItemId: item?.id ?? null,
@@ -920,7 +860,7 @@ async function routeOneJob(ctx: {
         meritFeeBps,
         meritFeeCents: meritWithholdCents(priced.productionSubtotalCents, meritFeeBps),
       },
-    })) as { id: string }
+    })
     await tx.order.update({ where: { id: order.id }, data: { status: 'ROUTING' } })
     try {
       const manifest = await generateOrderManifest(tx, { orderId: order.id, orderDispatchId: dispatch.id })
@@ -960,35 +900,27 @@ async function routeOneJob(ctx: {
  */
 export async function scanAndRouteForCreator(creatorUserId: string): Promise<RouterRunSummary> {
   const summary: RouterRunSummary = { scanned: 0, routed: 0, bulkOnly: 0, onHold: 0, needsAttention: 0, skipped: 0, errors: [] }
-  const od = d('channelOrder')
-  const odFindMany = od?.findMany
-  if (!odFindMany) {
-    summary.errors.push('Channel-order tables not migrated yet.')
-    return summary
-  }
-  const candidates =
-    (await odFindMany({
-        where: {
-          connection: { creatorUserId },
-          productionOrderId: null,
-          manualConfirmRequired: false,
-          status: { in: ['READY', 'ON_HOLD'] },
-        },
-        orderBy: { placedAt: 'asc' },
-        select: { id: true },
-      })
-      .catch(() => [])) ?? []
+  const candidates = await prisma.channelOrder.findMany({
+    where: {
+      connection: { creatorUserId },
+      productionOrderId: null,
+      manualConfirmRequired: false,
+      status: { in: ['READY', 'ON_HOLD'] },
+    },
+    orderBy: { placedAt: 'asc' },
+    select: { id: true },
+  })
   for (const c of candidates) {
     summary.scanned += 1
     try {
-      const outcome = await routeReadyChannelOrder(creatorUserId, String(c.id))
+      const outcome = await routeReadyChannelOrder(creatorUserId, c.id)
       if (outcome.kind === 'ROUTED') summary.routed += 1
       else if (outcome.kind === 'BULK_ONLY') summary.bulkOnly += 1
       else if (outcome.kind === 'SKIPPED') summary.skipped += 1
       else if (outcome.park === 'ON_HOLD') summary.onHold += 1
       else summary.needsAttention += 1
     } catch (err) {
-      summary.errors.push(err instanceof Error ? err.message : `route failed for ${String(c.id)}`)
+      summary.errors.push(err instanceof Error ? err.message : `route failed for ${c.id}`)
     }
   }
   return summary
@@ -997,21 +929,11 @@ export async function scanAndRouteForCreator(creatorUserId: string): Promise<Rou
 /** Cron sweep: every creator with a routable order (auto-recovery included). */
 export async function scanAndRouteAllCreators(): Promise<RouterRunSummary> {
   const total: RouterRunSummary = { scanned: 0, routed: 0, bulkOnly: 0, onHold: 0, needsAttention: 0, skipped: 0, errors: [] }
-  const od = d('channelOrder')
-  const odFindMany = od?.findMany
-  if (!odFindMany) {
-    total.errors.push('Channel-order tables not migrated yet.')
-    return total
-  }
-  const rows =
-    (await odFindMany({
-        where: { productionOrderId: null, manualConfirmRequired: false, status: { in: ['READY', 'ON_HOLD'] } },
-        select: { connection: { select: { creatorUserId: true } } },
-      })
-      .catch(() => [])) ?? []
-  const creators = [
-    ...new Set(rows.map((r) => String((r.connection as { creatorUserId?: unknown } | undefined)?.creatorUserId ?? '')).filter(Boolean)),
-  ]
+  const rows = await prisma.channelOrder.findMany({
+    where: { productionOrderId: null, manualConfirmRequired: false, status: { in: ['READY', 'ON_HOLD'] } },
+    select: { connection: { select: { creatorUserId: true } } },
+  })
+  const creators = [...new Set(rows.map((r) => r.connection.creatorUserId))]
   for (const creatorUserId of creators) {
     const s = await scanAndRouteForCreator(creatorUserId)
     total.scanned += s.scanned

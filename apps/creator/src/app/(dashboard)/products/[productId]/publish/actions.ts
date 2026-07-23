@@ -61,22 +61,13 @@ export async function publishProduct(input: z.infer<typeof Schema>) {
 // Sell-to-channel actions (CHANNEL_MANAGEMENT_SPEC §3.4, Phase C0).
 // Configure a listing per connected channel (mode + price), then PUSH it through
 // the ChannelAdapter seam (stub in dev; real adapters per phase C1+). Variant
-// links (the mapping atom) are written on push. New columns (mode/price/
-// publishState + ChannelVariantLink) are cast-guarded so this degrades before
-// `pnpm db:push`.
+// links (the mapping atom) are written on push.
 // =============================================================================
 
-type VariantLinkDelegate = {
-  deleteMany: (a: unknown) => Promise<unknown>
-  createMany: (a: unknown) => Promise<unknown>
-}
-const variantLinkDelegate = () => (prisma as unknown as { channelVariantLink?: VariantLinkDelegate }).channelVariantLink ?? null
-type SyncEventDelegate = { create: (a: unknown) => Promise<unknown> }
-const syncEventDelegate = () => (prisma as unknown as { channelSyncEvent?: SyncEventDelegate }).channelSyncEvent ?? null
-
 async function logSync(connectionId: string, topic: string, outcome: 'OK' | 'ERROR', detail?: string) {
-  await syncEventDelegate()
-    ?.create({ data: { channelConnectionId: connectionId, direction: 'PUSH', topic, outcome, detail: detail ?? null } })
+  // Best-effort telemetry: a failed log write must never affect the push.
+  await prisma.channelSyncEvent
+    .create({ data: { channelConnectionId: connectionId, direction: 'PUSH', topic, outcome, detail: detail ?? null } })
     .catch(() => {})
 }
 
@@ -99,7 +90,7 @@ export interface SellChannelRow {
 
 export interface SellData {
   productName: string
-  /** Production unit cost in cents (what the creator pays) — margin-hint baseline. */
+  /** Production unit cost in cents (what the creator pays): margin-hint baseline. */
   unitCostCents: number
   flavors: Array<{ id: string; name: string }>
   channels: SellChannelRow[]
@@ -147,16 +138,10 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
   // line above and simply not used here.
   // No pinned manufacturer => no valid enablement => null => the gate stays shut.
   const enablement = manufacturerServiceId
-    ? await (
-        prisma as unknown as {
-          onDemandEnablement?: { findFirst: (a: unknown) => Promise<{ status: string; partnerNote: string | null } | null> }
-        }
-      ).onDemandEnablement
-        ?.findFirst({
-          where: { creatorUserId: user.id, productId, manufacturerServiceId },
-          select: { status: true, partnerNote: true },
-        })
-        .catch(() => null)
+    ? await prisma.onDemandEnablement.findFirst({
+        where: { creatorUserId: user.id, productId, manufacturerServiceId },
+        select: { status: true, partnerNote: true },
+      })
     : null
 
   const [connections, links, flavors] = await Promise.all([
@@ -198,24 +183,16 @@ export async function loadSellData(productId: string): Promise<SellData | null> 
       paymentMethodOnFile: paymentMethods.length > 0,
     },
     stock: await (async () => {
-      const pool = await (
-        prisma as unknown as {
-          inventoryPool?: { findFirst: (a: unknown) => Promise<{ quantityOnHand: number; quantityReserved: number } | null> }
-        }
-      ).inventoryPool
-        ?.findFirst({
-          where: { creatorUserId: user.id, productId, storageLocationKind: 'CREATOR' },
-          select: { quantityOnHand: true, quantityReserved: true },
-        })
-        .catch(() => null)
-      const onHand = Number(pool?.quantityOnHand ?? 0)
-      const reserved = Number(pool?.quantityReserved ?? 0)
+      const pool = await prisma.inventoryPool.findFirst({
+        where: { creatorUserId: user.id, productId, storageLocationKind: 'CREATOR' },
+        select: { quantityOnHand: true, quantityReserved: true },
+      })
+      const onHand = pool?.quantityOnHand ?? 0
+      const reserved = pool?.quantityReserved ?? 0
       return { onHand, reserved, available: Math.max(0, onHand - reserved) }
     })(),
     channels: connections.map((conn) => {
-      const l = linkByChannel.get(conn.channelId) as
-        | ((typeof links)[number] & { mode?: string; price?: unknown; publishState?: string; lastError?: string | null })
-        | undefined
+      const l = linkByChannel.get(conn.channelId)
       return {
         channelId: conn.channelId,
         code: conn.channel.code,
@@ -271,21 +248,12 @@ export async function configureListing(input: {
     productId: product.id,
     externalListingId: '', // filled on push
   }
-  const extra = { mode: input.mode, price, publishState: 'DRAFT' }
-  try {
-    await prisma.channelProductLink.upsert({
-      where: { channelId_productId: { channelId: channel.id, productId: product.id } },
-      create: { ...base, ...(extra as object) },
-      update: { ...(extra as object) },
-    })
-  } catch {
-    // Pre-db:push degrade: persist the V1 shape only (config re-savable after push).
-    await prisma.channelProductLink.upsert({
-      where: { channelId_productId: { channelId: channel.id, productId: product.id } },
-      create: base,
-      update: {},
-    })
-  }
+  const extra = { mode: input.mode, price, publishState: 'DRAFT' as const }
+  await prisma.channelProductLink.upsert({
+    where: { channelId_productId: { channelId: channel.id, productId: product.id } },
+    create: { ...base, ...extra },
+    update: { ...extra },
+  })
   await logAuditAs(user, {
     entityType: 'ChannelProductLink',
     entityId: `${channel.id}:${product.id}`,
@@ -308,37 +276,25 @@ export async function receiveDelivery(input: { productId: string; quantity: numb
   })
   if (!product) return { ok: false, error: 'Product not found.' }
 
-  const poolDelegate = (
-    prisma as unknown as {
-      inventoryPool?: {
-        findFirst: (a: unknown) => Promise<{ id: string; quantityOnHand: number; quantityReserved: number } | null>
-        create: (a: unknown) => Promise<{ id: string }>
-        update: (a: unknown) => Promise<unknown>
-      }
-      inventoryLedger?: { create: (a: unknown) => Promise<unknown> }
-    }
-  )
-  if (!poolDelegate.inventoryPool) return { ok: false, error: 'Inventory tables not migrated yet — run db:push.' }
-
   try {
-    let pool = await poolDelegate.inventoryPool.findFirst({
+    let pool = await prisma.inventoryPool.findFirst({
       where: { creatorUserId: user.id, productId: product.id, storageLocationKind: 'CREATOR' },
       select: { id: true, quantityOnHand: true, quantityReserved: true },
     })
     if (!pool) {
-      const created = await poolDelegate.inventoryPool.create({
+      const created = await prisma.inventoryPool.create({
         data: { creatorUserId: user.id, productId: product.id, storageLocationKind: 'CREATOR' },
       })
       pool = { id: created.id, quantityOnHand: 0, quantityReserved: 0 }
     }
     const applied = applyLedgerEntry(
-      { onHand: Number(pool.quantityOnHand), reserved: Number(pool.quantityReserved) },
+      { onHand: pool.quantityOnHand, reserved: pool.quantityReserved },
       'DELIVERY_RECEIVED',
       qty,
     )
     if (!applied.ok) return { ok: false, error: applied.reason }
-    await poolDelegate.inventoryPool.update({ where: { id: pool.id }, data: { quantityOnHand: applied.next.onHand } })
-    await poolDelegate.inventoryLedger?.create({
+    await prisma.inventoryPool.update({ where: { id: pool.id }, data: { quantityOnHand: applied.next.onHand } })
+    await prisma.inventoryLedger.create({
       data: { poolId: pool.id, kind: 'DELIVERY_RECEIVED', delta: qty, actorUserId: user.id, note: 'manual intake (Sell surface)' },
     })
     await logAuditAs(user, {
@@ -379,13 +335,6 @@ export async function requestOnDemandEnablement(productId: string): Promise<Sell
     return { ok: false, error: `Not eligible for on-demand yet: ${describeOnDemandIneligibility(eligibility.reasons)}` }
   }
 
-  const delegate = (
-    prisma as unknown as {
-      onDemandEnablement?: { upsert: (a: unknown) => Promise<{ id: string }> }
-    }
-  ).onDemandEnablement
-  if (!delegate) return { ok: false, error: 'On-demand tables not migrated yet — run db:push.' }
-
   // Branding snapshot (spec §3.2: "snapshot of approved branding"). Freeze the
   // ACTIVE design's latest version so the manufacturer reviews the actual label
   // (Pavel 2026-07-22: the queue card showed no design at all). Null design =
@@ -410,7 +359,7 @@ export async function requestOnDemandEnablement(productId: string): Promise<Sell
       exportedPdfAssetId: lockedVersion?.exportedPdfAssetId ?? null,
       requestedAt: new Date().toISOString(),
     }
-    const row = await delegate.upsert({
+    const row = await prisma.onDemandEnablement.upsert({
       where: {
         creatorUserId_productId_manufacturerServiceId: {
           creatorUserId: user.id,
@@ -437,7 +386,7 @@ export async function requestOnDemandEnablement(productId: string): Promise<Sell
     return { ok: true }
   } catch (err) {
     console.error('[channels] on-demand request failed:', err)
-    return { ok: false, error: 'Could not send the request — try again.' }
+    return { ok: false, error: 'Could not send the request. Try again.' }
   }
 }
 
@@ -465,30 +414,28 @@ export async function pushListing(input: { productId: string; channelCode: strin
     select: { id: true, externalAccountId: true },
   })
   if (!conn) return { ok: false, error: 'Connect this channel first.' }
-  const link = (await prisma.channelProductLink.findUnique({
+  const link = await prisma.channelProductLink.findUnique({
     where: { channelId_productId: { channelId: channel.id, productId: product.id } },
-  })) as ({ id: string; externalListingId: string } & { mode?: string; price?: unknown }) | null
+  })
   if (!link) return { ok: false, error: 'Configure the listing (mode + price) first.' }
 
   const adapter = resolveChannelAdapter(channel.code as ChannelCode)
   if (!adapter) return { ok: false, error: 'This channel’s integration is not configured yet.' }
 
-  // Admin kill switch (spec §3.4a): platform-wide push pause. Cast-guarded —
-  // pre-db:push the ops columns don't exist and the select throws → not paused.
-  const chOps = await (
-    prisma as unknown as { channel?: { findFirst?: (a: unknown) => Promise<{ pushPaused?: boolean; maintenanceNote?: string | null } | null> } }
-  ).channel
-    ?.findFirst?.({ where: { id: channel.id }, select: { pushPaused: true, maintenanceNote: true } })
-    .catch(() => null)
+  // Admin kill switch (spec §3.4a): platform-wide push pause.
+  const chOps = await prisma.channel.findFirst({
+    where: { id: channel.id },
+    select: { pushPaused: true, maintenanceNote: true },
+  })
   if (chOps?.pushPaused) {
-    const note = chOps.maintenanceNote ? ` — ${chOps.maintenanceNote}` : ''
+    const note = chOps.maintenanceNote ? `: ${chOps.maintenanceNote}` : ''
     return { ok: false, error: `Listing pushes for this channel are paused by iLaunchify${note}` }
   }
 
   const priceStr = link.price != null ? String(link.price) : (product.priceCents / 100).toFixed(2)
 
   // Channel variants, in preference order (docs/CREATOR_PRODUCT_CONFIGURATION.md §4):
-  //   1. the creator's ORDER-TIME configuration snapshot — ONLY the selected flavors,
+  //   1. the creator's ORDER-TIME configuration snapshot: ONLY the selected flavors,
   //      each with its per-flavor price (a 2-of-6 pick lists 2 variants, not 6);
   //   2. else the Product.selectedFlavorPresetIds subset (published but never ordered);
   //   3. else the full active flavor pool (legacy).
@@ -510,7 +457,7 @@ export async function pushListing(input: { productId: string; channelCode: strin
       price: v.unitPriceCents != null ? (v.unitPriceCents / 100).toFixed(2) : priceStr,
     }))
   } else {
-    // Tier 2 — scope to the creator's selected flavors when set.
+    // Tier 2: scope to the creator's selected flavors when set.
     const selRow = await prisma.product
       .findUnique({ where: { id: product.id }, select: { selectedFlavorPresetIds: true } })
       .catch(() => null)
@@ -545,8 +492,8 @@ export async function pushListing(input: { productId: string; channelCode: strin
     )
 
     // Go-live gates (spec §3.3): ON_DEMAND needs the manufacturer's enablement;
-    // BULK needs received stock (available = onHand − reserved). Failing a gate
-    // isn't an error — the listing sits at PUSHED with the reason recorded.
+    // BULK needs received stock (available = onHand minus reserved). Failing a gate
+    // isn't an error: the listing sits at PUSHED with the reason recorded.
     const mode = (link.mode as 'ON_DEMAND' | 'BULK') ?? 'ON_DEMAND'
     let live = false
     let gateNote: string | null = null
@@ -557,14 +504,10 @@ export async function pushListing(input: { productId: string; channelCode: strin
       // No pinned manufacturer => no valid enablement => not live: fail-closed.
       const pinnedMfr = product.productTemplate?.manufacturerServiceId ?? null
       const en = pinnedMfr
-        ? await (
-            prisma as unknown as { onDemandEnablement?: { findFirst: (a: unknown) => Promise<{ status: string } | null> } }
-          ).onDemandEnablement
-            ?.findFirst({
-              where: { creatorUserId: user.id, productId: product.id, manufacturerServiceId: pinnedMfr },
-              select: { status: true },
-            })
-            .catch(() => null)
+        ? await prisma.onDemandEnablement.findFirst({
+            where: { creatorUserId: user.id, productId: product.id, manufacturerServiceId: pinnedMfr },
+            select: { status: true },
+          })
         : null
       live = en?.status === 'ENABLED'
       if (!live) gateNote = pinnedMfr ? 'Awaiting manufacturer on-demand enablement.' : 'This product has no pinned manufacturer yet.'
@@ -598,17 +541,11 @@ export async function pushListing(input: { productId: string; channelCode: strin
         }
       }
     } else {
-      const pool = await (
-        prisma as unknown as {
-          inventoryPool?: { findFirst: (a: unknown) => Promise<{ quantityOnHand: number; quantityReserved: number } | null> }
-        }
-      ).inventoryPool
-        ?.findFirst({
-          where: { creatorUserId: user.id, productId: product.id },
-          select: { quantityOnHand: true, quantityReserved: true },
-        })
-        .catch(() => null)
-      const available = pool ? Math.max(0, Number(pool.quantityOnHand) - Number(pool.quantityReserved)) : 0
+      const pool = await prisma.inventoryPool.findFirst({
+        where: { creatorUserId: user.id, productId: product.id },
+        select: { quantityOnHand: true, quantityReserved: true },
+      })
+      const available = pool ? Math.max(0, pool.quantityOnHand - pool.quantityReserved) : 0
       live = available > 0
       if (live) {
         // Push the derived available-to-sell to the channel (never hand-set).
@@ -627,45 +564,33 @@ export async function pushListing(input: { productId: string; channelCode: strin
       }
     }
 
-    try {
-      await prisma.channelProductLink.update({
-        where: { id: link.id },
-        data: {
-          externalListingId: external.externalListingId,
-          externalUrl: external.externalUrl ?? null,
-          publishState: live ? 'LIVE' : 'PUSHED',
-          lastError: gateNote,
-          lastPushedAt: new Date(),
-        } as object,
-      })
-    } catch {
-      await prisma.channelProductLink.update({
-        where: { id: link.id },
-        data: { externalListingId: external.externalListingId, externalUrl: external.externalUrl ?? null, lastPushedAt: new Date() },
-      })
-    }
+    await prisma.channelProductLink.update({
+      where: { id: link.id },
+      data: {
+        externalListingId: external.externalListingId,
+        externalUrl: external.externalUrl ?? null,
+        publishState: live ? 'LIVE' : 'PUSHED',
+        lastError: gateNote,
+        lastPushedAt: new Date(),
+      },
+    })
 
-    // Variant links — replace-all per push (idempotent).
-    const vld = variantLinkDelegate()
-    if (vld) {
-      await vld.deleteMany({ where: { channelProductLinkId: link.id } }).catch(() => {})
-      await vld
-        .createMany({
-          data: variants.map((v) => {
-            const parts = v.variantKey.split(':')
-            return {
-              channelProductLinkId: link.id,
-              externalVariantId: external.variantIds[v.variantKey] ?? '',
-              productId: product.id,
-              flavorPresetId: parts[1] ?? 'base',
-              packKey: parts[2] ?? 'unit',
-              variantKey: v.variantKey,
-              price: Number(v.price),
-            }
-          }),
-        })
-        .catch(() => {})
-    }
+    // Variant links: replace-all per push (idempotent).
+    await prisma.channelVariantLink.deleteMany({ where: { channelProductLinkId: link.id } })
+    await prisma.channelVariantLink.createMany({
+      data: variants.map((v) => {
+        const parts = v.variantKey.split(':')
+        return {
+          channelProductLinkId: link.id,
+          externalVariantId: external.variantIds[v.variantKey] ?? '',
+          productId: product.id,
+          flavorPresetId: parts[1] ?? 'base',
+          packKey: parts[2] ?? 'unit',
+          variantKey: v.variantKey,
+          price: Number(v.price),
+        }
+      }),
+    })
 
     await logSync(conn.id, 'listing.push', 'OK', `listing ${external.externalListingId} · ${variants.length} variant(s)`)
     await logAuditAs(user, {
@@ -681,7 +606,7 @@ export async function pushListing(input: { productId: string; channelCode: strin
     console.error('[channels] listing push failed:', err)
     await logSync(conn.id, 'listing.push', 'ERROR', detail)
     await prisma.channelProductLink
-      .update({ where: { id: link.id }, data: { publishState: 'ERROR', lastError: detail } as object })
+      .update({ where: { id: link.id }, data: { publishState: 'ERROR', lastError: detail } })
       .catch(() => {})
     return { ok: false, error: `Push failed: ${detail}` }
   }
