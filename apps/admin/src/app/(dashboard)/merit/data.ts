@@ -1,9 +1,9 @@
-// Manufacturer Merit console — data (docs/MANUFACTURER_MERIT_ENGINE.md, MM-3).
+// Manufacturer Merit console data (docs/MANUFACTURER_MERIT_ENGINE.md, MM-3).
 // Reads the latest PartnerMeritSnapshot per manufacturer (written nightly by the
 // shadow-mode sweep) + the current MeritPolicy. Read-only; the console tunes the
 // policy and simulates against these snapshots without recomputing signals.
 
-import { prisma, getOrderSettings } from '@ilaunchify/db'
+import { prisma } from '@ilaunchify/db'
 import { DEFAULT_MERIT_POLICY, resolveManufacturerFeeBps, feeBpsToPct, type MeritPolicy, type MeritBadge } from '@ilaunchify/orders'
 
 export interface MeritRow {
@@ -30,7 +30,7 @@ export interface MeritConsole {
   policy: MeritPolicy
   enabled: boolean
   windows: { promoteSustainDays: number; demoteMissDays: number; graceDays: number }
-  /** Team seats per badge (Merit perk, LOCKED 2026-07-13) — 0 = unlimited. */
+  /** Team seats per badge (Merit perk, LOCKED 2026-07-13): 0 = unlimited. */
   teamSeats: { verified: number; trusted: number; premier: number }
   rows: MeritRow[]
   /** Distribution of the engine's qualified badge (shadow). */
@@ -38,10 +38,11 @@ export interface MeritConsole {
   /** Where the qualified badge differs from the current hand-set tier. */
   mismatches: number
   hasSnapshots: boolean
-  /** OrderSettings base production fee (bps) — what everyone pays in shadow mode. */
+  /** Shadow-mode base withhold: 0 (fee reconciliation 2026-07-22; the flat
+   *  OrderSettings.productionFeeBps is retired and no longer read). */
   baseProductionFeeBps: number
   baseProductionFeePct: string
-  /** MM-7 — global fee-grace policy + manual grants + the manufacturer picker. */
+  /** MM-7: global fee-grace policy + manual grants + the manufacturer picker. */
   feeGrace: { enabled: boolean; value: number; unit: 'DAYS' | 'MONTHS'; feeBps: number; feePct: string }
   grants: FeeGrantRow[]
   manufacturers: { serviceId: string; name: string }[]
@@ -86,9 +87,11 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
   }
   const enabled = policyRow?.enabled ?? false
 
-  // Base production fee (bps) from OrderSettings — the rate everyone pays while
-  // the engine is in shadow. The badge fees only apply once `enabled` flips.
-  const baseProductionFeeBps = (await getOrderSettings().catch(() => null))?.productionFeeBps ?? 500
+  // FEE RECONCILIATION (2026-07-22, matching partner standing/data.ts): the
+  // merit fee is a WITHHOLD from the manufacturer's payout, 0 while the engine
+  // is in shadow. The retired flat OrderSettings.productionFeeBps must NOT
+  // surface here as a "base fee"; base = 0 shows the true shadow-mode rate.
+  const baseProductionFeeBps = 0
 
   // Latest snapshot per manufacturer service.
   const snaps = await prisma.partnerMeritSnapshot
@@ -120,7 +123,7 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
     distribution[qualifiedBadge] += 1
     if (qualifiedBadge !== currentBadge) mismatches += 1
     // Fee today (respects the live/shadow flag) vs. the fee they'd pay if the
-    // engine went live at their QUALIFIED badge — the revenue-impact preview.
+    // engine went live at their QUALIFIED badge: the revenue-impact preview.
     const feeNow = resolveManufacturerFeeBps({ baseProductionFeeBps, badge: currentBadge, policy, enabled })
     const feeIfLive = resolveManufacturerFeeBps({ baseProductionFeeBps, badge: qualifiedBadge, policy, enabled: true })
     return {
@@ -147,7 +150,7 @@ export async function loadMeritConsole(): Promise<MeritConsole> {
   })
   rows.sort((a, b) => b.meritScore - a.meritScore)
 
-  // MM-7 — fee-grace policy.
+  // MM-7: fee-grace policy.
   const feeGrace = {
     enabled: policyRow?.feeGraceEnabled ?? false,
     value: policyRow?.feeGraceValue ?? 3,

@@ -1,6 +1,6 @@
 'use client'
 
-// Scoped order-settings overrides — list + add + delete (Pavel 2026-06-11).
+// Scoped order-settings overrides: list + add + delete (Pavel 2026-06-11).
 // Overrides layer over the global OrderSettings default by tier / market / region.
 
 import * as React from 'react'
@@ -16,12 +16,11 @@ const SCOPES = [
   { value: 'REGION', label: 'Region' },
 ] as const
 const TIERS = ['maker', 'builder', 'agency']
-const bps = (b: number | null) => (b == null ? '—' : `${(b / 100).toFixed(2)}%`)
 const scopeLabel = (s: string) => SCOPES.find((x) => x.value === s)?.label ?? s
 
 const EMPTY: OverrideInput = {
   scope: 'CREATOR_TIER', scopeKey: 'agency', note: null,
-  productionFeeBps: null, warehouseReferralFeeBps: null,
+  warehouseReferralFeeBps: null,
   flatShippingBaseCents: null, flatShippingPerUnitCents: null, freeShippingThresholdCents: null,
 }
 
@@ -60,7 +59,6 @@ export function OverridesManager({ initial }: { initial: OverrideRowFull[] }) {
             <tr>
               <th className="px-4 py-2.5 text-left font-semibold">Scope</th>
               <th className="px-4 py-2.5 text-left font-semibold">Key</th>
-              <th className="px-4 py-2.5 text-left font-semibold">Production fee</th>
               <th className="px-4 py-2.5 text-left font-semibold">Shipping (base / unit / free≥)</th>
               <th className="px-4 py-2.5 text-left font-semibold">Note</th>
               <th className="w-10 px-4 py-2.5" />
@@ -68,15 +66,14 @@ export function OverridesManager({ initial }: { initial: OverrideRowFull[] }) {
           </thead>
           <tbody className="divide-y divide-ink-100">
             {initial.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-ink-500">No overrides — every order uses the global default.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-ink-500">No overrides: every order uses the global default.</td></tr>
             )}
             {initial.map((o) => (
               <tr key={o.id} className="hover:bg-ink-50/40">
                 <td className="px-4 py-3"><span className="inline-flex rounded-full border border-ink-200 bg-ink-50 px-2 py-[2px] text-[10.5px] font-semibold text-ink-700">{scopeLabel(o.scope)}</span></td>
                 <td className="px-4 py-3 font-mono text-[11.5px] text-ink-900">{o.scopeKey}</td>
-                <td className="px-4 py-3 tabular-nums">{bps(o.productionFeeBps)}</td>
                 <td className="px-4 py-3 tabular-nums text-ink-700">{formatCentsOrDash(o.flatShippingBaseCents)} / {formatCentsOrDash(o.flatShippingPerUnitCents)} / {formatCentsOrDash(o.freeShippingThresholdCents)}</td>
-                <td className="px-4 py-3 text-ink-600">{o.note ?? '—'}</td>
+                <td className="px-4 py-3 text-ink-600">{o.note ?? '-'}</td>
                 <td className="px-4 py-3 text-right">
                   <button type="button" onClick={() => remove(o)} disabled={pending} className="text-ink-400 hover:text-danger-600 disabled:opacity-40" aria-label="Delete override">
                     <Trash2 className="h-4 w-4" />
@@ -112,10 +109,6 @@ export function OverridesManager({ initial }: { initial: OverrideRowFull[] }) {
           <div className="lg:col-span-2">
             <label className="block text-[11px] font-medium text-ink-600">Note <span className="text-ink-400">· optional</span></label>
             <input className={NUM} placeholder="e.g. Agency launch promo" value={draft.note ?? ''} onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value || null }))} />
-          </div>
-          <div>
-            <label className="block text-[11px] font-medium text-ink-600">Production fee (bps) <span className="text-ink-400">· {bps(draft.productionFeeBps)}</span></label>
-            <input className={NUM} type="number" min={0} placeholder="inherit" value={draft.productionFeeBps ?? ''} onChange={numField('productionFeeBps')} />
           </div>
           <div>
             <label className="block text-[11px] font-medium text-ink-600">Ship base (¢)</label>

@@ -1,13 +1,15 @@
 // Platform-wide order-policy settings reader (Pavel 2026-06-11). The admin tunes
 // the OrderSettings singleton (Fees & Commissions / Partner Routing / Shipping);
 // consumers read it from here so the order constants are admin-switchable without
-// a deploy. Cast-guarded + defaulted, so it's always safe to call.
+// a deploy. Defaults apply when the singleton row has not been created yet.
 
 import { prisma } from './index'
 
 export interface OrderSettingsValues {
-  // Fees & commissions
-  productionFeeBps: number
+  // Fees & commissions. NOTE: the flat productionFeeBps (5%) is RETIRED as a
+  // fee source (two-fee model 2026-07-09: creator tier fee via FeeRule +
+  // manufacturer merit withhold). The DB column still exists but is unread;
+  // it was removed from this reader + the admin knobs on 2026-07-22.
   warehouseReferralFeeBps: number
   // Partner routing & dispatch
   acceptWindowHours: number
@@ -43,7 +45,6 @@ export interface OrderSettingsValues {
 }
 
 export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
-  productionFeeBps: 500,
   warehouseReferralFeeBps: 0,
   acceptWindowHours: 24,
   maxReroutes: 3,
@@ -72,61 +73,28 @@ export const ORDER_SETTINGS_DEFAULTS: OrderSettingsValues = {
 }
 
 export async function getOrderSettings(): Promise<OrderSettingsValues> {
-  try {
-    const row = await (prisma as unknown as {
-      orderSettings: { findUnique: (a: unknown) => Promise<Partial<OrderSettingsValues> | null> }
-    }).orderSettings
-      .findUnique({
-        where: { id: 'default' },
-        select: {
-          productionFeeBps: true, warehouseReferralFeeBps: true,
-          acceptWindowHours: true, maxReroutes: true, capabilityWeightPct: true, proximityWeightPct: true, certWeightPct: true, autoCancelAfterHours: true, changeoverDays: true,
-          flatShippingBaseCents: true, flatShippingPerUnitCents: true, freeShippingThresholdCents: true, defaultMoq: true,
-          creatorCancelWindowHours: true, cancellationFeeBps: true, refundProcessingFeeBps: true,
-          partnerStrikeOnCancel: true, autoApproveCreatorCancelBeforeRouting: true, disputeWindowDays: true,
-        },
-      })
-      .catch(() => null)
-    // Channel-replenishment knobs live in a SEPARATE cast-guarded select: if the
-    // columns predate db:push, only THIS select fails (→ knob defaults) instead
-    // of nuking the whole row back to defaults for everyone.
-    const channelRow = await (prisma as unknown as {
-      orderSettings: { findUnique: (a: unknown) => Promise<Partial<OrderSettingsValues> | null> }
-    }).orderSettings
-      .findUnique({
-        where: { id: 'default' },
-        select: { channelProcessingBufferDays: true, channelSafetyStockDays: true, channelTargetDaysOfCover: true },
-      })
-      .catch(() => null)
-    // C2.2 daily-cap knob: its own cast-guarded select so a pre-push client
-    // fails ONLY this knob back to its default, never the whole row.
-    const capRow = await (prisma as unknown as {
-      orderSettings: { findUnique: (a: unknown) => Promise<Partial<OrderSettingsValues> | null> }
-    }).orderSettings
-      .findUnique({
-        where: { id: 'default' },
-        select: { channelDailySpendCapCents: true },
-      })
-      .catch(() => null)
-    // RFQ knobs — same separate cast-guarded select (pre-push safe → knob defaults).
-    const rfqRow = await (prisma as unknown as {
-      orderSettings: { findUnique: (a: unknown) => Promise<Partial<OrderSettingsValues> | null> }
-    }).orderSettings
-      .findUnique({
-        where: { id: 'default' },
-        select: { rfqShortlistSize: true, rfqExpiryDays: true, rfqRebroadcastDays: true },
-      })
-      .catch(() => null)
-    return row || channelRow || capRow || rfqRow
-      ? { ...ORDER_SETTINGS_DEFAULTS, ...(row ?? {}), ...(channelRow ?? {}), ...(capRow ?? {}), ...(rfqRow ?? {}) }
-      : ORDER_SETTINGS_DEFAULTS
-  } catch {
-    return ORDER_SETTINGS_DEFAULTS
-  }
+  // Cast-guard burndown 2026-07-22: the four split selects (base / channel /
+  // cap / RFQ) existed only so a pre-push client could fail each knob group
+  // back to its default independently. The columns are all migrated now, so
+  // this is ONE read; a missing singleton row means defaults.
+  const row = await prisma.orderSettings.findUnique({
+    where: { id: 'default' },
+    select: {
+      warehouseReferralFeeBps: true,
+      acceptWindowHours: true, maxReroutes: true, capabilityWeightPct: true, proximityWeightPct: true, certWeightPct: true, autoCancelAfterHours: true, changeoverDays: true,
+      flatShippingBaseCents: true, flatShippingPerUnitCents: true, freeShippingThresholdCents: true, defaultMoq: true,
+      creatorCancelWindowHours: true, cancellationFeeBps: true, refundProcessingFeeBps: true,
+      partnerStrikeOnCancel: true, autoApproveCreatorCancelBeforeRouting: true, disputeWindowDays: true,
+      channelProcessingBufferDays: true, channelSafetyStockDays: true, channelTargetDaysOfCover: true,
+      channelDailySpendCapCents: true,
+      rfqShortlistSize: true, rfqExpiryDays: true, rfqRebroadcastDays: true,
+    },
+  })
+  return row ? { ...ORDER_SETTINGS_DEFAULTS, ...row } : ORDER_SETTINGS_DEFAULTS
 }
 
 // -----------------------------------------------------------------------------
-// Scoped overrides (Pavel 2026-06-11) — tier / market / region overrides layered
+// Scoped overrides (Pavel 2026-06-11): tier / market / region overrides layered
 // over the global default. Only economics are overridable.
 // -----------------------------------------------------------------------------
 
@@ -137,7 +105,6 @@ export interface OrderSettingsOverrideRow {
   scope: OrderSettingsScope
   scopeKey: string
   enabled: boolean
-  productionFeeBps: number | null
   warehouseReferralFeeBps: number | null
   flatShippingBaseCents: number | null
   flatShippingPerUnitCents: number | null
@@ -151,14 +118,13 @@ export interface OrderSettingsContext {
 }
 
 const OVERRIDABLE_KEYS = [
-  'productionFeeBps',
   'warehouseReferralFeeBps',
   'flatShippingBaseCents',
   'flatShippingPerUnitCents',
   'freeShippingThresholdCents',
 ] as const
 
-/** Pure — apply matching, enabled overrides over the base. Resolution order is
+/** Pure: apply matching, enabled overrides over the base. Resolution order is
  *  region < market < creator-tier, so the most specific (tier) wins on conflict.
  *  Null override fields inherit the base. */
 export function applyOrderOverrides(
@@ -186,29 +152,20 @@ export function applyOrderOverrides(
 }
 
 /** Resolve OrderSettings for a context (creator tier / market / region), layering
- *  any matching overrides over the global default. Falls back to the default on
- *  any error. Cast-guarded. */
+ *  any matching overrides over the global default. */
 export async function resolveOrderSettings(ctx: OrderSettingsContext): Promise<OrderSettingsValues> {
   const base = await getOrderSettings()
-  try {
-    const or: Array<{ scope: OrderSettingsScope; scopeKey: string }> = []
-    if (ctx.creatorTier) or.push({ scope: 'CREATOR_TIER', scopeKey: ctx.creatorTier })
-    if (ctx.marketCode) or.push({ scope: 'MARKET', scopeKey: ctx.marketCode })
-    if (ctx.regionId) or.push({ scope: 'REGION', scopeKey: ctx.regionId })
-    if (or.length === 0) return base
-    const overrides = await (prisma as unknown as {
-      orderSettingsOverride: { findMany: (a: unknown) => Promise<OrderSettingsOverrideRow[]> }
-    }).orderSettingsOverride
-      .findMany({
-        where: { enabled: true, OR: or },
-        select: {
-          scope: true, scopeKey: true, enabled: true, productionFeeBps: true, warehouseReferralFeeBps: true,
-          flatShippingBaseCents: true, flatShippingPerUnitCents: true, freeShippingThresholdCents: true,
-        },
-      })
-      .catch(() => [] as OrderSettingsOverrideRow[])
-    return applyOrderOverrides(base, overrides, ctx)
-  } catch {
-    return base
-  }
+  const or: Array<{ scope: OrderSettingsScope; scopeKey: string }> = []
+  if (ctx.creatorTier) or.push({ scope: 'CREATOR_TIER', scopeKey: ctx.creatorTier })
+  if (ctx.marketCode) or.push({ scope: 'MARKET', scopeKey: ctx.marketCode })
+  if (ctx.regionId) or.push({ scope: 'REGION', scopeKey: ctx.regionId })
+  if (or.length === 0) return base
+  const overrides = await prisma.orderSettingsOverride.findMany({
+    where: { enabled: true, OR: or },
+    select: {
+      scope: true, scopeKey: true, enabled: true, warehouseReferralFeeBps: true,
+      flatShippingBaseCents: true, flatShippingPerUnitCents: true, freeShippingThresholdCents: true,
+    },
+  })
+  return applyOrderOverrides(base, overrides, ctx)
 }

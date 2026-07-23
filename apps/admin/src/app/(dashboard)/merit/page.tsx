@@ -1,4 +1,4 @@
-// Manufacturer Merit console — v2 admin surface (docs/MANUFACTURER_MERIT_ENGINE.md,
+// Manufacturer Merit console: v2 admin surface (docs/MANUFACTURER_MERIT_ENGINE.md,
 // MM-3). Watch the shadow-mode standing engine and calibrate the policy before it
 // ever touches a tier or fee. KPIs + per-manufacturer standing + policy simulator.
 
@@ -12,7 +12,7 @@ import { FeeGracePanel } from './FeeGracePanel'
 import { MeritManualButton } from './MeritManual'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Manufacturer standing — Admin' }
+export const metadata = { title: 'Manufacturer standing · Admin' }
 
 const BADGE_PILL: Record<string, string> = {
   VERIFIED: 'border-ink-200 bg-ink-100 text-ink-700',
@@ -26,7 +26,7 @@ function Badge({ b }: { b: string }) {
 
 export default async function MeritPage() {
   // Merit policy = fee-by-standing + the go-live switch. Gated on the dedicated
-  // `merit:admin` capability — super-admin-only by default, grantable in /roles.
+  // `merit:admin` capability: super-admin-only by default, grantable in /roles.
   await requireCapability('merit:admin')
   const c = await loadMeritConsole()
 
@@ -35,7 +35,7 @@ export default async function MeritPage() {
       <AdminPageHeader
         eyebrow="Manufacturers"
         title="Manufacturer standing"
-        description="Fair, multi-signal merit — Craft, Reliability, Contribution, Standing — earns the badge (Verified → Trusted → Premier) that unlocks the fee tier. In Shadow the engine proposes standing nightly but changes no tier or fee; switch it Live to assign badges and apply badge fees."
+        description="Fair, multi-signal merit: Craft, Reliability, Contribution, Standing. It earns the badge (Verified → Trusted → Premier) that unlocks the fee tier. In Shadow the engine proposes standing nightly but changes no tier or fee; switch it Live to assign badges and apply badge fees."
         actions={<MeritManualButton />}
       />
 
@@ -73,13 +73,13 @@ export default async function MeritPage() {
           <h2 className="font-display text-[14px] font-semibold text-ink-900">Standing (latest snapshot per manufacturer)</h2>
           <span className="text-[11.5px] text-ink-500">
             {c.enabled
-              ? <>Engine <strong className="text-ink-700">live</strong> — fee resolves from the badge.</>
-              : <>Shadow: everyone pays the base <strong className="text-ink-700">{c.baseProductionFeePct}</strong> production fee. &ldquo;If live&rdquo; previews the badge fee.</>}
+              ? <>Engine <strong className="text-ink-700">live</strong>: fee resolves from the badge.</>
+              : <>Shadow: no merit withhold is charged today (<strong className="text-ink-700">{c.baseProductionFeePct}</strong>). &ldquo;If live&rdquo; previews the badge fee.</>}
           </span>
         </div>
         {!c.hasSnapshots ? (
           <p className="px-5 py-10 text-center text-[13px] text-ink-500">
-            No snapshots yet — the nightly merit sweep (<code>/api/cron/merit</code>) hasn&rsquo;t run, or there are no active manufacturers.
+            No snapshots yet: the nightly merit sweep (<code>/api/cron/merit</code>) hasn&rsquo;t run, or there are no active manufacturers.
           </p>
         ) : (
           <table className="w-full text-[13px]">
@@ -123,7 +123,7 @@ export default async function MeritPage() {
                       </>
                     )}
                   </td>
-                  <td className="px-5 py-2.5 text-[12px] text-ink-500">{r.gaps[0] ?? '—'}</td>
+                  <td className="px-5 py-2.5 text-[12px] text-ink-500">{r.gaps[0] ?? '-'}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,7 +1,7 @@
 'use client'
 
-// Order-policy settings forms (Pavel 2026-06-11). Three sections — Fees,
-// Partner Routing, Shipping — each saving its own subset of the OrderSettings
+// Order-policy settings forms (Pavel 2026-06-11). Three sections (Fees,
+// Partner Routing, Shipping), each saving its own subset of the OrderSettings
 // singleton via saveOrderSettings(patch, section).
 
 import * as React from 'react'
@@ -63,20 +63,19 @@ const intOr = (e: React.ChangeEvent<HTMLInputElement>, min: number) => Math.max(
 
 // --- Fees & commissions ------------------------------------------------------
 export function FeesForm({ initial }: { initial: OrderSettingsValues }) {
-  const [productionFeeBps, setProd] = React.useState(initial.productionFeeBps)
+  // The flat production-order fee knob is GONE (2026-07-22): it was retired as
+  // a fee source by the two-fee model (creator tier fee via Tiers & Plans
+  // FeeRule rows + manufacturer merit withhold) and nothing priced off it.
   const [warehouseReferralFeeBps, setWh] = React.useState(initial.warehouseReferralFeeBps)
   const { pending, status, setStatus, save } = useSaver('fees')
   return (
     <div className="space-y-5">
-      <Card icon={DollarSign} title="Platform fees" desc="iLaunchify's commission on creator orders.">
-        <Field label="Production order fee (bps)" hint={`${pct(productionFeeBps)} of the production subtotal + shipping`}>
-          <input className={NUM} type="number" min={0} max={10000} value={productionFeeBps} onChange={(e) => { setProd(intOr(e, 0)); setStatus(null) }} />
-        </Field>
+      <Card icon={DollarSign} title="Platform fees" desc="Creator order fees are tier-based: manage them under Tiers & Plans (FeeRule). Only non-tier fees live here.">
         <Field label="Warehouse referral fee (bps)" hint={`${pct(warehouseReferralFeeBps)} on warehouse-referral revenue`}>
           <input className={NUM} type="number" min={0} max={10000} value={warehouseReferralFeeBps} onChange={(e) => { setWh(intOr(e, 0)); setStatus(null) }} />
         </Field>
       </Card>
-      <SaveBar pending={pending} status={status} onSave={() => save({ productionFeeBps, warehouseReferralFeeBps })} />
+      <SaveBar pending={pending} status={status} onSave={() => save({ warehouseReferralFeeBps })} />
     </div>
   )
 }
@@ -92,14 +91,14 @@ export function RoutingForm({ initial }: { initial: OrderSettingsValues }) {
   const [changeoverDays, setChg] = React.useState(initial.changeoverDays)
   const { pending, status, setStatus, save } = useSaver('routing')
   const wSum = capabilityWeightPct + proximityWeightPct + certWeightPct
-  const norm = (n: number) => (wSum > 0 ? `${Math.round((n / wSum) * 100)}%` : '—')
+  const norm = (n: number) => (wSum > 0 ? `${Math.round((n / wSum) * 100)}%` : '-')
   return (
     <div className="space-y-5">
       <Card icon={Workflow} title="Dispatch windows" desc="How long partners get to accept, and when an order auto-holds or cancels.">
         <Field label="Partner accept window (hours)" hint="Time a partner has to accept a dispatch before it times out.">
           <input className={NUM} type="number" min={1} max={720} value={acceptWindowHours} onChange={(e) => { setAcc(intOr(e, 1)); setStatus(null) }} />
         </Field>
-        <Field label="Max auto-reroutes" hint="Reroute attempts before the order holds for admin. (Not yet enforced — V1 reroute is manual.)">
+        <Field label="Max auto-reroutes" hint="Reroute attempts before the order holds for admin. (Not yet enforced: V1 reroute is manual.)">
           <input className={NUM} type="number" min={0} max={20} value={maxReroutes} onChange={(e) => { setRer(intOr(e, 0)); setStatus(null) }} />
         </Field>
         <Field label="Auto-cancel after (hours)" hint="Unpaid orders auto-cancel past this age (runs every minute via the auto-cancel cron).">
@@ -111,7 +110,7 @@ export function RoutingForm({ initial }: { initial: OrderSettingsValues }) {
           <input className={NUM} type="number" min={0} max={60} value={changeoverDays} onChange={(e) => { setChg(intOr(e, 0)); setStatus(null) }} />
         </Field>
       </Card>
-      <Card icon={Workflow} title="Match scoring weights" desc="How the engine ranks partners for a dispatch. Weights are relative — they're renormalized over the dimensions that apply to each order.">
+      <Card icon={Workflow} title="Match scoring weights" desc="How the engine ranks partners for a dispatch. Weights are relative; they're renormalized over the dimensions that apply to each order.">
         <Field label="Capability" hint={`Capacity headroom above the order qty · ${norm(capabilityWeightPct)} effective`}>
           <input className={NUM} type="number" min={0} max={100} value={capabilityWeightPct} onChange={(e) => { setCap(Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0))); setStatus(null) }} />
         </Field>
@@ -157,7 +156,7 @@ export function ShippingForm({ initial }: { initial: OrderSettingsValues }) {
   )
 }
 
-// --- Channel replenishment (C6.3 — CHANNEL_MANAGEMENT_SPEC §3.5a) -------------
+// --- Channel replenishment (C6.3, CHANNEL_MANAGEMENT_SPEC §3.5a) --------------
 export function ChannelReplenishmentForm({ initial }: { initial: OrderSettingsValues }) {
   const [channelProcessingBufferDays, setBuf] = React.useState(initial.channelProcessingBufferDays)
   const [channelSafetyStockDays, setSafety] = React.useState(initial.channelSafetyStockDays)
@@ -171,7 +170,7 @@ export function ChannelReplenishmentForm({ initial }: { initial: OrderSettingsVa
         title="Replenishment model"
         desc="Drives every creator's Stock & replenishment math and stock alerts: reorder point = sales/day × (manufacturer lead + buffer) + safety stock; suggested qty targets the cover below."
       >
-        <Field label="Processing buffer (days)" hint="Added on top of the manufacturer's repeat-run lead time — covers receiving, QC, and put-away.">
+        <Field label="Processing buffer (days)" hint="Added on top of the manufacturer's repeat-run lead time: covers receiving, QC, and put-away.">
           <input className={NUM} type="number" min={0} max={60} value={channelProcessingBufferDays} onChange={(e) => { setBuf(intOr(e, 0)); setStatus(null) }} />
         </Field>
         <Field label="Safety stock (days of cover)" hint="Extra cushion above lead-time demand before a pool counts as LOW.">
@@ -213,7 +212,7 @@ export function CancellationsForm({ initial }: { initial: OrderSettingsValues })
   const [partnerStrikeOnCancel, setStrike] = React.useState(initial.partnerStrikeOnCancel)
   const [autoApprove, setAuto] = React.useState(initial.autoApproveCreatorCancelBeforeRouting)
   const { pending, status, setStatus, save } = useSaver('cancellations')
-  const NE = '(Not yet enforced — recorded for when the flow ships.)'
+  const NE = '(Not yet enforced: recorded for when the flow ships.)'
   return (
     <div className="space-y-5">
       <Card icon={RotateCcw} title="Cancellation policy" desc="When and how a creator can cancel, and what it costs.">

@@ -2,10 +2,9 @@
 
 // Admin order-policy settings (Pavel 2026-06-11). Reads/writes the OrderSettings
 // singleton. The three pages (Fees, Routing, Shipping) each save their own subset
-// via a partial merge, so they don't clobber each other. Cast-guarded until the
-// migration lands the model on the generated client.
+// via a partial merge, so they don't clobber each other.
 
-import { prisma, getOrderSettings, type OrderSettingsValues, type OrderSettingsScope } from '@ilaunchify/db'
+import { prisma, Prisma, getOrderSettings, type OrderSettingsValues, type OrderSettingsScope } from '@ilaunchify/db'
 import { requireCapability } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { revalidatePath } from 'next/cache'
@@ -33,7 +32,6 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
       const c = clampInt(patch[k] as number | null, min, max)
       if (c !== null || patch[k] === null) data[k] = c
     }
-    set('productionFeeBps', 0, 10_000)
     set('warehouseReferralFeeBps', 0, 10_000)
     set('acceptWindowHours', 1, 720)
     set('maxReroutes', 0, 20)
@@ -50,7 +48,7 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     set('cancellationFeeBps', 0, 10_000)
     set('refundProcessingFeeBps', 0, 10_000)
     set('disputeWindowDays', 0, 365)
-    // Channel replenishment (C6.3 — CHANNEL_MANAGEMENT_SPEC §3.5a)
+    // Channel replenishment (C6.3, CHANNEL_MANAGEMENT_SPEC §3.5a)
     set('channelProcessingBufferDays', 0, 60)
     set('channelSafetyStockDays', 0, 90)
     set('channelTargetDaysOfCover', 7, 365)
@@ -62,12 +60,10 @@ export async function saveOrderSettings(patch: Partial<OrderSettingsValues>, sec
     if (patch.partnerStrikeOnCancel !== undefined) data.partnerStrikeOnCancel = !!patch.partnerStrikeOnCancel
     if (patch.autoApproveCreatorCancelBeforeRouting !== undefined) data.autoApproveCreatorCancelBeforeRouting = !!patch.autoApproveCreatorCancelBeforeRouting
 
-    await (prisma as unknown as {
-      orderSettings: { upsert: (a: unknown) => Promise<unknown> }
-    }).orderSettings.upsert({
+    await prisma.orderSettings.upsert({
       where: { id: 'default' },
-      update: data,
-      create: { id: 'default', ...data },
+      update: data as Prisma.OrderSettingsUncheckedUpdateInput,
+      create: { id: 'default', ...data } as Prisma.OrderSettingsUncheckedCreateInput,
     })
     await logAuditAs(admin, {
       entityType: 'OrderSettings',
@@ -94,7 +90,6 @@ export interface OverrideInput {
   scope: OrderSettingsScope
   scopeKey: string
   note: string | null
-  productionFeeBps: number | null
   warehouseReferralFeeBps: number | null
   flatShippingBaseCents: number | null
   flatShippingPerUnitCents: number | null
@@ -107,20 +102,15 @@ export interface OverrideRowFull extends OverrideInput {
 
 const OV_SELECT = {
   id: true, scope: true, scopeKey: true, enabled: true, note: true,
-  productionFeeBps: true, warehouseReferralFeeBps: true, flatShippingBaseCents: true,
+  warehouseReferralFeeBps: true, flatShippingBaseCents: true,
   flatShippingPerUnitCents: true, freeShippingThresholdCents: true,
 }
 
 export async function listOverrides(): Promise<OverrideRowFull[]> {
-  try {
-    return await (prisma as unknown as {
-      orderSettingsOverride: { findMany: (a: unknown) => Promise<OverrideRowFull[]> }
-    }).orderSettingsOverride
-      .findMany({ orderBy: [{ scope: 'asc' }, { scopeKey: 'asc' }], select: OV_SELECT })
-      .catch(() => [] as OverrideRowFull[])
-  } catch {
-    return []
-  }
+  return prisma.orderSettingsOverride.findMany({
+    orderBy: [{ scope: 'asc' }, { scopeKey: 'asc' }],
+    select: OV_SELECT,
+  })
 }
 
 export async function saveOverride(input: OverrideInput): Promise<Result> {
@@ -134,16 +124,13 @@ export async function saveOverride(input: OverrideInput): Promise<Result> {
       scopeKey,
       enabled: true,
       note: input.note?.trim() || null,
-      productionFeeBps: clampInt(input.productionFeeBps, 0, 10_000),
       warehouseReferralFeeBps: clampInt(input.warehouseReferralFeeBps, 0, 10_000),
       flatShippingBaseCents: clampInt(input.flatShippingBaseCents, 0, 10_000_00),
       flatShippingPerUnitCents: clampInt(input.flatShippingPerUnitCents, 0, 10_000_00),
       freeShippingThresholdCents: clampInt(input.freeShippingThresholdCents, 0, 100_000_00),
       updatedById: admin.id,
     }
-    await (prisma as unknown as {
-      orderSettingsOverride: { upsert: (a: unknown) => Promise<unknown> }
-    }).orderSettingsOverride.upsert({
+    await prisma.orderSettingsOverride.upsert({
       where: { scope_scopeKey: { scope: input.scope, scopeKey } },
       update: data,
       create: data,
@@ -159,9 +146,7 @@ export async function saveOverride(input: OverrideInput): Promise<Result> {
 export async function deleteOverride(scope: OrderSettingsScope, scopeKey: string): Promise<Result> {
   const admin = await requireCapability('billing:write')
   try {
-    await (prisma as unknown as {
-      orderSettingsOverride: { delete: (a: unknown) => Promise<unknown> }
-    }).orderSettingsOverride.delete({ where: { scope_scopeKey: { scope, scopeKey } } })
+    await prisma.orderSettingsOverride.delete({ where: { scope_scopeKey: { scope, scopeKey } } })
     await logAuditAs(admin, { entityType: 'OrderSettings', entityId: `${scope}:${scopeKey}`, action: 'ORDER_SETTINGS_OVERRIDE_DELETED', payload: { scope, scopeKey } })
     revalidatePath('/order-settings/overrides')
     return { ok: true }
