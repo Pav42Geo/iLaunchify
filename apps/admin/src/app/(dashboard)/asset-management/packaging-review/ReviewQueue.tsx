@@ -1,10 +1,40 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { createElement, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { approvePackagingReview, rejectPackagingReview, type ReviewRow, type ReviewFile } from './actions'
 
 const isImage = (name: string) => /\.(png|jpe?g|webp|gif|avif)$/i.test(name)
+const is3dModel = (name: string) => /\.(glb|gltf)$/i.test(name)
+
+// Interactive 3D preview for GLB/GLTF mockups via Google's <model-viewer> web
+// component. Loaded once from CDN on first 3D tile mount (module script, no npm
+// dep). Rendered with createElement to sidestep TSX intrinsic-element typing
+// for custom elements.
+const MODEL_VIEWER_SRC = 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js'
+function Model3dPreview({ url, name }: { url: string; name: string }) {
+  const [ready, setReady] = useState(() => typeof window !== 'undefined' && Boolean(customElements.get('model-viewer')))
+  useEffect(() => {
+    if (customElements.get('model-viewer')) { setReady(true); return }
+    let script = document.querySelector<HTMLScriptElement>(`script[src="${MODEL_VIEWER_SRC}"]`)
+    if (!script) {
+      script = document.createElement('script')
+      script.type = 'module'
+      script.src = MODEL_VIEWER_SRC
+      document.head.appendChild(script)
+    }
+    void customElements.whenDefined('model-viewer').then(() => setReady(true))
+  }, [])
+  if (!ready) return <span className="text-[11px] font-semibold uppercase text-ink-400">Loading 3D…</span>
+  return createElement('model-viewer', {
+    src: url,
+    alt: name,
+    'camera-controls': '',
+    'auto-rotate': '',
+    'shadow-intensity': '0.6',
+    style: { width: '100%', height: '100%' },
+  })
+}
 const fmtPanel = (p: string | null) => (p ? p[0] + p.slice(1).toLowerCase() : '')
 
 const CATEGORIES = ['BOTTLE', 'JAR', 'CAN', 'TUBE', 'POUCH', 'SACHET', 'STICK_PACK', 'BOX', 'CARTON', 'CASE', 'OTHER']
@@ -143,12 +173,15 @@ export function ReviewQueue({ initial }: { initial: ReviewRow[] }) {
 // die-lines, with a role/panel chip. Click opens the signed URL in a new tab.
 function FileTile({ f }: { f: ReviewFile }) {
   const chip = f.role === 'DIELINE' ? (f.panel ? fmtPanel(f.panel) : 'Die-line') : (f.label || 'Mockup')
+  const threeD = Boolean(f.url) && is3dModel(f.name)
   const body = (
     <>
       <div className="relative grid aspect-square place-items-center overflow-hidden bg-ink-50">
         {f.url && isImage(f.name) ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={f.url} alt={f.name} className="h-full w-full object-contain p-1" />
+        ) : threeD ? (
+          <Model3dPreview url={f.url!} name={f.name} />
         ) : (
           <span className="text-[11px] font-semibold uppercase text-ink-400">{f.name.split('.').pop() ?? 'file'}</span>
         )}
@@ -157,6 +190,9 @@ function FileTile({ f }: { f: ReviewFile }) {
       <div className="truncate px-1.5 py-1 text-[10.5px] text-ink-600" title={f.name}>{f.name}</div>
     </>
   )
+  // 3D tiles are NOT wrapped in a link: dragging to rotate the model must not
+  // navigate. The file name row below still tells the admin what it is.
+  if (threeD) return <div className="block overflow-hidden rounded-xl border border-ink-200 bg-white">{body}</div>
   return f.url
     ? <a href={f.url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-ink-200 bg-white transition-colors hover:border-pink-300">{body}</a>
     : <div className="block overflow-hidden rounded-xl border border-ink-200 bg-white opacity-70">{body}</div>
