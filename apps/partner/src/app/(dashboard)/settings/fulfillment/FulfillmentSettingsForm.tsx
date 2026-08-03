@@ -279,7 +279,7 @@ function Toggle({
       onClick={onClick}
       className={cn(
         'relative h-[23px] w-10 flex-none rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
-        on ? 'bg-pink-500' : 'bg-ink-300',
+        on ? 'bg-success-500' : 'bg-ink-300',
         disabled && 'cursor-not-allowed',
       )}
     >

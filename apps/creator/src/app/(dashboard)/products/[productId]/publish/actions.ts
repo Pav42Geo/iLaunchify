@@ -12,13 +12,17 @@ import {
   ON_DEMAND_INELIGIBLE_COPY,
 } from '@ilaunchify/orders'
 import { recomputeStockAlert } from '../../../channels/inventory/alerts'
+import { hydrateConnectionTokens } from '../../../channels/vault'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 const Schema = z.object({
   productId: z.string(),
   priceCents: z.number().int().positive(),
-  inventoryAvailable: z.number().int().positive().nullable(),
+  // D4 (MANUFACTURER_INVENTORY_2026-07-27.md): retired. Manufacturer stock now
+  // lives on TemplateFlavorInventory; this creator-side field was written here
+  // and read NOWHERE. Accepted but ignored so in-flight clients don't break.
+  inventoryAvailable: z.number().int().positive().nullable().optional(),
 })
 
 export async function publishProduct(input: z.infer<typeof Schema>) {
@@ -48,7 +52,7 @@ export async function publishProduct(input: z.infer<typeof Schema>) {
     where: { id: product.id },
     data: {
       priceCents: parsed.data.priceCents,
-      inventoryAvailable: parsed.data.inventoryAvailable,
+      // inventoryAvailable retired (D4): no longer persisted.
       status: 'PUBLISHED',
     },
   })
@@ -411,7 +415,7 @@ export async function pushListing(input: { productId: string; channelCode: strin
   if (!product || !channel) return { ok: false, error: 'Product or channel not found.' }
   const conn = await prisma.channelConnection.findFirst({
     where: { channelId: channel.id, creatorUserId: user.id, status: 'CONNECTED' },
-    select: { id: true, externalAccountId: true },
+    select: { id: true, externalAccountId: true, accessTokenRef: true, refreshTokenRef: true },
   })
   if (!conn) return { ok: false, error: 'Connect this channel first.' }
   const link = await prisma.channelProductLink.findUnique({
@@ -481,7 +485,7 @@ export async function pushListing(input: { productId: string; channelCode: strin
 
   try {
     const external = await adapter.pushListing(
-      { connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: { accessToken: 'stub' } },
+      { connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: await hydrateConnectionTokens(conn) },
       {
         title: product.name,
         imageUrls: [],
@@ -551,7 +555,7 @@ export async function pushListing(input: { productId: string; channelCode: strin
         // Push the derived available-to-sell to the channel (never hand-set).
         for (const extId of Object.values(external.variantIds)) {
           await adapter
-            .setInventory({ connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: { accessToken: 'stub' } }, extId, available)
+            .setInventory({ connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: await hydrateConnectionTokens(conn) }, extId, available)
             .catch(() => {})
         }
       } else gateNote = 'Goes live once delivered stock is received.'
@@ -559,7 +563,7 @@ export async function pushListing(input: { productId: string; channelCode: strin
     if (live && mode === 'ON_DEMAND') {
       for (const extId of Object.values(external.variantIds)) {
         await adapter
-          .setInventory({ connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: { accessToken: 'stub' } }, extId, 'MADE_TO_ORDER')
+          .setInventory({ connectionId: conn.id, externalAccountId: conn.externalAccountId, tokens: await hydrateConnectionTokens(conn) }, extId, 'MADE_TO_ORDER')
           .catch(() => {})
       }
     }

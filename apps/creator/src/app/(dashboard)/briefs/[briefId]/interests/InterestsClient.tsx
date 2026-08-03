@@ -131,7 +131,7 @@ export function InterestsClient({
             {label}
             <span
               className={`ml-s-1 rounded-pill px-s-2 py-0.5 text-ui-label tracking-normal ${
-                tab === t ? 'bg-pink-50 text-pink-700' : 'bg-ink-100 text-ink-600'
+                tab === t ? 'bg-ink-900 text-white' : 'bg-ink-100 text-ink-600'
               }`}
             >
               {count}

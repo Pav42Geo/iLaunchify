@@ -66,7 +66,7 @@ function Pill({
       aria-pressed={active}
       title={label}
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors ${
-        active ? 'border-pink-500 bg-pink-50 text-ink-900 ring-1 ring-pink-500' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400'
+        active ? 'border-success-500 bg-success-50 text-ink-900 ring-1 ring-pink-500' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400'
       }`}
     >
       <span

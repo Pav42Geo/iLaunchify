@@ -156,7 +156,7 @@ export function ExpressInterestDialog({
                   onClick={() => setClaimFit((prev) => ({ ...prev, [c]: !prev[c] }))}
                   className={`rounded-full border px-3 py-1.5 text-ui-caption font-medium transition ${
                     claimFit[c]
-                      ? 'border-pink-500 bg-pink-50 text-pink-700'
+                      ? 'border-success-500 bg-success-50 text-success-700'
                       : 'border-ink-200 bg-white text-ink-500 hover:text-ink-900'
                   }`}
                 >

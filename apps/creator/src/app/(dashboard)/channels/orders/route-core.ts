@@ -68,6 +68,14 @@ import {
 import { getCreatorTier } from '@ilaunchify/auth'
 import { chargeSavedMethodOffSession } from '@ilaunchify/payments'
 import {
+  checkTemplateStock,
+  consumeTemplateInventory,
+  notifyTemplateStockAlerts,
+  reverseTemplateInventory,
+  type StockAlertBundle,
+} from '@ilaunchify/orders/template-inventory-db'
+import { BASE_FLAVOR_KEY } from '@ilaunchify/orders/template-inventory'
+import {
   planChannelOrderRouting,
   trailingUnits,
   bandSelectionUnits,
@@ -705,6 +713,19 @@ async function routeOneJob(ctx: {
     })
   const lockedDesignVersionId = lockedDesign?.versions[0]?.id ?? null
 
+  // I3 (MANUFACTURER_INVENTORY spec 4b/5): manufacturer stock gate. ON_HOLD on
+  // purpose (not NEEDS_ATTENTION): the park auto-retries next cycle, so the
+  // channel order routes by itself after a restock. The conditional decrement
+  // inside the transaction below stays the authority under concurrency.
+  const invNeeds = job.flavors.some((f) => f.flavorPresetId)
+    ? job.flavors
+        .filter((f) => f.flavorPresetId)
+        .map((f) => ({ flavorPresetId: f.flavorPresetId as string, units: f.units }))
+    : [{ flavorPresetId: BASE_FLAVOR_KEY, units: job.units }]
+  const stockGate = await checkTemplateStock(prisma, product.productTemplateId, invNeeds)
+  if (!stockGate.ok) return { ok: false, park: 'ON_HOLD', reason: stockGate.reason }
+  let stockAlerts: StockAlertBundle | null = null
+
   const order = await createOrderWithNumber(async (orderNumber) => {
     return prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
@@ -722,7 +743,7 @@ async function routeOneJob(ctx: {
           platformFeeSource: ctx.creatorFee.source,
           manufacturerServiceId: routing.manufacturingServiceId,
           printProviderServiceId: routing.labelPrintingServiceId,
-          shipToType: 'CREATOR_ADDRESS', // DIRECT_CONSUMER enum pending (logistics)
+          shipToType: 'DIRECT_CONSUMER', // C2.2: mfr parcels straight to the channel consumer
           shipToContactName: ship.name ?? 'Consumer',
           shipToContactPhone: ship.phone ?? null,
           shipToAddressLine1: ship.address1!,
@@ -760,9 +781,24 @@ async function routeOneJob(ctx: {
           }),
         })
       }
+      // I3: consume manufacturer stock inside the order txn. A concurrent
+      // routing/checkout that took the last units first makes this throw; the
+      // transaction (order + items) rolls back and the job errors upward into
+      // the router's park path: no charge ever happens.
+      const consumedStock = await consumeTemplateInventory(tx, {
+        productTemplateId: product.productTemplateId,
+        needs: invNeeds,
+        orderId: created.id,
+        actorUserId: user.id,
+      })
+      if (!consumedStock.ok) throw new Error(`NOT_ENOUGH_STOCK:${consumedStock.reason}`)
+      stockAlerts = consumedStock.alerts
       return created
     })
   })
+
+  // I4: fire PARTNER_STOCK_ALERT transitions now that the decrement committed.
+  if (stockAlerts) void notifyTemplateStockAlerts(prisma, stockAlerts).catch(() => {})
 
   // Band-selection snapshot columns (§4b.5 selection input, also in notes + audit).
   await prisma.order.update({
@@ -809,6 +845,12 @@ async function routeOneJob(ctx: {
     try {
       assertOrderTransition('PENDING_PAYMENT', 'CANCELLED')
       await prisma.order.update({ where: { id: order.id }, data: { status: 'CANCELLED' } })
+      // I3: put the consumed manufacturer stock back (idempotent, best-effort).
+      await reverseTemplateInventory(prisma, {
+        productTemplateId: product.productTemplateId,
+        orderId: order.id,
+        actorUserId: user.id,
+      }).catch(() => {})
       await logAuditAs(user, {
         entityType: 'Order',
         entityId: order.id,

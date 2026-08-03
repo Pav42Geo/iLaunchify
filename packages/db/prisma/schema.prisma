@@ -2421,7 +2421,10 @@ model Product {
   // creator's account-wide fulfillmentPreference. Null = inherit the account default.
   fulfillmentPreferenceOverride FulfillmentPreference?
   demandSignals                 ProductDemandSignal[] // AFE P3.0 demand-by-region
-  // Inventory (V1: manufacturer-defined limit, no real-time per-order reserve)
+  // DEPRECATED (D4, MANUFACTURER_INVENTORY_2026-07-27.md): written by the old
+  // publish form, read nowhere; the publish action stopped persisting it on
+  // 2026-07-27. Manufacturer stock lives on TemplateFlavorInventory. Column
+  // kept for additive-migration safety; drop in a future destructive window.
   inventoryAvailable      Int?
   // Disclosure level override (defaults to PartnerService's, but creator can override)
   disclosureLevelOverride DisclosureLevel?
@@ -3670,6 +3673,11 @@ enum OrderShipToType {
   // Logistics L0 (docs/LOGISTICS_AND_FULFILLMENT.md §2, locked 2026-07-02):
   HOLD_AT_MANUFACTURER // goods stay at the producing partner; ship-on-demand / stock-release via StorageAgreement
   CHANNEL_INBOUND // direct into a sales-channel FC (FBA / WFS / FBT) via ChannelInboundPlan
+  // C2.2 on-demand (CHANNEL_MANAGEMENT_SPEC LOCKED #1, added 2026-07-22): the
+  // full-service manufacturer parcels the made-to-order run STRAIGHT to the
+  // channel consumer at the order's shipTo* address. Written only by the
+  // channel router (route-core.ts); never selectable at checkout.
+  DIRECT_CONSUMER
 }
 
 // Order cancellation — partner-requested path (PLATFORM_SPEC §B.4, locked
@@ -4704,6 +4712,15 @@ model ProductTemplate {
   // admin dashboard (exact "fragile" = coverage 1) + avoiding re-scans.
   printCoverage              Int?
   printCoverageAt            DateTime?
+  // Manufacturer inventory sellability cache (docs/MANUFACTURER_INVENTORY_2026-07-27.md
+  // sections 4/4b; precedent: printCoverage). Recomputed inside every
+  // TemplateInventoryLedger-touching transaction using the ORDERABILITY test
+  // (per-flavor stock vs variant MOQ + the minFlavorsPerPack floor), NOT a bare
+  // "> 0": stock below MOQ everywhere counts as sold out. true = hidden from the
+  // marketplace (buildWhere adds `inventorySoldOut: false`). Templates with no
+  // tracked TemplateFlavorInventory rows stay false forever (today's behavior).
+  // Additive; cast-guarded reads until the next db:push + generate.
+  inventorySoldOut           Boolean                       @default(false)
   // Phrase engine (2026-06-05) — free-form manufacturer-answered product-fact
   // flags, e.g. {makesStructureFunctionClaims:true}. Consumed by PhraseRule
   // conditions of kind PRODUCT_FACT.
@@ -5421,6 +5438,7 @@ enum NotificationEvent {
   PROOF_REJECTED // creator rejected with annotation → printer uploads next round
   // C6.3 — channel inventory intelligence (CHANNEL_MANAGEMENT_SPEC §3.5a)
   CREATOR_STOCK_ALERT // stock alert state ESCALATED (LOW/CRITICAL/STOCKOUT) or recovered to HEALTHY
+  PARTNER_STOCK_ALERT // I4 manufacturer template stock: LOW/STOCKOUT/recovered + marketplace sold-out/restored flips
   // F — job-progress capture (docs/EMAIL_NOTIFICATION_CENTER.md Part 3)
   CREATOR_DISPATCH_PROGRESS // partner posted a progress update / revised ETA on a dispatch
   // Feedback module (docs/FEEDBACK_MODULE.md §5/§6) — delivery+3d combined ask
@@ -5442,6 +5460,9 @@ enum NotificationEvent {
   // (daily cap reached / saved-method charge failed); the creator should act
   // or wait for the next auto-recovery cycle.
   CREATOR_CHANNEL_ORDER_HOLD
+  // Track B3 token-health cron: a channel connection's credentials expired or a
+  // refresh failed; the creator must reconnect from the Channels hub.
+  CREATOR_CHANNEL_RECONNECT_NEEDED
   // Print Coverage & Capability RFQ (docs/PRINT_PROVIDER_SELECTION.md §10, PS-8b) —
   // broadcast to shortlisted printers when a template's print coverage hits 0.
   PARTNER_CAPABILITY_RFQ // a manufacturer needs printing you could produce — claim the job
@@ -5982,6 +6003,12 @@ model ChannelConnection {
   refreshTokenRef   String?
   // Webhook signature secret (CHANNEL_MANAGEMENT_SPEC §3.1) — ref, never raw.
   webhookSecretRef  String?
+  // --- Token lifecycle metadata (Track B3, docs/SHOP_CONNECT_E2E_2026-07-24.md).
+  // Written by the OAuth callback + /api/cron/channel-tokens; consumed by the
+  // pure evaluateTokenHealth policy (@ilaunchify/channels token-lifecycle).
+  accessTokenExpiresAt DateTime? // adapter-reported expiry of the sealed access token
+  lastRefreshAt        DateTime? // last successful refresh (rolling refresh-chain anchor)
+  lastRefreshError     String? // last refresh failure, cleared on success
   // Per-connection settings: auto-import, manual-confirm override, price rounding,
   // channel-specific ids (Shopify location, eBay policy ids…). Shape per adapter.
   settings          Json?
@@ -6251,6 +6278,65 @@ model InventoryLedger {
   @@index([poolId, createdAt])
 }
 
+// =============================================================================
+// MANUFACTURER TEMPLATE INVENTORY (docs/MANUFACTURER_INVENTORY_2026-07-27.md)
+// Per-flavor sellable stock the MANUFACTURER caps on their own ProductTemplate.
+// NOT the creator-side InventoryPool above (creator bulk channel stock), and NOT
+// StorageAgreement (client goods stored at a partner facility). Ledger is truth,
+// quantities are derived; pure math lives in @ilaunchify/orders/template-inventory
+// (clone of the @ilaunchify/channels invariants), never inline.
+// =============================================================================
+
+enum TemplateInventoryLedgerKind {
+  RESTOCK // manufacturer adds units (+)
+  ORDER_CONSUMED // paid order decremented units (-), written post-charge
+  ORDER_REVERSED // cancel/refund compensating entry (+)
+  ADJUSTMENT // manual correction (signed, audited)
+}
+
+/// Per template x flavor sellable stock, in finished-good BASE UNITS.
+/// flavorPresetId "base" = flavorless template (same sentinel as InventoryPool).
+/// quantityAvailable is DERIVED from the ledger; helpers only, never hand-set.
+/// The order path decrements with a CONDITIONAL updateMany
+/// (quantityAvailable >= need) inside the charge transaction, so overselling is
+/// impossible by construction (spec section 4b/5).
+model TemplateFlavorInventory {
+  id                String                    @id @default(uuid())
+  productTemplateId String // soft FK -> ProductTemplate (InventoryPool precedent)
+  flavorPresetId    String                    @default("base") // soft FK -> FlavorPreset
+  tracked           Boolean                   @default(true)
+  quantityAvailable Int                       @default(0) // base units remaining
+  lowStockThreshold Int? // null = admin/category default
+  /// Last computed alert state (HEALTHY | LOW | STOCKOUT), stored so
+  /// PARTNER_STOCK_ALERT fires once per TRANSITION (shouldNotify), never per
+  /// recompute. Recomputed at every ledger-touching mutation.
+  alertState        String                    @default("HEALTHY")
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  ledger            TemplateInventoryLedger[]
+
+  @@unique([productTemplateId, flavorPresetId])
+  @@index([productTemplateId])
+}
+
+/// Append-only movement log for manufacturer template stock. The row quantities
+/// above are DERIVED state; this ledger is the truth (reconcilable, auditable).
+model TemplateInventoryLedger {
+  id          String                      @id @default(uuid())
+  inventoryId String
+  kind        TemplateInventoryLedgerKind
+  /// Signed effect on quantityAvailable: helper-enforced (RESTOCK/ORDER_REVERSED
+  /// positive, ORDER_CONSUMED negative, ADJUSTMENT signed), never inline.
+  delta       Int
+  orderId     String? // soft FK: provenance for ORDER_CONSUMED / ORDER_REVERSED
+  note        String? // restock/adjustment reason, shown in partner + admin ledgers
+  actorUserId String? // soft FK: who restocked/adjusted
+  createdAt   DateTime                    @default(now())
+  inventory   TemplateFlavorInventory     @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryId, createdAt])
+}
+
 enum ChannelSyncDirection {
   PUSH // platform → channel
   PULL // scheduled poll
@@ -6278,6 +6364,57 @@ model ChannelSyncEvent {
 
   @@index([channelConnectionId, createdAt])
   @@index([outcome, createdAt])
+}
+
+// =============================================================================
+// CHANNEL CONNECT B1 (docs/SHOP_CONNECT_E2E_2026-07-24.md §5 Track B): additive.
+// Token vault + OAuth handshake state for real marketplace connections.
+// ChannelConnection.accessTokenRef / refreshTokenRef / webhookSecretRef point
+// at ChannelSecret.id ("the ref"). Rows hold AES-256-GCM ciphertext ONLY -
+// sealed by @ilaunchify/channels/secret-box with the CHANNEL_TOKEN_KEY env key
+// (admin Integrations registry row 'channel-vault'; key never in the DB).
+// uuid() ids per the 2026-07-11 FREEZE; soft FKs per the C0 convention.
+// =============================================================================
+
+model ChannelSecret {
+  id                  String   @id @default(uuid())
+  // Versioned AES-256-GCM envelope: "v1.<b64 iv>.<b64 tag>.<b64 ciphertext>".
+  // Opaque here by design: NEVER a plaintext column, NEVER logged.
+  sealed              String
+  // What the secret is ('access_token' | 'refresh_token' | 'webhook_secret').
+  // Also AAD-bound into the envelope, so ciphertexts can't be swapped between
+  // kinds even with raw DB write access.
+  kind                String
+  // Soft FK → ChannelConnection. Nullable: mid-handshake secrets exist before
+  // the connection row does. NO cascade: destroying secrets is the disconnect
+  // path's explicit job (destroyConnectionSecrets), auditable at the caller.
+  channelConnectionId String?
+  // CHANNEL_TOKEN_KEY rotation support: bump when re-sealing under a new key.
+  keyVersion          Int      @default(1)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([channelConnectionId])
+}
+
+model ChannelOauthState {
+  id             String    @id @default(uuid())
+  // CSRF token round-tripped through the marketplace `state` param.
+  state          String    @unique
+  // PKCE code_verifier (Etsy mandates S256), sealed with the vault key.
+  sealedVerifier String?
+  creatorUserId  String // soft FK → User
+  channelId      String // soft FK → Channel
+  // Relative path to land on after the callback (validated relative-only at
+  // consume: open-redirect guard).
+  returnTo       String?
+  expiresAt      DateTime // issuedAt + 10 min
+  // Single-use: set atomically on first consume; replays find it non-null.
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([creatorUserId, channelId])
+  @@index([expiresAt])
 }
 
 // =============================================================================
@@ -7389,7 +7526,9 @@ enum DielineStatus {
 
 model PackagingDieline {
   id               String           @id @default(uuid())
-  partnerServiceId String
+  // NULL for admin-authored catalog die-lines (Packaging Studio popup, master
+  // plan M1 2026-08-03); set for partner-submitted die-lines as before.
+  partnerServiceId String?
   packagingTypeId  String
   decorationMethod DecorationMethod
 
@@ -7415,6 +7554,10 @@ model PackagingDieline {
   framesUpdatedAt DateTime?
 
   // Forward-compat nullable fields (populated in later phases — cheap to add now)
+  // Admin-uploaded original file (R2 key) when the die-line was authored in the
+  // admin Packaging Studio popup (no PartnerFile owner). Read as the backdrop
+  // fallback: adminFileKey ?? partnerFile.r2Key.
+  adminFileKey       String?
   normalizedSvgKey   String?
   thumbnailKey       String?
   parseAccuracyScore Decimal?  @db.Decimal(3, 2)
@@ -7434,7 +7577,7 @@ model PackagingDieline {
   partnerConfirmedAt DateTime?
   updatedAt          DateTime      @updatedAt
 
-  partnerService PartnerService             @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
+  partnerService PartnerService?            @relation(fields: [partnerServiceId], references: [id], onDelete: Cascade)
   packagingType  PackagingType              @relation(fields: [packagingTypeId], references: [id])
   partnerFile    PartnerFile?               @relation(fields: [partnerFileId], references: [id])
   offerings      PartnerPackagingOffering[]

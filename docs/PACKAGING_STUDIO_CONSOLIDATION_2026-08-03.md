@@ -24,6 +24,17 @@ lands. This supersedes the 2026-06-19 decision that review status lives on
    attribute mixes image/* with OS-unknown extensions. Mockup pickers now accept
    everything at the OS dialog and validate extensions in code (toast on reject).
 
+4. **Attach is unpriced; publish gate enforces pricing.** Every studio caller of
+   `addPackagingLink` passes `basePriceCents: 0` (attachCatalogType, custom create,
+   PackagingPicker, PackagingStudioStep), but the action rejected anything under 1
+   with "Set a base price.", so attaching from the studio could never succeed.
+   Now: attach allows 0 (unpriced, only negatives rejected) and
+   `submitProductForReview` (products/actions.ts) blocks submission while any
+   linked packaging is unpriced, naming the offending packaging. Pricing is
+   authored in the pricing step or the product edit Packaging card
+   (`updatePackagingLink`). Note: the packaging BASE price is separate from
+   flavor priceDelta; setting a flavor price does not price the packaging.
+
 ## What still lives on /packaging and where it should land
 
 | /packaging feature | Studio destination |

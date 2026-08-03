@@ -458,7 +458,7 @@ export function RecipeNutritionStudio({
                             className={
                               'flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-sm border ' +
                               (on
-                                ? 'border-pink-500 bg-pink-500'
+                                ? 'border-success-500 bg-success-500'
                                 : 'border-ink-300 bg-[var(--bg-surface)]')
                             }
                           >

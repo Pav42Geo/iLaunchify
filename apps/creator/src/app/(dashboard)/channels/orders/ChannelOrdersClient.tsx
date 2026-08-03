@@ -146,7 +146,7 @@ export function ChannelOrdersClient({ initial }: { initial: ChannelOrderRow[] })
               key={f}
               onClick={() => setFilter(f)}
               className={`rounded-full border px-2.5 py-1 text-[11.5px] font-semibold capitalize transition ${
-                filter === f ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
+                filter === f ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
               }`}
             >
               {f === 'ALL' ? 'All' : f.replace(/_/g, ' ').toLowerCase()}

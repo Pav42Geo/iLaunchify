@@ -311,7 +311,7 @@ export function TemplatesManager({ initial }: { initial: Row[] }) {
                     className={
                       'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ' +
                       (tagStyleIds.has(s.id)
-                        ? 'border-pink-500 bg-pink-50 text-pink-700'
+                        ? 'border-success-500 bg-success-50 text-success-700'
                         : 'border-ink-200 text-ink-600 hover:border-ink-300')
                     }
                   >

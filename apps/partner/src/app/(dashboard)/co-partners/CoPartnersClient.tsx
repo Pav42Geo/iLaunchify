@@ -227,7 +227,7 @@ export function CoPartnersClient({
                       className={
                         'rounded-full border px-3 py-1.5 text-[12px] font-semibold ' +
                         (legs.includes(l)
-                          ? 'border-pink-500 bg-pink-50 text-pink-700'
+                          ? 'border-success-500 bg-success-50 text-success-700'
                           : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50')
                       }
                     >

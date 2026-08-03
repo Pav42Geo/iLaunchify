@@ -187,7 +187,7 @@ export function IngredientPicker({
               >
                 <span
                   className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border ${
-                    filter === f.key ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300'
+                    filter === f.key ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-300'
                   }`}
                 >
                   {filter === f.key && <span className="h-1.5 w-1.5 rounded-full bg-white" />}

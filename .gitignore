@@ -81,3 +81,6 @@ FOD-reference/
 # Scratch/temp artifacts
 _tmp_*
 .cowork-tmp
+
+# scratch area for files the device bridge cannot delete; never commit
+_to_delete/

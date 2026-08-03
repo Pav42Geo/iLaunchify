@@ -132,7 +132,7 @@ export function VersionHistoryPanel({
         <div
           onMouseEnter={() => setHoverId(it.id)}
           onMouseLeave={() => setHoverId((h) => (h === it.id ? null : h))}
-          className={`flex w-full items-center gap-2.5 rounded-lg border p-1.5 transition-colors ${on ? 'border-pink-300 bg-pink-50/60' : 'border-transparent hover:border-ink-200 hover:bg-ink-50'}`}
+          className={`flex w-full items-center gap-2.5 rounded-lg border p-1.5 transition-colors ${on ? 'border-success-300 bg-success-50/60' : 'border-transparent hover:border-ink-200 hover:bg-ink-50'}`}
         >
           <button type="button" onClick={() => onSelect(it.id)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
             <Thumb src={it.thumbnail} className="h-11 w-11 shrink-0 rounded border border-ink-200 bg-white" />

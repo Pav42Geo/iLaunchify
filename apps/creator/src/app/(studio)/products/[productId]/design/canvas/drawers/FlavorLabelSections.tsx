@@ -45,7 +45,7 @@ export function FlavorLabelSections({
                   onClick={() => onSelect(f.id)}
                   aria-pressed={active}
                   className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left ${
-                    active ? 'border-pink-500 bg-pink-50 ring-1 ring-pink-500' : 'border-ink-200 bg-white hover:border-ink-400'
+                    active ? 'border-success-500 bg-success-50 ring-1 ring-pink-500' : 'border-ink-200 bg-white hover:border-ink-400'
                   }`}
                 >
                   <span className="inline-block h-4 w-4 shrink-0 rounded-full border border-ink-200" style={{ backgroundColor: f.swatchHex ?? 'transparent' }} aria-hidden />

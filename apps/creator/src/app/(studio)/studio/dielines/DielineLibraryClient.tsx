@@ -90,7 +90,7 @@ export function DielineLibraryClient({ data }: { data: DielineLibraryData }) {
             <button
               onClick={onVerify}
               disabled={verifying || verified}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${verified ? 'bg-success-50 text-success-700' : 'border border-pink-500 bg-pink-500 text-white hover:bg-pink-600'}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-60 ${verified ? 'bg-success-50 text-success-700' : 'border border-success-500 bg-success-500 text-white hover:bg-pink-600'}`}
             >
               {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : verified ? <Check className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
               {verified ? 'Verified' : 'Mark verified'}
@@ -268,7 +268,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 function StatusChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`rounded-full border px-2 py-0.5 text-[10.5px] font-medium transition ${active ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}>
+    <button type="button" onClick={onClick} className={`rounded-full border px-2 py-0.5 text-[10.5px] font-medium transition ${active ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}>
       {label}
     </button>
   )

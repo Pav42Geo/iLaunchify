@@ -1902,8 +1902,8 @@ function TopBar({
           className={
             'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
             (complianceOpen
-              ? 'border-pink-500 bg-white text-pink-700 hover:bg-pink-50'
-              : 'border-pink-500 bg-pink-500 text-white shadow-sm hover:bg-pink-600 hover:border-pink-600')
+              ? 'border-ink-900 bg-white text-ink-900 hover:bg-ink-50'
+              : 'border-ink-900 bg-ink-900 text-white shadow-sm hover:bg-ink-800 hover:border-ink-800')
           }
         >
           <ShieldCheck className="h-3.5 w-3.5" />
@@ -1917,7 +1917,7 @@ function TopBar({
           className={
             'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
             (mockupOpen
-              ? 'border-pink-500 bg-pink-50 text-pink-700'
+              ? 'border-success-500 bg-success-50 text-success-700'
               : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
           }
         >
@@ -1937,7 +1937,7 @@ function TopBar({
           className={
             'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ' +
             (exportOpen
-              ? 'border-pink-500 bg-pink-50 text-pink-700'
+              ? 'border-success-500 bg-success-50 text-success-700'
               : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50')
           }
         >
@@ -2098,7 +2098,7 @@ function LeftRail({
             onMouseEnter={() => onHover(key)}
             className={`flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${
               isActive
-                ? 'bg-pink-50 text-pink-700'
+                ? 'bg-ink-900 text-white'
                 : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900'
             }`}
             aria-pressed={isActive}
@@ -2613,7 +2613,7 @@ function SurfacesSection({ dieCut }: { dieCut: DieCutSpec }) {
         <span className="text-[9px] font-mono text-ink-400">1 of 1</span>
       </div>
       <div className="space-y-1">
-        <div className="flex items-center justify-between gap-2 rounded-md border border-pink-300 bg-pink-50/40 px-3 py-2">
+        <div className="flex items-center justify-between gap-2 rounded-md border border-success-300 bg-success-50/40 px-3 py-2">
           <div>
             <div className="text-[12.5px] font-semibold text-ink-900">
               {dieCut.name}

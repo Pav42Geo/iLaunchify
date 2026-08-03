@@ -181,26 +181,30 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
           f.coverImageUrl
             ? { background: `center / cover url(${f.coverImageUrl})` }
             : {
-                background:
-                  'radial-gradient(120% 150% at 80% -10%, rgba(181,255,61,.16), transparent 55%), radial-gradient(100% 140% at 10% 120%, rgba(255,46,99,.28), transparent 60%), linear-gradient(120deg, #1d1d20, #232327)',
+                // Empty state = neutral gray gamma (Pavel 2026-08-02), the
+                // familiar "no cover yet" placeholder. Deliberately quiet: the
+                // creator's own artwork is the only color this band should carry.
+                background: 'linear-gradient(180deg, #EDEFF2 0%, #DFE3E8 100%)',
               }
         }
       >
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 opacity-50"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
-        />
-        <div className="absolute bottom-3 right-3 flex gap-2">
+        {!f.coverImageUrl && (
+          <div
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(20,20,25,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(20,20,25,.045) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+            }}
+          />
+        )}
+        <div className="absolute bottom-3 right-3 z-[3] flex gap-2">
           {f.coverImageUrl && (
             <button
               type="button"
               onClick={() => removeImage('cover')}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-white/20"
+              className="inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-full border border-ink-200 bg-white/90 px-4 py-2.5 text-[13px] font-semibold text-ink-800 shadow-sm backdrop-blur-sm transition-colors hover:bg-white"
             >
               <X className="h-3.5 w-3.5" />
               Remove
@@ -208,11 +212,14 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
           )}
           <button
             type="button"
+            aria-label="Edit cover image"
+            title="JPG, PNG or WEBP · 1600×420 or wider · max 6 MB"
             onClick={() => coverInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-white/20"
+            disabled={pending}
+            className="inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-full border border-ink-200 bg-white/90 px-4 py-2.5 text-[13px] font-semibold text-ink-800 shadow-sm backdrop-blur-sm transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Camera className="h-3.5 w-3.5" />
-            Edit cover
+            {pending ? 'Uploading…' : f.coverImageUrl ? 'Replace cover' : 'Add cover'}
           </button>
           <input
             ref={coverInputRef}
@@ -225,17 +232,29 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             }}
           />
         </div>
+        {!f.coverImageUrl && !mediaError && (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
+            <div>
+              <div className="font-display text-[24px] font-extrabold leading-none tracking-[-0.02em] text-ink-400">
+                1600 × 420 px
+              </div>
+              <div className="mt-1.5 text-[11.5px] font-medium text-ink-400/90">
+                JPG, PNG or WEBP · max 6 MB
+              </div>
+            </div>
+          </div>
+        )}
         {mediaError && (
-          <div className="absolute bottom-3 left-3 rounded-lg bg-ink-900/80 px-3 py-1.5 text-[12px] font-semibold text-white">
+          <div className="absolute bottom-3 left-3 max-w-[60%] rounded-lg bg-danger-600/95 px-3 py-1.5 text-[12px] font-semibold text-white">
             {mediaError}
           </div>
         )}
       </div>
 
       {/* avatar row */}
-      <div className="relative z-[2] -mt-[46px] mb-5 ml-3 flex items-end gap-4">
+      <div className="pointer-events-none relative z-[2] -mt-[46px] mb-5 ml-3 flex items-end gap-4">
         <div
-          className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-[22px] border-4 border-white shadow-md"
+          className="pointer-events-auto relative grid h-24 w-24 place-items-center overflow-hidden rounded-[22px] border-4 border-white shadow-md"
           style={
             f.logoUrl
               ? { background: `center / cover url(${f.logoUrl})` }
@@ -264,7 +283,7 @@ export function CompanyProfileClient({ initial }: { initial: CompanyProfileIniti
             }}
           />
         </div>
-        <div className="pb-1.5">
+        <div className="pointer-events-auto pb-1.5">
           <div className="text-[14px] font-semibold text-ink-900">Company logo</div>
           <div className="text-[12px] text-ink-500">PNG or SVG · square · min 400×400</div>
           {f.logoUrl && (

@@ -132,7 +132,7 @@ export function YourBusinessSection({
                 key={m.id}
                 className={`flex cursor-pointer items-center gap-3 rounded-[14px] border-[1.5px] p-3.5 transition-colors ${
                   checked
-                    ? 'border-pink-500 bg-pink-50'
+                    ? 'border-success-500 bg-success-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
@@ -149,7 +149,7 @@ export function YourBusinessSection({
                 <span
                   aria-hidden="true"
                   className={`ml-auto flex h-5 w-5 flex-none items-center justify-center rounded-full border-[1.5px] text-[12px] font-bold ${
-                    checked ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 text-transparent'
+                    checked ? 'border-success-500 bg-success-500 text-white' : 'border-ink-300 text-transparent'
                   }`}
                 >
                   ✓
@@ -197,7 +197,7 @@ export function YourBusinessSection({
                 key={opt.value}
                 className={`flex cursor-pointer items-center gap-3 rounded-[14px] border-[1.5px] p-3.5 transition-colors ${
                   checked
-                    ? 'border-pink-500 bg-pink-50'
+                    ? 'border-success-500 bg-success-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >
@@ -214,7 +214,7 @@ export function YourBusinessSection({
                 <span
                   aria-hidden="true"
                   className={`ml-auto flex h-5 w-5 flex-none items-center justify-center rounded-full border-[1.5px] text-[12px] font-bold ${
-                    checked ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 text-transparent'
+                    checked ? 'border-success-500 bg-success-500 text-white' : 'border-ink-300 text-transparent'
                   }`}
                 >
                   ✓
@@ -223,28 +223,14 @@ export function YourBusinessSection({
             )
           })}
 
-          {/* Fulfillment (3PL) is a CONTRACTED program (Pavel 2026-07-13) —
-              never self-selectable. When iLaunchify has granted the WAREHOUSE
-              service (FC contracting flow), it shows here as a locked pill so
-              the onboarding reflects who they are; the save action never
-              deletes unchecked services, so the grant is safe either way. */}
-          {state.serviceTypes.includes('WAREHOUSE') && (
-            <div className="flex items-center gap-3 rounded-[14px] border-[1.5px] border-info-200 bg-info-50 p-3.5">
-              <div className="min-w-0">
-                <div className="text-[13.5px] font-bold text-ink-900">Fulfillment Center (3PL)</div>
-                <div className="text-[12px] text-info-700">
-                  Added by iLaunchify under your FC network contract — configured in Activation
-                  Setup after approval.
-                </div>
-              </div>
-              <span
-                aria-hidden="true"
-                className="ml-auto flex h-5 w-5 flex-none items-center justify-center rounded-full border-[1.5px] border-info-500 bg-info-500 text-[12px] font-bold text-white"
-              >
-                ✓
-              </span>
-            </div>
-          )}
+          {/* Fulfillment (3PL) is a CONTRACTED program (Pavel 2026-07-13):
+              iLaunchify signs the FC operator and GRANTS the WAREHOUSE service;
+              partners never self-select it. DELIBERATELY NOT RENDERED here
+              (Pavel 2026-08-02): this step asks what the partner does as a
+              business, and a platform-granted service in a pick-list read as a
+              broken checkbox. The grant is safe regardless: the save action
+              never deletes unchecked services. The arrangement surfaces in
+              Activation Setup, where it is actually configured. */}
         </div>
       </Field>
     </div>

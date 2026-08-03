@@ -65,7 +65,7 @@ function ChipGroup({
             className={cn(
               'rounded-full border px-2.5 py-[5px] text-[12px] font-medium transition-all',
               on
-                ? 'border-pink-200 bg-pink-50 font-semibold text-pink-700'
+                ? 'border-success-200 bg-success-50 font-semibold text-success-700'
                 : 'border-ink-200 bg-ink-50 text-ink-700 hover:border-ink-300',
             )}
           >
@@ -86,7 +86,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       onClick={onClick}
       className={cn(
         'relative h-[23px] w-10 flex-none rounded-full transition-colors',
-        on ? 'bg-pink-500' : 'bg-ink-300',
+        on ? 'bg-success-500' : 'bg-ink-300',
       )}
     >
       <span

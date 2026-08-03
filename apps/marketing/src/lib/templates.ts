@@ -151,7 +151,7 @@ export async function getMarketplaceTemplates(
 export async function getCatalogCount(): Promise<number> {
   try {
     const count = await prisma.productTemplate.count({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'PUBLISHED', inventorySoldOut: false } as unknown as Prisma.ProductTemplateWhereInput,
     })
     if (count === 0) {
       return CATEGORY_ROWS.reduce((sum, r) => sum + r.templates.length, 0)
@@ -213,9 +213,14 @@ export async function getMarketplaceTemplateBySlug(
   try {
     const row = await prisma.productTemplate.findUnique({ where: { slug }, include: includeForCard })
     if (!row || row.status !== 'PUBLISHED') return fixtureResolve(categorySlug, slug)
+    // I3: a sold-out template is offline exactly like an unpublished one
+    // (cast-guarded: inventorySoldOut post-dates the generated client pre-push).
+    if ((row as unknown as { inventorySoldOut?: boolean }).inventorySoldOut === true) {
+      return fixtureResolve(categorySlug, slug)
+    }
     const db = row as unknown as DbTemplate
     const relatedRows = await prisma.productTemplate.findMany({
-      where: { status: 'PUBLISHED', subcategoryId: row.subcategoryId, slug: { not: slug } },
+      where: { status: 'PUBLISHED', inventorySoldOut: false, subcategoryId: row.subcategoryId, slug: { not: slug } } as unknown as Prisma.ProductTemplateWhereInput,
       include: includeForCard,
       take: 4,
     })
@@ -294,7 +299,7 @@ export async function getMarketplaceCategorySections(): Promise<MarketplaceCateg
     CATEGORY_ROWS.map((r) => ({ title: r.title, slug: r.slug, templates: [...r.templates] }))
   try {
     const rows = await prisma.productTemplate.findMany({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'PUBLISHED', inventorySoldOut: false } as unknown as Prisma.ProductTemplateWhereInput,
       include: includeForCard,
       orderBy: { createdAt: 'desc' },
       take: 200,
@@ -363,7 +368,7 @@ export async function getCategoryTemplateCount(slug: string): Promise<number> {
   const fixtureCount = () => CATEGORY_ROWS.find((x) => x.slug === slug)?.templates.length ?? 0
   try {
     const n = await prisma.productTemplate.count({
-      where: { status: 'PUBLISHED', subcategory: { category: { slug } } },
+      where: { status: 'PUBLISHED', inventorySoldOut: false, subcategory: { category: { slug } } } as unknown as Prisma.ProductTemplateWhereInput,
     })
     return n > 0 ? n : fixtureCount()
   } catch {
@@ -469,6 +474,12 @@ function buildWhere(args: GetTemplatesArgs): Prisma.ProductTemplateWhereInput {
 
   const where: Record<string, unknown> = {
     status: 'PUBLISHED',
+    // I3 (MANUFACTURER_INVENTORY_2026-07-27.md section 4, HIDE decided): a
+    // template whose tracked per-flavor stock can no longer complete a valid
+    // order is dropped from every list. Cache column, recomputed on every
+    // ledger write; ships with the same pending migration as the section 7
+    // columns below (pre-push the fixture fallback covers the query error).
+    inventorySoldOut: false,
     ...(q && {
       OR: [
         { name: { contains: q, mode: 'insensitive' } },

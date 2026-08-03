@@ -371,7 +371,7 @@ function FilterChips({
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
                 isActive
-                  ? 'border-pink-500 bg-pink-50 text-pink-700'
+                  ? 'border-success-500 bg-success-50 text-success-700'
                   : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300 hover:text-ink-900',
               )}
             >
@@ -400,7 +400,7 @@ function FilterChips({
                   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
                   isActive
-                    ? 'border-pink-500 bg-pink-500 text-white'
+                    ? 'border-success-500 bg-success-50 text-success-800'
                     : 'border-ink-300 bg-white text-ink-700 hover:border-ink-400 hover:text-ink-900',
                 )}
               >
@@ -435,7 +435,7 @@ function FilterChips({
           href={buildHref({ status: active, priority: null, category, sort, assignment })}
           className={cn(
             'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
-            !priority ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
+            !priority ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
           )}
         >
           Any
@@ -448,7 +448,7 @@ function FilterChips({
               href={buildHref({ status: active, priority: p, category, sort, assignment })}
               className={cn(
                 'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
-                isActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
+                isActive ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
               )}
             >
               {PRIORITY_TONE[p].label}
@@ -462,7 +462,7 @@ function FilterChips({
           href={buildHref({ status: active, priority, category: null, sort, assignment })}
           className={cn(
             'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
-            !category ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
+            !category ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
           )}
         >
           All
@@ -475,7 +475,7 @@ function FilterChips({
               href={buildHref({ status: active, priority, category: c.id, sort, assignment })}
               className={cn(
                 'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
-                isActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
+                isActive ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-700 hover:border-ink-300',
               )}
             >
               {c.name}

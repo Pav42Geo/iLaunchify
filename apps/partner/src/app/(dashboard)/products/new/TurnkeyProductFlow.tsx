@@ -441,7 +441,7 @@ function Step3({
               key={p.id}
               className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
                 selected
-                  ? 'border-pink-500 bg-pink-50'
+                  ? 'border-success-500 bg-success-50'
                   : 'border-ink-200 bg-white hover:bg-ink-50'
               }`}
             >

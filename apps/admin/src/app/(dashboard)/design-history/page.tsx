@@ -87,7 +87,7 @@ export default async function DesignHistoryPage({ searchParams }: PageProps) {
                       href={`?q=${encodeURIComponent(q ?? '')}&design=${d.id}`}
                       className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[12px] transition-colors ${
                         d.id === selectedDesignId
-                          ? 'border-pink-300 bg-pink-50/60 text-pink-800'
+                          ? 'border-success-300 bg-success-50/60 text-pink-800'
                           : 'border-transparent text-ink-700 hover:border-ink-200 hover:bg-ink-50'
                       }`}
                     >

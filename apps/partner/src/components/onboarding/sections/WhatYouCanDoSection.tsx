@@ -309,7 +309,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       className={
         'rounded-full border px-3 py-1.5 text-[13px] font-semibold transition-colors ' +
         (on
-          ? 'border-pink-500 bg-pink-50 text-pink-700'
+          ? 'border-success-500 bg-success-50 text-success-700'
           : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300')
       }
     >

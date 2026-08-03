@@ -267,22 +267,11 @@ export function BasicsScreen({
           </Section>
         </div>
 
-        {/* RIGHT — media · custom meta · certificates */}
+        {/* RIGHT (prototype v2 order): media · certificates · references · custom meta */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <MediaUpload draftId={draftId} />
 
-          <Section icon={ListPlus} title="Custom meta fields">
-            <div>
-              {meta.map((m, i) => (
-                <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>
-                  <input className="input" style={{ width: '38%' }} value={m.key} placeholder="Key" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} />
-                  <input className="input" style={{ flex: 1 }} value={m.value} placeholder="Value" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
-                  <button className="btn sm" onClick={() => setMeta(meta.filter((_, j) => j !== i))}>✕</button>
-                </div>
-              ))}
-              {meta.length < 10 && <button className="btn sm" style={{ marginTop: 2 }} onClick={() => setMeta([...meta, { key: '', value: '' }])}>+ Add field</button>}
-            </div>
-          </Section>
+          <CertificatesCard draftId={draftId} />
 
           <Section icon={Hash} title="Your references">
             <div>
@@ -300,7 +289,18 @@ export function BasicsScreen({
             </div>
           </Section>
 
-          <CertificatesCard draftId={draftId} />
+          <Section icon={ListPlus} title="Custom meta fields">
+            <div>
+              {meta.map((m, i) => (
+                <div key={i} className="row" style={{ gap: 8, marginBottom: 6 }}>
+                  <input className="input" style={{ width: '38%' }} value={m.key} placeholder="Key" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, key: e.target.value } : x))} />
+                  <input className="input" style={{ flex: 1 }} value={m.value} placeholder="Value" onChange={(e) => setMeta(meta.map((x, j) => j === i ? { ...x, value: e.target.value } : x))} />
+                  <button className="btn sm" onClick={() => setMeta(meta.filter((_, j) => j !== i))}>✕</button>
+                </div>
+              ))}
+              {meta.length < 10 && <button className="btn sm" style={{ marginTop: 2 }} onClick={() => setMeta([...meta, { key: '', value: '' }])}>+ Add field</button>}
+            </div>
+          </Section>
         </div>
       </div>
     </div>

@@ -170,3 +170,100 @@ export async function loadFefoLots(userId: string): Promise<FefoLot[]> {
         `#${l.receipt.orderDispatch.orderId.slice(-8)}`,
     }))
 }
+
+// -----------------------------------------------------------------------------
+// I2c (docs/MANUFACTURER_INVENTORY_2026-07-27.md): the partner's OWN product
+// stock: TemplateFlavorInventory on templates owned by the caller's
+// MANUFACTURING services. A DIFFERENT thing from the StorageAgreement tables
+// above (client goods stored at the facility); the page renders them as
+// separate tabs on purpose. Cast-guarded + fail-safe until the I1 db:push.
+// -----------------------------------------------------------------------------
+
+export interface OwnStockRow {
+  templateId: string
+  templateName: string
+  templateStatus: string
+  soldOut: boolean
+  flavorLabel: string
+  quantityAvailable: number
+  lowStockThreshold: number | null
+  alertState: string
+  updatedAt: Date
+}
+
+const BASE_FLAVOR_KEY = 'base' // sentinel for flavorless templates (schema default)
+
+export async function loadOwnProductStock(userId: string): Promise<OwnStockRow[]> {
+  try {
+    const templates = await prisma.productTemplate.findMany({
+      where: { manufacturerService: serviceOwnedBy(userId) },
+      select: { id: true, name: true, status: true },
+    })
+    if (templates.length === 0) return []
+    const tplById = new Map(templates.map((t) => [t.id, t]))
+    const ids = templates.map((t) => t.id)
+
+    const cast = prisma as unknown as {
+      templateFlavorInventory: {
+        findMany: (a: unknown) => Promise<
+          Array<{
+            productTemplateId: string
+            flavorPresetId: string
+            quantityAvailable: number
+            lowStockThreshold: number | null
+            alertState: string
+            updatedAt: Date
+          }>
+        >
+      }
+      productTemplate: {
+        findMany: (a: unknown) => Promise<Array<{ id: string; inventorySoldOut: boolean }>>
+      }
+    }
+
+    const inv = await cast.templateFlavorInventory.findMany({
+      where: { productTemplateId: { in: ids }, tracked: true },
+      select: {
+        productTemplateId: true,
+        flavorPresetId: true,
+        quantityAvailable: true,
+        lowStockThreshold: true,
+        alertState: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    })
+    if (inv.length === 0) return []
+
+    const presetIds = [...new Set(inv.map((r) => r.flavorPresetId).filter((id) => id !== BASE_FLAVOR_KEY))]
+    const presets = presetIds.length
+      ? await prisma.flavorPreset.findMany({ where: { id: { in: presetIds } }, select: { id: true, name: true } })
+      : []
+    const presetName = new Map(presets.map((p) => [p.id, p.name]))
+
+    const soldOutRows = await cast.productTemplate
+      .findMany({ where: { id: { in: ids } }, select: { id: true, inventorySoldOut: true } })
+      .catch(() => [] as Array<{ id: string; inventorySoldOut: boolean }>)
+    const soldOut = new Map(soldOutRows.map((r) => [r.id, r.inventorySoldOut]))
+
+    return inv
+      .map((r) => {
+        const tpl = tplById.get(r.productTemplateId)
+        if (!tpl) return null
+        return {
+          templateId: tpl.id,
+          templateName: tpl.name,
+          templateStatus: String(tpl.status),
+          soldOut: soldOut.get(tpl.id) ?? false,
+          flavorLabel: r.flavorPresetId === BASE_FLAVOR_KEY ? 'All units' : presetName.get(r.flavorPresetId) ?? 'Flavor',
+          quantityAvailable: r.quantityAvailable,
+          lowStockThreshold: r.lowStockThreshold,
+          alertState: r.alertState,
+          updatedAt: r.updatedAt,
+        }
+      })
+      .filter((r): r is OwnStockRow => r !== null)
+  } catch {
+    return [] // delegates not generated yet (pre I1 db:push)
+  }
+}

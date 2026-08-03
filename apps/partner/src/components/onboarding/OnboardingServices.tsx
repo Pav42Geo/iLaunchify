@@ -14,12 +14,14 @@ import { usePathname } from 'next/navigation'
 
 export type ServiceKey = 'MANUFACTURING' | 'COPACKING' | 'LABEL_PRINTING' | 'WAREHOUSE'
 
-// Order + short labels + exact mockup colors (Produce/Pack/Print/Fulfill).
+// Order + short labels + exact mockup colors (Produce/Pack/Print).
+// WAREHOUSE ('Fulfill') is deliberately absent (Pavel 2026-08-02): fulfillment
+// is a platform-granted contracted program, invisible in partner onboarding
+// (see YourBusinessSection), so the strip shows only self-selectable services.
 export const SERVICE_PILLS: { key: ServiceKey; label: string; color: string }[] = [
   { key: 'MANUFACTURING', label: 'Produce', color: '#FF2E63' },
   { key: 'COPACKING', label: 'Pack', color: '#7A5AF8' },
   { key: 'LABEL_PRINTING', label: 'Print', color: '#0EA5E9' },
-  { key: 'WAREHOUSE', label: 'Fulfill', color: '#12B76A' },
 ]
 
 type Ctx = { selected: string[]; setSelected: (s: string[]) => void }

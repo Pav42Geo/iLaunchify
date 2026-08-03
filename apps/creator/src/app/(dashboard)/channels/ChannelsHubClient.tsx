@@ -15,14 +15,28 @@ const STATUS_LABEL: Record<string, { label: string; tone: 'ok' | 'warn' | 'idle'
   NOT_CONNECTED: { label: 'Not connected', tone: 'idle' },
 }
 
+/** Friendly copy for the callback's allowlisted ?connect_error= codes
+ *  (/api/channels/oauth/[channel]/callback, Track B2). */
+const CONNECT_ERROR_COPY: Record<string, string> = {
+  signin: 'Sign in first, then connect your channel.',
+  session: 'That connection was started from a different account. Sign in with the same account and try again.',
+  state: 'That connect link expired or was already used. Click Connect to try again.',
+  channel: 'That channel is not available right now.',
+  config: 'This channel’s integration is not configured yet.',
+  cap: 'Your plan’s channel limit is reached. Upgrade to connect more.',
+  denied: 'Authorization was declined on the marketplace side. Nothing was connected.',
+  exchange: 'The marketplace rejected the authorization. Please try again.',
+  setup: 'Channel connect needs a pending platform update. Please try again shortly.',
+}
+
 export function ChannelsHubClient({ initial }: { initial: ChannelsHubData }) {
   const [data, setData] = React.useState(initial)
   const [busyCode, setBusyCode] = React.useState<string | null>(null)
   const [notice, setNotice] = React.useState<string | null>(null)
 
-  function flash(msg: string) {
+  function flash(msg: string, holdMs = 3200) {
     setNotice(msg)
-    window.setTimeout(() => setNotice((n) => (n === msg ? null : n)), 3200)
+    window.setTimeout(() => setNotice((n) => (n === msg ? null : n)), holdMs)
   }
 
   async function refresh() {
@@ -30,17 +44,54 @@ export function ChannelsHubClient({ initial }: { initial: ChannelsHubData }) {
     if (fresh) setData(fresh)
   }
 
+  // OAuth callback banners: the callback route lands on
+  // /channels?connected=<code> or ?connect_error=<code>. Read once, flash,
+  // and clean the URL so refresh/back doesn't replay the banner.
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const connected = params.get('connected')
+    const err = params.get('connect_error')
+    if (!connected && !err) return
+    if (connected) {
+      const name = initial.channels.find((c) => c.code === connected)?.displayName ?? connected
+      flash(`${name} connected.`)
+    } else if (err) {
+      flash(CONNECT_ERROR_COPY[err] ?? 'The connection could not be completed. Please try again.', 6000)
+    }
+    params.delete('connected')
+    params.delete('connect_error')
+    const qs = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function onConnect(card: ChannelCardData) {
-    setBusyCode(card.code)
-    try {
-      const res = await connectChannel(card.code)
-      if (!res.ok) {
-        flash(res.error)
+    // Shopify OAuth starts on the store's own domain: ask for it first.
+    let shopHint: string | undefined
+    if (card.code === 'shopify') {
+      const input = window.prompt('Your Shopify store domain (e.g. my-store or my-store.myshopify.com):')
+      if (input === null) return
+      shopHint = input.trim()
+      if (!shopHint) {
+        flash('A store domain is needed to connect Shopify.', 6000)
         return
       }
-      flash(`${card.displayName} connected${res.externalAccountId ? ` (${res.externalAccountId})` : ''}.`)
-      await refresh()
-    } finally {
+    }
+    setBusyCode(card.code)
+    try {
+      const res = await connectChannel(card.code, shopHint)
+      if (!res.ok) {
+        flash(res.error, 6000)
+        setBusyCode(null)
+        return
+      }
+      // Hand the browser to the marketplace consent screen (full-page redirect,
+      // never a popup: blockers eat popups - SHOP_CONNECT_E2E §2). The stub
+      // adapter bounces straight back through the callback, so dev sees the
+      // same round trip. Keep the spinner on while navigation happens.
+      window.location.assign(res.authUrl)
+    } catch {
+      flash('Could not start the connection. Please try again.', 6000)
       setBusyCode(null)
     }
   }

@@ -221,7 +221,7 @@ export function ImagesDrawer({ canvas, brandAssets, productId }: Props) {
           className={
             'rounded-md border-2 border-dashed transition-colors p-5 text-center cursor-pointer ' +
             (isDraggingOver
-              ? 'border-pink-500 bg-pink-50'
+              ? 'border-success-500 bg-success-50'
               : 'border-ink-300 bg-ink-50 hover:border-ink-400 hover:bg-ink-100')
           }
           onClick={() => inputRef.current?.click()}

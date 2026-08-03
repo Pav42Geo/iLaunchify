@@ -386,7 +386,7 @@ function PlacementOption({
     <div
       className={cn(
         'rounded-xl border p-3',
-        chosen ? 'border-pink-300 bg-pink-50/40' : 'border-ink-200 bg-white',
+        chosen ? 'border-success-300 bg-success-50/40' : 'border-ink-200 bg-white',
       )}
     >
       <div className="flex items-center justify-between gap-2">

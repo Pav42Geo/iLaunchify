@@ -402,7 +402,7 @@ export function ExportModal({
                     className={
                       'rounded-md border p-2.5 text-left transition-all ' +
                       (active
-                        ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500/20'
+                        ? 'border-success-500 bg-success-50 ring-2 ring-pink-500/20'
                         : 'border-ink-200 bg-white hover:border-ink-400')
                     }
                   >
@@ -556,7 +556,7 @@ function BlockingWarning({
         'rounded-md border p-3.5 ' +
         (acknowledged
           ? 'border-warning-300 bg-warning-50/60'
-          : 'border-pink-500 bg-pink-50')
+          : 'border-success-500 bg-success-50')
       }
       role="alert"
     >
@@ -748,7 +748,7 @@ function PreflightWarning({
           ? 'border-warning-300 bg-warning-50/60'
           : acknowledged
             ? 'border-warning-300 bg-warning-50/60'
-            : 'border-pink-500 bg-pink-50')
+            : 'border-success-500 bg-success-50')
       }
       role="alert"
     >
@@ -862,7 +862,7 @@ function FormatTile({
       className={
         'flex items-start gap-2.5 rounded-md border p-3 text-left transition-all ' +
         (active
-          ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500/20'
+          ? 'border-success-500 bg-success-50 ring-2 ring-pink-500/20'
           : 'border-ink-200 bg-white hover:border-ink-400')
       }
     >

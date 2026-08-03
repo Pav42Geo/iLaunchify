@@ -468,7 +468,7 @@ export function ProductImportButton({ categories, triggerClassName, triggerLabel
                     onDragOver={(e) => { e.preventDefault(); setDrag(true) }}
                     onDragLeave={(e) => { e.preventDefault(); setDrag(false) }}
                     onDrop={(e) => { e.preventDefault(); setDrag(false); onFile(e.dataTransfer.files?.[0]) }}
-                    className={`grid cursor-pointer place-items-center gap-2 rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors ${drag ? 'border-pink-500 bg-pink-50' : 'border-ink-300 bg-ink-50/40 hover:border-ink-400'}`}
+                    className={`grid cursor-pointer place-items-center gap-2 rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors ${drag ? 'border-success-500 bg-success-50' : 'border-ink-300 bg-ink-50/40 hover:border-ink-400'}`}
                   >
                     <UploadCloud className={`h-9 w-9 ${drag ? 'text-pink-600' : 'text-ink-400'}`} aria-hidden="true" />
                     <div className="text-[14px] font-semibold text-ink-900">Drag &amp; drop a CSV or Excel file</div>

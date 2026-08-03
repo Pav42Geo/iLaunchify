@@ -55,7 +55,7 @@ const TONES: Record<Theme, Tone> = {
     metaMuted: 'text-ink-500',
     priceMuted: 'text-ink-300',
     chipIdle: 'border-ink-200 bg-white text-ink-700 hover:border-pink-500 hover:text-pink-700',
-    chipActive: 'border-pink-500 bg-pink-50 text-pink-700',
+    chipActive: 'border-success-500 bg-success-50 text-success-700',
     suggestText: 'text-ink-700',
     suggestStrong: 'text-ink-900',
     icon: 'text-ink-400',

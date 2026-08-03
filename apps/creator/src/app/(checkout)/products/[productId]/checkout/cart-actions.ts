@@ -59,6 +59,14 @@ import {
 } from '@ilaunchify/orders'
 import { loadLearnedFulfillmentAdjustment, recordFcOverrideSignal } from './afe-learning'
 import { resolvePackSubtotal } from './pack-pricing'
+import {
+  checkTemplateStock,
+  consumeTemplateInventory,
+  notifyTemplateStockAlerts,
+  reverseTemplateInventory,
+  type StockAlertBundle,
+} from '@ilaunchify/orders/template-inventory-db'
+import { BASE_FLAVOR_KEY, type FlavorNeed } from '@ilaunchify/orders/template-inventory'
 import { resolveTierGoodsCents } from './tier-pricing'
 import {
   resolveCreatorFeeBps,
@@ -432,6 +440,20 @@ export async function placeOrderFromCheckoutDraft(
       }
     }
   }
+
+  // --- 2c. Manufacturer stock guard (I3, MANUFACTURER_INVENTORY spec 4b) -----
+  // WHOLE-ORDER base units per flavor, from the SAME composition the pricer
+  // prices (flavorRows: packCount x slot units for packs, qty for non-pack), so
+  // pricing and inventory can never disagree. Flavorless orders consume the
+  // template's base row. This check fails fast with "only N left" BEFORE any
+  // Stripe object exists; the conditional decrement inside the order
+  // transaction below is the authority under concurrency.
+  const inventoryNeeds: FlavorNeed[] =
+    flavorRows.length > 0
+      ? flavorRows.map((f) => ({ flavorPresetId: f.flavorPresetId, units: f.qty }))
+      : [{ flavorPresetId: BASE_FLAVOR_KEY, units: qty * Math.max(1, packSel?.unitsPerPack ?? 1) }]
+  const stockCheck = await checkTemplateStock(prisma, product.productTemplateId, inventoryNeeds)
+  if (!stockCheck.ok) return { ok: false, error: stockCheck.reason }
 
   // --- 3. Resolve ship-to + warehouse-partner ID -----------------------------
   //        L1b passes the template so the resolver can (a) run the scored FC
@@ -1050,7 +1072,11 @@ export async function placeOrderFromCheckoutDraft(
         })
       : null
 
-  const order = await createOrderWithNumber((orderNumber) => prisma.$transaction(async (tx) => {
+  // I3: a stockout INSIDE the transaction rolls the order back before any
+  // Stripe object exists and surfaces as a normal checkout error, not a 500.
+  let stockError: string | null = null
+  let stockAlerts: StockAlertBundle | null = null
+  const buildOrderTxn = (orderNumber: string) => prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       // orderNumber post-dates the generated client (cast-guarded). The @unique
       // retry lives in createOrderWithNumber.
@@ -1122,6 +1148,19 @@ export async function placeOrderFromCheckoutDraft(
         })),
       })
     }
+
+    // I3: consume manufacturer stock INSIDE the order transaction, BEFORE any
+    // charge exists. The conditional decrement serializes concurrent orders on
+    // the same stock: the loser affects 0 rows, we throw, and the whole order
+    // rolls back (caught below and surfaced as a normal checkout error).
+    const consumedStock = await consumeTemplateInventory(tx, {
+      productTemplateId: product.productTemplateId,
+      needs: inventoryNeeds,
+      orderId: created.id,
+      actorUserId: user.id,
+    })
+    if (!consumedStock.ok) throw new Error(`NOT_ENOUGH_STOCK:${consumedStock.reason}`)
+    stockAlerts = consumedStock.alerts
 
     // L1b — HOLD_AT_MANUFACTURER attaches a StorageAgreement (LOGISTICS §4).
     // V1 simplification: startedAt = order time. V1.1 moves the storage-clock
@@ -1232,7 +1271,30 @@ export async function placeOrderFromCheckoutDraft(
     await tx.checkoutDraft.delete({ where: { id: draft.id } })
 
     return created
-  }))
+  })
+  // CockroachDB serializes the concurrent stock decrement by ABORTING the loser
+  // with a retryable write-conflict (Prisma P2034) rather than blocking
+  // (observed in pnpm inventory:race, 2026-07-27). ONE retry turns that raw
+  // conflict into the clean rejection: the rerun re-reads stock and fails with
+  // the proper "only N left" message (or simply succeeds when stock allows).
+  const isWriteConflict = (err: unknown): boolean =>
+    (err as { code?: string } | null)?.code === 'P2034' ||
+    (err instanceof Error && err.message.includes('write conflict or a deadlock'))
+  const order = await createOrderWithNumber(buildOrderTxn)
+    .catch((err: unknown) => (isWriteConflict(err) ? createOrderWithNumber(buildOrderTxn) : Promise.reject(err)))
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.startsWith('NOT_ENOUGH_STOCK:')) {
+        stockError = msg.slice('NOT_ENOUGH_STOCK:'.length)
+        return null
+      }
+      throw err
+    })
+  if (!order || stockError) {
+    return { ok: false, error: stockError ?? 'Not enough stock to place this order.' }
+  }
+  // I4: fire PARTNER_STOCK_ALERT transitions now that the decrement committed.
+  if (stockAlerts) void notifyTemplateStockAlerts(prisma, stockAlerts).catch(() => {})
 
   // --- 11. Audit log --------------------------------------------------------
   await logAuditAs(user, {
@@ -1557,6 +1619,13 @@ export async function placeOrderFromCheckoutDraft(
         internalNotes: `${internalNotes}\n\nStripe error: ${(err as Error).message}`,
       },
     })
+    // I3: put the consumed manufacturer stock back (idempotent, best-effort:
+    // a failed reversal must never block the cancellation path).
+    await reverseTemplateInventory(prisma, {
+      productTemplateId: product.productTemplateId,
+      orderId: order.id,
+      actorUserId: user.id,
+    }).catch(() => {})
     await logAuditAs(user, {
       entityType: 'Order',
       entityId: order.id,

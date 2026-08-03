@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import type { ProductTemplateStatus } from '@ilaunchify/db'
 import { ProductRowActions } from './ProductRowActions'
+import { RestockButton } from './RestockButton'
 import { SelectionProvider, SelectAllCheckbox, RowCheckbox } from './ProductSelection'
 import { resolveCertBadgeUrls } from '@/lib/cert-badges'
 import { LiveToggle } from './LiveToggle'
@@ -198,6 +199,33 @@ export default async function ProductsListPage({
     }
   }
 
+  // I2 (MANUFACTURER_INVENTORY_2026-07-27.md): per-template stock summary for the
+  // Stock column. Only LIMITED (tracked) rows aggregate; a template with none is
+  // Unlimited. Cast-guarded + fail-safe until the I1 db:push lands.
+  const stockByTemplate = new Map<string, { available: number; flavors: number; stockout: boolean; low: boolean }>()
+  if (templateIds.length) {
+    const invRows = await (
+      prisma as unknown as {
+        templateFlavorInventory: {
+          findMany: (a: unknown) => Promise<Array<{ productTemplateId: string; quantityAvailable: number; alertState: string }>>
+        }
+      }
+    ).templateFlavorInventory
+      .findMany({
+        where: { productTemplateId: { in: templateIds }, tracked: true },
+        select: { productTemplateId: true, quantityAvailable: true, alertState: true },
+      })
+      .catch(() => [] as Array<{ productTemplateId: string; quantityAvailable: number; alertState: string }>)
+    for (const r of invRows) {
+      const agg = stockByTemplate.get(r.productTemplateId) ?? { available: 0, flavors: 0, stockout: false, low: false }
+      agg.available += r.quantityAvailable
+      agg.flavors += 1
+      agg.stockout = agg.stockout || r.alertState === 'STOCKOUT'
+      agg.low = agg.low || r.alertState === 'LOW'
+      stockByTemplate.set(r.productTemplateId, agg)
+    }
+  }
+
   const derivedProducts = templateIds.length
     ? await prisma.product.findMany({
         where: { productTemplateId: { in: templateIds } },
@@ -327,6 +355,7 @@ export default async function ProductsListPage({
                   <th className="px-3 py-2.5 font-semibold">Recipe</th>
                   <SortableTh label="Base price" k="price" sort={sort} dir={dir} tab={tab} />
                   <th className="px-3 py-2.5 font-semibold">Orders</th>
+                  <th className="px-3 py-2.5 font-semibold">Stock</th>
                   <SortableTh label="Updated" k="updated" sort={sort} dir={dir} tab={tab} />
                   <th className="px-5 py-2.5" />
                 </tr>
@@ -334,7 +363,7 @@ export default async function ProductsListPage({
               <tbody>
                 {visible.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-5 py-8 text-center text-[12px] text-ink-500">
+                    <td colSpan={10} className="px-5 py-8 text-center text-[12px] text-ink-500">
                       Nothing in “{TAB_LABEL[tab]}”.
                     </td>
                   </tr>
@@ -422,6 +451,27 @@ export default async function ProductsListPage({
                             {ordersByTemplate.get(r.id)}
                           </span>
                         )}
+                      </td>
+                      <td className="px-3 py-3">
+                        {(() => {
+                          const s = stockByTemplate.get(r.id)
+                          if (!s) return <span className="text-[12px] text-ink-400" title="No stock cap: creators can order any quantity">Unlimited</span>
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'text-[12px] font-medium tabular-nums',
+                                  s.stockout ? 'text-danger-700' : s.low ? 'text-warning-800' : 'text-ink-800',
+                                )}
+                                title={`${s.flavors} limited flavor${s.flavors === 1 ? '' : 's'}`}
+                              >
+                                {s.available.toLocaleString()}
+                                {s.stockout ? ' · out' : s.low ? ' · low' : ''}
+                              </span>
+                              <RestockButton id={r.id} name={r.name} />
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td className="px-3 py-3 text-[12px] tabular-nums text-ink-500">
                         {new Date(r.updatedAt).toLocaleDateString()}

@@ -256,10 +256,17 @@ export function ProductionStep({
       : 0
   const lineTotalCents = estimate?.totalBeforeShippingAndTaxCents ?? 0
 
+  // I4 (MANUFACTURER_INVENTORY spec 4b): the manufacturer's remaining stock caps
+  // the stepper (packs for pack orders, units otherwise). null = Unlimited. The
+  // server pre-charge guard + conditional decrement remain the authority; this
+  // just keeps the UI from offering quantities that can only be rejected.
+  const stockCeiling = estimate?.maxOrderableQty ?? null
+  const hardMax = stockCeiling != null ? Math.max(1, Math.min(DEFAULT_MAX, stockCeiling)) : DEFAULT_MAX
+
   function clampQty(n: number): number {
     if (Number.isNaN(n)) return moqFloor
     if (n < moqFloor) return moqFloor
-    if (n > DEFAULT_MAX) return DEFAULT_MAX
+    if (n > hardMax) return hardMax
     return n
   }
 
@@ -445,9 +452,9 @@ export function ProductionStep({
                     <QuantityStepper
                       value={packCount}
                       min={moqPacks}
-                      max={DEFAULT_MAX}
+                      max={hardMax}
                       step={1}
-                      onChange={(n) => writePack(packValue, Math.max(moqPacks, n))}
+                      onChange={(n) => writePack(packValue, Math.min(hardMax, Math.max(moqPacks, n)))}
                     />
                     <span className="text-[11.5px] text-ink-500 tabular-nums">
                       {packSummary(composedPack.distinctCount, packUnitsPerPack, packCount, selectedPackSize?.label)}
@@ -458,6 +465,11 @@ export function ProductionStep({
                       This pack size has a minimum of {moqPacks} packs.
                     </p>
                   )}
+                  {stockCeiling != null && packCount >= stockCeiling && (
+                    <p className="mt-1.5 text-[11.5px] text-pink-700">
+                      Only {stockCeiling.toLocaleString()} packs available at current stock.
+                    </p>
+                  )}
                 </>
               ) : (
                 <>
@@ -465,7 +477,7 @@ export function ProductionStep({
                     <QuantityStepper
                       value={qty}
                       min={moqFloor}
-                      max={DEFAULT_MAX}
+                      max={hardMax}
                       step={DEFAULT_STEP}
                       onChange={(n) => onChange({ quantity: clampQty(n) })}
                     />
@@ -478,6 +490,11 @@ export function ProductionStep({
                     <p className="mt-1.5 text-[11.5px] text-pink-700">
                       Production minimums require at least{' '}
                       {moqFloor.toLocaleString()} units.
+                    </p>
+                  )}
+                  {stockCeiling != null && qty >= stockCeiling && (
+                    <p className="mt-1.5 text-[11.5px] text-pink-700">
+                      Only {stockCeiling.toLocaleString()} units available at current stock.
                     </p>
                   )}
                 </>

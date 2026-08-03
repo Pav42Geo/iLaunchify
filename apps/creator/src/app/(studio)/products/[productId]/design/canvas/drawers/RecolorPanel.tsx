@@ -277,7 +277,7 @@ export function RecolorPanel({ canvas, palettes, onSaveAsTemplate }: Props) {
             <button
               type="button"
               onClick={onSaveAsTemplate}
-              className="w-full rounded-md border border-pink-300 bg-pink-50/60 px-3 py-2 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-50"
+              className="w-full rounded-md border border-success-300 bg-success-50/60 px-3 py-2 text-[12.5px] font-semibold text-pink-700 transition-colors hover:bg-pink-50"
             >
               Save as new template
             </button>

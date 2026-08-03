@@ -130,7 +130,7 @@ function Toggle({
         onClick={onToggle}
         className={
           'relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 ' +
-          (on ? 'bg-pink-500' : 'bg-ink-300')
+          (on ? 'bg-success-500' : 'bg-ink-300')
         }
       >
         <span

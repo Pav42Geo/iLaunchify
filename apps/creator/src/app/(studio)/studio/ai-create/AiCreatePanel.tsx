@@ -463,7 +463,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                   key={d.id}
                   onClick={() => !setMode && setSelectedId(d.id)}
                   aria-pressed={on}
-                  className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-300'} ${setMode ? 'cursor-default' : ''}`}
+                  className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${on ? 'border-success-500 bg-success-50' : 'border-ink-200 bg-white hover:border-ink-300'} ${setMode ? 'cursor-default' : ''}`}
                 >
                   {setMode ? (
                     <Link2 className="h-4 w-4 text-pink-600" />
@@ -713,7 +713,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                       onClick={() => setViewOverrides((o) => ({ ...o, [i]: !o[i] }))}
                       aria-pressed={show3D(i)}
                       title={show3D(i) ? 'Show the flat print surface' : 'Preview this concept in 3D'}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${show3D(i) ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 text-ink-500 hover:border-ink-400'}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${show3D(i) ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 text-ink-500 hover:border-ink-400'}`}
                     >
                       <Box className="h-3 w-3" /> {show3D(i) ? 'Flat' : '3D'}
                     </button>
@@ -734,7 +734,7 @@ export function AiCreatePanel(props: AiCreatePanelProps) {
                         onClick={() => props.onTogglePin?.(i)}
                         aria-pressed={props.pinnedIndex === i}
                         title={props.pinnedIndex === i ? 'Unpin' : 'Pin for A/B compare'}
-                        className={`inline-flex items-center rounded-full border p-1 transition ${props.pinnedIndex === i ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 text-ink-400 hover:border-ink-400 hover:text-ink-600'}`}
+                        className={`inline-flex items-center rounded-full border p-1 transition ${props.pinnedIndex === i ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 text-ink-400 hover:border-ink-400 hover:text-ink-600'}`}
                       >
                         <Pin className="h-3 w-3" />
                       </button>
@@ -1206,7 +1206,7 @@ function Toggle({ label, on, disabled, onClick }: { label: string; on: boolean; 
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
     >
       {label}
     </button>
@@ -1389,7 +1389,7 @@ function VocabSelect({
                   onClick={() => toggle(o)}
                   className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12.5px] text-ink-700 hover:bg-ink-50"
                 >
-                  <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${on ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300'}`}>
+                  <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${on ? 'border-success-500 bg-success-500 text-white' : 'border-ink-300'}`}>
                     {on && <Check className="h-3 w-3" />}
                   </span>
                   {o}

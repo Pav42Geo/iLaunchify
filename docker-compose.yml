@@ -63,6 +63,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # One-shot: create the uploads bucket so the app can write on first boot.
+  # Bucket name must match R2_BUCKET in .env.local.
+  minio-init:
+    image: minio/mc:latest
+    container_name: ilaunchify-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin &&
+        mc mb --ignore-existing local/ilaunchify-assets
+      "
+    restart: "no"
+
 volumes:
   cockroach-data:
   minio-data:

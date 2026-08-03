@@ -25,6 +25,7 @@ export const SHIP_TO_ORDER = [
   'WAREHOUSE_PARTNER',
   'HOLD_AT_MANUFACTURER',
   'CHANNEL_INBOUND',
+  'DIRECT_CONSUMER',
 ] as const
 export type ShipToKey = (typeof SHIP_TO_ORDER)[number]
 
@@ -33,6 +34,7 @@ export const SHIP_TO_LABEL: Record<ShipToKey, string> = {
   WAREHOUSE_PARTNER: 'Fulfillment center',
   HOLD_AT_MANUFACTURER: 'Hold at manufacturer',
   CHANNEL_INBOUND: 'Channel inbound',
+  DIRECT_CONSUMER: 'Consumer (direct)',
 }
 
 export const MODE_ORDER = ['PARCEL', 'LTL', 'FTL'] as const
@@ -251,6 +253,7 @@ export async function loadShipmentsData(sp: {
     WAREHOUSE_PARTNER: shipToCountsRaw[1] ?? 0,
     HOLD_AT_MANUFACTURER: shipToCountsRaw[2] ?? 0,
     CHANNEL_INBOUND: shipToCountsRaw[3] ?? 0,
+    DIRECT_CONSUMER: shipToCountsRaw[4] ?? 0,
   }
   const modeCounts: Record<ModeKey, number> = {
     PARCEL: modeCountsRaw[0] ?? 0,

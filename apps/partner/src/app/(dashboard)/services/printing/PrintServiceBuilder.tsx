@@ -398,7 +398,7 @@ export function PrintServiceBuilder({ initial }: { initial: PrintBuilderInitial 
           <Hero eyebrow="Step 2 of 6" title="Your presses" desc="Minimums belong to the press, not to you. Declare each press and the run band it serves, and one shop can take a 100-unit job and a 50,000-unit job.">
             <Card title="Presses on your floor" tag="New" sub="Most converters run digital alongside flexo, routing each job by run length. A single MOQ per shop cannot express that.">
               {presses.map((p) => (
-                <div key={p.id} className={`mb-2.5 rounded-xl border px-4 py-3.5 ${p.active ? 'border-pink-200 bg-white shadow-[0_0_0_3px_rgba(255,46,99,0.07)]' : 'border-ink-200 bg-ink-50'}`}>
+                <div key={p.id} className={`mb-2.5 rounded-xl border px-4 py-3.5 ${p.active ? 'border-success-300 bg-white shadow-[0_0_0_3px_rgb(var(--success-500-rgb) / 0.10)]' : 'border-ink-200 bg-ink-50'}`}>
                   <div className="mb-2.5 flex items-center gap-2.5">
                     <button type="button" onClick={() => setPress(p.id, { active: !p.active })} aria-label="Toggle press" className={`relative h-[22px] w-[38px] flex-none rounded-pill transition ${p.active ? 'bg-pink-500' : 'bg-ink-300'}`}>
                       <span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all ${p.active ? 'left-[19px]' : 'left-[3px]'}`} />
@@ -698,7 +698,7 @@ function Chips({ options, value, onToggle }: { options: string[]; value: string[
       {options.map((o) => {
         const on = value.includes(o)
         return (
-          <button key={o} type="button" onClick={() => onToggle(o)} className={`rounded-pill border px-3 py-1.5 text-[12px] font-semibold transition ${on ? 'border-pink-500 bg-pink-500/10 text-pink-700' : 'border-ink-300 bg-white text-ink-600 hover:border-ink-400'}`}>{o}</button>
+          <button key={o} type="button" onClick={() => onToggle(o)} className={`rounded-pill border px-3 py-1.5 text-[12px] font-semibold transition ${on ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-300 bg-white text-ink-600 hover:border-ink-400'}`}>{o}</button>
         )
       })}
     </div>

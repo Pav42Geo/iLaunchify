@@ -116,7 +116,7 @@ export function SampleVerdictCard({
           aria-pressed={value === 'REJECTED'}
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:opacity-60 ${
             value === 'REJECTED'
-              ? 'border-pink-600 bg-pink-50 text-pink-700'
+              ? 'border-success-600 bg-success-50 text-success-700'
               : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'
           }`}
         >

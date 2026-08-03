@@ -155,7 +155,7 @@ export function TemplateAuthorSaveDialog({ open, canvas, domain, container, aspe
                     onClick={() => toggleTag(s.id)}
                     className={
                       'rounded-full border px-2 py-0.5 text-[10.5px] font-medium ' +
-                      (tagStyleIds.has(s.id) ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 text-ink-600 hover:border-ink-300')
+                      (tagStyleIds.has(s.id) ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 text-ink-600 hover:border-ink-300')
                     }
                   >
                     {s.label}

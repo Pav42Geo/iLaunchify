@@ -625,7 +625,10 @@ export async function addPackagingLink(input: {
       payload: { partnerId: partner.id, autoActivatedOnLink: true, productTemplateId: template.id },
     })
   }
-  if (input.basePriceCents < 1) return { ok: false, error: 'Set a base price.' }
+  // Studio-first: packaging attaches UNPRICED (basePriceCents 0) and gets priced
+  // in the pricing step / edit card. The publish gate in products/actions.ts
+  // refuses submission while any linked packaging is unpriced, so 0 never bills.
+  if (input.basePriceCents < 0) return { ok: false, error: 'Base price cannot be negative.' }
   if (input.leadTimeDays < 0) return { ok: false, error: 'Lead time must be ≥ 0.' }
 
   // @@id([productTemplateId, packagingSystemId]) — duplicate insert would error

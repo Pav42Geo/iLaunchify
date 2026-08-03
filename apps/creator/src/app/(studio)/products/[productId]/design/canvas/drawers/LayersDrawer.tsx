@@ -104,7 +104,7 @@ function LayerRow({
       className={
         'group flex items-center gap-1.5 rounded-md border px-2 py-1.5 transition-colors ' +
         (row.isActive
-          ? 'border-pink-300 bg-pink-50'
+          ? 'border-success-300 bg-success-50'
           : 'border-ink-200 bg-white hover:border-ink-300')
       }
     >

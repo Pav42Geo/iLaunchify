@@ -21,6 +21,9 @@ export {
 export { getSignedReadUrl } from './signed-url'
 export { listKeys, deleteFiles, type ListedObject } from './list'
 export { pingR2, type R2PingResult } from './health'
+// Local-fs dev fallback (no R2 creds): callers that need a PUBLIC url must
+// inline the bytes as a data: URL, since there is no public bucket in dev.
+export { isDevFsMode, devFsReadDataUrl } from './dev-fs'
 export {
   partnerFileKey,
   brandAssetKey,

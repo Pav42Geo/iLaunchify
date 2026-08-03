@@ -161,7 +161,7 @@ function Chips({ opts, value, onToggle }: { opts: string[]; value: Set<string>; 
             type="button"
             onClick={() => onToggle(o)}
             className={`rounded-pill border px-[13px] py-[7px] text-[12.5px] font-semibold transition ${
-              on ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 bg-white text-ink-600 hover:border-ink-400'
+              on ? 'border-success-500 bg-success-50 text-success-800' : 'border-ink-300 bg-white text-ink-600 hover:border-ink-400'
             }`}
           >
             {o}
@@ -481,7 +481,7 @@ function StepLines(p: {
       </Note>
       <Card title="Lines on your floor" tag={`${active} active`}>
         {p.lines.map((l) => (
-          <div key={l.id} className={`mb-2.5 rounded-xl border px-4 py-3.5 ${l.active ? 'border-pink-200 bg-white shadow-[0_0_0_3px_rgba(255,46,99,0.07)]' : 'border-ink-200 bg-ink-50'}`}>
+          <div key={l.id} className={`mb-2.5 rounded-xl border px-4 py-3.5 ${l.active ? 'border-success-300 bg-white shadow-[0_0_0_3px_rgb(var(--success-500-rgb) / 0.10)]' : 'border-ink-200 bg-ink-50'}`}>
             <div className="mb-2.5 flex items-center gap-2.5">
               <button type="button" onClick={() => p.setLine(l.id, { active: !l.active })} aria-label="Toggle line" className={`relative h-[22px] w-[38px] flex-none rounded-pill transition ${l.active ? 'bg-pink-500' : 'bg-ink-300'}`}>
                 <span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all ${l.active ? 'left-[19px]' : 'left-[3px]'}`} />
@@ -578,7 +578,7 @@ function StepOps(p: { ops: OpState[]; setOp: (key: CopackOpType, patch: Partial<
                   <div className="text-[13px] font-semibold text-ink-900">{t.label}</div>
                   <div className="mt-0.5 text-[11.5px] text-ink-400">{t.desc}</div>
                 </div>
-                <button type="button" onClick={() => p.setOp(t.key, { on: !st.on })} aria-label="Toggle operation" className={`relative h-[22px] w-[38px] flex-none rounded-pill transition ${st.on ? 'bg-pink-500' : 'bg-ink-300'}`}>
+                <button type="button" onClick={() => p.setOp(t.key, { on: !st.on })} aria-label="Toggle operation" className={`relative h-[22px] w-[38px] flex-none rounded-pill transition ${st.on ? 'bg-success-500' : 'bg-ink-300'}`}>
                   <span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all ${st.on ? 'left-[19px]' : 'left-[3px]'}`} />
                 </button>
                 <select className="h-[34px] w-full rounded-md border border-ink-300 bg-white px-[9px] text-[13px] focus:border-pink-500 focus:outline-none" value={st.unit} onChange={(e) => p.setOp(t.key, { unit: e.target.value as CopackPricingUnit })}>

@@ -532,7 +532,7 @@ function Chip({
         small ? 'px-2.5 py-1 text-[11.5px]' : 'px-3 py-1.5 text-[12.5px]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
         active
-          ? 'border-pink-500 bg-pink-500 text-white'
+          ? 'border-success-500 bg-success-50 text-success-800'
           : 'border-ink-300 bg-white text-ink-700 hover:border-ink-400 hover:text-ink-900',
       )}
     >

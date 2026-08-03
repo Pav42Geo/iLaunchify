@@ -64,6 +64,8 @@ export const EVENT_TOKEN_PALETTE: {
   PARTNER_TEAM_MEMBER_JOINED: ['memberName', 'memberEmail', 'isAdmin'],
   CREATOR_CHANNEL_CONNECTED: ['channelName', 'shopName'],
   CREATOR_CHANNEL_DISCONNECTED: ['channelName'],
+  // Track B3 (type error until db:push+generate adds the enum value; coverage-batch precedent)
+  CREATOR_CHANNEL_RECONNECT_NEEDED: ['channelName', 'reason'],
   CREATOR_CHANNEL_ORDER_HOLD: ['externalOrderId', 'channelName', 'reason'],
   SECTION_VERIFIED: ['sectionType', 'companyName'],
   SECTION_NEEDS_CHANGES: ['sectionType', 'companyName', 'notes'],
@@ -141,6 +143,8 @@ export const EVENT_TOKEN_PALETTE: {
   PROOF_APPROVED: ['dispatchId', 'orderRef', 'version'],
   PROOF_REJECTED: ['dispatchId', 'orderRef', 'version', 'annotation'],
   CREATOR_STOCK_ALERT: ['title', 'body', 'productName', 'alertState'],
+  // I4 (de-cast 2026-07-27 after the enum push).
+  PARTNER_STOCK_ALERT: ['title', 'body', 'productName', 'alertState'],
   // F — job progress
   CREATOR_DISPATCH_PROGRESS: ['orderId', 'partnerName', 'kind', 'summary', 'note'],
   // Feedback module — delivery+3d combined ask

@@ -109,7 +109,7 @@ export function CertificatePicker({
                 aria-pressed={on}
                 className={
                   'flex w-full items-center gap-3 rounded-lg border px-2.5 py-2 text-left transition-colors ' +
-                  (on ? 'border-pink-500 bg-pink-50' : 'border-transparent hover:bg-ink-50')
+                  (on ? 'border-success-500 bg-success-50' : 'border-transparent hover:bg-ink-50')
                 }
               >
                 <span className="flex h-9 w-9 flex-none items-center justify-center overflow-hidden rounded-md border border-ink-200 bg-white">
@@ -129,7 +129,7 @@ export function CertificatePicker({
                 <span
                   className={
                     'flex h-4 w-4 flex-none items-center justify-center rounded-full border text-[10px] font-bold ' +
-                    (on ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 text-transparent')
+                    (on ? 'border-success-500 bg-success-500 text-white' : 'border-ink-300 text-transparent')
                   }
                 >
                   ✓

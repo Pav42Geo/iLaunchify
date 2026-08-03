@@ -120,6 +120,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   PARTNER_TEAM_MEMBER_JOINED: 'account',
   CREATOR_CHANNEL_CONNECTED: 'account',
   CREATOR_CHANNEL_DISCONNECTED: 'account',
+  // Track B3 (type error until db:push+generate adds the enum value; coverage-batch precedent)
+  CREATOR_CHANNEL_RECONNECT_NEEDED: 'account',
   // C2.2 auto-billing: a channel order parked ON_HOLD (cap / charge failure).
   CREATOR_CHANNEL_ORDER_HOLD: 'orders',
   // Account & security (mandatory)
@@ -197,6 +199,8 @@ export const EVENT_CATEGORY: Record<NotificationEvent, NotificationCategorySlug>
   SUPPORT_REFUND_REQUESTED: 'support',
   // Inventory alerts
   CREATOR_STOCK_ALERT: 'inventory',
+  // I4 manufacturer template stock (de-cast 2026-07-27 after the enum push).
+  PARTNER_STOCK_ALERT: 'inventory',
   // Reminders & digests
   DISPATCH_ACCEPT_REMINDER: 'reminders',
   DISPATCH_SLA_AT_RISK: 'reminders',

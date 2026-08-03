@@ -235,7 +235,7 @@ export function PaletteGenerator({
                 className={
                   'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold transition-colors ' +
                   (active
-                    ? 'border-pink-500 bg-pink-50 text-pink-700'
+                    ? 'border-success-500 bg-success-50 text-success-700'
                     : locked
                       ? 'border-ink-200 bg-white text-ink-400'
                       : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400')

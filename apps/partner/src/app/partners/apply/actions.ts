@@ -23,6 +23,9 @@ const LeadSchema = z.object({
   serviceTypes: z
     .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
     .min(1),
+  // Broker screen (Pavel 2026-08-02). Optional server-side for back-compat
+  // with in-flight sessions; the wizard requires it.
+  productionModel: z.enum(['IN_HOUSE', 'HYBRID', 'OUTSOURCED']).optional(),
   // Adaptive per-service answers (declaration blob, one key per selected service).
   // The authoritative structured capture happens in onboarding; this is triage.
   serviceDetails: z.record(z.string(), z.unknown()).default({}),
@@ -66,6 +69,12 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? 'Invalid input' }
   const v = parsed.data
 
+  // Broker screen, server side (Pavel 2026-08-02): the wizard blocks OUTSOURCED
+  // before submit; this guard holds if the client gate is ever bypassed.
+  if (v.productionModel === 'OUTSOURCED') {
+    return { ok: false, error: 'We currently onboard partners who produce in their own facility.' }
+  }
+
   // Bot defense before creating any User+Partner LEAD rows / fanning out email
   // (H5 A4 — public unauthenticated form). Skips (allows) when unconfigured.
   const turnstile = await verifyTurnstile({ token: v.turnstileToken, ip: await requestIp() })
@@ -104,6 +113,7 @@ export async function submitLead(input: z.infer<typeof LeadSchema>): Promise<Sub
           leadSource: 'public-apply-form',
           leadNotes: JSON.stringify({
             contactName: v.contactName,
+            productionModel: v.productionModel ?? null,
             phone: v.phone || null,
             yearsInBusiness: v.yearsInBusiness || null,
             facilityCount: v.facilityCount || null,

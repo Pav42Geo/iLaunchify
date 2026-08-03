@@ -437,7 +437,9 @@ export const INTEGRATIONS: IntegrationDef[] = [
       'C1 — the FIRST real channel adapter: OAuth connect, listing push, order webhooks + poll, inventory + fulfillment sync. Create the public app in the Shopify Dev Dashboard (dev.shopify.com), least scopes: read_orders, write_products, write_merchant_managed_fulfillment_orders, read_inventory/write_inventory.',
     docsUrl: 'https://shopify.dev/docs/api/admin-graphql',
     dashboardUrl: 'https://dev.shopify.com',
-    lifecycle: 'planned',
+    // C1 adapter SHIPPED 2026-07-24 (packages/channels/src/adapters/shopify.ts);
+    // key presence activates it in resolveChannelAdapter.
+    lifecycle: 'live',
     appLinks: [
       { label: 'Channels registry', href: '/channels' },
       { label: 'Connections & sync', href: '/channels/connections' },
@@ -533,6 +535,25 @@ export const INTEGRATIONS: IntegrationDef[] = [
     envVars: [
       { name: 'BIGCOMMERCE_APP_CLIENT_ID', kind: 'config', required: false, note: 'Only if the platform-app path wins at C5' },
       { name: 'BIGCOMMERCE_APP_CLIENT_SECRET', kind: 'secret', required: false },
+    ],
+  },
+  {
+    key: 'channel-vault',
+    name: 'Channel token vault',
+    vendor: 'iLaunchify (internal)',
+    category: 'Sales Channels',
+    description:
+      'AES-256-GCM key sealing creator marketplace OAuth tokens at rest (ChannelSecret rows; Track B1, docs/SHOP_CONNECT_E2E_2026-07-24.md). The key never touches the DB. Rotation = re-seal under a new key, then swap the env var (keyVersion column tracks it).',
+    lifecycle: 'live',
+    rotationDays: 365,
+    appLinks: [{ label: 'Channels registry', href: '/channels' }],
+    envVars: [
+      {
+        name: 'CHANNEL_TOKEN_KEY',
+        kind: 'secret',
+        required: false,
+        note: '32 bytes: 64 hex chars (openssl rand -hex 32) or base64. Required before any real channel OAuth connect (Track B2).',
+      },
     ],
   },
   {

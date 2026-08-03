@@ -15,6 +15,7 @@
 // V1.5+: when a dispatch times out, we should re-route to the next-best
 // partner. For V1 we just mark it timed out and let admin handle manually.
 
+import { reverseTemplateInventory } from './template-inventory-db'
 import { prisma, getOrderSettings } from '@ilaunchify/db'
 import { logSystemAudit } from '@ilaunchify/audit'
 import { assertOrderTransition } from './order-fsm'
@@ -180,6 +181,21 @@ export async function runStaleOrderAutoCancel(): Promise<StaleOrderCancelResult>
         },
       })
       if (update.count === 0) continue // paid (or already moved) in the gap — not a failure
+
+      // I4 (MANUFACTURER_INVENTORY): put consumed manufacturer stock back for the
+      // swept order (idempotent; best-effort — a failed reversal never fails the sweep).
+      try {
+        const item = await prisma.orderItem.findFirst({
+          where: { orderId: o.id },
+          select: { product: { select: { productTemplateId: true } } },
+        })
+        await reverseTemplateInventory(prisma, {
+          productTemplateId: item?.product.productTemplateId ?? null,
+          orderId: o.id,
+        })
+      } catch {
+        /* reversal is best-effort */
+      }
 
       await logSystemAudit({
         entityType: 'Order',

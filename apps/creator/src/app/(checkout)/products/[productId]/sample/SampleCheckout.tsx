@@ -127,7 +127,7 @@ export function SampleCheckout({ productId, productName, options, flavorNames, i
                 const on = o.kind === activeKind
                 return (
                   <button key={o.kind} type="button" onClick={() => setActiveKind(o.kind)}
-                    className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors ${on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 hover:border-pink-200'}`}>
+                    className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors ${on ? 'border-success-500 bg-success-50' : 'border-ink-200 hover:border-pink-200'}`}>
                     <meta.Icon className={`mt-0.5 h-4 w-4 shrink-0 ${on ? 'text-pink-700' : 'text-ink-500'}`} />
                     <span className="min-w-0">
                       <span className="block text-[13px] font-semibold text-ink-900">{meta.label}</span>

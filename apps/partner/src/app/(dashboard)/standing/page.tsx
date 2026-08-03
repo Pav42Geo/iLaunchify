@@ -77,7 +77,7 @@ export default async function StandingPage() {
             return (
               <div
                 key={f.badge}
-                className={cn('rounded-xl border p-3 text-center', isYou ? 'border-pink-500 bg-pink-50' : 'border-ink-200')}
+                className={cn('rounded-xl border p-3 text-center', isYou ? 'border-success-500 bg-success-50' : 'border-ink-200')}
               >
                 <p className={cn('text-[11px] font-bold uppercase tracking-[0.03em]', isYou ? 'text-pink-700' : 'text-ink-500')}>
                   {f.label}

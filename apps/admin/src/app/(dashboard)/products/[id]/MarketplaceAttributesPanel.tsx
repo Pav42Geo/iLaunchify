@@ -227,7 +227,7 @@ function CheckboxField({
                 aria-pressed={on}
                 className={
                   'relative h-4 w-4 flex-shrink-0 rounded border-[1.5px] transition-colors ' +
-                  (on ? 'border-pink-500 bg-pink-500' : 'border-ink-300 hover:border-ink-500')
+                  (on ? 'border-success-500 bg-success-500' : 'border-ink-300 hover:border-ink-500')
                 }
               >
                 {on && (

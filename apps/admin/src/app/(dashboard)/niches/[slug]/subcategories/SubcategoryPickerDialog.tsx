@@ -166,7 +166,7 @@ export function SubcategoryPickerDialog({
                               <label
                                 className={`flex cursor-pointer items-start gap-2 rounded-xl border px-2.5 py-2 text-[12.5px] transition-colors ${
                                   checked
-                                    ? 'border-pink-300 bg-pink-50/60'
+                                    ? 'border-success-300 bg-success-50/60'
                                     : 'border-ink-100 bg-white hover:bg-ink-50'
                                 }`}
                               >

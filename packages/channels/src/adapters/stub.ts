@@ -42,6 +42,18 @@ export function createStubAdapter(): ChannelAdapter {
       }
     },
 
+    async refresh(tokens: TokenSet): Promise<TokenSet> {
+      // Track B3: keyless refresh so /api/cron/channel-tokens is exercisable in
+      // dev. Same shape a real adapter returns: fresh access token + expiry;
+      // the refresh credential rolls (rotating-refresh channels like Etsy).
+      return {
+        ...tokens,
+        accessToken: 'stub-access-token',
+        refreshToken: tokens.refreshToken ?? 'stub-refresh-token',
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      }
+    },
+
     async pushListing(_ctx: ConnectionCtx, listing: ListingInput): Promise<ExternalListing> {
       const lid = `stub-listing-${stableId(listing.title)}`
       const variantIds: Record<string, string> = {}
@@ -65,8 +77,24 @@ export function createStubAdapter(): ChannelAdapter {
       return { webhookSecret: 'stub-webhook-secret' }
     },
 
-    verifyWebhook({ secret }) {
-      return secret === 'stub-webhook-secret'
+    verifyWebhook({ headers, secret }) {
+      // Dev doorbell auth: the caller (curl / test) presents the secret in a
+      // header; real adapters HMAC the raw body instead (Track B4).
+      return headers['x-stub-signature'] === secret
+    },
+
+    identifyWebhook({ headers, rawBody }) {
+      // App-level identity fallback: header wins, then a `shop` field in the
+      // JSON body. Mirrors the Shopify shop-domain-header pattern.
+      const fromHeader = headers['x-stub-shop']
+      if (fromHeader) return { externalAccountId: fromHeader }
+      try {
+        const parsed = JSON.parse(rawBody) as { shop?: string; topic?: string }
+        if (parsed.shop) return { externalAccountId: parsed.shop, ...(parsed.topic ? { topic: parsed.topic } : {}) }
+      } catch {
+        /* not JSON */
+      }
+      return null
     },
 
     async pullOrders(ctx: ConnectionCtx, sinceIso: string): Promise<ExternalOrder[]> {

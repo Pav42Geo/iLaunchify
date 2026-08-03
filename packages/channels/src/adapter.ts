@@ -133,9 +133,12 @@ export interface ChannelAdapter {
   /** Human label for logs/UI. */
   displayName: string
 
-  // Connect (OAuth-style; WooCommerce/BigCommerce adapt key-pair entry to this shape)
-  buildAuthUrl(input: { state: string; redirectUri: string; shopHint?: string }): string
-  exchangeCode(input: { code: string; redirectUri: string; shopHint?: string }): Promise<TokenSet>
+  // Connect (OAuth-style; WooCommerce/BigCommerce adapt key-pair entry to this shape).
+  // codeChallenge/codeVerifier: RFC 7636 PKCE (Etsy mandates S256) - callers
+  // generate the pair via @ilaunchify/channels/secret-box and pass the halves
+  // through; adapters that don't use PKCE ignore them (additive, Track B2).
+  buildAuthUrl(input: { state: string; redirectUri: string; shopHint?: string; codeChallenge?: string }): string
+  exchangeCode(input: { code: string; redirectUri: string; shopHint?: string; codeVerifier?: string }): Promise<TokenSet>
   refresh?(tokens: TokenSet): Promise<TokenSet>
 
   // Catalog →
@@ -147,7 +150,12 @@ export interface ChannelAdapter {
 
   // Orders ←
   registerWebhooks?(ctx: ConnectionCtx, callbackUrl: string): Promise<{ webhookSecret?: string }>
-  verifyWebhook?(input: { headers: Record<string, string>; rawBody: string; secret: string }): boolean
+  /** May be async: WebCrypto-based adapters (Shopify) sign via crypto.subtle. */
+  verifyWebhook?(input: { headers: Record<string, string>; rawBody: string; secret: string }): boolean | Promise<boolean>
+  /** Map an inbound webhook to a store identity for APP-LEVEL registrations
+   *  (e.g. Shopify's X-Shopify-Shop-Domain). Per-connection callback URLs
+   *  (?cid=) skip this. Track B4; additive + optional. */
+  identifyWebhook?(input: { headers: Record<string, string>; rawBody: string }): { externalAccountId?: string; topic?: string } | null
   /** Poll fallback — webhooks miss; every adapter must support pull. */
   pullOrders(ctx: ConnectionCtx, sinceIso: string): Promise<ExternalOrder[]>
   ackOrder?(ctx: ConnectionCtx, externalOrderId: string): Promise<void>

@@ -384,7 +384,7 @@ function EntityChips({
               'transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-1',
               isActive
-                ? 'border-pink-500 bg-pink-500 text-white'
+                ? 'border-success-500 bg-success-50 text-success-800'
                 : 'border-ink-300 bg-white text-ink-700 hover:border-ink-400 hover:text-ink-900',
             )}
           >
@@ -451,7 +451,7 @@ function RoleChips({
               isActive
                 ? r.value
                   ? `${tone!.bg} ring-2 ring-current ring-offset-1`
-                  : 'border-pink-500 bg-pink-500 text-white'
+                  : 'border-success-500 bg-success-50 text-success-800'
                 : 'border-ink-300 bg-white text-ink-700 hover:border-ink-400 hover:text-ink-900',
             )}
           >

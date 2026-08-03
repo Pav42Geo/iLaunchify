@@ -270,7 +270,7 @@ function EntityBrowser({
                 onClick={() => onChange(active ? '' : it.id)}
                 className={
                   'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] transition-colors ' +
-                  (active ? 'bg-pink-50 text-pink-800' : 'text-ink-700 hover:bg-ink-50')
+                  (active ? 'bg-success-50 text-success-800' : 'text-ink-700 hover:bg-ink-50')
                 }
               >
                 <span className="truncate">{it.label}</span>

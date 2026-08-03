@@ -45,13 +45,21 @@ input,select{font-family:inherit;font-size:13px;color:var(--ink-900)}
 .pill.ok{background:var(--success-50);color:var(--success-600)}
 .topbar .spacer{flex:1}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:13px;border-radius:var(--r-pill);padding:0 16px;height:38px;transition:all .18s var(--ease-out);white-space:nowrap}
-.btn-save{background:var(--success-500);color:#fff}.btn-save:hover{background:var(--success-600)}
+.btn-save{background:var(--ink-900);color:#fff}.btn-save:hover{background:#000}
+.btn-save .chk{color:var(--neon-500);font-weight:800}
 .btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
 .btn-ghost{border:1px solid var(--ink-200);color:var(--ink-700);background:#fff}.btn-ghost:hover{border-color:var(--ink-400)}
 .btn.sm{height:32px;font-size:12px;padding:0 12px}
 .btn.xs{height:26px;font-size:11px;padding:0 10px}
 
 .main{display:flex;flex:1;min-height:0}
+
+/* ============ icon rail: Library + 2D Mockups ============ */
+.rail{width:76px;background:#fff;border-right:1px solid var(--ink-200);display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:2px}
+.rail button{width:60px;border-radius:12px;padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--ink-500)}
+.rail button svg{width:19px;height:19px}
+.rail button:hover{background:var(--ink-50);color:var(--ink-800)}
+.rail button.active{background:var(--pink-50);color:var(--pink-600)}
 
 /* ============ ONE panel: Library ============ */
 .library{width:330px;background:#fff;border-right:1px solid var(--ink-200);display:flex;flex-direction:column;min-height:0}
@@ -81,15 +89,24 @@ input,select{font-family:inherit;font-size:13px;color:var(--ink-900)}
 .mcard.sel{border-color:var(--pink-500);box-shadow:0 0 0 3px var(--pink-50)}
 .mcard .thumb{aspect-ratio:1;background:linear-gradient(145deg,var(--ink-50),var(--ink-100));display:grid;place-items:center;position:relative}
 .mcard .thumb .glb3d{position:absolute;top:6px;right:6px;background:var(--ink-900);color:var(--neon-500);font-size:8.5px;font-weight:800;border-radius:var(--r-pill);padding:2px 7px}
-.mcard .edit{position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.95);box-shadow:var(--shadow-sm);display:none;place-items:center;font-size:12px;color:var(--ink-600)}
-.mcard:hover .edit{display:grid}
-.mcard .edit:hover{color:var(--pink-600)}
-.mcard .meta{padding:7px 9px 9px;display:block}
+/* 3-dot menu: top-right, hover-only, with dropdown */
+.mcard .dots{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.95);box-shadow:var(--shadow-sm);display:none;place-items:center;font-size:14px;font-weight:800;color:var(--ink-600);z-index:3;letter-spacing:1px}
+.mcard:hover .dots{display:grid}
+.mcard .dots:hover{color:var(--ink-900);background:#fff}
+.cardmenu{position:absolute;top:34px;right:6px;background:#fff;border:1px solid var(--ink-200);border-radius:12px;box-shadow:var(--shadow-lg);z-index:20;min-width:132px;overflow:hidden;animation:pop .18s var(--ease-out)}
+.cardmenu button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;font-size:12px;font-weight:600;color:var(--ink-700);text-align:left}
+.cardmenu button:hover{background:var(--pink-50);color:var(--pink-700)}
+.cardmenu button.danger:hover{background:var(--danger-50);color:var(--danger-500)}
+.mcard .meta{padding:8px 9px 9px;display:block}
 .mcard .meta b{display:block;font-size:11.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mcard .meta span{font-size:10px;color:var(--ink-400)}
-.newcard{border:1.5px dashed var(--ink-300);border-radius:var(--r-xl);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-500);font-weight:600;font-size:12px;min-height:130px;background:#fff}
-.newcard:hover{border-color:var(--pink-400);color:var(--pink-600);background:var(--pink-50)}
-.newcard .plus{width:28px;height:28px;border-radius:50%;background:var(--pink-500);color:#fff;display:grid;place-items:center;font-size:16px}
+/* New container: full-width dashed button at the TOP of the Library
+   (same pattern as the partner studio's "Upload packaging"). */
+.newbtn{width:100%;border:1.5px dashed var(--ink-300);border-radius:var(--r-lg);padding:11px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--ink-700);background:#fff;margin-bottom:4px}
+.newbtn:hover{border-color:var(--pink-400);color:var(--pink-600);background:var(--pink-50)}
+.newbtn .plus{width:20px;height:20px;border-radius:50%;background:var(--pink-500);color:#fff;display:grid;place-items:center;font-size:13px}
+.newsub{font-size:10.5px;color:var(--ink-400);margin:0 2px 10px;line-height:1.4}
+.addbtn{width:100%;border:1.5px dashed var(--ink-300);border-radius:var(--r-lg);padding:9px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink-500);background:#fff}
+.addbtn:hover{border-color:var(--pink-400);color:var(--pink-600);background:var(--pink-50)}
 
 /* mini can thumbs */
 .minican{width:44%;aspect-ratio:.62;border-radius:10px 10px 9px 9px/16px 16px 7px 7px;background:linear-gradient(90deg,#c9ccd4 0%,#f4f5f7 22%,#ffffff 40%,#e7e9ee 58%,#b9bcc6 82%,#d4d6dd 100%);box-shadow:inset 0 3px 4px rgba(255,255,255,.7),inset 0 -4px 6px rgba(24,24,26,.18),0 6px 12px rgba(24,24,26,.14);position:relative}
@@ -183,6 +200,14 @@ input,select{font-family:inherit;font-size:13px;color:var(--ink-900)}
 .addmini{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:5px 12px;font-size:11.5px;font-weight:600;color:var(--ink-600);background:#fff}
 .addmini:hover{border-color:var(--pink-400);color:var(--pink-600);background:var(--pink-50)}
 
+/* docked preview windows (Design Studio pattern): the window IS the navigation */
+.editor2d{position:relative}
+.pvwin{position:absolute;bottom:18px;right:18px;width:158px;border-radius:14px;background:#fff;border:1px solid var(--ink-200);box-shadow:var(--shadow-lg);cursor:pointer;overflow:hidden;z-index:40;transition:all .15s var(--ease-out);text-align:left;padding:0}
+.pvwin:hover{border-color:var(--pink-400);transform:translateY(-2px);box-shadow:var(--shadow-xl)}
+.pvwin .pvbody{height:104px;display:grid;place-items:center;background:linear-gradient(145deg,var(--ink-50),var(--ink-100));position:relative}
+.pvwin .pvlabel{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;color:var(--ink-600);padding:6px 10px;border-top:1px solid var(--ink-100);text-transform:uppercase;letter-spacing:.05em}
+.pvwin .pvlabel .go{margin-left:auto;color:var(--pink-500);font-size:12px}
+
 /* toast + banner */
 .toasts{position:fixed;bottom:18px;right:18px;display:flex;flex-direction:column;gap:8px;z-index:200}
 .toast{background:var(--ink-900);color:#fff;border-radius:var(--r-lg);padding:11px 16px;font-size:12.5px;font-weight:600;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:9px;animation:pop .25s var(--ease-out)}
@@ -205,17 +230,25 @@ input,select{font-family:inherit;font-size:13px;color:var(--ink-900)}
       <b id="ctxName">Aluminum can · 12 oz slim</b>
       <span class="pill cat" id="ctxCat">Can</span>
       <span class="pill ok">Active</span>
-      <button class="btn btn-ghost xs" onclick="openModal(state.currentId)">✎ Edit container</button>
     </div>
     <div class="spacer"></div>
-    <button class="btn btn-ghost sm" id="back3d" style="display:none" onclick="closeEditor()">← Back to 3D</button>
-    <button class="btn btn-save" onclick="toast('Container saved')">✓ Save</button>
+    <button class="btn btn-save" onclick="toast('Container saved')"><span class="chk">✓</span> Save</button>
   </div>
 
   <div class="main">
-    <!-- THE one panel -->
+    <!-- icon rail: two entries, per Pavel -->
+    <div class="rail">
+      <button id="railLib" class="active" onclick="state.panelTab='containers';renderLibrary()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        Library</button>
+      <button id="railMock" onclick="state.panelTab='mockups';renderLibrary()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+        2D Mockups</button>
+    </div>
+
+    <!-- the panel -->
     <div class="library">
-      <div class="lhead"><h2>Library</h2><span class="pill cat" id="countPill"></span></div>
+      <div class="lhead"><h2 id="panelTitle">Library</h2><span class="pill cat" id="panelCount"></span></div>
       <div class="lbody" id="lbody"></div>
     </div>
 
@@ -231,10 +264,46 @@ input,select{font-family:inherit;font-size:13px;color:var(--ink-900)}
         </div>
         <div class="hint" id="stageHint"></div>
       </div>
+      <!-- die-line preview window: click = go flat -->
+      <button class="pvwin" id="pvDie" onclick="openPrimaryDieline()">
+        <span class="pvbody">
+          <svg width="120" height="82" viewBox="0 0 120 82">
+            <rect x="4" y="4" width="112" height="74" fill="none" stroke="#FF7FA8" stroke-width="1" stroke-dasharray="4 3"/>
+            <rect x="10" y="10" width="100" height="62" fill="none" stroke="#18181A" stroke-width="1.4"/>
+            <rect x="17" y="17" width="86" height="48" fill="none" stroke="#1E7C4A" stroke-width="0.8" stroke-dasharray="3 3"/>
+            <line x1="60" y1="10" x2="60" y2="72" stroke="#CBCCD3" stroke-width="0.8" stroke-dasharray="5 4"/>
+          </svg>
+        </span>
+        <span class="pvlabel" id="pvDieLabel">Die-line <span class="go">→</span></span>
+      </button>
+    </div>
+
+    <!-- 2D mockup print-area editor -->
+    <div class="editor2d" id="canvasMock">
+      <div class="ed-toolbar">
+        <button class="btn btn-ghost sm" onclick="closeMockEditor()">← Back</button>
+        <span class="tt" id="mkTitle">Mockup</span>
+        <span class="tag uploaded" id="mkStatus" style="cursor:pointer" onclick="toggleMockStatus()">Draft · click to activate</span>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost sm" id="mkOpenC" onclick="">Open container</button>
+      </div>
+      <div class="ed-stage">
+        <div class="dieline-sheet" style="width:560px;height:560px;background:linear-gradient(145deg,var(--ink-50),var(--ink-100));display:grid;place-items:center">
+          <span class="minican" style="width:34%"></span>
+          <div class="frame" id="mkQuad" style="left:150px;top:120px;width:250px;height:300px">
+            <span class="flabel">Print area</span><span class="grip"></span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 2D die-line editor -->
     <div class="editor2d" id="canvas2d">
+      <!-- 3D preview window: click = back to the object -->
+      <button class="pvwin" onclick="closeEditor()">
+        <span class="pvbody"><span class="minican" style="width:26%"></span></span>
+        <span class="pvlabel">3D preview <span class="go">→</span></span>
+      </button>
       <div class="ed-toolbar">
         <span class="tt" id="edTitle">Body wrap · 158×110 mm</span>
         <span class="tag verified">Belongs to this container</span>
@@ -343,7 +412,7 @@ input,select{font-family:inherit;font-size:13px;color:var(--ink-900)}
 const CATS = ['All','Can','Bottle','Jar','Box','Pouch','Tube'];
 const ALLCATS = ['All','Can','Bottle','Jar','Box','Pouch','Tube','Carton','Sachet','Stick pack','Tin','Tub','Bag','Case','Cup','Drum','Envelope','Jug','Other'];
 let state = {
-  catFilter:'All', q:'', currentId:'c1', editingId:null, chipsOpen:false,
+  catFilter:'All', q:'', currentId:'c1', editingId:null, chipsOpen:false, panelTab:'containers', menuFor:null,
   pendDies:[], pendMocks:[],
   containers:[
     { id:'c1', name:'Aluminum can · 12 oz slim', cat:'Can', topo:'cyl', h:146, d:58,
@@ -353,7 +422,10 @@ let state = {
       ],
       mockups:[
         { id:'m1', name:'330ml_soda_can.glb', kind:'3d', star:false },
-        { id:'m2', name:'studio-photo.png', kind:'img', star:true },
+        { id:'m2', name:'studio-photo.png', kind:'img', star:true, active:true },
+        { id:'m2b', name:'lifestyle-table.png', kind:'img', star:false, active:true },
+        { id:'m2c', name:'six-pack-shot.png', kind:'img', star:false },
+        { id:'m2d', name:'hand-held.png', kind:'img', star:false },
       ]},
     { id:'c2', name:'Aluminum can · 330 ml', cat:'Can', topo:'cyl', h:115, d:66, origin:'partner',
       dielines:[{ id:'d3', label:'Body wrap', place:'body', size:'207×107', src:'upload', designed:false }],
@@ -370,10 +442,18 @@ function toast(m){ const t=document.createElement('div'); t.className='toast'; t
 function hide(id){ $(id).classList.remove('show'); }
 function show(id){ $(id).classList.add('show'); }
 
-/* ============ Library ============ */
+/* ============ Library panel: Containers | 2D Mockups tabs ============ */
 function renderLibrary(){
-  $('countPill').textContent = state.containers.length + ' containers';
+  $('railLib').classList.toggle('active', state.panelTab!=='mockups');
+  $('railMock').classList.toggle('active', state.panelTab==='mockups');
+  $('panelTitle').textContent = state.panelTab==='mockups' ? '2D Mockups' : 'Library';
+  $('panelCount').textContent = state.panelTab==='mockups'
+    ? state.containers.reduce((n,c)=>n+c.mockups.filter(m=>m.kind==='img').length,0) + ' mockups'
+    : state.containers.length + ' containers';
+  if (state.panelTab === 'mockups') return renderMockupsTab();
   const H = [];
+  H.push(`<button class="newbtn" onclick="openModal(null)"><span class="plus">+</span> New container</button>`);
+  H.push(`<p class="newsub">One popup: details, die-lines, 3D model, 2D mockups. Hover a card for its ⋯ menu.</p>`);
   H.push(`<div class="search">🔎 <input placeholder="Search containers..." value="${state.q}" oninput="state.q=this.value;renderLibrary()" /></div>`);
   const chipHtml = ALLCATS.map(x=>`<button class="chip ${state.catFilter===x?'on':''}" onclick="state.catFilter='${x}';state.chipsOpen=false;renderLibrary()">${x}</button>`).join('');
   H.push(`<div class="chipbar">
@@ -386,22 +466,81 @@ function renderLibrary(){
   </div>
   <div class="chipexp ${state.chipsOpen?'show':''}">${chipHtml}</div>`);
   H.push('<div class="cardgrid">');
-  H.push(`<button class="newcard" onclick="openModal(null)"><span class="plus">+</span>New container</button>`);
   state.containers
     .filter(x => (state.catFilter==='All' || x.cat===state.catFilter) && x.name.toLowerCase().includes(state.q.toLowerCase()))
     .forEach(x => {
       const has3d = x.mockups.some(m => m.kind==='3d');
       H.push(`<div class="mcard ${x.id===state.currentId?'sel':''}" onclick="pickContainer('${x.id}')">
-        <button class="edit" title="Edit container" onclick="event.stopPropagation();openModal('${x.id}')">✎</button>
+        <button class="dots" title="Options" onclick="event.stopPropagation();toggleCardMenu('${x.id}')">⋯</button>
+        ${state.menuFor===x.id?`<div class="cardmenu" onclick="event.stopPropagation()">
+          <button onclick="state.menuFor=null;openModal('${x.id}')">✎ Edit</button>
+          <button onclick="duplicateContainer('${x.id}')">⧉ Duplicate</button>
+          <button class="danger" onclick="deprecateContainer('${x.id}')">⊘ Deprecate</button>
+        </div>`:''}
         <div class="thumb">${has3d?'<span class="glb3d">3D</span>':''}<span class="minican ${x.topo==='cyl'?'':x.topo}"></span></div>
-        <div class="meta"><b>${x.name}</b><span>${x.cat} · ${x.dielines.length} die-line${x.dielines.length===1?'':'s'} · ${x.mockups.length} mockups${x.origin==='partner'?' · <span style="color:var(--info-500);font-weight:700">imported</span>':''}</span></div>
+        <div class="meta"><b>${x.name}</b></div>
       </div>`);
     });
   H.push('</div>');
   $('lbody').innerHTML = H.join('');
 }
+/* 2D mockups are PER CONTAINER (Pavel): pick the container, see ITS photos. */
+function renderMockupsTab(){
+  const H = [];
+  const c = cur();
+  H.push(`<div class="field"><label>Container</label>
+    <select onchange="pickContainer(this.value);state.panelTab='mockups';renderLibrary()">
+      ${state.containers.map(x=>`<option value="${x.id}" ${x.id===c.id?'selected':''}>${x.name}</option>`).join('')}
+    </select></div>`);
+  const photos = c.mockups.filter(m => m.kind==='img');
+  H.push(`<div class="cardgrid">`);
+  photos.forEach(m => H.push(`<button class="mcard" onclick="openMockEditor('${c.id}','${m.id}')">
+    <div class="thumb"><span style="font-size:10px;font-weight:800;color:var(--ink-400)">PHOTO</span>${m.star?'<span class="glb3d" style="background:#EBB305;color:#fff">★</span>':''}</div>
+    <div class="meta"><b>${m.name}</b><span>${m.active?'Active':'Draft'} · click to edit print area</span></div></button>`));
+  H.push('</div>');
+  if (!photos.length) H.push('<p class="newsub" style="margin-top:8px">No 2D mockups for this container yet.</p>');
+  H.push(`<button class="addbtn" style="margin-top:10px" onclick="openModal('${c.id}')">+ Add photos (opens the container popup)</button>`);
+  $('lbody').innerHTML = H.join('');
+}
+let mockCtx = null;
+function openMockEditor(cid, mid){
+  const c = state.containers.find(x=>x.id===cid); const m = c.mockups.find(x=>x.id===mid);
+  mockCtx = { cid, mid };
+  $('canvas3d').style.display='none'; $('canvas2d').classList.remove('show');
+  $('canvasMock').classList.add('show');
+  $('mkTitle').textContent = m.name + ' · ' + c.name;
+  $('mkStatus').textContent = (m.active?'Active':'Draft') + ' · click to toggle';
+  $('mkStatus').className = 'tag ' + (m.active?'verified':'uploaded');
+  $('mkOpenC').onclick = () => { closeMockEditor(); pickContainer(cid); };
+  makeDraggable($('mkQuad'), $('mkQuad').parentElement);
+}
+function closeMockEditor(){ $('canvasMock').classList.remove('show'); $('canvas3d').style.display='flex'; mockCtx=null; }
+function toggleMockStatus(){
+  if(!mockCtx) return;
+  const m = state.containers.find(x=>x.id===mockCtx.cid).mockups.find(x=>x.id===mockCtx.mid);
+  m.active = !m.active;
+  $('mkStatus').textContent = (m.active?'Active':'Draft') + ' · click to toggle';
+  $('mkStatus').className = 'tag ' + (m.active?'verified':'uploaded');
+  toast(m.active ? 'Mockup active: creators can use it' : 'Mockup back to draft');
+}
+
+function toggleCardMenu(id){ state.menuFor = state.menuFor === id ? null : id; renderLibrary(); }
+document.addEventListener('click', () => { if (state.menuFor) { state.menuFor = null; renderLibrary(); } });
+function duplicateContainer(id){
+  const src = state.containers.find(x=>x.id===id);
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = 'c' + Date.now(); copy.name = src.name + ' · copy'; delete copy.origin;
+  state.containers.splice(state.containers.indexOf(src)+1, 0, copy);
+  state.menuFor = null; renderLibrary(); toast('Container duplicated');
+}
+function deprecateContainer(id){
+  state.containers = state.containers.filter(x=>x.id!==id);
+  if (state.currentId === id && state.containers[0]) state.currentId = state.containers[0].id;
+  state.menuFor = null; renderLibrary(); renderZones(); toast('Container deprecated: hidden from the Library');
+}
+
 function pickContainer(id){
-  state.currentId = id; closeEditor();
+  state.currentId = id; closeMockEditor(); closeEditor();
   $('ctxName').textContent = cur().name; $('ctxCat').textContent = cur().cat;
   renderLibrary(); renderZones();
 }
@@ -421,11 +560,19 @@ function renderZones(){
   $('stageHint').textContent = c.dielines.length
     ? 'Drag to orbit · each region is a die-line · click one to open it flat'
     : 'No die-lines yet · Edit container to add them';
+  // die-line preview window mirrors the primary die-line
+  const primary = c.dielines[0];
+  $('pvDie').style.display = primary ? '' : 'none';
+  if (primary) $('pvDieLabel').innerHTML = `Die-line · ${primary.label} <span class="go">→</span>`;
+}
+function openPrimaryDieline(){
+  const dl = cur().dielines[0];
+  if (dl) openEditor(dl);
 }
 function openEditor(dl){
+  closeMockEditor();
   $('canvas3d').style.display = 'none';
   $('canvas2d').classList.add('show');
-  $('back3d').style.display = '';
   $('edTitle').textContent = `${dl.label} · ${dl.size} mm`;
   if (!$('sheet').querySelector('.frame')) { addFrame('pdp', 70, 70, 200, 150); addFrame('info', 350, 90, 180, 220); }
   dl.designed = true;
@@ -433,7 +580,6 @@ function openEditor(dl){
 function closeEditor(){
   $('canvas2d').classList.remove('show');
   $('canvas3d').style.display = 'flex';
-  $('back3d').style.display = 'none';
   renderZones();
 }
 

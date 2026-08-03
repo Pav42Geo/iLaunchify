@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Step 4 replacement: Packaging &amp; die-lines · Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFB3CC;--pink-300:#FF7FA8;--pink-500:#FF2E63;--pink-700:#C71350;
+  --neon-500:#B5FF3D;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+  --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-100:#FCE3BE;--warning-700:#7C360A;
+  --info-50:#E8F1FB;--info-100:#C7DDF4;--info-700:#163E72;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;
+  --font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);
+  --shadow-lg:0 12px 28px rgba(24,24,26,.12);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+.disp{font-family:var(--font-display);letter-spacing:-.01em}
+.shell{max-width:1240px;margin:0 auto;padding:22px 20px 80px}
+.protonote{font-size:12px;color:var(--ink-500);margin:0 4px 14px}
+.protonote b{color:var(--ink-900)}
+
+/* app frame */
+.frame{border-radius:20px;overflow:hidden;box-shadow:var(--shadow-lg);background:#fff;border:1px solid var(--ink-200)}
+.topbar{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--ink-200);background:#fff}
+.topbar .logo{width:24px;height:24px;border-radius:7px;background:var(--pink-500);display:grid;place-items:center;color:#fff;font-weight:800;font-family:var(--font-display);font-size:13px}
+.topbar .saved{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--success-700)}
+.topbar .back{font-size:13px;font-weight:500;color:var(--ink-600);padding:6px 10px;border-radius:8px}
+.topbar .back:hover{background:var(--ink-100)}
+.topbar .next{margin-left:auto;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;background:var(--pink-500);color:#fff}
+
+/* CoCreationStepper-style stage bar (what the app really uses now) */
+.stagebar{display:flex;align-items:center;gap:4px;overflow-x:auto;border-bottom:1px solid var(--ink-200);background:var(--ink-50);padding:8px 20px}
+.stg{display:flex;align-items:center;gap:8px;white-space:nowrap;border-radius:999px;border:1px solid transparent;padding:8px 12px;font-size:12px;font-weight:600;color:var(--ink-500)}
+.stg .n{display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;font-size:11px;font-weight:800;background:var(--ink-200);color:var(--ink-600);flex:none}
+.stg.done{color:var(--success-700)} .stg.done .n{background:var(--success-500);color:#fff}
+.stg.cur{border-color:var(--pink-100);background:#fff;color:var(--ink-900);box-shadow:var(--shadow-sm)}
+.stg.cur .n{background:var(--pink-500);color:#fff}
+.stgline{height:2px;width:20px;flex:none;background:var(--ink-200)} .stgline.done{background:var(--success-500)}
+
+.main{padding:24px 28px 34px;max-width:1160px;margin:0 auto}
+.pagehead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.pagehead h1{font-family:var(--font-display);font-weight:800;font-size:28px;letter-spacing:-.02em}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:600;border:1px solid var(--ink-200);background:#fff;color:var(--ink-700)}
+.pill.green{background:var(--success-50);color:var(--success-700);border-color:var(--success-100)}
+.pill.amber{background:var(--warning-50);color:var(--warning-700);border-color:var(--warning-100)}
+.pill.sky{background:var(--info-50);color:var(--info-700);border-color:var(--info-100)}
+.pill.muted{background:var(--ink-100);color:var(--ink-600);border-color:var(--ink-200)}
+.pill.pink{background:var(--pink-50);color:var(--pink-700);border-color:var(--pink-100)}
+
+.cols{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;align-items:start}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:16px;padding:18px}
+.card+.card{margin-top:16px}
+.sec{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.sec .ic{width:28px;height:28px;border-radius:8px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none;font-size:14px}
+.sec h4{font-family:var(--font-display);font-weight:700;font-size:15px}
+.sec .tag{margin-left:auto}
+.hint{font-size:11.5px;color:var(--ink-500);margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:500;background:var(--ink-50);border:1px solid var(--ink-200);color:var(--ink-700);cursor:pointer}
+.chip.sel{background:var(--pink-50);border-color:var(--pink-100);color:var(--pink-700);font-weight:600}
+
+/* container + dieline rows */
+.crow{display:flex;align-items:center;gap:12px;border:1px solid var(--ink-200);border-radius:12px;padding:12px 14px;margin-top:10px}
+.crow .cic{width:38px;height:38px;border-radius:10px;background:var(--ink-50);display:grid;place-items:center;font-size:17px;flex:none}
+.crow .cn{font-weight:700;font-size:13.5px}
+.crow .cm{font-size:11px;color:var(--ink-500);margin-top:1px;display:flex;gap:6px;flex-wrap:wrap}
+.crow .rt{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;transition:all .15s var(--ease-out)}
+.btn.dark{background:var(--ink-900);color:#fff}.btn.dark:hover{background:#000}
+.btn.pink{background:var(--pink-500);color:#fff}.btn.pink:hover{background:var(--pink-700)}
+.btn.out{background:#fff;color:var(--ink-900);border:1px solid var(--ink-300)}.btn.out:hover{background:var(--ink-50)}
+.btn.ghost{color:var(--pink-700);font-weight:600}.btn.ghost:hover{background:var(--pink-50)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.addbtn{margin-top:10px;border:1px dashed var(--pink-100);color:var(--pink-700);border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:600;width:100%}
+.addbtn:hover{background:var(--pink-50)}
+select.mini,input.mini{border:1px solid var(--ink-300);border-radius:8px;padding:6px 9px;font:inherit;font-size:12px;background:#fff;color:var(--ink-900)}
+select.mini:focus,input.mini:focus{outline:none;border-color:var(--pink-500)}
+
+.specline{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-600);margin-top:8px;padding-top:8px;border-top:1px dashed var(--ink-200)}
+.specline b{font-weight:700;color:var(--ink-900)}
+.specline .fix{color:var(--pink-700);font-weight:600;cursor:pointer}
+
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.twocol .card{margin-top:0}
+.phr{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--ink-100);font-size:12.5px}
+.phr:last-child{border-bottom:none}
+.phr .lock{color:var(--ink-400);font-size:12px;margin-top:1px}
+.phr .cfr{display:block;font-size:10.5px;color:var(--ink-400)}
+.flrow{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--ink-100)}
+.flrow:last-child{border-bottom:none}
+.flrow .sw{width:11px;height:11px;border-radius:3px;flex:none}
+.flrow .fn{font-weight:600;font-size:12.5px}
+.flrow select{margin-left:auto}
+
+/* right rail */
+.rail{position:sticky;top:16px;display:flex;flex-direction:column;gap:16px}
+.rail .card{margin-top:0}
+.pv-stage{margin-top:12px;height:230px;border-radius:12px;background:radial-gradient(circle at 50% 42%,var(--ink-100),var(--ink-50));display:grid;place-items:center;position:relative;border:1px solid var(--ink-100)}
+.pkg3d{width:96px;height:136px;border-radius:10px;background:linear-gradient(135deg,var(--pink-500),var(--pink-700));box-shadow:0 20px 40px rgba(255,46,99,.30);transform:perspective(500px) rotateY(-18deg) rotateX(4deg);display:grid;place-items:center;color:#fff}
+.pkg3d .lbl{font-family:var(--font-display);font-weight:800;font-size:14px;text-align:center}
+.pv-cap{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:10.5px;color:var(--ink-500);background:#fff;border:1px solid var(--ink-200);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.pv-flat{margin-top:10px;display:flex;align-items:center;gap:12px;border:1px solid var(--ink-200);border-radius:12px;padding:10px 12px}
+.dieline-thumb{width:74px;height:52px;flex:none;border:1.5px solid var(--ink-300);border-radius:6px;position:relative;background:#fff}
+.dieline-thumb::before{content:"";position:absolute;inset:6px;border:1px dashed var(--pink-300);border-radius:3px}
+.dieline-thumb::after{content:"";position:absolute;top:6px;bottom:6px;left:33%;width:34%;border-left:1px dashed var(--ink-300);border-right:1px dashed var(--ink-300)}
+.pv-flat .t{font-weight:600;font-size:12.5px}
+.pv-flat .s{font-size:11px;color:var(--ink-500)}
+.unlock-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--ink-100)}
+.unlock-row:last-child{border-bottom:none}
+.unlock-row .un{font-weight:600;font-size:12.5px}
+.unlock-row .rt{margin-left:auto}
+
+.footnote{text-align:center;color:var(--ink-400);font-size:12px;margin-top:24px;line-height:1.7}
+.footnote b{color:var(--ink-600)}
+
+/* ===== Label zones modal (the focused frame editor drill-in) ===== */
+.overlay{position:fixed;inset:0;background:rgba(20,20,24,.55);display:grid;place-items:center;padding:24px;z-index:100}
+.zmodal{background:#fff;border-radius:18px;width:min(980px,100%);max-height:92vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+.zhead{display:flex;align-items:baseline;gap:12px;padding:16px 20px;border-bottom:1px solid var(--ink-200);position:sticky;top:0;background:#fff;z-index:2}
+.zhead b{font-family:var(--font-display);font-size:16px}
+.zhead .zsub{font-size:11.5px;color:var(--ink-500)}
+.zx{margin-left:auto;width:28px;height:28px;border-radius:50%;color:var(--ink-500);font-size:14px}
+.zx:hover{background:var(--ink-100)}
+.zbody{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;padding:18px 20px 22px}
+.zstage{position:relative;height:400px;border:1.5px solid var(--ink-300);border-radius:10px;background:#fff;overflow:hidden;touch-action:none}
+.zpanel{position:absolute;top:0;bottom:0}
+.zpanel.pdp{left:0;width:44%;border-right:1.5px dashed var(--ink-300)}
+.zpanel.info{left:44%;right:0}
+.zpanel .zpl{position:absolute;top:6px;left:8px;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400)}
+.zpanel.pdp::after{content:"";position:absolute;left:0;right:0;bottom:30%;border-top:1px dotted var(--pink-300)}
+.z30{position:absolute;right:6px;bottom:calc(30% + 2px);font-size:8.5px;color:var(--pink-700);opacity:.7}
+.zframe{position:absolute;border:1.5px dashed var(--pink-500);border-radius:5px;background:rgba(255,46,99,.06);color:var(--pink-700);font-size:10px;font-weight:600;padding:3px 5px;cursor:grab;user-select:none;line-height:1.2}
+.zframe:active{cursor:grabbing;box-shadow:var(--shadow-md)}
+.zframe.warn{border-color:#B45309;color:var(--warning-700);background:var(--warning-50)}
+.zrail .zk{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--ink-100);font-size:12.5px}
+.zrail .zk:last-of-type{border-bottom:none}
+.zrail .zk .st{flex:none;font-size:12px}
+.zrail .zk small{display:block;font-size:10.5px;color:var(--ink-500)}
+.zrail .zk.ok .st{color:var(--success-500)}
+.zrail .zk.warn .st{color:var(--warning-700)}
+.zrail .zk.warn{color:var(--warning-700)}
+.znote{margin-top:12px;font-size:11px;color:var(--pink-700);background:var(--pink-50);border:1px solid var(--pink-100);border-radius:10px;padding:8px 10px}
+.zconfirm{margin-top:12px;width:100%;justify-content:center}
+@media(max-width:980px){.cols{grid-template-columns:1fr}.rail{position:static}.twocol{grid-template-columns:1fr}.zbody{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="protonote"><b>Step 4 replacement prototype</b> · "Packaging &amp; die-lines" as a regular form step. Die-line stays the print master; the 3D preview is derived and read-only; the full Packaging Studio unlocks per container once its 3D is in the library. Spec: docs/STEP4_PACKAGING_DIELINES_2026-07-28.md</div>
+
+  <div class="frame">
+    <!-- top bar (unchanged in the real app; sketched for context) -->
+    <div class="topbar">
+      <span class="logo">iL</span>
+      <span class="saved">✓ Saved</span>
+      <button class="back">← Back</button>
+      <button class="next">Next: Cost &amp; pricing →</button>
+    </div>
+
+    <!-- CoCreationStepper-style stage bar, step 4 current -->
+    <div class="stagebar">
+      <span class="stg done"><span class="n">✓</span>Basics</span><span class="stgline done"></span>
+      <span class="stg done"><span class="n">✓</span>Variants &amp; packs</span><span class="stgline done"></span>
+      <span class="stg done"><span class="n">✓</span>Recipe / Formulation</span><span class="stgline done"></span>
+      <span class="stg cur"><span class="n">4</span>Packaging &amp; die-lines</span><span class="stgline"></span>
+      <span class="stg"><span class="n">5</span>Cost &amp; pricing</span><span class="stgline"></span>
+      <span class="stg"><span class="n">6</span>Review &amp; submit</span>
+    </div>
+
+    <div class="main">
+      <div class="pagehead">
+        <h1>Sparkling Yuzu Soda</h1>
+        <span class="pill">Draft</span>
+      </div>
+
+      <div class="cols">
+        <!-- ============ LEFT: authoring ============ -->
+        <div>
+          <!-- 1 · CONTAINERS (existing PackagingPicker, kept) -->
+          <div class="card">
+            <div class="sec"><span class="ic">📦</span><h4>Containers</h4><span class="tag pill muted">from your packaging catalog</span></div>
+            <p class="hint">Attach the packaging systems this product ships in. Facts are read-only here; edit them in your packaging catalog.</p>
+
+            <div class="crow">
+              <span class="cic">🥫</span>
+              <div>
+                <div class="cn">12 oz slim can</div>
+                <div class="cm"><span class="chip">Aluminum</span><span class="chip">Single unit</span><span class="chip">MOQ 500</span></div>
+              </div>
+              <div class="rt"><span class="pill green">Attached ✓</span><button class="btn ghost">Detach</button></div>
+            </div>
+
+            <div class="crow">
+              <span class="cic">🗃</span>
+              <div>
+                <div class="cn">4-pack paperboard carton</div>
+                <div class="cm"><span class="chip">SBS folding carton</span><span class="chip">4 units</span><span class="chip">MOQ 250</span></div>
+              </div>
+              <div class="rt">
+                <select class="mini"><option>Co-packer: in-house line</option><option>Co-packer: PackRight Co.</option></select>
+                <span class="pill green">Attached ✓</span>
+                <button class="btn ghost">Detach</button>
+              </div>
+            </div>
+
+            <button class="addbtn">+ Attach another container · or submit a custom one for review</button>
+          </div>
+
+          <!-- 2 · DIE-LINES (new card, the heart of the step) -->
+          <div class="card">
+            <div class="sec"><span class="ic">📐</span><h4>Die-lines</h4><span class="tag pill muted">exact vector = the print master</span></div>
+            <p class="hint">Nothing to upload: choosing a container attaches its die-line automatically (your existing die-line for that container, or the platform's house template). Open the studio to arrange your mandatory and recommended elements. Upload only if you want to replace it with your own prepress file.</p>
+
+            <!-- confirmed row -->
+            <div class="crow">
+              <span class="cic">🥫</span>
+              <div style="min-width:0">
+                <div class="cn">12 oz slim can · sleeve wrap</div>
+                <div class="cm">slim-can-sleeve_v3.pdf · uploaded Jul 21</div>
+              </div>
+              <div class="rt">
+                <span class="pill green">Verified ✓</span>
+                <button class="btn out" onclick="openZones()">Label zones · 8/8 ✓</button>
+                <button class="btn out">Replace</button>
+              </div>
+            </div>
+            <div class="specline">
+              <span>W <b>206.4 mm</b></span><span>H <b>158.0 mm</b></span><span>Bleed <b>3.0 mm</b></span>
+              <span>Shape match <b>Slim can 12 oz (house standard)</b></span>
+              <span class="fix">Fix measurements</span>
+            </div>
+            <p class="hint" style="margin-top:8px">Zones auto-place from the matched house shape. Open <b>Label zones</b> to arrange the mandatory FDA elements yourself: layout only, the regulated content always fills in from the label engine at print.</p>
+
+            <!-- auto-attached template row: zero clicks, already done -->
+            <div class="crow" id="cartonRow">
+              <span class="cic">🗃</span>
+              <div style="min-width:0">
+                <div class="cn">4-pack carton · outer</div>
+                <div class="cm" id="cartonMeta">House template "4-pack carton 4×12oz" · attached automatically when you chose this container</div>
+              </div>
+              <div class="rt" id="cartonRt">
+                <span class="pill green">Template attached ✓</span>
+                <button class="btn dark" onclick="openZones()">Open in Packaging Studio</button>
+                <button class="btn ghost" onclick="uploadCarton()">Replace with your own</button>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:8px">A custom container with no house template is the only case that asks for an upload (and opens a request thread to the platform).</p>
+          </div>
+
+          <!-- 3 · DECORATION METHODS (new card, D3: per-container capability) -->
+          <div class="card">
+            <div class="sec"><span class="ic">✨</span><h4>Decoration methods</h4><span class="tag pill muted">per container</span></div>
+            <p class="hint">Which decoration you can provide for each packaging. Feeds the PDP decoration choice and made-to-order fulfillment; one source with your service builders.</p>
+            <div class="crow">
+              <span class="cic">🥫</span>
+              <div style="min-width:0">
+                <div class="cn">12 oz slim can</div>
+                <div class="cm" style="margin-top:6px">
+                  <span class="chip sel">Shrink sleeve ✓</span>
+                  <span class="chip sel">Pressure-sensitive label ✓</span>
+                  <span class="chip">Direct print</span>
+                  <span class="chip">Screen print</span>
+                </div>
+              </div>
+            </div>
+            <div class="crow">
+              <span class="cic">🗃</span>
+              <div style="min-width:0">
+                <div class="cn">4-pack paperboard carton</div>
+                <div class="cm" style="margin-top:6px">
+                  <span class="chip sel">Direct print ✓</span>
+                  <span class="chip">Hot stamp</span>
+                  <span class="chip">Emboss</span>
+                  <span class="chip">Spot UV</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 · PER-FLAVOR LABELS + MANDATORY PHRASES (both kept, paired) -->
+          <div class="twocol">
+            <div class="card">
+              <div class="sec"><span class="ic">🏷</span><h4>Per-flavor labels</h4></div>
+              <p class="hint">Which die-line each flavor prints on.</p>
+              <div class="flrow"><span class="sw" style="background:var(--pink-500)"></span><span class="fn">Yuzu</span>
+                <select class="mini"><option>Shared template die-line</option><option>Custom</option></select></div>
+              <div class="flrow"><span class="sw" style="background:#B45309"></span><span class="fn">Yuzu-Ginger</span>
+                <select class="mini"><option>Custom</option><option>Shared template die-line</option></select></div>
+            </div>
+            <div class="card">
+              <div class="sec"><span class="ic">🔤</span><h4>Mandatory phrases</h4></div>
+              <p class="hint">Auto-locked from the label engine with their citation; suggested ones are optional.</p>
+              <div class="phr"><span class="lock">🔒</span><span>Refrigerate after opening.<span class="cfr">21 CFR 101 · locked</span></span></div>
+              <div class="phr"><span class="lock">🔒</span><span>Contains carbonation. Do not freeze.<span class="cfr">packaging mark · locked</span></span></div>
+              <div class="phr"><span style="width:12px"></span><span>Best served chilled.<span class="cfr">suggested · optional</span></span><span class="pill muted" style="margin-left:auto">on</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ RIGHT: read-only rail ============ -->
+        <div class="rail">
+          <!-- 4 · PREVIEW (derived, never the print file) -->
+          <div class="card">
+            <div class="sec"><span class="ic">👁</span><h4>Preview</h4><span class="tag pill green">derived from die-line</span></div>
+            <div class="pv-stage">
+              <div class="pkg3d"><div class="lbl">YUZU<br>SODA</div></div>
+              <span class="pv-cap">12 oz slim can · parametric 3D · read-only</span>
+            </div>
+            <div class="pv-flat">
+              <span class="dieline-thumb"></span>
+              <div>
+                <div class="t">4-pack carton</div>
+                <div class="s" id="flatCap">Flat preview from the house template, attached automatically.</div>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:10px">The 3D thumb renders only when the container matches a parametric model. It is a preview: print always exports from the vector die-line.</p>
+          </div>
+
+          <!-- 5 · PACKAGING STUDIO ACCESS (2D editor kept as-is; 3D = docked preview) -->
+          <div class="card">
+            <div class="sec"><span class="ic">🎨</span><h4>Packaging Studio</h4><span class="tag pill muted">2D die-line editor · optional</span></div>
+            <p class="hint">The studio stays exactly what it is today: the 2D die-line editor where you arrange label zones. Its 3D pane is a docked read-only preview (same as the creator Design Studio) and appears when the container's model exists.</p>
+            <div class="unlock-row">
+              <span class="un">12 oz slim can <span class="pill green" style="margin-left:6px">3D preview ✓</span></span>
+              <span class="rt"><button class="btn dark" onclick="openZones()">Open in Packaging Studio →</button></span>
+            </div>
+            <div class="unlock-row">
+              <span class="un">4-pack carton <span class="pill muted" style="margin-left:6px">3D preview when model exists</span></span>
+              <span class="rt"><button class="btn dark" onclick="openZones()">Open in Packaging Studio →</button></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footnote">
+        Die-line is the master · 3D is a derived preview · frames are placed by the platform on the normalized shape.<br>
+        <b>Nothing here blocks a manufacturer:</b> a product can reach Review with die-lines still normalizing; the studio is a per-container bonus, not a gate.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LABEL ZONES MODAL ===== -->
+<div class="overlay" id="zonesOverlay" style="display:none" onclick="if(event.target===this)closeZones()">
+  <div class="zmodal">
+    <div class="zhead">
+      <b>Packaging Studio · 12 oz slim can · sleeve</b>
+      <span class="zsub">the EXISTING studio, fullscreen modal exactly as today · drag a frame to reposition · layout only, content fills in from the label engine at print · docked 3D preview rides along when the model exists</span>
+      <button class="btn dark" style="margin-left:auto" onclick="closeZones()">Save</button>
+      <button class="zx" style="margin-left:8px" onclick="closeZones()">✕</button>
+    </div>
+    <div class="zbody">
+      <div class="zstage" id="zstage">
+        <div class="zpanel pdp"><span class="zpl">Principal display panel</span></div>
+        <div class="zpanel info"><span class="zpl">Information panel</span></div>
+        <span class="z30">net qty zone · bottom 30%</span>
+        <div class="zframe" style="left:6%;top:14%;width:32%;height:12%">Statement of identity</div>
+        <div class="zframe" id="fNetQty" style="left:8%;top:80%;width:28%;height:9%">Net quantity</div>
+        <div class="zframe" style="left:10%;top:44%;width:24%;height:10%">Mandatory phrases</div>
+        <div class="zframe" style="left:47%;top:8%;width:22%;height:52%">Nutrition Facts</div>
+        <div class="zframe" style="left:72%;top:8%;width:24%;height:22%">Ingredients</div>
+        <div class="zframe" style="left:72%;top:33%;width:24%;height:11%">Allergen statement</div>
+        <div class="zframe" style="left:47%;top:66%;width:30%;height:11%">Manufacturer name &amp; address</div>
+        <div class="zframe" style="left:80%;top:80%;width:16%;height:13%">GTIN</div>
+      </div>
+      <div class="zrail">
+        <div class="zk ok"><span class="st">✓</span><span>Statement of identity<small>PDP · 21 CFR 101.3</small></span></div>
+        <div class="zk ok" id="ckNetQty"><span class="st">✓</span><span>Net quantity<small id="ckNetQtySub">PDP · bottom 30% · 21 CFR 101.7</small></span></div>
+        <div class="zk ok"><span class="st">✓</span><span>Nutrition Facts<small>information panel · 21 CFR 101.9 · spec-locked vector</small></span></div>
+        <div class="zk ok"><span class="st">✓</span><span>Ingredient list<small>information panel · 21 CFR 101.4</small></span></div>
+        <div class="zk ok"><span class="st">✓</span><span>Allergen statement<small>FALCPA · Big-9</small></span></div>
+        <div class="zk ok"><span class="st">✓</span><span>Manufacturer name &amp; address<small>21 CFR 101.5</small></span></div>
+        <div class="zk ok"><span class="st">✓</span><span>GTIN / barcode<small>scannable zone</small></span></div>
+        <div class="zk ok"><span class="st">✓</span><span>Mandatory phrases<small>from the phrase engine · locked content</small></span></div>
+        <div class="znote">Auto-placed from the house shape "Slim can 12 oz". Arranging is optional: most manufacturers accept the seed. Finishing here is save-and-exit; panel-rule warnings save too (amber on the step + Review), the hard gate stays at the compliance check.</div>
+        <button class="btn pink zconfirm" id="zconfirmBtn" onclick="closeZones()">Save &amp; exit ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openZones(){document.getElementById('zonesOverlay').style.display='grid'}
+function closeZones(){document.getElementById('zonesOverlay').style.display='none'}
+
+// Drag any frame inside the stage; live-check the net-quantity bottom-30% rule.
+(function(){
+  const stage=document.getElementById('zstage');
+  let cur=null,offX=0,offY=0;
+  stage.addEventListener('pointerdown',(e)=>{
+    const f=e.target.closest('.zframe'); if(!f)return;
+    cur=f; const r=f.getBoundingClientRect();
+    offX=e.clientX-r.left; offY=e.clientY-r.top;
+    f.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener('pointermove',(e)=>{
+    if(!cur)return;
+    const s=stage.getBoundingClientRect(),r=cur.getBoundingClientRect();
+    let x=e.clientX-s.left-offX,y=e.clientY-s.top-offY;
+    x=Math.max(0,Math.min(x,s.width-r.width)); y=Math.max(0,Math.min(y,s.height-r.height));
+    cur.style.left=(x/s.width*100)+'%'; cur.style.top=(y/s.height*100)+'%';
+    if(cur.id==='fNetQty')checkNetQty();
+  });
+  const drop=()=>{cur=null};
+  stage.addEventListener('pointerup',drop); stage.addEventListener('pointercancel',drop);
+  function checkNetQty(){
+    const s=stage.getBoundingClientRect(),f=document.getElementById('fNetQty').getBoundingClientRect();
+    const pdpRight=s.left+s.width*0.44;
+    const inPdp=f.right<=pdpRight+2;
+    const inBottom30=(f.top-s.top)>=s.height*0.70-2;
+    const ok=inPdp&&inBottom30;
+    document.getElementById('fNetQty').classList.toggle('warn',!ok);
+    const ck=document.getElementById('ckNetQty');
+    ck.classList.toggle('ok',ok); ck.classList.toggle('warn',!ok);
+    ck.querySelector('.st').textContent=ok?'✓':'⚠';
+    document.getElementById('ckNetQtySub').textContent=ok?'PDP · bottom 30% · 21 CFR 101.7':'must sit on the PDP, in the bottom 30% (21 CFR 101.7)';
+    const btn=document.getElementById('zconfirmBtn');
+    btn.textContent=ok?'Save & exit ✓':'Save & exit (1 panel warning)';
+  }
+})();
+
+function uploadCarton(){
+  document.getElementById('cartonMeta').textContent = '4pack-carton-outer.ai · your own file, replacing the house template · arranged zones carried over';
+  document.getElementById('cartonRt').innerHTML =
+    '<span class="pill sky">Normalizing</span><button class="btn dark" onclick="openZones()">Open in Packaging Studio</button>';
+  document.getElementById('flatCap').textContent = 'Normalizing your file: preview updates with the normalized SVG.';
+}
+</script>
+</body>
+</html>

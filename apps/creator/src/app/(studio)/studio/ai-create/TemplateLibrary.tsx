@@ -190,7 +190,7 @@ export function TemplateLibrary({ productTemplateId, domain, productShapes, onUs
         {scope !== 'starter' && (
           <button
             onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
-            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11.5px] font-semibold transition ${selectMode ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11.5px] font-semibold transition ${selectMode ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
           >
             <CheckSquare className="h-3.5 w-3.5" /> Select
           </button>
@@ -459,7 +459,7 @@ function FilterChip({ on, onClick, children }: { on: boolean; onClick: () => voi
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition ${on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition ${on ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
     >
       {children}
     </button>

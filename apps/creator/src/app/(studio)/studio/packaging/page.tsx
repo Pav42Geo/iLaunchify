@@ -5,7 +5,7 @@
 
 import { requireCapability } from '@ilaunchify/auth'
 import { loadPackagingAuthoring, loadPackagingModelList } from './loader'
-import { SurfaceAuthoringClient } from './SurfaceAuthoringClient'
+import { StudioV2Client } from './StudioV2Client'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Packaging Studio — Admin' }
@@ -24,5 +24,7 @@ export default async function PackagingAuthoringPage({
 
   // The client renders the full-screen shared studio shell (fixed inset-0). When no model
   // is selected it shows the Library drawer picker; selecting one deep-links ?packagingTypeId.
-  return <SurfaceAuthoringClient data={data} models={models} />
+  // v2 (Pavel 2026-08-03): two-entry rail + one popup + preview-window nav.
+  // SurfaceAuthoringClient stays on disk as the v1 fallback.
+  return <StudioV2Client data={data} models={models} />
 }

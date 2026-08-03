@@ -133,8 +133,8 @@ function ModeTile({
         (disabled
           ? 'cursor-not-allowed border-ink-200 bg-[var(--bg-hero)] opacity-60'
           : active
-            ? 'cursor-pointer border-[1.5px] border-pink-500 bg-[#FFF8FA]'
-            : 'cursor-pointer border-ink-200 bg-[var(--bg-hero)] hover:border-pink-300 hover:bg-[#FFF8FA]')
+            ? 'cursor-pointer border-[1.5px] border-success-500 bg-success-50'
+            : 'cursor-pointer border-ink-200 bg-[var(--bg-hero)] hover:border-ink-300')
       }
     >
       {badge && (
@@ -142,11 +142,11 @@ function ModeTile({
           {badge}
         </span>
       )}
-      {/* Bigger pink icon chip — matches the section-title .ic treatment. */}
+      {/* Icon chip follows the card state (green when chosen). */}
       <span
         className={
           'grid h-9 w-9 flex-none place-items-center rounded-xl ' +
-          (active ? 'bg-pink-500 text-white' : 'bg-pink-50 text-pink-700')
+          (active ? 'bg-success-500 text-white' : 'bg-ink-50 text-ink-500')
         }
       >
         <Icon className="h-5 w-5" />

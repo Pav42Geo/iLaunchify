@@ -101,3 +101,25 @@ export {
   type ReleaseInput,
   type ReleaseVerdict,
 } from './publish-fsm'
+
+export {
+  TOKEN_POLICIES,
+  DEFAULT_POLICY,
+  REAUTH_WARN_DAYS,
+  evaluateTokenHealth,
+  type TokenLifecyclePolicy,
+  type TokenHealthInput,
+  type TokenHealthVerdict,
+} from './token-lifecycle'
+
+export {
+  createShopifyAdapter,
+  normalizeShopDomain,
+  mapShopifyFinancialStatus,
+  mapShopifyOrderNode,
+  timingSafeEqualStr,
+  SHOPIFY_API_VERSION,
+  SHOPIFY_SCOPES,
+  type ShopifyAdapterConfig,
+  type ShopifyOrderNode,
+} from './adapters/shopify'

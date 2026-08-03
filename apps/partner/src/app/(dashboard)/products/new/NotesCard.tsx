@@ -38,7 +38,7 @@ export function NotesCard({ draftId }: { draftId: string | null }) {
 
   return (
     <div className="card">
-      <div className="section-title"><span className="ic"><MessageSquare size={16} strokeWidth={2} /></span> Notes</div>
+      <div className="section-title"><span className="ic"><MessageSquare size={15} strokeWidth={2} /></span> Notes to reviewer</div>
 
       {!draftId && <p className="tiny muted" style={{ marginTop: 10 }}>Save the draft first to start a thread.</p>}
 

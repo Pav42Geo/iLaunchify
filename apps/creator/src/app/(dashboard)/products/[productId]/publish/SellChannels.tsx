@@ -405,7 +405,7 @@ function ModeButton({
         disabled
           ? 'cursor-not-allowed border-ink-200 bg-ink-50 opacity-60'
           : active
-            ? 'border-pink-500 bg-pink-50'
+            ? 'border-success-500 bg-success-50'
             : 'border-ink-200 bg-white hover:border-ink-300'
       }`}
     >

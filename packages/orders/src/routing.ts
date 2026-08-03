@@ -682,7 +682,11 @@ function mapHopDestination(order: {
     case 'CHANNEL_INBOUND':
       return { kind: 'CHANNEL_INBOUND' }
     default:
-      return { kind: 'CREATOR_ADDRESS' } // CREATOR_ADDRESS / SAVED_ADDRESS / NEW_ADDRESS
+      // CREATOR_ADDRESS / SAVED_ADDRESS / NEW_ADDRESS, and DIRECT_CONSUMER
+      // (C2.2 on-demand): all address the order's shipTo* fields directly.
+      // The channel router never reaches this planner anyway (single-dispatch
+      // by law, gate doc §0); this is belt for a future caller.
+      return { kind: 'CREATOR_ADDRESS' }
   }
 }
 

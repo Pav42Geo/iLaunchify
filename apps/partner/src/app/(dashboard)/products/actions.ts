@@ -364,7 +364,7 @@ export async function submitProductForReview(productTemplateId: string): Promise
           },
         },
       },
-      packagingSystems: { select: { packagingSystemId: true } },
+      packagingSystems: { select: { packagingSystemId: true, basePriceCents: true } },
       variants: { select: { id: true } },
     },
   })
@@ -377,6 +377,17 @@ export async function submitProductForReview(productTemplateId: string): Promise
   }
   if (tpl.packagingSystems.length === 0) {
     return { ok: false, error: 'Pick at least one packaging system.' }
+  }
+  // No-hardcoded-prices doctrine: packaging attaches unpriced (0) in the studio,
+  // but an unpriced link must never reach review/publish. Name the offenders.
+  const unpricedPkg = tpl.packagingSystems.filter((p) => p.basePriceCents < 1)
+  if (unpricedPkg.length > 0) {
+    const sysNames = await prisma.packagingSystem.findMany({
+      where: { id: { in: unpricedPkg.map((p) => p.packagingSystemId) } },
+      select: { partnerName: true },
+    })
+    const names = sysNames.map((s) => s.partnerName).join(', ')
+    return { ok: false, error: `Set a packaging base price for: ${names} (Pricing step, or the Packaging card on the product edit page).` }
   }
   if (tpl.variants.length === 0) {
     return { ok: false, error: 'Configure at least one variant (container size).' }

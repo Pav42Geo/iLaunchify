@@ -461,7 +461,7 @@ function ShipToPicker({
               className={
                 'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ' +
                 (selected
-                  ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
+                  ? 'border-success-400 bg-success-50/40 ring-2 ring-pink-200'
                   : enabled
                     ? 'border-ink-200 bg-white hover:bg-ink-50/40'
                     : 'cursor-not-allowed border-ink-200 bg-white opacity-60')
@@ -768,7 +768,7 @@ function FulfillmentCenterBlock({
                   onClick={() => onChange({ warehousePartnerServiceId: alt.partnerServiceId, labelingAtFc: null })}
                   className={
                     'flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ' +
-                    (picked ? 'border-pink-400 bg-pink-50/40 ring-1 ring-pink-200' : 'border-ink-200 bg-white hover:bg-ink-50/40')
+                    (picked ? 'border-success-400 bg-success-50/40 ring-1 ring-pink-200' : 'border-ink-200 bg-white hover:bg-ink-50/40')
                   }
                 >
                   <span className="min-w-0">
@@ -967,7 +967,7 @@ function ChannelInboundBlock({
               className={
                 'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ' +
                 (selected
-                  ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
+                  ? 'border-success-400 bg-success-50/40 ring-2 ring-pink-200'
                   : c.eligible
                     ? 'border-ink-200 bg-white hover:bg-ink-50/40'
                     : 'cursor-not-allowed border-ink-200 bg-white opacity-60')
@@ -1025,7 +1025,7 @@ function StorageModeCard({
       className={
         'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ' +
         (selected
-          ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
+          ? 'border-success-400 bg-success-50/40 ring-2 ring-pink-200'
           : disabled
             ? 'cursor-not-allowed border-ink-200 bg-white opacity-60'
             : 'border-ink-200 bg-white hover:bg-ink-50/40')
@@ -1098,7 +1098,7 @@ function WarehouseCard({
       className={
         'flex w-full items-start justify-between gap-3 rounded-xl border p-3 text-left transition-colors ' +
         (selected
-          ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
+          ? 'border-success-400 bg-success-50/40 ring-2 ring-pink-200'
           : 'border-ink-200 bg-white hover:bg-ink-50/40')
       }
     >
@@ -1178,7 +1178,7 @@ function SavedAddressCard({
       className={
         'flex w-full items-start justify-between gap-3 rounded-xl border p-3 text-left transition-colors ' +
         (selected
-          ? 'border-pink-400 bg-pink-50/40 ring-2 ring-pink-200'
+          ? 'border-success-400 bg-success-50/40 ring-2 ring-pink-200'
           : 'border-ink-200 bg-white hover:bg-ink-50/40')
       }
     >
@@ -1435,7 +1435,7 @@ function BlockingAckPanel({
         'rounded-xl border p-4 ' +
         (acknowledged
           ? 'border-warning-300 bg-warning-50/60'
-          : 'border-pink-500 bg-pink-50')
+          : 'border-success-500 bg-success-50')
       }
     >
       <div className="flex items-start gap-2.5">

@@ -57,3 +57,27 @@ pnpm check:invariants   # architectural invariants (errors block, warns report)
 | Object model (OOUX) | `docs/OOUX_OBJECT_MAP.md` |
 | Token-hygiene + hex lint spec | `docs/DESIGN_TOKEN_HYGIENE.md` |
 | Decision history | `.claude/memory/*.md` (index: `INDEX.md`) |
+
+## Selection color system (LOCKED 2026-08-02)
+
+Color encodes WHO decided and how permanent it is, never which widget it is.
+Pink is brand + wayfinding ONLY: it must never mean "selected" (at card-fill
+saturation it reads as a validation error, which is what triggered this rule).
+
+| Meaning | Treatment | Examples |
+|---|---|---|
+| A choice YOU made, saved as data | `border-success-500 bg-success-50` (+ `text-success-700`); ticks/switches `bg-success-500` | service cards, capability chips, market picks, mode chooser, enabled rows, toggles |
+| Transient UI state you're driving now | `bg-ink-900 text-white` (fill) or `bg-ink-50 text-ink-600` (rest) | segmented controls, filter chips, active Studio tool |
+| Set by iLaunchify, not the partner | `border-info-200 bg-info-50` | platform-granted services, read-only rows |
+| Act soon | `warning-*` | expiring COI, low stock |
+| Blocked / failed | `danger-*` | rejected docs, failed pushes |
+| Brand + wayfinding | `pink-*` | eyebrows, display accents, active sidebar item, underline tabs (real navigation, `aria-current`), primary CTA |
+| Inert | `ink-*` | unselected, disabled |
+
+Weight rule: SELECTIONS use the light tint (green border + pale fill); STATUS
+pills keep the saturated fill. Different weights so a screen full of choices
+never competes with health indicators. On dark surfaces use the locked neon
+accent, not pale green (it disappears).
+
+Applied to apps/partner 2026-08-02. apps/creator + apps/admin still carry pink
+selections; sweep them with the same rules.

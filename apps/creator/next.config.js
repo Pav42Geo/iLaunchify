@@ -17,7 +17,10 @@ const nextConfig = {
     '@ilaunchify/imagegen',
   ],
   experimental: {
-    serverActions: { allowedOrigins: ['app.ilaunchify.com', 'localhost:3000'] },
+    // bodySizeLimit: server actions default to 1MB, which silently kills the
+    // Packaging Studio "Import .glb" (models are 1-40MB). 50mb covers the 40MB
+    // model cap + form overhead.
+    serverActions: { allowedOrigins: ['app.ilaunchify.com', 'localhost:3000'], bodySizeLimit: '50mb' },
   },
   // Proxy the marketplace search API (which lives in apps/marketing) so the
   // creator top-bar search can call it SAME-ORIGIN (no CORS). Next forwards the

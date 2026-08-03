@@ -225,7 +225,7 @@ export function ThemeEditor({
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={togglePreview} disabled={pending} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-40 ${previewActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
+            <button onClick={togglePreview} disabled={pending} className={`rounded-pill border px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold disabled:opacity-40 ${previewActive ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-300 bg-white text-ink-700 hover:bg-ink-50'}`}>
               {previewActive ? 'Preview: On' : 'Preview'}
             </button>
             <button onClick={saveDraft} disabled={pending} className="rounded-pill border border-ink-300 bg-white px-3 py-1.5 text-[length:var(--fs-sm)] font-semibold text-ink-700 hover:bg-ink-50 disabled:opacity-40">Save draft</button>

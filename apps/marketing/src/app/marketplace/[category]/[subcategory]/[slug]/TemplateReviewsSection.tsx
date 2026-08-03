@@ -215,7 +215,7 @@ function ReviewCard({ r }: { r: TemplateReview }) {
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 disabled:cursor-default ' +
           (selected
             ? dir === 'up'
-              ? 'border-pink-300 bg-pink-50 text-pink-700'
+              ? 'border-success-300 bg-success-50 text-pink-700'
               : 'border-ink-300 bg-ink-100 text-ink-700'
             : 'border-ink-200 bg-white text-ink-500 hover:border-ink-300 hover:text-ink-800')
         }

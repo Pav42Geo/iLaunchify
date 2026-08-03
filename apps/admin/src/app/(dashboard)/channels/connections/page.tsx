@@ -231,7 +231,7 @@ function Chip({ href, active, children }: { href: string; active: boolean; child
       href={href}
       className={cn(
         'rounded-full border px-2.5 py-1 text-[11.5px] font-semibold capitalize transition',
-        active ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400',
+        active ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400',
       )}
     >
       {children}

@@ -316,7 +316,7 @@ export function SupplementFormulationStep({
                         aria-pressed={!!nutLt[f.key]}
                         title="Declare as “less than” (e.g. <1 g)"
                         onClick={() => setNutLt((s) => ({ ...s, [f.key]: !s[f.key] }))}
-                        className={`h-9 w-7 shrink-0 rounded-md border text-[13px] font-semibold ${nutLt[f.key] ? 'border-pink-400 bg-pink-50 text-pink-700' : 'border-ink-300 text-ink-400 hover:bg-ink-50'}`}
+                        className={`h-9 w-7 shrink-0 rounded-md border text-[13px] font-semibold ${nutLt[f.key] ? 'border-success-400 bg-success-50 text-pink-700' : 'border-ink-300 text-ink-400 hover:bg-ink-50'}`}
                       >&lt;</button>
                     )}
                     <input
@@ -391,7 +391,7 @@ export function SupplementFormulationStep({
                           aria-pressed={!!r.amountLessThan}
                           title="Declare as “less than” (e.g. <1 g)"
                           onClick={() => patch(r.uid, { amountLessThan: !r.amountLessThan })}
-                          className={`h-7 w-6 rounded-md border text-[13px] font-semibold ${r.amountLessThan ? 'border-pink-400 bg-pink-50 text-pink-700' : 'border-ink-300 text-ink-400 hover:bg-ink-50'}`}
+                          className={`h-7 w-6 rounded-md border text-[13px] font-semibold ${r.amountLessThan ? 'border-success-400 bg-success-50 text-pink-700' : 'border-ink-300 text-ink-400 hover:bg-ink-50'}`}
                         >&lt;</button>
                         <input className={`${INPUT} w-14 text-right`} type="number" min={0} value={r.amount} onChange={(e) => patch(r.uid, { amount: Math.max(0, parseFloat(e.target.value) || 0) })} />
                       </div>

@@ -98,7 +98,7 @@ export function ProfileForm({
                 key={m.id}
                 className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
                   checked
-                    ? 'border-pink-400 bg-pink-50'
+                    ? 'border-success-400 bg-success-50'
                     : 'border-ink-200 bg-white hover:bg-ink-50'
                 }`}
               >

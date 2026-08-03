@@ -235,7 +235,7 @@ export function ManufacturingServiceBuilder({ initial }: { initial: Manufacturin
             <Note><b>Do not type an MOQ.</b> Your minimum is not a number you choose, it is a number your kettle chooses. Declare the batch honestly and the floor falls out, along with the lattice. The batch size here is the DEFAULT every product inherits; a product overrides it when it genuinely differs.</Note>
             <Card title={`Batch configurations — ${configs.length} active`}>
               {batches.map((b) => (
-                <div key={b.id} className={`mb-2.5 rounded-xl border px-4 py-3.5 ${b.active ? 'border-pink-200 bg-white shadow-[0_0_0_3px_rgba(255,46,99,0.07)]' : 'border-ink-200 bg-ink-50'}`}>
+                <div key={b.id} className={`mb-2.5 rounded-xl border px-4 py-3.5 ${b.active ? 'border-success-300 bg-white shadow-[0_0_0_3px_rgb(var(--success-500-rgb) / 0.10)]' : 'border-ink-200 bg-ink-50'}`}>
                   <div className="mb-2.5 flex items-center gap-2.5">
                     <button type="button" onClick={() => setBatch(b.id, { active: !b.active })} aria-label="Toggle batch" className={`relative h-[22px] w-[38px] flex-none rounded-pill transition ${b.active ? 'bg-pink-500' : 'bg-ink-300'}`}><span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all ${b.active ? 'left-[19px]' : 'left-[3px]'}`} /></button>
                     <input className="min-w-0 flex-1 border-0 bg-transparent font-display text-[14px] font-bold text-ink-900 focus:outline-none" value={b.name} onChange={(e) => setBatch(b.id, { name: e.target.value })} placeholder="Ribbon blender · 500 kg" />
@@ -428,10 +428,10 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   return <div className="mb-3 rounded-2xl border border-ink-200 bg-white px-5 py-[18px]"><h2 className="mb-3 font-display text-[15px] font-bold text-ink-900">{title}</h2>{children}</div>
 }
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
-  return <button type="button" role="switch" aria-checked={on} onClick={onClick} className={`relative h-[22px] w-[38px] flex-none rounded-pill transition ${on ? 'bg-pink-500' : 'bg-ink-300'}`}><span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all ${on ? 'left-[19px]' : 'left-[3px]'}`} /></button>
+  return <button type="button" role="switch" aria-checked={on} onClick={onClick} className={`relative h-[22px] w-[38px] flex-none rounded-pill transition ${on ? 'bg-success-500' : 'bg-ink-300'}`}><span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all ${on ? 'left-[19px]' : 'left-[3px]'}`} /></button>
 }
 function Chips({ opts, value, onToggle, labels = {} }: { opts: string[]; value: Set<string>; onToggle: (v: string) => void; labels?: Record<string, string> }) {
-  return <div className="flex flex-wrap gap-[7px]">{opts.map((o) => { const on = value.has(o); return <button key={o} type="button" onClick={() => onToggle(o)} className={`rounded-pill border px-[13px] py-[7px] text-[12.5px] font-semibold transition ${on ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 bg-white text-ink-600 hover:border-ink-400'}`}>{labels[o] ?? o}</button> })}</div>
+  return <div className="flex flex-wrap gap-[7px]">{opts.map((o) => { const on = value.has(o); return <button key={o} type="button" onClick={() => onToggle(o)} className={`rounded-pill border px-[13px] py-[7px] text-[12.5px] font-semibold transition ${on ? 'border-success-500 bg-success-50 text-success-800' : 'border-ink-300 bg-white text-ink-600 hover:border-ink-400'}`}>{labels[o] ?? o}</button> })}</div>
 }
 function Note({ children }: { children: React.ReactNode }) {
   return <p className="mb-[14px] px-1 text-[12px] leading-[1.6] text-ink-500 [&_b]:text-ink-700">{children}</p>

@@ -18,6 +18,7 @@ import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
 import { resolveChannelAdapter, applyLedgerEntry, type ChannelCode } from '@ilaunchify/channels'
+import { hydrateConnectionTokens } from '../vault'
 import { recomputeStockAlert } from '../inventory/alerts'
 import { routeReadyChannelOrder, scanAndRouteForCreator, type RouterRunSummary } from './route-core'
 
@@ -68,7 +69,7 @@ export async function fulfillChannelOrder(input: {
 
   const row = await prisma.channelOrder.findFirst({
     where: { id: input.channelOrderId, connection: { creatorUserId: user.id } },
-    include: { lines: true, connection: { select: { id: true, externalAccountId: true, channel: { select: { code: true } } } } },
+    include: { lines: true, connection: { select: { id: true, externalAccountId: true, accessTokenRef: true, refreshTokenRef: true, channel: { select: { code: true } } } } },
   })
   if (!row) return { ok: false, error: 'Order not found.' }
   if (!['READY', 'ROUTED', 'IN_FULFILLMENT'].includes(row.status)) {
@@ -81,7 +82,7 @@ export async function fulfillChannelOrder(input: {
   if (adapter) {
     try {
       await adapter.pushFulfillment(
-        { connectionId: row.connection.id, externalAccountId: row.connection.externalAccountId, tokens: { accessToken: 'stub' } },
+        { connectionId: row.connection.id, externalAccountId: row.connection.externalAccountId, tokens: await hydrateConnectionTokens(row.connection) },
         row.externalOrderId,
         { carrier: input.carrier.trim(), trackingNumber: input.trackingNumber.trim(), trackingUrl: input.trackingUrl },
       )

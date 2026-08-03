@@ -243,15 +243,14 @@ export function PartnerSidebar({ status, restricted, serviceTypes, isOrgAdmin, s
 
       <nav>
         {navGroups.map((group, gi) => (
-          <div key={group.label ?? gi} className={cn(gi > 0 && 'mt-4')}>
-            {group.label &&
-              (collapsedNow ? (
-                <div aria-hidden="true" className="mx-3 mb-2 border-t border-ink-200" />
-              ) : (
-                <div className="px-3 pb-1 text-[10.5px] font-bold uppercase tracking-[0.07em] text-ink-400">
-                  {group.label}
-                </div>
-              ))}
+          <div key={group.label ?? gi} className={cn(gi > 0 && 'mt-3')} aria-label={group.label ?? undefined}>
+            {/* Group CAPTIONS removed (Pavel 2026-08-02): the uppercase
+                Work/Catalog/Business/Operations/Account labels added visual
+                noise. Grouping survives as whitespace + a hairline rule, and
+                the group label stays in the data for aria + future use. */}
+            {group.label && gi > 0 && (
+              <div aria-hidden="true" className="mx-3 mb-3 border-t border-ink-200/70" />
+            )}
             <div className="space-y-1">
               {group.items.map(({ href, label, icon: Icon, activeMatch }) => {
                 // Tab-merged items stay lit on every one of their tab routes.

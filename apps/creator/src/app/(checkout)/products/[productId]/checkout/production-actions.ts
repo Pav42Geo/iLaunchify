@@ -34,6 +34,12 @@ import {
   COMPONENT_PRICING_SELECT,
 } from '@ilaunchify/plans'
 import { resolveOrderCopackCents } from '@ilaunchify/orders'
+import {
+  BASE_FLAVOR_KEY,
+  maxOrderableQty as pureMaxOrderableQty,
+  type FlavorNeed,
+  type FlavorStockRow,
+} from '@ilaunchify/orders/template-inventory'
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
@@ -497,6 +503,10 @@ export interface CostBreakdown {
    * of the one pricer instead of a second opinion about it.
    */
   productionLines: PriceLine[]
+  // I4 (MANUFACTURER_INVENTORY spec 4b): max orderable at THIS configuration —
+  // PACKS for pack orders, UNITS otherwise. null = Unlimited (no tracked stock,
+  // pre-push client, or any read failure: fail-open, the charge still guards).
+  maxOrderableQty: number | null
   subtotalCents: number
   // Platform fee resolved through the ONE SSOT (@ilaunchify/plans
   // resolveCreatorFeeBps) at the creator's SUBSCRIPTION TIER (Maker 15 / Builder 12
@@ -681,6 +691,40 @@ export async function estimateProductionCost(
   const subtotalCents = priced.productionSubtotalCents
   const platformFeeCents = qty > 0 ? priced.platformFeeCents : 0
 
+  // I4 (spec 4b): the stepper's stock ceiling, from the SAME per-flavor shape
+  // the charge consumes (pack slots, or the single selected flavor / base row).
+  let stockCeiling: number | null = null
+  try {
+    if (product?.productTemplateId) {
+      const rows = await (prisma as unknown as {
+        templateFlavorInventory: {
+          findMany: (a: unknown) => Promise<Array<{ flavorPresetId: string; quantityAvailable: number }>>
+        }
+      }).templateFlavorInventory.findMany({
+        where: { productTemplateId: product.productTemplateId, tracked: true },
+        select: { flavorPresetId: true, quantityAvailable: true },
+      })
+      if (rows.length > 0) {
+        const stockRows: FlavorStockRow[] = rows.map((r) => ({
+          flavorPresetId: r.flavorPresetId,
+          tracked: true,
+          quantityAvailable: r.quantityAvailable,
+        }))
+        let perStep: FlavorNeed[]
+        if (input.pack && input.pack.slots.length > 0) {
+          perStep = input.pack.slots.map((sl) => ({ flavorPresetId: sl.flavorPresetId, units: sl.units }))
+        } else {
+          const stockSelIds = await selectedFlavorIdsFor(input.productId)
+          perStep = [{ flavorPresetId: stockSelIds.length === 1 ? stockSelIds[0]! : BASE_FLAVOR_KEY, units: 1 }]
+        }
+        const m = pureMaxOrderableQty(stockRows, perStep)
+        stockCeiling = Number.isFinite(m) ? m : null
+      }
+    }
+  } catch {
+    stockCeiling = null
+  }
+
   return {
     ok: true,
     data: {
@@ -693,6 +737,7 @@ export async function estimateProductionCost(
       decorationUnitCents,
       setupCents,
       productionLines: priced.lineItems.filter((l) => l.kind !== 'PLATFORM_FEE' && l.kind !== 'SHIPPING' && l.kind !== 'TAX'),
+      maxOrderableQty: stockCeiling,
       subtotalCents,
       platformFeeCents,
       totalBeforeShippingAndTaxCents: subtotalCents + platformFeeCents,

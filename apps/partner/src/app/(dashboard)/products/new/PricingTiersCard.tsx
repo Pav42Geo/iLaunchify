@@ -109,9 +109,9 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
             <th>Your cost <span className="tiny muted" style={{ fontWeight: 400 }}>$ / unit</span></th>
             <th>Floor <span className="tiny muted" style={{ fontWeight: 400 }}>$ / unit</span></th>
             <th>Lead</th>
-            <th>Maker <span className="tiny muted" style={{ fontWeight: 400 }}>{fee.maker}%</span></th>
-            <th>Builder <span className="tiny muted" style={{ fontWeight: 400 }}>{fee.builder}%</span></th>
-            <th>Agency <span className="tiny muted" style={{ fontWeight: 400 }}>{fee.agency}%</span></th>
+            <th className="calc">Maker <span className="tiny" style={{ fontWeight: 400 }}>{fee.maker}%</span></th>
+            <th className="calc">Builder <span className="tiny" style={{ fontWeight: 400 }}>{fee.builder}%</span></th>
+            <th className="calc">Agency <span className="tiny" style={{ fontWeight: 400 }}>{fee.agency}%</span></th>
             <th />
           </tr>
         </thead>
@@ -126,9 +126,9 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
               <td><input className="input" defaultValue={dollars(t.perUnitCents)} onBlur={(e) => patch(i, { perUnitCents: toCents(e.target.value) })} style={{ width: 72 }} /></td>
               <td><input className="input" defaultValue={dollars(t.floorCents)} onBlur={(e) => patch(i, { floorCents: toCents(e.target.value) })} style={{ width: 68 }} /></td>
               <td><input className="input" type="number" min={0} value={t.leadTimeDays ?? ''} placeholder="—" onChange={(e) => patch(i, { leadTimeDays: e.target.value ? parseInt(e.target.value, 10) : null })} style={{ width: 56 }} /></td>
-              <td className="tnum">${dollars(withFee(t.perUnitCents, fee.maker))}</td>
-              <td className="tnum">${dollars(withFee(t.perUnitCents, fee.builder))}</td>
-              <td className="tnum"><b>${dollars(withFee(t.perUnitCents, fee.agency))}</b></td>
+              <td className="tnum calc">${dollars(withFee(t.perUnitCents, fee.maker))}</td>
+              <td className="tnum calc">${dollars(withFee(t.perUnitCents, fee.builder))}</td>
+              <td className="tnum calc">${dollars(withFee(t.perUnitCents, fee.agency))}</td>
               <td>{rows.length > 1 && <button className="del" onClick={() => setRows(rows.filter((_, j) => j !== i))}>🗑</button>}</td>
             </tr>
           ))}
@@ -139,11 +139,19 @@ export function PricingTiersCard({ draftId, initialTiers, registerFlush }: { dra
         <button className="rb-btn-add" onClick={() => { const last = rows[rows.length - 1]; setRows([...rows, { minQty: (last?.maxQty ?? last?.minQty ?? 0) + 1, maxQty: null, perUnitCents: last?.perUnitCents ?? (tab === 'ON_DEMAND' ? 150 : 100), floorCents: last?.floorCents ?? (tab === 'ON_DEMAND' ? 130 : 90), leadTimeDays: last?.leadTimeDays ?? (tab === 'ON_DEMAND' ? 7 : 21) }]) }}>+ Add {tab === 'ON_DEMAND' ? 'on-demand' : 'bulk'} band</button>
       </div>
 
+      {/* Prototype v2: pink callout explaining the calc columns. */}
+      <div className="note" style={{ marginTop: 12 }}>
+        Maker / Builder / Agency are live creator all-in prices: your per-unit cost plus that
+        tier&apos;s platform fee. They recompute as you type.
+      </div>
+
       <style>{`
-        .gb .ptabs{display:inline-flex;gap:2px;background:var(--ink-100,#eee);border-radius:9px;padding:2px}
-        .gb .pt{background:none;border:0;border-radius:7px;padding:5px 14px;font:inherit;font-size:12px;font-weight:600;color:var(--ink-600,#666);cursor:pointer}
+        .gb .ptabs{display:inline-flex;gap:4px;background:var(--ink-100,#eee);border-radius:999px;padding:4px}
+        .gb .pt{background:none;border:0;border-radius:999px;padding:6px 14px;font:inherit;font-size:12px;font-weight:600;color:var(--ink-600,#666);cursor:pointer}
         .gb .pt.on{background:#fff;color:var(--pink-700);box-shadow:0 1px 2px rgba(0,0,0,.08)}
         .gb .tnum{text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px;padding-right:8px}
+        .gb th.calc{color:var(--pink-700)}
+        .gb td.calc{font-weight:700;color:var(--pink-700);background:var(--pink-50)}
         .gb .del{color:#e24b4a;cursor:pointer;background:none;border:0;font-size:12px;padding:0}
       `}</style>
     </div>

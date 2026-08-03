@@ -305,8 +305,8 @@ export function CancelButton({
                       aria-pressed={pauseMonths === m}
                       className={`rounded-full px-3.5 py-1.5 text-[11.5px] font-semibold transition-colors ${
                         pauseMonths === m
-                          ? 'bg-pink-500 text-white'
-                          : 'border border-ink-200 bg-white text-ink-600 hover:border-pink-300 hover:text-pink-700'
+                          ? 'bg-ink-900 text-white'
+                          : 'border border-ink-200 bg-white text-ink-600 hover:border-ink-300 hover:text-ink-900'
                       }`}
                     >
                       {m} month{m > 1 ? 's' : ''}

@@ -88,7 +88,7 @@ export function OnDemandFulfillmentCard({ draftId }: { draftId: string | null })
                   gap: 8,
                   padding: '8px 10px',
                   borderRadius: 9,
-                  border: active ? '2px solid var(--pink-500, #FF2E63)' : '1px solid var(--ink-200, #e5e5e5)',
+                  border: active ? '2px solid var(--success-500, #1E7C4A)' : '1px solid var(--ink-200, #e5e5e5)',
                   cursor: 'pointer',
                 }}
               >

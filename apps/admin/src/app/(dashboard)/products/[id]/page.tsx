@@ -1426,6 +1426,82 @@ export default async function AdminProductReviewPage({ params }: PageProps) {
           </SnapshotCard>
 
           {/* Allergens */}
+          {/* I4 (MANUFACTURER_INVENTORY_2026-07-27.md): manufacturer stock +
+              audit ledger. Cast-guarded + fail-safe pre-push; renders nothing
+              for Unlimited (untracked) templates. */}
+          {await (async () => {
+            try {
+              const inv = await (prisma as unknown as {
+                templateFlavorInventory: {
+                  findMany: (a: unknown) => Promise<Array<{ id: string; flavorPresetId: string; tracked: boolean; quantityAvailable: number; lowStockThreshold: number | null; alertState: string }>>
+                }
+              }).templateFlavorInventory.findMany({
+                where: { productTemplateId: template.id, tracked: true },
+                select: { id: true, flavorPresetId: true, tracked: true, quantityAvailable: true, lowStockThreshold: true, alertState: true },
+              })
+              if (inv.length === 0) return null
+              const presetName = new Map(
+                (await prisma.flavorPreset.findMany({
+                  where: { id: { in: inv.map((r) => r.flavorPresetId).filter((x) => x !== 'base') } },
+                  select: { id: true, name: true },
+                })).map((f) => [f.id, f.name]),
+              )
+              const ledger = await (prisma as unknown as {
+                templateInventoryLedger: {
+                  findMany: (a: unknown) => Promise<Array<{ id: string; kind: string; delta: number; note: string | null; orderId: string | null; createdAt: Date; inventoryId: string }>>
+                }
+              }).templateInventoryLedger.findMany({
+                where: { inventoryId: { in: inv.map((r) => r.id) } },
+                orderBy: { createdAt: 'desc' },
+                take: 12,
+                select: { id: true, kind: true, delta: true, note: true, orderId: true, createdAt: true, inventoryId: true },
+              })
+              const invById = new Map(inv.map((r) => [r.id, r]))
+              const soldOut = (template as unknown as { inventorySoldOut?: boolean }).inventorySoldOut === true
+              return (
+                <SnapshotCard icon={Boxes} title="Manufacturer stock" subtitle={soldOut ? 'HIDDEN from the marketplace: sold out' : undefined}>
+                  <dl className="divide-y divide-ink-100">
+                    {inv.map((r) => (
+                      <Row key={r.id} label={r.flavorPresetId === 'base' ? 'All units' : presetName.get(r.flavorPresetId) ?? 'Flavor'}>
+                        <span className="tabular-nums">{r.quantityAvailable.toLocaleString()} units</span>
+                        <span className={
+                          r.alertState === 'STOCKOUT'
+                            ? 'ml-2 rounded-full border border-danger-200 bg-danger-50 px-2 py-[1px] text-[10px] font-semibold uppercase text-danger-800'
+                            : r.alertState === 'LOW'
+                              ? 'ml-2 rounded-full border border-warning-200 bg-warning-50 px-2 py-[1px] text-[10px] font-semibold uppercase text-warning-800'
+                              : 'ml-2 rounded-full border border-success-200 bg-success-50 px-2 py-[1px] text-[10px] font-semibold uppercase text-success-800'
+                        }>
+                          {r.alertState}
+                        </span>
+                      </Row>
+                    ))}
+                  </dl>
+                  {ledger.length > 0 && (
+                    <div className="mt-3 border-t border-ink-100 pt-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Recent movements</div>
+                      <ul className="mt-1 space-y-0.5">
+                        {ledger.map((l) => (
+                          <li key={l.id} className="flex items-center gap-2 text-[12px] text-ink-700">
+                            <span className="w-32 shrink-0 text-ink-500">{l.createdAt.toLocaleDateString()}</span>
+                            <span className="w-36 shrink-0 font-medium">{l.kind}</span>
+                            <span className="w-16 shrink-0 text-right tabular-nums">{l.delta > 0 ? `+${l.delta}` : l.delta}</span>
+                            <span className="truncate text-ink-500">
+                              {invById.get(l.inventoryId)?.flavorPresetId === 'base' ? '' : presetName.get(invById.get(l.inventoryId)?.flavorPresetId ?? '') ?? ''}
+                              {l.note ? ` · ${l.note}` : ''}
+                              {l.orderId ? ` · order ${l.orderId.slice(-8)}` : ''}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </SnapshotCard>
+              )
+            } catch {
+              return null
+            }
+          })()}
+
           <SnapshotCard icon={ShieldAlert} title="Allergens">
             <dl className="divide-y divide-ink-100">
               <Row label="Cross-contamination statement" multiline>

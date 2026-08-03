@@ -237,7 +237,7 @@ function Gallery({ images }: { images: Array<{ url: string; label: string }> }) 
                   overflow: 'hidden',
                   cursor: 'pointer',
                   background: 'var(--ink-50)',
-                  border: isActive ? '2px solid var(--pink)' : '1px solid var(--ink-200)',
+                  border: isActive ? '2px solid var(--success-500, #1E7C4A)' : '1px solid var(--ink-200)',
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -368,7 +368,10 @@ export function ReviewSummary({
               />
             </div>
           ) : null}
-          <div style={{ padding: 24, position: 'relative' }}>
+          {/* Prototype v2 passport-hero: dark gradient cover for the text panel.
+              Colors flow through --pp-cover-* vars so the @media print override
+              can revert to a light, ink-on-white cover (dark bgs don't print). */}
+          <div className="pp-coverpanel" style={{ padding: 24, position: 'relative' }}>
             {printable && (
               <button
                 type="button"
@@ -396,20 +399,20 @@ export function ReviewSummary({
                 <Printer size={16} aria-hidden="true" />
               </button>
             )}
-            <div className="eyebrow" style={{ color: 'var(--pink-700)' }}>Digital product passport</div>
+            <div className="eyebrow" style={{ color: 'var(--pp-cover-eyebrow, var(--pink-700))' }}>Digital product passport</div>
             <h2
               className="display"
-              style={{ fontSize: 'var(--fs-ui-display, 30px)', fontWeight: 800, lineHeight: 1.08, margin: '8px 0 6px', color: 'var(--ink-900)' }}
+              style={{ fontSize: 'var(--fs-ui-display, 30px)', fontWeight: 800, lineHeight: 1.08, margin: '8px 0 6px', color: 'var(--pp-cover-fg, var(--ink-900))' }}
             >
               {d.name || 'Untitled product'}
             </h2>
-            <p style={{ ...CAPTION_STYLE, marginBottom: 10 }}>
+            <p style={{ ...CAPTION_STYLE, color: 'var(--pp-cover-sub, var(--ink-500))', marginBottom: 10 }}>
               {[d.categoryName, d.subcategoryName].filter(Boolean).join(' › ') || 'Uncategorized'}
               {' · '}{d.domainLabel}
               {' · '}<span>{d.labelArtifact}</span>
             </p>
             <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-              <span className={`pill ${d.name ? 'green' : 'amber'}`}>{d.name ? '✓ ready for review' : 'needs a name'}</span>
+              <span className={`pill ${d.name ? 'green pp-ready' : 'amber'}`}>{d.name ? '✓ ready for review' : 'needs a name'}</span>
               {d.isMultiFlavor && <span className="pill pink">{d.flavors.length} flavors</span>}
               {d.niches.map((n) => <span key={`niche-${n}`} className="pill">{n}</span>)}
               {d.lifestyleTags.slice(0, 6).map((t) => <span key={`tag-${t}`} className="pill">{t}</span>)}
@@ -1215,6 +1218,10 @@ export function ReviewSummary({
 
 // Two-column document layout: main + sticky right rail; collapses under 900px.
 const PASSPORT_CSS = `
+/* Prototype v2 passport-hero: dark cover panel. Neon eyebrow is DARK-SURFACE
+   ONLY (design law 4) and reverts to pink-700 in print below. */
+.pp-coverpanel{--pp-cover-fg:#fff;--pp-cover-sub:#CBCCD3;--pp-cover-eyebrow:#B5FF3D;color:#fff;background:radial-gradient(120% 160% at 82% -10%,rgba(181,255,61,.18),transparent 55%),radial-gradient(110% 150% at 12% 120%,rgba(255,46,99,.30),transparent 60%),linear-gradient(120deg,#1d1d20,#232327 60%,#18181A)}
+.pp-coverpanel .pp-ready{background:#B5FF3D;border-color:transparent;color:#18181A}
 .passport-body{display:grid;grid-template-columns:1fr 330px;gap:16px;align-items:start}
 .passport-main{min-width:0}
 .passport-rail{position:sticky;top:16px;align-self:start;display:flex;flex-direction:column;gap:16px;min-width:0}
@@ -1227,5 +1234,8 @@ const PASSPORT_CSS = `
   /* Let it expand naturally — drop sticky/overflow constraints that clip print. */
   .passport-rail{position:static !important}
   .no-print{display:none !important}
+  /* Revert the dark cover to ink-on-white so the passport prints legibly. */
+  .pp-coverpanel{--pp-cover-fg:#18181A;--pp-cover-sub:#6B6D78;--pp-cover-eyebrow:#C71350;color:#18181A;background:#fff !important}
+  .pp-coverpanel .pp-ready{background:var(--success-50,#E1F5EE);border-color:#9FE1CB;color:#085041}
 }
 `

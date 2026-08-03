@@ -107,7 +107,9 @@ export default async function DispatchDetailPage({
     },
   })
   const isChannelOnDemand =
-    !!channelOrigin || (dispatch.order.internalNotes ?? '').includes('ORIGIN: CHANNEL')
+    !!channelOrigin ||
+    dispatch.order.shipToType === 'DIRECT_CONSUMER' ||
+    (dispatch.order.internalNotes ?? '').includes('ORIGIN: CHANNEL')
   const channelName = channelOrigin
     ? (channelOrigin.connection.channel.displayName ?? channelOrigin.connection.channel.code)
     : null
@@ -707,7 +709,7 @@ function ProductionTracker({
               <span
                 className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${
                   current
-                    ? 'border-pink-500 bg-pink-50 text-pink-700'
+                    ? 'border-success-500 bg-success-50 text-success-700'
                     : done
                       ? skipped
                         ? 'border-success-200 bg-white text-success-500'

@@ -237,7 +237,7 @@ function DomainVocabCard({ initial, groups, domainGroups }: { initial: Record<st
                   key={g.id}
                   type="button"
                   onClick={() => toggleGroup(g.id)}
-                  className={`rounded-full border px-2.5 py-1 text-[12px] font-medium transition ${on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'} ${g.active ? '' : 'opacity-60'}`}
+                  className={`rounded-full border px-2.5 py-1 text-[12px] font-medium transition ${on ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'} ${g.active ? '' : 'opacity-60'}`}
                 >
                   {g.label}{g.active ? '' : ' (off)'}
                 </button>

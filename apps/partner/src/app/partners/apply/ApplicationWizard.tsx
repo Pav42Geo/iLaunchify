@@ -35,6 +35,13 @@ const Schema = z.object({
   serviceTypes: z
     .array(z.enum(['MANUFACTURING', 'COPACKING', 'LABEL_PRINTING', 'WAREHOUSE']))
     .min(1, 'Pick at least one service'),
+  // Broker screen (Pavel 2026-08-02): the network onboards partners who run
+  // their OWN production (partner-target = white-label mfrs/co-packers, memory
+  // 2026-07); pure intermediaries are screened out at application time.
+  productionModel: z.enum(['IN_HOUSE', 'HYBRID', 'OUTSOURCED'], {
+    required_error: 'Tell us where production happens.',
+    invalid_type_error: 'Tell us where production happens.',
+  }),
   certificateTypeIds: z.array(z.string()).default([]),
   contactName: z.string().min(2, 'Your name').max(80),
   email: z.string().email('Valid email required'),
@@ -57,6 +64,13 @@ const SERVICE: Record<ServiceT, { label: string; sub: string }> = {
   LABEL_PRINTING: { label: 'Packaging printing', sub: 'Labels · sleeves · cartons · flexible' },
   WAREHOUSE: { label: 'Fulfillment (3PL)', sub: 'Store · pick · pack · ship' },
 }
+
+// Broker screen cards (required on the services step).
+const PRODUCTION_MODEL_OPTIONS: { value: Values['productionModel']; label: string; sub: string }[] = [
+  { value: 'IN_HOUSE', label: 'In-house', sub: 'We own and operate our production facility and equipment.' },
+  { value: 'HYBRID', label: 'Mostly in-house', sub: 'Our facility does the core work; a few specialized processes are outsourced.' },
+  { value: 'OUTSOURCED', label: 'Outsourced', sub: "Production happens at other companies' facilities; we manage the projects." },
+]
 
 const MFG_CATEGORIES: [string, string][] = [
   ['FOOD', 'Food'],
@@ -228,7 +242,15 @@ export function ApplicationWizard({
     validate?: () => string | null
   }[] = [
     { fields: ['companyName'], render: stepCompany },
-    { fields: ['serviceTypes'], render: stepServices },
+    {
+      fields: ['serviceTypes', 'productionModel'],
+      render: stepServices,
+      // Broker gate: a pure intermediary stops here (the card below explains).
+      validate: () =>
+        watch('productionModel') === 'OUTSOURCED'
+          ? 'We currently onboard partners who produce in their own facility.'
+          : null,
+    },
     ...activeServices.map((s) => ({
       fields: [] as (keyof Values)[],
       render: () => stepService(s),
@@ -387,14 +409,14 @@ export function ApplicationWizard({
                 aria-pressed={on}
                 className={
                   'block w-full rounded-2xl border px-4 py-3.5 text-left transition-colors ' +
-                  (on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-300')
+                  (on ? 'border-success-500 bg-success-50' : 'border-ink-200 bg-white hover:border-ink-300')
                 }
               >
-                <span className={'text-[14px] font-bold ' + (on ? 'text-pink-700' : 'text-ink-800')}>
+                <span className={'text-[14px] font-bold ' + (on ? 'text-success-700' : 'text-ink-800')}>
                   {on ? '✓ ' : ''}
                   {SERVICE[s].label}
                 </span>
-                <span className={'mt-0.5 block text-[12px] ' + (on ? 'text-pink-700' : 'text-ink-500')}>
+                <span className={'mt-0.5 block text-[12px] ' + (on ? 'text-success-700' : 'text-ink-500')}>
                   {SERVICE[s].sub}
                 </span>
               </button>
@@ -406,6 +428,51 @@ export function ApplicationWizard({
             {formState.errors.serviceTypes.message as string}
           </p>
         )}
+
+        {/* Broker screen (Pavel 2026-08-02): required. The network matches
+            creators with the facility actually doing the work; companies that
+            only broker production out are screened here, not at review. */}
+        <div className="mt-7">
+          <p className="text-[13.5px] font-bold text-ink-900">Where does production actually happen?</p>
+          <p className="mb-2.5 mt-0.5 text-[12px] text-ink-500">
+            Creators are matched directly with the facility doing the work.
+          </p>
+          <div className="space-y-2.5">
+            {PRODUCTION_MODEL_OPTIONS.map((o) => {
+              const on = watch('productionModel') === o.value
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setValue('productionModel', o.value, { shouldValidate: true })}
+                  className={
+                    'block w-full rounded-2xl border px-4 py-3.5 text-left transition-colors ' +
+                    (on ? 'border-success-500 bg-success-50' : 'border-ink-200 bg-white hover:border-ink-300')
+                  }
+                >
+                  <span className={'text-[14px] font-bold ' + (on ? 'text-success-700' : 'text-ink-800')}>
+                    {on ? '✓ ' : ''}
+                    {o.label}
+                  </span>
+                  <span className={'mt-0.5 block text-[12px] ' + (on ? 'text-success-700' : 'text-ink-500')}>{o.sub}</span>
+                </button>
+              )
+            })}
+          </div>
+          {watch('productionModel') === 'OUTSOURCED' && (
+            <div className="mt-3 rounded-xl border border-warning-200 bg-warning-50 px-4 py-3 text-[13px] text-warning-800">
+              <p className="font-semibold">iLaunchify partners produce in their own facilities.</p>
+              <p className="mt-1">
+                Right now we only onboard companies that own and operate the production our network routes to.
+                If that changes for you, we would love to hear from you again.
+              </p>
+            </div>
+          )}
+          {formState.errors.productionModel && (
+            <p className="mt-2 text-[12px] text-danger-600">{formState.errors.productionModel.message as string}</p>
+          )}
+        </div>
       </>
     )
   }
@@ -760,14 +827,14 @@ function PickSelect({
           {selected.map((v) => (
             <span
               key={v}
-              className="inline-flex items-center gap-1 rounded-full border border-pink-500 bg-pink-50 px-3 py-1.5 text-[13px] font-semibold text-pink-700"
+              className="inline-flex items-center gap-1 rounded-full border border-success-500 bg-success-50 px-3 py-1.5 text-[13px] font-semibold text-success-700"
             >
               {labelFor(v)}
               <button
                 type="button"
                 onClick={() => onToggle(v)}
                 aria-label={`Remove ${labelFor(v)}`}
-                className="text-pink-400 hover:text-pink-700"
+                className="text-success-400 hover:text-success-700"
               >
                 ×
               </button>
@@ -843,20 +910,20 @@ function SelectCard({
       aria-pressed={on}
       className={
         'flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-colors ' +
-        (on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-300')
+        (on ? 'border-success-500 bg-success-50' : 'border-ink-200 bg-white hover:border-ink-300')
       }
     >
       <span
         aria-hidden="true"
         className={
           'mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border text-[11px] font-bold ' +
-          (on ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 bg-white text-transparent')
+          (on ? 'border-success-500 bg-success-500 text-white' : 'border-ink-300 bg-white text-transparent')
         }
       >
         ✓
       </span>
       <span className="min-w-0">
-        <span className={'block text-[15px] font-bold ' + (on ? 'text-pink-800' : 'text-ink-900')}>{title}</span>
+        <span className={'block text-[15px] font-bold ' + (on ? 'text-success-800' : 'text-ink-900')}>{title}</span>
         <span className="mt-0.5 block text-[13px] leading-[1.45] text-ink-500">{desc}</span>
       </span>
     </button>
@@ -873,7 +940,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       aria-pressed={on}
       className={
         'rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors ' +
-        (on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300')
+        (on ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300')
       }
     >
       {on ? '✓ ' : ''}

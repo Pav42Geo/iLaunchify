@@ -141,8 +141,11 @@ export function VariantsPacksStep({
       {/* Product type — space-saving dropdown that opens grouped cards */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title">
-          <span className="ic"><Boxes size={16} strokeWidth={2} /></span> Product type
-          {locked && <span className="pill" style={{ marginLeft: 8, padding: '1px 8px', fontSize: 10 }} title="Locked because a recipe has been started — changing it would reshape the recipe and label. To use a different type, start a new product.">🔒 locked</span>}
+          <span className="ic"><Boxes size={15} strokeWidth={2} /></span> Product type
+          {/* Prototype v2: the lock rule is announced up front, not only once tripped. */}
+          <span className="pill amber" style={{ marginLeft: 'auto' }} title="Once a recipe is authored the product type is fixed: changing it would reshape the recipe and label. To use a different type, start a new product.">
+            {locked ? '\u{1F512} Locked: recipe authored' : '\u{1F512} Locks once recipe authored'}
+          </span>
         </div>
         <button type="button" className="pt-trigger" data-open={open ? 'on' : undefined} disabled={locked} aria-disabled={locked} onClick={() => { if (!locked) setOpen((v) => !v) }} style={{ marginTop: 10, ...(locked ? { cursor: 'not-allowed', opacity: 0.75 } : null) }}>
           {selected ? (
@@ -201,17 +204,16 @@ export function VariantsPacksStep({
         </div>
       )}
 
-      {/* Fees — one-time / per-unit / per-order (#3) */}
+      {/* Fees + Samples side by side (prototype v2 pairing; each keeps its own
+          card, autosave and hydration guard exactly as before) */}
       {selected && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <FeesCard draftId={draftId} initialFees={initial?.fees} />
-        </div>
-      )}
-
-      {/* Samples — partner sample policy (Pavel 2026-06-10) */}
-      {selected && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <SamplesCard draftId={draftId} initialOptions={initial?.sampleOptions} isMultiFlavor={selected.flavorMode === 'MULTI'} />
+        <div className="two-col" style={{ marginBottom: 16 }}>
+          <div className="card" style={{ margin: 0 }}>
+            <FeesCard draftId={draftId} initialFees={initial?.fees} />
+          </div>
+          <div className="card" style={{ margin: 0 }}>
+            <SamplesCard draftId={draftId} initialOptions={initial?.sampleOptions} isMultiFlavor={selected.flavorMode === 'MULTI'} />
+          </div>
         </div>
       )}
 
@@ -228,14 +230,17 @@ export function VariantsPacksStep({
         </>
       )}
 
-      {/* Configurable axes beyond flavor (sweetener / strength / caffeine / …) */}
-      {selected && <OptionAxesCard axes={axes} onAxes={onAxes} />}
+      {/* Creator option axes + Approval triggers side by side (prototype v2
+          pairing); compatibility rules stay full-width below them. */}
+      {selected && (
+        <div className="two-col">
+          <OptionAxesCard axes={axes} onAxes={onAxes} />
+          <ApprovalTriggersCard draftId={draftId} initialRules={initial?.changeApprovalRules} />
+        </div>
+      )}
 
-      {/* Cross-option compatibility rules (#5) — only when ≥2 option values exist */}
+      {/* Cross-option compatibility rules (#5): only when 2+ option values exist */}
       {selected && <CompatibilityRulesCard draftId={draftId} axes={axes} initialRules={initial?.optionRules} />}
-
-      {/* Approval triggers (#7) */}
-      {selected && <ApprovalTriggersCard draftId={draftId} initialRules={initial?.changeApprovalRules} />}
 
       <style>{`
         .gb .pt-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px solid var(--ink-200);border-radius:12px;background:#fff;padding:11px 14px;font:inherit;color:var(--ink-900);cursor:pointer;transition:.12s}

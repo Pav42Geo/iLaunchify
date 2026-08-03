@@ -57,7 +57,7 @@ export function ProductFulfillmentForm({
             disabled={isPending}
             aria-pressed={on}
             className={`flex flex-col rounded-2xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 disabled:opacity-60 ${
-              on ? 'border-pink-500 bg-pink-50 ring-1 ring-pink-500' : 'border-ink-200 bg-white hover:border-ink-300'
+              on ? 'border-success-500 bg-success-50 ring-1 ring-pink-500' : 'border-ink-200 bg-white hover:border-ink-300'
             }`}
           >
             <span className="font-display text-[15px] font-semibold text-ink-900">{o.title}</span>

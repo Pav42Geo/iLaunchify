@@ -10,7 +10,9 @@
     "./partner-fsm": "./src/partner-fsm.ts",
     "./copack-quote": "./src/copack-quote.ts",
     "./batch-economics": "./src/batch-economics.ts",
-    "./print-price": "./src/print-price.ts"
+    "./print-price": "./src/print-price.ts",
+    "./template-inventory": "./src/template-inventory.ts",
+    "./template-inventory-db": "./src/template-inventory-db.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",

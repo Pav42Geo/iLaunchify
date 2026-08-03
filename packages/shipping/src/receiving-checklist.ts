@@ -8,7 +8,7 @@
 import type { HazmatClass, ShipmentMode, StorageClass } from './types'
 
 export interface ReceivingChecklistInput {
-  destinationType: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER' | 'HOLD_AT_MANUFACTURER' | 'CHANNEL_INBOUND'
+  destinationType: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER' | 'HOLD_AT_MANUFACTURER' | 'CHANNEL_INBOUND' | 'DIRECT_CONSUMER'
   mode: ShipmentMode
   storageClass: StorageClass
   hazmatClass: HazmatClass
@@ -28,10 +28,17 @@ export function buildReceivingChecklist(input: ReceivingChecklistInput): Checkli
   const items: ChecklistItem[] = []
   const isFreight = input.mode !== 'PARCEL'
   const toFc = input.destinationType === 'WAREHOUSE_PARTNER'
+  const toConsumer = input.destinationType === 'DIRECT_CONSUMER'
 
   // ---- Shipper (pre-departure QC) ----
   items.push({ key: 'counts-match', label: 'Physical counts match the manifest exactly (no over/short)', actor: 'SHIPPER' })
   items.push({ key: 'unit-barcodes', label: 'Every unit carries a scannable GTIN/barcode (scan-test a sample)', actor: 'SHIPPER' })
+  if (toConsumer) {
+    // C2.2 on-demand: the box lands on an END CONSUMER's doorstep, shipped on
+    // the creator's behalf. White-label discipline is the whole product.
+    items.push({ key: 'no-platform-paperwork', label: 'No creator pricing, invoices, or platform paperwork in the box', actor: 'SHIPPER' })
+    items.push({ key: 'retail-ready', label: 'Retail-ready presentation: approved branding only, no partner marks', actor: 'SHIPPER' })
+  }
   if (input.lotTracked) {
     items.push({ key: 'lot-per-carton', label: 'One lot per carton — no mixed lots of the same SKU in a box', actor: 'SHIPPER' })
     items.push({ key: 'case-labels', label: 'GS1-128 case labels applied: GTIN + lot + date, visible, not on seams', actor: 'SHIPPER' })

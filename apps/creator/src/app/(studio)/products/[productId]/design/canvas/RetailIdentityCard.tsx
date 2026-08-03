@@ -204,7 +204,7 @@ export function RetailIdentityCard({ productId, initial }: Props) {
                   className={
                     'rounded-md border p-2.5 text-left transition-all ' +
                     (mode === m
-                      ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500/20'
+                      ? 'border-success-500 bg-success-50 ring-2 ring-pink-500/20'
                       : 'border-ink-200 bg-white hover:border-ink-400')
                   }
                 >

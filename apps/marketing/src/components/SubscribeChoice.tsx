@@ -126,7 +126,7 @@ function RadioDot({
         'mt-0.5 inline-flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ' +
         (selected
           ? tone === 'pink'
-            ? 'border-pink-500 bg-pink-500'
+            ? 'border-success-500 bg-success-500'
             : 'border-ink-900 bg-ink-900'
           : 'border-ink-300 bg-white')
       }

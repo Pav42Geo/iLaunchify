@@ -137,7 +137,7 @@ export function SurfaceAuthoringClient({ data, models }: { data: PackagingAuthor
         onClick={save}
         disabled={saving || !data}
         title={data ? 'Save surfaces' : 'Pick a model first'}
-        className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600 disabled:opacity-40"
+        className="inline-flex items-center gap-1.5 rounded-full border border-success-500 bg-success-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600 disabled:opacity-40"
       >
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
         {saved ? 'Saved' : 'Save surfaces'}
@@ -220,7 +220,7 @@ export function SurfaceAuthoringClient({ data, models }: { data: PackagingAuthor
               <button
                 onClick={() => setPlaceMode((v) => !v)}
                 disabled={!selectedKey}
-                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11.5px] font-semibold shadow-sm transition disabled:opacity-40 ${placeMode ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[11.5px] font-semibold shadow-sm transition disabled:opacity-40 ${placeMode ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
                 title="Click the model to position the selected surface's clickable marker"
               >
                 <Crosshair className="h-3.5 w-3.5" /> {placeMode ? 'Placing…' : 'Place marker'}
@@ -479,7 +479,7 @@ function SurfacesDrawer({
                           <button
                             key={d.id}
                             onClick={() => onToggleBinding(i, d.id)}
-                            className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${on ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+                            className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition ${on ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
                           >
                             {d.label}
                           </button>
@@ -646,7 +646,7 @@ function CatChip({ label, active, onClick }: { label: string; active: boolean; o
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${active ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
+      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${active ? 'border-success-500 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}
     >
       {label}
     </button>

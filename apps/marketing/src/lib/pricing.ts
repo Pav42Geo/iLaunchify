@@ -85,6 +85,7 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
     prisma.productTemplate.findUnique({
       where: { slug },
       select: {
+        id: true,
         maxFlavorsPerPack: true,
         packingProfile: { select: { flavorMode: true } },
         flavorPresets: {
@@ -115,11 +116,32 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
       fixedDistribution: null,
     }
   }
+  // I3 (MANUFACTURER_INVENTORY_2026-07-27.md section 4): drop OUT-OF-STOCK
+  // flavors from the PDP pool. A flavor binds only when a tracked
+  // TemplateFlavorInventory row says 0 units remain; untracked flavors (or a
+  // pre-push client / any read failure) never filter: fail-open, Unlimited is
+  // the default. The checkout guard + conditional decrement stay the authority.
+  let outOfStockFlavorIds = new Set<string>()
+  try {
+    const stockRows = await (prisma as unknown as {
+      templateFlavorInventory: {
+        findMany: (a: unknown) => Promise<Array<{ flavorPresetId: string; quantityAvailable: number }>>
+      }
+    }).templateFlavorInventory.findMany({
+      where: { productTemplateId: template.id, tracked: true, quantityAvailable: { lte: 0 } },
+      select: { flavorPresetId: true, quantityAvailable: true },
+    })
+    outOfStockFlavorIds = new Set(stockRows.map((r) => r.flavorPresetId))
+  } catch {
+    outOfStockFlavorIds = new Set()
+  }
+  const inStockPresets = template.flavorPresets.filter((f) => !outOfStockFlavorIds.has(f.id))
+
   // Per-flavor price deltas for the PDP flavor cards. saleDeltaCents stays null
   // until FlavorPreset gains a sale/compare-at column — the card then renders a
   // strike-through "was" price. No schema invented here.
   const flavorPricing: PackBuilderData['flavorPricing'] = {}
-  for (const f of template.flavorPresets) {
+  for (const f of inStockPresets) {
     flavorPricing[f.id] = { priceDeltaCents: f.priceDeltaCents, saleDeltaCents: null }
   }
 
@@ -133,14 +155,14 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
   // Per-flavor images (task #203) — resolve each flavor's thumbnail + hero Asset
   // publicUrl. Cast-guarded (swatchImageFileId/heroImageFileId additive). Keyed by
   // flavor id; null for flavors with no image (chip falls back to the swatch).
-  const flavorImages = await readFlavorImages(template.flavorPresets.map((f) => f.id))
+  const flavorImages = await readFlavorImages(inStockPresets.map((f) => f.id))
 
   // The stored fixed assortment keys flavors by NAME (the builder authors names,
   // not ids); the VarietyPackBuilder matches against flavorPresetId. Resolve
   // name → id here where the pool (id + name) is in hand. Entries that already
   // match an id, or that don't resolve, are passed through unchanged.
-  const idByName = new Map(template.flavorPresets.map((f) => [f.name, f.id]))
-  const idSet = new Set(template.flavorPresets.map((f) => f.id))
+  const idByName = new Map(inStockPresets.map((f) => [f.name, f.id]))
+  const idSet = new Set(inStockPresets.map((f) => f.id))
   const assortment = pack.assortment.map((a) =>
     idSet.has(a.flavor) ? a : { flavor: idByName.get(a.flavor) ?? a.flavor, qty: a.qty },
   )
@@ -152,7 +174,7 @@ export async function getPackBuilderData(slug: string): Promise<PackBuilderData>
   return {
     flavorMode: template.packingProfile?.flavorMode === 'MULTI' ? 'MULTI' : 'SINGLE',
     maxFlavorsPerPack: template.maxFlavorsPerPack,
-    pool: template.flavorPresets.map((f) => ({
+    pool: inStockPresets.map((f) => ({
       id: f.id,
       name: f.name,
       swatchHex: f.swatchHex,

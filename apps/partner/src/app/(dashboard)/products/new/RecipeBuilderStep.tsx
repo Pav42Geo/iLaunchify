@@ -1068,8 +1068,14 @@ export function RecipeBuilderStep({
         <LabelViewerModal columns={varietyCols} productName={productName} netContents={packNetContents} onClose={() => setLabelViewerOpen(false)} />
       )}
 
-      {/* Mode 1/2/3 chooser — Search & build · Parse with AI · Declare panel. */}
+      {/* Mode 1/2/3 chooser — Search & build · Parse with AI · Declare panel.
+          Prototype v2: the expanded chooser gets its question as a section title. */}
       <div style={{ marginBottom: 14 }}>
+        {chooserOpen && (
+          <div className="section-title" style={{ marginBottom: 10 }}>
+            <span className="ic"><FlaskConical size={15} strokeWidth={2} /></span> How do you want to enter your recipe?
+          </div>
+        )}
         <ModeChooser
           currentMode={entryMode}
           collapsed={!chooserOpen}
@@ -1159,7 +1165,7 @@ export function RecipeBuilderStep({
             className={`recipe-flavtab${activeRecipeTab === 'BASE' ? ' on' : ''}`}
             onClick={() => setActiveRecipeTab('BASE')}
             title="The base recipe — author once, then duplicate to flavors."
-          >Base</button>
+          ><span className="sw" style={{ background: 'var(--ink-400, #9A9CA6)' }} />Base</button>
           {flavors.map((f, i) => {
             const isResolving = resolvingFlavorIdx === i
             const selected = !!f.presetId && activeRecipeTab === f.presetId
@@ -1170,7 +1176,7 @@ export function RecipeBuilderStep({
                 className={`recipe-flavtab${selected ? ' on' : ''}`}
                 title={`Edit ${f.name || `Flavor ${i + 1}`}'s recipe`}
                 onClick={() => openFlavorTab(f)}
-              >{f.name || `Flavor ${i + 1}`}{isResolving && <span className="recipe-flavtab-prep"> · preparing…</span>}</button>
+              ><span className="sw" style={{ background: FLAVOR_SWATCHES[i % FLAVOR_SWATCHES.length] }} />{f.name || `Flavor ${i + 1}`}{isResolving && <span className="recipe-flavtab-prep"> · preparing…</span>}</button>
             )
           })}
           <button
@@ -1557,8 +1563,15 @@ export function RecipeBuilderStep({
           {/* Cost summary + per-ingredient nutrition breakdown live in the COST tab. */}
         </div>
 
-        {/* RIGHT — live label (hidden until the first ingredient is added) */}
+        {/* RIGHT — live label (hidden until the first ingredient is added).
+            Sticky (prototype v2) so the Facts panel rides along while the
+            recipe table scrolls. */}
         <div style={base.length === 0 ? { display: 'none' } : undefined}>
+          {!noFactsPanel && (
+            <div style={{ marginBottom: 8 }}>
+              <span className="pill green">✓ Live · {dom.labelBuilt ? 'FDA engine' : 'label engine'}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             <div className="seg">
               <button className={mode === 'public' ? 'on' : ''} onClick={() => setMode('public')}>Public label</button>
@@ -2135,15 +2148,23 @@ function FactsPanel({ result, title, narrow, serving, format = 'STANDARD', simpl
   )
 }
 
+// Per-flavor swatch colors for the recipe tab bar (prototype v2 flavor-tabs).
+// Raw values from the semantic ramps (pink / warning / info / success / ink);
+// not class-shaped, so the brand-hex class lint doesn't apply.
+const FLAVOR_SWATCHES = ['#FF2E63', '#B45309', '#1F5BA8', '#1E7C4A', '#9E0E40', '#6B6D78']
+
 const CSS = `
 .rb{--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:#18181A;--ink-700:#33343C;--ink-500:#6B6D78;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--danger-600:#DC2626;--warning-50:#FAEEDA;--warning-200:#FAC775;--warning-700:#633806;font-size:var(--fs-sm,13px);color:var(--ink-900)}
 .rb .muted{color:var(--ink-500)} .rb .tiny{font-size:var(--fs-xs)}
-.rb-tabs{display:flex;gap:22px;border-bottom:1px solid var(--ink-200);margin-bottom:14px;overflow:auto}
-.rb-tab{display:inline-flex;align-items:center;gap:6px;padding:12px 2px;font-weight:600;color:var(--ink-500);cursor:pointer;border-bottom:2px solid transparent;font-size:12.5px;white-space:nowrap}
+/* Sub-tabs as a pill segment group (prototype v2 .subtabs). */
+.rb-tabs{display:flex;gap:4px;background:var(--ink-100);border-radius:999px;padding:4px;margin-bottom:14px;width:fit-content;max-width:100%;overflow:auto}
+.rb-tab{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;font-weight:600;color:var(--ink-500);cursor:pointer;border-radius:999px;font-size:12px;white-space:nowrap}
 .rb-tab .rb-tab-ic{width:15px;height:15px;flex:0 0 auto;stroke-width:2}
-.rb-tab.on{color:var(--pink-700);border-color:var(--pink)}
-.rb-wrap{display:grid;grid-template-columns:1fr 300px;gap:18px}
+.rb-tab.on{color:var(--pink-700);background:#fff;box-shadow:0 1px 2px rgba(24,24,26,.08)}
+.rb-wrap{display:grid;grid-template-columns:1fr 320px;gap:18px}
 .rb-wrap.solo{grid-template-columns:1fr}
+/* Prototype v2: the live label rides along while the recipe table scrolls. */
+.rb-wrap>div:last-child{position:sticky;top:90px;align-self:start}
 .rb .card{margin-bottom:16px}
 .agebar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border:1px solid var(--pink-100);background:var(--pink-50);border-radius:16px;padding:12px 16px;margin-bottom:16px}
 .agebar-l{display:flex;flex-direction:column;gap:2px;min-width:220px}
@@ -2203,15 +2224,17 @@ const CSS = `
 .rb .flavtab:hover{color:var(--ink-900);background:var(--pink-50)}
 .rb .flavtab.on{color:var(--ink-900);background:#fff;border-color:var(--ink-200);border-bottom:1px solid #fff;font-weight:700}
 .rb .flavtab.add{color:var(--pink-700);font-weight:600;border-style:dashed;border-color:var(--pink-100);border-bottom-color:var(--pink-100);border-radius:8px;margin-bottom:0}
-/* Per-flavor RECIPE tab bar (each flavor owns its own full recipe). */
-.rb .recipe-flavtabs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:10px;border-bottom:1px solid var(--ink-200);padding-bottom:0}
-.rb .recipe-flavtab{border:1px solid transparent;border-bottom:0;background:transparent;color:var(--pink-700);cursor:pointer;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px 8px 0 0;margin-bottom:-1px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rb .recipe-flavtab:hover:not(:disabled){color:var(--ink-900);background:var(--pink-50)}
-.rb .recipe-flavtab.on{color:var(--ink-900);background:#fff;border-color:var(--ink-200);border-bottom:1px solid #fff;font-weight:700}
+/* Per-flavor RECIPE tab bar (each flavor owns its own full recipe).
+   Prototype v2 flavor-tabs: underline tabs with a color swatch per flavor. */
+.rb .recipe-flavtabs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--ink-200);padding-bottom:0}
+.rb .recipe-flavtab{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--ink-500);cursor:pointer;font-size:12.5px;font-weight:600;padding:9px 12px;border-bottom:2px solid transparent;margin-bottom:-1px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb .recipe-flavtab:hover:not(:disabled){color:var(--ink-900)}
+.rb .recipe-flavtab.on{color:var(--pink-700);border-bottom-color:var(--pink);font-weight:700}
 .rb .recipe-flavtab:disabled{opacity:.5;cursor:default}
 .rb .recipe-flavtab-prep{font-size:10px;font-weight:600;color:var(--pink-700);opacity:.85}
 .rb .recipe-empty{border-style:dashed;border-color:var(--pink-100);background:var(--pink-50)}
-.rb .recipe-flavtab.add{color:var(--pink-700);font-weight:600;border-style:dashed;border-color:var(--pink-100);border-radius:8px;margin-bottom:0}
+.rb .recipe-flavtab.add{color:var(--pink-700);font-weight:600;border:1px dashed var(--pink-100);border-radius:8px;padding:6px 12px;margin-bottom:4px}
+.rb .sw{display:inline-block;width:11px;height:11px;border-radius:3px;flex:none}
 .rb .recipe-dup{position:relative;margin-left:auto}
 .rb .recipe-dup-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;background:#fff;border:1px solid var(--ink-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;min-width:200px;display:flex;flex-direction:column;gap:2px}
 .rb .recipe-dup-menu button{text-align:left;border:0;background:transparent;font:inherit;font-size:12px;color:var(--ink-900);padding:7px 10px;border-radius:7px;cursor:pointer}

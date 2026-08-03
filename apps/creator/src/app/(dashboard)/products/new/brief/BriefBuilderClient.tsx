@@ -324,7 +324,7 @@ export function BriefBuilderClient({
                     onClick={() => toggleClaim(c)}
                     className={`rounded-pill border px-s-3 py-s-1 text-ui-caption font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
                       on
-                        ? 'border-pink-500 bg-pink-500 text-white'
+                        ? 'border-success-500 bg-success-50 text-success-800'
                         : 'border-ink-300 bg-white text-ink-600 hover:text-ink-900'
                     }`}
                   >
@@ -351,14 +351,14 @@ export function BriefBuilderClient({
                     type="button"
                     onClick={() => setFormulationMode(mode)}
                     className={`flex-1 rounded-lg border p-s-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 ${
-                      on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-400'
+                      on ? 'border-success-500 bg-success-50' : 'border-ink-200 bg-white hover:border-ink-400'
                     }`}
                   >
                     <div className="mb-s-1 flex items-center gap-s-2 text-ui-caption font-bold">
                       <span
                         aria-hidden
                         className={`h-4 w-4 flex-none rounded-pill border-2 ${
-                          on ? 'border-pink-500 bg-pink-500 shadow-[inset_0_0_0_2.5px_#fff]' : 'border-ink-300'
+                          on ? 'border-success-500 bg-success-500 shadow-[inset_0_0_0_2.5px_#fff]' : 'border-ink-300'
                         }`}
                       />
                       {label}

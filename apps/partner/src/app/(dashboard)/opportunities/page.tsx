@@ -203,7 +203,7 @@ export default async function OpportunitiesPage({
           <Link
             href={buildHref({ tab, sort })}
             className={`rounded-full border px-3 py-1 text-ui-caption ${
-              !cat ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-200 bg-white text-ink-500'
+              !cat ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white text-ink-500'
             }`}
           >
             All categories
@@ -213,7 +213,7 @@ export default async function OpportunitiesPage({
               key={c}
               href={buildHref({ tab, sort, cat: c })}
               className={`rounded-full border px-3 py-1 text-ui-caption ${
-                cat === c ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-200 bg-white text-ink-500'
+                cat === c ? 'border-ink-900 bg-ink-900 text-white' : 'border-ink-200 bg-white text-ink-500'
               }`}
             >
               {c}

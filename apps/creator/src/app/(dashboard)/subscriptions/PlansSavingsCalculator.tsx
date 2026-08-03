@@ -129,7 +129,7 @@ export function PlansSavingsCalculator({
               <div
                 key={r.key}
                 className={`rounded-xl border px-4 py-3 ${
-                  isBest ? 'border-pink-300 bg-pink-50/50' : 'border-ink-200 bg-white'
+                  isBest ? 'border-success-300 bg-success-50/50' : 'border-ink-200 bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between">

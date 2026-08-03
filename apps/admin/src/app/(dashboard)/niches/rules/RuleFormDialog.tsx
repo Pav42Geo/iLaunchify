@@ -453,7 +453,7 @@ function ConditionRow({
                         onClick={() => onToggleValue(o.value)}
                         className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
                           checked
-                            ? 'border-pink-400 bg-pink-50 text-pink-900'
+                            ? 'border-success-400 bg-success-50 text-pink-900'
                             : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50'
                         }`}
                       >
@@ -480,7 +480,7 @@ function ConditionRow({
                   onClick={() => onToggleValue(o.value)}
                   className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
                     checked
-                      ? 'border-pink-400 bg-pink-50 text-pink-900'
+                      ? 'border-success-400 bg-success-50 text-pink-900'
                       : 'border-ink-200 bg-white text-ink-700 hover:bg-ink-50'
                   }`}
                 >

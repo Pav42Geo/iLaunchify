@@ -69,6 +69,8 @@ export interface TemplateData {
   CREATOR_CHANNEL_DISCONNECTED: { channelName: string }
   // C2.2 auto-billing hold (cap reached / saved-method charge failed)
   CREATOR_CHANNEL_ORDER_HOLD: { externalOrderId: string; channelName?: string; reason: string }
+  // Track B3 token-health cron (enum value pending db:push+generate)
+  CREATOR_CHANNEL_RECONNECT_NEEDED: { channelName: string; reason?: string }
   // Phase H4 — creator-facing workflow events
   CREATOR_DISPATCH_ACCEPTED: {
     orderId: string
@@ -174,6 +176,9 @@ export interface TemplateData {
   // entry keeps the TemplateData index total and carries the copy through
   // whenever it migrates to dispatchNotification.
   CREATOR_STOCK_ALERT: { title?: string; body?: string; productName?: string; alertState?: string }
+  // I4 manufacturer template stock (docs/MANUFACTURER_INVENTORY_2026-07-27.md).
+  // Emitter precomputes title/body; productName/alertState carried for tokens.
+  PARTNER_STOCK_ALERT: { title?: string; body?: string; productName?: string; alertState?: string }
   // Feedback module (docs/FEEDBACK_MODULE.md §5/§6) — delivery+3d combined ask.
   // `reminder` flips the copy for the single +10d nudge (same event, no new enum).
   CREATOR_RATE_PARTNERS: {
@@ -590,6 +595,14 @@ export function renderTemplate<E extends NotificationEvent>(
         link: '/channels',
       }
     }
+    case 'CREATOR_CHANNEL_RECONNECT_NEEDED': {
+      const d = data as TemplateData['CREATOR_CHANNEL_RECONNECT_NEEDED']
+      return {
+        title: `Reconnect your ${d.channelName} store`,
+        body: `${d.reason ?? 'The connection\u2019s access expired.'} Publishing and order syncing are paused until you reconnect from the Channels hub.`,
+        link: '/channels',
+      }
+    }
     case 'CREATOR_CHANNEL_ORDER_HOLD': {
       const d = data as TemplateData['CREATOR_CHANNEL_ORDER_HOLD']
       return {
@@ -864,6 +877,14 @@ export function renderTemplate<E extends NotificationEvent>(
         title: `${d.docLabel} expires in ${d.daysLeft} day${d.daysLeft === 1 ? '' : 's'}`,
         body: 'Upload a renewed document before it lapses — expired documents suspend the capabilities they back.',
         link: d.href,
+      }
+    }
+    case 'PARTNER_STOCK_ALERT': {
+      const d = data as TemplateData['PARTNER_STOCK_ALERT']
+      return {
+        title: d.title ?? `Stock alert${d.productName ? ` · ${d.productName}` : ''}`,
+        body: d.body ?? 'One of your products changed stock state — review your available inventory.',
+        link: '/inventory?tab=products',
       }
     }
     case 'CREATOR_STOCK_ALERT': {

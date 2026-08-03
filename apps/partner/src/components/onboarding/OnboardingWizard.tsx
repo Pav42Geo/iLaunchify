@@ -109,6 +109,7 @@ export function OnboardingWizard({
           onChange={(s) => {
             setBusinessState(s)
             setSelected(s.serviceTypes)
+            setSubmitError(null) // picking a service clears the step-1 gate message
           }}
         />
       ),
@@ -180,6 +181,18 @@ export function OnboardingWizard({
   function goNext() {
     if (last) {
       handleSubmit()
+      return
+    }
+    // Step 1 gates (Pavel 2026-08-02): the operating state and at least one
+    // SELF-SELECTED service are required: proximity matching keys off the
+    // state, and the rest of onboarding (capabilities, certs) keys off the
+    // services. WAREHOUSE doesn't count: platform-granted, not a partner choice.
+    if (cur === 0 && !businessState.primaryRegionId) {
+      setSubmitError('Select the state you operate from: we use it to match you with nearby creators.')
+      return
+    }
+    if (cur === 0 && businessState.serviceTypes.filter((t) => t !== 'WAREHOUSE').length === 0) {
+      setSubmitError('Pick at least one option under "What do you do?": the rest of setup builds on it.')
       return
     }
     setDir('next')

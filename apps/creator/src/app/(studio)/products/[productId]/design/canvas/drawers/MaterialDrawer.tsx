@@ -59,13 +59,13 @@ function OptionRow({
       disabled={disabled}
       className={`flex w-full items-start gap-2.5 rounded-md border px-3 py-2.5 text-left transition-colors disabled:opacity-60 ${
         selected
-          ? 'border-pink-500 bg-pink-50/60 ring-1 ring-pink-500'
+          ? 'border-success-500 bg-success-50/60 ring-1 ring-pink-500'
           : 'border-ink-200 bg-white hover:border-ink-300'
       }`}
     >
       <span
         className={`mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border ${
-          selected ? 'border-pink-500 bg-pink-500 text-white' : 'border-ink-300 bg-white'
+          selected ? 'border-success-500 bg-success-500 text-white' : 'border-ink-300 bg-white'
         }`}
       >
         {selected && <Check className="h-3 w-3" strokeWidth={3} />}

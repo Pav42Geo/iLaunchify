@@ -24,6 +24,8 @@ export const REQUIRED_PAYLOAD_KEYS: {
   PARTNER_TEAM_MEMBER_JOINED: ['memberName'],
   CREATOR_CHANNEL_CONNECTED: ['channelName'],
   CREATOR_CHANNEL_DISCONNECTED: ['channelName'],
+  // Track B3 (type error until db:push+generate adds the enum value; coverage-batch precedent)
+  CREATOR_CHANNEL_RECONNECT_NEEDED: ['channelName'],
   CREATOR_CHANNEL_ORDER_HOLD: ['externalOrderId', 'reason'],
   SECTION_VERIFIED: ['sectionType'],
   SECTION_NEEDS_CHANGES: ['sectionType'],
@@ -89,6 +91,9 @@ export const REQUIRED_PAYLOAD_KEYS: {
   PROOF_APPROVED: ['dispatchId', 'orderRef', 'version'],
   PROOF_REJECTED: ['dispatchId', 'orderRef', 'version'],
   CREATOR_STOCK_ALERT: [],
+  // I4 (de-cast 2026-07-27). Copy is precomputed by the emitter, so nothing is
+  // strictly required.
+  PARTNER_STOCK_ALERT: [],
   CREATOR_RATE_PARTNERS: ['orderId', 'partnerCount'],
   CREATOR_DISPATCH_PROGRESS: ['orderId', 'partnerName', 'kind', 'summary'],
   CREATOR_SAMPLE_VERDICT: ['orderId'],

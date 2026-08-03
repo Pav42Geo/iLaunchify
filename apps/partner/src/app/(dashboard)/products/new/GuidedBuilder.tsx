@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 import { Menu, UtensilsCrossed, Pill, Sparkles, PawPrint, Cross, Boxes, ArrowLeft, type LucideIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { SavedIndicator, VersionHistoryDrawer, type SnapshotItem } from '@ilaunchify/ui'
+import { CoCreationStepper, SavedIndicator, VersionHistoryDrawer, type CoCreationStep, type SnapshotItem } from '@ilaunchify/ui'
 import { createDraftShell, saveOptionAxes, hasRecipeRows, loadDraft, type InitialDraft } from './build-actions'
 import type { ProductDefaultsRow } from '../../settings/product-defaults/actions'
 import { snapshotDraft, listDraftSnapshots } from './snapshot-actions'
@@ -43,10 +43,10 @@ import { axesToInput, type OptionAxisUI } from './OptionAxesCard'
 import { PricingTiersCard } from './PricingTiersCard'
 import { OnDemandFulfillmentCard } from './OnDemandFulfillmentCard'
 import { ProductBatchCard } from './ProductBatchCard'
+import { InventoryCard } from './InventoryCard'
 import { NotesCard } from './NotesCard'
 import { LabelPhrasesCard } from './LabelPhrasesCard'
-import { PackagingPicker } from './PackagingPicker'
-import { PackagingStudioStep } from './PackagingStudioStep'
+import { PackagingDielinesStep } from './PackagingDielinesStep'
 import { PerFlavorLabelsCard } from './PerFlavorLabelsCard'
 import { packUiKindForProfile } from './structuralPackType'
 
@@ -95,7 +95,9 @@ const STEPS = [
   { t: 'Basics', d: 'Identity, media, type' },
   { t: 'Variants & packs', d: 'Net wt, MOQ, facility' },
   { t: 'Recipe / Formulation', d: 'Ingredients, allergens, cost' },
-  { t: 'Packaging studio', d: '3D, die-lines, label frames' },
+  // D5 (STEP4_PACKAGING_DIELINES_2026-07-28.md): a regular form step; the
+  // studio opens on demand from its die-line rows.
+  { t: 'Packaging & die-lines', d: 'Containers · die-lines · labels' },
   { t: 'Cost & pricing', d: 'Volume tiers' },
   { t: 'Review & submit', d: 'Verify & send' },
 ] as const
@@ -423,27 +425,20 @@ export function GuidedBuilder({
       />
 
       <div className="gb-shell">
-        {/* MAIN (left rail removed — the top stepper handles navigation) */}
+        {/* Stage bar: the SAME stepper the Co-Creation Studio, briefs and the
+            three service builders use (CoCreationStepper), rendered full-bleed
+            right under the app topbar. Step titles come from STEPS; every step
+            stays clickable via go() (free navigation, no gates yet). */}
+        <CoCreationStepper
+          steps={STEPS.map((s, i): CoCreationStep => ({
+            key: s.t,
+            label: s.t,
+            state: i < cur ? 'done' : i === cur ? 'current' : 'upcoming',
+          }))}
+          onStepClick={(i) => { void go(i) }}
+        />
+        {/* MAIN (left rail removed: the stage bar handles navigation) */}
         <main className="gb-main">
-          {/* stepper beads */}
-          <div className="stepper">
-            {STEPS.map((s, i) => (
-              <span key={s.t} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <span
-                  className={`sbead ${i === cur ? 'active' : ''} ${i < cur ? 'done' : ''}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => go(i)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(i) } }}
-                >
-                  <span className="b">{i < cur ? '✓' : i + 1}</span>
-                  {s.t}
-                </span>
-                {i < STEPS.length - 1 && <span className="sline" />}
-              </span>
-            ))}
-          </div>
-
           {/* Page title — defaults to "Add Product", becomes the product name
               once the manufacturer types it in Basics. Hidden on the Review step:
               the Passport cover already carries the product name (avoids a
@@ -464,16 +459,22 @@ export function GuidedBuilder({
           {cur === 0 && (
             <section>
               <div className="card" style={{ marginBottom: 16 }}>
-                <div className="section-title"><span className="ic"><Boxes size={16} strokeWidth={2} /></span> Product domain</div>
-                <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginTop: 12 }}>
+                {/* Prototype v2: compact domain tiles with the label artifact as a
+                    sublabel, plus a muted tag explaining what the choice drives. */}
+                <div className="section-title">
+                  <span className="ic"><Boxes size={15} strokeWidth={2} /></span> Product domain
+                  <span className="domain-tag">Drives label artifact and rule pack</span>
+                </div>
+                <div className="grid" style={{ gridTemplateColumns: `repeat(${domainOptions.length}, minmax(0, 1fr))`, gap: 10, marginTop: 12 }}>
                   {domainOptions.map((o) => (
                     <button key={o.v} type="button" onClick={() => chooseLtype(o.v)} className={`domcard ${ltype === o.v ? 'on' : ''}`}>
-                      <span className="domcard-ic"><o.Icon size={22} strokeWidth={1.75} /></span>
+                      <span className="domcard-ic"><o.Icon size={19} strokeWidth={1.75} /></span>
                       <span className="domcard-label">{o.label}</span>
+                      <span className="domcard-sub">{o.artifact}</span>
                     </button>
                   ))}
                 </div>
-                <style>{`.gb .domcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;border:1.5px solid var(--ink-200);border-radius:14px;background:#fff;padding:18px 12px;min-height:108px;cursor:pointer;transition:.14s}.gb .domcard:hover{border-color:var(--pink-200,#FFB3CC);background:var(--pink-50,#FFE9F0)}.gb .domcard.on{border-color:var(--pink-500,#FF2E63);background:var(--pink-50,#FFE9F0);box-shadow:0 0 0 1px var(--pink-500,#FF2E63) inset}.gb .domcard-ic{width:44px;height:44px;border-radius:12px;background:var(--ink-100);color:var(--ink-500);display:grid;place-items:center;transition:.14s}.gb .domcard:hover .domcard-ic{background:#fff;color:var(--pink-700,#C71350)}.gb .domcard.on .domcard-ic{background:var(--pink-500,#FF2E63);color:#fff}.gb .domcard-label{font-weight:650;font-size:16.5px;color:var(--ink-900);line-height:1.2}`}</style>
+                <style>{`.gb .domcard{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;text-align:center;border:1.5px solid var(--ink-200);border-radius:12px;background:#fff;padding:14px 10px;cursor:pointer;transition:.14s}.gb .domcard:hover{border-color:var(--pink-100)}.gb .domcard.on{border-color:var(--pink);background:var(--pink-50)}.gb .domcard-ic{width:38px;height:38px;border-radius:10px;background:var(--ink-100);color:var(--ink-600);display:grid;place-items:center;margin-bottom:6px;transition:.14s}.gb .domcard:hover .domcard-ic{color:var(--pink-700)}.gb .domcard.on .domcard-ic{background:var(--pink);color:#fff}.gb .domcard-label{font-weight:700;font-size:var(--fs-base);color:var(--ink-900);line-height:1.2}.gb .domcard-sub{font-size:var(--fs-xs);color:var(--ink-500);margin-top:2px}`}</style>
               </div>
               <BasicsScreen
                 domain={LTYPE_TO_LT[ltype]}
@@ -553,19 +554,29 @@ export function GuidedBuilder({
                   registerFlush={registerFlush}
                 />
               )}
-              <NavBtns onBack={() => go(1)} onNext={() => go(3)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Packaging studio →" />
+              <NavBtns onBack={() => go(1)} onNext={() => go(3)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Packaging & die-lines →" />
             </section>
           )}
 
-          {/* ===== STEP 4 — PACKAGING STUDIO ===== */}
+          {/* ===== STEP 4 — PACKAGING & DIE-LINES (P4a form step; the studio
+              opens on demand from the die-line rows as a fullscreen modal) ===== */}
           {cur === 3 && (
             <section>
-              <PackagingPicker draftId={draftId} systems={packagingSystems} />
-              <PackagingStudioStep draftId={draftId} systems={packagingSystems} onNext={goNext} onBack={() => go(2)} onSaveDraft={saveDraft} nextLabel={nextLabel} headerRight={topbarRight} studioLogo={studioLogo} />
-              {profile && packUiKindForProfile(profile) === 'pack' && (
-                <PerFlavorLabelsCard draftId={draftId} />
+              <PackagingDielinesStep
+                draftId={draftId}
+                systems={packagingSystems}
+                topbarRight={topbarRight}
+                studioLogo={studioLogo}
+                onSaveDraft={saveDraft}
+              />
+              {profile && packUiKindForProfile(profile) === 'pack' ? (
+                <div className="two-col">
+                  <PerFlavorLabelsCard draftId={draftId} />
+                  <LabelPhrasesCard draftId={draftId} />
+                </div>
+              ) : (
+                <LabelPhrasesCard draftId={draftId} />
               )}
-              <LabelPhrasesCard draftId={draftId} />
               <NavBtns onBack={() => go(2)} onNext={() => go(4)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Cost & pricing →" />
             </section>
           )}
@@ -573,11 +584,20 @@ export function GuidedBuilder({
           {/* ===== STEP 5 — COST & PRICING ===== */}
           {cur === 4 && (
             <section>
-              <PricingTiersCard draftId={draftId} initialTiers={initial?.pricingTiers} registerFlush={registerFlush} />
-              {/* §4b.2 — which in-house finish decorates a made-to-order unit.
-                  Renders only when the On-demand band set above is non-empty. */}
-              <OnDemandFulfillmentCard draftId={draftId} />
-              <ProductBatchCard draftId={draftId} registerFlush={registerFlush} />
+              {/* Prototype v2 layout: uniform 16px card rhythm; Batch + Inventory
+                  side by side (InventoryCard was specced "beside ProductBatchCard"). */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <PricingTiersCard draftId={draftId} initialTiers={initial?.pricingTiers} registerFlush={registerFlush} />
+                {/* §4b.2 — which in-house finish decorates a made-to-order unit.
+                    Renders only when the On-demand band set above is non-empty. */}
+                <OnDemandFulfillmentCard draftId={draftId} />
+                {/* I2 (MANUFACTURER_INVENTORY_2026-07-27.md): per-flavor sellable stock;
+                    Unlimited default. Self-loads like ProductBatchCard. */}
+                <div className="two-col">
+                  <ProductBatchCard draftId={draftId} registerFlush={registerFlush} />
+                  <InventoryCard draftId={draftId} registerFlush={registerFlush} />
+                </div>
+              </div>
               <NavBtns onBack={() => go(3)} onNext={() => go(5)} onSaveDraft={saveDraft} saving={isPending} nextLabel="Next: Review →" />
             </section>
           )}
@@ -672,13 +692,13 @@ function NavBtns({ onBack }: { onBack?: () => void; onNext?: () => void; onSaveD
 
 // Scoped CSS ported from the prototype, on the locked mood-board tokens.
 const CSS = `
-.gb{--font-scale:1.15;--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:#141519;--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--cream:#FFE9F0;--green:#1D9E75;--success-50:#E1F5EE;--warning-50:#FAEEDA;--info-50:#E6F1FB;color:var(--ink-900);font-size:var(--fs-base);line-height:1.5}
+.gb{--font-scale:1;--pink:#FF2E63;--pink-700:#C71350;--pink-50:#FFE9F0;--pink-100:#FFB3CC;--ink-900:#141519;--ink-800:#232327;--ink-700:#33343C;--ink-600:#474954;--ink-500:#6B6D78;--ink-400:#9A9CA6;--ink-300:#CBCCD3;--ink-200:#E0E1E5;--ink-100:#EEEFF1;--ink-50:#F8F8F9;--cream:#FFE9F0;--green:#1D9E75;--success-50:#E1F5EE;--warning-50:#FAEEDA;--info-50:#E6F1FB;color:var(--ink-900);font-size:var(--fs-base);line-height:1.5}
 .gb .display{font-family:"Bricolage Grotesque",Inter,sans-serif;letter-spacing:-.02em}
 .gb h1,.gb h2,.gb h3{margin:0}
 .gb .eyebrow{font-size:var(--fs-2xs);font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--ink-500)}
 .gb .muted{color:var(--ink-500)} .gb .small{font-size:var(--fs-sm)} .gb .tiny{font-size:var(--fs-xs)}
 .gb .toggle-label{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;font-size:var(--fs-sm);color:var(--ink-800)}
-.gb .hint{font-size:var(--fs-sm);color:var(--ink-500);line-height:1.45;margin:0}
+.gb .hint{font-size:var(--fs-xs);color:var(--ink-500);line-height:1.45;margin:0}
 .gb .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:var(--fs-xs);font-weight:600;border:1px solid var(--ink-200);background:#fff}
 .gb .pill.green{background:var(--success-50);color:#085041;border-color:#9FE1CB}
 .gb .pill.amber{background:var(--warning-50);color:#633806;border-color:#FAC775}
@@ -712,7 +732,7 @@ const CSS = `
 .gb .rb-flavor-img-remove{margin-top:8px;width:100%;font-size:var(--fs-xs);font-weight:600;color:var(--pink-700);background:#fff;border:1px solid var(--pink-100);border-radius:8px;padding:6px;cursor:pointer}
 .gb .rb-flavor-img-remove:hover{background:var(--pink-50)}
 .gb .card{border:var(--card-border-width) solid var(--card-border-color);border-radius:var(--card-radius);background:#fff;padding:18px}
-.gb .field label{display:block;font-size:var(--fs-base);font-weight:600;color:var(--ink-800);margin-bottom:7px;letter-spacing:-.005em}
+.gb .field label{display:block;font-size:var(--fs-sm);font-weight:600;color:var(--ink-700);margin-bottom:6px;letter-spacing:0}
 .gb .input,.gb .sel,.gb textarea{width:100%;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;font:inherit;font-size:var(--fs-base);color:var(--ink-900);background:#fff}
 .gb .input:focus,.gb .sel:focus,.gb textarea:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px var(--pink-50)}
 .gb input[type=checkbox],.gb input[type=radio]{accent-color:var(--control-accent);cursor:pointer}
@@ -753,20 +773,16 @@ const CSS = `
 .gb-nextbtn:hover:not(:disabled){background:#E11D54;border-color:#E11D54}
 .gb-nextbtn:disabled{background:#fff;border-color:#E0E1E5;color:#9A9CA6;cursor:not-allowed}
 .gb .hero{border:1px solid var(--pink-100);background:var(--cream);border-radius:24px;padding:20px 22px;margin-bottom:18px}
-.gb .stepper{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
-.gb .sbead{display:flex;align-items:center;gap:7px;font-size:var(--fs-sm);color:var(--ink-500);cursor:pointer}
-.gb .sbead:hover{color:var(--ink-900)}
-.gb .sbead .b{width:20px;height:20px;border-radius:50%;background:var(--ink-100);display:grid;place-items:center;font-size:var(--fs-2xs);font-weight:700;color:var(--ink-500)}
-.gb .sbead.active{color:var(--ink-900);font-weight:600} .gb .sbead.active .b{background:var(--pink);color:#fff}
-.gb .sbead.done .b{background:var(--green);color:#fff} .gb .sline{width:26px;height:1.5px;background:var(--ink-200);display:inline-block;margin:0 2px}
-.gb .section-title{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",Inter,sans-serif;font-size:var(--fs-ui-section,1.0625rem);font-weight:700;letter-spacing:-.015em;color:var(--ink-900)}
-.gb .section-title .ic{width:30px;height:30px;border-radius:9px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.gb .section-title{display:flex;align-items:center;gap:9px;font-family:"Bricolage Grotesque",Inter,sans-serif;font-size:var(--fs-ui-subhead,.9375rem);font-weight:700;letter-spacing:-.015em;color:var(--ink-900)}
+.gb .section-title .ic{width:28px;height:28px;border-radius:8px;background:var(--pink-50);color:var(--pink-700);display:grid;place-items:center;flex:none}
+.gb .domain-tag{margin-left:auto;display:inline-flex;align-items:center;font-family:Inter,sans-serif;font-size:var(--fs-xs);font-weight:600;letter-spacing:0;color:var(--ink-600);background:var(--ink-100);border:1px solid var(--ink-200);border-radius:999px;padding:3px 10px;white-space:nowrap}
 .gb .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
 .gb .info[data-tip]{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#fff;color:var(--ink-600);border:1px solid var(--ink-300);font-size:10px;font-weight:700;font-style:normal;line-height:1;cursor:help;flex:none}
 .gb .info[data-tip]:hover,.gb .info[data-tip]:focus{background:var(--ink-50);color:var(--ink-900);border-color:var(--ink-400);outline:none}
 .gb .info[data-tip]:hover::after,.gb .info[data-tip]:focus::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);width:max-content;max-width:280px;white-space:normal;text-align:left;background:#fff;color:var(--ink-900);border:1px solid var(--ink-200);font-size:11.5px;font-weight:400;line-height:1.45;font-style:normal;letter-spacing:0;padding:8px 10px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.22);z-index:60;pointer-events:none}
 .gb .info[data-tip]:hover::before,.gb .info[data-tip]:focus::before{content:"";position:absolute;left:50%;bottom:calc(100% + 2px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#fff;z-index:60;pointer-events:none}
-.gb .two{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+.gb .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.gb .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 .gb .msel{position:relative}
 .gb .msel-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:var(--border-width) solid var(--border-soft);border-radius:var(--input-radius);padding:9px 12px;background:#fff;font:inherit;font-size:var(--fs-base);color:var(--ink-900);cursor:pointer;text-align:left}
 .gb .msel-btn:hover{border-color:var(--ink-400)} .gb .msel-btn:disabled{opacity:.55;cursor:default}
@@ -822,7 +838,7 @@ const CSS = `
 .gb .kpi .l{font-size:var(--fs-2xs);font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-500)}
 .gb .kpi .v{font-family:"Bricolage Grotesque",Inter;font-weight:800;font-size:var(--fs-xl)}
 .gb .banner{display:flex;gap:10px;align-items:center;border:1px solid #B5D4F4;background:var(--info-50);color:#0C447C;border-radius:14px;padding:10px 14px;font-size:var(--fs-sm);margin-bottom:16px}
-@media(max-width:900px){.gb-shell{grid-template-columns:1fr}.gb .rail{border-right:0;border-bottom:1px solid var(--ink-200)}.gb .two,.gb .studio,.gb .pacshell{grid-template-columns:1fr}}
+@media(max-width:900px){.gb-shell{grid-template-columns:1fr}.gb .rail{border-right:0;border-bottom:1px solid var(--ink-200)}.gb .two,.gb .two-col,.gb .studio,.gb .pacshell{grid-template-columns:1fr}}
 /* Builder-active chrome overrides (global, mount-scoped via body.gb-active). The
    dashboard sidebar hides and the shell padding/width are neutralized so the
    builder's own rail acts as the side menu. Reverts when the builder unmounts. */

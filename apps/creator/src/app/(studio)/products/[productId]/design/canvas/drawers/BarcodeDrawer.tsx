@@ -319,7 +319,7 @@ function ModeTile({
       className={
         'text-left rounded-md border p-3 transition-all ' +
         (active
-          ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500/20'
+          ? 'border-success-500 bg-success-50 ring-2 ring-pink-500/20'
           : 'border-ink-200 bg-white hover:border-ink-400')
       }
     >

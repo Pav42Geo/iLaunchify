@@ -677,7 +677,11 @@ function checkNoFabricatedMoneySplit() {
 const ON_DEMAND_GATE_FILES = [
   'apps/creator/src/app/(dashboard)/products/[productId]/publish/actions.ts',
   'apps/partner/src/app/(dashboard)/on-demand/actions.ts',
-  'apps/creator/src/app/(dashboard)/channels/orders/ingest.ts',
+  // Track B4 split (2026-07-27): the ingest ENGINE (and its eligibility gate)
+  // moved from ingest.ts into ingest-core.ts so the webhook receiver can ingest
+  // session-free; ingest.ts is now a thin requireUser wrapper. The gate call
+  // lives in the core, so the check follows it there.
+  'apps/creator/src/app/(dashboard)/channels/orders/ingest-core.ts',
 ]
 function checkOnDemandFullServiceGate() {
   const hits = []

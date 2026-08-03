@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · /packaging/new redesign · Option B prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-300:#FF7FA8;--pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;
+  --neon-500:#B5FF3D;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+  --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-700:#135733;
+  --warning-50:#FFF4E2;--warning-700:#7C360A;
+  --info-50:#E8F1FB;--info-700:#163E72;
+  --danger-600:#C22030;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;
+  --font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);
+  --shadow-lg:0 12px 28px rgba(24,24,26,.12);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select{font-family:inherit}
+.disp{font-family:var(--font-display);letter-spacing:-.01em}
+.shell{max-width:1240px;margin:0 auto;padding:22px 20px 80px}
+.protonote{font-size:12px;color:var(--ink-500);margin:0 4px 14px}
+.protonote b{color:var(--ink-900)}
+
+/* app frame */
+.frame{border-radius:20px;overflow:hidden;box-shadow:var(--shadow-lg);background:#fff;border:1px solid var(--ink-200)}
+.topbar{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--ink-200);background:#fff;position:sticky;top:0;z-index:30}
+.topbar .logo{width:24px;height:24px;border-radius:7px;background:var(--pink-500);display:grid;place-items:center;color:#fff;font-weight:800;font-family:var(--font-display);font-size:13px}
+.topbar .back{font-size:13px;font-weight:500;color:var(--ink-600);padding:6px 10px;border-radius:8px}
+.topbar .back:hover{background:var(--ink-100)}
+.topbar .crumb{font-size:13px;color:var(--ink-400)}
+.topbar .crumb b{color:var(--ink-900);font-weight:600}
+.topbar .draftpill{font-size:11px;font-weight:600;color:var(--ink-600);background:var(--ink-100);border:1px solid var(--ink-200);border-radius:999px;padding:3px 10px}
+.cta{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn-ghost{border-radius:999px;padding:8px 15px;font-size:13px;font-weight:600;color:var(--ink-600);border:1px solid var(--ink-200);background:#fff}
+.btn-ghost:hover{background:var(--ink-50)}
+.btn-primary{border-radius:999px;padding:9px 18px;font-size:13px;font-weight:600;background:var(--ink-900);color:#fff;transition:background .15s}
+.btn-primary:hover{background:var(--ink-700)}
+.btn-primary:disabled{background:var(--ink-300);cursor:not-allowed}
+
+/* layout */
+.body-grid{display:grid;grid-template-columns:400px 1fr;gap:0;min-height:640px}
+@media (max-width:960px){.body-grid{grid-template-columns:1fr}}
+
+/* ── left: live preview rail ─────────────────────────────── */
+.preview-rail{background:var(--ink-50);border-right:1px solid var(--ink-200);padding:26px 26px 30px;display:flex;flex-direction:column;gap:18px;position:sticky;top:47px;align-self:start;height:calc(100vh - 47px);min-height:640px;overflow:auto}
+@media (max-width:960px){.preview-rail{position:static;height:auto}}
+.preview-stage{background:#fff;border:1px solid var(--ink-200);border-radius:16px;box-shadow:var(--shadow-sm);padding:18px;display:grid;place-items:center;min-height:280px;position:relative;overflow:hidden}
+.preview-stage svg{transition:all .35s var(--ease-out)}
+.stage-badge{position:absolute;top:12px;left:12px;font-size:11px;font-weight:600;color:var(--ink-500);background:var(--ink-50);border:1px solid var(--ink-200);border-radius:999px;padding:3px 9px}
+.unit-badge{position:absolute;top:12px;right:12px;font-family:var(--font-display);font-weight:700;font-size:13px;color:var(--pink-700);background:var(--pink-50);border-radius:999px;padding:3px 10px;transition:transform .2s}
+.dim-caption{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:var(--ink-400)}
+
+.spec-card{background:#fff;border:1px solid var(--ink-200);border-radius:16px;box-shadow:var(--shadow-sm);padding:16px 18px}
+.spec-card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-400);margin-bottom:10px}
+.spec-row{display:flex;justify-content:space-between;gap-10px;padding:5.5px 0;border-bottom:1px dashed var(--ink-100);font-size:12.5px}
+.spec-row:last-child{border-bottom:none}
+.spec-row .k{color:var(--ink-500)}
+.spec-row .v{font-weight:600;color:var(--ink-900);text-align:right}
+.spec-row .v.muted{color:var(--ink-300);font-weight:500}
+.spec-row .v.pink{color:var(--pink-700)}
+
+.readiness{display:flex;align-items:center;gap:10px}
+.meter{flex:1;height:6px;border-radius:999px;background:var(--ink-200);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:999px;background:var(--pink-500);width:0%;transition:width .4s var(--ease-out)}
+.readiness span{font-size:11.5px;font-weight:600;color:var(--ink-500);white-space:nowrap}
+
+/* ── right: steps column ─────────────────────────────────── */
+.steps-col{padding:26px 30px 40px;display:flex;flex-direction:column;gap:14px;max-width:720px}
+.page-h h1{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:-.01em}
+.page-h p{color:var(--ink-500);font-size:13px;margin-top:3px}
+
+.step{border:1px solid var(--ink-200);border-radius:16px;background:#fff;overflow:hidden;transition:box-shadow .2s}
+.step.open{box-shadow:var(--shadow-md)}
+.step-head{display:flex;align-items:center;gap:12px;padding:14px 18px;width:100%;text-align:left}
+.step-num{width:26px;height:26px;border-radius:999px;display:grid;place-items:center;font-size:12.5px;font-weight:700;background:var(--ink-100);color:var(--ink-500);flex:none;transition:all .2s}
+.step.open .step-num{background:var(--ink-900);color:#fff}
+.step.done .step-num{background:var(--success-100);color:var(--success-700)}
+.step-title{font-weight:600;font-size:14.5px}
+.step-sub{font-size:12px;color:var(--ink-500);margin-top:1px}
+.step-state{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--ink-400)}
+.step.done .step-state{color:var(--success-700)}
+.step-body{padding:4px 18px 20px 56px;display:none}
+.step.open .step-body{display:block}
+.optional-tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);background:var(--ink-100);border-radius:999px;padding:2px 8px;margin-left:8px}
+
+label.f-label{display:block;font-size:13px;font-weight:600;color:var(--ink-900);margin:14px 0 6px}
+label.f-label:first-child{margin-top:6px}
+.f-hint{font-size:12px;color:var(--ink-500);margin-top:5px}
+input.text{width:100%;border:1px solid var(--ink-200);border-radius:10px;padding:9px 12px;font-size:13.5px;outline:none;transition:border-color .15s, box-shadow .15s;background:#fff;color:var(--ink-900)}
+input.text:focus{border-color:var(--ink-900);box-shadow:0 0 0 3px rgba(24,24,26,.08)}
+input.text.sm{width:110px}
+.inline-suffix{position:relative;display:inline-block}
+.inline-suffix em{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-style:normal;font-size:11.5px;color:var(--ink-400);pointer-events:none}
+
+/* topology chip grid */
+.topo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media (max-width:1100px){.topo-grid{grid-template-columns:repeat(3,1fr)}}
+.topo{border:1px solid var(--ink-200);border-radius:12px;padding:10px 6px 9px;display:flex;flex-direction:column;align-items:center;gap:6px;background:#fff;transition:all .15s;position:relative}
+.topo:hover{border-color:var(--ink-400);transform:translateY(-1px)}
+.topo.sel{border-color:var(--ink-900);background:var(--ink-50);box-shadow:0 0 0 1px var(--ink-900)}
+.topo svg{width:34px;height:34px}
+.topo .t-label{font-size:11px;font-weight:600;color:var(--ink-600);text-align:center;line-height:1.25}
+.topo.sel .t-label{color:var(--ink-900)}
+.topo .tick{position:absolute;top:6px;right:6px;width:15px;height:15px;border-radius:999px;background:var(--pink-500);color:#fff;display:none;place-items:center;font-size:9px;font-weight:800}
+.topo.sel .tick{display:grid}
+.topo-hint{margin-top:8px;font-size:12px;color:var(--ink-500);background:var(--ink-50);border:1px solid var(--ink-100);border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:flex-start}
+.topo-hint b{color:var(--ink-900)}
+
+/* segmented control */
+.seg{display:inline-flex;background:var(--ink-100);border-radius:999px;padding:3px;gap:2px}
+.seg button{border-radius:999px;padding:7px 16px;font-size:12.5px;font-weight:600;color:var(--ink-500);transition:all .15s}
+.seg button.sel{background:#fff;color:var(--ink-900);box-shadow:var(--shadow-sm)}
+
+/* choice cards (flavor policy) */
+.choice-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.choice{border:1px solid var(--ink-200);border-radius:12px;padding:11px 13px;text-align:left;background:#fff;transition:all .15s}
+.choice:hover{border-color:var(--ink-400)}
+.choice.sel{border-color:var(--ink-900);box-shadow:0 0 0 1px var(--ink-900);background:var(--ink-50)}
+.choice .c-t{font-weight:600;font-size:13px}
+.choice .c-h{font-size:11.5px;color:var(--ink-500);margin-top:2px}
+
+/* moq quick chips */
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.qchip{border:1px solid var(--ink-200);border-radius:999px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--ink-600);background:#fff;transition:all .12s}
+.qchip:hover{border-color:var(--ink-400)}
+.qchip.sel{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+
+/* dims */
+.dims-row{display:flex;gap:8px;align-items:center}
+.dims-row .x{color:var(--ink-300);font-weight:600}
+
+/* pallet mini-viz */
+.pallet-box{display:flex;gap:16px;align-items:center;background:var(--ink-50);border:1px solid var(--ink-100);border-radius:12px;padding:12px 14px;margin-top:12px}
+.pallet-math{font-size:12.5px;color:var(--ink-600)}
+.pallet-math b{font-family:var(--font-display);font-size:16px;color:var(--ink-900)}
+.pallet-math .row2{margin-top:2px;color:var(--ink-400);font-size:11.5px}
+
+/* what's next strip */
+.next-strip{display:flex;gap:12px;align-items:center;background:var(--info-50);border:1px solid #C7DDF4;border-radius:14px;padding:13px 16px}
+.next-strip .n-ic{width:34px;height:34px;border-radius:10px;background:#fff;display:grid;place-items:center;flex:none;border:1px solid #C7DDF4}
+.next-strip p{font-size:12.5px;color:var(--info-700)}
+.next-strip p b{font-weight:700}
+
+.footer-bar{display:flex;justify-content:flex-end;gap:10px;padding-top:6px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <p class="protonote"><b>Prototype · Option B for /packaging/new</b> — visual-first two-pane create flow. Everything is clickable: pick a topology, type dimensions, switch flavor mode. No backend; the Create button just validates. Compare with the current single-column form.</p>
+
+  <div class="frame">
+    <div class="topbar">
+      <div class="logo">iL</div>
+      <button class="back">← Packaging</button>
+      <span class="crumb">Catalog / <b>Add packaging</b></span>
+      <span class="draftpill">Draft — not visible to creators</span>
+      <div class="cta">
+        <button class="btn-ghost">Save draft</button>
+        <button class="btn-primary" id="createBtn" disabled>Create &amp; add surfaces →</button>
+      </div>
+    </div>
+
+    <div class="body-grid">
+      <!-- ══ LEFT: live preview ══ -->
+      <aside class="preview-rail">
+        <div class="preview-stage">
+          <span class="stage-badge" id="stageBadge">Single container</span>
+          <span class="unit-badge" id="unitBadge">×1</span>
+          <div id="stageArt"><!-- svg injected --></div>
+          <div class="dim-caption" id="dimCaption">Add dimensions to scale the preview</div>
+        </div>
+
+        <div class="readiness">
+          <div class="meter"><i id="meterFill"></i></div>
+          <span id="meterLabel">0 of 2 required</span>
+        </div>
+
+        <div class="spec-card">
+          <h3>Spec sheet</h3>
+          <div class="spec-row"><span class="k">Name</span><span class="v muted" id="sName">—</span></div>
+          <div class="spec-row"><span class="k">Topology</span><span class="v" id="sTopo">Single container</span></div>
+          <div class="spec-row" id="rowUnits" style="display:none"><span class="k">Units / pack</span><span class="v" id="sUnits">1</span></div>
+          <div class="spec-row"><span class="k">Flavors</span><span class="v" id="sFlavor">Single flavor</span></div>
+          <div class="spec-row" id="rowPolicy" style="display:none"><span class="k">Mix policy</span><span class="v" id="sPolicy">Creator picks</span></div>
+          <div class="spec-row"><span class="k">MOQ</span><span class="v pink" id="sMoq">500 units</span></div>
+          <div class="spec-row"><span class="k">Dimensions</span><span class="v muted" id="sDims">—</span></div>
+          <div class="spec-row"><span class="k">Max contents</span><span class="v muted" id="sWeight">—</span></div>
+          <div class="spec-row"><span class="k">Pallet</span><span class="v muted" id="sPallet">—</span></div>
+        </div>
+
+        <div class="spec-card" style="background:var(--ink-900);border-color:var(--ink-900)">
+          <h3 style="color:var(--ink-400)">After create</h3>
+          <p style="font-size:12.5px;color:var(--ink-300);line-height:1.55">You'll land on the surfaces editor to add <span style="color:var(--neon-500);font-style:italic">Front, Back, Lid…</span> with die-lines and printable areas. Creators only see this packaging once it's <b style="color:#fff">Active</b>.</p>
+        </div>
+      </aside>
+
+      <!-- ══ RIGHT: steps ══ -->
+      <main class="steps-col">
+        <div class="page-h">
+          <h1>Add packaging</h1>
+          <p>Two required fields to create — everything else can wait. The preview updates as you type.</p>
+        </div>
+
+        <!-- STEP 1 -->
+        <section class="step open" id="step1">
+          <button class="step-head" onclick="toggleStep(1)">
+            <span class="step-num">1</span>
+            <span><span class="step-title">What is it?</span>
+            <div class="step-sub">Name it and pick the physical form</div></span>
+            <span class="step-state" id="state1">In progress</span>
+          </button>
+          <div class="step-body">
+            <label class="f-label">Internal name <span style="color:var(--danger-600);font-size:10px;text-transform:uppercase;letter-spacing:.05em">required</span></label>
+            <input class="text" id="fName" placeholder="e.g. 16oz wide-mouth HDPE jar" oninput="onName(this.value)" />
+            <p class="f-hint">Just for you and admin — creators see a curated display name (or this as fallback).</p>
+
+            <label class="f-label">Form factor</label>
+            <div class="topo-grid" id="topoGrid"><!-- chips injected --></div>
+            <div class="topo-hint" id="topoHint"></div>
+          </div>
+        </section>
+
+        <!-- STEP 2 -->
+        <section class="step" id="step2">
+          <button class="step-head" onclick="toggleStep(2)">
+            <span class="step-num">2</span>
+            <span><span class="step-title">How creators order it</span>
+            <div class="step-sub">Flavors and minimum batch</div></span>
+            <span class="step-state" id="state2">Defaults applied</span>
+          </button>
+          <div class="step-body">
+            <div id="unitsBlock" style="display:none">
+              <label class="f-label" id="unitsLabel">Units per pack</label>
+              <div class="inline-suffix"><input class="text sm" id="fUnits" type="number" min="2" value="6" oninput="onUnits(this.value)" /><em>inner units</em></div>
+              <p class="f-hint" id="unitsHint">How many inner containers ship as one packaging unit.</p>
+            </div>
+
+            <label class="f-label">Flavors per unit</label>
+            <div class="seg">
+              <button id="fmS" class="sel" onclick="setFlavorMode('SINGLE')">Single flavor</button>
+              <button id="fmM" onclick="setFlavorMode('MULTI')">Multi-flavor</button>
+            </div>
+            <p class="f-hint" id="fmHint">One flavor per unit — 1 jar = 1 flavor.</p>
+
+            <div id="policyBlock" style="display:none">
+              <label class="f-label">Who decides the mix?</label>
+              <div class="choice-row">
+                <button class="choice sel" id="fpC" onclick="setPolicy('CREATOR_PICK')">
+                  <div class="c-t">Creator picks flavors</div>
+                  <div class="c-h">Creator selects the flavor(s) in each unit.</div>
+                </button>
+                <button class="choice" id="fpP" onclick="setPolicy('PARTNER_FIXED')">
+                  <div class="c-t">Fixed assortment</div>
+                  <div class="c-h">You define the mix — creators can't change it.</div>
+                </button>
+              </div>
+            </div>
+
+            <label class="f-label">Minimum order quantity</label>
+            <div class="inline-suffix"><input class="text sm" id="fMoq" type="number" min="1" value="500" oninput="onMoq(this.value)" /><em>units</em></div>
+            <div class="chip-row">
+              <button class="qchip" onclick="quickMoq(250,this)">250</button>
+              <button class="qchip sel" onclick="quickMoq(500,this)">500</button>
+              <button class="qchip" onclick="quickMoq(1000,this)">1,000</button>
+              <button class="qchip" onclick="quickMoq(2500,this)">2,500</button>
+              <button class="qchip" onclick="quickMoq(5000,this)">5,000</button>
+            </div>
+            <p class="f-hint">Minimum for a single creator batch. You can override per-offering later.</p>
+          </div>
+        </section>
+
+        <!-- STEP 3 -->
+        <section class="step" id="step3">
+          <button class="step-head" onclick="toggleStep(3)">
+            <span class="step-num">3</span>
+            <span><span class="step-title">Size &amp; logistics<span class="optional-tag">Optional</span></span>
+            <div class="step-sub">Dimensions, weight, pallet spec — powers shipping quotes &amp; label fit</div></span>
+            <span class="step-state" id="state3">Skippable</span>
+          </button>
+          <div class="step-body">
+            <label class="f-label">Outer dimensions</label>
+            <div class="dims-row">
+              <div class="inline-suffix"><input class="text sm" id="fL" type="number" min="0" placeholder="Length" oninput="onDims()" /><em>mm</em></div>
+              <span class="x">×</span>
+              <div class="inline-suffix"><input class="text sm" id="fW" type="number" min="0" placeholder="Width" oninput="onDims()" /><em>mm</em></div>
+              <span class="x">×</span>
+              <div class="inline-suffix"><input class="text sm" id="fH" type="number" min="0" placeholder="Height" oninput="onDims()" /><em>mm</em></div>
+            </div>
+            <p class="f-hint">Used for shipping calculations and label dimension fit. The preview scales with these.</p>
+
+            <label class="f-label">Weights</label>
+            <div class="dims-row">
+              <div class="inline-suffix"><input class="text sm" id="fMaxW" type="number" min="0" placeholder="Max contents" oninput="onWeights()" /><em>g</em></div>
+              <div class="inline-suffix"><input class="text sm" id="fGrossW" type="number" min="0" placeholder="Gross (filled)" oninput="onWeights()" /><em>g</em></div>
+            </div>
+            <p class="f-hint">Max contents caps recipe weight; gross feeds freight math.</p>
+
+            <label class="f-label">Pallet spec (Ti–Hi)</label>
+            <div class="dims-row">
+              <div class="inline-suffix"><input class="text sm" id="fTi" type="number" min="0" placeholder="Cases / layer" oninput="onPallet()" /><em>Ti</em></div>
+              <span class="x">×</span>
+              <div class="inline-suffix"><input class="text sm" id="fHi" type="number" min="0" placeholder="Layers" oninput="onPallet()" /><em>Hi</em></div>
+            </div>
+            <div class="pallet-box" id="palletBox" style="display:none">
+              <svg width="52" height="44" viewBox="0 0 52 44" id="palletViz"></svg>
+              <div class="pallet-math"><b id="palletTotal">—</b> cases per pallet<div class="row2" id="palletDetail"></div></div>
+            </div>
+            <p class="f-hint">Authored once here — inherited by every product that ships in this packaging.</p>
+          </div>
+        </section>
+
+        <div class="next-strip">
+          <div class="n-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#163E72" stroke-width="2"><path d="M12 3v13m0 0l-4-4m4 4l4-4M4 21h16"/></svg></div>
+          <p><b>Next screen: surfaces &amp; die-lines.</b> Create this system first, then define printable surfaces (Front, Lid, Wrap…) with die-line uploads and color modes.</p>
+        </div>
+
+        <div class="footer-bar">
+          <button class="btn-ghost">Cancel</button>
+          <button class="btn-primary" id="createBtn2" disabled onclick="fakeCreate()">Create &amp; add surfaces →</button>
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+// ───────────────────────── state ─────────────────────────
+const S = {
+  name:'', topo:'SINGLE_CONTAINER', units:1, flavorMode:'SINGLE', policy:'CREATOR_PICK',
+  moq:500, L:null, W:null, H:null, maxW:null, grossW:null, ti:null, hi:null,
+}
+
+const TOPOS = [
+  {v:'SINGLE_CONTAINER', label:'Single container', hint:'One jar, bottle, pouch, can, or box.', unitsRelevant:false, defUnits:1},
+  {v:'MULTI_CONTAINER_BOX', label:'Multi-pack box', hint:'Outer carton holding N inner containers — a variety pack. Defaults to multi-flavor.', unitsRelevant:true, defUnits:6, defFlavor:'MULTI'},
+  {v:'STICK_PACK', label:'Stick pack', hint:'Single-serve sticks (powder, supplement). Units = sticks per box.', unitsRelevant:true, defUnits:30},
+  {v:'SACHET', label:'Sachet', hint:'Single-serve flexible sachets. Units = sachets per box.', unitsRelevant:true, defUnits:20},
+  {v:'CASE', label:'Case / shipper', hint:'Wholesale unit (24-pack, etc.). Units = retail units per case.', unitsRelevant:true, defUnits:24},
+  {v:'CAPSULE_JAR', label:'Capsule jar', hint:'Bottle of capsules or tablets — the supplement form factor.', unitsRelevant:false, defUnits:1},
+  {v:'POUCH_STAND_UP', label:'Stand-up pouch', hint:'With resealable zipper.', unitsRelevant:false, defUnits:1},
+  {v:'POUCH_FLAT', label:'Flat pouch', hint:'Flat sealed pouch.', unitsRelevant:false, defUnits:1},
+  {v:'TUBE', label:'Squeeze tube', hint:'Sauces, gels.', unitsRelevant:false, defUnits:1},
+  {v:'OTHER', label:'Other', hint:'Not listed — describe it in the name; admin can classify later.', unitsRelevant:false, defUnits:1},
+]
+
+// ─────────────────── tiny svg icon set ───────────────────
+const IC = {
+  stroke:'var(--ink-600)',
+}
+function icon(v, sel){
+  const s = sel ? 'var(--ink-900)' : 'var(--ink-500)'
+  const p = 'var(--pink-500)'
+  switch(v){
+    case 'SINGLE_CONTAINER': return `<svg viewBox="0 0 34 34" fill="none"><rect x="9" y="10" width="16" height="18" rx="3" stroke="${s}" stroke-width="1.8"/><rect x="11" y="6" width="12" height="4" rx="1.5" stroke="${s}" stroke-width="1.8"/><rect x="12" y="16" width="10" height="7" rx="1" fill="${p}" opacity=".25"/></svg>`
+    case 'MULTI_CONTAINER_BOX': return `<svg viewBox="0 0 34 34" fill="none"><rect x="5" y="9" width="24" height="19" rx="2.5" stroke="${s}" stroke-width="1.8"/><path d="M5 14h24" stroke="${s}" stroke-width="1.4"/><rect x="8" y="17" width="5" height="8" rx="1" stroke="${p}" stroke-width="1.5"/><rect x="14.5" y="17" width="5" height="8" rx="1" stroke="${p}" stroke-width="1.5"/><rect x="21" y="17" width="5" height="8" rx="1" stroke="${p}" stroke-width="1.5"/></svg>`
+    case 'STICK_PACK': return `<svg viewBox="0 0 34 34" fill="none"><rect x="8" y="6" width="5.5" height="22" rx="2.5" stroke="${s}" stroke-width="1.7"/><rect x="14.5" y="6" width="5.5" height="22" rx="2.5" stroke="${s}" stroke-width="1.7"/><rect x="21" y="6" width="5.5" height="22" rx="2.5" stroke="${p}" stroke-width="1.7"/></svg>`
+    case 'SACHET': return `<svg viewBox="0 0 34 34" fill="none"><path d="M9 8h16l-1.5 18h-13L9 8Z" stroke="${s}" stroke-width="1.8"/><path d="M9 8c2.5-3 13.5-3 16 0" stroke="${p}" stroke-width="1.6"/><path d="M12 13h10" stroke="${s}" stroke-width="1.3" opacity=".5"/></svg>`
+    case 'CASE': return `<svg viewBox="0 0 34 34" fill="none"><path d="M5 12l12-6 12 6v12l-12 6-12-6V12Z" stroke="${s}" stroke-width="1.8"/><path d="M5 12l12 6 12-6M17 18v12" stroke="${s}" stroke-width="1.6"/><path d="M11 9l12 6" stroke="${p}" stroke-width="1.5"/></svg>`
+    case 'CAPSULE_JAR': return `<svg viewBox="0 0 34 34" fill="none"><rect x="10" y="11" width="14" height="17" rx="4" stroke="${s}" stroke-width="1.8"/><rect x="11.5" y="6.5" width="11" height="4.5" rx="1.8" stroke="${s}" stroke-width="1.8"/><ellipse cx="14.8" cy="21" rx="1.9" ry="3" transform="rotate(-30 14.8 21)" stroke="${p}" stroke-width="1.4"/><ellipse cx="20" cy="22.5" rx="1.9" ry="3" transform="rotate(25 20 22.5)" stroke="${p}" stroke-width="1.4"/></svg>`
+    case 'POUCH_STAND_UP': return `<svg viewBox="0 0 34 34" fill="none"><path d="M10 9c0-2 14-2 14 0l-1 17c-.2 2.4-11.8 2.4-12 0L10 9Z" stroke="${s}" stroke-width="1.8"/><path d="M11 12.5h12" stroke="${p}" stroke-width="1.6"/><path d="M12.5 28c1.5 1.2 7.5 1.2 9 0" stroke="${s}" stroke-width="1.6"/></svg>`
+    case 'POUCH_FLAT': return `<svg viewBox="0 0 34 34" fill="none"><rect x="8" y="8" width="18" height="19" rx="2" stroke="${s}" stroke-width="1.8"/><path d="M8 11.5h18M8 23.5h18" stroke="${p}" stroke-width="1.4" opacity=".8"/></svg>`
+    case 'TUBE': return `<svg viewBox="0 0 34 34" fill="none"><path d="M12 12h10v14c0 1.6-10 1.6-10 0V12Z" stroke="${s}" stroke-width="1.8"/><rect x="14" y="7" width="6" height="5" rx="1.4" stroke="${s}" stroke-width="1.8"/><path d="M12 26.5c3 1.4 7 1.4 10 0" stroke="${p}" stroke-width="1.5"/></svg>`
+    default: return `<svg viewBox="0 0 34 34" fill="none"><rect x="8" y="8" width="18" height="18" rx="4" stroke-dasharray="3.5 3" stroke="${s}" stroke-width="1.8"/><text x="17" y="21.5" text-anchor="middle" font-size="11" fill="${p}" font-weight="700">?</text></svg>`
+  }
+}
+
+// ─────────────── big stage art (scales with dims) ───────────────
+function stageArt(){
+  const t = S.topo
+  // scale factor from dims (H drives height, L drives width) — gentle clamp
+  let w = 120, h = 150
+  if (S.L && S.H) {
+    const ratio = Math.min(2.2, Math.max(0.45, S.L / S.H))
+    h = Math.min(200, Math.max(90, S.H * 0.9))
+    w = Math.min(230, Math.max(70, h * ratio))
+  }
+  const p='var(--pink-500)', pk='var(--pink-100)', k='var(--ink-800)', k3='var(--ink-300)'
+  const n = Math.min(S.units, 8)
+  if (t==='MULTI_CONTAINER_BOX' || t==='CASE') {
+    const iw = Math.max(16, (w-24) / n - 4)
+    let inner = ''
+    for (let i=0;i<n;i++) inner += `<rect x="${14+i*(iw+4)}" y="${h*0.35}" width="${iw}" height="${h*0.5}" rx="3" stroke="${p}" stroke-width="2" fill="${pk}" opacity=".85"/>`
+    const more = S.units>8 ? `<text x="${w/2+6}" y="${h*0.28}" text-anchor="middle" font-size="11" fill="var(--ink-400)">+${S.units-8} more</text>` : ''
+    return `<svg width="${w+30}" height="${h+20}" viewBox="0 0 ${w+30} ${h+20}"><rect x="6" y="${h*0.22}" width="${w+12}" height="${h*0.72}" rx="8" stroke="${k}" stroke-width="2.5" fill="#fff"/><path d="M6 ${h*0.22} L${w/2+12} 8 L${w+18} ${h*0.22}" stroke="${k}" stroke-width="2.5" fill="var(--ink-50)"/>${inner}${more}</svg>`
+  }
+  if (t==='STICK_PACK' || t==='SACHET') {
+    const sw = t==='STICK_PACK' ? 22 : 42
+    const sh = t==='STICK_PACK' ? h : h*0.8
+    let sticks=''
+    const shown = Math.min(n,5)
+    for (let i=0;i<shown;i++){
+      const rot = (i - shown/2 + .5) * 7
+      sticks += `<g transform="rotate(${rot} ${w/2+15} ${sh+10})"><rect x="${w/2+15-sw/2}" y="12" width="${sw}" height="${sh}" rx="${sw/2.6}" stroke="${i===shown-1?p:k}" stroke-width="2.4" fill="${i===shown-1?pk:'#fff'}"/></g>`
+    }
+    return `<svg width="${w+60}" height="${sh+40}" viewBox="0 0 ${w+60} ${sh+40}">${sticks}<text x="${w/2+15}" y="${sh+34}" text-anchor="middle" font-size="11" fill="var(--ink-400)">${S.units} per box</text></svg>`
+  }
+  if (t==='CAPSULE_JAR') {
+    return `<svg width="${w}" height="${h+26}" viewBox="0 0 ${w} ${h+26}"><rect x="${w*0.16}" y="30" width="${w*0.68}" height="${h-14}" rx="14" stroke="${k}" stroke-width="2.5" fill="#fff"/><rect x="${w*0.22}" y="10" width="${w*0.56}" height="20" rx="7" stroke="${k}" stroke-width="2.5" fill="var(--ink-50)"/><ellipse cx="${w*0.42}" cy="${h*0.62}" rx="8" ry="14" transform="rotate(-28 ${w*0.42} ${h*0.62})" stroke="${p}" stroke-width="2" fill="${pk}"/><ellipse cx="${w*0.6}" cy="${h*0.72}" rx="8" ry="14" transform="rotate(22 ${w*0.6} ${h*0.72})" stroke="${p}" stroke-width="2" fill="#fff"/></svg>`
+  }
+  if (t==='POUCH_STAND_UP') {
+    return `<svg width="${w+20}" height="${h+20}" viewBox="0 0 ${w+20} ${h+20}"><path d="M20 22c0-10 ${w-10} -10 ${w-10} 0l-6 ${h-28}c-1 9-${w-32} 9-${w-30} 0Z" stroke="${k}" stroke-width="2.5" fill="#fff"/><path d="M24 34h${w-18}" stroke="${p}" stroke-width="2.5"/><rect x="${w/2-24}" y="${h*0.4}" width="60" height="${h*0.32}" rx="5" fill="${pk}" stroke="${p}" stroke-width="1.6" opacity=".9"/><path d="M30 ${h+2}c8 6 ${w-50} 6 ${w-42} 0" stroke="${k}" stroke-width="2.2"/></svg>`
+  }
+  if (t==='POUCH_FLAT') {
+    return `<svg width="${w+20}" height="${h}" viewBox="0 0 ${w+20} ${h}"><rect x="12" y="14" width="${w-4}" height="${h-30}" rx="6" stroke="${k}" stroke-width="2.5" fill="#fff"/><path d="M12 26h${w-4}M12 ${h-28}h${w-4}" stroke="${p}" stroke-width="2" opacity=".7"/><rect x="${w/2-18}" y="${h*0.38}" width="48" height="${h*0.24}" rx="4" fill="${pk}" opacity=".8"/></svg>`
+  }
+  if (t==='TUBE') {
+    return `<svg width="${w}" height="${h+24}" viewBox="0 0 ${w} ${h+24}"><rect x="${w*0.36}" y="8" width="${w*0.28}" height="16" rx="5" stroke="${k}" stroke-width="2.5" fill="var(--ink-50)"/><path d="M${w*0.24} 28h${w*0.52}v${h-32}c0 6-${w*0.52} 6-${w*0.52} 0Z" stroke="${k}" stroke-width="2.5" fill="#fff"/><path d="M${w*0.24} ${h-6}c${w*0.13} 5 ${w*0.39} 5 ${w*0.52} 0" stroke="${p}" stroke-width="2.2"/><rect x="${w*0.32}" y="${h*0.36}" width="${w*0.36}" height="${h*0.26}" rx="4" fill="${pk}" opacity=".85"/></svg>`
+  }
+  if (t==='OTHER') {
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect x="14" y="14" width="${w-28}" height="${h-28}" rx="14" stroke-dasharray="7 6" stroke="${k3}" stroke-width="2.5" fill="#fff"/><text x="${w/2}" y="${h/2+8}" text-anchor="middle" font-size="26" fill="${p}" font-weight="700" font-family="var(--font-display)">?</text></svg>`
+  }
+  // SINGLE_CONTAINER default jar
+  return `<svg width="${w}" height="${h+26}" viewBox="0 0 ${w} ${h+26}"><rect x="${w*0.12}" y="32" width="${w*0.76}" height="${h-16}" rx="12" stroke="${k}" stroke-width="2.5" fill="#fff"/><rect x="${w*0.2}" y="10" width="${w*0.6}" height="22" rx="6" stroke="${k}" stroke-width="2.5" fill="var(--ink-50)"/><rect x="${w*0.22}" y="${h*0.42}" width="${w*0.56}" height="${h*0.34}" rx="6" fill="${pk}" stroke="${p}" stroke-width="1.8" opacity=".9"/><text x="${w/2}" y="${h*0.42 + h*0.2}" text-anchor="middle" font-size="10" fill="${p}" font-weight="600">LABEL</text></svg>`
+}
+
+// ───────────────────────── renders ─────────────────────────
+function topoDef(){ return TOPOS.find(t=>t.v===S.topo) }
+
+function renderTopoGrid(){
+  document.getElementById('topoGrid').innerHTML = TOPOS.map(t=>`
+    <button class="topo ${t.v===S.topo?'sel':''}" onclick="setTopo('${t.v}')">
+      <span class="tick">✓</span>
+      ${icon(t.v, t.v===S.topo)}
+      <span class="t-label">${t.label}</span>
+    </button>`).join('')
+  const d = topoDef()
+  document.getElementById('topoHint').innerHTML = `<span style="flex:none;margin-top:1px">💡</span><span><b>${d.label}:</b> ${d.hint}</span>`
+}
+
+function renderStage(){
+  const d = topoDef()
+  document.getElementById('stageArt').innerHTML = stageArt()
+  document.getElementById('stageBadge').textContent = d.label
+  const ub = document.getElementById('unitBadge')
+  ub.textContent = '×' + S.units
+  ub.style.display = d.unitsRelevant ? '' : 'none'
+  document.getElementById('dimCaption').textContent =
+    (S.L&&S.W&&S.H) ? `${S.L} × ${S.W} × ${S.H} mm` : 'Add dimensions to scale the preview'
+}
+
+function renderSpec(){
+  const d = topoDef()
+  const set=(id,val,muted)=>{const el=document.getElementById(id);el.textContent=val;el.classList.toggle('muted',!!muted)}
+  set('sName', S.name || '—', !S.name)
+  set('sTopo', d.label)
+  document.getElementById('rowUnits').style.display = d.unitsRelevant ? '' : 'none'
+  set('sUnits', S.units)
+  set('sFlavor', S.flavorMode==='SINGLE'?'Single flavor':'Multi-flavor')
+  document.getElementById('rowPolicy').style.display = S.flavorMode==='MULTI' ? '' : 'none'
+  set('sPolicy', S.policy==='CREATOR_PICK'?'Creator picks':'Fixed assortment')
+  set('sMoq', S.moq.toLocaleString()+' units')
+  set('sDims', (S.L&&S.W&&S.H)?`${S.L}×${S.W}×${S.H} mm`:'—', !(S.L&&S.W&&S.H))
+  set('sWeight', S.maxW?`${S.maxW} g`:'—', !S.maxW)
+  set('sPallet', (S.ti&&S.hi)?`${S.ti}×${S.hi} = ${S.ti*S.hi} cases`:'—', !(S.ti&&S.hi))
+}
+
+function renderMeter(){
+  const req = [!!S.name.trim(), !!S.topo]
+  const done = req.filter(Boolean).length
+  const bonus = [(S.L&&S.W&&S.H), S.maxW, (S.ti&&S.hi)].filter(Boolean).length
+  const pct = (done/2)*70 + (bonus/3)*30
+  document.getElementById('meterFill').style.width = pct+'%'
+  document.getElementById('meterLabel').textContent = done<2 ? `${done} of 2 required` : (bonus<3 ? 'Ready · logistics optional' : 'Fully specced ✦')
+  const ready = done===2
+  document.getElementById('createBtn').disabled = !ready
+  document.getElementById('createBtn2').disabled = !ready
+  document.getElementById('state1').textContent = S.name.trim() ? 'Done' : 'In progress'
+  document.getElementById('step1').classList.toggle('done', !!S.name.trim())
+  document.getElementById('state3').textContent = bonus>0 ? `${bonus} of 3 added` : 'Skippable'
+}
+
+function renderAll(){ renderTopoGrid(); renderStage(); renderSpec(); renderMeter() }
+
+// ───────────────────────── events ─────────────────────────
+function toggleStep(n){
+  document.getElementById('step'+n).classList.toggle('open')
+}
+function onName(v){ S.name=v; renderSpec(); renderMeter() }
+function setTopo(v){
+  S.topo=v
+  const d = topoDef()
+  // smart defaults on switch
+  S.units = d.defUnits
+  document.getElementById('fUnits').value = d.defUnits
+  document.getElementById('unitsBlock').style.display = d.unitsRelevant?'':'none'
+  document.getElementById('unitsLabel').textContent = v==='STICK_PACK'?'Sticks per box':v==='SACHET'?'Sachets per box':v==='CASE'?'Retail units per case':'Units per pack'
+  if (d.defFlavor==='MULTI' && S.flavorMode==='SINGLE') setFlavorMode('MULTI')
+  renderAll()
+}
+function onUnits(v){ S.units=Math.max(1,parseInt(v||'1',10)); renderStage(); renderSpec() }
+function setFlavorMode(m){
+  S.flavorMode=m
+  document.getElementById('fmS').classList.toggle('sel',m==='SINGLE')
+  document.getElementById('fmM').classList.toggle('sel',m==='MULTI')
+  document.getElementById('fmHint').textContent = m==='SINGLE'
+    ? 'One flavor per unit — 1 jar = 1 flavor.'
+    : 'Multiple flavors inside one unit — a variety pack.'
+  document.getElementById('policyBlock').style.display = m==='MULTI'?'':'none'
+  renderSpec()
+}
+function setPolicy(p){
+  S.policy=p
+  document.getElementById('fpC').classList.toggle('sel',p==='CREATOR_PICK')
+  document.getElementById('fpP').classList.toggle('sel',p==='PARTNER_FIXED')
+  renderSpec()
+}
+function onMoq(v){
+  S.moq=Math.max(1,parseInt(v||'1',10))
+  document.querySelectorAll('.qchip').forEach(c=>c.classList.toggle('sel', parseInt(c.textContent.replace(/,/g,''),10)===S.moq))
+  renderSpec()
+}
+function quickMoq(v,el){
+  S.moq=v; document.getElementById('fMoq').value=v
+  document.querySelectorAll('.qchip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel')
+  renderSpec()
+}
+function onDims(){
+  S.L=parseFloat(document.getElementById('fL').value)||null
+  S.W=parseFloat(document.getElementById('fW').value)||null
+  S.H=parseFloat(document.getElementById('fH').value)||null
+  renderStage(); renderSpec(); renderMeter()
+}
+function onWeights(){
+  S.maxW=parseInt(document.getElementById('fMaxW').value,10)||null
+  S.grossW=parseInt(document.getElementById('fGrossW').value,10)||null
+  renderSpec(); renderMeter()
+}
+function onPallet(){
+  S.ti=parseInt(document.getElementById('fTi').value,10)||null
+  S.hi=parseInt(document.getElementById('fHi').value,10)||null
+  const box=document.getElementById('palletBox')
+  if(S.ti&&S.hi){
+    box.style.display=''
+    document.getElementById('palletTotal').textContent=(S.ti*S.hi).toLocaleString()
+    document.getElementById('palletDetail').textContent=`${S.ti} cases/layer × ${S.hi} layers`
+    // mini viz
+    const layers=Math.min(S.hi,5), per=Math.min(S.ti,6)
+    let cells=''
+    for(let y=0;y<layers;y++) for(let x=0;x<per;x++)
+      cells+=`<rect x="${3+x*8}" y="${36-8-y*7}" width="7" height="6" rx="1" fill="${y===layers-1?'var(--pink-300)':'var(--ink-300)'}"/>`
+    document.getElementById('palletViz').innerHTML = cells + `<rect x="1" y="37" width="50" height="5" rx="1.5" fill="var(--ink-600)"/>`
+  } else box.style.display='none'
+  renderSpec(); renderMeter()
+}
+function fakeCreate(){
+  const btn=document.getElementById('createBtn2')
+  btn.textContent='Creating…'
+  setTimeout(()=>{btn.textContent='→ /packaging/[id] · surfaces editor';btn.style.background='var(--success-500)'},700)
+}
+
+renderAll()
+</script>
+</body>
+</html>

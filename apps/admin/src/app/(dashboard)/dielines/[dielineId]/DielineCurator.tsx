@@ -270,7 +270,7 @@ export function DielineCurator({
                 <button
                   onClick={() => setOverlay((v) => !v)}
                   className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
-                    overlay ? 'border-pink-300 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50'
+                    overlay ? 'border-success-300 bg-success-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:bg-ink-50'
                   }`}
                 >
                   <Layers className="h-3.5 w-3.5" /> Overlay

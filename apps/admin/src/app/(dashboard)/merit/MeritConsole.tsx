@@ -112,7 +112,7 @@ export function MeritConsole({ initial }: { initial: MeritPolicyInput }) {
       {/* Go-live switch — this is the lever that turns standing into real badges
           and real fees. Weighted deliberately: calm while shadow, unmistakably
           live when on. */}
-      <div className={`mt-5 flex items-center justify-between gap-4 rounded-2xl border p-4 ${p.enabled ? 'border-pink-300 bg-pink-50/60' : 'border-ink-200 bg-[var(--bg-hero)]'}`}>
+      <div className={`mt-5 flex items-center justify-between gap-4 rounded-2xl border p-4 ${p.enabled ? 'border-success-300 bg-success-50/60' : 'border-ink-200 bg-[var(--bg-hero)]'}`}>
         <div className="flex items-center gap-3">
           <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${p.enabled ? 'bg-pink-600 text-white' : 'bg-ink-100 text-ink-500'}`}>
             <Power className="h-5 w-5" aria-hidden="true" />

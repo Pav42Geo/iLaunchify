@@ -566,7 +566,7 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
       </div>
 
       {pending && tab === 'create' && (
-        <div className="rounded-lg border border-pink-300 bg-pink-50 p-2.5">
+        <div className="rounded-lg border border-success-300 bg-success-50 p-2.5">
           <p className="text-[11.5px] font-semibold text-pink-800">Concept from the generator</p>
           <p className="mb-2 text-[11px] text-pink-700">“{pending.label}” is ready to drop onto this canvas.</p>
           <div
@@ -680,7 +680,7 @@ export function AiCreateDrawer({ canvas, productId, dieCut, admin = null, onClos
                 type="button"
                 onClick={() => void toggleAB()}
                 title={`Flip between pinned Concept ${pinnedIndex + 1} and the other side`}
-                className="rounded-full border border-pink-300 bg-pink-50 px-2 py-0.5 text-[10.5px] font-bold text-pink-700 hover:bg-pink-100"
+                className="rounded-full border border-success-300 bg-success-50 px-2 py-0.5 text-[10.5px] font-bold text-pink-700 hover:bg-pink-100"
               >
                 A/B
               </button>

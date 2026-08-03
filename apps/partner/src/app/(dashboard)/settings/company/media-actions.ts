@@ -7,7 +7,7 @@
 // Public profile images require the public read base — without it we refuse
 // (a signed URL would expire in creators' browsers). Audited; ownership-guarded.
 
-import { uploadFile, deleteFile, partnerFileKey } from '@ilaunchify/storage'
+import { uploadFile, deleteFile, partnerFileKey, isDevFsMode, devFsReadDataUrl } from '@ilaunchify/storage'
 import { prisma } from '@ilaunchify/db'
 import { requireUser } from '@ilaunchify/auth'
 import { logAuditAs } from '@ilaunchify/audit'
@@ -26,6 +26,12 @@ const FIELD: Record<'logo' | 'cover', 'logoUrl' | 'coverImageUrl'> = {
 function publicBase(): string | null {
   return (process.env.R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_URL)?.replace(/\/$/, '') ?? null
 }
+
+// LOCAL DEV (no R2 creds): @ilaunchify/storage writes to .dev-storage/ and has
+// no public bucket to serve from, so the profile image is inlined as a data:
+// URL. Capped well under the 6 MB upload ceiling because this value lands in a
+// DB column; production (R2 configured) always stores a short public URL.
+const DEV_FS_INLINE_MAX_BYTES = 1_500_000
 
 /** Best-effort delete of a previously stored public object by its URL. */
 async function deleteByPublicUrl(url: string | null): Promise<void> {
@@ -47,7 +53,8 @@ export async function uploadPartnerProfileImage(
   if (!FIELD[kind]) return { ok: false, error: 'Invalid image kind.' }
 
   const base = publicBase()
-  if (!base)
+  const devFs = isDevFsMode()
+  if (!base && !devFs)
     return { ok: false, error: 'Public image hosting is not configured (R2_PUBLIC_BASE_URL).' }
 
   const file = formData.get('file')
@@ -75,7 +82,19 @@ export async function uploadPartnerProfileImage(
     return { ok: false, error: `Upload failed: ${(err as Error).message}` }
   }
 
-  const url = `${base}/${upload.key}`
+  let url: string
+  if (base) {
+    url = `${base}/${upload.key}`
+  } else {
+    // dev-fs: inline the bytes so the image renders with no bucket configured.
+    if (file.size > DEV_FS_INLINE_MAX_BYTES) {
+      return {
+        ok: false,
+        error: 'Local dev without object storage: pick an image under 1.5 MB (or configure R2 for full-size uploads).',
+      }
+    }
+    url = await devFsReadDataUrl(upload.key)
+  }
   const prevUrl = kind === 'logo' ? partner.logoUrl : partner.coverImageUrl
   await prisma.partner.update({ where: { id: partner.id }, data: { [FIELD[kind]]: url } })
   await deleteByPublicUrl(prevUrl)

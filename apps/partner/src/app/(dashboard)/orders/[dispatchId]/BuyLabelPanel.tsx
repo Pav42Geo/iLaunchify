@@ -180,7 +180,7 @@ export function BuyLabelPanel({
               key={q.externalRateId}
               className={`flex cursor-pointer items-center gap-2 rounded border p-2 text-[12.5px] transition-colors ${
                 selectedRateId === q.externalRateId
-                  ? 'border-pink-500 bg-pink-50/60'
+                  ? 'border-success-500 bg-success-50/60'
                   : 'border-ink-200 bg-white hover:bg-ink-50'
               }`}
             >

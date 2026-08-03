@@ -282,7 +282,7 @@ export interface ProductionManifest {
   shipTo: {
     // Widened Phase L1 (docs/LOGISTICS_AND_FULFILLMENT.md §2): HOLD keeps goods
     // at the producing partner; CHANNEL_INBOUND ships into a channel FC.
-    type: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER' | 'HOLD_AT_MANUFACTURER' | 'CHANNEL_INBOUND'
+    type: 'CREATOR_ADDRESS' | 'WAREHOUSE_PARTNER' | 'HOLD_AT_MANUFACTURER' | 'CHANNEL_INBOUND' | 'DIRECT_CONSUMER'
     contactName: string
     addressLine1: string
     addressLine2: string | null

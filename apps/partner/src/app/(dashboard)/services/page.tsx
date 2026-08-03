@@ -215,14 +215,14 @@ export default async function ServicesPage({
               href={`/services?svc=${s.id}`}
               className={cn(
                 'rounded-[14px] border-[1.5px] p-3.5 transition-colors',
-                on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white hover:border-ink-400',
+                on ? 'border-success-500 bg-success-50' : 'border-ink-200 bg-white hover:border-ink-400',
               )}
             >
               <div className="flex items-center gap-2.5">
                 <span
                   className={cn(
-                    'grid h-8 w-8 flex-none place-items-center rounded-[9px] text-pink-700',
-                    on ? 'bg-white' : 'bg-pink-50',
+                    'grid h-8 w-8 flex-none place-items-center rounded-[9px]',
+                    on ? 'bg-white text-success-700' : 'bg-ink-50 text-ink-500',
                   )}
                 >
                   {serviceIcon(type)}

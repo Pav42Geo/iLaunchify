@@ -46,6 +46,10 @@ export interface PackagingStudioShellProps {
   view?: StudioView
   onViewChange?: (v: StudioView) => void
   showViewToggle?: boolean
+  /** Label of the 3D toggle button. P4d (STEP4_PACKAGING_DIELINES_2026-07-28.md):
+   *  the partner studio relabels it "3D preview" to signal read-only/derived;
+   *  default keeps every other host unchanged. */
+  view3dLabel?: string
 
   /** Top-bar right cluster (Next CTA / Save / bell + account). Optional. */
   rightSlot?: React.ReactNode
@@ -94,6 +98,7 @@ export function PackagingStudioShell({
   view = '3d',
   onViewChange,
   showViewToggle = true,
+  view3dLabel = '3D',
   rightSlot,
   rail,
   activeTool,
@@ -126,7 +131,7 @@ export function PackagingStudioShell({
                   view === '3d' ? 'bg-ink-900 text-white' : 'text-ink-600 hover:text-ink-900'
                 }`}
               >
-                <BoxGlyph /> 3D
+                <BoxGlyph /> {view3dLabel}
               </button>
               <button
                 type="button"
