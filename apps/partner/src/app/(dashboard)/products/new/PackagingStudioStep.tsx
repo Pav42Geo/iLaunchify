@@ -1657,16 +1657,23 @@ function LibraryDrawer({
                           <button type="button" onClick={() => onPick(s.id)} className={`flex-1 rounded-lg border px-2 py-1.5 text-[11.5px] font-medium ${picked ? 'border-pink-300 bg-white text-pink-700' : 'border-ink-200 text-ink-700 hover:bg-ink-50'}`}>{picked ? 'Designing this' : 'Design this'}</button>
                           <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ${hasDie ? 'border-success-200 bg-success-50 text-success-700' : 'border-ink-200 bg-white text-ink-400'}`}>{hasDie ? 'die-line ✓' : 'no die-line'}</span>
                         </div>
-                        {/* Custom (non-catalog) packaging: submit to admin to join the Library.
-                            Submission STATUS lives on the partner profile, not here. */}
+                        {/* Custom (non-catalog) packaging: submit to admin to join the
+                            Library. Status + admin notes show RIGHT HERE (studio-first,
+                            Pavel 2026-08-03): the studio is the one packaging surface,
+                            the /packaging tracker is slated for retirement. */}
                         {att && !att.packagingTypeId && (
-                          att.reviewStatus === 'SUBMITTED' ? (
+                          att.reviewStatus === 'APPROVED' ? (
+                            <div className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-success-200 bg-success-50 px-2 py-1.5 text-[11px] font-semibold text-success-700"><Check className="h-3 w-3" /> In catalog</div>
+                          ) : att.reviewStatus === 'SUBMITTED' ? (
                             <div className="mt-1.5 rounded-lg border border-warning-200 bg-warning-50 px-2 py-1.5">
                               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-warning-800"><Check className="h-3 w-3" /> Awaiting admin approval</div>
-                              <p className="mt-0.5 text-[10px] leading-snug text-warning-700">Packaging, die-line &amp; product all need admin sign-off before going live. Track status on your Packaging page.</p>
+                              <p className="mt-0.5 text-[10px] leading-snug text-warning-700">Packaging, die-line &amp; product all need admin sign-off before going live. Status updates show here.</p>
                             </div>
                           ) : (
                             <>
+                              {att.reviewStatus === 'REJECTED' && att.reviewNotes && (
+                                <p className="mt-1.5 rounded-lg border border-danger-200 bg-danger-50 px-2 py-1.5 text-[10.5px] leading-snug text-danger-700"><span className="font-semibold">Changes requested:</span> {att.reviewNotes}</p>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => onSubmitReview(s.id)}
@@ -1676,7 +1683,7 @@ function LibraryDrawer({
                               >
                                 <Upload className="h-3 w-3" /> {busyReview === s.id ? 'Submitting…' : att.reviewStatus === 'REJECTED' ? 'Resubmit for catalog review' : 'Submit for catalog review (optional)'}
                               </button>
-                              <p className="mt-1 px-0.5 text-[10px] leading-snug text-ink-400">Optional — submitting your product sends this for review too.</p>
+                              <p className="mt-1 px-0.5 text-[10px] leading-snug text-ink-400">Optional: submitting your product sends this for review too.</p>
                             </>
                           )
                         )}

@@ -597,7 +597,7 @@ export async function addPackagingLink(input: {
   basePriceCents: number
   leadTimeDays: number
 }): Promise<Result> {
-  const { partner, template, error } = await authorize(input.productTemplateId)
+  const { user, partner, template, error } = await authorize(input.productTemplateId)
   if (error) return { ok: false, error }
 
   // Verify the picked PackagingSystem belongs to this partner and is ACTIVE
@@ -608,8 +608,22 @@ export async function addPackagingLink(input: {
   if (!sys || sys.partnerId !== partner.id) {
     return { ok: false, error: 'Packaging system not found in your catalog.' }
   }
+  // Studio-first flow (Pavel 2026-08-03): attaching packaging to a product IS
+  // the activation intent, so a DRAFT system auto-activates here instead of
+  // bouncing the partner to /packaging. Only RETIRED still blocks.
+  if (sys.status === 'RETIRED') {
+    return { ok: false, error: 'This packaging is retired. Reactivate it before linking to a product.' }
+  }
   if (sys.status !== 'ACTIVE') {
-    return { ok: false, error: 'Activate the packaging system before linking to a product.' }
+    await prisma.packagingSystem.update({ where: { id: input.packagingSystemId }, data: { status: 'ACTIVE' } })
+    await logAuditAs(user!, {
+      entityType: 'PackagingSystem',
+      entityId: input.packagingSystemId,
+      action: 'PACKAGING_ACTIVATE',
+      fromValue: sys.status,
+      toValue: 'ACTIVE',
+      payload: { partnerId: partner.id, autoActivatedOnLink: true, productTemplateId: template.id },
+    })
   }
   if (input.basePriceCents < 1) return { ok: false, error: 'Set a base price.' }
   if (input.leadTimeDays < 0) return { ok: false, error: 'Lead time must be ≥ 0.' }
