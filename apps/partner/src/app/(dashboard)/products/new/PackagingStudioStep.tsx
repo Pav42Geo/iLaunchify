@@ -175,15 +175,21 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 let _id = 0
 const newFrameId = (k: string) => `f_${k}_${Date.now()}_${_id++}`
 
-export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onSaveDraft, nextLabel = 'Next step →', headerRight, studioLogo }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; onSaveDraft?: () => void; nextLabel?: string; headerRight?: ReactNode; studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null } }) {
+export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onSaveDraft, nextLabel = 'Next step →', headerRight, studioLogo, asModal = false, initialSystemId = null }: { draftId: string | null; systems?: StudioPackagingOption[]; onNext?: () => void; onBack?: () => void; onSaveDraft?: () => void; nextLabel?: string; headerRight?: ReactNode; studioLogo?: { kind: 'full' | 'mark'; src: string | null; sublabel: string | null }
+  /** P4c modal chrome (STEP4_PACKAGING_DIELINES_2026-07-28.md §3.2b): the Next
+   *  CTA flushes the pending autosave before closing (save-and-exit) and Back
+   *  renders as "✕ Close", prompting only when edits are still unsaved. */
+  asModal?: boolean
+  /** Scope the studio to the die-line row the manufacturer clicked (P4c). */
+  initialSystemId?: string | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const handleRef = useRef<PackagingSceneHandle | null>(null)
 
   const [data, setData] = useState<PackagingStudioData | null>(null)
-  // 3D is the default view (its toggle reads black/active); switching to Die-line
-  // loads the Fabric.js-style die-line canvas (existing die-lines) or the
-  // add-a-die-line CTA when the attached packaging has none yet.
-  const [view, setView] = useState<'3d' | 'die'>('3d')
+  // P4d: the die-line editor is the studio's primary surface in the Step-4
+  // modal (2D-first, per STEP4_PACKAGING_DIELINES_2026-07-28.md); 3D is a
+  // derived read-only preview. Legacy (non-modal) mounts keep 3D-first.
+  const [view, setView] = useState<'3d' | 'die'>(asModal ? 'die' : '3d')
   // 3D Open/Close fold — continuous 0 (open/flat net) … 1 (assembled/solid). Only
   // meaningful for foldable cartons (box topology); rigid containers stay solid.
   const [foldAmt, setFoldAmt] = useState(1)
@@ -243,10 +249,13 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
       if (!alive) return
       if (r.ok) {
         setData(r.data)
-        const firstTyped = r.data.attached.find((a) => a.packagingTypeId) ?? r.data.attached[0]
-        if (firstTyped) {
-          setActiveSystemId(firstTyped.systemId)
-          setTopology(toStudioTopology(firstTyped.topology))
+        // P4c scoping: when opened from a Step-4 die-line row, start on THAT
+        // container; otherwise fall back to the first typed attachment.
+        const preferred = (initialSystemId ? r.data.attached.find((a) => a.systemId === initialSystemId) : undefined)
+          ?? r.data.attached.find((a) => a.packagingTypeId) ?? r.data.attached[0]
+        if (preferred) {
+          setActiveSystemId(preferred.systemId)
+          setTopology(toStudioTopology(preferred.topology))
         }
       }
     })
@@ -267,6 +276,12 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   // The partner instead lays mandatory frames on a blank/uploaded board that saves
   // on the system (customDielineLayout). Active in the Die-line view for such systems.
   const customMode = Boolean(activeSystem) && !activeSystem?.packagingTypeId && !resolvedDielineId
+
+  // P4d: the 3D pane is a derived read-only preview, available only when the
+  // container has a parametric model (typed packaging). Type-less custom
+  // packaging hides the toggle entirely and the die-line is the only view.
+  const has3d = !customMode && Boolean(activeSystem?.packagingTypeId)
+  useEffect(() => { if (!has3d && view === '3d') setView('die') }, [has3d, view])
   const [customBackdrop, setCustomBackdrop] = useState<string | null>(null)
 
   // Spin up / tear down the three.js scene only while the 3D view is showing.
@@ -613,12 +628,21 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
       {onBack && (
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => {
+            // Modal "✕ Close": prompt ONLY while an edit is still unsaved; a
+            // confirmed discard also cancels the pending debounce so nothing
+            // writes after close. Saved state closes silently.
+            if (asModal && saveStatus === 'saving') {
+              if (!window.confirm('Close without saving the last edits?')) return
+              if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+            }
+            onBack()
+          }}
           className="inline-flex items-center gap-1 rounded-md py-2 pl-1.5 pr-2.5 text-[13px] font-medium text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
-          title="Back to recipe step"
-          aria-label="Back"
+          title={asModal ? 'Close the studio' : 'Back to recipe step'}
+          aria-label={asModal ? 'Close' : 'Back'}
         >
-          <ArrowLeft className="h-5 w-5" /> Back
+          {asModal ? <><X className="h-5 w-5" /> Close</> : <><ArrowLeft className="h-5 w-5" /> Back</>}
         </button>
       )}
     </span>
@@ -627,7 +651,15 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
   const studioRight = (
     <>
       {onNext && (
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600" onClick={() => onNext()}>{nextLabel}</button>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 rounded-full border border-success-500 bg-success-500 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600"
+          onClick={() => {
+            // Save-and-exit (P4c): flush the pending debounced autosave FIRST so
+            // an instant close never loses the last edits, then hand off.
+            void (async () => { await saveNow().catch(() => {}); onNext() })()
+          }}
+        >{nextLabel}</button>
       )}
       {headerRight}
     </>
@@ -646,6 +678,8 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
       centerSlot={studioCenter}
       view={view}
       onViewChange={setView}
+      showViewToggle={has3d}
+      view3dLabel="3D preview"
       rail={studioRail}
       activeTool={tool}
       onToolChange={(k) => setTool(k as Tool)}
@@ -704,7 +738,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               <canvas ref={canvasRef} className="block h-full w-full" />
               {sceneError
                 ? <div className="absolute bottom-4 left-4 rounded-lg border border-pink-100 bg-pink-50 px-3 py-1.5 text-[11.5px] text-pink-700">{sceneError}</div>
-                : <div className="absolute bottom-4 left-4 rounded-lg border border-ink-200 bg-white/80 px-3 py-1.5 text-[11.5px] text-ink-500">Drag to orbit · scroll to zoom · click a pink surface, then switch to Die-line to lay its frames</div>}
+                : <div className="absolute bottom-4 left-4 rounded-lg border border-ink-200 bg-white/80 px-3 py-1.5 text-[11.5px] text-ink-500"><span className="font-semibold text-ink-700">Read-only preview, derived from the die-line.</span> Drag to orbit · scroll to zoom · click a pink surface, then switch to Die-line to lay its frames</div>}
               <div className="absolute right-4 top-4 flex gap-3 rounded-lg border border-ink-200 bg-white/80 px-2.5 py-1.5 text-[11px] text-ink-500">
                 <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2.5 w-2.5 rounded-[3px] bg-pink-500" /> Decorable</span>
                 <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2.5 w-2.5 rounded-[3px] bg-ink-400" /> Non-printed</span>
@@ -797,7 +831,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
                   <p className="mx-auto mt-1.5 max-w-[16rem] text-[12px] leading-relaxed text-ink-500">
                     {activeSystem?.packagingTypeName ? `Upload or create a die-line of type "${activeSystem.packagingTypeName}" to lay its mandatory-element frames.` : 'Attach a typed packaging system, then add a die-line to start laying frames.'}
                   </p>
-                  <Link href="/packaging/dielines/new" className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-pink-500 bg-pink-500 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600">
+                  <Link href="/packaging/dielines/new" className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-success-500 bg-success-500 px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:border-pink-600 hover:bg-pink-600">
                     <Upload className="h-3.5 w-3.5" /> Upload / create a die-line
                   </Link>
                 </div>
@@ -895,6 +929,22 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
     : null
 }
 
+// Mockup pickers accept EVERYTHING at the OS dialog and validate here instead:
+// macOS Chrome greys out .glb/.gltf/.obj files when the accept attribute mixes a
+// MIME wildcard (image/*) with extensions the OS has no registered type for
+// (found 2026-08-03, Pavel could not pick a .glb). Die-line formats (PDF/AI/SVG/
+// DXF) are all OS-known, so that group keeps its accept filter.
+const MOCKUP_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'glb', 'gltf', 'obj', 'usdz'])
+function splitMockupFiles(fl: FileList | null): { ok: File[]; bad: string[] } {
+  const ok: File[] = []
+  const bad: string[] = []
+  for (const f of Array.from(fl ?? [])) {
+    if (MOCKUP_EXTS.has((f.name.split('.').pop() ?? '').toLowerCase())) ok.push(f)
+    else bad.push(f.name)
+  }
+  return { ok, bad }
+}
+
 // Manage a custom packaging's uploaded mockups + die-lines after creation.
 function ManageFilesModal({ system, onClose }: { system: { id: string; name: string } | null; onClose: () => void }) {
   const [files, setFiles] = useState<StudioFile[]>([])
@@ -909,7 +959,11 @@ function ManageFilesModal({ system, onClose }: { system: { id: string; name: str
   }, [system, refresh])
   if (!system) return null
 
-  const addMockups = (fl: FileList | null) => { if (fl) setMockups((p) => [...p, ...Array.from(fl).map((file) => ({ file, label: '' }))]) }
+  const addMockups = (fl: FileList | null) => {
+    const { ok, bad } = splitMockupFiles(fl)
+    if (bad.length) toast.error(`Not a mockup format (JPG, PNG, GLB, GLTF, OBJ, USDZ): ${bad.join(', ')}`)
+    if (ok.length) setMockups((p) => [...p, ...ok.map((file) => ({ file, label: '' }))])
+  }
   const addDielines = (fl: FileList | null) => { if (fl) setDielines((p) => [...p, ...Array.from(fl).map((file) => ({ file, panel: 'FRONT', label: '' }))]) }
   const hasNew = mockups.length + dielines.length > 0
 
@@ -977,7 +1031,7 @@ function ManageFilesModal({ system, onClose }: { system: { id: string; name: str
           </div>
 
           {/* Add new */}
-          <FileGroup title="Add mockups" hint="JPG, PNG, GLB, GLTF, OBJ" accept="image/*,.glb,.gltf,.obj,.usdz" addLabel="Add mockup(s)" count={mockups.length} onAdd={addMockups}>
+          <FileGroup title="Add mockups" hint="JPG, PNG, GLB, GLTF, OBJ" addLabel="Add mockup(s)" count={mockups.length} onAdd={addMockups}>
             {mockups.map((m, i) => (
               <FileRow key={i} file={m.file} onRemove={() => setMockups((p) => p.filter((_, idx) => idx !== i))} meta={<input value={m.label} onChange={(e) => setMockups((p) => p.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} placeholder="Label" className="w-24 rounded-md border border-ink-200 px-2 py-1 text-[11px] outline-none focus:border-pink-500" />} />
             ))}
@@ -1037,7 +1091,11 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
   }, [open])
   if (!open) return null
 
-  const addMockups = (files: FileList | null) => { if (files) setMockups((p) => [...p, ...Array.from(files).map((file) => ({ file, label: '' }))]) }
+  const addMockups = (files: FileList | null) => {
+    const { ok, bad } = splitMockupFiles(files)
+    if (bad.length) toast.error(`Not a mockup format (JPG, PNG, GLB, GLTF, OBJ, USDZ): ${bad.join(', ')}`)
+    if (ok.length) setMockups((p) => [...p, ...ok.map((file) => ({ file, label: '' }))])
+  }
   const addDielines = (files: FileList | null) => { if (files) setDielines((p) => [...p, ...Array.from(files).map((file) => ({ file, panel: 'FRONT', label: '' }))]) }
 
   async function submit() {
@@ -1118,7 +1176,6 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
           <FileGroup
             title="Mockups & photos"
             hint="JPG, PNG, GLB, GLTF, OBJ — add one per component"
-            accept="image/*,.glb,.gltf,.obj,.usdz"
             addLabel="Add mockup(s)"
             count={mockups.length}
             onAdd={addMockups}
@@ -1179,7 +1236,7 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
 const DIELINE_PANELS = ['FRONT', 'BACK', 'TOP', 'BOTTOM', 'LEFT', 'RIGHT', 'OTHER']
 
 // A labelled group: header + "add files" (multiple) + the list of picked rows.
-function FileGroup({ title, hint, accept, addLabel, count, onAdd, children }: { title: string; hint: string; accept: string; addLabel: string; count: number; onAdd: (files: FileList | null) => void; children: ReactNode }) {
+function FileGroup({ title, hint, accept, addLabel, count, onAdd, children }: { title: string; hint: string; accept?: string; addLabel: string; count: number; onAdd: (files: FileList | null) => void; children: ReactNode }) {
   const ref = useRef<HTMLInputElement>(null)
   return (
     <div>
@@ -1339,7 +1396,7 @@ function LibraryDrawer({
   const filtered = q ? systems.filter((s) => s.partnerName.toLowerCase().includes(q) || s.topology.toLowerCase().includes(q)) : systems
   const catFiltered = q ? catalog.filter((c) => c.displayName.toLowerCase().includes(q) || (CATEGORY_LABEL[c.category] ?? c.category).toLowerCase().includes(q)) : catalog
   const catGroups = CATEGORY_ORDER.map((cat) => ({ cat, items: catFiltered.filter((c) => c.category === cat) })).filter((g) => g.items.length > 0)
-  const tabCls = (on: boolean) => `flex-1 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${on ? 'bg-pink-500 text-white' : 'text-ink-600 hover:bg-ink-100'}`
+  const tabCls = (on: boolean) => `flex-1 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${on ? 'bg-ink-900 text-white' : 'text-ink-600 hover:bg-ink-100'}`
 
   // Category navigation (Pacdora-style): a sticky horizontal chip strip + a
   // chevron that expands the full taxonomy as text. `activeCat === null` = All.
@@ -1578,7 +1635,7 @@ function LibraryDrawer({
                 const picked = s.id === activeSystemId
                 const hasDie = att?.packagingTypeId ? dielines.some((d) => d.packagingTypeId === att.packagingTypeId) : false
                 return (
-                  <div key={s.id} className={`rounded-xl border px-3 py-2.5 ${picked ? 'border-pink-500 bg-pink-50' : 'border-ink-200'}`}>
+                  <div key={s.id} className={`rounded-xl border px-3 py-2.5 ${picked ? 'border-success-500 bg-success-50' : 'border-ink-200'}`}>
                     <div className="flex items-center gap-2.5">
                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink-50 text-ink-500"><BoxIcon className="h-4 w-4" /></span>
                       <span className="min-w-0 flex-1">
@@ -1589,7 +1646,7 @@ function LibraryDrawer({
                         type="button"
                         onClick={() => onToggleAttach(s.id, !on)}
                         disabled={busyAttach === s.id || !hasDraft}
-                        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${on ? 'border border-pink-200 bg-pink-50 text-pink-700' : 'bg-pink-500 text-white hover:bg-pink-600'}`}
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${on ? 'border border-success-200 bg-success-50 text-success-700' : 'bg-pink-500 text-white hover:bg-pink-600'}`}
                       >
                         {busyAttach === s.id ? '…' : on ? 'Attached ✓' : '+ Attach'}
                       </button>
@@ -1648,7 +1705,7 @@ function LibraryDrawer({
                     type="button"
                     disabled={!s.decorable}
                     onClick={() => s.decorable && onSelectSurface(s.key)}
-                    className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[12px] transition-colors disabled:opacity-50 ${on ? 'border-pink-500 bg-pink-50' : 'border-ink-200 hover:border-pink-200 hover:bg-pink-50/40'}`}
+                    className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[12px] transition-colors disabled:opacity-50 ${on ? 'border-success-500 bg-success-50' : 'border-ink-200 hover:border-pink-200 hover:bg-pink-50/40'}`}
                   >
                     <span className="h-2.5 w-2.5 shrink-0 rounded-[3px]" style={{ background: s.decorable ? '#FF2E63' : '#9A9CA6' }} />
                     <span className="min-w-0 flex-1">
@@ -1749,7 +1806,7 @@ function FramesDrawer({ layout, selected, issues, confirmed, onConfirm, onAdd, o
         <ul className="space-y-0.5">
           {layout.frames.map((f) => (
             <li key={f.id}>
-              <button onClick={() => onSelect(f.id)} className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[12px] hover:bg-ink-50 ${selected?.id === f.id ? 'bg-pink-50' : ''}`}>
+              <button onClick={() => onSelect(f.id)} className={`flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[12px] hover:bg-ink-50 ${selected?.id === f.id ? 'bg-success-50' : ''}`}>
                 <span className="h-2 w-2 rounded-full" style={{ background: SCOPE_COLOR[FRAME_SCOPE[f.kind]].stroke }} />
                 <span className="flex-1 truncate">{KIND_LABEL[f.kind]}</span>
                 {f.required && <span className="text-[9px] font-semibold uppercase text-ink-400">req</span>}
@@ -1831,7 +1888,7 @@ function CatChip({ label, active, onClick }: { label: string; active: boolean; o
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${active ? 'bg-pink-500 text-white' : 'bg-ink-50 text-ink-600 hover:bg-ink-100'}`}
+      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-semibold transition-colors ${active ? 'bg-ink-900 text-white' : 'bg-ink-50 text-ink-600 hover:bg-ink-100'}`}
     >
       {label}
     </button>
@@ -2025,7 +2082,7 @@ function FinishesDrawer({ draftId }: { draftId: string | null }) {
                 return (
                   <div
                     key={o.partnerFinishId}
-                    className={`rounded-xl border px-3 py-2.5 ${s.offered ? 'border-pink-500 bg-pink-50' : 'border-ink-200 bg-white'}`}
+                    className={`rounded-xl border px-3 py-2.5 ${s.offered ? 'border-success-500 bg-success-50' : 'border-ink-200 bg-white'}`}
                   >
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <label className="flex items-center gap-2 text-[12px] font-medium text-ink-900">
