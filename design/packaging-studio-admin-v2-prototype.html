@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>iLaunchify · Packaging Studio (Admin) v2 · Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bricolage+Grotesque:wght@500;600;700;800&family=Fraunces:ital,wght@1,400;1,500;1,600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --pink-50:#FFE9F0;--pink-100:#FFD0E0;--pink-200:#FFB3CC;--pink-300:#FF7FA8;--pink-400:#FF5285;
+  --pink-500:#FF2E63;--pink-600:#E91E5A;--pink-700:#C71350;--pink-800:#9E0E40;--pink-900:#6E0A2D;
+  --neon-300:#D4FF7A;--neon-400:#C2FF4D;--neon-500:#B5FF3D;--neon-600:#9EE61F;
+  --ink-50:#F8F8F9;--ink-100:#EEEFF1;--ink-200:#E0E1E5;--ink-300:#CBCCD3;--ink-400:#9A9CA6;
+  --ink-500:#6B6D78;--ink-600:#474954;--ink-700:#33343C;--ink-800:#232327;--ink-900:#18181A;
+  --success-50:#E7F4EC;--success-100:#C9E7D5;--success-500:#1E7C4A;--success-600:#176A3E;
+  --warning-50:#FFF4E2;--warning-500:#B45309;
+  --danger-50:#FBE8E7;--danger-500:#C2362F;
+  --info-50:#E8F1FB;--info-500:#1F5BA8;--info-700:#163E72;
+  --font-sans:'Inter',-apple-system,system-ui,sans-serif;
+  --font-display:'Bricolage Grotesque','Inter',sans-serif;
+  --font-serif:'Fraunces',Georgia,serif;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-2xl:20px;--r-pill:999px;
+  --shadow-sm:0 1px 2px rgba(24,24,26,.06);--shadow-md:0 4px 10px rgba(24,24,26,.08);
+  --shadow-lg:0 12px 28px rgba(24,24,26,.12);--shadow-xl:0 24px 48px rgba(24,24,26,.16);
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--ink-900);background:var(--ink-100);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;font-size:13px;color:var(--ink-900)}
+.disp{font-family:var(--font-display);letter-spacing:-.01em}
+
+/* ============ chrome ============ */
+.studio{display:flex;flex-direction:column;height:100vh}
+.topbar{display:flex;align-items:center;gap:14px;background:#fff;border-bottom:1px solid var(--ink-200);padding:10px 16px;z-index:60}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:800;font-size:15px}
+.brand .sq{width:24px;height:24px;border-radius:7px;background:var(--pink-500);display:grid;place-items:center;color:#fff;font-size:12px}
+.brand small{font-family:var(--font-sans);font-weight:600;color:var(--ink-500);font-size:12px;border-left:1px solid var(--ink-200);padding-left:10px;margin-left:2px}
+.ctx{display:flex;align-items:center;gap:8px;min-width:0}
+.ctx b{font-family:var(--font-display);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:var(--r-pill);padding:3px 10px;font-size:11px;font-weight:700}
+.pill.cat{background:var(--ink-100);color:var(--ink-700)}
+.pill.ok{background:var(--success-50);color:var(--success-600)}
+.topbar .spacer{flex:1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:13px;border-radius:var(--r-pill);padding:0 16px;height:38px;transition:all .18s var(--ease-out);white-space:nowrap}
+.btn-save{background:var(--success-500);color:#fff}.btn-save:hover{background:var(--success-600)}
+.btn-pink{background:var(--pink-500);color:#fff}.btn-pink:hover{background:var(--pink-600)}
+.btn-ghost{border:1px solid var(--ink-200);color:var(--ink-700);background:#fff}.btn-ghost:hover{border-color:var(--ink-400)}
+.btn.sm{height:32px;font-size:12px;padding:0 12px}
+.btn.xs{height:26px;font-size:11px;padding:0 10px}
+
+.main{display:flex;flex:1;min-height:0}
+
+/* ============ ONE panel: Library ============ */
+.library{width:330px;background:#fff;border-right:1px solid var(--ink-200);display:flex;flex-direction:column;min-height:0}
+.library .lhead{padding:14px 14px 10px;border-bottom:1px solid var(--ink-100);display:flex;align-items:center;justify-content:space-between}
+.library .lhead h2{font-family:var(--font-display);font-size:15px;font-weight:700}
+.library .lbody{flex:1;overflow-y:auto;padding:12px 14px 24px}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--ink-200);border-radius:10px;padding:8px 10px;margin-bottom:10px;background:var(--ink-50)}
+.search input{border:none;background:transparent;outline:none;flex:1;font-size:13px}
+/* category carousel: EXACT Design Studio pattern: chips scroll UNDER pinned
+   arrows that sit on white fade gradients; wheel scrolls; chevron expands the
+   full taxonomy as wrapped text chips. */
+.chipbar{position:relative;margin-bottom:12px}
+.chipscroll{display:flex;align-items:center;gap:4px;overflow-x:auto;padding:6px 58px 6px 30px;scroll-behavior:smooth;scrollbar-width:none}
+.chipscroll::-webkit-scrollbar{display:none}
+.chip{border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:4px 11px;font-size:11.5px;font-weight:600;color:var(--ink-600);background:#fff;white-space:nowrap;flex:none}
+.chip:hover{border-color:var(--pink-300)}
+.chip.on{background:var(--ink-900);color:#fff;border-color:var(--ink-900)}
+.chipedge{position:absolute;inset:0 auto 0 0;display:flex;align-items:center;z-index:1;pointer-events:none;padding-right:14px;background:linear-gradient(to right,#fff 55%,transparent)}
+.chipedge.right{inset:0 0 0 auto;padding:0 2px 0 14px;background:linear-gradient(to left,#fff 55%,transparent)}
+.chipedge button{pointer-events:auto;display:grid;place-items:center;height:28px;width:24px;border-radius:8px;color:var(--ink-500);font-size:13px}
+.chipedge button:hover{background:var(--ink-100);color:var(--ink-800)}
+.chipexp{display:none;flex-wrap:wrap;gap:5px;margin:-4px 0 12px}
+.chipexp.show{display:flex}
+.cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.mcard{border:1px solid var(--ink-200);border-radius:var(--r-xl);overflow:hidden;background:#fff;text-align:left;transition:all .15s var(--ease-out);position:relative}
+.mcard:hover{border-color:var(--pink-300);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.mcard.sel{border-color:var(--pink-500);box-shadow:0 0 0 3px var(--pink-50)}
+.mcard .thumb{aspect-ratio:1;background:linear-gradient(145deg,var(--ink-50),var(--ink-100));display:grid;place-items:center;position:relative}
+.mcard .thumb .glb3d{position:absolute;top:6px;right:6px;background:var(--ink-900);color:var(--neon-500);font-size:8.5px;font-weight:800;border-radius:var(--r-pill);padding:2px 7px}
+.mcard .edit{position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.95);box-shadow:var(--shadow-sm);display:none;place-items:center;font-size:12px;color:var(--ink-600)}
+.mcard:hover .edit{display:grid}
+.mcard .edit:hover{color:var(--pink-600)}
+.mcard .meta{padding:7px 9px 9px;display:block}
+.mcard .meta b{display:block;font-size:11.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcard .meta span{font-size:10px;color:var(--ink-400)}
+.newcard{border:1.5px dashed var(--ink-300);border-radius:var(--r-xl);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--ink-500);font-weight:600;font-size:12px;min-height:130px;background:#fff}
+.newcard:hover{border-color:var(--pink-400);color:var(--pink-600);background:var(--pink-50)}
+.newcard .plus{width:28px;height:28px;border-radius:50%;background:var(--pink-500);color:#fff;display:grid;place-items:center;font-size:16px}
+
+/* mini can thumbs */
+.minican{width:44%;aspect-ratio:.62;border-radius:10px 10px 9px 9px/16px 16px 7px 7px;background:linear-gradient(90deg,#c9ccd4 0%,#f4f5f7 22%,#ffffff 40%,#e7e9ee 58%,#b9bcc6 82%,#d4d6dd 100%);box-shadow:inset 0 3px 4px rgba(255,255,255,.7),inset 0 -4px 6px rgba(24,24,26,.18),0 6px 12px rgba(24,24,26,.14);position:relative}
+.minican::before{content:"";position:absolute;inset:2px 4px auto;height:6%;border-radius:50%;background:linear-gradient(180deg,#9a9ca6,#d8dade)}
+.minican.jar{aspect-ratio:.9;border-radius:14px}
+.minican.box{aspect-ratio:.8;border-radius:6px;background:linear-gradient(135deg,#e8ddca,#d3c3a3 55%,#c2ae89)}
+.minican.pouch{aspect-ratio:.7;border-radius:10px 10px 16px 16px;background:linear-gradient(160deg,#d8dade,#b9bcc6)}
+.minican.tube{aspect-ratio:.45;border-radius:12px 12px 5px 5px;background:linear-gradient(90deg,#c9ccd4,#fff 45%,#c9ccd4)}
+
+/* ============ canvas ============ */
+.canvas{flex:1;position:relative;display:flex;flex-direction:column;min-width:0;background:radial-gradient(1200px 500px at 50% -10%, #ffffff 0%, var(--ink-100) 70%)}
+.stage{flex:1;display:grid;place-items:center;position:relative;overflow:hidden}
+.stage .hint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:7px 16px;font-size:11.5px;color:var(--ink-500);box-shadow:var(--shadow-sm);white-space:nowrap}
+.canwrap{position:relative;width:300px;user-select:none;cursor:grab}
+.canwrap:active{cursor:grabbing}
+.bigcan{width:300px;height:430px;border-radius:34px 34px 28px 28px/56px 56px 22px 22px;background:linear-gradient(90deg,#b6b9c2 0%,#e6e8ec var(--sh1,18%),#ffffff var(--sh2,38%),#e3e5ea var(--sh3,60%),#a9acb7 var(--sh4,85%),#c6c8d0 100%);box-shadow:inset 0 12px 16px rgba(255,255,255,.65),inset 0 -16px 22px rgba(24,24,26,.22),0 30px 60px rgba(24,24,26,.22);position:relative}
+.bigcan::before{content:"";position:absolute;top:7px;left:16px;right:16px;height:26px;border-radius:50%;background:linear-gradient(180deg,#8e919c,#d5d7dd 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.25)}
+.shadow-el{width:240px;height:26px;border-radius:50%;background:rgba(24,24,26,.16);filter:blur(8px);margin:18px auto 0}
+
+/* die-line overlays ON the object: an empty die-line = dashed region you can click */
+.dlzone{position:absolute;border:2px dashed var(--pink-400);background:
+  repeating-linear-gradient(45deg, rgba(255,46,99,.05) 0 8px, rgba(255,46,99,.10) 8px 16px);
+  cursor:pointer;transition:all .15s var(--ease-out);display:flex;align-items:center;justify-content:center}
+.dlzone:hover{border-color:var(--pink-600);background:rgba(255,46,99,.14);box-shadow:0 0 0 4px var(--pink-50)}
+.dlzone .zlabel{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--pink-200);color:var(--pink-700);border-radius:var(--r-pill);padding:2px 10px;font-size:10px;font-weight:800;white-space:nowrap;box-shadow:var(--shadow-sm)}
+.dlzone .zempty{font-size:10px;font-weight:700;color:var(--pink-400);background:rgba(255,255,255,.85);border-radius:var(--r-pill);padding:2px 9px}
+.dlzone.designed{border-style:solid;border-color:var(--success-500);background:rgba(30,124,74,.06)}
+.dlzone.designed .zlabel{border-color:var(--success-100);color:var(--success-600)}
+.dlzone.designed .zempty{display:none}
+.dlzone.body{left:9%;right:9%;top:16%;bottom:14%;border-radius:18px/40px}
+.dlzone.top{left:14%;right:14%;top:1%;height:8%;border-radius:50%}
+.dlzone.bottom{left:18%;right:18%;bottom:0%;height:6%;border-radius:50%}
+
+/* ============ 2D die-line editor ============ */
+.editor2d{flex:1;display:none;flex-direction:column;min-height:0}
+.editor2d.show{display:flex}
+.ed-toolbar{display:flex;align-items:center;gap:10px;background:#fff;border-bottom:1px solid var(--ink-200);padding:8px 14px}
+.ed-toolbar .tt{font-family:var(--font-display);font-weight:700;font-size:13.5px}
+.ed-stage{flex:1;overflow:auto;display:grid;place-items:center;padding:30px}
+.dieline-sheet{position:relative;background:#fff;border-radius:6px;box-shadow:var(--shadow-lg)}
+.frame{position:absolute;border:2px solid var(--pink-500);background:rgba(255,46,99,.07);border-radius:4px;cursor:move}
+.frame .flabel{background:var(--pink-500);color:#fff;font-size:9px;font-weight:800;border-radius:3px 0 6px 0;padding:2px 7px;text-transform:uppercase;letter-spacing:.05em;position:absolute;top:0;left:0}
+.frame.info{border-color:var(--info-500);background:rgba(31,91,168,.07)}
+.frame.info .flabel{background:var(--info-500)}
+.frame .grip{position:absolute;right:-5px;bottom:-5px;width:10px;height:10px;border-radius:3px;background:#fff;border:2px solid var(--pink-500);cursor:nwse-resize}
+.frame.info .grip{border-color:var(--info-500)}
+.tag{border-radius:var(--r-pill);padding:2px 8px;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.tag.verified{background:var(--success-50);color:var(--success-600)}
+
+/* ============ THE popup: everything in one place ============ */
+.overlay{position:fixed;inset:0;background:rgba(24,24,26,.45);display:none;place-items:center;z-index:100;backdrop-filter:blur(2px)}
+.overlay.show{display:grid}
+.modal{background:#fff;border-radius:var(--r-2xl);width:min(760px,94vw);max-height:90vh;overflow:auto;box-shadow:var(--shadow-xl);animation:pop .28s var(--ease-out)}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.modal .mhead{display:flex;align-items:center;gap:11px;padding:18px 22px 12px;position:sticky;top:0;background:#fff;z-index:5;border-bottom:1px solid var(--ink-100)}
+.modal .mhead .ic{width:36px;height:36px;border-radius:11px;background:var(--pink-50);color:var(--pink-600);display:grid;place-items:center;font-size:16px}
+.modal .mhead h3{font-family:var(--font-display);font-size:17px;font-weight:800}
+.modal .mhead p{font-size:11.5px;color:var(--ink-500)}
+.modal .mbody{padding:14px 22px 8px}
+.modal .mfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 22px 18px;border-top:1px solid var(--ink-100);margin-top:10px;position:sticky;bottom:0;background:#fff}
+.msect{border:1px solid var(--ink-200);border-radius:var(--r-xl);padding:14px 15px;margin-bottom:12px}
+.msect > .mtitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.msect > .mtitle h4{font-family:var(--font-display);font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+.msect > .mtitle h4 .n{width:20px;height:20px;border-radius:50%;background:var(--ink-900);color:var(--neon-500);font-size:10.5px;display:grid;place-items:center;font-family:var(--font-sans);font-weight:800}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--ink-600);margin-bottom:4px}
+.field input,.field select{width:100%;border:1px solid var(--ink-200);border-radius:10px;padding:8px 10px;background:#fff;outline:none}
+.field input:focus,.field select:focus{border-color:var(--pink-400);box-shadow:0 0 0 3px var(--pink-50)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.grid4{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end}
+.topo{display:flex;gap:7px}
+.topo button{flex:1;border:1px solid var(--ink-200);border-radius:12px;padding:9px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--ink-600);background:#fff}
+.topo button.on{border-color:var(--pink-500);background:var(--pink-50);color:var(--pink-700)}
+.hintline{font-size:10.5px;color:var(--ink-400);line-height:1.45;margin-top:6px}
+.rowline{display:flex;align-items:center;gap:9px;border:1px solid var(--ink-200);border-radius:var(--r-lg);padding:8px 11px;margin-bottom:6px;background:var(--ink-50)}
+.rowline b{flex:1;font-size:12px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rowline .sub{font-size:10px;color:var(--ink-500)}
+.rowline .x{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:var(--ink-400);font-size:12px}
+.rowline .x:hover{background:var(--danger-50);color:var(--danger-500)}
+.mockrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.mocktile{width:86px;border:1px solid var(--ink-200);border-radius:var(--r-lg);overflow:hidden;background:#fff;position:relative}
+.mocktile .mthumb{aspect-ratio:1;display:grid;place-items:center;background:linear-gradient(145deg,var(--ink-50),var(--ink-100));font-size:9px;font-weight:800;color:var(--ink-400)}
+.mocktile .mname{font-size:8.5px;color:var(--ink-600);padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:1px solid var(--ink-100)}
+.mocktile .star{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;font-size:9px;color:var(--ink-300)}
+.mocktile .star.on{color:#EBB305}
+.mocktile .x{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;font-size:10px;color:var(--ink-400)}
+.mocktile .k3d{position:absolute;bottom:20px;right:4px;background:var(--ink-900);color:var(--neon-500);font-size:7.5px;font-weight:800;border-radius:var(--r-pill);padding:1px 6px}
+.dropzone{border:1.5px dashed var(--ink-300);border-radius:var(--r-lg);padding:13px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--ink-500);font-size:11.5px;background:#fff}
+.dropzone:hover{border-color:var(--pink-400);background:var(--pink-50);color:var(--pink-700);cursor:pointer}
+.addmini{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ink-200);border-radius:var(--r-pill);padding:5px 12px;font-size:11.5px;font-weight:600;color:var(--ink-600);background:#fff}
+.addmini:hover{border-color:var(--pink-400);color:var(--pink-600);background:var(--pink-50)}
+
+/* toast + banner */
+.toasts{position:fixed;bottom:18px;right:18px;display:flex;flex-direction:column;gap:8px;z-index:200}
+.toast{background:var(--ink-900);color:#fff;border-radius:var(--r-lg);padding:11px 16px;font-size:12.5px;font-weight:600;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:9px;animation:pop .25s var(--ease-out)}
+.toast .tick{width:18px;height:18px;border-radius:50%;background:var(--neon-500);color:var(--ink-900);display:grid;place-items:center;font-size:11px;font-weight:800}
+.protobanner{background:var(--ink-900);color:#fff;font-size:11.5px;padding:7px 16px;display:flex;align-items:center;gap:10px}
+.protobanner .lbl{background:var(--neon-500);color:var(--ink-900);font-weight:800;font-size:9.5px;border-radius:var(--r-pill);padding:2px 9px;text-transform:uppercase;letter-spacing:.06em}
+.protobanner em{font-family:var(--font-serif);font-style:italic}
+</style>
+</head>
+<body>
+<div class="protobanner">
+  <span class="lbl">Prototype v2.1</span>
+  <span>One Library + one popup. <em>A surface IS a die-line:</em> each one shows as an empty die-line region on the 3D object. Click a region to design it.</span>
+</div>
+
+<div class="studio">
+  <div class="topbar">
+    <div class="brand"><span class="sq">▣</span> iLaunchify <small>Packaging Studio · Admin</small></div>
+    <div class="ctx">
+      <b id="ctxName">Aluminum can · 12 oz slim</b>
+      <span class="pill cat" id="ctxCat">Can</span>
+      <span class="pill ok">Active</span>
+      <button class="btn btn-ghost xs" onclick="openModal(state.currentId)">✎ Edit container</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost sm" id="back3d" style="display:none" onclick="closeEditor()">← Back to 3D</button>
+    <button class="btn btn-save" onclick="toast('Container saved')">✓ Save</button>
+  </div>
+
+  <div class="main">
+    <!-- THE one panel -->
+    <div class="library">
+      <div class="lhead"><h2>Library</h2><span class="pill cat" id="countPill"></span></div>
+      <div class="lbody" id="lbody"></div>
+    </div>
+
+    <!-- 3D canvas: die-line zones live ON the object -->
+    <div class="canvas" id="canvas3d">
+      <div class="stage">
+        <div>
+          <div class="canwrap" id="canwrap">
+            <div class="bigcan" id="bigcan"></div>
+            <!-- die-line zones injected here -->
+          </div>
+          <div class="shadow-el"></div>
+        </div>
+        <div class="hint" id="stageHint"></div>
+      </div>
+    </div>
+
+    <!-- 2D die-line editor -->
+    <div class="editor2d" id="canvas2d">
+      <div class="ed-toolbar">
+        <span class="tt" id="edTitle">Body wrap · 158×110 mm</span>
+        <span class="tag verified">Belongs to this container</span>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost sm" onclick="addFrame('info')">+ Info frame</button>
+        <button class="btn btn-pink sm" onclick="addFrame('pdp')">+ PDP frame</button>
+      </div>
+      <div class="ed-stage">
+        <div class="dieline-sheet" id="sheet" style="width:632px;height:440px">
+          <svg width="632" height="440" viewBox="0 0 632 440" style="position:absolute;inset:0">
+            <rect x="8" y="8" width="616" height="424" fill="none" stroke="#FF7FA8" stroke-width="1.5" stroke-dasharray="6 4"/>
+            <rect x="24" y="24" width="584" height="392" fill="none" stroke="#18181A" stroke-width="2"/>
+            <rect x="44" y="44" width="544" height="352" fill="none" stroke="#1E7C4A" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <line x1="316" y1="24" x2="316" y2="416" stroke="#CBCCD3" stroke-width="1" stroke-dasharray="8 5"/>
+            <text x="14" y="20" font-size="9" fill="#FF7FA8" font-family="Inter">BLEED 3mm</text>
+            <text x="30" y="40" font-size="9" fill="#18181A" font-family="Inter">TRIM 158×110</text>
+            <text x="50" y="60" font-size="9" fill="#1E7C4A" font-family="Inter">SAFE AREA</text>
+            <text x="320" y="40" font-size="9" fill="#9A9CA6" font-family="Inter">SEAM</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ THE popup: container + die-lines + mockups, one place ============ -->
+<div class="overlay" id="ov">
+  <div class="modal">
+    <div class="mhead">
+      <span class="ic">▣</span>
+      <div><h3 id="mvTitle">New container</h3><p>Everything in one place: details, die-lines, 2D and 3D mockups.</p></div>
+    </div>
+    <div class="mbody">
+
+      <div class="msect">
+        <div class="mtitle"><h4><span class="n">1</span> Container</h4></div>
+        <div class="grid2">
+          <div class="field"><label>Name</label><input id="fName" placeholder="e.g. Aluminum can · 330 ml sleek" /></div>
+          <div class="field"><label>Group (category)</label>
+            <select id="fCat"><option>Can</option><option>Bottle</option><option>Jar</option><option>Box</option><option>Pouch</option><option>Tube</option><option>Carton</option><option>Other</option></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Shape</label>
+            <div class="topo" id="fTopo">
+              <button class="on" data-t="cyl">⬭ Cylinder</button>
+              <button data-t="box">▥ Box</button>
+              <button data-t="pouch">◗ Pouch</button>
+              <button data-t="tube">▯ Tube</button>
+            </div></div>
+          <div class="grid3">
+            <div class="field"><label>Height mm</label><input id="fH" value="146" /></div>
+            <div class="field"><label>Diam. mm</label><input id="fD" value="58" /></div>
+            <div class="field"><label>Bleed mm</label><input value="3" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msect">
+        <div class="mtitle"><h4><span class="n">2</span> Die-lines <span class="pill cat" id="dieCount"></span></h4></div>
+        <div id="dieList"></div>
+        <div class="grid4">
+          <div class="field" style="margin:0"><label>Label</label><input id="dLabel" placeholder="e.g. Body wrap" value="Body wrap" /></div>
+          <div class="field" style="margin:0"><label>Placement</label>
+            <select id="dPlace"><option value="body">Body</option><option value="top">Top</option><option value="bottom">Bottom</option></select></div>
+          <div class="field" style="margin:0"><label>Size mm</label><input id="dSize" value="158×110" /></div>
+          <div style="display:flex;gap:6px">
+            <button class="addmini" onclick="pendDie('upload')">⤴ Upload</button>
+            <button class="addmini" onclick="pendDie('generate')">✦ Generate</button>
+          </div>
+        </div>
+        <p class="hintline">Each die-line appears as an empty die-line region on the 3D object. Upload takes PDF, AI, SVG, DXF; Generate builds a clean rectangle or circle from the size.</p>
+      </div>
+
+      <div class="msect">
+        <div class="mtitle"><h4><span class="n">3</span> 3D model <span class="pill cat">one per container</span></h4></div>
+        <div id="glbSlot"></div>
+        <p class="hintline">GLB or GLTF, 40 MB max. Powers the rotatable model on the canvas and the die-line regions on it. Falls back to the parametric shape when absent.</p>
+      </div>
+
+      <div class="msect">
+        <div class="mtitle"><h4><span class="n">4</span> 2D photo mockups <span class="pill cat" id="mock2dCount"></span></h4><button class="addmini" onclick="pendMocks2d()">+ Add photos</button></div>
+        <div class="mockrow" id="mockList"></div>
+        <div class="dropzone" onclick="pendMocks2d()">Drop photos (JPG, PNG, WEBP) · each becomes a mockup template: you mark the print area and artwork warps into it · star one for the Library thumbnail</div>
+      </div>
+
+    </div>
+    <div class="mfoot">
+      <span class="hintline" id="mfHint" style="margin:0">Creates the container with its die-lines and mockups in one go.</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="hide('ov')">Cancel</button>
+        <button class="btn btn-pink" id="mvGo" onclick="saveModal()">Create container</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ============================================================
+   v2.1 after Pavel's review: ONE Library panel, ONE popup that
+   creates or edits a container WITH its die-lines and mockups.
+   Surface concept removed: a surface IS a die-line, rendered as
+   an empty die-line zone on the 3D object; click it to design.
+   ============================================================ */
+const CATS = ['All','Can','Bottle','Jar','Box','Pouch','Tube'];
+const ALLCATS = ['All','Can','Bottle','Jar','Box','Pouch','Tube','Carton','Sachet','Stick pack','Tin','Tub','Bag','Case','Cup','Drum','Envelope','Jug','Other'];
+let state = {
+  catFilter:'All', q:'', currentId:'c1', editingId:null, chipsOpen:false,
+  pendDies:[], pendMocks:[],
+  containers:[
+    { id:'c1', name:'Aluminum can · 12 oz slim', cat:'Can', topo:'cyl', h:146, d:58,
+      dielines:[
+        { id:'d1', label:'Body wrap', place:'body', size:'158×110', src:'upload', designed:true },
+        { id:'d2', label:'Top end', place:'top', size:'⌀ 52', src:'generate', designed:false },
+      ],
+      mockups:[
+        { id:'m1', name:'330ml_soda_can.glb', kind:'3d', star:false },
+        { id:'m2', name:'studio-photo.png', kind:'img', star:true },
+      ]},
+    { id:'c2', name:'Aluminum can · 330 ml', cat:'Can', topo:'cyl', h:115, d:66, origin:'partner',
+      dielines:[{ id:'d3', label:'Body wrap', place:'body', size:'207×107', src:'upload', designed:false }],
+      mockups:[{ id:'m3', name:'330ml_soda_can_game_ready.glb', kind:'3d', star:true }] },
+    { id:'c3', name:'Glass jar · 8 oz', cat:'Jar', topo:'cyl', h:90, d:70, dielines:[], mockups:[] },
+    { id:'c4', name:'Tuck-end box · S', cat:'Box', topo:'box', h:120, d:80, dielines:[], mockups:[] },
+    { id:'c5', name:'Stand-up pouch · M', cat:'Pouch', topo:'pouch', h:180, d:120, dielines:[], mockups:[] },
+    { id:'c6', name:'Cosmetic tube · 50 ml', cat:'Tube', topo:'tube', h:140, d:35, dielines:[], mockups:[] },
+  ],
+};
+const cur = () => state.containers.find(c => c.id === state.currentId);
+const $ = (id) => document.getElementById(id);
+function toast(m){ const t=document.createElement('div'); t.className='toast'; t.innerHTML=`<span class="tick">✓</span>${m}`; $('toasts').appendChild(t); setTimeout(()=>t.remove(),2600); }
+function hide(id){ $(id).classList.remove('show'); }
+function show(id){ $(id).classList.add('show'); }
+
+/* ============ Library ============ */
+function renderLibrary(){
+  $('countPill').textContent = state.containers.length + ' containers';
+  const H = [];
+  H.push(`<div class="search">🔎 <input placeholder="Search containers..." value="${state.q}" oninput="state.q=this.value;renderLibrary()" /></div>`);
+  const chipHtml = ALLCATS.map(x=>`<button class="chip ${state.catFilter===x?'on':''}" onclick="state.catFilter='${x}';state.chipsOpen=false;renderLibrary()">${x}</button>`).join('');
+  H.push(`<div class="chipbar">
+    <div class="chipedge"><button onclick="$('chipScroll').scrollBy({left:-180,behavior:'smooth'})" aria-label="Scroll left">‹</button></div>
+    <div class="chipscroll" id="chipScroll" onwheel="if(event.deltaY){this.scrollLeft+=event.deltaY;event.preventDefault()}">${chipHtml}</div>
+    <div class="chipedge right">
+      <button onclick="$('chipScroll').scrollBy({left:180,behavior:'smooth'})" aria-label="Scroll right">›</button>
+      <button onclick="state.chipsOpen=!state.chipsOpen;renderLibrary()" title="${state.chipsOpen?'Hide':'Show'} all groups">${state.chipsOpen?'⌃':'⌄'}</button>
+    </div>
+  </div>
+  <div class="chipexp ${state.chipsOpen?'show':''}">${chipHtml}</div>`);
+  H.push('<div class="cardgrid">');
+  H.push(`<button class="newcard" onclick="openModal(null)"><span class="plus">+</span>New container</button>`);
+  state.containers
+    .filter(x => (state.catFilter==='All' || x.cat===state.catFilter) && x.name.toLowerCase().includes(state.q.toLowerCase()))
+    .forEach(x => {
+      const has3d = x.mockups.some(m => m.kind==='3d');
+      H.push(`<div class="mcard ${x.id===state.currentId?'sel':''}" onclick="pickContainer('${x.id}')">
+        <button class="edit" title="Edit container" onclick="event.stopPropagation();openModal('${x.id}')">✎</button>
+        <div class="thumb">${has3d?'<span class="glb3d">3D</span>':''}<span class="minican ${x.topo==='cyl'?'':x.topo}"></span></div>
+        <div class="meta"><b>${x.name}</b><span>${x.cat} · ${x.dielines.length} die-line${x.dielines.length===1?'':'s'} · ${x.mockups.length} mockups${x.origin==='partner'?' · <span style="color:var(--info-500);font-weight:700">imported</span>':''}</span></div>
+      </div>`);
+    });
+  H.push('</div>');
+  $('lbody').innerHTML = H.join('');
+}
+function pickContainer(id){
+  state.currentId = id; closeEditor();
+  $('ctxName').textContent = cur().name; $('ctxCat').textContent = cur().cat;
+  renderLibrary(); renderZones();
+}
+
+/* ============ die-line zones ON the 3D object ============ */
+function renderZones(){
+  const wrap = $('canwrap');
+  wrap.querySelectorAll('.dlzone').forEach(z => z.remove());
+  const c = cur();
+  c.dielines.forEach(dl => {
+    const z = document.createElement('div');
+    z.className = `dlzone ${dl.place} ${dl.designed?'designed':''}`;
+    z.innerHTML = `<span class="zlabel">${dl.label} · ${dl.size} mm</span>${dl.designed?'':'<span class="zempty">Empty · click to design</span>'}`;
+    z.onclick = (e) => { e.stopPropagation(); openEditor(dl); };
+    wrap.appendChild(z);
+  });
+  $('stageHint').textContent = c.dielines.length
+    ? 'Drag to orbit · each region is a die-line · click one to open it flat'
+    : 'No die-lines yet · Edit container to add them';
+}
+function openEditor(dl){
+  $('canvas3d').style.display = 'none';
+  $('canvas2d').classList.add('show');
+  $('back3d').style.display = '';
+  $('edTitle').textContent = `${dl.label} · ${dl.size} mm`;
+  if (!$('sheet').querySelector('.frame')) { addFrame('pdp', 70, 70, 200, 150); addFrame('info', 350, 90, 180, 220); }
+  dl.designed = true;
+}
+function closeEditor(){
+  $('canvas2d').classList.remove('show');
+  $('canvas3d').style.display = 'flex';
+  $('back3d').style.display = 'none';
+  renderZones();
+}
+
+/* fake orbit */
+let dragging=false,lastX=0,shift=0; const can=$('bigcan');
+$('canwrap').addEventListener('pointerdown', e => { dragging=true; lastX=e.clientX; });
+window.addEventListener('pointerup', () => dragging=false);
+window.addEventListener('pointermove', e => {
+  if(!dragging) return;
+  shift=(shift+(e.clientX-lastX)*.25)%100; lastX=e.clientX;
+  const w=((shift%100)+100)%100;
+  can.style.setProperty('--sh1',(10+w*.2)+'%'); can.style.setProperty('--sh2',(30+w*.2)+'%');
+  can.style.setProperty('--sh3',(52+w*.2)+'%'); can.style.setProperty('--sh4',(78+w*.2)+'%');
+});
+
+/* ============ THE popup (create OR edit) ============ */
+function openModal(id){
+  state.editingId = id;
+  const c = id ? state.containers.find(x=>x.id===id) : null;
+  $('mvTitle').textContent = c ? (c.origin==='partner' ? 'Edit container · imported from a partner' : 'Edit container') : 'New container';
+  $('mvGo').textContent = c ? 'Save changes' : 'Create container';
+  $('mfHint').textContent = c ? 'Changes apply to the container, its die-lines and mockups.' : 'Creates the container with its die-lines and mockups in one go.';
+  $('fName').value = c ? c.name : '';
+  $('fCat').value = c ? c.cat : 'Can';
+  $('fH').value = c ? c.h : 146; $('fD').value = c ? c.d : 58;
+  document.querySelectorAll('#fTopo button').forEach(b => b.classList.toggle('on', (c?c.topo:'cyl')===b.dataset.t));
+  state.pendDies = c ? c.dielines.map(d=>({...d})) : [];
+  state.pendMocks = c ? c.mockups.map(m=>({...m})) : [];
+  renderPend(); show('ov');
+}
+document.querySelectorAll('#fTopo button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#fTopo button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+}));
+function renderPend(){
+  $('dieCount').textContent = state.pendDies.length || 'none yet';
+  $('dieList').innerHTML = state.pendDies.map((d,i)=>`
+    <div class="rowline"><b>${d.label}</b><span class="sub">${d.place} · ${d.size} mm · ${d.src==='upload'?'uploaded file':'generated'}</span>
+    <button class="x" onclick="state.pendDies.splice(${i},1);renderPend()">×</button></div>`).join('');
+  // 3D: ONE slot (model3dKey). 2D photos: many (MockupTemplate rows).
+  const glb = state.pendMocks.find(m => m.kind==='3d');
+  $('glbSlot').innerHTML = glb
+    ? `<div class="rowline"><b>${glb.name}</b><span class="sub">imported · shown on canvas</span>
+       <button class="addmini" onclick="swapGlb()">Replace</button>
+       <button class="x" onclick="state.pendMocks=state.pendMocks.filter(m=>m.kind!=='3d');renderPend()">×</button></div>`
+    : `<div class="dropzone" onclick="swapGlb()">Drop a GLB or GLTF here · or click to pick</div>`;
+  const photos = state.pendMocks.filter(m => m.kind==='img');
+  $('mock2dCount').textContent = photos.length || 'none yet';
+  $('mockList').innerHTML = photos.map((m)=>`
+    <div class="mocktile">
+      <button class="star ${m.star?'on':''}" onclick="state.pendMocks.forEach(x=>x.star=false);state.pendMocks.find(x=>x.id==='${m.id}').star=true;renderPend()">★</button>
+      <button class="x" onclick="state.pendMocks=state.pendMocks.filter(x=>x.id!=='${m.id}');renderPend()">×</button>
+      <div class="mthumb">PHOTO</div>
+      <div class="mname">${m.name}</div></div>`).join('');
+}
+function pendDie(src){
+  const label = $('dLabel').value.trim() || 'Die-line';
+  state.pendDies.push({ id:'d'+Date.now(), label, place: $('dPlace').value, size: $('dSize').value || '158×110', src, designed:false });
+  $('dLabel').value = ''; renderPend();
+  toast(src==='upload' ? 'File picker opens: PDF, AI, SVG, DXF' : 'Die-line generated from size');
+}
+function swapGlb(){
+  state.pendMocks = state.pendMocks.filter(m => m.kind!=='3d');
+  state.pendMocks.push({ id:'m'+Date.now(), name:'model.glb', kind:'3d', star:false });
+  renderPend(); toast('3D model set: one per container');
+}
+function pendMocks2d(){
+  state.pendMocks.push({ id:'m'+Date.now(), name:'photo-'+(state.pendMocks.filter(m=>m.kind==='img').length+1)+'.png', kind:'img', star: !state.pendMocks.some(m=>m.star) });
+  renderPend(); toast('Photo added: mark its print area after create');
+}
+function saveModal(){
+  const topo = document.querySelector('#fTopo button.on')?.dataset.t ?? 'cyl';
+  const data = { name: $('fName').value.trim() || 'Untitled container', cat: $('fCat').value, topo,
+    h:+$('fH').value||146, d:+$('fD').value||58, dielines: state.pendDies, mockups: state.pendMocks };
+  if (state.editingId) {
+    Object.assign(state.containers.find(x=>x.id===state.editingId), data);
+    toast('Container updated');
+    pickContainer(state.editingId);
+  } else {
+    const id = 'c' + Date.now();
+    state.containers.unshift({ id, ...data });
+    toast('Container created · its die-lines are on the model, click one to design');
+    pickContainer(id);
+  }
+  hide('ov');
+}
+
+/* ============ 2D editor frames ============ */
+function addFrame(kind,x,y,w,h){
+  const sheet=$('sheet'); const f=document.createElement('div');
+  f.className='frame'+(kind==='info'?' info':'');
+  f.style.cssText=`left:${x??90}px;top:${y??90}px;width:${w??180}px;height:${h??130}px`;
+  f.innerHTML=`<span class="flabel">${kind==='info'?'Info panel':'PDP frame'}</span><span class="grip"></span>`;
+  sheet.appendChild(f); makeDraggable(f, sheet);
+  if(x===undefined) toast(kind==='info'?'Info frame added':'PDP frame added');
+}
+function makeDraggable(el,bounds){
+  let sx,sy,ox,oy,resizing=false,ow,oh;
+  el.addEventListener('pointerdown', e=>{ e.preventDefault(); el.setPointerCapture(e.pointerId);
+    sx=e.clientX; sy=e.clientY; ox=el.offsetLeft; oy=el.offsetTop; ow=el.offsetWidth; oh=el.offsetHeight;
+    resizing=e.target.classList.contains('grip'); });
+  el.addEventListener('pointermove', e=>{
+    if(!el.hasPointerCapture?.(e.pointerId)) return;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(resizing){ el.style.width=Math.max(60,ow+dx)+'px'; el.style.height=Math.max(40,oh+dy)+'px'; }
+    else { el.style.left=Math.min(Math.max(0,ox+dx),bounds.offsetWidth-el.offsetWidth)+'px';
+           el.style.top=Math.min(Math.max(0,oy+dy),bounds.offsetHeight-el.offsetHeight)+'px'; }
+  });
+}
+
+/* boot */
+renderLibrary(); renderZones();
+</script>
+</body>
+</html>
