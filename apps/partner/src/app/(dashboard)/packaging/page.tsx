@@ -5,9 +5,14 @@
 // status (Active first, then Draft, then Retired). Each row links to the
 // edit page where the partner manages core fields + surfaces.
 //
-// V1 admin-curated PackagingType library is empty at launch; partners
-// always create from scratch. As the library grows (#135 promotion queue),
-// new packaging systems will auto-link via the picker on the New page.
+// CREATION RETIRED HERE (Pavel 2026-08-03): /packaging/new is gone. Packaging
+// systems are created ONLY in the product builder's Step 4 packaging sheet
+// (attach from catalog or create custom, with mockups/die-lines + admin review).
+// NOTE: per the same-day studio-first decision (.claude memory
+// ilaunchify-packaging-studio-first + docs/PACKAGING_STUDIO_MASTER_PLAN_2026-08-03.md)
+// this whole page and its tabs are slated for retirement once the Studio reaches
+// die-line list parity and offerings find a home. Until then it is the interim
+// manage layer: status, review tracking, core-field edits.
 
 import Link from 'next/link'
 import { prisma } from '@ilaunchify/db'
@@ -77,12 +82,13 @@ export default async function PackagingListPage() {
         sub="One system per SKU's worth of physical packaging — active items are visible to creators picking packaging."
         actions={
           <>
-            {/* Offerings + Die-lines are TABS now (IA reorg, Pavel 2026-07-14). */}
+            {/* Offerings + Die-lines are TABS now (IA reorg, Pavel 2026-07-14).
+                Creation lives in the product builder Step 4 (Pavel 2026-08-03). */}
             <Link
-              href="/packaging/new"
+              href="/products/new"
               className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
             >
-              <Plus className="h-4 w-4" aria-hidden="true" /> Add packaging
+              <Plus className="h-4 w-4" aria-hidden="true" /> Add in product builder
             </Link>
           </>
         }
@@ -133,14 +139,15 @@ export default async function PackagingListPage() {
           </div>
           <h2 className="mt-3 font-display text-[17px] font-semibold text-ink-900">No packaging yet</h2>
           <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-600">
-            Add your first packaging system so creators can pick it when customizing a product.
-            You can save drafts and activate them when ready.
+            Packaging is created while building a product: attach a container in Step 4
+            (“Packaging &amp; die-lines”) or create a custom one there. Systems you add show up
+            here to manage: activate, retire, edit fields, and track catalog review.
           </p>
           <Link
-            href="/packaging/new"
+            href="/products/new"
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
           >
-            <Plus className="h-4 w-4" aria-hidden="true" /> Add your first
+            <Plus className="h-4 w-4" aria-hidden="true" /> Start a product
           </Link>
         </section>
       ) : (

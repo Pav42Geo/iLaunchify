@@ -1,5 +1,5 @@
 // Packaging system — edit page.
-// Top: core fields form (PackagingForm in 'edit' mode)
+// Top: core fields form (PackagingForm, edit-only since /packaging/new retired)
 // Middle: surfaces CRUD (SurfacesPanel)
 // Bottom: status toggle (DRAFT -> ACTIVE -> RETIRED).
 
@@ -134,7 +134,7 @@ export default async function PackagingEditPage({ params }: PageProps) {
         <h2 className="font-display text-[14px] font-semibold tracking-tight text-ink-900">
           Core fields
         </h2>
-        <PackagingForm mode="edit" packagingSystemId={system.id} initial={initial} />
+        <PackagingForm packagingSystemId={system.id} initial={initial} />
       </section>
 
       <section className="space-y-3">

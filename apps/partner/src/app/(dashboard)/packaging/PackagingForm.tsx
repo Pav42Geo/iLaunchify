@@ -1,8 +1,9 @@
 'use client'
 
-// Shared packaging system form (core fields). Used by both /packaging/new
-// (mode=create) and /packaging/[id] (mode=edit). Surface CRUD lives in a
-// separate component because it only makes sense post-create.
+// Packaging system core-fields form, EDIT ONLY, used by /packaging/[id].
+// Creation was retired from the catalog (Pavel 2026-08-03): new systems are
+// born in the product builder's Step 4 packaging sheet. Surface CRUD lives in
+// a separate component (SurfacesPanel).
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -18,7 +19,7 @@ import {
   FLAVOR_MODE_OPTIONS,
   FLAVOR_POLICY_OPTIONS,
 } from './constants'
-import { createPackagingSystem, updatePackagingSystem } from './actions'
+import { updatePackagingSystem } from './actions'
 
 interface PackagingFormState {
   partnerName: string
@@ -53,12 +54,11 @@ const BLANK: PackagingFormState = {
 }
 
 interface PackagingFormProps {
-  mode: 'create' | 'edit'
-  packagingSystemId?: string
+  packagingSystemId: string
   initial?: Partial<PackagingFormState>
 }
 
-export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFormProps) {
+export function PackagingForm({ packagingSystemId, initial }: PackagingFormProps) {
   const router = useRouter()
   const [state, setState] = useState<PackagingFormState>({ ...BLANK, ...initial })
   const [isPending, startTransition] = useTransition()
@@ -94,24 +94,13 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
     }
 
     startTransition(async () => {
-      if (mode === 'create') {
-        const result = await createPackagingSystem(payload)
-        if (!result.ok) {
-          setError(result.error)
-          return
-        }
-        toast.success('Packaging created — add surfaces next')
-        router.push(`/packaging/${result.data.id}`)
-        router.refresh()
-      } else if (packagingSystemId) {
-        const result = await updatePackagingSystem(packagingSystemId, payload)
-        if (!result.ok) {
-          setError(result.error)
-          return
-        }
-        toast.success('Saved')
-        router.refresh()
+      const result = await updatePackagingSystem(packagingSystemId, payload)
+      if (!result.ok) {
+        setError(result.error)
+        return
       }
+      toast.success('Saved')
+      router.refresh()
     })
   }
 
@@ -313,7 +302,7 @@ export function PackagingForm({ mode, packagingSystemId, initial }: PackagingFor
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="submit" disabled={isPending} className="bg-ink-900 hover:bg-ink-700">
-          {isPending ? 'Saving…' : mode === 'create' ? 'Create packaging' : 'Save changes'}
+          {isPending ? 'Saving…' : 'Save changes'}
         </Button>
       </div>
     </form>

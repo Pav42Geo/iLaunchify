@@ -3,10 +3,13 @@
 // Partner Packaging Catalog server actions.
 // Per docs/MANUFACTURER_PRODUCT_BUILDER.md + task #128.
 //
-// Partners create + edit PackagingSystem rows here. Each row is one
-// SKU's worth of packaging (one jar size, one pouch size, etc.). Optional
-// link to a canonical PackagingType (admin-curated; empty at V1 launch
-// and grows over time via the promotion queue #135).
+// Partners EDIT PackagingSystem rows here. CREATION was retired from the
+// catalog (Pavel 2026-08-03): the only writer of new rows is the product
+// builder's Step 4 packaging sheet (createCustomPackaging in
+// products/new/packaging-studio-actions.ts, uploads + admin review included).
+// Each row is one SKU's worth of packaging (one jar size, one pouch size,
+// etc.). Optional link to a canonical PackagingType (admin-curated; empty at
+// V1 launch and grows over time via the promotion queue #135).
 //
 // Status FSM:
 //   DRAFT -> ACTIVE (partner activates so it appears in product builder)
@@ -47,7 +50,7 @@ async function requirePartner() {
 }
 
 // -----------------------------------------------------------------------------
-// CREATE
+// CORE FIELDS SHAPE (create retired 2026-08-03; kept as the update patch base)
 // -----------------------------------------------------------------------------
 
 export interface CreatePackagingInput {
@@ -64,52 +67,6 @@ export interface CreatePackagingInput {
   grossWeightG: number | null
   casesPerLayer: number | null // Ti
   layersPerPallet: number | null // Hi
-}
-
-export async function createPackagingSystem(
-  input: CreatePackagingInput,
-): Promise<Result<{ id: string }>> {
-  const { user, partner, error } = await requirePartner()
-  if (error) return { ok: false, error }
-
-  if (!input.partnerName.trim() || input.partnerName.trim().length > 120) {
-    return { ok: false, error: 'Name must be 1–120 characters.' }
-  }
-  if (input.unitCount < 1) {
-    return { ok: false, error: 'Unit count must be at least 1.' }
-  }
-  if (input.moq < 1) {
-    return { ok: false, error: 'MOQ must be at least 1.' }
-  }
-
-  const system = await prisma.packagingSystem.create({
-    data: {
-      partnerId: partner.id,
-      partnerName: input.partnerName.trim(),
-      topology: input.topology,
-      unitCount: input.unitCount,
-      flavorMode: input.flavorMode,
-      flavorPolicy: input.flavorPolicy,
-      moq: input.moq,
-      dimensions: input.dimensions ?? undefined,
-      maxWeightG: input.maxWeightG,
-      grossWeightG: input.grossWeightG,
-      casesPerLayer: input.casesPerLayer,
-      layersPerPallet: input.layersPerPallet,
-      status: 'DRAFT',
-    } as never,
-  })
-
-  await logAuditAs(user, {
-    entityType: 'PackagingSystem',
-    entityId: system.id,
-    action: 'PACKAGING_CREATE',
-    toValue: 'DRAFT',
-    payload: { partnerId: partner.id, name: system.partnerName, topology: system.topology },
-  })
-
-  revalidatePath('/packaging')
-  return { ok: true, data: { id: system.id } }
 }
 
 // -----------------------------------------------------------------------------
