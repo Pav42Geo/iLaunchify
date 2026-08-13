@@ -698,7 +698,7 @@ export function PackagingStudioStep({ draftId, systems = [], onNext, onBack, onS
               onCatalogPreview={(cat) => { setView('3d'); setTopology(catalogTopologyKey(cat)) }}
               onSubmitReview={onSubmitReview}
               busyReview={busyReview}
-              systems={[...localSystems, ...systems]}
+              systems={[...localSystems.filter((l) => !systems.some((s) => s.id === l.id)), ...systems]}
               onUpload={() => setUploadOpen(true)}
               onManageFiles={(id, name) => setManageFilesFor({ id, name })}
               attachedIds={attached}
@@ -1077,6 +1077,14 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
   const [maxWeightG, setMaxWeightG] = useState('')
   const [unitCount, setUnitCount] = useState('1')
   const [moq, setMoq] = useState('1')
+  const [flavorMode, setFlavorMode] = useState<'SINGLE' | 'MULTI'>('SINGLE')
+  const [flavorPolicy, setFlavorPolicy] = useState<'CREATOR_PICK' | 'PARTNER_FIXED'>('CREATOR_PICK')
+  // Filled/packed logistics — grossWeightG is the packed weight of ONE sellable
+  // unit (vs maxWeightG capacity); Ti × Hi is the pallet config. All optional.
+  const [grossWeightG, setGrossWeightG] = useState('')
+  const [casesPerLayer, setCasesPerLayer] = useState('')
+  const [layersPerPallet, setLayersPerPallet] = useState('')
+  const [logisticsOpen, setLogisticsOpen] = useState(false)
   // Multiple files: a bottle + outer box may need several mockups + die-lines.
   const [mockups, setMockups] = useState<{ file: File; label: string }[]>([])
   const [dielines, setDielines] = useState<{ file: File; panel: string; label: string }[]>([])
@@ -1086,6 +1094,8 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
     if (open) {
       setName(''); setTopology(TOPOLOGY_OPTIONS[0]!.value); setMaterial('')
       setLengthMm(''); setWidthMm(''); setHeightMm(''); setMaxWeightG(''); setUnitCount('1'); setMoq('1')
+      setFlavorMode('SINGLE'); setFlavorPolicy('CREATOR_PICK')
+      setGrossWeightG(''); setCasesPerLayer(''); setLayersPerPallet(''); setLogisticsOpen(false)
       setMockups([]); setDielines([]); setBusy(false)
     }
   }, [open])
@@ -1108,6 +1118,9 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
     fd.set('material', material)
     fd.set('lengthMm', lengthMm); fd.set('widthMm', widthMm); fd.set('heightMm', heightMm)
     fd.set('maxWeightG', maxWeightG); fd.set('unitCount', unitCount); fd.set('moq', moq)
+    fd.set('flavorMode', flavorMode)
+    fd.set('flavorPolicy', flavorMode === 'MULTI' ? flavorPolicy : 'CREATOR_PICK')
+    fd.set('grossWeightG', grossWeightG); fd.set('casesPerLayer', casesPerLayer); fd.set('layersPerPallet', layersPerPallet)
     mockups.forEach((m) => { fd.append('mockup', m.file); fd.append('mockupLabel', m.label) })
     dielines.forEach((d) => { fd.append('dieline', d.file); fd.append('dielinePanel', d.panel); fd.append('dielineLabel', d.label) })
     setBusy(true)
@@ -1170,6 +1183,50 @@ function UploadPackagingModal({ open, draftId, onClose, onCreated }: {
               <div><label className={labelCls}>Units</label><input type="number" min={1} value={unitCount} onChange={(e) => setUnitCount(e.target.value)} className={numInput} /></div>
               <div><label className={labelCls}>MOQ</label><input type="number" min={1} value={moq} onChange={(e) => setMoq(e.target.value)} className={numInput} /></div>
             </div>
+          </div>
+
+          {/* Flavors — SINGLE (1 jar = 1 flavor) vs MULTI (variety pack). Policy
+              only matters for MULTI, so it stays hidden until then. */}
+          <div>
+            <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wider text-ink-700">Flavors per unit</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([['SINGLE', 'Single flavor'], ['MULTI', 'Multi-flavor']] as const).map(([value, label]) => (
+                <button key={value} type="button" onClick={() => setFlavorMode(value)} className={`rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-colors ${flavorMode === value ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}>{label}</button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-ink-400">{flavorMode === 'SINGLE' ? 'One flavor per unit — 1 jar = 1 flavor.' : 'Multiple flavors inside one unit — a variety pack.'}</p>
+            {flavorMode === 'MULTI' && (
+              <div className="mt-2">
+                <label className={labelCls}>Who picks the flavors?</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([['CREATOR_PICK', 'Creator picks'], ['PARTNER_FIXED', 'Fixed assortment']] as const).map(([value, label]) => (
+                    <button key={value} type="button" onClick={() => setFlavorPolicy(value)} className={`rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition-colors ${flavorPolicy === value ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-400'}`}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Logistics (optional, collapsed) — packed weight + Ti-Hi pallet spec. */}
+          <div className="rounded-lg border border-ink-200">
+            <button type="button" onClick={() => setLogisticsOpen((o) => !o)} className="flex w-full items-center justify-between px-3 py-2">
+              <span className="text-[12px] font-bold uppercase tracking-wider text-ink-700">Logistics <span className="font-medium normal-case tracking-normal text-ink-400">(optional)</span></span>
+              <ChevronDown className={`h-3.5 w-3.5 text-ink-400 transition-transform ${logisticsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {logisticsOpen && (
+              <div className="border-t border-ink-100 px-3 py-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div><label className={labelCls}>Gross weight (g)</label><input type="number" min={0} value={grossWeightG} onChange={(e) => setGrossWeightG(e.target.value)} className={numInput} /></div>
+                  <div><label className={labelCls}>Cases / layer (Ti)</label><input type="number" min={0} value={casesPerLayer} onChange={(e) => setCasesPerLayer(e.target.value)} className={numInput} /></div>
+                  <div><label className={labelCls}>Layers (Hi)</label><input type="number" min={0} value={layersPerPallet} onChange={(e) => setLayersPerPallet(e.target.value)} className={numInput} /></div>
+                </div>
+                <p className="mt-1.5 text-[11px] text-ink-400">
+                  {Number(casesPerLayer) > 0 && Number(layersPerPallet) > 0
+                    ? <>Pallet: <b className="font-semibold text-ink-700">{Number(casesPerLayer)} × {Number(layersPerPallet)} = {Number(casesPerLayer) * Number(layersPerPallet)} cases/pallet</b></>
+                    : 'Packed weight of one sellable unit + Ti-Hi pallet spec — powers shipping quotes.'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Mockups — multiple photos / 3D files (bottle + outer box, etc.). */}

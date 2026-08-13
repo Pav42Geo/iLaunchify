@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ilaunchify/creator", "dev"],
       "port": 3000
+    },
+    {
+      "name": "partner",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@ilaunchify/partner", "dev"],
+      "port": 3002
     }
   ]
 }

@@ -293,6 +293,17 @@ export async function createCustomPackaging(form: FormData): Promise<AttachResul
   const maxWeightG = num('maxWeightG')
   const dims = lengthMm || widthMm || heightMm ? { lengthMm, widthMm, heightMm } : null
 
+  // Flavor shape + policy (schema defaults: SINGLE / CREATOR_PICK).
+  const flavorMode = String(form.get('flavorMode') ?? '') === 'MULTI' ? 'MULTI' : 'SINGLE'
+  const flavorPolicy = String(form.get('flavorPolicy') ?? '') === 'PARTNER_FIXED' ? 'PARTNER_FIXED' : 'CREATOR_PICK'
+  // Filled/packed logistics — grossWeightG = packed weight of ONE sellable unit
+  // (vs maxWeightG capacity); casesPerLayer (Ti) × layersPerPallet (Hi). All
+  // optional; a 0 means "not provided".
+  const grossWeightG = num('grossWeightG')
+  const posInt = (v: number | null): number | undefined => (v != null && v >= 1 ? Math.round(v) : undefined)
+  const casesPerLayer = posInt(num('casesPerLayer'))
+  const layersPerPallet = posInt(num('layersPerPallet'))
+
   const system = await prisma.packagingSystem.create({
     data: {
       partnerId: partner.id,
@@ -302,6 +313,11 @@ export async function createCustomPackaging(form: FormData): Promise<AttachResul
       moq,
       dimensions: dims ?? undefined,
       maxWeightG: maxWeightG == null ? undefined : Math.round(maxWeightG),
+      flavorMode,
+      flavorPolicy,
+      grossWeightG: grossWeightG == null || grossWeightG <= 0 ? undefined : Math.round(grossWeightG),
+      casesPerLayer,
+      layersPerPallet,
       status: 'DRAFT',
     },
     select: { id: true },
@@ -349,7 +365,7 @@ export async function createCustomPackaging(form: FormData): Promise<AttachResul
     entityType: 'PackagingSystem',
     entityId: system.id,
     action: 'PACKAGING_CREATE',
-    payload: { name, topology, material: material || null, mockups: mockupEntries.length, dielines: dielineEntries.length },
+    payload: { name, topology, material: material || null, flavorMode, mockups: mockupEntries.length, dielines: dielineEntries.length },
   })
 
   const r = await addPackagingLink({ productTemplateId: draftId, packagingSystemId: system.id, basePriceCents: 0, leadTimeDays: 21 })
